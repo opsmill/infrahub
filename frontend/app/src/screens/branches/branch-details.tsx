@@ -33,7 +33,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
 export const BranchDetails = () => {
-  const { branchname } = useParams();
+  const { branchName } = useParams();
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
@@ -49,7 +49,7 @@ export const BranchDetails = () => {
   const navigate = useNavigate();
 
   const branchAction = async ({ successMessage, errorMessage, request, options }: any) => {
-    if (!branchname) return;
+    if (!branchName) return;
 
     try {
       setIsLoadingRequest(true);
@@ -63,7 +63,7 @@ export const BranchDetails = () => {
       const result = await graphqlClient.mutate({
         mutation,
         context: {
-          branch: branchname,
+          branch: branchName,
           date,
         },
       });
@@ -97,7 +97,7 @@ export const BranchDetails = () => {
 
   const { loading, error, data } = useQuery(query, { skip: !accountSchemaData });
 
-  const branch = data?.Branch?.filter((branch: any) => branch.name === branchname)[0];
+  const branch = data?.Branch?.filter((branch: any) => branch.name === branchName)[0];
 
   return (
     <div className="bg-custom-white">

@@ -398,3 +398,7 @@ export default function ObjectItems({
     </Content>
   );
 }
+
+export function Component() {
+  return <ObjectItems />;
+}

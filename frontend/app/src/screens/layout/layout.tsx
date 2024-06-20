@@ -8,13 +8,12 @@ import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
 import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { ReactNode, useContext, useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
 import { Sidebar } from "./sidebar";
 
-function Layout() {
+function Layout({ children }: { children?: ReactNode }) {
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const { checkSchemaUpdate } = useContext(SchemaContext);
@@ -79,7 +78,7 @@ function Layout() {
       <div className="flex flex-1 flex-col bg-gray-100 overflow-hidden">
         <Header />
 
-        <Outlet />
+        {children}
       </div>
     </div>
   );

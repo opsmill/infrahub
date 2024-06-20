@@ -14,13 +14,14 @@ test.describe("/ipam/addresses - IP Address list", () => {
       .getByTestId("ipam-main-content")
       .getByRole("link", { name: "10.0.0.16/32" }) // prefix need pagination to be visible
       .click();
-    expect(page.url()).toContain("/ipam/addresses/");
-    expect(page.url()).toContain("ipam-tab=ip-details");
 
     await expect(page.getByText("Ipam IP Address summary")).toBeVisible();
     await expect(page.getByText("Address10.0.0.16/32")).toBeVisible();
     await expect(page.getByText("InterfaceLoopback0")).toBeVisible();
     await expect(page.getByText("Ip Prefix10.0.0.0/16")).toBeVisible();
+
+    expect(page.url()).toContain("/ipam/addresses/");
+    expect(page.url()).toContain("ipam-tab=ip-details");
 
     await page.getByRole("link", { name: "All IP Addresses" }).click();
     await expect(page.getByText("Showing 1 to ")).toBeVisible();

@@ -48,7 +48,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     name,
   } = props;
 
-  const { branchname } = useParams();
+  const { branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const navigate = useNavigate();
 
@@ -89,7 +89,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
             </div>
 
             {/* Do not display comment button if we are on the branch details view */}
-            {!branchname && <DataDiffThread path={path} />}
+            {!branchName && <DataDiffThread path={path} />}
 
             <div className="flex flex-1 items-center">
               <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
@@ -103,7 +103,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               </div>
             </div>
 
-            {!branchname && <DataDiffConflictInfo path={path} />}
+            {!branchName && <DataDiffConflictInfo path={path} />}
           </div>
         );
       });
@@ -121,7 +121,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               </div>
 
               {/* Do not display comment button if we are on the branch details view */}
-              {!branchname && <DataDiffThread path={path} />}
+              {!branchName && <DataDiffThread path={path} />}
             </div>
 
             <div className="flex flex-1 items-center">
@@ -139,7 +139,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
             </div>
           </div>
 
-          {!branchname && <DataDiffConflictInfo path={path} />}
+          {!branchName && <DataDiffConflictInfo path={path} />}
         </div>
       );
     }

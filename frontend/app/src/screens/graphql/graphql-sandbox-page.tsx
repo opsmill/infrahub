@@ -32,7 +32,7 @@ const fetcher =
     return data.json().catch(() => data.text());
   };
 
-const GraphiQLPage = () => {
+const GraphqlSandboxPage = () => {
   const [query] = useQueryParam(QSP.QUERY, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const waybackMachineDate = useAtomValue(datetimeAtom);
@@ -47,4 +47,6 @@ const GraphiQLPage = () => {
   );
 };
 
-export default GraphiQLPage;
+export function Component() {
+  return <GraphqlSandboxPage />;
+}

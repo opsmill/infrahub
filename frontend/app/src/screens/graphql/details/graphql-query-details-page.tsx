@@ -106,4 +106,6 @@ const GraphqlQueryDetailsContent = ({
   );
 };
 
-export default GraphqlQueryDetailsPage;
+export function Component() {
+  return <GraphqlQueryDetailsPage />;
+}

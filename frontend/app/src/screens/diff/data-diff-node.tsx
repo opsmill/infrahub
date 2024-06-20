@@ -135,7 +135,7 @@ export type tDataDiffNodeProps = {
   branch?: string;
 };
 
-// Branch from QSP = branchname
+// Branch from QSP = branchName
 // Multiple branches = branches array
 // Related branch for the node update = branch
 export const getNodeClassName = (
@@ -156,7 +156,7 @@ export const getNodeClassName = (
 };
 
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
-  const { branchname } = useParams();
+  const { branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
@@ -177,7 +177,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const branches = Object.keys(nodeActions);
 
   const currentBranch =
-    branch ?? branchname ?? proposedChangesDetails?.source_branch?.value ?? "main";
+    branch ?? branchName ?? proposedChangesDetails?.source_branch?.value ?? "main";
 
   const action = nodeActions[currentBranch] ?? nodeActions?.main;
 
@@ -195,7 +195,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         <span className="mr-2">{display_label}</span>
 
         {/* Do not display comment button if we are on the branch details view */}
-        {!branchname && <DataDiffThread path={path} />}
+        {!branchName && <DataDiffThread path={path} />}
       </div>
 
       {commentsCount && (
@@ -217,7 +217,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         </div>
       </div>
 
-      {!branchname && <DataDiffConflictInfo path={path} />}
+      {!branchName && <DataDiffConflictInfo path={path} />}
     </div>
   );
 

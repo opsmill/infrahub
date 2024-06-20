@@ -501,3 +501,7 @@ export default function ObjectItemDetails(props: any) {
     </Content>
   );
 }
+
+export function Component() {
+  return <ObjectItemDetails />;
+}

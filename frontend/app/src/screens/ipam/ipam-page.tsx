@@ -5,7 +5,7 @@ import Content from "@/screens/layout/content";
 import IpNamespaceSelector from "./ip-namespace-selector";
 import IpamTree from "./ipam-tree/ipam-tree";
 
-export default function IpamPage() {
+function IpamPage() {
   return (
     <>
       <Content.Title title="IP Address Manager">
@@ -23,4 +23,8 @@ export default function IpamPage() {
       </Content>
     </>
   );
+}
+
+export function Component() {
+  return <IpamPage />;
 }

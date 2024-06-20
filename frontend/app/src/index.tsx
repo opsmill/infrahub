@@ -3,21 +3,26 @@ import { CONFIG } from "@/config/config";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { ApolloProvider } from "@apollo/client";
 import { useSetAtom } from "jotai";
-import queryString from "query-string";
 import { useEffect, useState } from "react";
-import { BrowserRouter } from "react-router-dom";
+import { RouterProvider } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { QueryParamProvider } from "use-query-params";
-import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
-import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import { Config, configState } from "./state/atoms/config.atom";
 
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 
 import { fetchUrl } from "@/utils/fetch";
+
+import { router } from "@/router";
+import { AuthProvider } from "@/hooks/useAuth";
+import { addCollection } from "@iconify-icon/react";
+import mdiIcons from "@iconify-json/mdi/icons.json";
+
 import "./styles/index.css";
+import "react-toastify/dist/ReactToastify.css";
+
+addCollection(mdiIcons);
 
 export const Infrahub = () => {
   const setConfig = useSetAtom(configState);
@@ -68,26 +73,19 @@ export const Infrahub = () => {
   }
 
   return (
-    <BrowserRouter basename="/">
-      <QueryParamProvider
-        adapter={ReactRouter6Adapter}
-        options={{
-          searchStringToObject: queryString.parse,
-          objectToSearchString: queryString.stringify,
-        }}>
-        <ApolloProvider client={graphqlClient}>
-          <ToastContainer
-            hideProgressBar={true}
-            transition={Slide}
-            autoClose={5000}
-            closeOnClick={false}
-            newestOnTop
-            position="bottom-right"
-          />
-          <App />
-        </ApolloProvider>
-      </QueryParamProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <ApolloProvider client={graphqlClient}>
+        <ToastContainer
+          hideProgressBar={true}
+          transition={Slide}
+          autoClose={5000}
+          closeOnClick={false}
+          newestOnTop
+          position="bottom-right"
+        />
+        <RouterProvider router={router} />
+      </ApolloProvider>
+    </AuthProvider>
   );
 };
 

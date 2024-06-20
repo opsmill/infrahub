@@ -101,4 +101,6 @@ const ProposedChanges = () => {
   );
 };
 
-export default ProposedChanges;
+export function Component() {
+  return <ProposedChanges />;
+}

@@ -198,4 +198,6 @@ export const ProposedChangeCreateForm = () => {
   );
 };
 
-export default ProposedChangesCreatePage;
+export function Component() {
+  return <ProposedChangesCreatePage />;
+}

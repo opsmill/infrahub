@@ -67,6 +67,12 @@ test.describe("/signin", () => {
       await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
     });
 
+    test("redirect to homepage if user is already logged in", async ({ page }) => {
+      await page.goto("/signin");
+
+      await expect(page.getByText("Welcome to Infrahub!")).toBeVisible();
+    });
+
     test.fixme("should refresh access token and retry failed request", async ({ page }) => {
       let blockRequest = true; // force 401 on first call
 

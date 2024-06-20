@@ -48,5 +48,6 @@ const TaskItemsScreen = () => {
     </Content>
   );
 };
-
-export default TaskItemsScreen;
+export function Component() {
+  return <TaskItemsScreen />;
+}
