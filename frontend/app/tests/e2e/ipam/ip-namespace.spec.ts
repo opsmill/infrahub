@@ -100,9 +100,7 @@ test.describe("/ipam - IP Namespace", () => {
     await test.step("create a prefix at top level", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/8");
-      await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-      await page.getByRole("option", { name: "Namespace" }).click();
-      await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
+      await page.getByText("IP Namespace Kind ?Parent ?Node").getByLabel("Node").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
@@ -116,9 +114,7 @@ test.describe("/ipam - IP Namespace", () => {
     await test.step("create a children prefix", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/16");
-      await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-      await page.getByRole("option", { name: "Namespace" }).click();
-      await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
+      await page.getByText("IP Namespace Kind ?Parent ?Node").getByLabel("Node").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
@@ -137,9 +133,7 @@ test.describe("/ipam - IP Namespace", () => {
     await test.step("create a prefix between a parent and its children", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/10");
-      await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-      await page.getByRole("option", { name: "Namespace" }).click();
-      await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
+      await page.getByText("IP Namespace Kind ?Parent ?Node").getByLabel("Node").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
