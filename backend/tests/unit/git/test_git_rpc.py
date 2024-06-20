@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Type
+from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import AsyncMock, patch
 
 from infrahub_sdk import UUIDT, Config, InfrahubClient
@@ -32,7 +32,7 @@ class AsyncContextManagerMock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ):
@@ -64,7 +64,7 @@ class TestAddRepository:
     def teardown_method(self):
         patch.stopall()
 
-    async def test_git_rpc_create_successful(self, git_upstream_repo_01: Dict[str, str]):
+    async def test_git_rpc_create_successful(self, git_upstream_repo_01: dict[str, str]):
         repo_id = str(UUIDT())
         message = messages.GitRepositoryAdd(
             repository_id=repo_id,
@@ -90,7 +90,7 @@ class TestAddRepository:
 
 
 async def test_git_rpc_merge(
-    git_upstream_repo_01: Dict[str, str],
+    git_upstream_repo_01: dict[str, str],
     git_repo_01: InfrahubRepository,
     branch01: BranchData,
     tmp_path: Path,
@@ -118,7 +118,7 @@ async def test_git_rpc_merge(
 
 
 async def test_git_rpc_diff(
-    git_upstream_repo_01: Dict[str, str],
+    git_upstream_repo_01: dict[str, str],
     git_repo_01: InfrahubRepository,
     branch01: BranchData,
     branch02: BranchData,
@@ -183,7 +183,7 @@ class TestAddReadOnly:
     def teardown_method(self):
         patch.stopall()
 
-    async def test_git_rpc_add_read_only_success(self, git_upstream_repo_01: Dict[str, str]):
+    async def test_git_rpc_add_read_only_success(self, git_upstream_repo_01: dict[str, str]):
         repo_id = str(UUIDT())
         message = messages.GitRepositoryAddReadOnly(
             repository_id=repo_id,

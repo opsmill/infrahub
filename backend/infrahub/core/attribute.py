@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import ujson
 from infrahub_sdk import UUIDT
@@ -51,17 +51,17 @@ class AttributeCreateData(BaseModel):
     branch_level: int
     branch_support: str
     status: str
-    content: Dict[str, Any]
+    content: dict[str, Any]
     is_default: bool
     is_protected: bool
     is_visible: bool
-    source_prop: List[ValuePropertyData] = Field(default_factory=list)
-    owner_prop: List[NodePropertyData] = Field(default_factory=list)
+    source_prop: list[ValuePropertyData] = Field(default_factory=list)
+    owner_prop: list[NodePropertyData] = Field(default_factory=list)
     node_type: AttributeDBNodeType = AttributeDBNodeType.DEFAULT
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
-    type: Optional[Union[Type, Tuple[Type]]] = None
+    type: Optional[Union[type, tuple[type]]] = None
 
     _rel_to_node_label: str = RELATIONSHIP_TO_NODE_LABEL
     _rel_to_value_label: str = RELATIONSHIP_TO_VALUE_LABEL
@@ -241,9 +241,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             except ValueError as exc:
                 raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         """Return the properties of the AttributeValue node in Dict format."""
-        data: Dict[str, Any] = {"is_default": self.is_default}
+        data: dict[str, Any] = {"is_default": self.is_default}
         if self.value is None:
             data["value"] = NULL_VALUE
         else:
@@ -785,7 +785,7 @@ class IPNetwork(BaseAttribute):
             return AttributeDBNodeType.IPNETWORK
         return AttributeDBNodeType.DEFAULT
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         data = super().to_db()
 
         if self.value is not None:
@@ -906,7 +906,7 @@ class IPHost(BaseAttribute):
             return AttributeDBNodeType.IPHOST
         return AttributeDBNodeType.DEFAULT
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         data = super().to_db()
 
         if self.value is not None:

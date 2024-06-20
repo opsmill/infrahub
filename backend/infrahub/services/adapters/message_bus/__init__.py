@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Optional, TypeVar
 
 ResponseClass = TypeVar("ResponseClass")
 
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class InfrahubMessageBus:
     DELIVER_TIMEOUT: int = 30
-    worker_bindings: List[str] = [
+    worker_bindings: list[str] = [
         "check.*.*",
         "event.*.*",
         "finalize.*.*",
@@ -24,7 +24,7 @@ class InfrahubMessageBus:
         "transform.*.*",
         "trigger.*.*",
     ]
-    event_bindings: List[str] = ["refresh.registry.*"]
+    event_bindings: list[str] = ["refresh.registry.*"]
 
     async def initialize(self, service: InfrahubServices) -> None:
         """Initialize the Message bus"""

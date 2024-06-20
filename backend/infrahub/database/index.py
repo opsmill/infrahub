@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class IndexInfo(BaseModel):
     name: str
     label: str
-    properties: List[str]
+    properties: list[str]
     type: IndexType
     entity_type: EntityType
 
@@ -22,7 +22,7 @@ class IndexInfo(BaseModel):
 class IndexItem(BaseModel):
     name: str
     label: str
-    properties: List[str]
+    properties: list[str]
     type: IndexType
 
     def get_add_query(self) -> str:
@@ -36,17 +36,17 @@ class IndexManagerBase(ABC):
     def __init__(self, db: InfrahubDatabase):
         self.db = db
 
-        self.nodes: List[IndexItem] = []
-        self.rels: List[IndexItem] = []
+        self.nodes: list[IndexItem] = []
+        self.rels: list[IndexItem] = []
         self.initialized: bool = False
 
-    def init(self, nodes: List[IndexItem], rels: List[IndexItem]) -> None:
+    def init(self, nodes: list[IndexItem], rels: list[IndexItem]) -> None:
         self.nodes = nodes
         self.rels = rels
         self.initialized = True
 
     @property
-    def items(self) -> List[IndexItem]:
+    def items(self) -> list[IndexItem]:
         return self.nodes + self.rels
 
     async def add(self) -> None:
@@ -60,5 +60,5 @@ class IndexManagerBase(ABC):
                 await dbt.execute_query(query=item.get_drop_query(), params={}, name="index_drop")
 
     @abstractmethod
-    async def list(self) -> List[IndexInfo]:
+    async def list(self) -> list[IndexInfo]:
         pass

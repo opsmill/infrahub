@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -153,7 +153,7 @@ class InfrahubMutationMixin:
         branch: Branch,
         at: str,
         database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self]:
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
         obj = await cls.mutate_create_object(data=data, db=db, branch=branch, at=at)
@@ -290,9 +290,9 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         at: str,
-        node_getters: List[MutationNodeGetterInterface],
+        node_getters: list[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self, bool]:
+    ) -> tuple[Node, Self, bool]:
         schema_name = cls._meta.schema.kind
 
         context: GraphqlContext = info.context

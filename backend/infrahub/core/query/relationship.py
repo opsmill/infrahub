@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Generator, Optional, Union
 
 from infrahub_sdk import UUIDT
 
@@ -70,7 +70,7 @@ class RelationshipPeerData:
     peer_kind: str
     """Kind of the Peer Node."""
 
-    properties: Dict[str, Union[FlagPropertyData, NodePropertyData]]
+    properties: dict[str, Union[FlagPropertyData, NodePropertyData]]
     """UUID of the Relationship Node."""
 
     rel_node_id: Optional[UUID] = None
@@ -82,12 +82,12 @@ class RelationshipPeerData:
     rel_node_db_id: Optional[str] = None
     """Internal DB ID of the Relationship Node."""
 
-    rels: Optional[List[RelData]] = None
+    rels: Optional[list[RelData]] = None
     """Both relationships pointing at this Relationship Node."""
 
     updated_at: Optional[str] = None
 
-    def rel_ids_per_branch(self) -> dict[str, List[Union[str, int]]]:
+    def rel_ids_per_branch(self) -> dict[str, list[Union[str, int]]]:
         response = defaultdict(list)
         for rel in self.rels:
             response[rel.branch].append(rel.db_id)
@@ -128,7 +128,7 @@ class FullRelationshipIdentifier:
 class RelationshipQuery(Query):
     def __init__(
         self,
-        rel: Union[Type[Relationship], Relationship] = None,
+        rel: Union[type[Relationship], Relationship] = None,
         rel_type: Optional[str] = None,
         source: Node = None,
         source_id: UUID = None,
@@ -282,7 +282,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def __init__(
         self,
-        properties_to_update: List[str],
+        properties_to_update: list[str],
         data: RelationshipPeerData,
         **kwargs,
     ):
@@ -426,10 +426,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(
-        self,
-        **kwargs,
-    ):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         if inspect.isclass(self.rel):
@@ -492,9 +489,9 @@ class RelationshipGetPeerQuery(Query):
         self,
         filters: Optional[dict] = None,
         source: Optional[Node] = None,
-        source_ids: Optional[List[str]] = None,
+        source_ids: Optional[list[str]] = None,
         source_kind: Optional[str] = None,
-        rel: Union[Type[Relationship], Relationship] = None,
+        rel: Union[type[Relationship], Relationship] = None,
         rel_type: Optional[str] = None,
         schema: RelationshipSchema = None,
         branch: Branch = None,
@@ -686,7 +683,7 @@ class RelationshipGetPeerQuery(Query):
         else:
             self.order_by.append("peer.uuid")
 
-    def get_peer_ids(self) -> List[str]:
+    def get_peer_ids(self) -> list[str]:
         """Return a list of UUID of nodes associated with this relationship."""
 
         return [peer.peer_id for peer in self.get_peers()]
@@ -774,9 +771,9 @@ class RelationshipGetByIdentifierQuery(Query):
 
     def __init__(
         self,
-        identifiers: Optional[List[str]] = None,
-        full_identifiers: Optional[List[FullRelationshipIdentifier]] = None,
-        excluded_namespaces: Optional[List[str]] = None,
+        identifiers: Optional[list[str]] = None,
+        full_identifiers: Optional[list[FullRelationshipIdentifier]] = None,
+        excluded_namespaces: Optional[list[str]] = None,
         **kwargs,
     ) -> None:
         if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
@@ -850,7 +847,7 @@ class RelationshipCountPerNodeQuery(Query):
 
     def __init__(
         self,
-        node_ids: List[str],
+        node_ids: list[str],
         identifier: str,
         direction: RelationshipDirection,
         **kwargs,
@@ -891,8 +888,8 @@ class RelationshipCountPerNodeQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]
 
-    async def get_count_per_peer(self) -> Dict[str, int]:
-        data: Dict[str, int] = {}
+    async def get_count_per_peer(self) -> dict[str, int]:
+        data: dict[str, int] = {}
         for result in self.results:
             data[result.get("peer_node.uuid")] = result.get("nbr_peers")
 

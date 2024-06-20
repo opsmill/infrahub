@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
-from infrahub.core.query.node import (
-    NodeCheckIDQuery,
-    NodeCreateAllQuery,
-    NodeDeleteQuery,
-    NodeGetListQuery,
-)
+from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, ValidationError
@@ -114,10 +109,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr = getattr(node, schema_path.attribute_schema.name)
             return getattr(attr, schema_path.attribute_property_name)
 
-    def get_labels(self) -> List[str]:
+    def get_labels(self) -> list[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""
-        labels: List[str] = []
+        labels: list[str] = []
         if isinstance(self._schema, NodeSchema):
             labels = [self.get_kind()] + self._schema.inherit_from
             if (
@@ -170,8 +165,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._is_protected: bool = None
 
         # Lists of attributes and relationships names
-        self._attributes: List[str] = []
-        self._relationships: List[str] = []
+        self._attributes: list[str] = []
+        self._relationships: list[str] = []
 
     @classmethod
     async def init(

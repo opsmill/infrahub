@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable, List, Optional, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Union
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
@@ -126,7 +126,7 @@ class IPPrefixSubnetFetch(Query):
 
     def get_subnets(self):
         """Return a list of all subnets fitting in the prefix."""
-        subnets: List[IPPrefixData] = []
+        subnets: list[IPPrefixData] = []
 
         for result in self.get_results():
             subnet = IPPrefixData(
@@ -199,7 +199,7 @@ class IPPrefixIPAddressFetch(Query):
 
     def get_addresses(self):
         """Return a list of all addresses fitting in the prefix."""
-        addresses: List[IPAddressData] = []
+        addresses: list[IPAddressData] = []
 
         for result in self.get_results():
             address = IPAddressData(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.constants import NULL_VALUE, RelationshipStatus
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery):
     name = "migration_node_attribute_add_01"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

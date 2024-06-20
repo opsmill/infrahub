@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel
 
@@ -144,7 +144,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
 
         return response["BranchMerge"]["ok"]
 
-    async def all(self) -> Dict[str, BranchData]:
+    async def all(self) -> dict[str, BranchData]:
         query = Query(name="GetAllBranch", query=QUERY_ALL_BRANCHES_DATA)
         data = await self.client.execute_graphql(query=query.render(), tracker="query-branch-all")
 
@@ -170,7 +170,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
         branch_only: bool = True,
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
-    ) -> Dict[Any, Any]:
+    ) -> dict[Any, Any]:
         url = self.generate_diff_data_url(
             client=self.client,
             branch_name=branch_name,
@@ -186,7 +186,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
     def __init__(self, client: InfrahubClientSync):
         self.client = client
 
-    def all(self) -> Dict[str, BranchData]:
+    def all(self) -> dict[str, BranchData]:
         query = Query(name="GetAllBranch", query=QUERY_ALL_BRANCHES_DATA)
         data = self.client.execute_graphql(query=query.render(), tracker="query-branch-all")
 
@@ -243,7 +243,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         branch_only: bool = True,
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
-    ) -> Dict[Any, Any]:
+    ) -> dict[Any, Any]:
         url = self.generate_diff_data_url(
             client=self.client,
             branch_name=branch_name,

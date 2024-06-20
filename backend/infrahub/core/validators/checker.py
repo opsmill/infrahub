@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 from infrahub.message_bus.messages import MESSAGE_MAP, RESPONSE_MAP
 
@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 
 
 async def schema_validators_checker(
-    branch: Branch, schema: SchemaBranch, constraints: List[SchemaUpdateConstraintInfo], service: InfrahubServices
-) -> Tuple[List[str], List[SchemaValidatorPathResponse]]:
+    branch: Branch, schema: SchemaBranch, constraints: list[SchemaUpdateConstraintInfo], service: InfrahubServices
+) -> tuple[list[str], list[SchemaValidatorPathResponse]]:
     tasks = []
-    error_messages: List[str] = []
+    error_messages: list[str] = []
 
     if not constraints:
         return error_messages, []

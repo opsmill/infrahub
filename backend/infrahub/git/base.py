@@ -4,7 +4,7 @@ import os
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Union
 from uuid import UUID  # noqa: TCH003
 
 from git import Repo
@@ -375,14 +375,14 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         # We'll try to create one
         return self.create_commit_worktree(commit=commit)
 
-    def get_worktrees(self) -> List[Worktree]:
+    def get_worktrees(self) -> list[Worktree]:
         """Return the list of worktrees configured for this repository."""
         repo = self.get_git_repo_main()
         responses = repo.git.worktree("list", "--porcelain").split("\n\n")
 
         return [Worktree.init(response) for response in responses]
 
-    async def get_branches_from_graph(self) -> Dict[str, BranchInGraph]:
+    async def get_branches_from_graph(self) -> dict[str, BranchInGraph]:
         """Return a dict with all the branches present in the graph.
         Query the list of branches first then query the repository for each branch.
         """
@@ -405,7 +405,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return response
 
-    def get_branches_from_remote(self) -> Dict[str, BranchInRemote]:
+    def get_branches_from_remote(self) -> dict[str, BranchInRemote]:
         """Return a dict with all the branches present on the remote."""
 
         git_repo = self.get_git_repo_main()
@@ -425,7 +425,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return branches
 
-    def get_branches_from_local(self, include_worktree: bool = True) -> Dict[str, BranchInLocal]:
+    def get_branches_from_local(self, include_worktree: bool = True) -> dict[str, BranchInLocal]:
         """Return a dict with all the branches present locally."""
 
         git_repo = self.get_git_repo_main()
@@ -529,7 +529,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     async def calculate_diff_between_commits(
         self, first_commit: str, second_commit: str
-    ) -> Tuple[List[str], List[str], List[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
         """TODO need to refactor this function to return more information.
         Like :
           - What has changed inside the files
@@ -567,7 +567,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return True
 
-    async def compare_local_remote(self) -> Tuple[List[str], List[str]]:
+    async def compare_local_remote(self) -> tuple[list[str], list[str]]:
         """
         Returns:
             List[str] New Branches in Remote
@@ -650,7 +650,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return commit_after
 
-    async def get_conflicts(self, source_branch: str, dest_branch: str) -> List[str]:
+    async def get_conflicts(self, source_branch: str, dest_branch: str) -> list[str]:
         repo = self.get_git_repo_worktree(identifier=dest_branch)
         if not repo:
             raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
@@ -672,11 +672,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     async def find_files(
         self,
-        extension: Union[str, List[str]],
+        extension: Union[str, list[str]],
         branch_name: Optional[str] = None,
         commit: Optional[str] = None,
         directory: Optional[str] = None,
-    ) -> List[Path]:
+    ) -> list[Path]:
         """Return the path of all files matching a specific extension in a given Branch or Commit."""
         if not branch_name and not commit:
             raise ValueError("Either branch_name or commit must be provided.")
@@ -686,7 +686,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if directory:
             search_dir /= directory
 
-        files: List[Path] = []
+        files: list[Path] = []
         if isinstance(extension, str):
             files.extend(list(search_dir.glob(f"**/*.{extension}")))
             files.extend(list(search_dir.glob(f"**/.*.{extension}")))

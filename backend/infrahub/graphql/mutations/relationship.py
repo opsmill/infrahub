@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
 from infrahub_sdk.utils import compare_lists
@@ -109,7 +109,7 @@ class RelationshipMixin:
             rel=Relationship(schema=rel_schema, branch=context.branch, node=source),
         )
         await query.execute(db=context.db)
-        existing_peers: Dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query.get_peers()}
+        existing_peers: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query.get_peers()}
 
         async with context.db.start_transaction() as db:
             if cls.__name__ == "RelationshipAdd":

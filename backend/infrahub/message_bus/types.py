@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import List
 
 from infrahub_sdk.client import NodeDiff  # noqa: TCH002
 from pydantic import BaseModel, Field
@@ -21,7 +20,7 @@ class MessageTTL(int, Enum):
     TWENTY = 20000
 
     @classmethod
-    def variations(cls) -> List[MessageTTL]:
+    def variations(cls) -> list[MessageTTL]:
         """Return available variations of message time to live."""
         return [cls(cls.__members__[member].value) for member in list(cls.__members__)]
 
@@ -35,7 +34,7 @@ class KVTTL(int, Enum):
     TWO_HOURS = 7200
 
     @classmethod
-    def variations(cls) -> List[KVTTL]:
+    def variations(cls) -> list[KVTTL]:
         """Return available variations of KV time to live."""
         return [cls(cls.__members__[member].value) for member in list(cls.__members__)]
 
@@ -48,10 +47,10 @@ class ProposedChangeRepository(BaseModel):
     destination_branch: str
     source_commit: str = Field(default="")
     destination_commit: str = Field(default="")
-    conflicts: List[str] = Field(default_factory=list, description="List of files with merge conflicts")
-    files_added: List[str] = Field(default_factory=list)
-    files_changed: List[str] = Field(default_factory=list)
-    files_removed: List[str] = Field(default_factory=list)
+    conflicts: list[str] = Field(default_factory=list, description="List of files with merge conflicts")
+    files_added: list[str] = Field(default_factory=list)
+    files_changed: list[str] = Field(default_factory=list)
+    files_removed: list[str] = Field(default_factory=list)
 
     @property
     def has_diff(self) -> bool:

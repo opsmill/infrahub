@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -13,21 +13,21 @@ from infrahub.core.timestamp import Timestamp
 
 
 class RelationshipPath(BaseModel):
-    paths: List[str] = Field(default_factory=list)
-    conflict_paths: List[str] = Field(default_factory=list)
+    paths: list[str] = Field(default_factory=list)
+    conflict_paths: list[str] = Field(default_factory=list)
 
 
 class BaseDiffElement(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def to_graphql(self) -> Dict[str, Any]:
+    def to_graphql(self) -> dict[str, Any]:
         """Recursively Export the model to a dict for GraphQL.
         The main rules of convertion are:
             - Ignore the fields mark as exclude=True
             - Convert the Dict in List
         """
-        resp: Dict[str, Any] = {}
+        resp: dict[str, Any] = {}
         for key, value in self:
             field_info = self.model_fields[key]
             if isinstance(value, BaseModel):
@@ -75,12 +75,12 @@ class NodeAttributeDiffElement(BaseDiffElement):
     rel_id: str = Field(exclude=True)
     origin_rel_id: Optional[str] = Field(None, exclude=True)
     changed_at: Optional[Timestamp] = None
-    properties: Dict[str, PropertyDiffElement]
+    properties: dict[str, PropertyDiffElement]
 
 
 class NodeDiffElement(BaseDiffElement):
     branch: Optional[str] = None
-    labels: List[str]
+    labels: list[str]
     kind: str
     id: str
     path: str
@@ -88,14 +88,14 @@ class NodeDiffElement(BaseDiffElement):
     db_id: str = Field(exclude=True)
     rel_id: Optional[str] = Field(None, exclude=True)
     changed_at: Optional[Timestamp] = None
-    attributes: Dict[str, NodeAttributeDiffElement]
+    attributes: dict[str, NodeAttributeDiffElement]
 
 
 class RelationshipEdgeNodeDiffElement(BaseDiffElement):
     id: str
     db_id: Optional[str] = Field(None, exclude=True)
     rel_id: Optional[str] = Field(None, exclude=True)
-    labels: List[str]
+    labels: list[str]
     kind: str
 
 
@@ -105,11 +105,11 @@ class RelationshipDiffElement(BaseDiffElement):
     db_id: str = Field(exclude=True)
     name: str
     action: DiffAction
-    nodes: Dict[str, RelationshipEdgeNodeDiffElement]
-    properties: Dict[str, PropertyDiffElement]
+    nodes: dict[str, RelationshipEdgeNodeDiffElement]
+    properties: dict[str, PropertyDiffElement]
     changed_at: Optional[Timestamp] = None
-    paths: List[str]
-    conflict_paths: List[str]
+    paths: list[str]
+    conflict_paths: list[str]
 
     def get_node_id_by_kind(self, kind: str) -> Optional[str]:
         ids = [rel.id for rel in self.nodes.values() if rel.kind == kind]
@@ -134,9 +134,9 @@ class DiffSummaryElement(BaseModel):
     branch: str = Field(..., description="The branch where the change occurred")
     node: str = Field(..., description="The unique ID of the node")
     kind: str = Field(..., description="The kind of the node as defined by its namespace and name")
-    actions: List[DiffAction] = Field(..., description="A list of all actions on this node.")
+    actions: list[DiffAction] = Field(..., description="A list of all actions on this node.")
 
-    def to_graphql(self) -> Dict[str, Any]:
+    def to_graphql(self) -> dict[str, Any]:
         return {
             "branch": self.branch,
             "node": self.node,
@@ -151,7 +151,7 @@ class EnrichedDiffSummaryElement(BaseModel):
     kind: str = Field(..., description="The kind of the node as defined by its namespace and name")
     action: DiffAction
     display_label: str
-    elements: Dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
+    elements: dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
         default_factory=dict
     )
 
@@ -248,7 +248,7 @@ class ObjectConflict(BaseModel):
     kind: str
     id: str
 
-    def to_conflict_dict(self) -> Dict[str, Any]:
+    def to_conflict_dict(self) -> dict[str, Any]:
         return self.dict()
 
 
@@ -258,9 +258,9 @@ class DataConflict(ObjectConflict):
     path_type: PathType
     property_name: Optional[str] = None
     change_type: str
-    changes: List[BranchChanges] = Field(default_factory=list)
+    changes: list[BranchChanges] = Field(default_factory=list)
 
-    def to_conflict_dict(self) -> Dict[str, Any]:
+    def to_conflict_dict(self) -> dict[str, Any]:
         conflict_dict = self.dict(exclude={"path_type"})
         conflict_dict["path_type"] = self.path_type.value
         return conflict_dict
@@ -317,7 +317,7 @@ class BranchDiffProperty(BaseModel):
 
 class BranchDiffPropertyCollection(BaseModel):
     path: str
-    changes: List[BranchDiffProperty] = Field(default_factory=list)
+    changes: list[BranchDiffProperty] = Field(default_factory=list)
 
     def add_change(self, change: BranchDiffProperty) -> bool:
         current_branches = [item.branch for item in self.changes]
@@ -336,7 +336,7 @@ class BranchDiffAttribute(BaseModel):
     summary: DiffSummary = Field(default_factory=DiffSummary)
     action: DiffAction
     value: Optional[BranchDiffProperty] = None
-    properties: List[BranchDiffProperty] = Field(default_factory=list)
+    properties: list[BranchDiffProperty] = Field(default_factory=list)
 
 
 class BranchDiffRelationshipPeerNode(BaseModel):
@@ -360,7 +360,7 @@ class BranchDiffRelationshipOne(BaseModel):
     summary: DiffSummary = Field(default_factory=DiffSummary)
     name: str
     peer: BranchDiffRelationshipOnePeerValue
-    properties: List[BranchDiffProperty] = Field(default_factory=list)
+    properties: list[BranchDiffProperty] = Field(default_factory=list)
     changed_at: Optional[str] = None
     action: DiffAction
 
@@ -372,7 +372,7 @@ class BranchDiffRelationshipManyElement(BaseModel):
     identifier: str
     summary: DiffSummary = Field(default_factory=DiffSummary)
     peer: BranchDiffRelationshipPeerNode
-    properties: List[BranchDiffProperty] = Field(default_factory=list)
+    properties: list[BranchDiffProperty] = Field(default_factory=list)
     changed_at: Optional[str] = None
     action: DiffAction
 
@@ -384,7 +384,7 @@ class BranchDiffRelationshipMany(BaseModel):
     identifier: str
     summary: DiffSummary = Field(default_factory=DiffSummary)
     name: str
-    peers: List[BranchDiffRelationshipManyElement] = Field(default_factory=list)
+    peers: list[BranchDiffRelationshipManyElement] = Field(default_factory=list)
 
     @property
     def action(self) -> DiffAction:
@@ -399,12 +399,12 @@ class BranchDiffRelationshipMany(BaseModel):
 class BranchDiffElementAttribute(BaseModel):
     model_config = ConfigDict(extra="forbid")
     type: DiffElementType = DiffElementType.ATTRIBUTE
-    branches: List[str] = Field(default_factory=list)
+    branches: list[str] = Field(default_factory=list)
     id: str = ""
     summary: DiffSummary = Field(default_factory=DiffSummary)
     action: DiffAction = DiffAction.UNCHANGED
     value: Optional[BranchDiffPropertyCollection] = None
-    properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
+    properties: dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
 
 
 # NEW
@@ -416,7 +416,7 @@ class BranchDiffRelationshipOnePeer(BaseModel):
 
 class BranchDiffRelationshipOnePeerCollection(BaseModel):
     path: str
-    changes: List[BranchDiffRelationshipOnePeer] = Field(default_factory=list)
+    changes: list[BranchDiffRelationshipOnePeer] = Field(default_factory=list)
 
     def add_change(self, change: BranchDiffRelationshipOnePeer) -> bool:
         current_branches = [item.branch for item in self.changes]
@@ -433,22 +433,22 @@ class BranchDiffElementRelationshipOne(BaseModel):
     type: DiffElementType = DiffElementType.RELATIONSHIP_ONE
     id: str = ""
     identifier: str = ""
-    branches: List[str] = Field(default_factory=list)
+    branches: list[str] = Field(default_factory=list)
     summary: DiffSummary = Field(default_factory=DiffSummary)
     peer: Optional[BranchDiffRelationshipOnePeerCollection] = None
-    properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
+    properties: dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
     changed_at: Optional[str] = None
-    action: Dict[str, DiffAction] = Field(default_factory=dict)
+    action: dict[str, DiffAction] = Field(default_factory=dict)
 
 
 class BranchDiffElementRelationshipManyPeer(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    branches: Set[str] = Field(default_factory=set)
+    branches: set[str] = Field(default_factory=set)
     peer: BranchDiffRelationshipPeerNode
     path: str
-    properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
+    properties: dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
     changed_at: Optional[str] = None
-    action: Dict[str, DiffAction] = Field(default_factory=dict)
+    action: dict[str, DiffAction] = Field(default_factory=dict)
 
 
 # NEW
@@ -456,9 +456,9 @@ class BranchDiffElementRelationshipMany(BaseModel):
     model_config = ConfigDict(extra="forbid")
     type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
     identifier: str = ""
-    branches: Set[str] = Field(default_factory=set)
+    branches: set[str] = Field(default_factory=set)
     summary: DiffSummary = Field(default_factory=DiffSummary)
-    peers: Dict[str, BranchDiffElementRelationshipManyPeer] = Field(default_factory=dict)
+    peers: dict[str, BranchDiffElementRelationshipManyPeer] = Field(default_factory=dict)
 
 
 # NEW
@@ -478,7 +478,7 @@ class BranchDiffNode(BaseModel):
     display_label: str
     changed_at: Optional[str] = None
     action: DiffAction
-    elements: Dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
+    elements: dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
         default_factory=dict
     )
 
@@ -488,15 +488,15 @@ class BranchDiffEntry(BaseModel):
     kind: str
     id: str
     path: str
-    elements: Dict[str, BranchDiffElement] = Field(default_factory=dict)
+    elements: dict[str, BranchDiffElement] = Field(default_factory=dict)
     summary: DiffSummary = Field(default_factory=DiffSummary)
-    action: Dict[str, DiffAction] = Field(default_factory=dict)
-    display_label: Dict[str, str] = Field(default_factory=dict)
+    action: dict[str, DiffAction] = Field(default_factory=dict)
+    display_label: dict[str, str] = Field(default_factory=dict)
 
 
 #  NEW
 class BranchDiff(BaseModel):
-    diffs: List[BranchDiffEntry] = Field(default_factory=list)
+    diffs: list[BranchDiffEntry] = Field(default_factory=list)
 
 
 class BranchDiffFile(BaseModel):
@@ -511,7 +511,7 @@ class BranchDiffRepository(BaseModel):
     display_name: Optional[str] = None
     commit_from: str
     commit_to: str
-    files: List[BranchDiffFile] = Field(default_factory=list)
+    files: list[BranchDiffFile] = Field(default_factory=list)
 
 
 class BranchDiffArtifactStorage(BaseModel):

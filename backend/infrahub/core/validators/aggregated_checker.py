@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from infrahub.core import registry
 from infrahub.exceptions import ValidationError
@@ -19,19 +19,19 @@ if TYPE_CHECKING:
 
 class AggregatedConstraintChecker:
     def __init__(
-        self, constraints: List[ConstraintCheckerInterface], db: InfrahubDatabase, branch: Optional[Branch] = None
+        self, constraints: list[ConstraintCheckerInterface], db: InfrahubDatabase, branch: Optional[Branch] = None
     ):
         self.constraints = constraints
         self.db = db
         self.branch = branch
 
-    async def run_constraints(self, request: SchemaConstraintValidatorRequest) -> List[SchemaViolation]:
-        grouped_data_paths_by_constraint_name: Dict[str, List[GroupedDataPaths]] = {}
+    async def run_constraints(self, request: SchemaConstraintValidatorRequest) -> list[SchemaViolation]:
+        grouped_data_paths_by_constraint_name: dict[str, list[GroupedDataPaths]] = {}
         for constraint in self.constraints:
             if constraint.supports(request):
                 grouped_data_paths_by_constraint_name[constraint.name] = await constraint.check(request)
 
-        ids: List[str] = []
+        ids: list[str] = []
         for grouped_path in chain(*grouped_data_paths_by_constraint_name.values()):
             ids.extend([path.node_id for path in grouped_path.get_all_data_paths()])
         # Try to query the nodes with their display label

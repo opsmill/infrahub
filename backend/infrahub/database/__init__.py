@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from neo4j import (
     READ_ACCESS,
@@ -99,7 +99,7 @@ class DatabaseSchemaManager:
 
     def get_full(
         self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> Dict[str, MainSchemaTypes]:
+    ) -> dict[str, MainSchemaTypes]:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.get_full(branch=branch)
@@ -107,7 +107,7 @@ class DatabaseSchemaManager:
 
     async def get_full_safe(
         self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> Dict[str, MainSchemaTypes]:
+    ) -> dict[str, MainSchemaTypes]:
         await lock.registry.local_schema_wait()
         return self.get_full(branch=branch, duplicate=duplicate)
 
@@ -126,7 +126,7 @@ class InfrahubDatabase:
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
         db_type: Optional[DatabaseType] = None,
         db_manager: Optional[DatabaseManager] = None,
-        schemas: Optional[List[SchemaBranch]] = None,
+        schemas: Optional[list[SchemaBranch]] = None,
         session: Optional[AsyncSession] = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
@@ -139,7 +139,7 @@ class InfrahubDatabase:
         self._transaction: Optional[AsyncTransaction] = transaction
 
         if schemas:
-            self._schemas: Dict[str, SchemaBranch] = {schema.name: schema for schema in schemas}
+            self._schemas: dict[str, SchemaBranch] = {schema.name: schema for schema in schemas}
         else:
             self._schemas = {}
         self.schema: DatabaseSchemaManager = DatabaseSchemaManager(db=self)
@@ -172,7 +172,7 @@ class InfrahubDatabase:
     def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
         self._schemas[name or schema.name] = schema
 
-    def start_session(self, read_only: bool = False, schemas: Optional[List[SchemaBranch]] = None) -> InfrahubDatabase:
+    def start_session(self, read_only: bool = False, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
         """Create a new InfrahubDatabase object in Session mode."""
         session_mode = InfrahubDatabaseSessionMode.WRITE
         if read_only:
@@ -187,7 +187,7 @@ class InfrahubDatabase:
             session_mode=session_mode,
         )
 
-    def start_transaction(self, schemas: Optional[List[SchemaBranch]] = None) -> InfrahubDatabase:
+    def start_transaction(self, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
@@ -241,7 +241,7 @@ class InfrahubDatabase:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ):
@@ -266,8 +266,8 @@ class InfrahubDatabase:
         await self._driver.close()
 
     async def execute_query(
-        self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
-    ) -> List[Record]:
+        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+    ) -> list[Record]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
             span.set_attribute("query", query)
 
@@ -276,8 +276,8 @@ class InfrahubDatabase:
                 return [item async for item in response]
 
     async def execute_query_with_metadata(
-        self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
-    ) -> Tuple[List[Record], Dict[str, Any]]:
+        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+    ) -> tuple[list[Record], dict[str, Any]]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
 
@@ -286,7 +286,7 @@ class InfrahubDatabase:
                 results = [item async for item in response]
                 return results, response._metadata or {}
 
-    async def run_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> AsyncResult:
+    async def run_query(self, query: str, params: Optional[dict[str, Any]] = None) -> AsyncResult:
         if self.is_transaction:
             execution_method = await self.transaction()
         else:
@@ -305,7 +305,7 @@ class InfrahubDatabase:
             return f"extract(i in {items} | i.{item_name})"
         return f"[i IN {items} | i.{item_name}]"
 
-    def render_list_comprehension_with_list(self, items: str, item_names: List[str]) -> str:
+    def render_list_comprehension_with_list(self, items: str, item_names: list[str]) -> str:
         item_names_str = ",".join([f"i.{name}" for name in item_names])
         if self.db_type == DatabaseType.MEMGRAPH:
             return f"extract(i in {items} | [{item_names_str}])"

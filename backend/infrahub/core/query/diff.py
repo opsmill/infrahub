@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class DiffQuery(Query):
-    branch_names: List[str]
+    branch_names: list[str]
     diff_from: Timestamp
     diff_to: Timestamp
     type: QueryType = QueryType.READ
@@ -51,11 +51,11 @@ class DiffNodeQuery(DiffQuery):
 
     def __init__(
         self,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         **kwargs,
     ):
         self.namespaces_include = namespaces_include
@@ -117,11 +117,11 @@ class DiffAttributeQuery(DiffQuery):
 
     def __init__(
         self,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         **kwargs,
     ):
         self.namespaces_include = namespaces_include
@@ -180,11 +180,11 @@ class DiffRelationshipQuery(DiffQuery):
 
     def __init__(
         self,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         **kwargs,
     ):
         self.namespaces_include = namespaces_include
@@ -299,14 +299,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
 class DiffNodePropertiesByIDSRangeQuery(Query):
     name: str = "diff_node_properties_range_ids"
 
-    def __init__(
-        self,
-        ids: List[str],
-        diff_from: str,
-        diff_to: str,
-        account=None,
-        **kwargs,
-    ):
+    def __init__(self, ids: list[str], diff_from: str, diff_to: str, account=None, **kwargs):
         self.account = account
         self.ids = ids
         self.time_from = Timestamp(diff_from)
@@ -332,7 +325,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["a", "ap", "r"]
 
-    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> List[QueryResult]:
+    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> list[QueryResult]:
         """Return a list of all results matching a given relationship id / property type.
 
         The results are ordered chronologicall (from oldest to newest)
@@ -350,11 +343,11 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
 
 class DiffNodePropertiesByIDSQuery(Query):
     name: str = "diff_node_properties_ids"
-    order_by: List[str] = ["a.name"]
+    order_by: list[str] = ["a.name"]
 
     def __init__(
         self,
-        ids: List[str],
+        ids: list[str],
         at: str,
         account=None,
         **kwargs,
@@ -383,7 +376,7 @@ class DiffNodePropertiesByIDSQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["a", "ap", "r"]
 
-    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> List[QueryResult]:
+    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> list[QueryResult]:
         """Return a list of all results matching a given relationship id / property type.
 
         The results are ordered chronologicall (from oldest to newest)
@@ -406,7 +399,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
     def __init__(
         self,
-        ids: List[str],
+        ids: list[str],
         diff_from: str,
         diff_to: str,
         account=None,
@@ -440,7 +433,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["rl", "rp", "r"]
 
-    def get_results_by_id_and_prop_type(self, rel_id: str, prop_type: str) -> List[QueryResult]:
+    def get_results_by_id_and_prop_type(self, rel_id: str, prop_type: str) -> list[QueryResult]:
         """Return a list of all results matching a given relationship id / property type.
         The results are ordered chronologically
         """

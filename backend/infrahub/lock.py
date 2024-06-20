@@ -4,7 +4,7 @@ import time
 import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import redis.asyncio as redis
 from prometheus_client import Histogram
@@ -45,7 +45,7 @@ GLOBAL_GRAPH_LOCK = "global.graph"
 class InfrahubMultiLock:
     """Context manager to allow multiple locks to be reserved together"""
 
-    def __init__(self, _registry: InfrahubLockRegistry, locks: Optional[List[str]] = None):
+    def __init__(self, _registry: InfrahubLockRegistry, locks: Optional[list[str]] = None):
         self.registry = _registry
         self.locks = locks or []
 
@@ -54,7 +54,7 @@ class InfrahubMultiLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ):
@@ -82,7 +82,7 @@ class NATSLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ):
@@ -140,7 +140,7 @@ class InfrahubLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ):
@@ -190,7 +190,7 @@ class InfrahubLockRegistry:
             self.connection = None
 
         self.token = token or str(uuid.uuid4())
-        self.locks: Dict[str, InfrahubLock] = {}
+        self.locks: dict[str, InfrahubLock] = {}
 
     @classmethod
     def _generate_name(cls, name: str, namespace: Optional[str] = None, local: Optional[bool] = None) -> str:

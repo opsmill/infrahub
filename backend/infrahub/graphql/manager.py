@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
 
 import graphene
 
@@ -68,16 +68,16 @@ class DeleteInput(graphene.InputObjectType):
 
 
 GraphQLTypes = Union[
-    Type[InfrahubMutation], Type[BaseAttributeType], Type[graphene.Interface], Type[graphene.ObjectType]
+    type[InfrahubMutation], type[BaseAttributeType], type[graphene.Interface], type[graphene.ObjectType]
 ]
 
 
 @dataclass
 class GraphqlMutations:
-    create: Type[InfrahubMutation]
-    update: Type[InfrahubMutation]
-    upsert: Type[InfrahubMutation]
-    delete: Type[InfrahubMutation]
+    create: type[InfrahubMutation]
+    update: type[InfrahubMutation]
+    upsert: type[InfrahubMutation]
+    delete: type[InfrahubMutation]
 
 
 def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) -> str:
@@ -87,7 +87,7 @@ def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) ->
 
 
 class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
-    _extra_types: Dict[str, GraphQLTypes] = {
+    _extra_types: dict[str, GraphQLTypes] = {
         "DiffSummaryElementAttribute": DiffSummaryElementAttribute,
         "DiffSummaryElementRelationshipOne": DiffSummaryElementRelationshipOne,
         "DiffSummaryElementRelationshipMany": DiffSummaryElementRelationshipMany,
@@ -96,7 +96,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def __init__(self, schema: SchemaBranch):
         self.schema = schema
 
-        self._graphql_types: Dict[str, GraphQLTypes] = {}
+        self._graphql_types: dict[str, GraphQLTypes] = {}
 
         self._load_attribute_types()
         if config.SETTINGS.experimental_features.graphql_enums:
@@ -155,19 +155,19 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return Subscription
 
-    def get_type(self, name: str) -> Type[InfrahubObject]:
+    def get_type(self, name: str) -> type[InfrahubObject]:
         if name in self._graphql_types and issubclass(
             self._graphql_types[name], (BaseAttributeType, graphene.Interface, graphene.ObjectType)
         ):
             return self._graphql_types[name]
         raise ValueError(f"Unable to find {name!r}")
 
-    def get_mutation(self, name: str) -> Type[InfrahubMutation]:
+    def get_mutation(self, name: str) -> type[InfrahubMutation]:
         if name in self._graphql_types and issubclass(self._graphql_types[name], InfrahubMutation):
             return self._graphql_types[name]
         raise ValueError(f"Unable to find {name!r}")
 
-    def get_all(self) -> Dict[str, GraphQLTypes]:
+    def get_all(self) -> dict[str, GraphQLTypes]:
         infrahub_types = self._graphql_types
         infrahub_types.update(self._extra_types)
         return infrahub_types
@@ -212,7 +212,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             graphene_field = graphene.Field(graphene_enum, default_value=default_value)
             create_class = type(f"{base_enum_name}AttributeCreate", (BaseAttributeCreate,), {"value": graphene_field})
             update_class = type(f"{base_enum_name}AttributeUpdate", (BaseAttributeUpdate,), {"value": graphene_field})
-            data_type_class: Type[InfrahubDataType] = type(
+            data_type_class: type[InfrahubDataType] = type(
                 data_type_class_name,
                 (InfrahubDataType,),
                 {
@@ -366,7 +366,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                     peer_type, required=False, resolver=descendants_resolver, **peer_filters
                 )
 
-    def generate_query_mixin(self) -> Type[object]:
+    def generate_query_mixin(self) -> type[object]:
         class_attrs = {}
 
         full_schema = self.schema.get_all(duplicate=False)
@@ -395,8 +395,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return type("QueryMixin", (object,), class_attrs)
 
-    def generate_mutation_mixin(self) -> Type[object]:
-        class_attrs: Dict[str, Any] = {}
+    def generate_mutation_mixin(self) -> type[object]:
+        class_attrs: dict[str, Any] = {}
 
         full_schema = self.schema.get_all(duplicate=False)
 
@@ -407,7 +407,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             if node_schema.namespace == "Internal":
                 continue
 
-            mutation_map: Dict[str, Type[InfrahubMutation]] = {
+            mutation_map: dict[str, type[InfrahubMutation]] = {
                 InfrahubKind.ARTIFACTDEFINITION: InfrahubArtifactDefinitionMutation,
                 InfrahubKind.REPOSITORY: InfrahubRepositoryMutation,
                 InfrahubKind.READONLYREPOSITORY: InfrahubRepositoryMutation,
@@ -434,10 +434,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def generate_graphql_object(
         self, schema: Union[NodeSchema, ProfileSchema], populate_cache: bool = False
-    ) -> Type[InfrahubObject]:
+    ) -> type[InfrahubObject]:
         """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
-        interfaces: Set[Type[InfrahubObject]] = set()
+        interfaces: set[type[InfrahubObject]] = set()
 
         if schema.inherit_from:
             for generic_name in schema.inherit_from:
@@ -480,7 +480,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def generate_interface_object(
         self, schema: GenericSchema, populate_cache: bool = False
-    ) -> Type[graphene.Interface]:
+    ) -> type[graphene.Interface]:
         meta_attrs = {
             "name": schema.kind,
             "description": schema.description,
@@ -507,7 +507,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return interface_object
 
-    def define_relationship_property(self, data_source: Type[InfrahubObject], data_owner: Type[InfrahubObject]) -> None:
+    def define_relationship_property(self, data_source: type[InfrahubObject], data_owner: type[InfrahubObject]) -> None:
         type_name = "RelationshipProperty"
 
         meta_attrs = {
@@ -529,7 +529,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         self.set_type(name=type_name, graphql_type=relationship_property)
 
     def generate_graphql_mutations(
-        self, schema: Union[NodeSchema, ProfileSchema], base_class: Type[InfrahubMutation]
+        self, schema: Union[NodeSchema, ProfileSchema], base_class: type[InfrahubMutation]
     ) -> GraphqlMutations:
         graphql_mutation_create_input = self.generate_graphql_mutation_create_input(schema)
         graphql_mutation_update_input = self.generate_graphql_mutation_update_input(schema)
@@ -559,7 +559,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_graphql_mutation_create_input(
         self,
         schema: Union[NodeSchema, ProfileSchema],
-    ) -> Type[graphene.InputObjectType]:
+    ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
         Example of Object Generated by this function:
@@ -569,7 +569,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 slug = InputField(StringAttributeCreate, required=True)
                 description = InputField(StringAttributeCreate, required=False)
         """
-        attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
+        attrs: dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
 
         for attr in schema.attributes:
             if attr.read_only:
@@ -603,7 +603,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_graphql_mutation_update_input(
         self,
         schema: Union[NodeSchema, ProfileSchema],
-    ) -> Type[graphene.InputObjectType]:
+    ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
         Example of Object Generated by this function:
@@ -614,7 +614,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 slug = InputField(StringAttributeUpdate, required=False)
                 description = InputField(StringAttributeUpdate, required=False)
         """
-        attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {
+        attrs: dict[str, Union[graphene.String, graphene.InputField]] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
         }
@@ -645,7 +645,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_graphql_mutation_upsert_input(
         self,
         schema: Union[NodeSchema, ProfileSchema],
-    ) -> Type[graphene.InputObjectType]:
+    ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
         Example of Object Generated by this function:
@@ -656,7 +656,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 slug = InputField(StringAttributeUpdate, required=True)
                 description = InputField(StringAttributeUpdate, required=False)
         """
-        attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {
+        attrs: dict[str, Union[graphene.String, graphene.InputField]] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
         }
@@ -693,18 +693,18 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_graphql_mutation_create(
         self,
         schema: Union[NodeSchema, ProfileSchema],
-        input_type: Type[graphene.InputObjectType],
-        base_class: Type[InfrahubMutation] = InfrahubMutation,
+        input_type: type[graphene.InputObjectType],
+        base_class: type[InfrahubMutation] = InfrahubMutation,
         mutation_type: str = "Create",
-    ) -> Type[InfrahubMutation]:
+    ) -> type[InfrahubMutation]:
         """Generate a GraphQL Mutation to CREATE an object based on the specified NodeSchema."""
         name = f"{schema.kind}{mutation_type}"
 
         object_type = self.generate_graphql_object(schema=schema)
 
-        main_attrs: Dict[str, Any] = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
+        main_attrs: dict[str, Any] = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
 
-        meta_attrs: Dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
+        meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
         args_attrs = {
@@ -717,17 +717,17 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_graphql_mutation_update(
         self,
         schema: Union[NodeSchema, ProfileSchema],
-        input_type: Type[graphene.InputObjectType],
-        base_class: Type[InfrahubMutation] = InfrahubMutation,
-    ) -> Type[InfrahubMutation]:
+        input_type: type[graphene.InputObjectType],
+        base_class: type[InfrahubMutation] = InfrahubMutation,
+    ) -> type[InfrahubMutation]:
         """Generate a GraphQL Mutation to UPDATE an object based on the specified NodeSchema."""
         name = f"{schema.kind}Update"
 
         object_type = self.generate_graphql_object(schema=schema)
 
-        main_attrs: Dict[str, Any] = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
+        main_attrs: dict[str, Any] = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
 
-        meta_attrs: Dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
+        meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
         args_attrs = {
@@ -740,17 +740,17 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     @staticmethod
     def generate_graphql_mutation_delete(
         schema: Union[NodeSchema, ProfileSchema],
-        base_class: Type[InfrahubMutation] = InfrahubMutation,
-    ) -> Type[InfrahubMutation]:
+        base_class: type[InfrahubMutation] = InfrahubMutation,
+    ) -> type[InfrahubMutation]:
         """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
         name = f"{schema.kind}Delete"
 
-        main_attrs: Dict[str, Any] = {"ok": graphene.Boolean()}
+        main_attrs: dict[str, Any] = {"ok": graphene.Boolean()}
 
         meta_attrs = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        args_attrs: Dict[str, Any] = {
+        args_attrs: dict[str, Any] = {
             "data": DeleteInput(required=True),
         }
         main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
@@ -762,7 +762,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         schema: MainSchemaTypes,
         top_level: bool = False,
         include_properties: bool = True,
-    ) -> Dict[str, Union[graphene.Scalar, graphene.List]]:
+    ) -> dict[str, Union[graphene.Scalar, graphene.List]]:
         """Generate the GraphQL filters for a given Schema object.
 
         The generated filter will be different if we are at the top_level (query)
@@ -779,8 +779,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             dict: A Dictionary containing all the filters with their name as the key and their Type as value
         """
 
-        filters: Dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}
-        default_filters: List[str] = list(filters.keys())
+        filters: dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}
+        default_filters: list[str] = list(filters.keys())
 
         filters["ids"] = graphene.List(graphene.ID)
 
@@ -820,24 +820,24 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_graphql_edged_object(
         self,
         schema: MainSchemaTypes,
-        node: Type[InfrahubObject],
-        relation_property: Optional[Type[InfrahubObject]] = None,
+        node: type[InfrahubObject],
+        relation_property: Optional[type[InfrahubObject]] = None,
         populate_cache: bool = False,
-    ) -> Type[InfrahubObject]:
+    ) -> type[InfrahubObject]:
         """Generate a edged GraphQL object Type from a Infrahub NodeSchema for pagination."""
 
         object_name = f"Edged{schema.kind}"
         if relation_property:
             object_name = f"NestedEdged{schema.kind}"
 
-        meta_attrs: Dict[str, Any] = {
+        meta_attrs: dict[str, Any] = {
             "schema": schema,
             "name": object_name,
             "description": schema.description,
             "interfaces": set(),
         }
 
-        main_attrs: Dict[str, Any] = {
+        main_attrs: dict[str, Any] = {
             "node": graphene.Field(node, required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
@@ -855,17 +855,17 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_graphql_paginated_object(
         self,
         schema: MainSchemaTypes,
-        edge: Type[InfrahubObject],
+        edge: type[InfrahubObject],
         nested: bool = False,
         populate_cache: bool = False,
-    ) -> Type[InfrahubObject]:
+    ) -> type[InfrahubObject]:
         """Generate a paginated GraphQL object Type from a Infrahub NodeSchema."""
 
         object_name = f"Paginated{schema.kind}"
         if nested:
             object_name = f"NestedPaginated{schema.kind}"
 
-        meta_attrs: Dict[str, Any] = {
+        meta_attrs: dict[str, Any] = {
             "schema": schema,
             "name": object_name,
             "description": schema.description,
@@ -873,7 +873,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             "interfaces": set(),
         }
 
-        main_attrs: Dict[str, Any] = {
+        main_attrs: dict[str, Any] = {
             "count": graphene.Int(required=False),
             "edges": graphene.List(of_type=edge),
             "Meta": type("Meta", (object,), meta_attrs),
@@ -892,14 +892,14 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         relation_property: graphene.ObjectType,
         base_interface: graphene.ObjectType,
         populate_cache: bool = False,
-    ) -> Type[InfrahubObject]:
-        meta_attrs: Dict[str, Any] = {
+    ) -> type[InfrahubObject]:
+        meta_attrs: dict[str, Any] = {
             "name": f"NestedEdged{schema.kind}",
             "schema": schema,
             "description": schema.description,
         }
 
-        main_attrs: Dict[str, Any] = {
+        main_attrs: dict[str, Any] = {
             "node": graphene.Field(base_interface, required=False),
             "_updated_at": graphene.DateTime(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
@@ -919,15 +919,15 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     @staticmethod
     def generate_paginated_interface_object(
         schema: GenericSchema,
-        base_interface: Type[graphene.ObjectType],
-    ) -> Type[InfrahubObject]:
-        meta_attrs: Dict[str, Any] = {
+        base_interface: type[graphene.ObjectType],
+    ) -> type[InfrahubObject]:
+        meta_attrs: dict[str, Any] = {
             "name": f"NestedPaginated{schema.kind}",
             "schema": schema,
             "description": schema.description,
         }
 
-        main_attrs: Dict[str, Any] = {
+        main_attrs: dict[str, Any] = {
             "count": graphene.Int(required=False),
             "edges": graphene.List(of_type=base_interface),
             "Meta": type("Meta", (object,), meta_attrs),

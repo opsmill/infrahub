@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import difflib
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import jinja2
 import ujson
@@ -28,7 +28,7 @@ class InfrahubJinja2Item(InfrahubItem):
     def get_jinja2_template(self) -> jinja2.Template:
         return self.get_jinja2_environment().get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
 
-    def render_jinja2_template(self, variables: Dict[str, Any]) -> Optional[str]:
+    def render_jinja2_template(self, variables: dict[str, Any]) -> Optional[str]:
         try:
             return self.get_jinja2_template().render(**variables)
         except jinja2.UndefinedError as exc:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import PathType, RelationshipCardinality
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -30,7 +30,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         self.max_count_override = max_count_override
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
@@ -161,8 +161,8 @@ class RelationshipCountChecker(ConstraintCheckerInterface):
             "relationship.cardinality.update",
         )
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list: List[GroupedDataPaths] = []
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
+        grouped_data_paths_list: list[GroupedDataPaths] = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         relationship_schema = request.node_schema.get_relationship(name=request.schema_path.field_name)

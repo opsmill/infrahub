@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Sequence, Union
+from typing import TYPE_CHECKING, Sequence, Union
 
 from .m001_add_version_to_graph import Migration001
 from .m002_attribute_is_default import Migration002
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from ..shared import GraphMigration, InternalSchemaMigration
 
-MIGRATIONS: List[type[Union[GraphMigration, InternalSchemaMigration]]] = [
+MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration]]] = [
     Migration001,
     Migration002,
     Migration003,

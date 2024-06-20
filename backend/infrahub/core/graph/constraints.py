@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, ForwardRef, List, Optional, Union, get_origin
+from typing import TYPE_CHECKING, ForwardRef, Optional, Union, get_origin
 
 from pydantic import BaseModel
 from typing_extensions import Self
@@ -28,15 +28,15 @@ class ConstraintItem(ConstraintInfo):
     type: GraphPropertyType
     mandatory: bool = True
 
-    def get_add_queries(self) -> List[str]:
+    def get_add_queries(self) -> list[str]:
         raise NotImplementedError()
 
-    def get_drop_queries(self) -> List[str]:
+    def get_drop_queries(self) -> list[str]:
         raise NotImplementedError()
 
 
 class ConstraintItemNeo4j(ConstraintItem):
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         if self.mandatory:
             return [self.name_main, self.name_exist]
         return [self.name_main]
@@ -61,13 +61,13 @@ class ConstraintItemNeo4j(ConstraintItem):
     def get_query_exist_drop(self) -> str:
         return f"DROP CONSTRAINT {self.name_exist} IF EXISTS"
 
-    def get_add_queries(self) -> List[str]:
+    def get_add_queries(self) -> list[str]:
         queries = [self.get_query_main_add()]
         if self.mandatory:
             queries.append(self.get_query_exist_add())
         return queries
 
-    def get_drop_queries(self) -> List[str]:
+    def get_drop_queries(self) -> list[str]:
         queries = [self.get_query_main_drop()]
         if self.mandatory:
             queries.append(self.get_query_exist_drop())
@@ -134,10 +134,10 @@ class ConstraintItemMemgraph(ConstraintItem):
     def get_query_exist_drop(self) -> str:
         raise NotImplementedError()
 
-    def get_add_queries(self) -> List[str]:
+    def get_add_queries(self) -> list[str]:
         return [self.get_query_exist_add()]
 
-    def get_drop_queries(self) -> List[str]:
+    def get_drop_queries(self) -> list[str]:
         return [self.get_query_exist_drop()]
 
 
@@ -166,15 +166,15 @@ class ConstraintManagerBase:
     def __init__(self, db: InfrahubDatabase):
         self.db = db
 
-        self.nodes: List[ConstraintItem] = []
-        self.rels: List[ConstraintItem] = []
+        self.nodes: list[ConstraintItem] = []
+        self.rels: list[ConstraintItem] = []
 
     @property
-    def items(self) -> List[ConstraintItem]:
+    def items(self) -> list[ConstraintItem]:
         return self.nodes + self.rels
 
     @classmethod
-    def from_graph_schema(cls, db: InfrahubDatabase, schema: Dict[str, Dict[str, BaseModel]]) -> Self:
+    def from_graph_schema(cls, db: InfrahubDatabase, schema: dict[str, dict[str, BaseModel]]) -> Self:
         manager = cls(db=db)
 
         # Process the nodes first
@@ -245,7 +245,7 @@ class ConstraintManagerBase:
                 for query in item.get_drop_queries():
                     await dbt.execute_query(query=query, params={}, name="constraint_drop")
 
-    async def list(self) -> List[ConstraintInfo]:
+    async def list(self) -> list[ConstraintInfo]:
         raise NotImplementedError()
 
 
@@ -253,7 +253,7 @@ class ConstraintManagerNeo4j(ConstraintManagerBase):
     constraint_node_class = ConstraintNodeNeo4j
     constraint_rel_class = ConstraintRelNeo4j
 
-    async def list(self) -> List[ConstraintInfo]:
+    async def list(self) -> list[ConstraintInfo]:
         query = "SHOW CONSTRAINTS"
         records = await self.db.execute_query(query=query, params={}, name="constraint_show")
         results = []
@@ -283,7 +283,7 @@ class ConstraintManagerMemgraph(ConstraintManagerBase):
             for query in item.get_drop_queries():
                 await self.db.execute_query(query=query, params={}, name="constraint_drop")
 
-    async def list(self) -> List[ConstraintInfo]:
+    async def list(self) -> list[ConstraintInfo]:
         query = "SHOW CONSTRAINT INFO"
         records = await self.db.execute_query(query=query, params={}, name="constraint_show")
         results = []

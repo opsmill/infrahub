@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, Optional, TypeVar
 
 import aio_pika
 import opentelemetry.instrumentation.aio_pika.span_builder
@@ -75,7 +75,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.callback_queue: AbstractQueue
         self.events_queue: AbstractQueue
         self.dlx: AbstractExchange
-        self.message_enrichers: List[MessageFunction] = []
+        self.message_enrichers: list[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
         self.futures: MutableMapping[str, asyncio.Future] = {}
@@ -210,7 +210,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         await self.channel.default_exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
-    async def rpc(self, message: InfrahubMessage, response_class: Type[ResponseClass]) -> ResponseClass:
+    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()

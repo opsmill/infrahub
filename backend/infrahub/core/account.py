@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.query import Query
 from infrahub.core.registry import registry
@@ -73,10 +73,8 @@ class AccountTokenValidateQuery(Query):
 
 
 async def validate_token(
-    token: str,
-    db: InfrahubDatabase,
-    branch: Optional[Union[Branch, str]] = None,
-) -> Tuple[Optional[str], str]:
+    token: str, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None
+) -> tuple[Optional[str], str]:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token)
     await query.execute(db=db)

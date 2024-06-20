@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import bcrypt
 import jwt
@@ -50,7 +50,7 @@ async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
     selected_branch = await registry.get_branch(db=db, branch=branch)
-    response: List[CoreAccount] = await NodeManager.query(
+    response: list[CoreAccount] = await NodeManager.query(
         schema=InfrahubKind.ACCOUNT,
         db=db,
         branch=selected_branch,
@@ -204,7 +204,7 @@ def _validate_is_admin(account_session: AccountSession) -> None:
         raise PermissionError("You are not authorized to perform this operation")
 
 
-def _validate_update_account(account_session: AccountSession, node_id: str, fields: List[str]) -> None:
+def _validate_update_account(account_session: AccountSession, node_id: str, fields: list[str]) -> None:
     if account_session.role == "admin":
         return
 
@@ -219,7 +219,7 @@ def _validate_update_account(account_session: AccountSession, node_id: str, fiel
 
 
 def validate_mutation_permissions(operation: str, account_session: AccountSession) -> None:
-    validation_map: Dict[str, Callable[[AccountSession], None]] = {
+    validation_map: dict[str, Callable[[AccountSession], None]] = {
         f"{InfrahubKind.ACCOUNT}Create": _validate_is_admin,
         f"{InfrahubKind.ACCOUNT}Delete": _validate_is_admin,
         f"{InfrahubKind.ACCOUNT}Upsert": _validate_is_admin,
@@ -229,9 +229,9 @@ def validate_mutation_permissions(operation: str, account_session: AccountSessio
 
 
 def validate_mutation_permissions_update_node(
-    operation: str, node_id: str, account_session: AccountSession, fields: List[str]
+    operation: str, node_id: str, account_session: AccountSession, fields: list[str]
 ) -> None:
-    validation_map: Dict[str, Callable[[AccountSession, str, List[str]], None]] = {
+    validation_map: dict[str, Callable[[AccountSession, str, list[str]], None]] = {
         f"{InfrahubKind.ACCOUNT}Update": _validate_update_account,
         f"{InfrahubKind.ACCOUNT}Upsert": _validate_update_account,
     }

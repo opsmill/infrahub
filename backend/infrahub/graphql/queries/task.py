@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from graphene import Field, Int, List, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
@@ -26,7 +26,7 @@ class Tasks(ObjectType):
         offset: int = 0,
         ids: Optional[list] = None,
         related_node__ids: Optional[list] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         related_nodes = related_node__ids or []
         ids = ids or []
         return await Tasks.query(info=info, limit=limit, offset=offset, ids=ids, related_nodes=related_nodes)
@@ -34,7 +34,7 @@ class Tasks(ObjectType):
     @classmethod
     async def query(
         cls, info: GraphQLResolveInfo, limit: int, offset: int, related_nodes: list[str], ids: list[str]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         context: GraphqlContext = info.context
         fields = await extract_fields_first_node(info)
 

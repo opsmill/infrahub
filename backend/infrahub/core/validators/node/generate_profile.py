@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -28,7 +28,7 @@ class NodeGenerateProfileValidatorQuery(SchemaValidatorQuery):
         super().__init__(*args, **kwargs)
         self.profile_kind = f"Profile{self.node_schema.kind}"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
 
@@ -72,8 +72,8 @@ class NodeGenerateProfileChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list: List[GroupedDataPaths] = []
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
+        grouped_data_paths_list: list[GroupedDataPaths] = []
 
         if getattr(request.node_schema, "generate_profile", False) is True:
             return grouped_data_paths_list

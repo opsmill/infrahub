@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
-VARIABLE_TYPE_MAPPING = (
-    (str, "String!"),
-    (int, "Int!"),
-    (float, "Float!"),
-    (bool, "Boolean!"),
-)
+VARIABLE_TYPE_MAPPING = ((str, "String!"), (int, "Int!"), (float, "Float!"), (bool, "Boolean!"))
 
 
 def convert_to_graphql_as_string(value: Union[str, bool, list]) -> str:
@@ -24,7 +19,7 @@ def convert_to_graphql_as_string(value: Union[str, bool, list]) -> str:
     return str(value)
 
 
-def render_variables_to_string(data: Dict[str, type[Union[str, int, float, bool]]]) -> str:
+def render_variables_to_string(data: dict[str, type[Union[str, int, float, bool]]]) -> str:
     """Render a dict into a variable string that will be used in a GraphQL Query.
 
     The $ sign will be automatically added to the name of the query.
@@ -38,7 +33,7 @@ def render_variables_to_string(data: Dict[str, type[Union[str, int, float, bool]
     return ", ".join([f"{key}: {value}" for key, value in vars_dict.items()])
 
 
-def render_query_block(data: dict, offset: int = 4, indentation: int = 4) -> List[str]:
+def render_query_block(data: dict, offset: int = 4, indentation: int = 4) -> list[str]:
     FILTERS_KEY = "@filters"
     ALIAS_KEY = "@alias"
     KEYWORDS_TO_SKIP = [FILTERS_KEY, ALIAS_KEY]
@@ -72,7 +67,7 @@ def render_query_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
     return lines
 
 
-def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> List[str]:
+def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> list[str]:
     offset_str = " " * offset
     lines = []
     for key, value in data.items():
@@ -105,7 +100,7 @@ class BaseGraphQLQuery:
     query_type: str = "not-defined"
     indentation: int = 4
 
-    def __init__(self, query: dict, variables: Optional[Dict] = None, name: Optional[str] = None):
+    def __init__(self, query: dict, variables: Optional[dict] = None, name: Optional[str] = None):
         self.query = query
         self.variables = variables
         self.name = name or ""

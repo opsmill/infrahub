@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, ObjectType, String
 from graphene.types.uuid import UUID
@@ -92,7 +92,7 @@ class TaskCreate(Mutation):
                     task_log = TaskLog(message=str(log.message), severity=log.severity, task_id=str(task_id))
                     await task_log.save(db=db)
 
-        result: Dict[str, Any] = {"ok": True}
+        result: dict[str, Any] = {"ok": True}
 
         if "object" in fields:
             result["object"] = await task.to_graphql(fields=fields["object"])
@@ -139,7 +139,7 @@ class TaskUpdate(Mutation):
                     task_log = TaskLog(message=str(log.message), severity=log.severity, task_id=task_id)
                     await task_log.save(db=db)
 
-        result: Dict[str, Any] = {"ok": True}
+        result: dict[str, Any] = {"ok": True}
 
         if "object" in fields:
             result["object"] = await task.to_graphql(fields=fields["object"])

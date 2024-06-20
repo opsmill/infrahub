@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from graphene import Boolean, Field, List, ObjectType, String
 
@@ -25,7 +25,7 @@ class DiffSummaryEntryOld(ObjectType):
         branch_only: bool,
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
-    ) -> list[Dict[str, Union[str, list[str]]]]:
+    ) -> list[dict[str, Union[str, list[str]]]]:
         return await DiffSummaryEntryOld.get_summary(
             info=info,
             branch_only=branch_only,
@@ -40,7 +40,7 @@ class DiffSummaryEntryOld(ObjectType):
         branch_only: bool,
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
-    ) -> list[Dict[str, Union[str, list[str]]]]:
+    ) -> list[dict[str, Union[str, list[str]]]]:
         context: GraphqlContext = info.context
         diff = await BranchDiffer.init(
             db=context.db, branch=context.branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only
