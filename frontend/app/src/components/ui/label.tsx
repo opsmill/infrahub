@@ -12,12 +12,12 @@ const labelVariants = cva(
   {
     variants: {
       variant: {
-        noramal: "text-sm font-medium text-gray-900",
+        default: "text-sm font-medium text-gray-900",
         small: "text-xs font-normal",
       },
     },
     defaultVariants: {
-      variant: "noramal",
+      variant: "default",
     },
   }
 );
