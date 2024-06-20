@@ -41,6 +41,7 @@ test.describe("when searching an object", () => {
       await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("devi");
       await expect(page.getByTestId("search-anywhere")).toContainText("Go to");
       await page.getByRole("option", { name: "All Device(s)" }).click();
+      await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
       expect(page.url()).toContain("/objects/InfraDevice");
     });
   });
