@@ -131,7 +131,7 @@ const RelationshipField = ({
                       peer={parentRelationship?.peer}
                       disabled={props.disabled || !parentRelationship || !selectedKind?.id}
                       onChange={setSelectedParent}
-                      className="mt-1"
+                      className="mt-2"
                     />
                   </FormInput>
                   <FormMessage />
@@ -166,7 +166,7 @@ const RelationshipField = ({
                       parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                       disabled={props.disabled || !selectedKind?.id}
                       multiple={relationship.cardinality === "many"}
-                      className="mt-1"
+                      className="mt-2"
                     />
                   </FormInput>
                   <FormMessage />
