@@ -19,7 +19,6 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import useFilters, { Filter } from "@/hooks/useFilters";
-import usePagination from "@/hooks/usePagination";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
@@ -63,15 +62,14 @@ export default function ObjectItems({
   overrideDetailsViewUrl,
   preventBlock,
 }: ObjectItemsProps) {
-  const { objectname: objectnameFromParams } = useParams();
-
-  const objectname = objectnameFromProps || objectnameFromParams;
-
   const navigate = useNavigate();
-
   const permission = usePermission();
   const [filters, setFilters] = useFilters();
-  const [pagination] = usePagination();
+  const { objectname: objectnameFromParams } = useParams();
+
+  const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+
+  const objectname = kindFilter?.value || objectnameFromProps || objectnameFromParams;
 
   const schemaKindName = useAtomValue(schemaKindNameState);
   const schemaList = useAtomValue(schemaState);
@@ -106,22 +104,19 @@ export default function ObjectItems({
   // This will not work if the type of filter value is not string.
   const filtersString = [
     // Add object filters
-    ...filters.map((row: iComboBoxFilter) => {
-      if (typeof row.value === "string") {
-        return `${row.name}: "${row.value}"`;
-      }
+    ...filters
+      .filter((filter) => filter.name !== "kind__value")
+      .map((row: iComboBoxFilter) => {
+        if (typeof row.value === "string") {
+          return `${row.name}: "${row.value}"`;
+        }
 
-      if (Array.isArray(row.value)) {
-        return `${row.name}: ${JSON.stringify(row.value.map((v) => v.id ?? v))}`;
-      }
+        if (Array.isArray(row.value)) {
+          return `${row.name}: ${JSON.stringify(row.value.map((v) => v.id ?? v))}`;
+        }
 
-      return `${row.name}: ${row.value}`;
-    }),
-    // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
+        return `${row.name}: ${row.value}`;
+      }),
     ...filtersFromProps,
   ].join(",");
 
