@@ -35,7 +35,7 @@ interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   currentObject?: Record<string, AttributeType>;
   currentProfile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
   isFilterForm?: boolean;
-  onSubmit?: (data: any) => void;
+  onSubmit?: (data: any) => Promise<void>;
 }
 
 const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
@@ -229,6 +229,7 @@ const NodeForm = ({
       console.error("An error occurred while creating the object: ", error);
     }
   }
+
   return (
     <DynamicForm
       fields={fields}
