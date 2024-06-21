@@ -203,7 +203,7 @@ const RelationshipField = ({
             return (
               <div className="relative flex flex-col">
                 <LabelFormField
-                  label="Parent"
+                  label={parentRelationship?.label ?? "Parent"}
                   description="Parent to filter the available nodes"
                   unique={unique}
                   required={!!rules?.required}
@@ -237,7 +237,7 @@ const RelationshipField = ({
             <div className="relative flex flex-col mt-1">
               {parentRelationship && (
                 <LabelFormField
-                  label={"Object"}
+                  label={label}
                   unique={unique}
                   required={!!rules?.required}
                   description={description}
@@ -258,7 +258,6 @@ const RelationshipField = ({
                 <RelationshipInput
                   {...field}
                   {...props}
-                  peer={relationship?.peer}
                   parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                   multiple={relationship.cardinality === "many"}
                 />
