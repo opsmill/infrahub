@@ -107,8 +107,8 @@ test.describe("/proposed-changes diff data", () => {
       await thread.getByRole("button", { name: "Reply" }).click();
       await thread.getByTestId("codemirror-editor").getByRole("textbox").fill("third resolved");
       await thread.getByRole("button", { name: "Comment", exact: true }).click();
-      await expect(thread.getByTestId("comment").nth(2)).toContainText("third resolved");
-      await expect(page.getByTestId("comments-count")).toContainText("3");
+      await expect(thread.getByTestId("comment").nth(2).getByText("third resolved")).toBeVisible();
+      await expect(page.getByTestId("comments-count").getByText("3")).toBeVisible();
     });
   });
 

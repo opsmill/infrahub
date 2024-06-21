@@ -47,6 +47,7 @@ test.describe("Branches creation and deletion", () => {
       await expect(page).toHaveURL(/.*\/branches/);
 
       await page.getByTestId("branches-items").getByText("test123").click();
+      await expect(page.getByText("Nametest123")).toBeVisible();
       expect(page.url()).toContain("/branches/test123");
     });
 

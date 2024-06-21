@@ -5,7 +5,7 @@ import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-verti.svg";
 import Content from "@/screens/layout/content";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 const fields: Array<DynamicFieldProps> = [
   {
@@ -26,7 +26,7 @@ const fields: Array<DynamicFieldProps> = [
   },
 ];
 
-export default function SignIn() {
+function SignIn() {
   let navigate = useNavigate();
   let location = useLocation();
   const { signIn } = useAuth();
@@ -34,7 +34,7 @@ export default function SignIn() {
   const from = (location.state?.from?.pathname || "/") + (location.state?.from?.search ?? "");
 
   return (
-    <Content className="flex justify-center items-center bg-gray-200 p-2">
+    <Content className="flex justify-center items-center bg-gray-200 p-2 h-screen">
       <Card className="w-full max-w-lg shadow">
         <div className="flex flex-col items-center p-8">
           <InfrahubLogo className="h-28 w-28" alt="Intrahub logo" />
@@ -53,4 +53,14 @@ export default function SignIn() {
       </Card>
     </Content>
   );
+}
+
+export function Component() {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <SignIn />;
 }

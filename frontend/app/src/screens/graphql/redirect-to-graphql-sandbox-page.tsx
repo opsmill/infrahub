@@ -1,7 +1,7 @@
 import { constructPath } from "@/utils/fetch";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 
-const RedirectToGraphiQLPage = () => {
+const RedirectToGraphqlSandboxPage = () => {
   const { branch } = useParams();
   const location = useLocation();
 
@@ -14,4 +14,6 @@ const RedirectToGraphiQLPage = () => {
   );
 };
 
-export default RedirectToGraphiQLPage;
+export function Component() {
+  return <RedirectToGraphqlSandboxPage />;
+}

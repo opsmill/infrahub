@@ -30,7 +30,7 @@ const tabToKind = {
   [IPAM_TABS.PREFIX_DETAILS]: IP_PREFIX_GENERIC,
 };
 
-export default function IpamRouter() {
+function IpamRouter() {
   const [qspTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
   const navigate = useNavigate();
   const { prefix } = useParams();
@@ -179,4 +179,8 @@ export default function IpamRouter() {
       </SlideOver>
     </Card>
   );
+}
+
+export function Component() {
+  return <IpamRouter />;
 }

@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai";
 import { SchemaSelector } from "./schema-selector";
 import { SchemaViewerStack } from "./schema-viewer";
 
-export default function SchemaPage() {
+function SchemaPage() {
   useTitle("Schema");
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
@@ -29,4 +29,7 @@ export default function SchemaPage() {
       </div>
     </Content>
   );
+}
+export function Component() {
+  return <SchemaPage />;
 }

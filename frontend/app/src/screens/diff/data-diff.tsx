@@ -60,7 +60,7 @@ const constructChecksDictionnary = (checks: any[]) => {
 };
 
 export const DataDiff = forwardRef((props, ref) => {
-  const { branchname, proposedchange } = useParams();
+  const { branchName, proposedchange } = useParams();
 
   const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
@@ -70,7 +70,7 @@ export const DataDiff = forwardRef((props, ref) => {
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const branch = proposedChangesDetails?.source_branch?.value || branchname; // Used in proposed changes view and branch view
+  const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
@@ -153,7 +153,7 @@ export const DataDiff = forwardRef((props, ref) => {
     const commentsCount = objectComments && objectComments[node?.path];
 
     const currentBranch =
-      branch ?? branchname ?? proposedChangesDetails?.source_branch?.value ?? "main";
+      branch ?? branchName ?? proposedChangesDetails?.source_branch?.value ?? "main";
 
     const context = {
       currentBranch,

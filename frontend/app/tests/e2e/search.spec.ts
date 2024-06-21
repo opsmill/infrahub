@@ -41,6 +41,7 @@ test.describe("when searching an object", () => {
       await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("devi");
       await expect(page.getByTestId("search-anywhere")).toContainText("Go to");
       await page.getByRole("option", { name: "All Device(s)" }).click();
+      await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
       expect(page.url()).toContain("/objects/InfraDevice");
     });
   });
@@ -81,15 +82,15 @@ test.describe("when searching an object", () => {
   test("display result when searching by uuid", async ({ page }) => {
     await page.goto("/objects/InfraAutonomousSystem");
 
-    await page.getByRole('link', { name: 'AS174', exact: true }).click();
-    const uuid = await page.locator('dd').first().textContent() as string;
+    await page.getByRole("link", { name: "AS174", exact: true }).click();
+    const uuid = (await page.locator("dd").first().textContent()) as string;
 
     await test.step("open search anywhere modal", async () => {
       await page.getByPlaceholder("Search anywhere").click();
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 
-    await page.getByTestId('search-anywhere').getByPlaceholder('Search anywhere').fill(uuid);
-    await expect(page.getByRole('option', { name: 'AS174 174Autonomous System' })).toBeVisible();
+    await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill(uuid);
+    await expect(page.getByRole("option", { name: "AS174 174Autonomous System" })).toBeVisible();
   });
 });

@@ -15,7 +15,7 @@ import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
 export const ArtifactsDiff = forwardRef((props, ref) => {
   const [artifactsDiff, setArtifactsDiff] = useState({});
-  const { branchname } = useParams();
+  const { branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
@@ -23,7 +23,7 @@ export const ArtifactsDiff = forwardRef((props, ref) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchFiles = useCallback(async () => {
-    const branch = branchname || proposedChangesDetails?.source_branch?.value;
+    const branch = branchName || proposedChangesDetails?.source_branch?.value;
 
     if (!branch) return;
 
@@ -49,7 +49,7 @@ export const ArtifactsDiff = forwardRef((props, ref) => {
     }
 
     setIsLoading(false);
-  }, [branchname, branchOnly, timeFrom, timeTo, proposedChangesDetails?.source_branch?.value]);
+  }, [branchName, branchOnly, timeFrom, timeTo, proposedChangesDetails?.source_branch?.value]);
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch: fetchFiles }));

@@ -19,4 +19,6 @@ const ResourceManagerPage = () => {
   );
 };
 
-export default ResourceManagerPage;
+export function Component() {
+  return <ResourceManagerPage />;
+}

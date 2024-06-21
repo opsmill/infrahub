@@ -41,7 +41,7 @@ const renderContent = (tab: string | null | undefined) => {
   }
 };
 
-export default function UserProfile() {
+function UserProfilePage() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [schemaList] = useAtom(schemaState);
   useTitle("Profile");
@@ -102,4 +102,7 @@ export default function UserProfile() {
       <div>{renderContent(qspTab)}</div>
     </Content>
   );
+}
+export function Component() {
+  return <UserProfilePage />;
 }

@@ -179,4 +179,6 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
   );
 };
 
-export default ResourcePoolPage;
+export function Component() {
+  return <ResourcePoolPage />;
+}

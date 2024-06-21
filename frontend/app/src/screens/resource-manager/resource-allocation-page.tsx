@@ -100,4 +100,7 @@ const ResourceAllocationPageSkeleton = () => {
     </Card>
   );
 };
-export default ResourceAllocationPage;
+
+export function Component() {
+  return <ResourceAllocationPage />;
+}

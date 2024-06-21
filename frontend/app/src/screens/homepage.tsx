@@ -139,4 +139,6 @@ const HelperCard = ({
   );
 };
 
-export default Homepage;
+export function Component() {
+  return <Homepage />;
+}

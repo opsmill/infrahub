@@ -2,7 +2,8 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
-import App from "../../../src/App";
+import { App } from "../../../src/App";
+import { mount } from "cypress/react18";
 
 describe("Config fetch", () => {
   beforeEach(function () {
@@ -26,7 +27,7 @@ describe("Config fetch", () => {
     cy.intercept("GET", "/api/menu*", this.menu).as("getMenu");
     cy.intercept("POST", "/graphql/main", this.branches).as("branches");
 
-    cy.mount(
+    mount(
       <MockedProvider addTypename={false}>
         <App />
       </MockedProvider>

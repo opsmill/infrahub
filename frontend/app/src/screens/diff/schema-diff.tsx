@@ -14,7 +14,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { DataDiffNode } from "./data-diff-node";
 
 export const SchemaDiff = forwardRef((props, ref) => {
-  const { branchname } = useParams();
+  const { branchName } = useParams();
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +22,7 @@ export const SchemaDiff = forwardRef((props, ref) => {
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
 
-  const branch = proposedChangesDetails?.source_branch?.value || branchname; // Used in proposed changes view and branch view
+  const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
 
   const fetchDiffDetails = useCallback(async () => {
     if (!proposedChangesDetails?.source_branch?.value) return;

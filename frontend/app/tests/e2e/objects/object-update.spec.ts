@@ -67,7 +67,6 @@ test.describe("Object update", () => {
       await expect(page.getByLabel("Name *")).toHaveValue("atl1-core1-new-name");
       await expect(page.getByLabel("Description")).toHaveValue("New description");
       await expect(page.getByLabel("Type *")).toHaveValue("MX204");
-      await page.pause();
       await expect(
         page
           .getByTestId("side-panel-container")
@@ -99,6 +98,7 @@ test.describe("Object update", () => {
     });
 
     await test.step("assert initial object values", async () => {
+      await expect(page.getByText("Nameatl1-leaf1")).toBeVisible();
       await expect(page.getByText("Active")).toBeVisible();
       await expect(page.getByText("Leaf Switch")).toBeVisible();
       await expect(page.getByRole("link", { name: "AS64496" })).toBeVisible();

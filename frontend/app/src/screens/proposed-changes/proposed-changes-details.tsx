@@ -189,4 +189,6 @@ const ProposedChangesDetails = () => {
   );
 };
 
-export default ProposedChangesDetails;
+export function Component() {
+  return <ProposedChangesDetails />;
+}

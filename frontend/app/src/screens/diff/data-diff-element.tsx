@@ -26,7 +26,7 @@ export type tDataDiffNodeElementProps = {
 export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const { element } = props;
 
-  const { branchname } = useParams();
+  const { branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
 
   const { name, change, path } = element;
@@ -50,7 +50,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
             <span className="mr-2 font-semibold">{name}</span>
 
             {/* Do not display comment button if we are on the branch details view */}
-            {!branchname && <DataDiffThread path={path} />}
+            {!branchName && <DataDiffThread path={path} />}
           </div>
 
           <div className="flex flex-1">
@@ -66,7 +66,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
           </div>
         </div>
 
-        {!branchname && <DataDiffConflictInfo path={path} />}
+        {!branchName && <DataDiffConflictInfo path={path} />}
       </div>
     );
   };

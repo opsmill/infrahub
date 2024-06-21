@@ -46,8 +46,8 @@ test.describe("/ipam - Ipam Tree", () => {
     await page.goto("/ipam");
 
     await page.getByTestId("ipam-tree").getByRole("link", { name: "10.0.0.0/8" }).click();
-    expect(page.url()).toContain("/ipam/prefixes/");
     await expect(page.getByText("Ipam IP Prefix summary")).toBeVisible();
     await expect(page.getByText("Prefix10.0.0.0/8")).toBeVisible();
+    expect(page.url()).toContain("/ipam/prefixes/");
   });
 });

@@ -9,10 +9,10 @@ import { findSelectedBranch } from "@/utils/branches";
 import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext, useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
 import { Sidebar } from "./sidebar";
+import { Outlet } from "react-router-dom";
 
 function Layout() {
   const branches = useAtomValue(branchesState);
@@ -72,6 +72,7 @@ function Layout() {
       </div>
     );
   }
+
   return (
     <div className="h-screen flex">
       <Sidebar />
@@ -85,4 +86,4 @@ function Layout() {
   );
 }
 
-export default withSchemaContext(Layout);
+export const Component = withSchemaContext(Layout);

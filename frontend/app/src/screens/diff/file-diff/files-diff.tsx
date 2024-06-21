@@ -14,7 +14,7 @@ import { FileRepoDiff } from "./file-repo-diff";
 
 export const FilesDiff = forwardRef((props, ref) => {
   const [filesDiff, setFilesDiff] = useState({});
-  const { branchname } = useParams();
+  const { branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
@@ -23,7 +23,7 @@ export const FilesDiff = forwardRef((props, ref) => {
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
   const fetchFiles = useCallback(async () => {
-    const branch = branchname || proposedChangesDetails?.source_branch?.value;
+    const branch = branchName || proposedChangesDetails?.source_branch?.value;
 
     if (!branch) return;
 
@@ -50,7 +50,7 @@ export const FilesDiff = forwardRef((props, ref) => {
     }
 
     setIsLoading(false);
-  }, [branchname, branchOnly, timeFrom, timeTo, proposedChangesDetails?.source_branch?.value]);
+  }, [branchName, branchOnly, timeFrom, timeTo, proposedChangesDetails?.source_branch?.value]);
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch: fetchFiles }));

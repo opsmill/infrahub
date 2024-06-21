@@ -167,8 +167,8 @@ test.describe("/ipam - Ipam home page", () => {
           .getByRole("treeitem", { name: "10.0.0.0/8" })
           .getByTestId("tree-item-toggle")
           .click();
-        await page.getByRole("link", { name: "10.0.0.0/16" }).click();
         await expect(page.getByRole("treeitem", { name: "10.0.0.0/16" })).toBeVisible();
+        await page.getByRole("link", { name: "10.0.0.0/16" }).click();
         await expect(page.getByRole("row", { name: "10.0.0.1/16" })).toBeVisible();
       });
 
