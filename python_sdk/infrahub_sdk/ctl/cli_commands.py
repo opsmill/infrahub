@@ -298,7 +298,7 @@ def transform(
 
 
 @app.command(name="protocols")
-def export_protocols(
+def protocols(
     branch: str = typer.Option(None, help="Branch of schema to export Python protocols for."),
     _: str = CONFIG_PARAM,
     out: str = typer.Option(None, help="Path to a file to save the result."),
