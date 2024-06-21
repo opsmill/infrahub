@@ -375,7 +375,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable, Optional
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from infrahub_sdk.nodes import RelatedNode, RelationshipManager
+    from infrahub_sdk.nodes import RelatedNode, RelatedNodeSync, RelationshipManager, RelationshipManagerSync
 
 
 @runtime_checkable
@@ -400,10 +400,11 @@ class {{ generic.namespace + generic.name }}(CoreNode):
     {{ relationship | render_relationship }}
     {% endfor %}
     {% if generic.hierarchical | default(false) %}
-    parent: RelatedNode
-    children: RelationshipManager
+    parent: {{ relationship_types.one }}
+    children: {{ relationship_types.many }}
     {% endif %}
-{% endfor +%}
+{% endfor %}
+
 
 {% for node in nodes %}
 class {{ node.namespace + node.name }}({{ node.inherit_from | join(", ") or "CoreNode" }}):
@@ -417,10 +418,10 @@ class {{ node.namespace + node.name }}({{ node.inherit_from | join(", ") or "Cor
     {{ relationship | render_relationship }}
     {% endfor %}
     {% if node.hierarchical | default(false) %}
-    parent: RelatedNode
-    children: RelationshipManager
+    parent: {{ relationship_types.one }}
+    children: {{ relationship_types.many }}
     {% endif %}
-{% endfor +%}
+{% endfor %}
 """
 
     generics: dict[str, GenericSchema] = {}
@@ -438,7 +439,14 @@ class {{ node.namespace + node.name }}({{ node.inherit_from | join(", ") or "Cor
     jinja2_env.filters["render_relationship"] = _jinja2_filter_render_relationship
 
     template = jinja2_env.from_string(template)
-    rendered = template.render(generics=_sort_and_filter_models(generics), nodes=_sort_and_filter_models(nodes))
+    rendered = template.render(
+        generics=_sort_and_filter_models(generics),
+        nodes=_sort_and_filter_models(nodes),
+        relationship_types={
+            "one": "RelatedNodeSync" if sync else "RelatedNode",
+            "many": "RelationshipManagerSync" if sync else "RelationshipManager",
+        },
+    )
 
     if out:
         write_to_file(Path(out), rendered)
