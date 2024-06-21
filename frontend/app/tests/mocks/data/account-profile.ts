@@ -1,8 +1,8 @@
 export const profileId = "d07bb58e-8394-4053-a198-9cef84e7d6c0";
 
 export const profileDetailsMocksQuery = `
-query {
-  AccountProfile {
+query($offset: Int, $limit: Int) {
+  AccountProfile(offset: $offset, limit: $limit) {
     id
     display_label
       name {
