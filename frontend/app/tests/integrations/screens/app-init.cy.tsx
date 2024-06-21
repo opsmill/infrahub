@@ -2,6 +2,8 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
+import { App } from "../../../src/App";
+import { mount } from "cypress/react18";
 
 describe("Config fetch", () => {
   beforeEach(function () {
@@ -25,6 +27,37 @@ describe("Config fetch", () => {
     cy.intercept("GET", "/api/menu*", this.menu).as("getMenu");
     cy.intercept("POST", "/graphql/main", this.branches).as("branches");
 
-    cy.mount(<MockedProvider addTypename={false}>{/*<App />*/}</MockedProvider>);
+    mount(
+      <MockedProvider addTypename={false}>
+        <App />
+      </MockedProvider>
+    );
+
+    cy.contains("Sign in to your account");
+    cy.contains("label", "Username").parent().next().clear({ force: true });
+    cy.contains("label", "Username").parent().next().type("test");
+    cy.contains("label", "Password").parent().next().type("test");
+    cy.contains("button", "Sign in").click();
+
+    cy.wait("@login").then(({ response }) => {
+      expect(response?.body?.access_token).to.exist;
+    });
+
+    cy.wait("@getSchemaSummary").then(({ response }) => {
+      expect(response?.body?.main).to.exist;
+    });
+
+    cy.wait("@getSchema").then(({ response }) => {
+      const schemaArray = response?.body?.nodes;
+
+      expect(schemaArray).to.have.lengthOf(1);
+    });
+
+    cy.wait("@getMenu").then(() => {
+      // Check if the Objects menu is existing
+      cy.get("[data-cy='sidebar-menu']").within(() => {
+        cy.contains("Objects").should("exist");
+      });
+    });
   });
 });
