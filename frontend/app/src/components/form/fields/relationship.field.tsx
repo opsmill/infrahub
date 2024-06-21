@@ -258,6 +258,7 @@ const RelationshipField = ({
                 <RelationshipInput
                   {...field}
                   {...props}
+                  peer={relationship?.peer}
                   parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                   multiple={relationship.cardinality === "many"}
                 />
