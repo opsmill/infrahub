@@ -10,7 +10,6 @@ from infrahub_sdk import Timestamp
 from neo4j import Record
 
 # pylint: skip-file
-from infrahub import config
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
@@ -155,7 +154,7 @@ query_stats = QueryAnalyzer()
 
 class InfrahubDatabaseAnalyzer(InfrahubDatabase):
     async def execute_query(
-        self, query: str, params: config.Dict[str, Any] | None = None, name: str | None = "undefined"
+        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
     ) -> list[Record]:
         time_start = time.time()
         if name and query_stats.sample_memory(name=name):
@@ -181,7 +180,7 @@ class InfrahubDatabaseAnalyzer(InfrahubDatabase):
         return response
 
     async def execute_query_with_metadata(
-        self, query: str, params: config.Dict[str, Any] | None = None, name: str | None = "undefined"
+        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
     ) -> tuple[list[Record], dict[str, Any]]:
         time_start = time.time()
         if name and query_stats.sample_memory(name=name):
