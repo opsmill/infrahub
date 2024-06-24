@@ -573,7 +573,6 @@ ignore = [
     "UP018",    # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",    # Use format specifiers instead of percent format
     "UP034",    # Avoid extraneous parentheses
-    "UP037",    # Remove quotes from type annotation
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
