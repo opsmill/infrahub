@@ -34,7 +34,7 @@ class StandardNode(BaseModel):
     id: Optional[str] = None
     uuid: Optional[UUID] = None
 
-    _query: tuple[StandardNodeQuery] = StandardNodeCreateQuery
+    _query: type[StandardNodeQuery] = StandardNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "_query"]
 
     @classmethod
