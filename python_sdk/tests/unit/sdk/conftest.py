@@ -61,7 +61,7 @@ def replace_async_return_annotation():
         replacements = {
             "InfrahubClient": "InfrahubClientSync",
             "InfrahubNode": "InfrahubNodeSync",
-            "List[InfrahubNode]": "List[InfrahubNodeSync]",
+            "list[InfrahubNode]": "list[InfrahubNodeSync]",
             "Optional[InfrahubNode]": "Optional[InfrahubNodeSync]",
         }
         return replacements.get(annotation) or annotation
@@ -91,7 +91,7 @@ def replace_sync_return_annotation() -> str:
         replacements = {
             "InfrahubClientSync": "InfrahubClient",
             "InfrahubNodeSync": "InfrahubNode",
-            "List[InfrahubNodeSync]": "List[InfrahubNode]",
+            "list[InfrahubNodeSync]": "list[InfrahubNode]",
             "Optional[InfrahubNodeSync]": "Optional[InfrahubNode]",
         }
         return replacements.get(annotation) or annotation
