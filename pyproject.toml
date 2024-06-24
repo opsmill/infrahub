@@ -348,10 +348,6 @@ module = "infrahub.graphql.types.mixin"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.types.node"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.types.standard_node"
 ignore_errors = true
 
