@@ -549,7 +549,7 @@ class RelationshipValidatorList:
         if value in self._relationships:
             raise ValidationError({value.name: "Relationship already exists in the list"})
         if not isinstance(value, Relationship):
-            raise ValidationError("RelationshipValidatorlist only accepts Relationship objects")
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
         self._relationships[index] = value
 
     def __delitem__(self, index: int) -> None:
@@ -571,7 +571,7 @@ class RelationshipValidatorList:
         if rel in self._relationships:
             return
         if not isinstance(rel, Relationship):
-            raise ValidationError("RelationshipValidatorlist only accepts Relationship objects")
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
 
         # If the max_count is greater than 0 then validate
         if self.max_count and self._relationships_count + 1 > self.max_count:
@@ -605,7 +605,7 @@ class RelationshipValidatorList:
         if value in self._relationships:
             return
         if not isinstance(value, Relationship):
-            raise ValidationError("RelationshipValidatorlist only accepts Relationship objects")
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
         if self.max_count and self._relationships_count + 1 > self.max_count:
             self._raise_too_many()
         self._relationships.insert(index, value)
