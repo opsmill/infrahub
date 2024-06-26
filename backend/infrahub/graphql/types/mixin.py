@@ -42,7 +42,9 @@ class GetListMixin:
             response: dict[str, Any] = {"edges": []}
             offset = kwargs.pop("offset", None)
             limit = kwargs.pop("limit", None)
-            filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
+            filters = {
+                key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key == "ids"
+            }
             if "count" in fields:
                 response["count"] = await NodeManager.count(
                     db=db,

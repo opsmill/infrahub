@@ -77,6 +77,8 @@ class InfrahubDataType:
         attr_class = cls.get_infrahub_class()
         filters[f"{name}__value"] = cls.graphql_filter()
         filters[f"{name}__values"] = graphene.List(cls.graphql_filter)
+        if name != "any":
+            filters[f"{name}__isnull"] = graphene.Boolean()
 
         if not include_properties:
             return filters
