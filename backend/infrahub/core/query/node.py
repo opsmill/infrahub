@@ -731,6 +731,8 @@ class NodeGetListQuery(Query):
         super().__init__(**kwargs)
 
     def _validate_filters(self) -> None:
+        if not self.filters:
+            return
         filter_errors = []
         for filter_str in self.filters:
             split_filter = filter_str.split("__")
