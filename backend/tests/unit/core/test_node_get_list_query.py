@@ -49,6 +49,141 @@ async def test_query_NodeGetListQuery_filter_ids(
     assert query.get_node_ids() == [person_albert_main.id, person_jim_main.id, person_john_main.id]
 
 
+async def test_query_NodeGetListQuery_filter_attribute_isnull(
+    db: InfrahubDatabase, person_albert_main, person_alfred_main, person_jane_main, branch: Branch
+):
+    person_schema = registry.schema.get(name="TestPerson", branch=branch, duplicate=False)
+    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_albert_main.id)
+    person_branch.height.value = None
+    await person_branch.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=person_schema,
+        filters={"height__isnull": True},
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [person_albert_main.id]
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=person_schema,
+        filters={"height__isnull": False},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {person_alfred_main.id, person_jane_main.id}
+
+    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_albert_main.id)
+    person_branch.height.value = 155
+    await person_branch.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=person_schema,
+        filters={"height__isnull": True},
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == []
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=person_schema,
+        filters={"height__isnull": False},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {person_albert_main.id, person_alfred_main.id, person_jane_main.id}
+
+
+async def test_query_NodeGetListQuery_filter_relationship_isnull_one(
+    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, person_jane_main, branch: Branch
+):
+    car_schema = registry.schema.get(name="TestCar", branch=branch, duplicate=False)
+    owner_rel = car_schema.get_relationship(name="owner")
+    owner_rel.optional = True
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    await car_branch.owner.update(db=db, data=[None])
+    await car_branch.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=car_schema,
+        filters={"owner__isnull": True},
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car_camry_main.id]
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=car_schema,
+        filters={"owner__isnull": False},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {car_accord_main.id, car_volt_main.id}
+
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    await car_branch.owner.update(db=db, data=person_jane_main)
+    await car_branch.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=car_schema,
+        filters={"owner__isnull": True},
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == []
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=car_schema,
+        filters={"owner__isnull": False},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {car_camry_main.id, car_accord_main.id, car_volt_main.id}
+
+
+async def test_query_NodeGetListQuery_filter_relationship_isnull_many(
+    db: InfrahubDatabase,
+    car_accord_main,
+    car_camry_main,
+    person_albert_main,
+    person_alfred_main,
+    person_jane_main,
+    person_john_main,
+    branch: Branch,
+):
+    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema.order_by = ["name__value"]
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    await car_branch.owner.update(db=db, data=person_albert_main)
+    await car_branch.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=person_schema,
+        filters={"cars__isnull": True},
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [person_alfred_main.id, person_jane_main.id]
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=person_schema,
+        filters={"cars__isnull": False},
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [person_albert_main.id, person_john_main.id]
+
+
 async def test_query_NodeGetListQuery_filter_height(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):

@@ -671,7 +671,7 @@ class FieldAttributeRequirement:
 
     @property
     def supports_profile(self) -> bool:
-        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values"))
+        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values", "isnull"))
 
     @property
     def is_filter(self) -> bool:
@@ -700,6 +700,20 @@ class FieldAttributeRequirement:
     @property
     def final_value_query_variable(self) -> str:
         return f"attr{self.index}_final_value"
+
+    @property
+    def comparison_operator(self) -> str:
+        if self.field_attr_name == "isnull":
+            return "=" if self.field_attr_value is True else "<>"
+        if self.field_attr_name == "values":
+            return "IN"
+        return "="
+
+    @property
+    def field_attr_comparison_value(self) -> Any:
+        if self.field_attr_name == "isnull":
+            return "NULL"
+        return self.field_attr_value
 
 
 class NodeGetListQuery(Query):
@@ -1016,18 +1030,14 @@ class NodeGetListQuery(Query):
             if not far.is_filter or not far.supports_profile:
                 continue
             var_name = f"final_attr_value{far.index}"
-            self.params[var_name] = far.field_attr_value
+            self.params[var_name] = far.field_attr_comparison_value
             if self.partial_match:
                 where_parts.append(
                     f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
                 )
                 continue
-            if far.field_attr_name == "values":
-                operator = "IN"
-            else:
-                operator = "="
 
-            where_parts.append(f"{far.final_value_query_variable} {operator} ${var_name}")
+            where_parts.append(f"{far.final_value_query_variable} {far.comparison_operator} ${var_name}")
         if where_parts:
             where_str = "WHERE " + " AND ".join(where_parts)
         self.add_to_query(where_str)
