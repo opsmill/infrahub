@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Generator, Iterator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Generator, Iterator, Optional, Union
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[QueryResult]:
+def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[QueryResult]:
     """Sort a list of QueryResult based on the to and from fields on given relationship.
 
     To sort the results, we are generating an ID per item
@@ -65,7 +65,7 @@ class QueryRelDirection(Enum):
 class QueryElement:
     type: QueryElementType
     name: Optional[str] = None
-    labels: Optional[List[str]] = None
+    labels: Optional[list[str]] = None
     params: Optional[dict] = None
 
     def __str__(self) -> str:
@@ -156,7 +156,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: List[Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]], labels: List[str]):
+    def __init__(self, data: list[Union[Neo4jNode, Neo4jRelationship, list[Neo4jNode]]], labels: list[str]):
         self.data = data
         self.labels = cleanup_return_labels(labels)
         self.branch_score: int = 0
@@ -208,7 +208,7 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def _get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]:
+    def _get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship, list[Neo4jNode]]:
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
@@ -224,7 +224,7 @@ class QueryResult:
             return str(item)
         return None
 
-    def get_node_collection(self, label: str) -> List[Neo4jNode]:
+    def get_node_collection(self, label: str) -> list[Neo4jNode]:
         entry = self._get(label=label)
         if isinstance(entry, list):
             return entry
@@ -261,9 +261,9 @@ class QueryResult:
 
 @dataclass
 class QueryStats:
-    stats: List[QueryStat] = field(default_factory=list)
+    stats: list[QueryStat] = field(default_factory=list)
 
-    def add(self, data: Optional[Dict[str, Any]]) -> None:
+    def add(self, data: Optional[dict[str, Any]]) -> None:
         if data:
             self.stats.append(QueryStat.from_metadata(data))
 
@@ -289,7 +289,7 @@ class QueryStat:
     relationships_deleted: Optional[int] = None
 
     @classmethod
-    def from_metadata(cls, data: Dict[str, Any]) -> Self:
+    def from_metadata(cls, data: dict[str, Any]) -> Self:
         data = {key.replace("-", "_"): value for key, value in data.items()}
         return cls(**data)
 
@@ -307,7 +307,7 @@ class Query(ABC):
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        order_by: Optional[List[str]] = None,
+        order_by: Optional[list[str]] = None,
         branch_agnostic: bool = False,
     ):
         if branch:
@@ -327,16 +327,16 @@ class Query(ABC):
 
         # Initialize internal variables
         self.params: dict = {}
-        self.query_lines: List[str] = []
-        self.return_labels: List[str] = []
-        self.results: List[QueryResult] = []
+        self.query_lines: list[str] = []
+        self.return_labels: list[str] = []
+        self.results: list[QueryResult] = []
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
 
         self.stats: QueryStats = QueryStats()
 
-    def update_return_labels(self, value: Union[str, List[str]]) -> None:
+    def update_return_labels(self, value: Union[str, list[str]]) -> None:
         if isinstance(value, str) and value not in self.return_labels:
             self.return_labels.append(value)
             return
@@ -364,7 +364,7 @@ class Query(ABC):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         raise NotImplementedError
 
-    def add_to_query(self, query: Union[str, List[str]]) -> None:
+    def add_to_query(self, query: Union[str, list[str]]) -> None:
         """Add a new section at the end of the query.
 
         A string with multiple lines will be broken down into multiple entries in self.query_lines

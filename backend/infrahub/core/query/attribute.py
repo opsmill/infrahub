@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
@@ -195,12 +195,12 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
     db: Optional[InfrahubDatabase] = None,
     partial_match: bool = False,
     support_profiles: bool = False,
-) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
+) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
     """Generate Query String Snippet to filter the right node."""
 
-    query_filter: List[QueryElement] = []
-    query_params: Dict[str, Any] = {}
-    query_where: List[str] = []
+    query_filter: list[QueryElement] = []
+    query_params: dict[str, Any] = {}
+    query_where: list[str] = []
 
     if filter_value and not isinstance(filter_value, (str, bool, int, list)):
         raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
@@ -16,7 +16,7 @@ class Migration003Query01(Query):
     name = "migration_003_01"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         at = Timestamp()
         filters, params = at.get_query_filter_path()
 

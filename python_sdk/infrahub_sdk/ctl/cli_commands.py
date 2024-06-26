@@ -4,7 +4,7 @@ import importlib
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import jinja2
 import typer
@@ -63,7 +63,7 @@ def check(
     format_json: bool = False,
     _: str = CONFIG_PARAM,
     list_available: bool = typer.Option(False, "--list", help="Show available Python checks"),
-    variables: Optional[List[str]] = typer.Argument(
+    variables: Optional[list[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
 ) -> None:
@@ -89,7 +89,7 @@ async def generator(
     debug: bool = False,
     _: str = CONFIG_PARAM,
     list_available: bool = typer.Option(False, "--list", help="Show available Generators"),
-    variables: Optional[List[str]] = typer.Argument(
+    variables: Optional[list[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
 ) -> None:
@@ -117,7 +117,7 @@ async def run(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
-    variables: Optional[List[str]] = typer.Argument(
+    variables: Optional[list[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
 ) -> None:
@@ -155,7 +155,7 @@ async def run(
     await func(client=client, log=log, branch=branch, **variables_dict)
 
 
-def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: Dict[str, Any]) -> str:
+def render_jinja2_template(template_path: Path, variables: dict[str, str], data: dict[str, Any]) -> str:
     if not template_path.is_file():
         console.print(f"[red]Unable to locate the template at {template_path}")
         raise typer.Exit(1)
@@ -185,7 +185,7 @@ def render_jinja2_template(template_path: Path, variables: Dict[str, str], data:
     return rendered_tpl
 
 
-def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable, branch: str, debug: bool):
+def _run_transform(query: str, variables: dict[str, Any], transformer: Callable, branch: str, debug: bool):
     branch = get_branch(branch)
 
     try:
@@ -214,7 +214,7 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
 @app.command(name="render")
 def render(
     transform_name: str = typer.Argument(default="", help="Name of the Python transformation", show_default=False),
-    variables: Optional[List[str]] = typer.Argument(
+    variables: Optional[list[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
     branch: str = typer.Option(None, help="Branch on which to render the transform."),
@@ -251,7 +251,7 @@ def render(
 @app.command(name="transform")
 def transform(
     transform_name: str = typer.Argument(default="", help="Name of the Python transformation", show_default=False),
-    variables: Optional[List[str]] = typer.Argument(
+    variables: Optional[list[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
     branch: str = typer.Option(None, help="Branch on which to run the transformation"),

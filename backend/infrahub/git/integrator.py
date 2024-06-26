@@ -5,7 +5,7 @@ import importlib
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import jinja2
 import ujson
@@ -160,7 +160,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             )
         }
 
-        local_transforms: Dict[str, InfrahubRepositoryJinja2] = {}
+        local_transforms: dict[str, InfrahubRepositoryJinja2] = {}
 
         # Process the list of local Jinja2 Transforms to organize them by name
         for config_transform in config_file.jinja2_transforms:
@@ -269,7 +269,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             for artdef in await self.sdk.filters(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name)
         }
 
-        local_artifact_defs: Dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
+        local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
 
         # Process the list of local Artifact Definitions to organize them by name
         for artdef in config_file.artifact_definitions:
@@ -401,7 +401,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         # pylint: disable=too-many-branches
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        schemas_data: List[SchemaFile] = []
+        schemas_data: list[SchemaFile] = []
 
         for schema in config_file.schemas:
             full_schema = Path(os.path.join(branch_wt.directory, schema))
@@ -825,7 +825,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         module: types.ModuleType,
         file_path: str,
         check_definition: InfrahubCheckDefinitionConfig,
-    ) -> List[CheckDefinitionInformation]:
+    ) -> list[CheckDefinitionInformation]:
         if check_definition.class_name not in dir(module):
             return []
 
@@ -859,7 +859,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
     async def get_python_transforms(
         self, branch_name: str, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
-    ) -> List[TransformPythonInformation]:
+    ) -> list[TransformPythonInformation]:
         if transform.class_name not in dir(module):
             return []
 
@@ -1051,9 +1051,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
-    async def find_graphql_queries(self, commit: str) -> List[GraphQLQueryInformation]:
+    async def find_graphql_queries(self, commit: str) -> list[GraphQLQueryInformation]:
         """Return the information about all GraphQL Queries present in a specific commit."""
-        queries: List[GraphQLQueryInformation] = []
+        queries: list[GraphQLQueryInformation] = []
         query_files = await self.find_files(extension=["gql"], commit=commit)
 
         for query_file in query_files:
@@ -1085,7 +1085,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         location: str,
         class_name: str,
         client: InfrahubClient,
-        params: Optional[Dict] = None,
+        params: Optional[dict] = None,
     ) -> InfrahubCheck:
         """Execute A Python Check stored in the repository."""
 

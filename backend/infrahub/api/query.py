@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Body, Depends, Path, Query, Request
 from graphql import graphql
 from pydantic import BaseModel, Field
 
-from infrahub.api.dependencies import (
-    BranchParams,
-    get_branch_params,
-    get_current_user,
-    get_db,
-)
+from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
@@ -38,7 +33,7 @@ router = APIRouter(prefix="/query")
 
 
 class QueryPayload(BaseModel):
-    variables: Dict[str, str] = Field(default_factory=dict)
+    variables: dict[str, str] = Field(default_factory=dict)
 
 
 async def execute_query(
@@ -46,10 +41,10 @@ async def execute_query(
     request: Request,
     branch_params: BranchParams,
     query_id: str,
-    params: Dict[str, str],
+    params: dict[str, str],
     update_group: bool,
-    subscribers: List[str],
-) -> Dict[str, Any]:
+    subscribers: list[str],
+) -> dict[str, Any]:
     gql_query = await registry.manager.get_one_by_id_or_default_filter(
         db=db, id=query_id, kind=InfrahubKind.GRAPHQLQUERY, branch=branch_params.branch, at=branch_params.at
     )
@@ -89,7 +84,7 @@ async def execute_query(
         len(await analyzed_query.get_models_in_use(types=gql_params.context.types))
     )
 
-    response_payload: Dict[str, Any] = {"data": data}
+    response_payload: dict[str, Any] = {"data": data}
 
     related_node_ids = gql_params.context.related_node_ids or set()
 
@@ -116,7 +111,7 @@ async def graphql_query_post(
         QueryPayload(), description="Payload of the request, must be used to provide the variables"
     ),
     query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
-    subscribers: List[str] = Query(
+    subscribers: list[str] = Query(
         [], description=f"List of subscribers to attach to the {InfrahubKind.GRAPHQLQUERYGROUP}"
     ),
     update_group: bool = Query(
@@ -126,7 +121,7 @@ async def graphql_query_post(
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
-) -> Dict:
+) -> dict:
     return await execute_query(
         db=db,
         request=request,
@@ -142,7 +137,7 @@ async def graphql_query_post(
 async def graphql_query_get(
     request: Request,
     query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
-    subscribers: List[str] = Query(
+    subscribers: list[str] = Query(
         [], description=f"List of subscribers to attach to the {InfrahubKind.GRAPHQLQUERYGROUP}"
     ),
     update_group: bool = Query(
@@ -152,7 +147,7 @@ async def graphql_query_get(
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
-) -> Dict:
+) -> dict:
     params = {
         key: value
         for key, value in request.query_params.items()

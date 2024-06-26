@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import httpx
 import ujson
@@ -18,9 +18,9 @@ class JSONPlayback(BaseSettings):
         self,
         url: str,
         method: HTTPMethod,
-        headers: Dict[str, Any],
+        headers: dict[str, Any],
         timeout: int,
-        payload: Optional[Dict] = None,
+        payload: Optional[dict] = None,
     ) -> httpx.Response:
         return self._read_request(url=url, method=method, headers=headers, payload=payload, timeout=timeout)
 
@@ -28,9 +28,9 @@ class JSONPlayback(BaseSettings):
         self,
         url: str,
         method: HTTPMethod,
-        headers: Dict[str, Any],
+        headers: dict[str, Any],
         timeout: int,
-        payload: Optional[Dict] = None,
+        payload: Optional[dict] = None,
     ) -> httpx.Response:
         return self._read_request(url=url, method=method, headers=headers, payload=payload, timeout=timeout)
 
@@ -38,9 +38,9 @@ class JSONPlayback(BaseSettings):
         self,
         url: str,
         method: HTTPMethod,
-        headers: Dict[str, Any],
+        headers: dict[str, Any],
         timeout: int,  # pylint: disable=unused-argument
-        payload: Optional[Dict] = None,
+        payload: Optional[dict] = None,
     ) -> httpx.Response:
         content: Optional[bytes] = None
         if payload:

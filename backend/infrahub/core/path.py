@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel, Field
 from typing_extensions import Self
@@ -88,21 +88,21 @@ class DataPath(InfrahubPath):
 
 class GroupedDataPaths:
     def __init__(self) -> None:
-        self._grouped_data_paths: Dict[str, List[DataPath]] = defaultdict(list)
+        self._grouped_data_paths: dict[str, list[DataPath]] = defaultdict(list)
 
     def add_data_path(self, data_path: DataPath, grouping_key: str = "") -> None:
         self.add_data_paths([data_path], grouping_key)
 
-    def add_data_paths(self, data_paths: List[DataPath], grouping_key: str = "") -> None:
+    def add_data_paths(self, data_paths: list[DataPath], grouping_key: str = "") -> None:
         self._grouped_data_paths[grouping_key].extend(data_paths)
 
-    def get_data_paths(self, grouping_key: str = "") -> List[DataPath]:
+    def get_data_paths(self, grouping_key: str = "") -> list[DataPath]:
         return self._grouped_data_paths.get(grouping_key, [])
 
-    def get_all_data_paths(self) -> List[DataPath]:
+    def get_all_data_paths(self) -> list[DataPath]:
         return list(chain(*self._grouped_data_paths.values()))
 
-    def get_grouping_keys(self) -> List[str]:
+    def get_grouping_keys(self) -> list[str]:
         return list(self._grouped_data_paths.keys())
 
 

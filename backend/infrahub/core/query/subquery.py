@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.query import QueryNode
 
@@ -27,7 +27,7 @@ async def build_subquery_filter(
     result_prefix: str = "filter",
     support_profiles: bool = False,
     extra_tail_properties: Optional[dict[str, str]] = None,
-) -> Tuple[str, dict[str, Any], str]:
+) -> tuple[str, dict[str, Any], str]:
     support_profiles = support_profiles and field and field.is_attribute and filter_name in ("value", "values")
     params = {}
     prefix = f"{result_prefix}{subquery_idx}"
@@ -100,7 +100,7 @@ async def build_subquery_order(
     result_prefix: Optional[str] = None,
     support_profiles: bool = False,
     extra_tail_properties: Optional[dict[str, str]] = None,
-) -> Tuple[str, dict[str, Any], str]:
+) -> tuple[str, dict[str, Any], str]:
     support_profiles = support_profiles and field and field.is_attribute and order_by in ("value", "values")
     params = {}
     prefix = result_prefix or f"order{subquery_idx}"

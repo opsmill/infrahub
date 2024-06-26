@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import typer
 import ujson
@@ -60,7 +60,7 @@ async def validate_schema(
 @app.command(name="graphql-query")
 def validate_graphql(
     query: str,
-    variables: Optional[List[str]] = typer.Argument(
+    variables: Optional[list[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
     debug: bool = typer.Option(False, help="Display more troubleshooting information."),

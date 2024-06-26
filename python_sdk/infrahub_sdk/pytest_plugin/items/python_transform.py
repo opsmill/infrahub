@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import ujson
 from httpx import HTTPStatusError
@@ -27,7 +27,7 @@ class InfrahubPythonTransformItem(InfrahubItem):
         resource_name: str,
         resource_config: InfrahubRepositoryConfigElement,
         test: InfrahubTest,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         super().__init__(*args, resource_name=resource_name, resource_config=resource_config, test=test, **kwargs)
 
@@ -39,7 +39,7 @@ class InfrahubPythonTransformItem(InfrahubItem):
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
-    def run_transform(self, variables: Dict[str, Any]) -> Any:
+    def run_transform(self, variables: dict[str, Any]) -> Any:
         self.instantiate_transform()
         return asyncio.run(self.transform_instance.run(data=variables))
 

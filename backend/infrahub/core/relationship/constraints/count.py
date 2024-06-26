@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -32,7 +32,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         # but if the validation fails we'll end up with some allocated resources that are not being used
         await relm.resolve(db=self.db)
 
-        nodes_to_validate: List[NodeToValidate] = []
+        nodes_to_validate: list[NodeToValidate] = []
 
         # peer_ids_present_local_only:
         #    new relationship, need to check if the schema on the other side has a max_count defined

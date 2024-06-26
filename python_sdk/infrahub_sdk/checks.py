@@ -4,7 +4,7 @@ import asyncio
 import importlib
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import ujson
 from git.repo import Repo
@@ -40,12 +40,12 @@ class InfrahubCheck:
         root_directory: str = "",
         output: Optional[str] = None,
         initializer: Optional[InfrahubCheckInitializer] = None,
-        params: Optional[Dict] = None,
+        params: Optional[dict] = None,
     ):
         self.git: Optional[Repo] = None
         self.initializer = initializer or InfrahubCheckInitializer()
 
-        self.logs: List[Dict[str, Any]] = []
+        self.logs: list[dict[str, Any]] = []
         self.passed = False
 
         self.output = output
@@ -76,7 +76,7 @@ class InfrahubCheck:
         return instance
 
     @property
-    def errors(self) -> List[Dict[str, Any]]:
+    def errors(self) -> list[dict[str, Any]]:
         return [log for log in self.logs if log["level"] == "ERROR"]
 
     def _write_log_entry(
@@ -129,7 +129,7 @@ class InfrahubCheck:
     def validate(self, data: dict) -> None:
         """Code to validate the status of this check."""
 
-    async def collect_data(self) -> Dict:
+    async def collect_data(self) -> dict:
         """Query the result of the GraphQL Query defined in self.query and return the result"""
 
         return await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, variables=self.params)

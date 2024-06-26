@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel
 
@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
 
 class RelationshipSchema(GeneratedRelationshipSchema):
-    _exclude_from_hash: List[str] = ["filters"]
-    _sort_by: List[str] = ["name"]
+    _exclude_from_hash: list[str] = ["filters"]
+    _sort_by: list[str] = ["name"]
 
     @property
     def is_attribute(self) -> bool:
@@ -66,12 +66,12 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         param_prefix: Optional[str] = None,
         partial_match: bool = False,
         support_profiles: bool = False,  # pylint: disable=unused-argument
-    ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
+    ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         """Generate Query String Snippet to filter the right node."""
 
-        query_filter: List[QueryElement] = []
-        query_params: Dict[str, Any] = {}
-        query_where: List[str] = []
+        query_filter: list[QueryElement] = []
+        query_params: dict[str, Any] = {}
+        query_where: list[str] = []
 
         prefix = param_prefix or f"rel_{self.name}"
 

@@ -566,7 +566,6 @@ ignore = [
     "S202",     # Uses of `tarfile.extractall()`
     "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
-    "UP006",    # Use {to} instead of {from} for type annotation
     "UP007",    # Use X | Y for type annotations
     "UP008",    # Use super() instead of super(__class__, self)
     "UP012",    # Unnecessary call to encode as UTF-8

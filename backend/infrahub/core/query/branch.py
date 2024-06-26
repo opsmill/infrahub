@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core.constants import RelationshipStatus
@@ -93,7 +93,7 @@ class RebaseBranchUpdateRelationshipQuery(Query):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, ids: List[str], **kwargs: Any) -> None:
+    def __init__(self, ids: list[str], **kwargs: Any) -> None:
         self.ids = ids
         super().__init__(**kwargs)
 
@@ -118,7 +118,7 @@ class RebaseBranchDeleteRelationshipQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return: bool = False
 
-    def __init__(self, ids: List[str], **kwargs: Any) -> None:
+    def __init__(self, ids: list[str], **kwargs: Any) -> None:
         self.ids = ids
         super().__init__(**kwargs)
 

@@ -3,8 +3,7 @@ from __future__ import annotations
 import importlib
 import typing
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, Type
-from typing import List as TypingList
+from typing import TYPE_CHECKING
 
 import graphene
 from graphene.types.generic import GenericScalar
@@ -41,28 +40,28 @@ class InfrahubDataType:
         return self.label
 
     @classmethod
-    def get_infrahub_class(cls) -> Type[BaseAttribute]:
+    def get_infrahub_class(cls) -> type[BaseAttribute]:
         if not isinstance(cls.infrahub, str):
             return cls.infrahub
         module = importlib.import_module(DEFAULT_MODULE_ATTRIBUTE)
         return getattr(module, cls.infrahub)
 
     @classmethod
-    def get_graphql_create(cls) -> Type[BaseAttributeCreate]:
+    def get_graphql_create(cls) -> type[BaseAttributeCreate]:
         if not isinstance(cls.graphql_create, str):
             return cls.graphql_create
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_INPUT)
         return getattr(module, cls.graphql_create)
 
     @classmethod
-    def get_graphql_update(cls) -> Type[BaseAttributeUpdate]:
+    def get_graphql_update(cls) -> type[BaseAttributeUpdate]:
         if not isinstance(cls.graphql_update, str):
             return cls.graphql_update
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_INPUT)
         return getattr(module, cls.graphql_update)
 
     @classmethod
-    def get_graphql_type(cls) -> Type[BaseAttributeType]:
+    def get_graphql_type(cls) -> type[BaseAttributeType]:
         if not isinstance(cls.graphql_query, str):
             return cls.graphql_query
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_QUERY)
@@ -73,8 +72,8 @@ class InfrahubDataType:
         return cls.get_graphql_type().__name__
 
     @classmethod
-    def get_graphql_filters(cls, name: str, include_properties: bool = True) -> Dict[str, typing.Any]:
-        filters: Dict[str, typing.Any] = {}
+    def get_graphql_filters(cls, name: str, include_properties: bool = True) -> dict[str, typing.Any]:
+        filters: dict[str, typing.Any] = {}
         attr_class = cls.get_infrahub_class()
         filters[f"{name}__value"] = cls.graphql_filter()
         filters[f"{name}__values"] = graphene.List(cls.graphql_filter)
@@ -312,7 +311,7 @@ class Any(InfrahubDataType):
     infrahub = "AnyAttribute"
 
 
-ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
+ATTRIBUTE_TYPES: dict[str, type[InfrahubDataType]] = {
     "ID": ID,
     "Dropdown": Dropdown,
     "Text": Text,
@@ -336,7 +335,7 @@ ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "Any": Any,
 }
 
-ATTRIBUTE_PYTHON_TYPES: Dict[str, Type] = {
+ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
     "ID": int,  # Assuming IDs are integers
     "Dropdown": str,  # Dropdowns can be represented as strings
     "Text": str,
@@ -355,7 +354,7 @@ ATTRIBUTE_PYTHON_TYPES: Dict[str, Type] = {
     "IPNetwork": str,
     "Boolean": bool,
     "Checkbox": bool,  # Checkboxes represent boolean values
-    "List": TypingList[Any],  # Lists can contain any type of items
+    "List": list[Any],  # Lists can contain any type of items
     "JSON": Json,  # Pydantic's Json type handles arbitrary JSON objects
     "Any": Any,  # Any type allowed
 }
@@ -363,7 +362,7 @@ ATTRIBUTE_PYTHON_TYPES: Dict[str, Type] = {
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
 
 
-def get_attribute_type(kind: str = "Default") -> Type[InfrahubDataType]:
+def get_attribute_type(kind: str = "Default") -> type[InfrahubDataType]:
     """Return an InfrahubDataType object for a given kind
     If no kind is provided, return the default one."""
     return ATTRIBUTE_TYPES.get(kind, Default)

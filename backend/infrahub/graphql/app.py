@@ -13,11 +13,8 @@ from typing import (
     AsyncGenerator,
     Awaitable,
     Callable,
-    Dict,
-    List,
     Optional,
     Sequence,
-    Type,
     Union,
     cast,
 )
@@ -106,7 +103,7 @@ class InfrahubGraphQLApp:
         root_value: RootValue = None,
         middleware: Optional[Middleware] = None,
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
-        execution_context_class: Optional[Type[ExecutionContext]] = None,
+        execution_context_class: Optional[type[ExecutionContext]] = None,
     ):
         self._schema = schema
         self.on_get = on_get
@@ -247,7 +244,7 @@ class InfrahubGraphQLApp:
                     execution_context_class=self.execution_context_class,
                 )
 
-        response: Dict[str, Any] = {"data": result.data}
+        response: dict[str, Any] = {"data": result.data}
         if result.errors:
             for error in result.errors:
                 if error.original_error:
@@ -294,7 +291,7 @@ class InfrahubGraphQLApp:
             )
 
     async def _run_websocket_server(self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket) -> None:
-        subscriptions: Dict[str, AsyncGenerator[Any, None]] = {}
+        subscriptions: dict[str, AsyncGenerator[Any, None]] = {}
         await websocket.accept("graphql-ws")
         try:
             while WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
@@ -312,9 +309,9 @@ class InfrahubGraphQLApp:
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        message: Dict[str, Any],
+        message: dict[str, Any],
         websocket: WebSocket,
-        subscriptions: Dict[str, AsyncGenerator[Any, None]],
+        subscriptions: dict[str, AsyncGenerator[Any, None]],
     ) -> None:
         operation_id = cast(str, message.get("id"))
         message_type = cast(str, message.get("type"))
@@ -344,7 +341,7 @@ class InfrahubGraphQLApp:
         data: Any,
         operation_id: str,
         websocket: WebSocket,
-        subscriptions: Dict[str, AsyncGenerator[Any, None]],
+        subscriptions: dict[str, AsyncGenerator[Any, None]],
     ) -> None:
         query = data["query"]
         variable_values = data.get("variables")
@@ -352,7 +349,7 @@ class InfrahubGraphQLApp:
 
         graphql_params = prepare_graphql_params(db=db, branch=branch)
 
-        errors: List[GraphQLError] = []
+        errors: list[GraphQLError] = []
         operation: Optional[OperationDefinitionNode] = None
         document: Optional[DocumentNode] = None
 
@@ -393,12 +390,12 @@ class InfrahubGraphQLApp:
         graphql_schema: GraphQLSchema,
         websocket: WebSocket,
         operation_id: str,
-        subscriptions: Dict[str, AsyncGenerator[Any, None]],
+        subscriptions: dict[str, AsyncGenerator[Any, None]],
         document: DocumentNode,
         context_value: ContextValue,
-        variable_values: Dict[str, Any],
+        variable_values: dict[str, Any],
         operation_name: str,
-    ) -> List[GraphQLError]:
+    ) -> list[GraphQLError]:
         result = await subscribe(
             schema=graphql_schema,
             document=document,
@@ -417,10 +414,7 @@ class InfrahubGraphQLApp:
         return []
 
     async def _observe_subscription(
-        self,
-        asyncgen: AsyncGenerator[Any, None],
-        operation_id: str,
-        websocket: WebSocket,
+        self, asyncgen: AsyncGenerator[Any, None], operation_id: str, websocket: WebSocket
     ) -> None:
         try:
             async for result in asyncgen:
@@ -442,13 +436,11 @@ class InfrahubGraphQLApp:
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
 
 
-async def _get_operation_from_request(
-    request: Request,
-) -> Union[Dict[str, Any], List[Any]]:
+async def _get_operation_from_request(request: Request) -> Union[dict[str, Any], list[Any]]:
     content_type = request.headers.get("Content-Type", "").split(";")[0]
     if content_type == "application/json":
         try:
-            return cast(Union[Dict[str, Any], List[Any]], await request.json())
+            return cast(Union[dict[str, Any], list[Any]], await request.json())
         except (TypeError, ValueError):
             raise ValueError("Request body is not a valid JSON")
     elif content_type == "multipart/form-data":
@@ -457,9 +449,7 @@ async def _get_operation_from_request(
         raise ValueError("Content-type must be application/json or multipart/form-data")
 
 
-async def _get_operation_from_multipart(
-    request: Request,
-) -> Union[Dict[str, Any], List[Any]]:
+async def _get_operation_from_multipart(request: Request) -> Union[dict[str, Any], list[Any]]:
     try:
         request_body = await request.form()
     except Exception:

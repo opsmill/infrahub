@@ -5,7 +5,7 @@ from asyncio import run as aiorun
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, List, Optional
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -47,7 +47,7 @@ def run(
     debug: bool,
     format_json: bool,
     list_available: bool,
-    variables: Dict[str, str],
+    variables: dict[str, str],
     name: Optional[str] = None,
     branch: Optional[str] = None,
 ) -> None:
@@ -85,7 +85,7 @@ async def run_check(
     format_json: bool,
     path: str,
     branch: Optional[str] = None,
-    params: Optional[Dict] = None,
+    params: Optional[dict] = None,
 ) -> bool:
     module_name = check_module.name
     output = "stdout" if format_json else None
@@ -123,7 +123,7 @@ async def run_targeted_check(
     client: InfrahubClient,
     format_json: bool,
     path: str,
-    variables: Dict[str, str],
+    variables: dict[str, str],
     branch: Optional[str] = None,
 ) -> bool:
     filters = {}
@@ -136,7 +136,7 @@ async def run_targeted_check(
     if param_key:
         identifier = param_key[0]
 
-    check_summary: List[bool] = []
+    check_summary: list[bool] = []
     if variables:
         result = await run_check(
             check_module=check_module,
@@ -169,15 +169,15 @@ async def run_targeted_check(
 
 
 async def run_checks(
-    check_modules: List[CheckModule],
+    check_modules: list[CheckModule],
     format_json: bool,
     path: str,
-    variables: Dict[str, str],
+    variables: dict[str, str],
     branch: Optional[str] = None,
 ) -> None:
     log = logging.getLogger("infrahub")
 
-    check_summary: List[bool] = []
+    check_summary: list[bool] = []
     client = await initialize_client()
     for check_module in check_modules:
         if check_module.definition.targets:
@@ -206,7 +206,7 @@ async def run_checks(
         sys.exit(1)
 
 
-def get_modules(check_definitions: List[InfrahubCheckDefinitionConfig]) -> List[CheckModule]:
+def get_modules(check_definitions: list[InfrahubCheckDefinitionConfig]) -> list[CheckModule]:
     log = logging.getLogger("infrahub")
     modules = []
     for check_definition in check_definitions:

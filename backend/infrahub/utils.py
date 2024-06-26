@@ -2,7 +2,7 @@ import hashlib
 import os
 from enum import Enum, EnumMeta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 KWARGS_TO_DROP = ["session"]
 
@@ -48,7 +48,7 @@ class BaseEnum(Enum, metaclass=MetaEnum):
 
 class InfrahubNumberEnum(int, BaseEnum):
     @classmethod
-    def available_types(cls) -> List[int]:
+    def available_types(cls) -> list[int]:
         return [cls.__members__[member].value for member in list(cls.__members__)]
 
     def get_hash(self) -> str:
@@ -57,14 +57,14 @@ class InfrahubNumberEnum(int, BaseEnum):
 
 class InfrahubStringEnum(str, BaseEnum):
     @classmethod
-    def available_types(cls) -> List[str]:
+    def available_types(cls) -> list[str]:
         return [cls.__members__[member].value for member in list(cls.__members__)]
 
     def get_hash(self) -> str:
         return hashlib.md5(self.value.encode(), usedforsecurity=False).hexdigest()
 
 
-def get_nested_dict(nested_dict: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
+def get_nested_dict(nested_dict: dict[str, Any], keys: list[str]) -> dict[str, Any]:
     current_level = nested_dict
     for key in keys:
         # Check if the key exists and leads to a dictionary

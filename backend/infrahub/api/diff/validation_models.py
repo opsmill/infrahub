@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -23,7 +23,7 @@ class DiffQueryValidated(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_time_from_if_required(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_time_from_if_required(cls, values: dict[str, Any]) -> dict[str, Any]:
         branch: Optional[Branch] = values.get("branch")
         time_from: Optional[Timestamp] = values.get("time_from")
         if getattr(branch, "is_default", False) and not time_from:

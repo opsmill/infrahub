@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import enum
-from typing import List
 
 from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.exceptions import ValidationError
@@ -273,7 +272,7 @@ class AttributeDBNodeType(InfrahubStringEnum):
     IPNETWORK = "ipnetwork"
 
 
-RESTRICTED_NAMESPACES: List[str] = [
+RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
     # "Builtin",

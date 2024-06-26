@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import httpx
 import pytest
@@ -8,10 +8,7 @@ import ujson
 from fastapi.testclient import TestClient
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.core.initialization import (
-    first_time_initialization,
-    initialization,
-)
+from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
@@ -36,12 +33,7 @@ def add_tracker():
 # pylint: disable=redefined-outer-name
 class InfrahubTestClient(TestClient):
     def _request(
-        self,
-        url: str,
-        method: HTTPMethod,
-        headers: Dict[str, Any],
-        timeout: int,
-        payload: Optional[Dict] = None,
+        self, url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: Optional[dict] = None
     ) -> httpx.Response:
         content = None
         if payload:
@@ -56,22 +48,12 @@ class InfrahubTestClient(TestClient):
             )
 
     async def async_request(
-        self,
-        url: str,
-        method: HTTPMethod,
-        headers: Dict[str, Any],
-        timeout: int,
-        payload: Optional[Dict] = None,
+        self, url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: Optional[dict] = None
     ) -> httpx.Response:
         return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
     def sync_request(
-        self,
-        url: str,
-        method: HTTPMethod,
-        headers: Dict[str, Any],
-        timeout: int,
-        payload: Optional[Dict] = None,
+        self, url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: Optional[dict] = None
     ) -> httpx.Response:
         return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
@@ -373,7 +355,7 @@ async def gqlquery03(db: InfrahubDatabase, repo01: Node, tag_blue: Node, tag_red
 
 
 @pytest.fixture
-async def schema_extension_01() -> Dict[str, Any]:
+async def schema_extension_01() -> dict[str, Any]:
     return {
         "version": "1.0",
         "nodes": [
@@ -419,7 +401,7 @@ async def schema_extension_01() -> Dict[str, Any]:
 
 
 @pytest.fixture
-async def schema_extension_02() -> Dict[str, Any]:
+async def schema_extension_02() -> dict[str, Any]:
     return {
         "version": "1.0",
         "nodes": [
@@ -519,8 +501,8 @@ async def ipam_schema() -> SchemaRoot:
 
 class BusRecorder(InfrahubMessageBus):
     def __init__(self, component_type: Optional[ComponentType] = None):
-        self.messages: List[InfrahubMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
+        self.messages: list[InfrahubMessage] = []
+        self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
 
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
@@ -531,5 +513,5 @@ class BusRecorder(InfrahubMessageBus):
         self.messages_per_routing_key[routing_key].append(message)
 
     @property
-    def seen_routing_keys(self) -> List[str]:
+    def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())

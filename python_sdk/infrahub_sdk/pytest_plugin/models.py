@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import ujson
 import yaml
@@ -99,7 +99,7 @@ class InfrahubInputOutputTest(InfrahubBaseTest):
 
 
 class InfrahubIntegrationTest(InfrahubInputOutputTest):
-    variables: Union[Path, Dict[str, Any]] = Field(
+    variables: Union[Path, dict[str, Any]] = Field(
         Path("variables.json"), description="Variables and corresponding values to pass to the GraphQL query"
     )
 
@@ -118,7 +118,7 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
                 )
             self.variables = results[0]
 
-    def get_variables_data(self) -> Dict[str, Any]:
+    def get_variables_data(self) -> dict[str, Any]:
         if isinstance(self.variables, dict):
             return self.variables
         return self.parse_user_provided_data(self.variables)
@@ -194,10 +194,10 @@ class InfrahubTest(BaseModel):
 class InfrahubTestGroup(BaseModel):
     resource: InfrahubTestResource
     resource_name: str
-    tests: List[InfrahubTest]
+    tests: list[InfrahubTest]
 
 
 class InfrahubTestFileV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
     version: Optional[str] = "1.0"
-    infrahub_tests: List[InfrahubTestGroup]
+    infrahub_tests: list[InfrahubTestGroup]

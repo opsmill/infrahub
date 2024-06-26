@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import Field
 
@@ -23,7 +23,7 @@ class SchemaMigrationPath(InfrahubMessage):
 
 
 class SchemaMigrationPathResponseData(InfrahubResponseData):
-    errors: List[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
     migration_name: Optional[str] = None
     nbr_migrations_executed: Optional[int] = None
     schema_path: Optional[SchemaPath] = None

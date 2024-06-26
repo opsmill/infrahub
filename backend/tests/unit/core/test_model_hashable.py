@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from deepdiff import DeepDiff
 
@@ -20,7 +20,7 @@ def test_hashable_diff():
 
 def test_model_sorting():
     class MySchema(HashableModel):
-        _sort_by: List[str] = ["first_name", "last_name"]
+        _sort_by: list[str] = ["first_name", "last_name"]
         first_name: str
         last_name: str
 
@@ -37,13 +37,13 @@ def test_model_sorting():
 
 def test_model_hashing():
     class MySubElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
 
     class MyTopElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
-        subs: List[MySubElement]
+        subs: list[MySubElement]
 
     node1 = MyTopElement(
         name="node1", subs=[MySubElement(name="orange"), MySubElement(name="apple"), MySubElement(name="coconut")]
@@ -57,14 +57,14 @@ def test_model_hashing():
 
 def test_hashing_dict():
     class MySubElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[dict] = None
 
     class MyTopElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
-        subs: List[MySubElement]
+        subs: list[MySubElement]
 
     node1 = MyTopElement(
         name="node1", subs=[MySubElement(name="orange", value1={"bob": "Alice"}), MySubElement(name="coconut")]
@@ -78,18 +78,18 @@ def test_hashing_dict():
 
 def test_update():
     class MySubElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[str] = None
         value2: Optional[int] = None
 
     class MyTopElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[str] = None
         value2: Optional[int] = None
-        value3: List[str]
-        subs: List[MySubElement]
+        value3: list[str]
+        subs: list[MySubElement]
 
     node1 = MyTopElement(
         name="node1",
@@ -124,18 +124,18 @@ def test_update():
 
 def test_update_element_absent():
     class MySubElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[str] = None
         value2: Optional[int] = None
 
     class MyTopElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[str] = None
         value2: Optional[int] = None
-        value3: List[str]
-        subs: List[MySubElement]
+        value3: list[str]
+        subs: list[MySubElement]
 
     node1 = MyTopElement(
         name="node1",
@@ -172,18 +172,18 @@ def test_update_element_absent():
 
 def test_update_rename():
     class MySubElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[str] = None
         value2: Optional[int] = None
 
     class MyTopElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[str] = None
         value2: Optional[int] = None
-        value3: List[str]
-        subs: List[MySubElement]
+        value3: list[str]
+        subs: list[MySubElement]
 
     node1 = MyTopElement(
         name="node1",
@@ -226,14 +226,14 @@ def test_update_rename():
 
 def test_diff_simple_object():
     class ModelA(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: str
         value2: int
         value3: dict
 
     class ModelB(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value2: int
         value3: dict
@@ -257,19 +257,19 @@ def test_diff_simple_object():
 
 def test_diff_nested_objects():
     class MySubElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[str] = None
         value2: Optional[int] = None
 
     class MyTopElement(HashableModel):
-        _sort_by: List[str] = ["name"]
+        _sort_by: list[str] = ["name"]
         name: str
         value1: Optional[str] = None
         value2: Optional[int] = None
-        value3: List[str]
+        value3: list[str]
         value4: MySubElement
-        subs: List[MySubElement]
+        subs: list[MySubElement]
 
     node1 = MyTopElement(
         name="node1",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
@@ -26,13 +26,13 @@ class Relationships(ObjectType):
         limit: int = 10,
         offset: int = 0,
         excluded_namespaces: Optional[list[str]] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         context: GraphqlContext = info.context
 
         fields = await extract_fields_first_node(info)
         excluded_namespaces = excluded_namespaces or []
 
-        response: Dict[str, Any] = {"edges": [], "count": None}
+        response: dict[str, Any] = {"edges": [], "count": None}
 
         async with context.db.start_session() as db:
             query = await RelationshipGetByIdentifierQuery.init(

@@ -6,7 +6,7 @@ import logging
 import warnings
 from functools import wraps
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, MutableMapping, Optional, TypedDict, Union
 
 import httpx
 import ujson
@@ -56,7 +56,7 @@ class NodeDiff(ExtensionTypedDict):
     id: str
     action: str
     display_label: str
-    elements: List[NodeDiffElement]
+    elements: list[NodeDiffElement]
 
 
 class NodeDiffElement(ExtensionTypedDict):
@@ -64,7 +64,7 @@ class NodeDiffElement(ExtensionTypedDict):
     element_type: str
     action: str
     summary: NodeDiffSummary
-    peers: NotRequired[List[NodeDiffPeer]]
+    peers: NotRequired[list[NodeDiffPeer]]
 
 
 class NodeDiffSummary(ExtensionTypedDict):
@@ -79,13 +79,13 @@ class NodeDiffPeer(ExtensionTypedDict):
 
 
 class ProcessRelationsNode(TypedDict):
-    nodes: List[InfrahubNode]
-    related_nodes: List[InfrahubNode]
+    nodes: list[InfrahubNode]
+    related_nodes: list[InfrahubNode]
 
 
 class ProcessRelationsNodeSync(TypedDict):
-    nodes: List[InfrahubNodeSync]
-    related_nodes: List[InfrahubNodeSync]
+    nodes: list[InfrahubNodeSync]
+    related_nodes: list[InfrahubNodeSync]
 
 
 def handle_relogin(func: Callable[..., Coroutine[Any, Any, httpx.Response]]):  # type: ignore[no-untyped-def]
@@ -122,7 +122,7 @@ class BaseClient:
     def __init__(
         self,
         address: str = "",
-        config: Optional[Union[Config, Dict[str, Any]]] = None,
+        config: Optional[Union[Config, dict[str, Any]]] = None,
     ):
         self.client = None
         self.headers = {"content-type": "application/json"}
@@ -171,7 +171,7 @@ class BaseClient:
     def start_tracking(
         self,
         identifier: Optional[str] = None,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         delete_unused_nodes: bool = False,
         group_type: Optional[str] = None,
     ) -> Self:
@@ -185,7 +185,7 @@ class BaseClient:
     def set_context_properties(
         self,
         identifier: str,
-        params: Optional[Dict[str, str]] = None,
+        params: Optional[dict[str, str]] = None,
         delete_unused_nodes: bool = True,
         reset: bool = True,
         group_type: Optional[str] = None,
@@ -222,7 +222,7 @@ class BaseClient:
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
     ) -> Mutation:
         input_data: dict[str, Any] = {"id": resource_pool_id}
 
@@ -249,7 +249,7 @@ class BaseClient:
         prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
         prefix_type: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
     ) -> Mutation:
         input_data: dict[str, Any] = {"id": resource_pool_id}
 
@@ -292,7 +292,7 @@ class InfrahubClient(BaseClient):
     async def init(
         cls,
         address: str = "",
-        config: Optional[Union[Config, Dict[str, Any]]] = None,
+        config: Optional[Union[Config, dict[str, Any]]] = None,
     ) -> InfrahubClient:
         warnings.warn(
             "InfrahubClient.init has been deprecated and will be removed in Infrahub SDK 0.14.0 or the next major version",
@@ -329,8 +329,8 @@ class InfrahubClient(BaseClient):
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         populate_store: bool = False,
         fragment: bool = False,
         prefetch_relationships: bool = False,
@@ -371,12 +371,12 @@ class InfrahubClient(BaseClient):
         return results[0]
 
     async def _process_nodes_and_relationships(
-        self, response: Dict[str, Any], schema_kind: str, branch: str, prefetch_relationships: bool
+        self, response: dict[str, Any], schema_kind: str, branch: str, prefetch_relationships: bool
     ) -> ProcessRelationsNode:
         """Processes InfrahubNode and their Relationships from the GraphQL query response.
 
         Args:
-            response (Dict[str, Any]): The response from the GraphQL query.
+            response (dict[str, Any]): The response from the GraphQL query.
             schema_kind (str): The kind of schema being queried.
             branch (str): The branch name.
             prefetch_relationships (bool): Flag to indicate whether to prefetch relationship data.
@@ -387,8 +387,8 @@ class InfrahubClient(BaseClient):
                 - 'related_nodes': A list of InfrahubNode objects representing the related nodes
         """
 
-        nodes: List[InfrahubNode] = []
-        related_nodes: List[InfrahubNode] = []
+        nodes: list[InfrahubNode] = []
+        related_nodes: list[InfrahubNode] = []
 
         for item in response.get(schema_kind, {}).get("edges", []):
             node = await InfrahubNode.from_graphql(client=self, branch=branch, data=item)
@@ -407,11 +407,11 @@ class InfrahubClient(BaseClient):
         populate_store: bool = False,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
-    ) -> List[InfrahubNode]:
+    ) -> list[InfrahubNode]:
         """Retrieve all nodes of a given kind
 
         Args:
@@ -421,13 +421,13 @@ class InfrahubClient(BaseClient):
             populate_store (bool, optional): Flag to indicate whether to populate the store with the retrieved nodes.
             offset (int, optional): The offset for pagination.
             limit (int, optional): The limit for pagination.
-            include (List[str], optional): List of attributes or relationships to include in the query.
-            exclude (List[str], optional): List of attributes or relationships to exclude from the query.
+            include (list[str], optional): List of attributes or relationships to include in the query.
+            exclude (list[str], optional): List of attributes or relationships to exclude from the query.
             fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
             prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
 
         Returns:
-            List[InfrahubNode]: List of Nodes
+            list[InfrahubNode]: List of Nodes
         """
         return await self.filters(
             kind=kind,
@@ -450,13 +450,13 @@ class InfrahubClient(BaseClient):
         populate_store: bool = False,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
         partial_match: bool = False,
         **kwargs: Any,
-    ) -> List[InfrahubNode]:
+    ) -> list[InfrahubNode]:
         """Retrieve nodes of a given kind based on provided filters.
 
         Args:
@@ -466,15 +466,15 @@ class InfrahubClient(BaseClient):
             populate_store (bool, optional): Flag to indicate whether to populate the store with the retrieved nodes.
             offset (int, optional): The offset for pagination.
             limit (int, optional): The limit for pagination.
-            include (List[str], optional): List of attributes or relationships to include in the query.
-            exclude (List[str], optional): List of attributes or relationships to exclude from the query.
+            include (list[str], optional): List of attributes or relationships to include in the query.
+            exclude (list[str], optional): List of attributes or relationships to exclude from the query.
             fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
             prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
             partial_match (bool, optional): Allow partial match of filter criteria for the query.
             **kwargs (Any): Additional filter criteria for the query.
 
         Returns:
-            List[InfrahubNodeSync]: List of Nodes that match the given filters.
+            list[InfrahubNodeSync]: List of Nodes that match the given filters.
         """
         schema = await self.schema.get(kind=kind)
 
@@ -488,8 +488,8 @@ class InfrahubClient(BaseClient):
         if filters:
             node.validate_filters(filters=filters)
 
-        nodes: List[InfrahubNode] = []
-        related_nodes: List[InfrahubNode] = []
+        nodes: list[InfrahubNode] = []
+        related_nodes: list[InfrahubNode] = []
 
         has_remaining_items = True
         page_number = 1
@@ -551,7 +551,7 @@ class InfrahubClient(BaseClient):
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
         tracker: Optional[str] = None,
-    ) -> Dict:
+    ) -> dict:
         """Execute a GraphQL query (or mutation).
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
 
@@ -571,7 +571,7 @@ class InfrahubClient(BaseClient):
 
         url = self._graphql_url(branch_name=branch_name, at=at)
 
-        payload: Dict[str, Union[str, dict]] = {"query": query}
+        payload: dict[str, Union[str, dict]] = {"query": query}
         if variables:
             payload["variables"] = variables
 
@@ -663,30 +663,20 @@ class InfrahubClient(BaseClient):
         )
 
     async def _request(
-        self,
-        url: str,
-        method: HTTPMethod,
-        headers: Dict[str, Any],
-        timeout: int,
-        payload: Optional[Dict] = None,
+        self, url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: Optional[dict] = None
     ) -> httpx.Response:
         response = await self._request_method(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
         self._record(response)
         return response
 
     async def _default_request_method(
-        self,
-        url: str,
-        method: HTTPMethod,
-        headers: Dict[str, Any],
-        timeout: int,
-        payload: Optional[Dict] = None,
+        self, url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: Optional[dict] = None
     ) -> httpx.Response:
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if payload:
             params["json"] = payload
 
-        proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
+        proxy_config: dict[str, Union[str, dict[str, httpx.HTTPTransport]]] = {}
         if self.config.proxy:
             proxy_config["proxy"] = self.config.proxy
         elif self.config.proxy_mounts.is_set:
@@ -771,14 +761,14 @@ class InfrahubClient(BaseClient):
         name: str,
         variables: Optional[dict] = None,
         update_group: bool = False,
-        subscribers: Optional[List[str]] = None,
+        subscribers: Optional[list[str]] = None,
         params: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[str] = None,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Dict:
+    ) -> dict:
         url = f"{self.address}/api/query/{name}"
         url_params = copy.deepcopy(params or {})
         headers = copy.copy(self.headers or {})
@@ -829,7 +819,7 @@ class InfrahubClient(BaseClient):
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> List[NodeDiff]:
+    ) -> list[NodeDiff]:
         query = """
             query {
                 DiffSummary {
@@ -872,7 +862,7 @@ class InfrahubClient(BaseClient):
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
         branch: Optional[str] = None,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
@@ -926,7 +916,7 @@ class InfrahubClient(BaseClient):
         prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
         prefix_type: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
         branch: Optional[str] = None,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
@@ -975,8 +965,8 @@ class InfrahubClient(BaseClient):
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
     async def get_list_repositories(
-        self, branches: Optional[Dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
-    ) -> Dict[str, RepositoryData]:
+        self, branches: Optional[dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
+    ) -> dict[str, RepositoryData]:
         if not branches:
             branches = await self.branch.all()  # type: ignore
 
@@ -1029,7 +1019,7 @@ class InfrahubClient(BaseClient):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:
@@ -1054,7 +1044,7 @@ class InfrahubClientSync(BaseClient):
     def init(
         cls,
         address: str = "",
-        config: Optional[Union[Config, Dict[str, Any]]] = None,
+        config: Optional[Union[Config, dict[str, Any]]] = None,
     ) -> InfrahubClientSync:
         warnings.warn(
             "InfrahubClientSync.init has been deprecated and will be removed in Infrahub SDK 0.14.0 or the next major version",
@@ -1101,7 +1091,7 @@ class InfrahubClientSync(BaseClient):
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
         tracker: Optional[str] = None,
-    ) -> Dict:
+    ) -> dict:
         """Execute a GraphQL query (or mutation).
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
 
@@ -1121,7 +1111,7 @@ class InfrahubClientSync(BaseClient):
 
         url = self._graphql_url(branch_name=branch_name, at=at)
 
-        payload: Dict[str, Union[str, dict]] = {"query": query}
+        payload: dict[str, Union[str, dict]] = {"query": query}
         if variables:
             payload["variables"] = variables
 
@@ -1178,11 +1168,11 @@ class InfrahubClientSync(BaseClient):
         populate_store: bool = False,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
-    ) -> List[InfrahubNodeSync]:
+    ) -> list[InfrahubNodeSync]:
         """Retrieve all nodes of a given kind
 
         Args:
@@ -1192,13 +1182,13 @@ class InfrahubClientSync(BaseClient):
             populate_store (bool, optional): Flag to indicate whether to populate the store with the retrieved nodes.
             offset (int, optional): The offset for pagination.
             limit (int, optional): The limit for pagination.
-            include (List[str], optional): List of attributes or relationships to include in the query.
-            exclude (List[str], optional): List of attributes or relationships to exclude from the query.
+            include (list[str], optional): List of attributes or relationships to include in the query.
+            exclude (list[str], optional): List of attributes or relationships to exclude from the query.
             fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
             prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
 
         Returns:
-            List[InfrahubNodeSync]: List of Nodes
+            list[InfrahubNodeSync]: List of Nodes
         """
         return self.filters(
             kind=kind,
@@ -1214,12 +1204,12 @@ class InfrahubClientSync(BaseClient):
         )
 
     def _process_nodes_and_relationships(
-        self, response: Dict[str, Any], schema_kind: str, branch: str, prefetch_relationships: bool
+        self, response: dict[str, Any], schema_kind: str, branch: str, prefetch_relationships: bool
     ) -> ProcessRelationsNodeSync:
         """Processes InfrahubNodeSync and their Relationships from the GraphQL query response.
 
         Args:
-            response (Dict[str, Any]): The response from the GraphQL query.
+            response (dict[str, Any]): The response from the GraphQL query.
             schema_kind (str): The kind of schema being queried.
             branch (str): The branch name.
             prefetch_relationships (bool): Flag to indicate whether to prefetch relationship data.
@@ -1230,8 +1220,8 @@ class InfrahubClientSync(BaseClient):
                 - 'related_nodes': A list of InfrahubNodeSync objects representing the related nodes
         """
 
-        nodes: List[InfrahubNodeSync] = []
-        related_nodes: List[InfrahubNodeSync] = []
+        nodes: list[InfrahubNodeSync] = []
+        related_nodes: list[InfrahubNodeSync] = []
 
         for item in response.get(schema_kind, {}).get("edges", []):
             node = InfrahubNodeSync.from_graphql(client=self, branch=branch, data=item)
@@ -1250,13 +1240,13 @@ class InfrahubClientSync(BaseClient):
         populate_store: bool = False,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
         partial_match: bool = False,
         **kwargs: Any,
-    ) -> List[InfrahubNodeSync]:
+    ) -> list[InfrahubNodeSync]:
         """Retrieve nodes of a given kind based on provided filters.
 
         Args:
@@ -1266,15 +1256,15 @@ class InfrahubClientSync(BaseClient):
             populate_store (bool, optional): Flag to indicate whether to populate the store with the retrieved nodes.
             offset (int, optional): The offset for pagination.
             limit (int, optional): The limit for pagination.
-            include (List[str], optional): List of attributes or relationships to include in the query.
-            exclude (List[str], optional): List of attributes or relationships to exclude from the query.
+            include (list[str], optional): List of attributes or relationships to include in the query.
+            exclude (list[str], optional): List of attributes or relationships to exclude from the query.
             fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
             prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
             partial_match (bool, optional): Allow partial match of filter criteria for the query.
             **kwargs (Any): Additional filter criteria for the query.
 
         Returns:
-            List[InfrahubNodeSync]: List of Nodes that match the given filters.
+            list[InfrahubNodeSync]: List of Nodes that match the given filters.
         """
         schema = self.schema.get(kind=kind)
 
@@ -1288,8 +1278,8 @@ class InfrahubClientSync(BaseClient):
         if filters:
             node.validate_filters(filters=filters)
 
-        nodes: List[InfrahubNodeSync] = []
-        related_nodes: List[InfrahubNodeSync] = []
+        nodes: list[InfrahubNodeSync] = []
+        related_nodes: list[InfrahubNodeSync] = []
 
         has_remaining_items = True
         page_number = 1
@@ -1344,8 +1334,8 @@ class InfrahubClientSync(BaseClient):
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         populate_store: bool = False,
         fragment: bool = False,
         prefetch_relationships: bool = False,
@@ -1386,8 +1376,8 @@ class InfrahubClientSync(BaseClient):
         return results[0]
 
     def get_list_repositories(
-        self, branches: Optional[Dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
-    ) -> Dict[str, RepositoryData]:
+        self, branches: Optional[dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
+    ) -> dict[str, RepositoryData]:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
@@ -1397,14 +1387,14 @@ class InfrahubClientSync(BaseClient):
         name: str,
         variables: Optional[dict] = None,
         update_group: bool = False,
-        subscribers: Optional[List[str]] = None,
+        subscribers: Optional[list[str]] = None,
         params: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[str] = None,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Dict:
+    ) -> dict:
         url = f"{self.address}/api/query/{name}"
         url_params = copy.deepcopy(params or {})
         headers = copy.copy(self.headers or {})
@@ -1454,7 +1444,7 @@ class InfrahubClientSync(BaseClient):
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> List[NodeDiff]:
+    ) -> list[NodeDiff]:
         query = """
             query {
                 DiffSummary {
@@ -1497,7 +1487,7 @@ class InfrahubClientSync(BaseClient):
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
         branch: Optional[str] = None,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
@@ -1547,7 +1537,7 @@ class InfrahubClientSync(BaseClient):
         prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
         prefix_type: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
         branch: Optional[str] = None,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
@@ -1640,30 +1630,20 @@ class InfrahubClientSync(BaseClient):
         )
 
     def _request(
-        self,
-        url: str,
-        method: HTTPMethod,
-        headers: Dict[str, Any],
-        timeout: int,
-        payload: Optional[Dict] = None,
+        self, url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: Optional[dict] = None
     ) -> httpx.Response:
         response = self._request_method(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
         self._record(response)
         return response
 
     def _default_request_method(
-        self,
-        url: str,
-        method: HTTPMethod,
-        headers: Dict[str, Any],
-        timeout: int,
-        payload: Optional[Dict] = None,
+        self, url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: Optional[dict] = None
     ) -> httpx.Response:
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if payload:
             params["json"] = payload
 
-        proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
+        proxy_config: dict[str, Union[str, dict[str, httpx.HTTPTransport]]] = {}
         if self.config.proxy:
             proxy_config["proxy"] = self.config.proxy
         elif self.config.proxy_mounts.is_set:
@@ -1748,7 +1728,7 @@ class InfrahubClientSync(BaseClient):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:

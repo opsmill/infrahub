@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import AllowOverrideType, InfrahubKind
 
@@ -115,11 +115,11 @@ class NodeSchema(GeneratedNodeSchema):
             raise TypeError
         return schema
 
-    def get_labels(self) -> List[str]:
+    def get_labels(self) -> list[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""
 
-        labels: List[str] = [self.kind] + self.inherit_from
+        labels: list[str] = [self.kind] + self.inherit_from
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
             labels.append(InfrahubKind.NODE)
         return labels

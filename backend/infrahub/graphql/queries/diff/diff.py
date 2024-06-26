@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from graphene import Boolean, Field, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
@@ -38,7 +38,7 @@ class DiffSummaryElementInterface(GrapheneInterface):
     summary = Field(DiffSummaryCount, required=True)
 
     @classmethod
-    def resolve_type(cls, instance: Dict[str, Any], info: Any) -> type:
+    def resolve_type(cls, instance: dict[str, Any], info: Any) -> type:
         if str(instance["element_type"]).lower() == DiffElementType.RELATIONSHIP_MANY.value.lower() or instance.get(
             "peers"
         ):
@@ -80,7 +80,7 @@ class DiffSummaryEntry(ObjectType):
         branch_only: bool,
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
-    ) -> list[Dict[str, Union[str, list[Dict[str, str]]]]]:
+    ) -> list[dict[str, Union[str, list[dict[str, str]]]]]:
         return await DiffSummaryEntry.get_summary(
             info=info,
             branch_only=branch_only,
@@ -95,26 +95,26 @@ class DiffSummaryEntry(ObjectType):
         branch_only: bool,
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
-    ) -> list[Dict[str, Union[str, list[Dict[str, str]]]]]:
+    ) -> list[dict[str, Union[str, list[dict[str, str]]]]]:
         context: GraphqlContext = info.context
         diff = await BranchDiffer.init(
             db=context.db, branch=context.branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only
         )
         diff_payload_builder = DiffPayloadBuilder(db=context.db, diff=diff)
         branch_diff_nodes = await diff_payload_builder.get_branch_diff_nodes()
-        serialized_summaries: List[Dict[str, Any]] = []
+        serialized_summaries: List[dict[str, Any]] = []
 
         for diff_node in branch_diff_nodes:
-            serial_summary: Dict[str, Any] = {
+            serial_summary: dict[str, Any] = {
                 "branch": diff_node.branch,
                 "id": diff_node.id,
                 "kind": diff_node.kind,
                 "action": diff_node.action,
                 "display_label": diff_node.display_label,
             }
-            serial_elements: List[Dict[str, Any]] = []
+            serial_elements: List[dict[str, Any]] = []
             for element_name, element in diff_node.elements.items():
-                serial_element: Dict[str, Any] = {
+                serial_element: dict[str, Any] = {
                     "element_type": element.type.value,
                     "name": element_name,
                     "action": element.action,

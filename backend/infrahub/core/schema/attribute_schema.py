@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import field_validator, model_validator
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class AttributeSchema(GeneratedAttributeSchema):
-    _sort_by: List[str] = ["name"]
+    _sort_by: list[str] = ["name"]
 
     @property
     def is_attribute(self) -> bool:
@@ -40,7 +40,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_dropdown_choices(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_dropdown_choices(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that choices are defined for a dropdown but not for other kinds."""
         if values.get("kind") != "Dropdown" and values.get("choices"):
             raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {values['kind'] }")
@@ -62,7 +62,7 @@ class AttributeSchema(GeneratedAttributeSchema):
             raise ValueError("branch hasn't been defined yet")
         return self.branch
 
-    def get_enum_class(self) -> Type[enum.Enum]:
+    def get_enum_class(self) -> type[enum.Enum]:
         if not self.enum:
             raise ValueError(f"{self.name} is not an Enum")
         return generate_python_enum(name=f"{self.name.title()}Enum", options=self.enum)
@@ -92,7 +92,7 @@ class AttributeSchema(GeneratedAttributeSchema):
         db: Optional[InfrahubDatabase] = None,
         partial_match: bool = False,
         support_profiles: bool = False,
-    ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
+    ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         if self.enum:
             filter_value = self.convert_enum_to_value(filter_value)
 

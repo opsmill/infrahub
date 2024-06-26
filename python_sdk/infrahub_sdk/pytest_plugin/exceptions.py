@@ -1,5 +1,3 @@
-from typing import List, Tuple
-
 from rich.syntax import Syntax
 from rich.traceback import Frame, Traceback
 
@@ -39,7 +37,7 @@ class Jinja2TransformError(Error):
 
 
 class Jinja2TransformUndefinedError(Error):
-    def __init__(self, name: str, rtb: Traceback, errors: List[Tuple[Frame, Syntax]], message: str = ""):
+    def __init__(self, name: str, rtb: Traceback, errors: list[tuple[Frame, Syntax]], message: str = ""):
         self.rtb = rtb
         self.errors = errors
         self.message = message or f"Unable to render Jinja2 transform {name!r}."

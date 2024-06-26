@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from graphene import Field, Int, String
 from graphene.types.generic import GenericScalar
@@ -21,9 +21,9 @@ async def resolver_graphql_query(
     parent: dict,  # pylint: disable=unused-argument
     info: GraphQLResolveInfo,
     name: str,
-    params: Optional[Dict[str, Any]] = None,
+    params: Optional[dict[str, Any]] = None,
     interval: Optional[int] = 10,
-) -> Iterable[Dict]:
+) -> Iterable[dict]:
     context: GraphqlContext = info.context
     at = Timestamp()
 

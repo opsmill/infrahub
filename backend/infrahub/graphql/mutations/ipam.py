@@ -1,5 +1,5 @@
 import ipaddress
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
@@ -49,7 +49,7 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
         cls,
         schema: NodeSchema,
         _meta: Optional[Any] = None,
-        **options: Dict[str, Any],
+        **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
@@ -82,7 +82,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         cls,
         schema: NodeSchema,
         _meta: Optional[Any] = None,
-        **options: Dict[str, Any],
+        **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
@@ -104,7 +104,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         at: str,
         database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self]:
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
         ip_address = ipaddress.ip_interface(data["address"]["value"])
@@ -132,7 +132,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
-    ) -> Tuple[Node, Self]:
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
 
@@ -170,9 +170,9 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
-        node_getters: List[MutationNodeGetterInterface],
+        node_getters: list[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self, bool]:
+    ) -> tuple[Node, Self, bool]:
         context: GraphqlContext = info.context
         db = database or context.db
 
@@ -201,7 +201,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         cls,
         schema: NodeSchema,
         _meta: Optional[Any] = None,
-        **options: Dict[str, Any],
+        **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
@@ -223,7 +223,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         at: str,
         database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self]:
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
         ip_network = ipaddress.ip_network(data["prefix"]["value"])
@@ -251,7 +251,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
-    ) -> Tuple[Node, Self]:
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
 
@@ -289,7 +289,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
-        node_getters: List[MutationNodeGetterInterface],
+        node_getters: list[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ):
         context: GraphqlContext = info.context
@@ -311,7 +311,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ) -> Tuple[Node, Self]:
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = context.db
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.query import QueryType
@@ -49,12 +49,7 @@ class TaskNodeQuery(StandardNodeQuery):
 
     type: QueryType = QueryType.READ
 
-    def __init__(
-        self,
-        ids: List[str],
-        related_nodes: List[str],
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, ids: list[str], related_nodes: list[str], **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.ids = ids
         self.related_nodes = related_nodes

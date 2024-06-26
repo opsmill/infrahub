@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from graphql import (
     DocumentNode,
@@ -32,10 +32,10 @@ class GraphQLQueryAnalyzer:
         self.query: str = query
         self.schema: Optional[GraphQLSchema] = schema
         self.document: DocumentNode = parse(self.query)
-        self._fields: Optional[Dict] = None
+        self._fields: Optional[dict] = None
 
     @property
-    def is_valid(self) -> Tuple[bool, Optional[List[GraphQLError]]]:
+    def is_valid(self) -> tuple[bool, Optional[list[GraphQLError]]]:
         if self.schema is None:
             return False, [GraphQLError("Schema is not provided")]
 
@@ -50,7 +50,7 @@ class GraphQLQueryAnalyzer:
         return len(self.document.definitions)
 
     @property
-    def operations(self) -> List[GraphQLOperation]:
+    def operations(self) -> list[GraphQLOperation]:
         operations = []
         for definition in self.document.definitions:
             if not isinstance(definition, OperationDefinitionNode):
@@ -67,7 +67,7 @@ class GraphQLQueryAnalyzer:
         return any(op.operation_type == OperationType.MUTATION for op in self.operations)
 
     @property
-    def variables(self) -> List[GraphQLQueryVariable]:
+    def variables(self) -> list[GraphQLQueryVariable]:
         response = []
         for definition in self.document.definitions:
             variable_definitions = getattr(definition, "variable_definitions", None)
@@ -105,7 +105,7 @@ class GraphQLQueryAnalyzer:
         fields = await self.get_fields()
         return calculate_dict_height(data=fields)
 
-    async def get_fields(self) -> Dict[str, Any]:
+    async def get_fields(self) -> dict[str, Any]:
         if not self._fields:
             fields = {}
             for definition in self.document.definitions:

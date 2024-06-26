@@ -4,7 +4,7 @@ import asyncio
 import importlib
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from git import Repo
 
@@ -72,7 +72,7 @@ class InfrahubTransform:
     def transform(self, data: dict) -> Any:
         pass
 
-    async def collect_data(self) -> Dict:
+    async def collect_data(self) -> dict:
         """Query the result of the GraphQL Query defined in self.query and return the result"""
 
         return await self.client.query_gql_query(name=self.query, branch_name=self.branch_name)

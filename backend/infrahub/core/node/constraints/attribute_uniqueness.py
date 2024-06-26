@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -18,7 +18,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
         self.db = db
         self.branch = branch
 
-    async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None) -> None:
+    async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[list[str]] = None) -> None:
         at = Timestamp(at)
         node_schema = node.get_schema()
         for unique_attr in node_schema.unique_attributes:

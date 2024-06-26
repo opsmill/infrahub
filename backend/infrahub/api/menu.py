@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -23,7 +23,7 @@ class InterfaceMenu(BaseModel):
     title: str = Field(..., description="Title of the menu item")
     path: str = Field(default="", description="URL endpoint if applicable")
     icon: str = Field(default="", description="The icon to show for the current view")
-    children: List[InterfaceMenu] = Field(default_factory=list, description="Child objects")
+    children: list[InterfaceMenu] = Field(default_factory=list, description="Child objects")
     kind: str = Field(default="")
 
     def __lt__(self, other: object) -> bool:
@@ -35,7 +35,7 @@ class InterfaceMenu(BaseModel):
         return f"All {self.title}(s)"
 
 
-def add_to_menu(structure: Dict[str, List[InterfaceMenu]], menu_item: InterfaceMenu) -> None:
+def add_to_menu(structure: dict[str, list[InterfaceMenu]], menu_item: InterfaceMenu) -> None:
     all_items = InterfaceMenu(title=menu_item.list_title(), path=menu_item.path, icon=menu_item.icon)
     menu_item.path = ""
     menu_item.icon = ""
@@ -54,9 +54,7 @@ def _extract_node_icon(model: MainSchemaTypes) -> str:
 
 
 @router.get("")
-async def get_menu(
-    branch: Branch = Depends(get_branch_dep),
-) -> List[InterfaceMenu]:
+async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMenu]:
     log.info("menu_request", branch=branch.name)
 
     full_schema = registry.schema.get_full(branch=branch, duplicate=False)
@@ -65,7 +63,7 @@ async def get_menu(
         children=[],
     )
 
-    structure: Dict[str, List[InterfaceMenu]] = {}
+    structure: dict[str, list[InterfaceMenu]] = {}
 
     ipam = InterfaceMenu(
         title="IPAM",

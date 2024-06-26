@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,13 +29,13 @@ class NodeKind(BaseModel):
 
 
 class SchemaBranchDiff(BaseModel):
-    nodes: List[str] = Field(default_factory=list)
-    generics: List[str] = Field(default_factory=list)
+    nodes: list[str] = Field(default_factory=list)
+    generics: list[str] = Field(default_factory=list)
 
     def to_string(self) -> str:
         return ", ".join(self.nodes + self.generics)
 
-    def to_list(self) -> List[str]:
+    def to_list(self) -> list[str]:
         return self.nodes + self.generics
 
     @property
@@ -47,8 +47,8 @@ class SchemaBranchDiff(BaseModel):
 
 class SchemaBranchHash(BaseModel):
     main: str
-    nodes: Dict[str, str] = Field(default_factory=dict)
-    generics: Dict[str, str] = Field(default_factory=dict)
+    nodes: dict[str, str] = Field(default_factory=dict)
+    generics: dict[str, str] = Field(default_factory=dict)
 
     def compare(self, other: SchemaBranchHash) -> Optional[SchemaBranchDiff]:
         if other.main == self.main:
@@ -64,12 +64,12 @@ class SchemaBranchHash(BaseModel):
 
 class SchemaDiff(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    added: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-    changed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-    removed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
+    added: dict[str, HashableModelDiff] = Field(default_factory=dict)
+    changed: dict[str, HashableModelDiff] = Field(default_factory=dict)
+    removed: dict[str, HashableModelDiff] = Field(default_factory=dict)
 
     @property
-    def all(self) -> List[str]:
+    def all(self) -> list[str]:
         return list(self.changed.keys()) + list(self.added.keys()) + list(self.removed.keys())
 
     def __add__(self, other: SchemaDiff) -> SchemaDiff:
@@ -132,9 +132,9 @@ class SchemaUpdateConstraintInfo(BaseModel):
 
 
 class SchemaUpdateValidationResult(BaseModel):
-    errors: List[SchemaUpdateValidationError] = Field(default_factory=list)
-    constraints: List[SchemaUpdateConstraintInfo] = Field(default_factory=list)
-    migrations: List[SchemaUpdateMigrationInfo] = Field(default_factory=list)
+    errors: list[SchemaUpdateValidationError] = Field(default_factory=list)
+    constraints: list[SchemaUpdateConstraintInfo] = Field(default_factory=list)
+    migrations: list[SchemaUpdateMigrationInfo] = Field(default_factory=list)
     diff: SchemaDiff
 
     @classmethod
@@ -268,11 +268,11 @@ class SchemaUpdateValidationResult(BaseModel):
                 )
             )
 
-    def validate_all(self, migration_map: Dict[str, Any], validator_map: Dict[str, Any]) -> None:
+    def validate_all(self, migration_map: dict[str, Any], validator_map: dict[str, Any]) -> None:
         self.validate_migrations(migration_map=migration_map)
         self.validate_constraints(validator_map=validator_map)
 
-    def validate_migrations(self, migration_map: Dict[str, Any]) -> None:
+    def validate_migrations(self, migration_map: dict[str, Any]) -> None:
         for migration in self.migrations:
             if migration_map.get(migration.migration_name, None) is None:
                 self.errors.append(
@@ -283,7 +283,7 @@ class SchemaUpdateValidationResult(BaseModel):
                     )
                 )
 
-    def validate_constraints(self, validator_map: Dict[str, Any]) -> None:
+    def validate_constraints(self, validator_map: dict[str, Any]) -> None:
         for constraint in self.constraints:
             if validator_map.get(constraint.constraint_name, None) is None:
                 self.errors.append(
@@ -297,9 +297,9 @@ class SchemaUpdateValidationResult(BaseModel):
 
 class HashableModelDiff(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    added: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
-    changed: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
-    removed: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+    added: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+    changed: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+    removed: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
 
     @property
     def has_diff(self) -> bool:
@@ -312,8 +312,8 @@ class HashableModel(BaseModel):
     id: Optional[str] = None
     state: HashableModelState = HashableModelState.PRESENT
 
-    _exclude_from_hash: List[str] = []
-    _sort_by: List[str] = []
+    _exclude_from_hash: list[str] = []
+    _sort_by: list[str] = []
 
     def __hash__(self) -> int:
         return hash(self.get_hash())
@@ -353,8 +353,8 @@ class HashableModel(BaseModel):
         return str(value).encode()
 
     @classmethod
-    def _get_signature_field(cls, value: Any) -> List[bytes]:
-        hashes: List[bytes] = []
+    def _get_signature_field(cls, value: Any) -> list[bytes]:
+        hashes: list[bytes] = []
         if isinstance(value, list):
             for item in sorted(value):
                 hashes.append(cls._get_hash_value(item))
@@ -368,10 +368,10 @@ class HashableModel(BaseModel):
         return hashes
 
     @property
-    def _sorting_id(self) -> Tuple[Any]:
+    def _sorting_id(self) -> tuple[Any]:
         return tuple(getattr(self, key) for key in self._sort_by if hasattr(self, key))
 
-    def _sorting_keys(self, other: HashableModel) -> Tuple[List[Any], List[Any]]:
+    def _sorting_keys(self, other: HashableModel) -> tuple[list[Any], list[Any]]:
         """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
         if not self._sort_by:
             raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
@@ -381,8 +381,8 @@ class HashableModel(BaseModel):
                 f"Sorting not supported between instance of {other.__class__.__name__} and {self.__class__.__name__}"
             )
 
-        self_sort_keys: List[Any] = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
-        other_sort_keys: List[Any] = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
+        self_sort_keys: list[Any] = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
+        other_sort_keys: list[Any] = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
 
         return self_sort_keys, other_sort_keys
 
@@ -407,11 +407,11 @@ class HashableModel(BaseModel):
         return self.model_copy(deep=True)
 
     @staticmethod
-    def is_list_composed_of_hashable_model(items: List[Any]) -> bool:
+    def is_list_composed_of_hashable_model(items: list[Any]) -> bool:
         return all((isinstance(item, HashableModel) for item in items))
 
     @staticmethod
-    def _organize_sub_items(items: List[HashableModel], shared_ids: Set[str]) -> Dict[Tuple[Any], HashableModel]:
+    def _organize_sub_items(items: list[HashableModel], shared_ids: set[str]) -> dict[tuple[Any], HashableModel]:
         """Convert a list of HashableModel into a dict with the sorting_id is the key, or the id if it was provided as part of the shared_ids"""
         sub_items = {}
         for item in items:
@@ -424,8 +424,8 @@ class HashableModel(BaseModel):
 
     @staticmethod
     def update_list_hashable_model(
-        field_name: str, attr_local: List[HashableModel], attr_other: List[HashableModel]
-    ) -> List[Any]:
+        field_name: str, attr_local: list[HashableModel], attr_other: list[HashableModel]
+    ) -> list[Any]:
         """
         Merging the list is not easy,
         we need to create a unique id based on the sorting keys

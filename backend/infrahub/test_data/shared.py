@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Optional
 
 from infrahub_sdk.batch import BatchTask, InfrahubBatch
 from rich.progress import Progress
@@ -13,14 +13,14 @@ from infrahub.database import InfrahubDatabase
 class CallbackTask:
     name: str
     task: Callable[[Any], Awaitable[Any]]
-    args: Tuple[Any, ...]
-    kwargs: Dict[str, Any]
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
 
 
 class DataGeneratorBatch(InfrahubBatch):
     def __init__(
         self,
-        callbacks: Optional[List[CallbackTask]] = None,
+        callbacks: Optional[list[CallbackTask]] = None,
         callback_frequency: int = 10,
         semaphore: Optional[asyncio.Semaphore] = None,
         max_concurrent_execution: int = 5,
@@ -29,7 +29,7 @@ class DataGeneratorBatch(InfrahubBatch):
         super().__init__(
             semaphore=semaphore, max_concurrent_execution=max_concurrent_execution, return_exceptions=return_exceptions
         )
-        self.callbacks: List[CallbackTask] = callbacks or []
+        self.callbacks: list[CallbackTask] = callbacks or []
         self.callback_frequency = callback_frequency
 
     def add(self, *args: Any, **kwargs: Any) -> None:
@@ -45,7 +45,7 @@ class DataGenerator:
         self.db = db
         self.concurrent_execution = concurrent_execution
         self.progress = progress
-        self.callbacks: List[CallbackTask] = []
+        self.callbacks: list[CallbackTask] = []
 
     def add_callback(self, *args: Any, callback_name: str, **kwargs: Any) -> None:
         self.callbacks.append(CallbackTask(name=callback_name, task=self.execute_db_task, args=args, kwargs=kwargs))

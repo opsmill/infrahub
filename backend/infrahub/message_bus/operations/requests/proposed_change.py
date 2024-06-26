@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from enum import IntFlag
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Union
 
 import pytest
 from pydantic import BaseModel
@@ -260,7 +260,7 @@ async def schema_integrity(
         )
 
         # TODO we need to report a failure if an error happened during the execution of a validator
-        conflicts: List[SchemaConflict] = []
+        conflicts: list[SchemaConflict] = []
         for response in responses:
             for violation in response.data.violations:
                 conflicts.append(
@@ -296,7 +296,7 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
         title=f"Evaluating Repository Checks {len(message.branch_diff.repositories)} repositories",
     ) as task_report:
         log.info(f"Got a request to process checks defined in proposed_change: {message.proposed_change}")
-        events: List[InfrahubMessage] = []
+        events: list[InfrahubMessage] = []
         for repository in message.branch_diff.repositories:
             log_line = "Skipping merge conflict checks for data only branch"
             if message.source_branch_sync_with_git and not repository.read_only:
@@ -753,7 +753,7 @@ async def _get_proposed_change_repositories(
     return _parse_proposed_change_repositories(message=message, source=source_all, destination=destination_all)
 
 
-async def _validate_repository_merge_conflicts(repositories: List[ProposedChangeRepository]) -> bool:
+async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
     conflicts = False
     for repo in repositories:
         if repo.has_diff:
@@ -768,7 +768,7 @@ async def _validate_repository_merge_conflicts(repositories: List[ProposedChange
     return conflicts
 
 
-async def _gather_repository_repository_diffs(repositories: List[ProposedChangeRepository]) -> None:
+async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
     for repo in repositories:
         if repo.has_diff:
             git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
@@ -797,6 +797,6 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
 
 async def _get_proposed_change_schema_integrity_constraints(
     message: messages.RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
-) -> List[SchemaUpdateConstraintInfo]:
+) -> list[SchemaUpdateConstraintInfo]:
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)
     return await determiner.get_constraints(node_diffs=message.branch_diff.diff_summary)

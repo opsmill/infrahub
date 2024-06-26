@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict
-
 from .attribute import (
     AnyAttributeType,
     AttributeInterface,
@@ -63,7 +61,7 @@ __all__ = [
 ]
 
 
-RELATIONS_PROPERTY_MAP: Dict[str, str] = {
+RELATIONS_PROPERTY_MAP: dict[str, str] = {
     "is_visible": "_relation__is_visible",
     "is_protected": "_relation__is_protected",
     "owner": "_relation__owner",

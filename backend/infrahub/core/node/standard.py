@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
 from uuid import UUID  # noqa: TCH003
 
 import ujson
@@ -34,8 +34,8 @@ class StandardNode(BaseModel):
     id: Optional[str] = None
     uuid: Optional[UUID] = None
 
-    _query: Type[StandardNodeQuery] = StandardNodeCreateQuery
-    _exclude_attrs: List[str] = ["id", "uuid", "_query"]
+    _query: type[StandardNodeQuery] = StandardNodeCreateQuery
+    _exclude_attrs: list[str] = ["id", "uuid", "_query"]
 
     @classmethod
     def get_type(cls) -> str:
@@ -145,7 +145,7 @@ class StandardNode(BaseModel):
         return result.get("n")
 
     @classmethod
-    def from_db(cls, node: Neo4jNode, extras: Optional[Dict[str, Any]] = None) -> Self:
+    def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
         """Convert a Neo4j Node to a Infrahub StandardNode
 
         Args:
@@ -175,7 +175,7 @@ class StandardNode(BaseModel):
 
         return cls(**attrs)
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         data = {}
 
         if not self.uuid:
@@ -207,12 +207,8 @@ class StandardNode(BaseModel):
 
     @classmethod
     async def get_list(
-        cls,
-        db: InfrahubDatabase,
-        limit: int = 1000,
-        ids: Optional[List[str]] = None,
-        **kwargs,
-    ) -> List[Self]:
+        cls, db: InfrahubDatabase, limit: int = 1000, ids: Optional[list[str]] = None, **kwargs
+    ) -> list[Self]:
         query: Query = await StandardNodeGetListQuery.init(db=db, node_class=cls, ids=ids, limit=limit, **kwargs)
         await query.execute(db=db)
 

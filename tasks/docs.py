@@ -2,7 +2,7 @@ import os
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from invoke import Context, task
 
@@ -282,7 +282,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
 
     properties = []
     for name, prop in schema["properties"].items():
-        choices: List[Dict[str, Any]] = []
+        choices: list[dict[str, Any]] = []
         kind = ""
         composed_type = ""
         if "allOf" in prop:
@@ -377,14 +377,14 @@ def _generate_infrahub_events_documentation() -> None:
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
     from collections import defaultdict
-    from typing import Dict, List, Optional, Type, Union
+    from typing import Optional, Union
 
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
     def group_classes_by_category(
-        classes: Dict[str, Type[Union[InfrahubMessage, InfrahubResponse]]],
-        priority_map: Optional[Dict[str, int]] = None,
-    ) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
+        classes: dict[str, type[Union[InfrahubMessage, InfrahubResponse]]],
+        priority_map: Optional[dict[str, int]] = None,
+    ) -> dict[str, dict[str, list[dict[str, any]]]]:
         """
         Group classes into a nested dictionary by primary and secondary categories, including priority.
         """

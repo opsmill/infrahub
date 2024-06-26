@@ -1,10 +1,8 @@
 import logging
 import random
 import uuid
-from itertools import islice
 from collections import defaultdict
 from ipaddress import IPv4Network, IPv6Network
-from typing import Dict, List
 
 from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
 from infrahub_sdk.exceptions import GraphQLError, NodeNotFoundError
@@ -61,7 +59,7 @@ ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
 
 
-def site_generator(nbr_site=2) -> List[Dict[str, str]]:
+def site_generator(nbr_site=2) -> list[dict[str, str]]:
     """Generate a list of site names by iterating over the list of SITES defined above and by increasing the id.
 
     site_names_generator(nbr_site=5)
@@ -71,7 +69,7 @@ def site_generator(nbr_site=2) -> List[Dict[str, str]]:
         result >> ["atl1", "ord1", "jfk1", "den1", "dfw1", "iad1", "bkk1", "sfo1", "iah1", "mco1", "atl2", "ord2"]
     """
 
-    sites: List[Dict[str, str]] = []
+    sites: list[dict[str, str]] = []
 
     # Calculate how many loop over the entire list we need to make
     # and how many site we need to generate on the last loop
@@ -256,7 +254,7 @@ ASNS = (
     (7018, "AT&T Services"),
 )
 
-INTERFACE_OBJS: Dict[str, List[InfrahubNode]] = defaultdict(list)
+INTERFACE_OBJS: dict[str, list[InfrahubNode]] = defaultdict(list)
 
 ACCOUNTS = (
     ("pop-builder", "Script", "Password123", "read-write"),
@@ -308,7 +306,7 @@ async def generate_site(
     client: InfrahubClient,
     log: logging.Logger,
     branch: str,
-    site: Dict[str, str],
+    site: dict[str, str],
     interconnection_pool: InfrahubNode,
     loopback_pool: InfrahubNode,
     management_pool: InfrahubNode,

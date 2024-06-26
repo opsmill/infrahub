@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -19,7 +19,7 @@ class Meta(BaseModel):
     retry_count: Optional[int] = Field(
         default=None, description="Indicates how many times this message has been retried."
     )
-    headers: Optional[Dict[str, Any]] = Field(default=None)
+    headers: Optional[dict[str, Any]] = Field(default=None)
     validator_execution_id: Optional[str] = Field(
         default=None, description="Validator execution ID related to this message"
     )
@@ -90,7 +90,7 @@ class InfrahubResponse(InfrahubMessage):
     passed: bool = True
     routing_key: str
     data: Union[dict, InfrahubResponseData] = Field(default_factory=dict)
-    errors: List[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
     initial_message: Optional[dict] = Field(
         default=None,
         description="Initial message in dict format, the primary goal of this field is to provide additional context when there is an error",

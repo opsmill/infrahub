@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import Any, Iterable, List, Mapping, Sequence, Set
+from typing import Any, Iterable, Mapping, Sequence
 
 
 class DependencyCycleExistsError(Exception):
@@ -16,7 +16,7 @@ class DependencyCycleExistsError(Exception):
         return f"{type(self).__name__}({self.get_cycle_strings()})"
 
 
-def topological_sort(dependency_dict: Mapping[str, Iterable[str]]) -> List[Set[str]]:
+def topological_sort(dependency_dict: Mapping[str, Iterable[str]]) -> list[set[str]]:
     if not dependency_dict:
         return []
 
