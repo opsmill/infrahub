@@ -1,5 +1,7 @@
 from random import randint
 
+import pytest
+
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     BranchSupportType,
@@ -182,6 +184,20 @@ async def test_query_NodeGetListQuery_filter_relationship_isnull_many(
     )
     await query.execute(db=db)
     assert query.get_node_ids() == [person_albert_main.id, person_john_main.id]
+
+
+async def test_query_NodeGetListQuery_filter_relationship_attribute_isnull_not_allowed(
+    db: InfrahubDatabase, car_person_schema, default_branch
+):
+    car_schema = registry.schema.get(name="TestCar", branch=default_branch, duplicate=False)
+
+    with pytest.raises(RuntimeError, match=r"owner__height__isnull is not allowed"):
+        await NodeGetListQuery.init(
+            db=db,
+            branch=default_branch,
+            schema=car_schema,
+            filters={"owner__height__isnull": True},
+        )
 
 
 async def test_query_NodeGetListQuery_filter_height(

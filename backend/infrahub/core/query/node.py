@@ -726,8 +726,20 @@ class NodeGetListQuery(Query):
         self.filters = filters
         self.partial_match = partial_match
         self._variables_to_track = ["n", "rb"]
+        self._validate_filters()
 
         super().__init__(**kwargs)
+
+    def _validate_filters(self) -> None:
+        filter_errors = []
+        for filter_str in self.filters:
+            split_filter = filter_str.split("__")
+            if len(split_filter) > 2 and split_filter[-1] == "isnull":
+                filter_errors.append(
+                    f"{filter_str} is not allowed: 'isnull' is not supported for attributes of relationships"
+                )
+        if filter_errors:
+            raise RuntimeError(*filter_errors)
 
     def _track_variable(self, variable: str) -> None:
         if variable not in self._variables_to_track:

@@ -72,12 +72,14 @@ class InfrahubDataType:
         return cls.get_graphql_type().__name__
 
     @classmethod
-    def get_graphql_filters(cls, name: str, include_properties: bool = True) -> dict[str, typing.Any]:
+    def get_graphql_filters(
+        cls, name: str, include_properties: bool = True, include_isnull: bool = False
+    ) -> dict[str, typing.Any]:
         filters: dict[str, typing.Any] = {}
         attr_class = cls.get_infrahub_class()
         filters[f"{name}__value"] = cls.graphql_filter()
         filters[f"{name}__values"] = graphene.List(cls.graphql_filter)
-        if name != "any":
+        if include_isnull:
             filters[f"{name}__isnull"] = graphene.Boolean()
 
         if not include_properties:
