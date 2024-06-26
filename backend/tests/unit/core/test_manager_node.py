@@ -332,8 +332,8 @@ async def test_get_many_branch_agnostic(
         db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id]
     )
     assert len(node_map) == 3
-    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == default_branch.name
-    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == branch.name
     assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
 
 
