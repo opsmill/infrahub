@@ -890,7 +890,8 @@ class NodeManager:
 
             new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
-            item = await node_class.init(schema=node.schema, branch=branch, at=at, db=db)
+            node_branch = await registry.get_branch(db=db, branch=node.branch)
+            item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
             await item.load(**new_node_data_with_profile_overrides, db=db)
 
             nodes[node_id] = item

@@ -638,7 +638,7 @@ class NodeListGetInfoQuery(Query):
                 node_uuid=result.get_node("n").get("uuid"),
                 profile_uuids=[str(puuid) for puuid in result.get("profile_uuids")],
                 updated_at=result.get_rel("rb").get("from"),
-                branch=self.branch.name,
+                branch=result.get_rel("rb").get("branch"),
                 labels=list(result.get_node("n").labels),
             )
 

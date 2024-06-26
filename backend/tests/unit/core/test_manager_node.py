@@ -304,6 +304,39 @@ async def test_get_many_with_multiple_profiles_same_priority(
     assert source.id == lowest_uuid_profile.id
 
 
+async def test_get_many_branch_agnostic(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    crit_schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
+    new_crit = await Node.init(schema=crit_schema, db=db, branch=branch)
+    await new_crit.new(db=db, name="new crit", level=42)
+    await new_crit.save(db=db)
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=default_branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id], branch_agnostic=True
+    )
+    assert len(node_map) == 3
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=default_branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id]
+    )
+    assert len(node_map) == 2
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == default_branch.name
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id]
+    )
+    assert len(node_map) == 3
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
+
+
 async def test_query_no_filter(
     db: InfrahubDatabase,
     default_branch: Branch,
