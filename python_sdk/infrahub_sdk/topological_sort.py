@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import Any, Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
 
 
 class DependencyCycleExistsError(Exception):

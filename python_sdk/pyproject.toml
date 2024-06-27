@@ -186,6 +186,7 @@ module = "infrahub_sdk.utils"
 ignore_errors = true
 
 [tool.ruff]
+target-version = "py39"
 line-length = 120
 
 exclude = [

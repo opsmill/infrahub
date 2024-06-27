@@ -1,16 +1,20 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import ujson
 
-from infrahub_sdk import InfrahubClient
 from infrahub_sdk.ctl.exporter import LineDelimitedJSONExporter
 from infrahub_sdk.ctl.importer import LineDelimitedJSONImporter
 from infrahub_sdk.exceptions import SchemaNotFoundError
 from infrahub_sdk.transfer.exceptions import TransferFileNotFoundError
 from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 from tests.helpers.test_app import TestInfrahubApp
+
+if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
 
 PERSON_KIND = "TestingPerson"
 POOL_KIND = "TestingPool"
@@ -27,7 +31,7 @@ class TestSchemaExportImportBase(TestInfrahubApp):
         return tmp_path_factory.mktemp("infrahub-integration-tests")
 
     @pytest.fixture(scope="class")
-    def schema_person_base(self) -> Dict[str, Any]:
+    def schema_person_base(self) -> dict[str, Any]:
         return {
             "name": "Person",
             "namespace": "Testing",
@@ -44,7 +48,7 @@ class TestSchemaExportImportBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_car_base(self) -> Dict[str, Any]:
+    def schema_car_base(self) -> dict[str, Any]:
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -75,7 +79,7 @@ class TestSchemaExportImportBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_manufacturer_base(self) -> Dict[str, Any]:
+    def schema_manufacturer_base(self) -> dict[str, Any]:
         return {
             "name": "Manufacturer",
             "namespace": "Testing",
@@ -103,7 +107,7 @@ class TestSchemaExportImportBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_tag_base(self) -> Dict[str, Any]:
+    def schema_tag_base(self) -> dict[str, Any]:
         return {
             "name": "Tag",
             "namespace": "Testing",
@@ -123,7 +127,7 @@ class TestSchemaExportImportBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema(self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_tag_base) -> Dict[str, Any]:
+    def schema(self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_tag_base) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_car_base, schema_manufacturer_base, schema_tag_base],
@@ -299,7 +303,7 @@ class TestSchemaExportImportBase(TestInfrahubApp):
         self, client: InfrahubClient, temporary_directory: Path, initial_dataset
     ):
         # Count existing nodes
-        counters: Dict[str, int] = {}
+        counters: dict[str, int] = {}
         for kind in (PERSON_KIND, CAR_KIND, MANUFACTURER_KIND, TAG_KIND):
             nodes = await client.all(kind=kind)
             counters[kind] = len(nodes)
@@ -328,7 +332,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
         return tmp_path_factory.mktemp("infrahub-integration-tests")
 
     @pytest.fixture(scope="class")
-    def schema_pool_base(self) -> Dict[str, Any]:
+    def schema_pool_base(self) -> dict[str, Any]:
         return {
             "name": "Pool",
             "namespace": "Testing",
@@ -348,7 +352,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_car_base(self) -> Dict[str, Any]:
+    def schema_car_base(self) -> dict[str, Any]:
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -379,7 +383,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_manufacturer_base(self) -> Dict[str, Any]:
+    def schema_manufacturer_base(self) -> dict[str, Any]:
         return {
             "name": "Manufacturer",
             "namespace": "Testing",
@@ -399,7 +403,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema(self, schema_car_base, schema_pool_base, schema_manufacturer_base) -> Dict[str, Any]:
+    def schema(self, schema_car_base, schema_pool_base, schema_manufacturer_base) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_pool_base, schema_car_base, schema_manufacturer_base],

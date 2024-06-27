@@ -1,17 +1,23 @@
+from __future__ import annotations
+
 import re
 import sys
 from dataclasses import dataclass
-from inspect import Parameter
 from io import StringIO
-from typing import AsyncGenerator, Mapping, Optional
+from typing import TYPE_CHECKING
 
 import pytest
 import ujson
-from pytest_httpx import HTTPXMock
 
 from infrahub_sdk import Config, InfrahubClient, InfrahubClientSync
 from infrahub_sdk.schema import BranchSupportType, NodeSchema
 from infrahub_sdk.utils import get_fixtures_dir
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Mapping
+    from inspect import Parameter
+
+    from pytest_httpx import HTTPXMock
 
 # pylint: disable=redefined-outer-name,unused-argument
 
@@ -20,7 +26,7 @@ from infrahub_sdk.utils import get_fixtures_dir
 class BothClients:
     sync: InfrahubClientSync
     standard: InfrahubClient
-    stdout: Optional[StringIO] = None
+    stdout: StringIO | None = None
 
 
 @pytest.fixture

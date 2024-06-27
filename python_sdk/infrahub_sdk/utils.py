@@ -10,11 +10,7 @@ from uuid import UUID, uuid4
 import httpx
 import ujson
 from git.repo import Repo
-from graphql import (
-    FieldNode,
-    InlineFragmentNode,
-    SelectionSetNode,
-)
+from graphql import FieldNode, InlineFragmentNode, SelectionSetNode
 
 from infrahub_sdk.exceptions import JsonDecodeError
 
@@ -131,16 +127,16 @@ def deep_merge_dict(dicta: dict, dictb: dict, path: list | None = None) -> dict:
     """
     if path is None:
         path = []
-    for key in dictb:
+    for key, value in dictb.items():
         if key in dicta:
-            if isinstance(dicta[key], dict) and isinstance(dictb[key], dict):
-                deep_merge_dict(dicta[key], dictb[key], path + [str(key)])
-            elif dicta[key] == dictb[key]:
+            if isinstance(dicta[key], dict) and isinstance(value, dict):
+                deep_merge_dict(dicta[key], value, path + [str(key)])
+            elif dicta[key] == value:
                 pass
             else:
                 raise ValueError("Conflict at %s" % ".".join(path + [str(key)]))
         else:
-            dicta[key] = dictb[key]
+            dicta[key] = value
     return dicta
 
 
@@ -263,14 +259,14 @@ def calculate_dict_depth(data: dict, level: int = 1) -> int:
     """Calculate the depth of a nested Dictionary recursively."""
     if not isinstance(data, dict) or not data:
         return level
-    return max(calculate_dict_depth(data=data[key], level=level + 1) for key in data)
+    return max(calculate_dict_depth(data=value, level=level + 1) for value in data.values())
 
 
 def calculate_dict_height(data: dict, cnt: int = 0) -> int:
     """Calculate the number of fields (height) in a nested Dictionary recursively."""
-    for key in data:
-        if isinstance(data[key], dict):
-            cnt = calculate_dict_height(data=data[key], cnt=cnt + 1)
+    for value in data.values():
+        if isinstance(value, dict):
+            cnt = calculate_dict_height(data=value, cnt=cnt + 1)
         else:
             cnt += 1
     return cnt

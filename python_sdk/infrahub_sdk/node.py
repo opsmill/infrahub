@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from copy import copy
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Union, get_args
+from typing import TYPE_CHECKING, Any, Callable, Union, get_args
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import (
@@ -19,6 +19,8 @@ from infrahub_sdk.utils import compare_lists, get_flat_value
 from infrahub_sdk.uuidt import UUIDT
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from typing_extensions import Self
 
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync

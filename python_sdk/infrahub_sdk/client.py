@@ -6,7 +6,7 @@ import logging
 import warnings
 from functools import wraps
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, MutableMapping, TypedDict
+from typing import TYPE_CHECKING, Any, Callable, TypedDict
 
 import httpx
 import ujson
@@ -45,6 +45,7 @@ from infrahub_sdk.types import AsyncRequester, HTTPMethod, SyncRequester
 from infrahub_sdk.utils import decode_json, is_valid_uuid
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine, MutableMapping
     from types import TracebackType
 
 # pylint: disable=redefined-builtin  disable=too-many-lines

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import TYPE_CHECKING, Any, MutableMapping, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -17,6 +17,8 @@ from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.utils import duplicates
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
     from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
 
