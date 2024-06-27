@@ -73,7 +73,7 @@ test.describe("/objects/:objectname/:objectid", () => {
 
       const nodeSelector = page
         .getByTestId("side-panel-container")
-        .getByText("Node")
+        .getByText("Circuit Endpoint")
         .locator("../..")
         .getByTestId("select-input");
       await expect(nodeSelector).toHaveValue(/InfraCircuitEndpoint/g);
