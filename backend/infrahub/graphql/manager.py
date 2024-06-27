@@ -783,12 +783,14 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         default_filters: list[str] = list(filters.keys())
 
         filters["ids"] = graphene.List(graphene.ID)
+        if not top_level:
+            filters["isnull"] = graphene.Boolean()
 
         for attr in schema.attributes:
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)
             filters.update(
                 get_attribute_type(kind=attr_kind).get_graphql_filters(
-                    name=attr.name, include_properties=include_properties
+                    name=attr.name, include_properties=include_properties, include_isnull=top_level
                 )
             )
 

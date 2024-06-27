@@ -115,7 +115,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
             return query_filter, query_params, query_where
 
-        if filter_name == "ids":
+        if filter_name in ("ids", "isnull"):
             query_filter.extend(
                 [
                     QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
@@ -125,7 +125,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
                 ]
             )
 
-            if filter_value is not None:
+            if filter_name == "ids" and filter_value is not None:
                 query_params[f"{prefix}_peer_ids"] = filter_value
                 query_where.append(f"peer.uuid IN ${prefix}_peer_ids")
 
