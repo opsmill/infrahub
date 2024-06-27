@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import ujson
 from httpx import HTTPStatusError
@@ -26,7 +26,7 @@ class InfrahubGraphQLQueryItem(InfrahubItem):
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]
         )
 
-    def repr_failure(self, excinfo: ExceptionInfo, style: str | None = None) -> str:
+    def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):
             try:
                 response_content = ujson.dumps(excinfo.value.response.json(), indent=4)

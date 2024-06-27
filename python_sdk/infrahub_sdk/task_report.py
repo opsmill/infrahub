@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Final, Protocol, TypedDict, Union, runtime_checkable
+from typing import TYPE_CHECKING, Any, Final, Optional, Protocol, TypedDict, Union, runtime_checkable
 
 from typing_extensions import Self
 
@@ -27,8 +27,8 @@ class TaskReport:
         logger: InfrahubLogger,
         related_node: str,
         title: str,
-        task_id: str | None = None,
-        created_by: str | None = None,
+        task_id: Optional[str] = None,
+        created_by: Optional[str] = None,
         create_with_context: bool = True,
     ):
         self.client = client
@@ -48,7 +48,10 @@ class TaskReport:
         return self
 
     async def __aexit__(
-        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
     ) -> None:
         if exc_type:
             self.finalized = True
@@ -60,7 +63,9 @@ class TaskReport:
         conclusion = "FAILURE" if self.has_failures else "SUCCESS"
         await self.update(conclusion=conclusion)
 
-    async def create(self, title: str | None = None, conclusion: str = "UNKNOWN", logs: TaskLogs | None = None) -> None:
+    async def create(
+        self, title: Optional[str] = None, conclusion: str = "UNKNOWN", logs: Optional[TaskLogs] = None
+    ) -> None:
         variables: dict[str, Any] = {
             "related_node": self.related_node,
             "task_id": self.task_id,
@@ -102,13 +107,13 @@ class TaskReport:
         await self.update(logs={"severity": "CRITICAL", "message": event})
 
     async def finalise(
-        self, title: str | None = None, conclusion: str = "SUCCESS", logs: TaskLogs | None = None
+        self, title: Optional[str] = None, conclusion: str = "SUCCESS", logs: Optional[TaskLogs] = None
     ) -> None:
         self.finalized = True
         await self.update(title=title, conclusion=conclusion, logs=logs)
 
     async def update(
-        self, title: str | None = None, conclusion: str | None = None, logs: TaskLogs | None = None
+        self, title: Optional[str] = None, conclusion: Optional[str] = None, logs: Optional[TaskLogs] = None
     ) -> None:
         if not self.created:
             await self.create()
@@ -123,40 +128,40 @@ class TaskReport:
 
 
 class InfrahubLogger(Protocol):
-    def debug(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    def debug(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send a debug event"""
 
-    def info(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    def info(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send an info event"""
 
-    def warning(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    def warning(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send a warning event"""
 
-    def error(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    def error(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send an error event."""
 
-    def critical(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    def critical(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send a critical event."""
 
-    def exception(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    def exception(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send an exception event."""
 
 
 @runtime_checkable
 class InfrahubTaskReportLogger(Protocol):
-    async def info(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    async def info(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send an info event"""
 
-    async def warning(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    async def warning(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send a warning event"""
 
-    async def error(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    async def error(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send an error event."""
 
-    async def critical(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    async def critical(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send a critical event."""
 
-    async def exception(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
+    async def exception(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send an exception event."""
 
 

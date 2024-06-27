@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import difflib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import pytest
 import ujson
@@ -42,7 +42,7 @@ class InfrahubItem(pytest.Item):
         if self.resource_config is None:
             raise InvalidResourceConfigError(self.resource_name)
 
-    def get_result_differences(self, computed: Any) -> str | None:
+    def get_result_differences(self, computed: Any) -> Optional[str]:
         """Compute the differences between the computed result and the expected one.
 
         If the results are not JSON parsable, this method must be redefined to handle them.
@@ -67,11 +67,11 @@ class InfrahubItem(pytest.Item):
     def runtest(self) -> None:
         """Run the test logic."""
 
-    def repr_failure(self, excinfo: pytest.ExceptionInfo, style: str | None = None) -> str:
+    def repr_failure(self, excinfo: pytest.ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, InvalidGitRepositoryError):
             return f"Invalid Git repository at {excinfo.value}"
 
         return str(excinfo.value)
 
-    def reportinfo(self) -> tuple[Path | str, int | None, str]:
+    def reportinfo(self) -> tuple[Union[Path, str], Optional[int], str]:
         return self.path, 0, f"resource: {self.name}"

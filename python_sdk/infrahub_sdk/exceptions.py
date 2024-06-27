@@ -1,19 +1,15 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
+from collections.abc import Mapping
+from typing import Any, Optional
 
 
 class Error(Exception):
-    def __init__(self, message: str | None = None):
+    def __init__(self, message: Optional[str] = None):
         self.message = message
         super().__init__(self.message)
 
 
 class JsonDecodeError(Error):
-    def __init__(self, message: str | None = None, content: str | None = None, url: str | None = None):
+    def __init__(self, message: Optional[str] = None, content: Optional[str] = None, url: Optional[str] = None):
         self.message = message
         self.content = content
         self.url = url
@@ -23,14 +19,14 @@ class JsonDecodeError(Error):
 
 
 class ServerNotReachableError(Error):
-    def __init__(self, address: str, message: str | None = None):
+    def __init__(self, address: str, message: Optional[str] = None):
         self.address = address
         self.message = message or f"Unable to connect to '{address}'."
         super().__init__(self.message)
 
 
 class ServerNotResponsiveError(Error):
-    def __init__(self, url: str, timeout: int | None = None, message: str | None = None):
+    def __init__(self, url: str, timeout: Optional[int] = None, message: Optional[str] = None):
         self.url = url
         self.timeout = timeout
         self.message = message or f"Unable to read from '{url}'."
@@ -40,7 +36,7 @@ class ServerNotResponsiveError(Error):
 
 
 class GraphQLError(Error):
-    def __init__(self, errors: list[dict[str, Any]], query: str | None = None, variables: dict | None = None):
+    def __init__(self, errors: list[dict[str, Any]], query: Optional[str] = None, variables: Optional[dict] = None):
         self.query = query
         self.variables = variables
         self.errors = errors
@@ -49,21 +45,21 @@ class GraphQLError(Error):
 
 
 class BranchNotFoundError(Error):
-    def __init__(self, identifier: str, message: str | None = None):
+    def __init__(self, identifier: str, message: Optional[str] = None):
         self.identifier = identifier
         self.message = message or f"Unable to find the branch '{identifier}' in the Database."
         super().__init__(self.message)
 
 
 class SchemaNotFoundError(Error):
-    def __init__(self, identifier: str, message: str | None = None):
+    def __init__(self, identifier: str, message: Optional[str] = None):
         self.identifier = identifier
         self.message = message or f"Unable to find the schema '{identifier}'."
         super().__init__(self.message)
 
 
 class ModuleImportError(Error):
-    def __init__(self, message: str | None = None):
+    def __init__(self, message: Optional[str] = None):
         self.message = message or "Unable to import the module"
         super().__init__(self.message)
 
@@ -74,7 +70,7 @@ class NodeNotFoundError(Error):
         node_type: str,
         identifier: Mapping[str, list[str]],
         message: str = "Unable to find the node in the database.",
-        branch_name: str | None = None,
+        branch_name: Optional[str] = None,
     ):
         self.node_type = node_type
         self.identifier = identifier
@@ -91,7 +87,7 @@ class NodeNotFoundError(Error):
 
 
 class FilterNotFoundError(Error):
-    def __init__(self, identifier: str, kind: str, message: str | None = None, filters: list[str] | None = None):
+    def __init__(self, identifier: str, kind: str, message: Optional[str] = None, filters: Optional[list[str]] = None):
         self.identifier = identifier
         self.kind = kind
         self.filters = filters or []
@@ -100,13 +96,13 @@ class FilterNotFoundError(Error):
 
 
 class InfrahubCheckNotFoundError(Error):
-    def __init__(self, name: str, message: str | None = None):
+    def __init__(self, name: str, message: Optional[str] = None):
         self.message = message or f"The requested InfrahubCheck '{name}' was not found."
         super().__init__(self.message)
 
 
 class InfrahubTransformNotFoundError(Error):
-    def __init__(self, name: str, message: str | None = None):
+    def __init__(self, name: str, message: Optional[str] = None):
         self.message = message or f"The requested InfrahubTransform '{name}' was not found."
         super().__init__(self.message)
 
@@ -119,7 +115,7 @@ class ValidationError(Error):
 
 
 class AuthenticationError(Error):
-    def __init__(self, message: str | None = None):
+    def __init__(self, message: Optional[str] = None):
         self.message = message or "Authentication Error, unable to execute the query."
         super().__init__(self.message)
 

@@ -3,7 +3,9 @@ from __future__ import annotations
 import ipaddress
 import re
 from copy import copy
-from typing import TYPE_CHECKING, Any, Callable, Union, get_args
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union, get_args
+
+from typing_extensions import Self
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import (
@@ -14,17 +16,21 @@ from infrahub_sdk.exceptions import (
     UninitializedError,
 )
 from infrahub_sdk.graphql import Mutation, Query
-from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
+from infrahub_sdk.schema import (
+    AttributeSchema,
+    GenericSchema,
+    MainSchemaTypes,
+    RelationshipCardinality,
+    RelationshipKind,
+    RelationshipSchema,
+)
 from infrahub_sdk.utils import compare_lists, get_flat_value
 from infrahub_sdk.uuidt import UUIDT
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from typing_extensions import Self
-
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
-    from infrahub_sdk.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 
 # pylint: disable=too-many-lines
 
@@ -48,7 +54,7 @@ ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE = (
 class Attribute:
     """Represents an attribute of a Node, including its schema, value, and properties."""
 
-    def __init__(self, name: str, schema: AttributeSchema, data: Any | dict):
+    def __init__(self, name: str, schema: AttributeSchema, data: Union[Any, dict]):
         """
         Args:
             name (str): The name of the attribute.
@@ -67,11 +73,11 @@ class Attribute:
 
         self._read_only = ["updated_at", "is_inherited"]
 
-        self.id: str | None = data.get("id", None)
+        self.id: Optional[str] = data.get("id", None)
 
-        self.value: Any | None = data.get("value", None)
-        self.is_default: bool | None = data.get("is_default", None)
-        self.is_from_profile: bool | None = data.get("is_from_profile", None)
+        self.value: Optional[Any] = data.get("value", None)
+        self.is_default: Optional[bool] = data.get("is_default", None)
+        self.is_from_profile: Optional[bool] = data.get("is_from_profile", None)
 
         if self.value:
             value_mapper: dict[str, Callable] = {
@@ -81,20 +87,20 @@ class Attribute:
             mapper = value_mapper.get(schema.kind, lambda value: value)
             self.value = mapper(data.get("value"))
 
-        self.is_inherited: bool | None = data.get("is_inherited", None)
-        self.updated_at: str | None = data.get("updated_at", None)
+        self.is_inherited: Optional[bool] = data.get("is_inherited", None)
+        self.updated_at: Optional[str] = data.get("updated_at", None)
 
-        self.is_visible: bool | None = data.get("is_visible", None)
-        self.is_protected: bool | None = data.get("is_protected", None)
+        self.is_visible: Optional[bool] = data.get("is_visible", None)
+        self.is_protected: Optional[bool] = data.get("is_protected", None)
 
-        self.source: NodeProperty | None = None
-        self.owner: NodeProperty | None = None
+        self.source: Optional[NodeProperty] = None
+        self.owner: Optional[NodeProperty] = None
 
         for prop_name in self._properties_object:
             if data.get(prop_name):
                 setattr(self, prop_name, NodeProperty(data=data.get(prop_name)))  # type: ignore[arg-type]
 
-    def _generate_input_data(self) -> dict | None:
+    def _generate_input_data(self) -> Optional[dict]:
         data: dict[str, Any] = {}
         variables: dict[str, Any] = {}
 
@@ -123,7 +129,7 @@ class Attribute:
 
         return {"data": data, "variables": variables}
 
-    def _generate_query_data(self) -> dict | None:
+    def _generate_query_data(self) -> Optional[dict]:
         data: dict[str, Any] = {"value": None, "is_default": None, "is_from_profile": None}
 
         for prop_name in self._properties_flag:
@@ -137,7 +143,7 @@ class Attribute:
 class RelatedNodeBase:
     """Base class for representing a related node in a relationship."""
 
-    def __init__(self, branch: str, schema: RelationshipSchema, data: Any | dict, name: str | None = None):
+    def __init__(self, branch: str, schema: RelationshipSchema, data: Union[Any, dict], name: Optional[str] = None):
         """
         Args:
             branch (str): The branch where the related node resides.
@@ -155,9 +161,9 @@ class RelatedNodeBase:
         self._properties = self._properties_flag + self._properties_object
 
         self._peer = None
-        self._id: str | None = None
-        self._display_label: str | None = None
-        self._typename: str | None = None
+        self._id: Optional[str] = None
+        self._display_label: Optional[str] = None
+        self._typename: Optional[str] = None
 
         if isinstance(data, (InfrahubNode, InfrahubNodeSync)):
             self._peer = data
@@ -177,7 +183,7 @@ class RelatedNodeBase:
                 self._display_label = node_data.get("display_label", None)
                 self._typename = node_data.get("__typename", None)
 
-            self.updated_at: str | None = data.get("updated_at", data.get("_relation__updated_at", None))
+            self.updated_at: Optional[str] = data.get("updated_at", data.get("_relation__updated_at", None))
 
             # FIXME, we won't need that once we are only supporting paginated results
             if self._typename and self._typename.startswith("Related"):
@@ -193,19 +199,19 @@ class RelatedNodeBase:
                     setattr(self, prop, None)
 
     @property
-    def id(self) -> str | None:
+    def id(self) -> Optional[str]:
         if self._peer:
             return self._peer.id
         return self._id
 
     @property
-    def hfid(self) -> list[Any] | None:
+    def hfid(self) -> Optional[list[Any]]:
         if self._peer:
             return self._peer.hfid
         return None
 
     @property
-    def hfid_str(self) -> str | None:
+    def hfid_str(self) -> Optional[str]:
         if self._peer and self.hfid:
             return self._peer.get_human_friendly_id_as_string(include_kind=True)
         return None
@@ -221,13 +227,13 @@ class RelatedNodeBase:
         return bool(self.id)
 
     @property
-    def display_label(self) -> str | None:
+    def display_label(self) -> Optional[str]:
         if self._peer:
             return self._peer.display_label
         return self._display_label
 
     @property
-    def typename(self) -> str | None:
+    def typename(self) -> Optional[str]:
         if self._peer:
             return self._peer.typename
         return self._typename
@@ -254,7 +260,7 @@ class RelatedNodeBase:
         return {}
 
     @classmethod
-    def _generate_query_data(cls, peer_data: dict[str, Any] | None = None) -> dict:
+    def _generate_query_data(cls, peer_data: Optional[dict[str, Any]] = None) -> dict:
         """Generates the basic structure of a GraphQL query for a single relationship.
 
         Args:
@@ -285,7 +291,12 @@ class RelatedNode(RelatedNodeBase):
     """Represents a RelatedNodeBase in an asynchronous context."""
 
     def __init__(
-        self, client: InfrahubClient, branch: str, schema: RelationshipSchema, data: Any | dict, name: str | None = None
+        self,
+        client: InfrahubClient,
+        branch: str,
+        schema: RelationshipSchema,
+        data: Union[Any, dict],
+        name: Optional[str] = None,
     ):
         """
         Args:
@@ -329,8 +340,8 @@ class RelatedNodeSync(RelatedNodeBase):
         client: InfrahubClientSync,
         branch: str,
         schema: RelationshipSchema,
-        data: Any | dict,
-        name: str | None = None,
+        data: Union[Any, dict],
+        name: Optional[str] = None,
     ):
         """
         Args:
@@ -386,7 +397,7 @@ class RelationshipManagerBase:
         self._properties_object = PROPERTIES_OBJECT
         self._properties = self._properties_flag + self._properties_object
 
-        self.peers: list[RelatedNode | RelatedNodeSync] = []
+        self.peers: list[Union[RelatedNode, RelatedNodeSync]] = []
 
     @property
     def peer_ids(self) -> list[str]:
@@ -412,7 +423,7 @@ class RelationshipManagerBase:
         return {}
 
     @classmethod
-    def _generate_query_data(cls, peer_data: dict[str, Any] | None = None) -> dict:
+    def _generate_query_data(cls, peer_data: Optional[dict[str, Any]] = None) -> dict:
         """Generates the basic structure of a GraphQL query for relationships with multiple nodes.
 
         Args:
@@ -453,7 +464,7 @@ class RelationshipManager(RelationshipManagerBase):
         node: InfrahubNode,
         branch: str,
         schema: RelationshipSchema,
-        data: Any | dict,
+        data: Union[Any, dict],
     ):
         """
         Args:
@@ -509,7 +520,7 @@ class RelationshipManager(RelationshipManagerBase):
         for peer in self.peers:
             await peer.fetch()  # type: ignore[misc]
 
-    def add(self, data: str | RelatedNode | dict) -> None:
+    def add(self, data: Union[str, RelatedNode, dict]) -> None:
         """Add a new peer to this relationship."""
         if not self.initialized:
             raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
@@ -519,12 +530,12 @@ class RelationshipManager(RelationshipManagerBase):
             self.peers.append(new_node)
             self._has_update = True
 
-    def extend(self, data: Iterable[str | RelatedNode | dict]) -> None:
+    def extend(self, data: Iterable[Union[str, RelatedNode, dict]]) -> None:
         """Add new peers to this relationship."""
         for d in data:
             self.add(d)
 
-    def remove(self, data: str | RelatedNode | dict) -> None:
+    def remove(self, data: Union[str, RelatedNode, dict]) -> None:
         if not self.initialized:
             raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         node_to_remove = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
@@ -548,7 +559,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
         node: InfrahubNodeSync,
         branch: str,
         schema: RelationshipSchema,
-        data: Any | dict,
+        data: Union[Any, dict],
     ):
         """
         Args:
@@ -604,7 +615,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
         for peer in self.peers:
             peer.fetch()
 
-    def add(self, data: str | RelatedNodeSync | dict) -> None:
+    def add(self, data: Union[str, RelatedNodeSync, dict]) -> None:
         """Add a new peer to this relationship."""
         if not self.initialized:
             raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
@@ -614,12 +625,12 @@ class RelationshipManagerSync(RelationshipManagerBase):
             self.peers.append(new_node)
             self._has_update = True
 
-    def extend(self, data: Iterable[str | RelatedNodeSync | dict]) -> None:
+    def extend(self, data: Iterable[Union[str, RelatedNodeSync, dict]]) -> None:
         """Add new peers to this relationship."""
         for d in data:
             self.add(d)
 
-    def remove(self, data: str | RelatedNodeSync | dict) -> None:
+    def remove(self, data: Union[str, RelatedNodeSync, dict]) -> None:
         if not self.initialized:
             raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         node_to_remove = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
@@ -636,7 +647,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
 class InfrahubNodeBase:
     """Base class for InfrahubNode and InfrahubNodeSync"""
 
-    def __init__(self, schema: MainSchemaTypes, branch: str, data: dict | None = None) -> None:
+    def __init__(self, schema: MainSchemaTypes, branch: str, data: Optional[dict] = None) -> None:
         """
         Args:
             schema (MainSchemaTypes): The schema of the node.
@@ -649,8 +660,8 @@ class InfrahubNodeBase:
         self._existing: bool = True
 
         self.id = data.get("id", None) if isinstance(data, dict) else None
-        self.display_label: str | None = data.get("display_label", None) if isinstance(data, dict) else None
-        self.typename: str | None = data.get("__typename", schema.kind) if isinstance(data, dict) else schema.kind
+        self.display_label: Optional[str] = data.get("display_label", None) if isinstance(data, dict) else None
+        self.typename: Optional[str] = data.get("__typename", schema.kind) if isinstance(data, dict) else schema.kind
 
         self._attributes = [item.name for item in self._schema.attributes]
         self._relationships = [item.name for item in self._schema.relationships]
@@ -701,7 +712,7 @@ class InfrahubNodeBase:
 
         return return_value
 
-    def get_human_friendly_id(self) -> list[str] | None:
+    def get_human_friendly_id(self) -> Optional[list[str]]:
         if not hasattr(self._schema, "human_friendly_id"):
             return None
 
@@ -710,7 +721,7 @@ class InfrahubNodeBase:
 
         return [str(self.get_path_value(path=item)) for item in self._schema.human_friendly_id]
 
-    def get_human_friendly_id_as_string(self, include_kind: bool = False) -> str | None:
+    def get_human_friendly_id_as_string(self, include_kind: bool = False) -> Optional[str]:
         hfid = self.get_human_friendly_id()
         if not hfid:
             return None
@@ -719,14 +730,14 @@ class InfrahubNodeBase:
         return "__".join(hfid)
 
     @property
-    def hfid(self) -> list[str] | None:
+    def hfid(self) -> Optional[list[str]]:
         return self.get_human_friendly_id()
 
     @property
-    def hfid_str(self) -> str | None:
+    def hfid_str(self) -> Optional[str]:
         return self.get_human_friendly_id_as_string(include_kind=True)
 
-    def _init_attributes(self, data: dict | None = None) -> None:
+    def _init_attributes(self, data: Optional[dict] = None) -> None:
         for attr_name in self._attributes:
             attr_schema = [attr for attr in self._schema.attributes if attr.name == attr_name][0]
             attr_data = data.get(attr_name, None) if isinstance(data, dict) else None
@@ -736,7 +747,7 @@ class InfrahubNodeBase:
                 Attribute(name=attr_name, schema=attr_schema, data=attr_data),
             )
 
-    def _init_relationships(self, data: dict | None = None) -> None:
+    def _init_relationships(self, data: Optional[dict] = None) -> None:
         pass
 
     def __repr__(self) -> str:
@@ -761,7 +772,7 @@ class InfrahubNodeBase:
     def is_resource_pool(self) -> bool:
         return hasattr(self._schema, "inherit_from") and "CoreResourcePool" in self._schema.inherit_from  # type: ignore[union-attr]
 
-    def get_raw_graphql_data(self) -> dict | None:
+    def get_raw_graphql_data(self) -> Optional[dict]:
         return self._data
 
     def _generate_input_data(self, exclude_unmodified: bool = False, exclude_hfid: bool = False) -> dict[str, dict]:  # noqa: C901
@@ -798,7 +809,7 @@ class InfrahubNodeBase:
             if not rel_schema or rel_schema.read_only:
                 continue
 
-            rel: RelatedNodeBase | RelationshipManagerBase = getattr(self, item_name)
+            rel: Union[RelatedNodeBase, RelationshipManagerBase] = getattr(self, item_name)
 
             # BLOCKED by https://github.com/opsmill/infrahub/issues/330
             # if (
@@ -935,13 +946,13 @@ class InfrahubNodeBase:
 
     def generate_query_data_init(
         self,
-        filters: dict[str, Any] | None = None,
-        offset: int | None = None,
-        limit: int | None = None,
-        include: list[str] | None = None,
-        exclude: list[str] | None = None,
+        filters: Optional[dict[str, Any]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         partial_match: bool = False,
-    ) -> dict[str, Any | dict]:
+    ) -> dict[str, Union[Any, dict]]:
         data: dict[str, Any] = {
             "count": None,
             "edges": {"node": {"id": None, "hfid": None, "display_label": None, "__typename": None}},
@@ -965,7 +976,7 @@ class InfrahubNodeBase:
 
         return data
 
-    def validate_filters(self, filters: dict[str, Any] | None = None) -> bool:
+    def validate_filters(self, filters: Optional[dict[str, Any]] = None) -> bool:
         if not filters:
             return True
 
@@ -1022,7 +1033,11 @@ class InfrahubNode(InfrahubNodeBase):
     """Represents a Infrahub node in an asynchronous context."""
 
     def __init__(
-        self, client: InfrahubClient, schema: MainSchemaTypes, branch: str | None = None, data: dict | None = None
+        self,
+        client: InfrahubClient,
+        schema: MainSchemaTypes,
+        branch: Optional[str] = None,
+        data: Optional[dict] = None,
     ) -> None:
         """
         Args:
@@ -1041,7 +1056,11 @@ class InfrahubNode(InfrahubNodeBase):
 
     @classmethod
     async def from_graphql(
-        cls, client: InfrahubClient, branch: str, data: dict, schema: MainSchemaTypes | None = None
+        cls,
+        client: InfrahubClient,
+        branch: str,
+        data: dict,
+        schema: Optional[MainSchemaTypes] = None,
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
@@ -1051,7 +1070,7 @@ class InfrahubNode(InfrahubNodeBase):
 
         return cls(client=client, schema=schema, branch=branch, data=cls._strip_alias(data))
 
-    def _init_relationships(self, data: dict | None = None) -> None:
+    def _init_relationships(self, data: Optional[dict] = None) -> None:
         for rel_name in self._relationships:
             rel_schema = [rel for rel in self._schema.relationships if rel.name == rel_name][0]
             rel_data = data.get(rel_name, None) if isinstance(data, dict) else None
@@ -1078,7 +1097,7 @@ class InfrahubNode(InfrahubNodeBase):
                     ),
                 )
 
-    async def generate(self, nodes: list[str] | None = None) -> None:
+    async def generate(self, nodes: Optional[list[str]] = None) -> None:
         self._validate_artifact_definition_support(ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
 
         nodes = nodes or []
@@ -1093,7 +1112,7 @@ class InfrahubNode(InfrahubNodeBase):
         await artifact.definition.fetch()  # type: ignore[attr-defined]
         await artifact.definition.peer.generate([artifact.id])  # type: ignore[attr-defined]
 
-    async def artifact_fetch(self, name: str) -> str | dict[str, Any]:
+    async def artifact_fetch(self, name: str) -> Union[str, dict[str, Any]]:
         self._validate_artifact_support(ARTIFACT_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
 
         artifact = await self._client.get(kind="CoreArtifact", definition__name__value=name, object__ids=[self.id])
@@ -1114,7 +1133,7 @@ class InfrahubNode(InfrahubNodeBase):
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
-    async def save(self, allow_upsert: bool = False, update_group_context: bool | None = None) -> None:
+    async def save(self, allow_upsert: bool = False, update_group_context: Optional[bool] = None) -> None:
         if self._existing is False or allow_upsert is True:
             await self.create(allow_upsert=allow_upsert)
         else:
@@ -1139,15 +1158,15 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def generate_query_data(
         self,
-        filters: dict[str, Any] | None = None,
-        offset: int | None = None,
-        limit: int | None = None,
-        include: list[str] | None = None,
-        exclude: list[str] | None = None,
+        filters: Optional[dict[str, Any]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
         partial_match: bool = False,
-    ) -> dict[str, Any | dict]:
+    ) -> dict[str, Union[Any, dict]]:
         data = self.generate_query_data_init(
             filters=filters, offset=offset, limit=limit, include=include, exclude=exclude, partial_match=partial_match
         )
@@ -1188,12 +1207,12 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def generate_query_data_node(
         self,
-        include: list[str] | None = None,
-        exclude: list[str] | None = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         inherited: bool = True,
         insert_alias: bool = False,
         prefetch_relationships: bool = False,
-    ) -> dict[str, Any | dict]:
+    ) -> dict[str, Union[Any, dict]]:
         """Generate the node part of a GraphQL Query with attributes and nodes.
 
         Args:
@@ -1478,7 +1497,11 @@ class InfrahubNodeSync(InfrahubNodeBase):
     """Represents a Infrahub node in a synchronous context."""
 
     def __init__(
-        self, client: InfrahubClientSync, schema: MainSchemaTypes, branch: str | None = None, data: dict | None = None
+        self,
+        client: InfrahubClientSync,
+        schema: MainSchemaTypes,
+        branch: Optional[str] = None,
+        data: Optional[dict] = None,
     ) -> None:
         """
         Args:
@@ -1497,7 +1520,11 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     @classmethod
     def from_graphql(
-        cls, client: InfrahubClientSync, branch: str, data: dict, schema: MainSchemaTypes | None = None
+        cls,
+        client: InfrahubClientSync,
+        branch: str,
+        data: dict,
+        schema: Optional[MainSchemaTypes] = None,
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
@@ -1507,7 +1534,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         return cls(client=client, schema=schema, branch=branch, data=cls._strip_alias(data))
 
-    def _init_relationships(self, data: dict | None = None) -> None:
+    def _init_relationships(self, data: Optional[dict] = None) -> None:
         for rel_name in self._relationships:
             rel_schema = [rel for rel in self._schema.relationships if rel.name == rel_name][0]
             rel_data = data.get(rel_name, None) if isinstance(data, dict) else None
@@ -1534,7 +1561,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
                     ),
                 )
 
-    def generate(self, nodes: list[str] | None = None) -> None:
+    def generate(self, nodes: Optional[list[str]] = None) -> None:
         self._validate_artifact_definition_support(ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
         nodes = nodes or []
         payload = {"nodes": nodes}
@@ -1547,7 +1574,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         artifact.definition.fetch()  # type: ignore[attr-defined]
         artifact.definition.peer.generate([artifact.id])  # type: ignore[attr-defined]
 
-    def artifact_fetch(self, name: str) -> str | dict[str, Any]:
+    def artifact_fetch(self, name: str) -> Union[str, dict[str, Any]]:
         self._validate_artifact_support(ARTIFACT_FETCH_FEATURE_NOT_SUPPORTED_MESSAGE)
         artifact = self._client.get(kind="CoreArtifact", definition__name__value=name, object__ids=[self.id])
         content = self._client.object_store.get(identifier=artifact.storage_id.value)  # type: ignore[attr-defined]
@@ -1567,7 +1594,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
-    def save(self, allow_upsert: bool = False, update_group_context: bool | None = None) -> None:
+    def save(self, allow_upsert: bool = False, update_group_context: Optional[bool] = None) -> None:
         if self._existing is False or allow_upsert is True:
             self.create(allow_upsert=allow_upsert)
         else:
@@ -1588,15 +1615,15 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def generate_query_data(
         self,
-        filters: dict[str, Any] | None = None,
-        offset: int | None = None,
-        limit: int | None = None,
-        include: list[str] | None = None,
-        exclude: list[str] | None = None,
+        filters: Optional[dict[str, Any]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
         partial_match: bool = False,
-    ) -> dict[str, Any | dict]:
+    ) -> dict[str, Union[Any, dict]]:
         data = self.generate_query_data_init(
             filters=filters, offset=offset, limit=limit, include=include, exclude=exclude, partial_match=partial_match
         )
@@ -1636,12 +1663,12 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def generate_query_data_node(
         self,
-        include: list[str] | None = None,
-        exclude: list[str] | None = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         inherited: bool = True,
         insert_alias: bool = False,
         prefetch_relationships: bool = False,
-    ) -> dict[str, Any | dict]:
+    ) -> dict[str, Union[Any, dict]]:
         """Generate the node part of a GraphQL Query with attributes and nodes.
 
         Args:
@@ -1931,7 +1958,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 class NodeProperty:
     """Represents a property of a node, typically used for metadata like display labels."""
 
-    def __init__(self, data: dict | str):
+    def __init__(self, data: Union[dict, str]):
         """
         Args:
             data (Union[dict, str]): Data representing the node property.
@@ -1947,11 +1974,11 @@ class NodeProperty:
             self.display_label = data.get("display_label", None)
             self.typename = data.get("__typename", None)
 
-    def _generate_input_data(self) -> str | None:
+    def _generate_input_data(self) -> Union[str, None]:
         return self.id
 
 
-def generate_relationship_property(node: InfrahubNode | InfrahubNodeSync, name: str, node_class):  # type: ignore
+def generate_relationship_property(node: Union[InfrahubNode, InfrahubNodeSync], name: str, node_class):  # type: ignore
     """Generates a property that stores values under a private non-public name.
 
     Args:

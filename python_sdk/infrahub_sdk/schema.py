@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import TYPE_CHECKING, Any, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Optional, TypedDict, TypeVar, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -28,9 +29,9 @@ if TYPE_CHECKING:
 
 
 class DropdownMutationOptionalArgs(TypedDict):
-    color: str | None
-    description: str | None
-    label: str | None
+    color: Optional[str]
+    description: Optional[str]
+    label: Optional[str]
 
 
 ResourceClass = TypeVar("ResourceClass")
@@ -47,7 +48,7 @@ class InfrahubRepositoryConfigElement(BaseModel):
 class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(..., description="The name of the artifact definition")
-    artifact_name: str | None = Field(default=None, description="Name of the artifact created from this definition")
+    artifact_name: Optional[str] = Field(default=None, description="Name of the artifact created from this definition")
     parameters: dict[str, Any] = Field(..., description="The input parameters required to render this artifact")
     content_type: str = Field(..., description="The content type of the rendered artifact")
     targets: str = Field(..., description="The group to target when creating artifacts")
@@ -59,7 +60,7 @@ class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
     name: str = Field(..., description="The name of the transform")
     query: str = Field(..., description="The name of the GraphQL Query")
     template_path: Path = Field(..., description="The path within the repository of the template file")
-    description: str | None = Field(default=None, description="Description for this transform")
+    description: Optional[str] = Field(default=None, description="Description for this transform")
 
     @property
     def template_path_value(self) -> str:
@@ -79,7 +80,7 @@ class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     parameters: dict[str, Any] = Field(
         default_factory=dict, description="The input parameters required to run this check"
     )
-    targets: str | None = Field(
+    targets: Optional[str] = Field(
         default=None, description="The group to target when running this check, leave blank for global checks"
     )
     class_name: str = Field(default="Check", description="The name of the check class to run.")
@@ -100,7 +101,9 @@ class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
         description="Decide if the generator should convert the result of the GraphQL query to SDK InfrahubNode objects.",
     )
 
-    def load_class(self, import_root: str | None = None, relative_path: str | None = None) -> type[InfrahubGenerator]:
+    def load_class(
+        self, import_root: Optional[str] = None, relative_path: Optional[str] = None
+    ) -> type[InfrahubGenerator]:
         module = import_module(module_path=self.file_path, import_root=import_root, relative_path=relative_path)
 
         if self.class_name not in dir(module):
@@ -210,7 +213,7 @@ class InfrahubRepositoryConfig(BaseModel):
 class FilterSchema(BaseModel):
     name: str
     kind: str
-    description: str | None = None
+    description: Optional[str] = None
 
 
 class RelationshipCardinality(str, Enum):
@@ -250,49 +253,49 @@ class SchemaState(str, Enum):
 
 
 class AttributeSchema(BaseModel):
-    id: str | None = None
+    id: Optional[str] = None
     state: SchemaState = SchemaState.PRESENT
     name: str
     kind: str
-    label: str | None = None
-    description: str | None = None
-    default_value: Any | None = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    default_value: Optional[Any] = None
     inherited: bool = False
     unique: bool = False
-    branch: BranchSupportType | None = None
+    branch: Optional[BranchSupportType] = None
     optional: bool = False
     read_only: bool = False
-    choices: list[dict[str, Any]] | None = None
-    enum: list[str | int] | None = None
-    max_length: int | None = None
-    min_length: int | None = None
-    regex: str | None = None
+    choices: Optional[list[dict[str, Any]]] = None
+    enum: Optional[list[Union[str, int]]] = None
+    max_length: Optional[int] = None
+    min_length: Optional[int] = None
+    regex: Optional[str] = None
 
 
 class RelationshipSchema(BaseModel):
-    id: str | None = None
+    id: Optional[str] = None
     state: SchemaState = SchemaState.PRESENT
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
-    label: str | None = None
-    description: str | None = None
-    identifier: str | None = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    identifier: Optional[str] = None
     inherited: bool = False
     cardinality: str = "many"
-    branch: BranchSupportType | None = None
+    branch: Optional[BranchSupportType] = None
     optional: bool = True
     read_only: bool = False
     filters: list[FilterSchema] = Field(default_factory=list)
 
 
 class BaseNodeSchema(BaseModel):
-    id: str | None = None
+    id: Optional[str] = None
     state: SchemaState = SchemaState.PRESENT
     name: str
-    label: str | None = None
+    label: Optional[str] = None
     namespace: str
-    description: str | None = None
+    description: Optional[str] = None
     attributes: list[AttributeSchema] = Field(default_factory=list)
     relationships: list[RelationshipSchema] = Field(default_factory=list)
     filters: list[FilterSchema] = Field(default_factory=list)
@@ -301,7 +304,7 @@ class BaseNodeSchema(BaseModel):
     def kind(self) -> str:
         return self.namespace + self.name
 
-    def get_field(self, name: str, raise_on_error: bool = True) -> AttributeSchema | RelationshipSchema | None:
+    def get_field(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, RelationshipSchema, None]:
         if attribute_field := self.get_attribute_or_none(name=name):
             return attribute_field
 
@@ -319,7 +322,7 @@ class BaseNodeSchema(BaseModel):
                 return item
         raise ValueError(f"Unable to find the attribute {name}")
 
-    def get_attribute_or_none(self, name: str) -> AttributeSchema | None:
+    def get_attribute_or_none(self, name: str) -> Optional[AttributeSchema]:
         for item in self.attributes:
             if item.name == name:
                 return item
@@ -331,13 +334,13 @@ class BaseNodeSchema(BaseModel):
                 return item
         raise ValueError(f"Unable to find the relationship {name}")
 
-    def get_relationship_or_none(self, name: str) -> RelationshipSchema | None:
+    def get_relationship_or_none(self, name: str) -> Optional[RelationshipSchema]:
         for item in self.relationships:
             if item.name == name:
                 return item
         return None
 
-    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> RelationshipSchema | None:
+    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
         for item in self.relationships:
             if item.identifier == id:
                 return item
@@ -388,9 +391,9 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: list[str] = Field(default_factory=list)
-    branch: BranchSupportType | None = None
-    default_filter: str | None = None
-    human_friendly_id: list[str] | None = None
+    branch: Optional[BranchSupportType] = None
+    default_filter: Optional[str] = None
+    human_friendly_id: Optional[list[str]] = None
 
 
 class ProfileSchema(BaseNodeSchema):
@@ -398,13 +401,13 @@ class ProfileSchema(BaseNodeSchema):
 
 
 class NodeExtensionSchema(BaseModel):
-    name: str | None = None
+    name: Optional[str] = None
     kind: str
-    description: str | None = None
-    label: str | None = None
+    description: Optional[str] = None
+    label: Optional[str] = None
     inherit_from: list[str] = Field(default_factory=list)
-    branch: BranchSupportType | None = None
-    default_filter: str | None = None
+    branch: Optional[BranchSupportType] = None
+    default_filter: Optional[str] = None
     attributes: list[AttributeSchema] = Field(default_factory=list)
     relationships: list[RelationshipSchema] = Field(default_factory=list)
 
@@ -437,10 +440,10 @@ class InfrahubSchemaBase:
         self,
         schema: MainSchemaTypes,
         data: dict,
-        source: str | None = None,
-        owner: str | None = None,
-        is_protected: bool | None = None,
-        is_visible: bool | None = None,
+        source: Optional[str] = None,
+        owner: Optional[str] = None,
+        is_protected: Optional[bool] = None,
+        is_visible: Optional[bool] = None,
     ) -> dict[str, Any]:
         obj_data: dict[str, Any] = {}
         item_metadata: dict[str, Any] = {}
@@ -493,7 +496,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
 
-    async def get(self, kind: str, branch: str | None = None, refresh: bool = False) -> MainSchemaTypes:
+    async def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> MainSchemaTypes:
         branch = branch or self.client.default_branch
 
         if refresh:
@@ -513,7 +516,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         raise SchemaNotFoundError(identifier=kind)
 
     async def all(
-        self, branch: str | None = None, refresh: bool = False, namespaces: list[str] | None = None
+        self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[list[str]] = None
     ) -> MutableMapping[str, MainSchemaTypes]:
         """Retrieve the entire schema for a given branch.
 
@@ -533,7 +536,7 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         return self.cache[branch]
 
-    async def load(self, schemas: list[dict], branch: str | None = None) -> SchemaLoadResponse:
+    async def load(self, schemas: list[dict], branch: Optional[str] = None) -> SchemaLoadResponse:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = await self.client._post(
@@ -542,7 +545,7 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         return self._validate_load_schema_response(response=response)
 
-    async def check(self, schemas: list[dict], branch: str | None = None) -> tuple[bool, dict | None]:
+    async def check(self, schemas: list[dict], branch: Optional[str] = None) -> tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/check?branch={branch}"
         response = await self.client._post(
@@ -559,7 +562,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         return False, None
 
     async def _get_kind_and_attribute_schema(
-        self, kind: str | InfrahubNodeTypes, attribute: str, branch: str | None = None
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None
     ) -> tuple[str, AttributeSchema]:
         node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
         node_schema = await self.client.schema.get(kind=node_kind, branch=branch)
@@ -573,10 +576,10 @@ class InfrahubSchema(InfrahubSchemaBase):
     async def _mutate_enum_attribute(
         self,
         mutation: EnumMutation,
-        kind: str | InfrahubNodeTypes,
+        kind: Union[str, InfrahubNodeTypes],
         attribute: str,
-        option: str | int,
-        branch: str | None = None,
+        option: Union[str, int],
+        branch: Optional[str] = None,
     ) -> None:
         node_kind, schema_attr = await self._get_kind_and_attribute_schema(
             kind=kind, attribute=attribute, branch=branch
@@ -596,14 +599,14 @@ class InfrahubSchema(InfrahubSchemaBase):
         )
 
     async def add_enum_option(
-        self, kind: str | InfrahubNodeTypes, attribute: str, option: str | int, branch: str | None = None
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
     ) -> None:
         await self._mutate_enum_attribute(
             mutation=EnumMutation.add, kind=kind, attribute=attribute, option=option, branch=branch
         )
 
     async def remove_enum_option(
-        self, kind: str | InfrahubNodeTypes, attribute: str, option: str | int, branch: str | None = None
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
     ) -> None:
         await self._mutate_enum_attribute(
             mutation=EnumMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
@@ -612,11 +615,11 @@ class InfrahubSchema(InfrahubSchemaBase):
     async def _mutate_dropdown_attribute(
         self,
         mutation: DropdownMutation,
-        kind: str | InfrahubNodeTypes,
+        kind: Union[str, InfrahubNodeTypes],
         attribute: str,
         option: str,
-        branch: str | None = None,
-        dropdown_optional_args: DropdownMutationOptionalArgs | None = None,
+        branch: Optional[str] = None,
+        dropdown_optional_args: Optional[DropdownMutationOptionalArgs] = None,
     ) -> None:
         dropdown_optional_args = dropdown_optional_args or DropdownMutationOptionalArgs(
             color="", description="", label=""
@@ -648,7 +651,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         )
 
     async def remove_dropdown_option(
-        self, kind: str | InfrahubNodeTypes, attribute: str, option: str, branch: str | None = None
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: str, branch: Optional[str] = None
     ) -> None:
         await self._mutate_dropdown_attribute(
             mutation=DropdownMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
@@ -656,13 +659,13 @@ class InfrahubSchema(InfrahubSchemaBase):
 
     async def add_dropdown_option(
         self,
-        kind: str | InfrahubNodeTypes,
+        kind: Union[str, InfrahubNodeTypes],
         attribute: str,
         option: str,
-        color: str | None = "",
-        description: str | None = "",
-        label: str | None = "",
-        branch: str | None = None,
+        color: Optional[str] = "",
+        description: Optional[str] = "",
+        label: Optional[str] = "",
+        branch: Optional[str] = None,
     ) -> None:
         dropdown_optional_args = DropdownMutationOptionalArgs(color=color, description=description, label=label)
         await self._mutate_dropdown_attribute(
@@ -674,7 +677,7 @@ class InfrahubSchema(InfrahubSchemaBase):
             dropdown_optional_args=dropdown_optional_args,
         )
 
-    async def fetch(self, branch: str, namespaces: list[str] | None = None) -> MutableMapping[str, MainSchemaTypes]:
+    async def fetch(self, branch: str, namespaces: Optional[list[str]] = None) -> MutableMapping[str, MainSchemaTypes]:
         """Fetch the schema from the server for a given branch.
 
         Args:
@@ -716,7 +719,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         self.cache: dict = defaultdict(lambda: dict)
 
     def all(
-        self, branch: str | None = None, refresh: bool = False, namespaces: list[str] | None = None
+        self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[list[str]] = None
     ) -> MutableMapping[str, MainSchemaTypes]:
         """Retrieve the entire schema for a given branch.
 
@@ -736,7 +739,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         return self.cache[branch]
 
-    def get(self, kind: str, branch: str | None = None, refresh: bool = False) -> MainSchemaTypes:
+    def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> MainSchemaTypes:
         branch = branch or self.client.default_branch
 
         if refresh:
@@ -756,7 +759,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         raise SchemaNotFoundError(identifier=kind)
 
     def _get_kind_and_attribute_schema(
-        self, kind: str | InfrahubNodeTypes, attribute: str, branch: str | None = None
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None
     ) -> tuple[str, AttributeSchema]:
         node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
         node_schema = self.client.schema.get(kind=node_kind, branch=branch)
@@ -770,10 +773,10 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
     def _mutate_enum_attribute(
         self,
         mutation: EnumMutation,
-        kind: str | InfrahubNodeTypes,
+        kind: Union[str, InfrahubNodeTypes],
         attribute: str,
-        option: str | int,
-        branch: str | None = None,
+        option: Union[str, int],
+        branch: Optional[str] = None,
     ) -> None:
         node_kind, schema_attr = self._get_kind_and_attribute_schema(kind=kind, attribute=attribute, branch=branch)
 
@@ -791,14 +794,14 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         )
 
     def add_enum_option(
-        self, kind: str | InfrahubNodeTypes, attribute: str, option: str | int, branch: str | None = None
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
     ) -> None:
         self._mutate_enum_attribute(
             mutation=EnumMutation.add, kind=kind, attribute=attribute, option=option, branch=branch
         )
 
     def remove_enum_option(
-        self, kind: str | InfrahubNodeTypes, attribute: str, option: str | int, branch: str | None = None
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
     ) -> None:
         self._mutate_enum_attribute(
             mutation=EnumMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
@@ -807,11 +810,11 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
     def _mutate_dropdown_attribute(
         self,
         mutation: DropdownMutation,
-        kind: str | InfrahubNodeTypes,
+        kind: Union[str, InfrahubNodeTypes],
         attribute: str,
         option: str,
-        branch: str | None = None,
-        dropdown_optional_args: DropdownMutationOptionalArgs | None = None,
+        branch: Optional[str] = None,
+        dropdown_optional_args: Optional[DropdownMutationOptionalArgs] = None,
     ) -> None:
         dropdown_optional_args = dropdown_optional_args or DropdownMutationOptionalArgs(
             color="", description="", label=""
@@ -841,7 +844,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         )
 
     def remove_dropdown_option(
-        self, kind: str | InfrahubNodeTypes, attribute: str, option: str, branch: str | None = None
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: str, branch: Optional[str] = None
     ) -> None:
         self._mutate_dropdown_attribute(
             mutation=DropdownMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
@@ -849,13 +852,13 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
     def add_dropdown_option(
         self,
-        kind: str | InfrahubNodeTypes,
+        kind: Union[str, InfrahubNodeTypes],
         attribute: str,
         option: str,
-        color: str | None = "",
-        description: str | None = "",
-        label: str | None = "",
-        branch: str | None = None,
+        color: Optional[str] = "",
+        description: Optional[str] = "",
+        label: Optional[str] = "",
+        branch: Optional[str] = None,
     ) -> None:
         dropdown_optional_args = DropdownMutationOptionalArgs(color=color, description=description, label=label)
         self._mutate_dropdown_attribute(
@@ -867,7 +870,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             dropdown_optional_args=dropdown_optional_args,
         )
 
-    def fetch(self, branch: str, namespaces: list[str] | None = None) -> MutableMapping[str, MainSchemaTypes]:
+    def fetch(self, branch: str, namespaces: Optional[list[str]] = None) -> MutableMapping[str, MainSchemaTypes]:
         """Fetch the schema from the server for a given branch.
 
         Args:
@@ -902,7 +905,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         return nodes
 
-    def load(self, schemas: list[dict], branch: str | None = None) -> SchemaLoadResponse:
+    def load(self, schemas: list[dict], branch: Optional[str] = None) -> SchemaLoadResponse:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = self.client._post(
@@ -911,7 +914,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         return self._validate_load_schema_response(response=response)
 
-    def check(self, schemas: list[dict], branch: str | None = None) -> tuple[bool, dict | None]:
+    def check(self, schemas: list[dict], branch: Optional[str] = None) -> tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/check?branch={branch}"
         response = self.client._post(

@@ -1,6 +1,5 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any
+from collections.abc import Iterable
+from typing import Any, Optional
 
 import pytest
 import yaml
@@ -22,9 +21,6 @@ from .items import (
     InfrahubPythonTransformUnitProcessItem,
 )
 from .models import InfrahubTestFileV1, InfrahubTestGroup
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 MARKER_MAPPING = {
     "Check": pytest.mark.infrahub_check,
@@ -55,7 +51,7 @@ ITEMS_MAPPING = {
 
 
 class InfrahubYamlFile(pytest.File):
-    def get_resource_config(self, group: InfrahubTestGroup) -> Any | None:
+    def get_resource_config(self, group: InfrahubTestGroup) -> Optional[Any]:
         """Retrieve the resource configuration to apply to all tests in a group."""
         resource_config_function = CONFIG_MAPPING.get(group.resource)
 

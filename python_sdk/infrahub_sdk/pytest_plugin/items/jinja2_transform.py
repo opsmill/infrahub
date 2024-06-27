@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import difflib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import jinja2
 import ujson
@@ -28,7 +28,7 @@ class InfrahubJinja2Item(InfrahubItem):
     def get_jinja2_template(self) -> jinja2.Template:
         return self.get_jinja2_environment().get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
 
-    def render_jinja2_template(self, variables: dict[str, Any]) -> str | None:
+    def render_jinja2_template(self, variables: dict[str, Any]) -> Optional[str]:
         try:
             return self.get_jinja2_template().render(**variables)
         except jinja2.UndefinedError as exc:
@@ -48,7 +48,7 @@ class InfrahubJinja2Item(InfrahubItem):
                 ) from exc
             return None
 
-    def get_result_differences(self, computed: Any) -> str | None:
+    def get_result_differences(self, computed: Any) -> Optional[str]:
         if not isinstance(self.test.spec, InfrahubInputOutputTest) or not self.test.spec.output or computed is None:
             return None
 
@@ -61,7 +61,7 @@ class InfrahubJinja2Item(InfrahubItem):
         )
         return "\n".join(differences)
 
-    def repr_failure(self, excinfo: ExceptionInfo, style: str | None = None) -> str:
+    def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):
             try:
                 response_content = ujson.dumps(excinfo.value.response.json(), indent=4, sort_keys=True)
@@ -98,7 +98,7 @@ class InfrahubJinja2TransformUnitRenderItem(InfrahubJinja2Item):
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
             raise OutputMatchError(name=self.name, differences=differences)
 
-    def repr_failure(self, excinfo: ExceptionInfo, style: str | None = None) -> str:
+    def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, (Jinja2TransformUndefinedError, Jinja2TransformError)):
             return excinfo.value.message
 

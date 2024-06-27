@@ -4,7 +4,7 @@ import asyncio
 import importlib
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from git import Repo
 
@@ -21,7 +21,7 @@ INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT = "INFRAHUB_TRANSFORMS"
 
 
 class InfrahubTransform:
-    name: str | None = None
+    name: Optional[str] = None
     query: str
     timeout: int = 10
 
@@ -42,7 +42,7 @@ class InfrahubTransform:
             raise ValueError("A query must be provided")
 
     @classmethod
-    async def init(cls, client: InfrahubClient | None = None, *args: Any, **kwargs: Any) -> InfrahubTransform:
+    async def init(cls, client: Optional[InfrahubClient] = None, *args: Any, **kwargs: Any) -> InfrahubTransform:
         """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
 
         item = cls(*args, **kwargs)
@@ -77,7 +77,7 @@ class InfrahubTransform:
 
         return await self.client.query_gql_query(name=self.query, branch_name=self.branch_name)
 
-    async def run(self, data: dict | None = None) -> Any:
+    async def run(self, data: Optional[dict] = None) -> Any:
         """Execute the transformation after collecting the data from the GraphQL query.
         The result of the check is determined based on the presence or not of ERROR log messages."""
 
@@ -92,7 +92,7 @@ class InfrahubTransform:
 
 
 def get_transform_class_instance(
-    transform_config: InfrahubPythonTransformConfig, search_path: Path | None = None
+    transform_config: InfrahubPythonTransformConfig, search_path: Optional[Path] = None
 ) -> InfrahubTransform:
     if transform_config.file_path.is_absolute() or search_path is None:
         search_location = transform_config.file_path

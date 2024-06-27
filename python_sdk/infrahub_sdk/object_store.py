@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 
@@ -19,7 +19,7 @@ class ObjectStore(ObjectStoreBase):
     def __init__(self, client: InfrahubClient):
         self.client = client
 
-    async def get(self, identifier: str, tracker: str | None = None) -> str:
+    async def get(self, identifier: str, tracker: Optional[str] = None) -> str:
         url = f"{self.client.address}/api/storage/object/{identifier}"
         headers = copy.copy(self.client.headers or {})
         if self.client.insert_tracker and tracker:
@@ -41,7 +41,7 @@ class ObjectStore(ObjectStoreBase):
 
         return resp.text
 
-    async def upload(self, content: str, tracker: str | None = None) -> dict[str, str]:
+    async def upload(self, content: str, tracker: Optional[str] = None) -> dict[str, str]:
         url = f"{self.client.address}/api/storage/upload/content"
         headers = copy.copy(self.client.headers or {})
         if self.client.insert_tracker and tracker:
@@ -67,7 +67,7 @@ class ObjectStoreSync(ObjectStoreBase):
     def __init__(self, client: InfrahubClientSync):
         self.client = client
 
-    def get(self, identifier: str, tracker: str | None = None) -> str:
+    def get(self, identifier: str, tracker: Optional[str] = None) -> str:
         url = f"{self.client.address}/api/storage/object/{identifier}"
         headers = copy.copy(self.client.headers or {})
         if self.client.insert_tracker and tracker:
@@ -89,7 +89,7 @@ class ObjectStoreSync(ObjectStoreBase):
 
         return resp.text
 
-    def upload(self, content: str, tracker: str | None = None) -> dict[str, str]:
+    def upload(self, content: str, tracker: Optional[str] = None) -> dict[str, str]:
         url = f"{self.client.address}/api/storage/upload/content"
         headers = copy.copy(self.client.headers or {})
         if self.client.insert_tracker and tracker:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel
 
@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 class BranchData(BaseModel):
     id: str
     name: str
-    description: str | None = None
+    description: Optional[str] = None
     sync_with_git: bool
     is_default: bool
     has_schema_changes: bool
-    origin_branch: str | None = None
+    origin_branch: Optional[str] = None
     branched_from: str
 
 
@@ -48,11 +48,11 @@ class InfraHubBranchManagerBase:
     @classmethod
     def generate_diff_data_url(
         cls,
-        client: InfrahubClient | InfrahubClientSync,
+        client: Union[InfrahubClient, InfrahubClientSync],
         branch_name: str,
         branch_only: bool = True,
-        time_from: str | None = None,
-        time_to: str | None = None,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
     ) -> str:
         """Generate the URL for the diff_data function."""
         url = f"{client.address}/api/diff/data?branch={branch_name}"
@@ -165,7 +165,11 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
         return BranchData(**data["Branch"][0])
 
     async def diff_data(
-        self, branch_name: str, branch_only: bool = True, time_from: str | None = None, time_to: str | None = None
+        self,
+        branch_name: str,
+        branch_only: bool = True,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
     ) -> dict[Any, Any]:
         url = self.generate_diff_data_url(
             client=self.client,
@@ -234,7 +238,11 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         return response["BranchDelete"]["ok"]
 
     def diff_data(
-        self, branch_name: str, branch_only: bool = True, time_from: str | None = None, time_to: str | None = None
+        self,
+        branch_name: str,
+        branch_only: bool = True,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
     ) -> dict[Any, Any]:
         url = self.generate_diff_data_url(
             client=self.client,

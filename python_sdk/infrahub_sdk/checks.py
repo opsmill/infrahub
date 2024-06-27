@@ -4,7 +4,7 @@ import asyncio
 import importlib
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import ujson
 from git.repo import Repo
@@ -30,7 +30,7 @@ class InfrahubCheckInitializer(BaseModel):
 
 
 class InfrahubCheck:
-    name: str | None = None
+    name: Optional[str] = None
     query: str = ""
     timeout: int = 10
 
@@ -38,11 +38,11 @@ class InfrahubCheck:
         self,
         branch: str = "",
         root_directory: str = "",
-        output: str | None = None,
-        initializer: InfrahubCheckInitializer | None = None,
-        params: dict | None = None,
+        output: Optional[str] = None,
+        initializer: Optional[InfrahubCheckInitializer] = None,
+        params: Optional[dict] = None,
     ):
-        self.git: Repo | None = None
+        self.git: Optional[Repo] = None
         self.initializer = initializer or InfrahubCheckInitializer()
 
         self.logs: list[dict[str, Any]] = []
@@ -67,7 +67,7 @@ class InfrahubCheck:
         return self.__class__.__name__
 
     @classmethod
-    async def init(cls, client: InfrahubClient | None = None, *args: Any, **kwargs: Any) -> InfrahubCheck:
+    async def init(cls, client: Optional[InfrahubClient] = None, *args: Any, **kwargs: Any) -> InfrahubCheck:
         """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
 
         instance = cls(*args, **kwargs)
@@ -80,7 +80,7 @@ class InfrahubCheck:
         return [log for log in self.logs if log["level"] == "ERROR"]
 
     def _write_log_entry(
-        self, message: str, level: str, object_id: str | None = None, object_type: str | None = None
+        self, message: str, level: str, object_id: Optional[str] = None, object_type: Optional[str] = None
     ) -> None:
         log_message = {"level": level, "message": message, "branch": self.branch_name}
         if object_id:
@@ -92,10 +92,10 @@ class InfrahubCheck:
         if self.output == "stdout":
             print(ujson.dumps(log_message))
 
-    def log_error(self, message: str, object_id: str | None = None, object_type: str | None = None) -> None:
+    def log_error(self, message: str, object_id: Optional[str] = None, object_type: Optional[str] = None) -> None:
         self._write_log_entry(message=message, level="ERROR", object_id=object_id, object_type=object_type)
 
-    def log_info(self, message: str, object_id: str | None = None, object_type: str | None = None) -> None:
+    def log_info(self, message: str, object_id: Optional[str] = None, object_type: Optional[str] = None) -> None:
         self._write_log_entry(message=message, level="INFO", object_id=object_id, object_type=object_type)
 
     @property
@@ -134,7 +134,7 @@ class InfrahubCheck:
 
         return await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, variables=self.params)
 
-    async def run(self, data: dict | None = None) -> bool:
+    async def run(self, data: Optional[dict] = None) -> bool:
         """Execute the check after collecting the data from the GraphQL query.
         The result of the check is determined based on the presence or not of ERROR log messages."""
 
@@ -158,7 +158,7 @@ class InfrahubCheck:
 
 
 def get_check_class_instance(
-    check_config: InfrahubCheckDefinitionConfig, search_path: Path | None = None
+    check_config: InfrahubCheckDefinitionConfig, search_path: Optional[Path] = None
 ) -> InfrahubCheck:
     if check_config.file_path.is_absolute() or search_path is None:
         search_location = check_config.file_path

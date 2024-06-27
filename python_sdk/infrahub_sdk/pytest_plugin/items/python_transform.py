@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import ujson
 from httpx import HTTPStatusError
@@ -43,7 +43,7 @@ class InfrahubPythonTransformItem(InfrahubItem):
         self.instantiate_transform()
         return asyncio.run(self.transform_instance.run(data=variables))
 
-    def repr_failure(self, excinfo: ExceptionInfo, style: str | None = None) -> str:
+    def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):
             try:
                 response_content = ujson.dumps(excinfo.value.response.json(), indent=4)
