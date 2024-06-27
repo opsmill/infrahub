@@ -54,8 +54,8 @@ export const router = createBrowserRouter([
             lazy: () => import("@/pages/objects/layout"),
             children: [
               {
-                path: ":objectname",
-                lazy: () => import("@/screens/object-items/object-items-paginated"),
+                path: ":objectKind",
+                lazy: () => import("@/pages/objects/object-items"),
               },
             ],
           },
