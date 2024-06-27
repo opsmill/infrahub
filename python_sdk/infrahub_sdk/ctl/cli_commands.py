@@ -349,7 +349,7 @@ def protocols(
         return f"{name}: {type_}"
 
     def _sort_and_filter_models(
-        models: dict[str, Union[AttributeSchema, RelationshipSchema]], filters: Optional[list[str, str]] = None
+        models: dict[str, Union[AttributeSchema, RelationshipSchema]], filters: Optional[list[str]] = None
     ) -> list[dict[str, Any]]:
         if filters is None:
             filters = ["CoreNode"]
@@ -374,19 +374,17 @@ def protocols(
         if isinstance(schema_type, NodeSchema):
             nodes[name] = schema_type
 
+    sorted_generics = _sort_and_filter_models(generics)
+    sorted_nodes = _sort_and_filter_models(nodes)
+
     jinja2_env = jinja2.Environment(loader=jinja2.BaseLoader, trim_blocks=True, lstrip_blocks=True)
     jinja2_env.filters["inheritance"] = _jinja2_filter_inheritance
     jinja2_env.filters["render_attribute"] = _jinja2_filter_render_attribute
     jinja2_env.filters["render_relationship"] = _jinja2_filter_render_relationship
 
     template = jinja2_env.from_string(PROTOCOLS_TEMPLATE)
-    rendered = template.render(
-        generics=_sort_and_filter_models(generics), nodes=_sort_and_filter_models(nodes), sync=False
-    )
-    rendered_sync = template.render(
-        generics=_sort_and_filter_models(generics), nodes=_sort_and_filter_models(nodes), sync=True
-    )
-
+    rendered = template.render(generics=sorted_generics, nodes=sorted_nodes, sync=False)
+    rendered_sync = template.render(generics=sorted_generics, nodes=sorted_nodes, sync=True)
     output_file = Path(out)
     output_file_sync = Path(output_file.stem + "_sync" + output_file.suffix)
 
