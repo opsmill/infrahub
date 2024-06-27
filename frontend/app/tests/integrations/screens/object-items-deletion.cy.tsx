@@ -6,7 +6,6 @@ import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { AuthProvider } from "../../../src/hooks/useAuth";
-import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { mockedToken } from "../../fixtures/auth";
@@ -19,12 +18,13 @@ import {
 } from "../../mocks/data/graphqlQueries";
 import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
+import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
 
 // URL for the current view
 const mockedUrl = "/objects/CoreGraphQLQuery";
 
 // Path that will match the route to display the component
-const mockedPath = "/objects/:objectname";
+const mockedPath = "/objects/:objectKind";
 
 // Mock the apollo query and data
 const mocks: any[] = [
@@ -56,7 +56,7 @@ const mocks: any[] = [
 
 const AuthenticatedObjectItems = () => (
   <AuthProvider>
-    <ObjectItems />
+    <ObjectItemsPage />
   </AuthProvider>
 );
 
