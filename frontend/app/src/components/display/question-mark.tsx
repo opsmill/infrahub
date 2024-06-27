@@ -1,5 +1,4 @@
 import { Tooltip } from "@/components/ui/tooltip";
-import { Button } from "@/components/buttons/button-primitive";
 import { classNames } from "@/utils/common";
 
 type tQuestionMark = {
@@ -12,13 +11,14 @@ export const QuestionMark = ({ className, message }: tQuestionMark) => {
 
   return (
     <Tooltip content={message} enabled>
-      <Button
-        size="icon"
-        variant="outline"
-        className={classNames("h-4 w-4 p-2 text-[10px]", className)}
+      <div
+        className={classNames(
+          "rounded-full border bg-custom-white shadow-sm h-4 w-4 text-[10px] text-center cursor-help",
+          className
+        )}
         data-cy="question-mark">
         ?
-      </Button>
+      </div>
     </Tooltip>
   );
 };
