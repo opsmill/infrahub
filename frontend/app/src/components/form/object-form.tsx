@@ -11,9 +11,7 @@ import { useId, useState } from "react";
 import { Combobox } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Label from "@/components/ui/label";
-import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import { gql } from "@apollo/client";
-import useQuery from "@/hooks/useQuery";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ErrorScreen from "@/screens/errors/error-screen";
 import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
@@ -28,6 +26,7 @@ import { classNames } from "@/utils/common";
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { useAuth } from "@/hooks/useAuth";
+import { useObjectItems } from "@/hooks/useObjectItems";
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
@@ -124,14 +123,7 @@ type ProfilesSelectorProps = {
 const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
   const id = useId();
 
-  const query = gql`
-    ${getObjectItemsPaginated({
-      kind: schema.kind,
-      attributes: schema.attributes,
-    })}
-  `;
-
-  const { data, error, loading } = useQuery(query);
+  const { data, error, loading } = useObjectItems(schema);
 
   if (loading) return <LoadingScreen size={30} hideText className="p-12 pb-0" />;
 
