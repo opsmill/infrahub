@@ -6,7 +6,7 @@ import { getObjectAttributes, getObjectRelationships } from "@/utils/getSchemaOb
 import usePagination from "@/hooks/usePagination";
 import useFilters from "@/hooks/useFilters";
 
-export const useObjectItems = (schema?: IModelSchema, filtersFromProps: Array<string> = []) => {
+export const useObjectItems = (schema?: IModelSchema) => {
   const [filters] = useFilters();
   const [pagination] = usePagination();
 
@@ -31,8 +31,7 @@ export const useObjectItems = (schema?: IModelSchema, filtersFromProps: Array<st
     ...[
       { name: "offset", value: pagination.offset },
       { name: "limit", value: pagination.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
-    ...filtersFromProps,
+    ].map((row) => `${row.name}: ${row.value}`),
   ].join(",");
 
   const attributes = getObjectAttributes({ schema, forListView: true });

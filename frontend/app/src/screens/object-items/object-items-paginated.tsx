@@ -45,14 +45,12 @@ import { useObjectItems } from "@/hooks/useObjectItems";
 
 type ObjectItemsProps = {
   objectname?: string;
-  filters?: Array<string>;
   preventBlock?: boolean;
   overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
 };
 
 export default function ObjectItems({
   objectname: objectnameFromProps = "",
-  filters: filtersFromProps = [],
   overrideDetailsViewUrl,
   preventBlock,
 }: ObjectItemsProps) {
@@ -96,7 +94,7 @@ export default function ObjectItems({
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true });
 
-  const { loading, error, data = {}, refetch } = useObjectItems(schemaData, filtersFromProps);
+  const { loading, error, data = {}, refetch } = useObjectItems(schemaData);
 
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
