@@ -38,7 +38,7 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByRole("option", { name: "10.1.0.0/16" }).click();
     await page.getByLabel("Resources *").click();
 
-    await page.getByLabel("Node").click();
+    await page.getByLabel("IPAM Namespace *").click();
     await page.getByRole("option", { name: "default" }).click();
     await page.getByRole("button", { name: "Save" }).click();
 
