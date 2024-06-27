@@ -11,9 +11,7 @@ if TYPE_CHECKING:
     from types import ModuleType
 
 
-def import_module(
-    module_path: Path, import_root: str | None = None, relative_path: str | None = None
-) -> ModuleType:
+def import_module(module_path: Path, import_root: str | None = None, relative_path: str | None = None) -> ModuleType:
     import_root = import_root or str(module_path.parent)
 
     if import_root not in sys.path:

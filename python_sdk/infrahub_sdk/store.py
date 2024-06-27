@@ -98,9 +98,7 @@ class NodeStore(NodeStoreBase):
 
 class NodeStoreSync(NodeStoreBase):
     @overload
-    def get(
-        self, key: str, kind: str | None = None, raise_when_missing: Literal[True] = True
-    ) -> InfrahubNodeSync: ...
+    def get(self, key: str, kind: str | None = None, raise_when_missing: Literal[True] = True) -> InfrahubNodeSync: ...
 
     @overload
     def get(
