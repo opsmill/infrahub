@@ -17,10 +17,8 @@ import {
 } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
-import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import useFilters, { Filter } from "@/hooks/useFilters";
 import { usePermission } from "@/hooks/usePermission";
-import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -28,26 +26,22 @@ import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { iComboBoxFilter } from "@/state/atoms/filters.atom";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { debounce } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getSchemaObjectColumns,
-} from "@/utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useObjectItems } from "@/hooks/useObjectItems";
 
 type ObjectItemsProps = {
   objectname?: string;
@@ -65,7 +59,6 @@ export default function ObjectItems({
   const navigate = useNavigate();
   const permission = usePermission();
   const [filters, setFilters] = useFilters();
-  const { objectname: objectnameFromParams } = useParams();
 
   const kindFilter = filters?.find((filter) => filter.name == "kind__value");
 
@@ -100,48 +93,10 @@ export default function ObjectItems({
     return null;
   }
 
-  // All the fiter values are being sent out as strings inside quotes.
-  // This will not work if the type of filter value is not string.
-  const filtersString = [
-    // Add object filters
-    ...filters
-      .filter((filter) => filter.name !== "kind__value")
-      .map((row: iComboBoxFilter) => {
-        if (typeof row.value === "string") {
-          return `${row.name}: "${row.value}"`;
-        }
-
-        if (Array.isArray(row.value)) {
-          return `${row.name}: ${JSON.stringify(row.value.map((v) => v.id ?? v))}`;
-        }
-
-        return `${row.name}: ${row.value}`;
-      }),
-    ...filtersFromProps,
-  ].join(",");
-
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true });
-  const attributes = getObjectAttributes({ schema: schemaData, forListView: true });
-  const relationships = getObjectRelationships({ schema: schemaData, forListView: true });
 
-  const queryString = getObjectItemsPaginated({
-    kind: objectname,
-    attributes,
-    relationships,
-    filters: filtersString,
-  });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const {
-    loading,
-    error,
-    data = {},
-    refetch,
-  } = useQuery(query, { skip: !schemaData, notifyOnNetworkStatusChange: true });
+  const { loading, error, data = {}, refetch } = useObjectItems(schemaData, filtersFromProps);
 
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
