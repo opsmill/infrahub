@@ -428,39 +428,32 @@ class NodeListGetAttributeQuery(Query):
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
+        MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
         """
+        where_parts = []
         if self.fields:
-            query += "\n WHERE a.name IN $field_names"
+            where_parts.append("a.name IN $field_names")
             self.params["field_names"] = list(self.fields.keys())
+        where_parts.append(branch_filter)
+        where_str = " AND ".join(where_parts)
 
         self.add_to_query(query)
 
         query = """
-        CALL {
-            WITH n, a
-            MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
-            WHERE %(branch_filter)s
-            RETURN n as n1, r as r1, a as a1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n1 as n, r1, a1 as a
-        WHERE r1.status = "active"
-        WITH n, r1, a
-        MATCH (a)-[:HAS_VALUE]-(av:AttributeValue)
-        CALL {
-            WITH a, av
-            MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
-            WHERE %(branch_filter)s
-            RETURN a as a1, r as r2, av as av1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n, r1, a1 as a, r2, av1 as av
-        WHERE r2.status = "active"
-        WITH n, a, av, r1, r2
-        """ % {"branch_filter": branch_filter}
+        WHERE %(where_str)s
+        WITH n, a, r AS r_attr
+        ORDER BY n.uuid, a.uuid, r_attr.branch_level DESC, r_attr.from DESC
+        WITH n, a, head(collect(r_attr)) AS latest_r_attr
+        WHERE latest_r_attr.status = "active"
+        MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
+        WHERE %(branch_filter)s
+        WITH n, latest_r_attr, a, r AS r_attr_val, av
+        ORDER BY n.uuid, a.uuid, av.uuid, r_attr_val.branch_level DESC, r_attr_val.from DESC
+        WITH n, latest_r_attr, a, av, head(collect(r_attr_val)) AS latest_r_attr_val
+        WHERE latest_r_attr_val.status = "active"
+        WITH n, a, av, latest_r_attr AS r1, latest_r_attr_val AS r2
+        """ % {"where_str": where_str, "branch_filter": branch_filter}
+
         self.add_to_query(query)
 
         self.return_labels = ["n", "a", "av", "r1", "r2"]

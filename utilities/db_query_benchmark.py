@@ -26,6 +26,7 @@ from infrahub.log import get_logger
 from infrahub.test_data.gen_connected_nodes import GenerateConnectedNodes
 from infrahub.test_data.gen_isolated_node import GenerateIsolatedNodes
 from infrahub.test_data.gen_node_profile_node import ProfileAttribute
+from infrahub.test_data.gen_branched_attributes_nodes import GenerateBranchedAttributeNodes
 
 app = AsyncTyper()
 
@@ -230,6 +231,56 @@ async def profile_attribute(
 
     query_stats.create_graphs()
 
+
+@app.command()
+async def branched_attributes_nodes(
+    test_name: str = "branched_attributes_node",
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    count: int = typer.Option(1000),
+    parallel: int = typer.Option(5),
+) -> None:
+    config.load_and_exit(config_file_name=config_file)
+
+    db = InfrahubDatabaseAnalyzer(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    log.info("Starting initialization .. ")
+    initialize_lock()
+
+    await initialization(db=db)
+
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
+                    {"name": "is_electric", "kind": "Boolean"},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    default_branch = await registry.get_branch(db=db)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
+
+    query_stats.name = test_name
+    query_stats.measure_memory_usage = False
+    query_stats.output_location = Path.cwd() / "query_performance_results"
+    query_stats.start_tracking()
+
+    log.info("Start loading data .. ")
+    with Progress() as progress:
+        loader = GenerateBranchedAttributeNodes(db=db, progress=progress, concurrent_execution=parallel)
+        loader.add_callback(callback_name="query_50_cars", task=NodeManager.query, limit=50, schema=car_schema, branch="branch")
+        await loader.load_data(nbr_cars=count)
+
+    query_stats.create_graphs()
 
 if __name__ == "__main__":
     app()
