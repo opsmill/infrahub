@@ -1,10 +1,8 @@
 import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver from "@/components/display/slide-over";
 import { Filters } from "@/components/filters/filters";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -22,7 +20,6 @@ import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
-import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
@@ -124,8 +121,6 @@ export default function ObjectItems({
     setIsLoading(false);
   };
 
-  const handleRefetch = () => refetch();
-
   const handleSearch: SearchInputProps["onChange"] = (e) => {
     const value = e.target.value as string;
     if (!value) {
@@ -158,24 +153,7 @@ export default function ObjectItems({
   }
 
   return (
-    <Content>
-      {schema && (
-        <Content.Title
-          title={
-            <div className="flex items-center">
-              <h1 className="mr-2 truncate">{schema.label}</h1>
-              <Badge>{count}</Badge>
-            </div>
-          }
-          isReloadLoading={loading}
-          reload={handleRefetch}
-          description={schema?.description}>
-          <div className="flex-grow text-right">
-            <ObjectHelpButton documentationUrl={schema.documentation} kind={schema.kind} />
-          </div>
-        </Content.Title>
-      )}
-
+    <>
       <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
         <div className="flex items-center p-2">
           <SearchInput
@@ -320,6 +298,6 @@ export default function ObjectItems({
         setOpen={() => setDeleteModal(false)}
         isLoading={isLoading}
       />
-    </Content>
+    </>
   );
 }

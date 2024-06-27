@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import ErrorScreen from "@/screens/errors/error-screen";
 import ObjectItems from "@/screens/object-items/object-items-paginated";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import Content from "@/screens/layout/content";
 import useFilters from "@/hooks/useFilters";
 
 export function ObjectItemsPage() {
@@ -22,7 +23,11 @@ export function ObjectItemsPage() {
 
   if (!schema) return <ErrorScreen message={`Object ${objectKind} not found.`} />;
 
-  return <ObjectItems schema={schema} />;
+  return (
+    <Content>
+      <ObjectItems schema={schema} />
+    </Content>
+  );
 }
 
 export const Component = ObjectItemsPage;
