@@ -1,14 +1,10 @@
-from __future__ import annotations
+from collections.abc import Sequence
+from typing import Optional
 
-from typing import TYPE_CHECKING
+from infrahub_sdk.schema import BaseNodeSchema
 
 from ..topological_sort import DependencyCycleExistsError, topological_sort
 from .exceptions import SchemaImportError
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from infrahub_sdk.schema import BaseNodeSchema
 
 
 class InfrahubSchemaTopologicalSorter:
@@ -16,7 +12,7 @@ class InfrahubSchemaTopologicalSorter:
         self,
         schemas: Sequence[BaseNodeSchema],
         required_relationships_only: bool = True,
-        include: list[str] | None = None,
+        include: Optional[list[str]] = None,
     ) -> list[set[str]]:
         relationship_graph: dict[str, set[str]] = {}
         for node_schema in schemas:

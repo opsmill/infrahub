@@ -1,20 +1,16 @@
-from __future__ import annotations
-
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
 import ujson
 
+from infrahub_sdk import InfrahubClient
 from infrahub_sdk.ctl.exporter import LineDelimitedJSONExporter
 from infrahub_sdk.ctl.importer import LineDelimitedJSONImporter
 from infrahub_sdk.exceptions import SchemaNotFoundError
 from infrahub_sdk.transfer.exceptions import TransferFileNotFoundError
 from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 from tests.helpers.test_app import TestInfrahubApp
-
-if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClient
 
 PERSON_KIND = "TestingPerson"
 POOL_KIND = "TestingPool"

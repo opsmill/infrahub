@@ -1,13 +1,9 @@
-from __future__ import annotations
-
 import asyncio
+from collections.abc import AsyncGenerator, Awaitable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any, Callable, Optional
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Awaitable
-
-    from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.node import InfrahubNode
 
 
 @dataclass
@@ -15,12 +11,12 @@ class BatchTask:
     task: Callable[[Any], Awaitable[Any]]
     args: tuple[Any, ...]
     kwargs: dict[str, Any]
-    node: InfrahubNode | None = None
+    node: Optional[InfrahubNode] = None
 
 
 async def execute_batch_task_in_pool(
     task: BatchTask, semaphore: asyncio.Semaphore, return_exceptions: bool = False
-) -> tuple[InfrahubNode | None, Any]:
+) -> tuple[Optional[InfrahubNode], Any]:
     async with semaphore:
         try:
             result = await task.task(*task.args, **task.kwargs)
@@ -36,7 +32,7 @@ async def execute_batch_task_in_pool(
 class InfrahubBatch:
     def __init__(
         self,
-        semaphore: asyncio.Semaphore | None = None,
+        semaphore: Optional[asyncio.Semaphore] = None,
         max_concurrent_execution: int = 5,
         return_exceptions: bool = False,
     ):
@@ -49,7 +45,7 @@ class InfrahubBatch:
         return len(self._tasks)
 
     def add(
-        self, *args: Any, task: Callable[[Any], Awaitable[Any]], node: InfrahubNode | None = None, **kwargs: Any
+        self, *args: Any, task: Callable[[Any], Awaitable[Any]], node: Optional[InfrahubNode] = None, **kwargs: Any
     ) -> None:
         self._tasks.append(BatchTask(task=task, node=node, args=args, kwargs=kwargs))
 
