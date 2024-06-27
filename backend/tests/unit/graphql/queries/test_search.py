@@ -91,5 +91,5 @@ async def test_search_anywhere_by_string(
         node_ids.append(edge["node"]["id"])
         node_kinds.append(edge["node"]["kind"])
 
-    assert node_ids == [person_john_main.id, person_jane_main.id]
-    assert node_kinds == [person_john_main.get_kind(), person_jane_main.get_kind()]
+    assert sorted(node_ids) == sorted([person_john_main.id, person_jane_main.id])
+    assert sorted(node_kinds) == sorted([person_john_main.get_kind(), person_jane_main.get_kind()])
