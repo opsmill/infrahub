@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import MutableMapping
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, TypeVar, Union
