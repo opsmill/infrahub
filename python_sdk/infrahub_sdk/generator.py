@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from git.repo import Repo
 
@@ -22,21 +22,21 @@ class InfrahubGenerator:
         query: str,
         client: InfrahubClient,
         infrahub_node: type[InfrahubNode],
-        branch: Optional[str] = None,
+        branch: str | None = None,
         root_directory: str = "",
         generator_instance: str = "",
-        params: Optional[dict] = None,
+        params: dict | None = None,
         convert_query_response: bool = False,
     ) -> None:
         self.query = query
         self.branch = branch
-        self.git: Optional[Repo] = None
+        self.git: Repo | None = None
         self.params = params or {}
         self.root_directory = root_directory or os.getcwd()
         self.generator_instance = generator_instance
         self._init_client = client.clone()
         self._init_client.config.default_branch = self._init_client.default_branch = self.branch_name
-        self._client: Optional[InfrahubClient] = None
+        self._client: InfrahubClient | None = None
         self._nodes: list[InfrahubNode] = []
         self._related_nodes: list[InfrahubNode] = []
         self.infrahub_node = infrahub_node
@@ -58,7 +58,7 @@ class InfrahubGenerator:
         return self._related_nodes
 
     @property
-    def subscribers(self) -> Optional[list[str]]:
+    def subscribers(self) -> list[str] | None:
         if self.generator_instance:
             return [self.generator_instance]
         return None
@@ -101,7 +101,7 @@ class InfrahubGenerator:
         await self.process_nodes(data=unpacked)
         return data
 
-    async def run(self, identifier: str, data: Optional[dict] = None) -> None:
+    async def run(self, identifier: str, data: dict | None = None) -> None:
         """Execute the generator after collecting the data from the GraphQL query."""
 
         if not data:

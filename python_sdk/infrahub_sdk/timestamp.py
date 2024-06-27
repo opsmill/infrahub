@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional, Union
 
 import pendulum
 from pendulum.datetime import DateTime
@@ -17,7 +16,7 @@ class TimestampFormatError(ValueError): ...
 
 
 class Timestamp:
-    def __init__(self, value: Optional[Union[str, DateTime, Timestamp]] = None):
+    def __init__(self, value: str | DateTime | Timestamp | None = None):
         if value and isinstance(value, DateTime):
             self.obj = value
         elif value and isinstance(value, self.__class__):

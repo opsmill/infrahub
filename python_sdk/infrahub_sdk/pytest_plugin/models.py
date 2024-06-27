@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 import ujson
 import yaml
@@ -28,20 +28,20 @@ class InfrahubBaseTest(BaseModel):
 
 
 class InfrahubInputOutputTest(InfrahubBaseTest):
-    directory: Optional[Path] = Field(
+    directory: Path | None = Field(
         None, description="Path to the directory where the input and output files are located"
     )
     input: Path = Field(
         Path("input.json"),
         description="Path to the file with the input data for the test, can be a relative path from the config file or from the directory.",
     )
-    output: Optional[Path] = Field(
+    output: Path | None = Field(
         None,
         description="Path to the file with the expected output for the test, can be a relative path from the config file or from the directory.",
     )
 
     @staticmethod
-    def parse_user_provided_data(path: Union[Path, None]) -> Any:
+    def parse_user_provided_data(path: Path | None) -> Any:
         """Read and parse user provided data depending on a file extension.
 
         This function handles JSON and YAML as they can be used to achieve the same goal. However some users may be more used to one format or
@@ -69,7 +69,7 @@ class InfrahubInputOutputTest(InfrahubBaseTest):
             self.directory = base_dir
 
         if not self.input or not self.input.is_file():
-            search_input: Union[Path, str] = self.input or "input.*"
+            search_input: Path | str = self.input or "input.*"
             results = list(self.directory.rglob(str(search_input)))
 
             if not results:
@@ -81,7 +81,7 @@ class InfrahubInputOutputTest(InfrahubBaseTest):
             self.input = results[0]
 
         if not self.output or not self.output.is_file():
-            search_output: Union[Path, str] = self.output or "output.*"
+            search_output: Path | str = self.output or "output.*"
             results = list(self.directory.rglob(str(search_output)))
 
             if results and len(results) != 1:
@@ -99,7 +99,7 @@ class InfrahubInputOutputTest(InfrahubBaseTest):
 
 
 class InfrahubIntegrationTest(InfrahubInputOutputTest):
-    variables: Union[Path, dict[str, Any]] = Field(
+    variables: Path | dict[str, Any] = Field(
         Path("variables.json"), description="Variables and corresponding values to pass to the GraphQL query"
     )
 
@@ -107,7 +107,7 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
         super().update_paths(base_dir)
 
         if self.variables and not isinstance(self.variables, dict) and not self.variables.is_file():
-            search_variables: Union[Path, str] = self.variables or "variables.*"
+            search_variables: Path | str = self.variables or "variables.*"
             results = list(self.directory.rglob(str(search_variables)))  # type: ignore[union-attr]
 
             if not results:
@@ -176,19 +176,19 @@ class InfrahubTest(BaseModel):
         InfrahubTestExpectedResult.PASS,
         description="Expected outcome of the test, can be either PASS (default) or FAIL",
     )
-    spec: Union[
-        InfrahubCheckSmokeTest,
-        InfrahubCheckUnitProcessTest,
-        InfrahubCheckIntegrationTest,
-        InfrahubGraphQLQuerySmokeTest,
-        InfrahubGraphQLQueryIntegrationTest,
-        InfrahubJinja2TransformSmokeTest,
-        InfrahubJinja2TransformUnitRenderTest,
-        InfrahubJinja2TransformIntegrationTest,
-        InfrahubPythonTransformSmokeTest,
-        InfrahubPythonTransformUnitProcessTest,
-        InfrahubPythonTransformIntegrationTest,
-    ] = Field(..., discriminator="kind")
+    spec: (
+        InfrahubCheckSmokeTest
+        | InfrahubCheckUnitProcessTest
+        | InfrahubCheckIntegrationTest
+        | InfrahubGraphQLQuerySmokeTest
+        | InfrahubGraphQLQueryIntegrationTest
+        | InfrahubJinja2TransformSmokeTest
+        | InfrahubJinja2TransformUnitRenderTest
+        | InfrahubJinja2TransformIntegrationTest
+        | InfrahubPythonTransformSmokeTest
+        | InfrahubPythonTransformUnitProcessTest
+        | InfrahubPythonTransformIntegrationTest
+    ) = Field(..., discriminator="kind")
 
 
 class InfrahubTestGroup(BaseModel):
@@ -199,5 +199,5 @@ class InfrahubTestGroup(BaseModel):
 
 class InfrahubTestFileV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    version: Optional[str] = "1.0"
+    version: str | None = "1.0"
     infrahub_tests: list[InfrahubTestGroup]

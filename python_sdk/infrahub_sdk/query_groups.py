@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import NodeNotFoundError
@@ -18,11 +18,11 @@ class InfrahubGroupContextBase:
     def __init__(self) -> None:
         self.related_node_ids: list[str] = []
         self.related_group_ids: list[str] = []
-        self.unused_member_ids: Optional[list[str]] = None
-        self.unused_child_ids: Optional[list[str]] = None
-        self.previous_members: Optional[list[RelatedNodeBase]] = None
-        self.previous_children: Optional[list[RelatedNodeBase]] = None
-        self.identifier: Optional[str] = None
+        self.unused_member_ids: list[str] | None = None
+        self.unused_child_ids: list[str] | None = None
+        self.previous_members: list[RelatedNodeBase] | None = None
+        self.previous_children: list[RelatedNodeBase] | None = None
+        self.identifier: str | None = None
         self.params: dict[str, str] = {}
         self.delete_unused_nodes: bool = False
         self.group_type: str = "CoreStandardGroup"
@@ -30,9 +30,9 @@ class InfrahubGroupContextBase:
     def set_properties(
         self,
         identifier: str,
-        params: Optional[dict[str, str]] = None,
+        params: dict[str, str] | None = None,
         delete_unused_nodes: bool = False,
-        group_type: Optional[str] = None,
+        group_type: str | None = None,
     ) -> None:
         """Setter method to set the values of identifier and params.
 
@@ -52,7 +52,7 @@ class InfrahubGroupContextBase:
             params_as_str.append(f"{key}: {str(value)}")
         return ", ".join(params_as_str)
 
-    def _generate_group_name(self, suffix: Optional[str] = None) -> str:
+    def _generate_group_name(self, suffix: str | None = None) -> str:
         group_name = self.identifier or "sdk"
 
         if suffix:
@@ -85,7 +85,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         super().__init__()
         self.client = client
 
-    async def get_group(self, store_peers: bool = False) -> Optional[InfrahubNode]:
+    async def get_group(self, store_peers: bool = False) -> InfrahubNode | None:
         group_name = self._generate_group_name()
         try:
             group = await self.client.get(kind=self.group_type, name__value=group_name, include=["members", "children"])
@@ -110,7 +110,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
                 if child.id in self.unused_child_ids and child.typename:
                     await self.client.delete(kind=child.typename, id=child.id)
 
-    async def add_related_nodes(self, ids: list[str], update_group_context: Optional[bool] = None) -> None:
+    async def add_related_nodes(self, ids: list[str], update_group_context: bool | None = None) -> None:
         """
         Add related Nodes IDs to the context.
 
@@ -123,7 +123,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         ):
             self.related_node_ids.extend(ids)
 
-    async def add_related_groups(self, ids: list[str], update_group_context: Optional[bool] = None) -> None:
+    async def add_related_groups(self, ids: list[str], update_group_context: bool | None = None) -> None:
         """
         Add related Groups IDs to the context.
 
@@ -191,7 +191,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         super().__init__()
         self.client = client
 
-    def get_group(self, store_peers: bool = False) -> Optional[InfrahubNodeSync]:
+    def get_group(self, store_peers: bool = False) -> InfrahubNodeSync | None:
         group_name = self._generate_group_name()
         try:
             group = self.client.get(kind=self.group_type, name__value=group_name, include=["members", "children"])
@@ -216,7 +216,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
                 if child.id in self.unused_child_ids and child.typename:
                     self.client.delete(kind=child.typename, id=child.id)
 
-    def add_related_nodes(self, ids: list[str], update_group_context: Optional[bool] = None) -> None:
+    def add_related_nodes(self, ids: list[str], update_group_context: bool | None = None) -> None:
         """
         Add related Nodes IDs to the context.
 
@@ -229,7 +229,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         ):
             self.related_node_ids.extend(ids)
 
-    def add_related_groups(self, ids: list[str], update_group_context: Optional[bool] = None) -> None:
+    def add_related_groups(self, ids: list[str], update_group_context: bool | None = None) -> None:
         """
         Add related Groups IDs to the context.
 

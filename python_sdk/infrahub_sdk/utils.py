@@ -4,7 +4,7 @@ import hashlib
 import json
 from itertools import groupby
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import httpx
@@ -81,7 +81,7 @@ def is_valid_uuid(value: Any) -> bool:
         return False
 
 
-def decode_json(response: httpx.Response, url: Optional[str] = None) -> dict:
+def decode_json(response: httpx.Response, url: str | None = None) -> dict:
     try:
         return response.json()
     except json.decoder.JSONDecodeError as exc:
@@ -125,7 +125,7 @@ def compare_lists(list1: list[Any], list2: list[Any]) -> tuple[list[Any], list[A
     return sorted(in_both), sorted(in_list_1), sorted(in_list_2)
 
 
-def deep_merge_dict(dicta: dict, dictb: dict, path: Optional[list] = None) -> dict:
+def deep_merge_dict(dicta: dict, dictb: dict, path: list | None = None) -> dict:
     """Deep Merge Dictionary B into Dictionary A.
     Code is inspired by https://stackoverflow.com/a/7205107
     """
@@ -226,7 +226,7 @@ def is_valid_url(url: str) -> bool:
         return False
 
 
-def find_files(extension: Union[str, list[str]], directory: Union[str, Path] = ".") -> list[Path]:
+def find_files(extension: str | list[str], directory: str | Path = ".") -> list[Path]:
     files: list[Path] = []
 
     if isinstance(extension, str):
@@ -241,7 +241,7 @@ def find_files(extension: Union[str, list[str]], directory: Union[str, Path] = "
     return files
 
 
-def get_branch(branch: Optional[str] = None, directory: Union[str, Path] = ".") -> str:
+def get_branch(branch: str | None = None, directory: str | Path = ".") -> str:
     """If branch isn't provide, return the name of the local Git branch."""
     if branch:
         return branch
@@ -276,7 +276,7 @@ def calculate_dict_height(data: dict, cnt: int = 0) -> int:
     return cnt
 
 
-async def extract_fields(selection_set: Optional[SelectionSetNode]) -> Optional[dict[str, dict]]:
+async def extract_fields(selection_set: SelectionSetNode | None) -> dict[str, dict] | None:
     """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
 
     The goal of this function is to limit the fields that we need to query from the backend.

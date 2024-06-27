@@ -4,7 +4,6 @@ import random
 import socket
 import time
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 from infrahub_sdk.utils import base16encode
@@ -34,10 +33,10 @@ def encode_number(number: int, min_length: int) -> str:
 class UUIDT:
     def __init__(
         self,
-        namespace: Optional[str] = None,
-        timestamp: Optional[int] = None,
-        hostname: Optional[str] = None,
-        random_chars: Optional[str] = None,
+        namespace: str | None = None,
+        timestamp: int | None = None,
+        hostname: str | None = None,
+        random_chars: str | None = None,
     ):
         self.namespace = namespace or str(Path(__file__).parent.resolve())
         self.timestamp = timestamp or time.time_ns()
@@ -59,5 +58,5 @@ class UUIDT:
         return str(self)[-8:]
 
     @classmethod
-    def new(cls, namespace: Optional[str] = None) -> UUID:
+    def new(cls, namespace: str | None = None) -> UUID:
         return UUID(str(cls(namespace=namespace)))

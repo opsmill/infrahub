@@ -267,7 +267,6 @@ ignore = [
     "S108",    # Probable insecure usage of temporary file or directory
     "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
-    "UP007",   # Use X | Y for type annotations
     "UP031",   # Use format specifiers instead of percent format
     "UP034",   # Avoid extraneous parentheses
 ]

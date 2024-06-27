@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import ModuleImportError
 
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def import_module(
-    module_path: Path, import_root: Optional[str] = None, relative_path: Optional[str] = None
+    module_path: Path, import_root: str | None = None, relative_path: str | None = None
 ) -> ModuleType:
     import_root = import_root or str(module_path.parent)
 

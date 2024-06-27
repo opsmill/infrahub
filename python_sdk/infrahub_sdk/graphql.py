@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any
 
 VARIABLE_TYPE_MAPPING = ((str, "String!"), (int, "Int!"), (float, "Float!"), (bool, "Boolean!"))
 
 
-def convert_to_graphql_as_string(value: Union[str, bool, list]) -> str:
+def convert_to_graphql_as_string(value: str | bool | list) -> str:
     if isinstance(value, str) and value.startswith("$"):
         return value
     if isinstance(value, str):
@@ -19,7 +19,7 @@ def convert_to_graphql_as_string(value: Union[str, bool, list]) -> str:
     return str(value)
 
 
-def render_variables_to_string(data: dict[str, type[Union[str, int, float, bool]]]) -> str:
+def render_variables_to_string(data: dict[str, type[str | int | float | bool]]) -> str:
     """Render a dict into a variable string that will be used in a GraphQL Query.
 
     The $ sign will be automatically added to the name of the query.
@@ -100,7 +100,7 @@ class BaseGraphQLQuery:
     query_type: str = "not-defined"
     indentation: int = 4
 
-    def __init__(self, query: dict, variables: Optional[dict] = None, name: Optional[str] = None):
+    def __init__(self, query: dict, variables: dict | None = None, name: str | None = None):
         self.query = query
         self.variables = variables
         self.name = name or ""
