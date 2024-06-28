@@ -4,7 +4,6 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
 import { genericsState, schemaState } from "../../../src/state/atoms/schema.atom";
 import {
   graphqlQueriesMocksData,
@@ -13,12 +12,13 @@ import {
 } from "../../mocks/data/graphqlQueries";
 import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
+import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
 
 // URL for the current view
 const mockedUrl = "/objects/CoreGraphQLQuery";
 
 // Path that will match the route to display the component
-const mockedPath = "/objects/:objectname";
+const mockedPath = "/objects/:objectKind";
 
 // Mock the apollo query and data
 const mocks: any[] = [
@@ -52,7 +52,7 @@ const mocks: any[] = [
 const ObjectItemsProvider = () => {
   return (
     <TestProvider initialValues={[[schemaState, schemaMocks]]}>
-      <ObjectItems />
+      <ObjectItemsPage />
     </TestProvider>
   );
 };
@@ -112,7 +112,7 @@ describe("List screen", () => {
             [schemaState, []],
             [genericsState, schemaMocks],
           ]}>
-          <ObjectItems />
+          <ObjectItemsPage />
         </TestProvider>
       );
     };

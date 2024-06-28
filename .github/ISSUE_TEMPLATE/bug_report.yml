@@ -16,6 +16,12 @@ body:
         - Python SDK
         - infrahubctl CLI
         - Not Sure
+  - type: input
+    attributes:
+      label: Infrahub version
+      description: Infrahub version (e.g. 0.14.2)
+    validations:
+      required: true
   - type: textarea
     attributes:
       label: Current Behavior

@@ -8,7 +8,7 @@ import {
   useQuery as useApolloQuery,
   useSubscription as useApolloSubscription,
 } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import usePagination from "./usePagination";
 
 const useQuery: typeof useApolloQuery = (QUERY, options?: OperationVariables) => {

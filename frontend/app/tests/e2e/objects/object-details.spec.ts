@@ -69,11 +69,11 @@ test.describe("/objects/:objectname/:objectid", () => {
         .getByText("Kind")
         .locator("../..")
         .getByTestId("select-input");
-      await expect(kindSelector).toHaveValue("CircuitEndpoint");
+      await expect(kindSelector).toHaveValue("Circuit Endpoint");
 
       const nodeSelector = page
         .getByTestId("side-panel-container")
-        .getByText("Node")
+        .getByText("Circuit Endpoint")
         .locator("../..")
         .getByTestId("select-input");
       await expect(nodeSelector).toHaveValue(/InfraCircuitEndpoint/g);

@@ -1,12 +1,10 @@
 import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver from "@/components/display/slide-over";
 import { Filters } from "@/components/filters/filters";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
-import { SearchInput } from "@/components/ui/search-input";
+import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   DEFAULT_BRANCH_NAME,
@@ -17,66 +15,44 @@ import {
 } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
-import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import useFilters, { Filter } from "@/hooks/useFilters";
-import usePagination from "@/hooks/usePagination";
 import { usePermission } from "@/hooks/usePermission";
-import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
-import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { iComboBoxFilter } from "@/state/atoms/filters.atom";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { debounce } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getSchemaObjectColumns,
-} from "@/utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useObjectItems } from "@/hooks/useObjectItems";
 
 type ObjectItemsProps = {
-  objectname?: string;
-  filters?: Array<string>;
+  schema: IModelSchema;
   preventBlock?: boolean;
   overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
 };
 
 export default function ObjectItems({
-  objectname: objectnameFromProps = "",
-  filters: filtersFromProps = [],
+  schema,
   overrideDetailsViewUrl,
   preventBlock,
 }: ObjectItemsProps) {
-  const { objectname: objectnameFromParams } = useParams();
-
-  const objectname = objectnameFromProps || objectnameFromParams;
-
-  const navigate = useNavigate();
-
   const permission = usePermission();
   const [filters, setFilters] = useFilters();
-  const [pagination] = usePagination();
 
-  const schemaKindName = useAtomValue(schemaKindNameState);
-  const schemaList = useAtomValue(schemaState);
-  const genericList = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
@@ -85,74 +61,20 @@ export default function ObjectItems({
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const schema = schemaList.find((s) => s.kind === objectname);
-  const generic = genericList.find((s) => s.kind === objectname);
-  const profile = profiles.find((s) => s.kind === objectname);
-
-  const schemaData = schema || generic || profile;
-
-  if ((schemaList?.length || genericList?.length) && !schemaData) {
-    // If there is no schema nor generics, go to home page
-    navigate("/");
-    return null;
+  if (schema && MENU_EXCLUDELIST.includes(schema.kind as string) && !preventBlock) {
+    return <Navigate to="/" />;
   }
-
-  if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind) && !preventBlock) {
-    navigate("/");
-    return null;
-  }
-
-  // All the fiter values are being sent out as strings inside quotes.
-  // This will not work if the type of filter value is not string.
-  const filtersString = [
-    // Add object filters
-    ...filters.map((row: iComboBoxFilter) => {
-      if (typeof row.value === "string") {
-        return `${row.name}: "${row.value}"`;
-      }
-
-      if (Array.isArray(row.value)) {
-        return `${row.name}: ${JSON.stringify(row.value.map((v) => v.id ?? v))}`;
-      }
-
-      return `${row.name}: ${row.value}`;
-    }),
-    // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
-    ...filtersFromProps,
-  ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true });
-  const attributes = getObjectAttributes({ schema: schemaData, forListView: true });
-  const relationships = getObjectRelationships({ schema: schemaData, forListView: true });
+  const columns = getSchemaObjectColumns({ schema: schema, forListView: true });
 
-  const queryString = getObjectItemsPaginated({
-    kind: objectname,
-    attributes,
-    relationships,
-    filters: filtersString,
-  });
+  const { loading, error, data = {}, refetch } = useObjectItems(schema, filters);
 
-  const query = gql`
-    ${queryString}
-  `;
-
-  const {
-    loading,
-    error,
-    data = {},
-    refetch,
-  } = useQuery(query, { skip: !schemaData, notifyOnNetworkStatusChange: true });
-
-  const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
+  const result = data && schema?.kind ? data[schema?.kind] ?? {} : {};
 
   const { count = "...", edges } = result;
 
-  useTitle(`${schemaKindName[objectname]} list`);
+  useTitle(`${schema.label || schema.name} list`);
 
   const rows = edges?.map((edge: any) => edge.node);
 
@@ -199,9 +121,7 @@ export default function ObjectItems({
     setIsLoading(false);
   };
 
-  const handleRefetch = () => refetch();
-
-  const handleSearch = (e) => {
+  const handleSearch: SearchInputProps["onChange"] = (e) => {
     const value = e.target.value as string;
     if (!value) {
       const newFilters = filters.filter((filter: Filter) => !SEARCH_FILTERS.includes(filter.name));
@@ -233,24 +153,7 @@ export default function ObjectItems({
   }
 
   return (
-    <Content>
-      {schemaData && (
-        <Content.Title
-          title={
-            <div className="flex items-center">
-              <h1 className="mr-2 truncate">{schemaData.label}</h1>
-              <Badge>{count}</Badge>
-            </div>
-          }
-          isReloadLoading={loading}
-          reload={handleRefetch}
-          description={schemaData?.description}>
-          <div className="flex-grow text-right">
-            <ObjectHelpButton documentationUrl={schemaData.documentation} kind={schemaData.kind} />
-          </div>
-        </Content.Title>
-      )}
-
+    <>
       <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
         <div className="flex items-center p-2">
           <SearchInput
@@ -261,7 +164,7 @@ export default function ObjectItems({
             data-testid="object-list-search-bar"
           />
 
-          <Filters schema={schemaData} />
+          <Filters schema={schema} />
 
           <Tooltip
             enabled={!permission.write.allow}
@@ -273,7 +176,7 @@ export default function ObjectItems({
               onClick={() => setShowCreateDrawer(true)}
               size="sm">
               <Icon icon="mdi:plus" className="text-sm" />
-              Add {schemaData?.label}
+              Add {schema?.label}
             </Button>
           </Tooltip>
         </div>
@@ -349,7 +252,7 @@ export default function ObjectItems({
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {schemaData?.label}</span>
+              <span className="text-lg font-semibold mr-3">Create {schema?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Icon icon={"mdi:layers-triple"} />
@@ -357,7 +260,7 @@ export default function ObjectItems({
               </div>
             </div>
 
-            <div className="text-sm">{schemaData?.description}</div>
+            <div className="text-sm">{schema?.description}</div>
 
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
@@ -366,7 +269,7 @@ export default function ObjectItems({
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {schemaData?.kind}
+              {schema?.kind}
             </span>
           </div>
         }
@@ -378,7 +281,7 @@ export default function ObjectItems({
             await refetch();
           }}
           onCancel={() => setShowCreateDrawer(false)}
-          kind={objectname!}
+          kind={schema.kind!}
         />
       </SlideOver>
 
@@ -395,10 +298,6 @@ export default function ObjectItems({
         setOpen={() => setDeleteModal(false)}
         isLoading={isLoading}
       />
-    </Content>
+    </>
   );
-}
-
-export function Component() {
-  return <ObjectItems />;
 }

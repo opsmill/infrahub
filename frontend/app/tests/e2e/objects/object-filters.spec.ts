@@ -73,7 +73,7 @@ test.describe("Object filters", () => {
     await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeHidden();
   });
 
-  test("should correctly display the filters with select 2 steps pointing to any objects", async ({
+  test("should correctly display the filters with hierarchical dropdown pointing to any objects", async ({
     page,
   }) => {
     await page.goto("/objects/CoreArtifact");
@@ -87,5 +87,19 @@ test.describe("Object filters", () => {
       .getByTestId("select-open-option-button");
     await kindSelector.click();
     await expect(page.getByRole("option", { name: "Tag", exact: true })).toBeVisible();
+  });
+
+  test("should correctly filter from a kind", async ({ page }) => {
+    await page.goto("/objects/InfraInterface");
+    await page.getByTestId("apply-filters").click();
+    const kindSelector = page
+      .getByTestId("side-panel-container")
+      .getByText("Kind")
+      .locator("../..")
+      .getByTestId("select-open-option-button");
+    await kindSelector.click();
+    await page.getByRole("option", { name: "InfraInterfaceL2", exact: true }).click();
+    await page.getByRole("button", { name: "Apply filters" }).click();
+    await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 510 results");
   });
 });

@@ -29,7 +29,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await page.getByTestId("edit-metadata-button").click();
       await page.getByLabel("Kind").first().click();
       await page.getByRole("option", { name: "Account" }).click();
-      await page.getByLabel("Node").first().click();
+      await page.getByLabel("Account").click();
       await page.getByRole("option", { name: "Admin" }).click();
       await page.getByLabel("is protected *").check();
       await saveScreenshotForDocs(page, "tutorial_4_metadata_edit");

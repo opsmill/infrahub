@@ -14,10 +14,10 @@ def get_repository_config(repo_config_file: Path) -> InfrahubRepositoryConfig:
     try:
         config_file_data = load_repository_config_file(repo_config_file)
     except FileNotFoundError as exc:
-        console.print(f"[red]{exc}")
+        console.print(f"[red]File not found {exc}")
         raise typer.Exit(1) from exc
     except FileNotValidError as exc:
-        console.print(f"[red]{exc}")
+        console.print(f"[red]{exc.message}")
         raise typer.Exit(1) from exc
 
     try:

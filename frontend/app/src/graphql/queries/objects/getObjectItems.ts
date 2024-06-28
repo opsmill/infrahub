@@ -2,8 +2,15 @@ import "@/utils/handlebars"; // Import handlebars utils
 import Handlebars from "handlebars";
 
 export const getObjectItemsPaginated = Handlebars.compile(`
-query {{kind}} {
-  {{kind}}{{#if filters}}({{{filters}}}){{/if}} {
+query {{kind}} (
+  $offset: Int
+  $limit: Int
+) {
+  {{kind}}(
+    {{#if filters}}{{{filters}}}{{/if}}
+    offset: $offset
+    limit: $limit
+  ) {
     count
     edges {
       node {

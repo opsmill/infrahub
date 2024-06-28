@@ -7,6 +7,7 @@ from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
     NBR_WORKERS,
+    PYTHON_PRIMITIVE_MAP,
     build_test_compose_files_cmd,
     build_test_envs,
     build_test_scale_compose_files_cmd,
@@ -280,14 +281,17 @@ def _jinja2_filter_inheritance(value: dict[str, Any]) -> str:
     return ", ".join(inherit_from)
 
 
-def _jinja2_filter_render_attribute(value: dict[str, Any]) -> str:
+def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive: bool = False) -> str:
     from infrahub.types import ATTRIBUTE_TYPES
 
-    attr_name = value["name"]
-    attr_kind = value["kind"]
+    attr_name: str = value["name"]
+    attr_kind: str = value["kind"]
 
-    if "enum" in value:
+    if "enum" in value and not use_python_primitive:
         return f"{attr_name}: Enum"
+
+    if use_python_primitive:
+        return f"{attr_name}: {PYTHON_PRIMITIVE_MAP[attr_kind.lower()]}"
     return f"{attr_name}: {ATTRIBUTE_TYPES[attr_kind].infrahub}"
 
 
@@ -316,8 +320,22 @@ def _generate_protocols(context: Context):
     env.filters["inheritance"] = _jinja2_filter_inheritance
     env.filters["render_attribute"] = _jinja2_filter_render_attribute
 
+    # Export protocols for backend code use
     generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core"
     template = env.get_template("generate_protocols.j2")
+
+    protocols_rendered = template.render(
+        generics=_sort_and_filter_models(core_models["generics"]), models=_sort_and_filter_models(core_models["nodes"])
+    )
+    protocols_output = f"{generated}/protocols.py"
+    Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")
+
+    execute_command(context=context, command=f"ruff format {protocols_output}")
+    execute_command(context=context, command=f"ruff check --fix {protocols_output}")
+
+    # Export protocols for Python SDK code use
+    generated = f"{ESCAPED_REPO_PATH}/python_sdk/infrahub_sdk"
+    template = env.get_template("generate_protocols_sdk.j2")
 
     protocols_rendered = template.render(
         generics=_sort_and_filter_models(core_models["generics"]), models=_sort_and_filter_models(core_models["nodes"])
