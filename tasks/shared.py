@@ -134,6 +134,23 @@ GITHUB_ENVS_TO_PASS = [
     "GITHUB_RUN_NUMBER",
 ]
 
+PYTHON_PRIMITIVE_MAP = {
+    "boolean": "bool",
+    "datetime": "datetime",
+    "dropdown": "str",
+    "enum": "str",
+    "hashedpassword": "str",
+    "iphost": "str",
+    "ipnetwork": "str",
+    "json": "dict",
+    "list": "list",
+    "number": "int",
+    "password": "str",
+    "text": "str",
+    "textarea": "str",
+    "url": "str",
+}
+
 
 def check_environment(context: Context) -> dict:
     params = {
