@@ -10,9 +10,9 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     {% if sync %}
-    from infrahub_sdk.nodes import RelatedNodeSync, RelationshipManagerSync
+    from infrahub_sdk.node import RelatedNodeSync, RelationshipManagerSync
     {% else %}
-    from infrahub_sdk.nodes import RelatedNode, RelationshipManager
+    from infrahub_sdk.node import RelatedNode, RelationshipManager
     {% endif %}
 
 
