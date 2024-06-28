@@ -15,9 +15,7 @@ import {
   TASK_TARGET,
 } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { usePermission } from "@/hooks/usePermission";
-import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
@@ -40,10 +38,8 @@ import {
   getObjectAttributes,
   getObjectRelationships,
   getObjectTabs,
-  getSchemaObjectColumns,
   getTabs,
 } from "@/utils/getSchemaObjectColumns";
-import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { LockClosedIcon, PencilIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -55,6 +51,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
+import { useObjectDetails } from "@/hooks/useObjectDetails";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -80,7 +77,6 @@ export default function ObjectItemDetails(props: any) {
   const profiles = useAtomValue(profilesAtom);
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
-  const profileGeneric = genericList.find((s) => s.kind === PROFILE_KIND);
   const profile = profiles.find((s) => s.kind === objectname);
   const navigate = useNavigate();
 
@@ -101,35 +97,9 @@ export default function ObjectItemDetails(props: any) {
 
   const attributes = getObjectAttributes({ schema: schemaData });
   const relationships = getObjectRelationships({ schema: schemaData });
-  const columns = getSchemaObjectColumns({ schema: schemaData });
   const relationshipsTabs = getTabs(schemaData);
 
-  const queryString = schemaData
-    ? getObjectDetailsPaginated({
-        kind: schemaData?.kind,
-        taskKind: TASK_OBJECT,
-        columns,
-        relationshipsTabs,
-        objectid,
-        // Do not query profiles on profiles objects
-        queryProfiles:
-          !profileGeneric?.used_by?.includes(schemaData?.kind) &&
-          schemaData?.kind !== PROFILE_KIND &&
-          schemaData?.generate_profile,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schema
-      "query { ok }";
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  // TODO: Find a way to avoid querying object details if we are on a tab
-  const { loading, error, data, refetch } = useQuery(query, {
-    skip: !schemaData,
-    notifyOnNetworkStatusChange: true,
-  });
+  const { loading, error, data, refetch } = useObjectDetails(schemaData, objectid);
 
   // TODO: refactor to not need the ref to refetch child query
   const handleRefetch = () => {
