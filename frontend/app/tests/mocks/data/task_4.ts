@@ -37,8 +37,8 @@ export const taskMocksSchema = [
 ];
 
 export const taskMocksQuery = `
-query TestTask {
-  TestTask(offset: 0,limit: 10) {
+query TestTask($offset: Int, $limit: Int) {
+  TestTask(offset: $offset,limit: $limit) {
     count
     edges {
       node {

@@ -1,5 +1,5 @@
 import { DynamicFieldProps } from "./type";
-import { genericsState, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { sortByOrderWeight } from "@/utils/common";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
@@ -16,7 +16,7 @@ import { getIsDisabled } from "@/utils/formStructureForCreateEdit";
 import { components } from "@/infraops";
 
 type GetFormFieldsFromSchema = {
-  schema: iNodeSchema;
+  schema: iNodeSchema | iGenericSchema;
   profile?: Object;
   initialObject?: Record<string, AttributeType>;
   user?: any;
@@ -36,7 +36,7 @@ export const getFormFieldsFromSchema = ({
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
-  return orderedFields.map((attribute) => {
+  const formFields = orderedFields.map((attribute) => {
     const disabled = getIsDisabled({
       owner: initialObject && initialObject[attribute.name]?.owner,
       user,
@@ -50,7 +50,9 @@ export const getFormFieldsFromSchema = ({
     const basicFomFieldProps = {
       name: attribute.name,
       label: attribute.label ?? undefined,
-      defaultValue: getObjectDefaultValue({ fieldSchema: attribute, initialObject, profile }),
+      defaultValue: isFilterForm
+        ? null
+        : getObjectDefaultValue({ fieldSchema: attribute, initialObject, profile }),
       description: attribute.description ?? undefined,
       disabled,
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
@@ -106,6 +108,25 @@ export const getFormFieldsFromSchema = ({
       unique: attribute.unique,
     };
   });
+
+  // Allow kind filter for generic
+  if (isFilterForm && schema.used_by?.length) {
+    return [
+      {
+        name: "kind",
+        label: "Kind",
+        description: "Select a kind to filter nodes",
+        type: "Dropdown",
+        items: schema.used_by.map((kind) => ({
+          id: kind,
+          name: kind,
+        })),
+      },
+      ...formFields,
+    ];
+  }
+
+  return formFields;
 };
 
 export type GetObjectDefaultValue = {

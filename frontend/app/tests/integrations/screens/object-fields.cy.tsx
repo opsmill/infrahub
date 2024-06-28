@@ -13,7 +13,7 @@ import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
   profileDetailsMocksData,
-  profileDetailsMocksQuery,
+  profilesDetailsMocksQuery,
   profileId,
 } from "../../mocks/data/account-profile";
 import {
@@ -73,7 +73,7 @@ const mocks: any[] = [
   {
     request: {
       query: gql`
-        ${profileDetailsMocksQuery}
+        ${profilesDetailsMocksQuery}
       `,
       variables: { offset: 0, limit: 10 },
     },

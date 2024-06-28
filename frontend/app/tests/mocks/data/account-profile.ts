@@ -105,6 +105,111 @@ query {
 }
 `;
 
+export const profilesDetailsMocksQuery = `
+query($offset: Int, $limit: Int) {
+  AccountProfile(offset: $offset, limit: $limit) {
+    id
+    display_label
+      name {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
+          }
+          owner {
+            id
+            display_label
+            __typename
+          }
+      }
+      password {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
+          }
+          owner {
+            id
+            display_label
+            __typename
+          }
+      }
+      label {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
+          }
+          owner {
+            id
+            display_label
+            __typename
+          }
+      }
+      description {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
+          }
+          owner {
+            id
+            display_label
+            __typename
+          }
+      }
+      type {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
+          }
+          owner {
+            id
+            display_label
+            __typename
+          }
+      }
+      role {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
+          }
+          owner {
+            id
+            display_label
+            __typename
+          }
+      }
+  }
+}
+`;
+
 export const profileDetailsMocksData = {
   AccountProfile: {
     id: profileId,

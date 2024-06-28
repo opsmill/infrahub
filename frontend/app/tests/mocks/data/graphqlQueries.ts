@@ -1,6 +1,6 @@
 export const graphqlQueriesMocksQuery = `
-query CoreGraphQLQuery {
-  CoreGraphQLQuery(offset: 0, limit: 10) {
+query CoreGraphQLQuery($offset: Int, $limit: Int) {
+  CoreGraphQLQuery(offset: $offset,limit: $limit) {
     count
     edges {
       node {
@@ -34,8 +34,8 @@ query CoreGraphQLQuery {
 `;
 
 export const graphqlQueriesMocksQueryWithLimit = `
-query CoreGraphQLQuery {
-  CoreGraphQLQuery(offset: 0, limit: 50) {
+query CoreGraphQLQuery($offset: Int, $limit: Int) {
+  CoreGraphQLQuery(offset: $offset,limit: $limit) {
     count
     edges {
       node {
