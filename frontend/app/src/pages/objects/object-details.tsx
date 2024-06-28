@@ -10,7 +10,7 @@ import ObjectItemDetails from "@/screens/object-item-details/object-item-details
 import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 
-export function Component() {
+export function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();
 
   const nodes = useAtomValue(schemaState);
@@ -49,3 +49,5 @@ export function Component() {
     </Content>
   );
 }
+
+export const Component = ObjectDetailsPage;
