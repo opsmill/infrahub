@@ -44,7 +44,7 @@ const RelationshipField = ({
       if (relatedSchema) {
         return {
           id: name,
-          name: relatedSchema.name,
+          name: relatedSchema.label ?? relatedSchema.name,
         };
       }
     });
