@@ -44,7 +44,7 @@ const RelationshipField = ({
       if (relatedSchema) {
         return {
           id: name,
-          name: relatedSchema.name,
+          name: relatedSchema.label || relatedSchema.name,
         };
       }
     });
@@ -55,6 +55,7 @@ const RelationshipField = ({
           id: option?.id,
         }))
       : [];
+    const selectedKindOption = kindOptions?.find((option) => option.id === selectedKind?.id);
 
     // Select the first option if the only available
     if (kindOptions?.length === 1 && !selectedKind) {
@@ -106,70 +107,74 @@ const RelationshipField = ({
           }}
         />
 
-        <FormField
-          key={`${name}_parent`}
-          name={name}
-          rules={rules}
-          defaultValue={defaultValue}
-          render={({ field }) => {
-            return (
-              <div className="relative flex flex-col mt-1">
-                <LabelFormField
-                  label={"Parent"}
-                  description="Parent to filter the available nodes"
-                  unique={unique}
-                  required={!!rules?.required}
-                  variant="small"
-                />
-
-                <FormInput>
-                  <RelationshipInput
-                    {...field}
-                    {...props}
-                    peer={parentRelationship?.peer}
-                    disabled={props.disabled || !parentRelationship || !selectedKind?.id}
-                    onChange={setSelectedParent}
-                    className="mt-1"
+        {selectedKind && (
+          <FormField
+            key={`${name}_parent`}
+            name={name}
+            rules={rules}
+            defaultValue={defaultValue}
+            render={({ field }) => {
+              return (
+                <div className="relative flex flex-col mt-1">
+                  <LabelFormField
+                    label={parentRelationship?.label ?? "Parent"}
+                    description={parentRelationship?.description}
+                    unique={unique}
+                    required={!!rules?.required}
+                    variant="small"
                   />
-                </FormInput>
-                <FormMessage />
-              </div>
-            );
-          }}
-        />
 
-        <FormField
-          key={`${name}_2`}
-          name={name}
-          rules={rules}
-          defaultValue={defaultValue}
-          render={({ field }) => {
-            return (
-              <div className="relative flex flex-col mt-1">
-                <LabelFormField
-                  label={"Node"}
-                  unique={unique}
-                  required={!!rules?.required}
-                  description={description}
-                  variant="small"
-                />
+                  <FormInput>
+                    <RelationshipInput
+                      {...field}
+                      {...props}
+                      peer={parentRelationship?.peer}
+                      disabled={props.disabled || !parentRelationship || !selectedKind?.id}
+                      onChange={setSelectedParent}
+                      className="mt-2"
+                    />
+                  </FormInput>
+                  <FormMessage />
+                </div>
+              );
+            }}
+          />
+        )}
 
-                <FormInput>
-                  <RelationshipInput
-                    {...field}
-                    {...props}
-                    peer={selectedKind?.id}
-                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
-                    disabled={props.disabled || !selectedKind?.id}
-                    multiple={relationship.cardinality === "many"}
-                    className="mt-1"
+        {selectedKind && (
+          <FormField
+            key={`${name}_2`}
+            name={name}
+            rules={rules}
+            defaultValue={defaultValue}
+            render={({ field }) => {
+              return (
+                <div className="relative flex flex-col mt-1">
+                  <LabelFormField
+                    label={selectedKindOption?.name || "Node"}
+                    unique={unique}
+                    required={!!rules?.required}
+                    description={description}
+                    variant="small"
                   />
-                </FormInput>
-                <FormMessage />
-              </div>
-            );
-          }}
-        />
+
+                  <FormInput>
+                    <RelationshipInput
+                      {...field}
+                      {...props}
+                      peer={selectedKind?.id}
+                      parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                      disabled={props.disabled || !selectedKind?.id}
+                      multiple={relationship.cardinality === "many"}
+                      className="mt-2"
+                    />
+                  </FormInput>
+                  <FormMessage />
+                </div>
+              );
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -198,7 +203,7 @@ const RelationshipField = ({
             return (
               <div className="relative flex flex-col">
                 <LabelFormField
-                  label="Parent"
+                  label={parentRelationship?.label ?? "Parent"}
                   description="Parent to filter the available nodes"
                   unique={unique}
                   required={!!rules?.required}
@@ -232,7 +237,7 @@ const RelationshipField = ({
             <div className="relative flex flex-col mt-1">
               {parentRelationship && (
                 <LabelFormField
-                  label={"Object"}
+                  label={label}
                   unique={unique}
                   required={!!rules?.required}
                   description={description}
