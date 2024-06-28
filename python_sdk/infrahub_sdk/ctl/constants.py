@@ -4,26 +4,16 @@ PROTOCOLS_TEMPLATE = """#
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Optional
+
+from infrahub_sdk.protocols import CoreNode, {{ base_protocols | join(', ') }}
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     {% if sync %}
     from infrahub_sdk.node import RelatedNodeSync, RelationshipManagerSync
     {% else %}
     from infrahub_sdk.node import RelatedNode, RelationshipManager
     {% endif %}
-
-
-@runtime_checkable
-class CoreNode(Protocol):
-    id: str
-    display_label: Optional[str]
-    hfid: Optional[list[str]]
-    hfid_str: Optional[str]
-
-    def get_kind(self) -> str: ...
 
 
 {% for generic in generics %}

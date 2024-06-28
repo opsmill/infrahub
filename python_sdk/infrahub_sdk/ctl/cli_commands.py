@@ -15,6 +15,7 @@ from rich.logging import RichHandler
 from rich.traceback import Traceback
 
 from infrahub_sdk import __version__ as sdk_version
+from infrahub_sdk import protocols as sdk_protocols
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
@@ -299,7 +300,7 @@ def transform(
 
 
 @app.command(name="protocols")
-def protocols(
+def protocols(  # noqa: PLR0915
     branch: str = typer.Option(None, help="Branch of schema to export Python protocols for."),
     _: str = CONFIG_PARAM,
     out: str = typer.Option("schema_protocols.py", help="Path to a file to save the result."),
@@ -333,7 +334,11 @@ def protocols(
         name = value.name
         kind = value.kind
 
-        return f"{name}: {attribute_kind_map[kind.lower()]}"
+        attribute_kind = attribute_kind_map[kind.lower()]
+        if value.optional:
+            attribute_kind = f"Optional[{attribute_kind}]"
+
+        return f"{name}: {attribute_kind}"
 
     def _jinja2_filter_render_relationship(value: RelationshipSchema, sync: bool = False) -> str:
         name = value.name
@@ -374,8 +379,15 @@ def protocols(
         if isinstance(schema_type, NodeSchema):
             nodes[name] = schema_type
 
-    sorted_generics = _sort_and_filter_models(generics)
-    sorted_nodes = _sort_and_filter_models(nodes)
+    base_protocols = [
+        e
+        for e in dir(sdk_protocols)
+        if not e.startswith("__")
+        and not e.endswith("__")
+        and e not in ("TYPE_CHECKING", "CoreNode", "Optional", "Protocol", "Union", "annotations", "runtime_checkable")
+    ]
+    sorted_generics = _sort_and_filter_models(generics, filters=["CoreNode"] + base_protocols)
+    sorted_nodes = _sort_and_filter_models(nodes, filters=["CoreNode"] + base_protocols)
 
     jinja2_env = jinja2.Environment(loader=jinja2.BaseLoader, trim_blocks=True, lstrip_blocks=True)
     jinja2_env.filters["inheritance"] = _jinja2_filter_inheritance
@@ -383,8 +395,10 @@ def protocols(
     jinja2_env.filters["render_relationship"] = _jinja2_filter_render_relationship
 
     template = jinja2_env.from_string(PROTOCOLS_TEMPLATE)
-    rendered = template.render(generics=sorted_generics, nodes=sorted_nodes, sync=False)
-    rendered_sync = template.render(generics=sorted_generics, nodes=sorted_nodes, sync=True)
+    rendered = template.render(generics=sorted_generics, nodes=sorted_nodes, base_protocols=base_protocols, sync=False)
+    rendered_sync = template.render(
+        generics=sorted_generics, nodes=sorted_nodes, base_protocols=base_protocols, sync=True
+    )
     output_file = Path(out)
     output_file_sync = Path(output_file.stem + "_sync" + output_file.suffix)
 
