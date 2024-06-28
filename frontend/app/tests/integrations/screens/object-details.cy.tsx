@@ -21,7 +21,7 @@ import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
 const graphqlQueryItemsUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
 
 // Path that will match the route to display the component
-const graphqlQueryItemsPath = "/objects/:objectname/:objectid";
+const graphqlQueryItemsPath = "/objects/:objectKind/:objectid";
 
 // Mock the apollo query and data
 const mocks: any[] = [

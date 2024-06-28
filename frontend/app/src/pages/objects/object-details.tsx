@@ -9,6 +9,7 @@ import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
 import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { TASK_OBJECT } from "@/config/constants";
 
 export function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();
@@ -45,7 +46,11 @@ export function ObjectDetailsPage() {
 
   return (
     <Content>
-      <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} />
+      <ObjectItemDetails
+        schema={schema}
+        objectDetailsData={objectDetailsData}
+        taskData={data[TASK_OBJECT]}
+      />
     </Content>
   );
 }

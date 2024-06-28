@@ -8,7 +8,6 @@ import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
-  TASK_OBJECT,
   TASK_TAB,
   TASK_TARGET,
 } from "@/config/constants";
@@ -16,10 +15,8 @@ import { QSP } from "@/config/qsp";
 import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
-import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import AddObjectToGroup from "@/screens/groups/add-object-to-group";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
@@ -48,17 +45,18 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 
 type ObjectDetailsProps = {
   schema: IModelSchema;
   objectDetailsData: any;
+  taskData?: Object;
   hideHeaders?: boolean;
 };
 export default function ObjectItemDetails({
   schema,
   objectDetailsData,
+  taskData,
   hideHeaders,
 }: ObjectDetailsProps) {
   const location = useLocation();
@@ -94,21 +92,11 @@ export default function ObjectItemDetails({
   const relationships = getObjectRelationships({ schema: schema });
   const relationshipsTabs = getTabs(schema);
 
-  const { loading, error, data, refetch } = useObjectDetails(schema, objectid);
-
   useTitle(
     objectDetailsData?.display_label
       ? `${objectDetailsData?.display_label} details`
       : `${schemaKindName[objectname]} details`
   );
-
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching the object details." />;
-  }
-
-  if (!objectDetailsData && (loading || !schema)) {
-    return <LoadingScreen />;
-  }
 
   if (!objectDetailsData) {
     return (
@@ -128,7 +116,7 @@ export default function ObjectItemDetails({
     schema?.inherit_from?.includes(TASK_TARGET) && {
       label: "Tasks",
       name: TASK_TAB,
-      count: data[TASK_OBJECT]?.count ?? 0,
+      count: taskData?.count ?? 0,
       onClick: () => {
         setQspTab(TASK_TAB);
         setQspTaskId(undefined);
@@ -342,7 +330,7 @@ export default function ObjectItemDetails({
         setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
           closeDrawer={() => setShowEditDrawer(false)}
-          onUpdateComplete={() => refetch()}
+          onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
           objectid={objectid!}
           objectname={objectname!}
         />
@@ -397,7 +385,7 @@ export default function ObjectItemDetails({
         setOpen={setShowAddToGroupDrawer}>
         <AddObjectToGroup
           closeDrawer={() => setShowAddToGroupDrawer(false)}
-          onUpdateComplete={() => refetch()}
+          onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
         />
       </SlideOver>
 
@@ -419,7 +407,7 @@ export default function ObjectItemDetails({
         setOpen={setShowMetaEditModal}>
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => refetch()}
+          onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
