@@ -17,7 +17,7 @@ const ObjectHeader = ({ schema }: ObjectHeaderProps) => {
   const [isReloadLoading, setIsReloadLoading] = useState(false);
 
   const schemaKind = schema.kind as string;
-  const { data, loading: isCountLoading } = useObjectItems(schema);
+  const { data, loading: isCountLoading, error } = useObjectItems(schema);
 
   const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
   const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;
@@ -29,7 +29,7 @@ const ObjectHeader = ({ schema }: ObjectHeaderProps) => {
           to={constructPath(`/objects/${isProfile ? PROFILE_KIND : schemaKind}`)}
           className="flex items-center">
           <h1 className="text-md font-semibold text-gray-900 mr-2">{breadcrumbModelLabel}</h1>
-          <Badge>{isCountLoading ? "..." : data[schemaKind].count}</Badge>
+          <Badge>{isCountLoading && !error ? "..." : data?.[schemaKind]?.count}</Badge>
         </Link>
       }
       description={schema.description}
