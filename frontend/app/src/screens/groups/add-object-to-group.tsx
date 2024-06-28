@@ -26,7 +26,7 @@ interface Props {
 export default function AddObjectToGroup(props: Props) {
   const { closeDrawer, onUpdateComplete } = props;
 
-  const { objectname, objectid } = useParams();
+  const { objectKind, objectid } = useParams();
 
   const allSchemas = useAtomValue(schemaState);
   const allGenerics = useAtomValue(genericsState);
@@ -36,9 +36,9 @@ export default function AddObjectToGroup(props: Props) {
 
   const schemaData = allGenerics.find((s) => s.kind === GROUP_OBJECT);
 
-  const schema = allSchemas.find((s) => s.kind === objectname);
-  const profile = allProfiles.find((s) => s.kind === objectname);
-  const generic = allGenerics.filter((s) => s.name === objectname)[0];
+  const schema = allSchemas.find((s) => s.kind === objectKind);
+  const profile = allProfiles.find((s) => s.kind === objectKind);
+  const generic = allGenerics.filter((s) => s.name === objectKind)[0];
   const objectSchemaData = schema || profile || generic;
 
   const queryString = schemaData

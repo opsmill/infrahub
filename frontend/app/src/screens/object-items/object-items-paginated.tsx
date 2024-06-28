@@ -68,7 +68,7 @@ export default function ObjectItems({
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns({ schema: schema, forListView: true });
 
-  const { loading, error, data = {}, refetch } = useObjectItems(schema, filters);
+  const { loading, error, data = {} } = useObjectItems(schema, filters);
 
   const result = data && schema?.kind ? data[schema?.kind] ?? {} : {};
 
@@ -102,7 +102,7 @@ export default function ObjectItems({
         context: { branch: branch?.name, date },
       });
 
-      refetch();
+      graphqlClient.refetchQueries({ include: [schema.kind!] });
 
       setDeleteModal(false);
 
@@ -278,7 +278,7 @@ export default function ObjectItems({
         <ObjectForm
           onSuccess={async () => {
             setShowCreateDrawer(false);
-            await refetch();
+            await graphqlClient.refetchQueries({ include: [schema.kind!] });
           }}
           onCancel={() => setShowCreateDrawer(false)}
           kind={schema.kind!}

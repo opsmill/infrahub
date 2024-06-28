@@ -46,16 +46,16 @@ export const router = createBrowserRouter([
             lazy: () => import("@/screens/graphql/details/graphql-query-details-page"),
           },
           {
-            path: "/objects/:objectname/:objectid",
-            lazy: () => import("@/screens/object-item-details/object-item-details-paginated"),
-          },
-          {
             path: "/objects",
             lazy: () => import("@/pages/objects/layout"),
             children: [
               {
                 path: ":objectKind",
                 lazy: () => import("@/pages/objects/object-items"),
+              },
+              {
+                path: ":objectKind/:objectid",
+                lazy: () => import("@/pages/objects/object-details"),
               },
             ],
           },

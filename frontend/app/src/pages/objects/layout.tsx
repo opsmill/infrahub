@@ -4,7 +4,7 @@ import ObjectHeader from "@/screens/objects/object-header";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 
 const ObjectPageLayout = () => {
-  const { objectKind } = useParams();
+  const { objectKind, objectid } = useParams();
 
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
@@ -16,7 +16,7 @@ const ObjectPageLayout = () => {
 
   return (
     <>
-      <ObjectHeader schema={schema} />
+      <ObjectHeader schema={schema} objectId={objectid} />
       <Outlet />
     </>
   );
