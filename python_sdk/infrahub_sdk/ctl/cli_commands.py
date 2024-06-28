@@ -349,12 +349,12 @@ def protocols(
         return f"{name}: {type_}"
 
     def _sort_and_filter_models(
-        models: dict[str, Union[AttributeSchema, RelationshipSchema]], filters: Optional[list[str]] = None
-    ) -> list[dict[str, Any]]:
+        models: dict[str, Union[GenericSchema, NodeSchema]], filters: Optional[list[str]] = None
+    ) -> list[Union[GenericSchema, NodeSchema]]:
         if filters is None:
             filters = ["CoreNode"]
 
-        filtered: list[Union[AttributeSchema, RelationshipSchema]] = []
+        filtered: list[Union[GenericSchema, NodeSchema]] = []
         for name, model in models.items():
             if name in filters:
                 continue
