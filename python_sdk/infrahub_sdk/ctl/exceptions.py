@@ -10,5 +10,5 @@ class QueryNotFoundError(Error):
 
 class FileNotValidError(Error):
     def __init__(self, name: str, message: str = ""):
-        self.message = message or f"Unable to access the file '{name}'."
+        self.message = message or f"Cannot parse '{name}' content."
         super().__init__(self.message)
