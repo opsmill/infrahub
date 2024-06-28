@@ -603,7 +603,7 @@ class InfrahubClient(BaseClient):
                     raise
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code in [401, 403]:
-                    response = decode_json(response=exc.response, url=url)
+                    response = decode_json(response=exc.response)
                     errors = response.get("errors", [])
                     messages = [error.get("message") for error in errors]
                     raise AuthenticationError(" | ".join(messages)) from exc
@@ -611,7 +611,7 @@ class InfrahubClient(BaseClient):
         if not resp:
             raise Error("Unexpected situation, resp hasn't been initialized.")
 
-        response = decode_json(response=resp, url=url)
+        response = decode_json(response=resp)
 
         if "errors" in response:
             raise GraphQLError(errors=response["errors"], query=query, variables=variables)
@@ -717,7 +717,7 @@ class InfrahubClient(BaseClient):
         )
 
         response.raise_for_status()
-        data = decode_json(response=response, url=url)
+        data = decode_json(response=response)
         self.access_token = data["access_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
@@ -751,7 +751,7 @@ class InfrahubClient(BaseClient):
         )
 
         response.raise_for_status()
-        data = decode_json(response=response, url=url)
+        data = decode_json(response=response)
         self.access_token = data["access_token"]
         self.refresh_token = data["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
@@ -811,7 +811,7 @@ class InfrahubClient(BaseClient):
         if raise_for_error:
             resp.raise_for_status()
 
-        return decode_json(response=resp, url=url)
+        return decode_json(response=resp)
 
     async def get_diff_summary(
         self,
@@ -1143,7 +1143,7 @@ class InfrahubClientSync(BaseClient):
                     raise
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code in [401, 403]:
-                    response = decode_json(response=exc.response, url=url)
+                    response = decode_json(response=exc.response)
                     errors = response.get("errors", [])
                     messages = [error.get("message") for error in errors]
                     raise AuthenticationError(" | ".join(messages)) from exc
@@ -1151,7 +1151,7 @@ class InfrahubClientSync(BaseClient):
         if not resp:
             raise Error("Unexpected situation, resp hasn't been initialized.")
 
-        response = decode_json(response=resp, url=url)
+        response = decode_json(response=resp)
 
         if "errors" in response:
             raise GraphQLError(errors=response["errors"], query=query, variables=variables)
@@ -1436,7 +1436,7 @@ class InfrahubClientSync(BaseClient):
         if raise_for_error:
             resp.raise_for_status()
 
-        return decode_json(response=resp, url=url)
+        return decode_json(response=resp)
 
     def get_diff_summary(
         self,
@@ -1684,7 +1684,7 @@ class InfrahubClientSync(BaseClient):
         )
 
         response.raise_for_status()
-        data = decode_json(response=response, url=url)
+        data = decode_json(response=response)
         self.access_token = data["access_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
@@ -1718,7 +1718,7 @@ class InfrahubClientSync(BaseClient):
         )
 
         response.raise_for_status()
-        data = decode_json(response=response, url=url)
+        data = decode_json(response=response)
         self.access_token = data["access_token"]
         self.refresh_token = data["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"

@@ -179,7 +179,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
             time_to=time_to,
         )
         response = await self.client._get(url=url, headers=self.client.headers)
-        return decode_json(response=response, url=url)
+        return decode_json(response=response)
 
 
 class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
@@ -252,7 +252,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
             time_to=time_to,
         )
         response = self.client._get(url=url, headers=self.client.headers)
-        return decode_json(response=response, url=url)
+        return decode_json(response=response)
 
     def merge(self, branch_name: str) -> BranchData:
         input_data = {

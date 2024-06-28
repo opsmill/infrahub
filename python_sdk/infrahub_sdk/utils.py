@@ -81,11 +81,11 @@ def is_valid_uuid(value: Any) -> bool:
         return False
 
 
-def decode_json(response: httpx.Response, url: Optional[str] = None) -> dict:
+def decode_json(response: httpx.Response) -> dict:
     try:
         return response.json()
     except json.decoder.JSONDecodeError as exc:
-        raise JsonDecodeError(content=response.text, url=url) from exc
+        raise JsonDecodeError(content=response.text, url=response.url) from exc
 
 
 def generate_uuid() -> str:
