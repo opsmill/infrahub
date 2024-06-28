@@ -50,8 +50,14 @@ export const router = createBrowserRouter([
             lazy: () => import("@/screens/object-item-details/object-item-details-paginated"),
           },
           {
-            path: "/objects/:objectname",
-            lazy: () => import("@/screens/object-items/object-items-paginated"),
+            path: "/objects",
+            lazy: () => import("@/pages/objects/layout"),
+            children: [
+              {
+                path: ":objectKind",
+                lazy: () => import("@/pages/objects/object-items"),
+              },
+            ],
           },
           {
             path: "/profile",
@@ -87,7 +93,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "/resource-manager",
-            lazy: () => import("@/screens/resource-manager/resource-manager-page"),
+            lazy: () => import("@/pages/resource-manager"),
           },
           {
             path: "/resource-manager/:resourcePoolId",

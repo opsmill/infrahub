@@ -22,7 +22,7 @@ export const ContentTitle = ({
   title,
 }: ContentTitleProps) => {
   return (
-    <header className="h-16 bg-custom-white flex items-center px-4 border-b">
+    <header className="min-h-[4rem] bg-custom-white flex items-center px-4 border-b">
       <div className="flex flex-col gap-0.5 overflow-hidden pr-2">
         {title && (
           <div className="font-semibold flex items-center gap-2">

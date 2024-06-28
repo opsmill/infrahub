@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 import { Input, InputProps } from "./input";
 import { Spinner } from "./spinner";
 
-interface SearchInputProps extends InputProps {
+export interface SearchInputProps extends InputProps {
   loading?: boolean;
 }
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
