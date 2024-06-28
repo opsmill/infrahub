@@ -8,6 +8,7 @@ import { PROFILE_KIND } from "@/config/constants";
 import { Link } from "react-router-dom";
 import { useObjectItems } from "@/hooks/useObjectItems";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import useFilters from "@/hooks/useFilters";
 
 type ObjectHeaderProps = {
   schema: IModelSchema;
@@ -15,9 +16,10 @@ type ObjectHeaderProps = {
 
 const ObjectHeader = ({ schema }: ObjectHeaderProps) => {
   const [isReloadLoading, setIsReloadLoading] = useState(false);
+  const [filters] = useFilters();
 
   const schemaKind = schema.kind as string;
-  const { data, loading: isCountLoading, error } = useObjectItems(schema);
+  const { data, loading: isCountLoading, error } = useObjectItems(schema, filters);
 
   const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
   const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;

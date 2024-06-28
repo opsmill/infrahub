@@ -68,7 +68,7 @@ export default function ObjectItems({
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns({ schema: schema, forListView: true });
 
-  const { loading, error, data = {}, refetch } = useObjectItems(schema);
+  const { loading, error, data = {}, refetch } = useObjectItems(schema, filters);
 
   const result = data && schema?.kind ? data[schema?.kind] ?? {} : {};
 
