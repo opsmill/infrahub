@@ -31,14 +31,14 @@ interface RelationshipsDetailsProps {
 export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps, ref) => {
   const { parentNode, refetchObjectDetails } = props;
 
-  const { objectname, objectid } = useParams();
+  const { objectKind, objectid } = useParams();
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const parentSchema = schemaList.find((s) => s.kind === objectname);
-  const parentGeneric = generics.find((s) => s.kind === objectname);
+  const parentSchema = schemaList.find((s) => s.kind === objectKind);
+  const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
   const relationshipGeneric = parentGeneric?.relationships?.find(
     (r) => r?.name === relationshipTab
@@ -52,7 +52,7 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
 
   const queryString = schemaData
     ? getObjectRelationshipsDetailsPaginated({
-        kind: objectname,
+        kind: objectKind,
         relationshipKind: !!columns?.length && relationshipSchemaData?.peer,
         objectid: parentNode.id,
         relationship: relationshipTab,
@@ -121,9 +121,9 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
   };
 
   // const count = data[schemaData?.kind].count;
-  const count = data[objectname]?.edges[0]?.node[relationshipTab]?.count;
+  const count = data[objectKind]?.edges[0]?.node[relationshipTab]?.count;
   // const relationshipsData = data[schemaData?.kind]?.edges;
-  const relationshipsData = data[objectname]?.edges[0]?.node[relationshipTab]?.edges;
+  const relationshipsData = data[objectKind]?.edges[0]?.node[relationshipTab]?.edges;
 
   return (
     <div>

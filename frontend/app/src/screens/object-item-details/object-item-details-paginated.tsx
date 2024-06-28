@@ -1,6 +1,5 @@
 import { ButtonWithTooltip as ButtonWithTooltip2 } from "@/components/buttons/button-primitive";
 import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
-import { Retry } from "@/components/buttons/retry";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
 import SlideOver from "@/components/display/slide-over";
 import { Tabs } from "@/components/tabs";
@@ -9,7 +8,6 @@ import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
-  PROFILE_KIND,
   TASK_OBJECT,
   TASK_TAB,
   TASK_TARGET,
@@ -21,7 +19,6 @@ import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import AddObjectToGroup from "@/screens/groups/add-object-to-group";
-import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
@@ -29,7 +26,7 @@ import { TaskItemDetails } from "@/screens/tasks/task-item-details";
 import { TaskItems } from "@/screens/tasks/task-items";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { genericsState, IModelSchema, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { constructPath } from "@/utils/fetch";
@@ -46,22 +43,29 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 
-export default function ObjectItemDetails(props: any) {
-  const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
-
+type ObjectDetailsProps = {
+  schema: IModelSchema;
+  objectDetailsData: any;
+  hideHeaders?: boolean;
+};
+export default function ObjectItemDetails({
+  schema,
+  objectDetailsData,
+  hideHeaders,
+}: ObjectDetailsProps) {
   const location = useLocation();
   const { pathname } = location;
 
-  const { objectname: objectnameFromParams, objectid: objectidFromParams } = useParams();
-  const objectname = objectnameFromProps || objectnameFromParams;
-  const objectid = objectidFromProps || objectidFromParams;
+  const objectname = schema.kind;
+  const objectid = objectDetailsData.id;
 
   const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
@@ -74,42 +78,23 @@ export default function ObjectItemDetails(props: any) {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericList] = useAtom(genericsState);
-  const profiles = useAtomValue(profilesAtom);
-  const schema = schemaList.find((s) => s.kind === objectname);
-  const generic = genericList.find((s) => s.kind === objectname);
-  const profile = profiles.find((s) => s.kind === objectname);
-  const navigate = useNavigate();
 
   const refetchRef = useRef(null);
 
-  const schemaData = generic || schema || profile;
-
-  if ((schemaList?.length || genericList?.length) && !schemaData) {
+  if ((schemaList?.length || genericList?.length) && !schema) {
     // If there is no schema nor generics, go to home page
-    navigate("/");
-    return null;
+    return <Navigate to="/" />;
   }
 
-  if (schemaData && MENU_EXCLUDELIST.includes(schemaData?.kind)) {
-    navigate("/");
-    return null;
+  if (schema && MENU_EXCLUDELIST.includes(schema.kind!)) {
+    return <Navigate to="/" />;
   }
 
-  const attributes = getObjectAttributes({ schema: schemaData });
-  const relationships = getObjectRelationships({ schema: schemaData });
-  const relationshipsTabs = getTabs(schemaData);
+  const attributes = getObjectAttributes({ schema: schema });
+  const relationships = getObjectRelationships({ schema: schema });
+  const relationshipsTabs = getTabs(schema);
 
-  const { loading, error, data, refetch } = useObjectDetails(schemaData, objectid);
-
-  // TODO: refactor to not need the ref to refetch child query
-  const handleRefetch = () => {
-    refetch();
-    if (refetchRef?.current?.refetch) {
-      refetchRef?.current?.refetch();
-    }
-  };
-
-  const objectDetailsData = schemaData && data && data[schemaData?.kind]?.edges[0]?.node;
+  const { loading, error, data, refetch } = useObjectDetails(schema, objectid);
 
   useTitle(
     objectDetailsData?.display_label
@@ -121,7 +106,7 @@ export default function ObjectItemDetails(props: any) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
-  if (!objectDetailsData && (loading || !schemaData)) {
+  if (!objectDetailsData && (loading || !schema)) {
     return <LoadingScreen />;
   }
 
@@ -135,11 +120,11 @@ export default function ObjectItemDetails(props: any) {
 
   const tabs = [
     {
-      label: schemaData?.label,
-      name: schemaData?.label,
+      label: schema?.label,
+      name: schema?.label,
     },
     ...getObjectTabs(relationshipsTabs, objectDetailsData),
-    // Includes the task tab only for specific objects
+    // Includes the task tab only for specific objects,
     schema?.inherit_from?.includes(TASK_TARGET) && {
       label: "Tasks",
       name: TASK_TAB,
@@ -156,61 +141,38 @@ export default function ObjectItemDetails(props: any) {
   }
 
   return (
-    <Content>
+    <>
       {!hideHeaders && (
-        <div className="bg-custom-white">
-          <div className="px-4 py-5 flex items-center">
-            <Link to={constructPath(`/objects/${profile ? PROFILE_KIND : objectname}`)}>
-              <h1 className="text-md font-semibold text-gray-900 mr-2">
-                {profile ? "All Profiles" : schemaData.name}
-              </h1>
-            </Link>
+        <Tabs
+          tabs={tabs}
+          rightItems={
+            <>
+              {schema.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
-            <ChevronRightIcon
-              className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-              aria-hidden="true"
-            />
+              <ButtonWithTooltip
+                disabled={!permission.write.allow}
+                tooltipEnabled={!permission.write.allow}
+                tooltipContent={permission.write.message ?? undefined}
+                onClick={() => setShowEditDrawer(true)}
+                className="mr-4">
+                Edit
+                <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+              </ButtonWithTooltip>
 
-            <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
-
-            <div className="ml-2">
-              <Retry isLoading={loading} onClick={handleRefetch} />
-            </div>
-          </div>
-
-          <div className="px-4">{schemaData?.description}</div>
-
-          <Tabs
-            tabs={tabs}
-            rightItems={
-              <>
-                {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
-
+              {!schema.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
                 <ButtonWithTooltip
                   disabled={!permission.write.allow}
                   tooltipEnabled={!permission.write.allow}
                   tooltipContent={permission.write.message ?? undefined}
-                  onClick={() => setShowEditDrawer(true)}
+                  onClick={() => setShowAddToGroupDrawer(true)}
                   className="mr-4">
-                  Edit
-                  <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                  Manage groups
+                  <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </ButtonWithTooltip>
-
-                {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
-                  <ButtonWithTooltip
-                    disabled={!permission.write.allow}
-                    tooltipEnabled={!permission.write.allow}
-                    tooltipContent={permission.write.message ?? undefined}
-                    onClick={() => setShowAddToGroupDrawer(true)}
-                    className="mr-4">
-                    Manage groups
-                    <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                  </ButtonWithTooltip>
-                )}
-              </>
-            }
-          />
-        </div>
+              )}
+            </>
+          }
+        />
       )}
 
       {!qspTab && (
@@ -278,7 +240,7 @@ export default function ObjectItemDetails(props: any) {
           })}
 
           {relationships?.map((relationship: any) => {
-            const relationshipSchema = schemaData?.relationships?.find(
+            const relationshipSchema = schema?.relationships?.find(
               (relation) => relation?.name === relationship?.name
             );
 
@@ -290,7 +252,7 @@ export default function ObjectItemDetails(props: any) {
               <RelationshipDetails
                 parentNode={objectDetailsData}
                 mode="DESCRIPTION-LIST"
-                parentSchema={schemaData}
+                parentSchema={schema}
                 key={relationship.name}
                 relationshipsData={relationshipData}
                 relationshipSchema={relationshipSchema}
@@ -303,8 +265,8 @@ export default function ObjectItemDetails(props: any) {
       {qspTab && qspTab !== TASK_TAB && (
         <RelationshipsDetails
           parentNode={objectDetailsData}
-          parentSchema={schemaData}
-          refetchObjectDetails={refetch}
+          parentSchema={schema}
+          refetchObjectDetails={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
           ref={refetchRef}
         />
       )}
@@ -336,7 +298,7 @@ export default function ObjectItemDetails(props: any) {
           <div className="space-y-2">
             <div className="flex items-start">
               <div className="flex-grow flex items-center flex-wrap overflow-hidden">
-                <span className="font-semibold text-gray-900 truncate">{schemaData.label}</span>
+                <span className="font-semibold text-gray-900 truncate">{schema.label}</span>
 
                 <ChevronRightIcon
                   className="w-4 h-4 flex-shrink-0 mx-2 text-gray-400"
@@ -354,7 +316,7 @@ export default function ObjectItemDetails(props: any) {
               </div>
             </div>
 
-            <div className="">{schemaData?.description}</div>
+            <div className="">{schema?.description}</div>
 
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
@@ -363,7 +325,7 @@ export default function ObjectItemDetails(props: any) {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {schemaData.kind}
+              {schema.kind}
             </span>
             <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
               <svg
@@ -392,7 +354,7 @@ export default function ObjectItemDetails(props: any) {
             <div className="flex items-center w-full">
               <div className="flex items-center">
                 <div className="text-base font-semibold leading-6 text-gray-900">
-                  {schemaData.label}
+                  {schema.label}
                 </div>
                 <ChevronRightIcon
                   className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
@@ -409,7 +371,7 @@ export default function ObjectItemDetails(props: any) {
               </div>
             </div>
 
-            <div className="">{schemaData?.description}</div>
+            <div className="">{schema?.description}</div>
 
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
@@ -418,7 +380,7 @@ export default function ObjectItemDetails(props: any) {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {schemaData.kind}
+              {schema.kind}
             </span>
             <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
               <svg
@@ -462,16 +424,12 @@ export default function ObjectItemDetails(props: any) {
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schema={schemaData}
+          schema={schema}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}
           row={objectDetailsData}
         />
       </SlideOver>
-    </Content>
+    </>
   );
-}
-
-export function Component() {
-  return <ObjectItemDetails />;
 }

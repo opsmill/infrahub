@@ -58,7 +58,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     onDeleteRelationship,
   } = props;
 
-  const { objectname, objectid } = useParams();
+  const { objectKind, objectid } = useParams();
   const permission = usePermission();
 
   const schemaList = useAtomValue(schemaState);
@@ -71,7 +71,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
-  const parentSchema = schemaList.find((s) => s.kind === objectname);
+  const parentSchema = schemaList.find((s) => s.kind === objectKind);
   const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
   const columns = getSchemaObjectColumns({
     schema: relationshipSchemaData,
