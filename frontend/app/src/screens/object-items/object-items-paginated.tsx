@@ -154,7 +154,9 @@ export default function ObjectItems({
 
   return (
     <>
-      <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
+      <div
+        className="rounded-md border overflow-hidden bg-custom-white shadow-sm"
+        data-testid="object-items">
         <div className="flex items-center p-2">
           <SearchInput
             loading={loading}
