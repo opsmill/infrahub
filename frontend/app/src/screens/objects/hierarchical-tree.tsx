@@ -76,7 +76,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
       <Tree
         data={treeData}
         itemContent={ObjectTreeItem}
-        expandedIds={expandedIds}
+        defaultExpandedIds={expandedIds}
         selectedIds={currentNodeId ? [currentNodeId] : undefined}
         onNodeSelect={({ element, isSelected, isBranch }) => {
           if (!isSelected || isBranch) return;
