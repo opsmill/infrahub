@@ -391,6 +391,7 @@ def protocols(
     if out:
         write_to_file(output_file, rendered)
         write_to_file(output_file_sync, rendered_sync)
+        console.print(f"Python protocols exported in {output_file} and {output_file_sync}")
     else:
         console.print(rendered)
         console.print(rendered_sync)
