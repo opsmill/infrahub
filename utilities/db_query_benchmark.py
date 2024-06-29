@@ -15,6 +15,7 @@ from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.manager import NodeManager
+from infrahub.core.query import Query
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.uniqueness.model import NodeUniquenessQueryRequest
@@ -233,11 +234,12 @@ async def profile_attribute(
 
 
 @app.command()
-async def branched_attributes_nodes(
+async def get_filtered_nodes_simple(
     test_name: str = "branched_attributes_node",
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     count: int = typer.Option(1000),
     parallel: int = typer.Option(5),
+    use_old: bool = False,
 ) -> None:
     config.load_and_exit(config_file_name=config_file)
 
@@ -267,7 +269,6 @@ async def branched_attributes_nodes(
     schema = SchemaRoot(**SCHEMA)
     default_branch = await registry.get_branch(db=db)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
 
     query_stats.name = test_name
     query_stats.measure_memory_usage = False
@@ -277,10 +278,107 @@ async def branched_attributes_nodes(
     log.info("Start loading data .. ")
     with Progress() as progress:
         loader = GenerateBranchedAttributeNodes(db=db, progress=progress, concurrent_execution=parallel)
-        loader.add_callback(callback_name="query_50_cars", task=NodeManager.query, limit=50, schema=car_schema, branch="branch")
+        if use_old:
+            loader.add_callback(callback_name="query_nbr_seats_old", task=run_old_simple_filter)
+        else:
+            loader.add_callback(callback_name="query_nbr_seats_new", task=run_new_simple_filter)
         await loader.load_data(nbr_cars=count)
 
     query_stats.create_graphs()
+
+
+async def run_old_simple_filter(db: InfrahubDatabaseAnalyzer):
+    default_branch = await registry.get_branch(db=db)
+    query = await SimpleOldFilterQuery.init(
+        db=db,
+        branch=default_branch,
+    )
+    await query.execute(db=db)
+    query.get_results()
+
+
+class SimpleOldFilterQuery(Query):
+    name = "query_filter_old"
+
+    async def query_init(self, db, **kwargs: Any) -> None:
+
+        branch_filter, branch_params = self.branch.get_query_filter_path()
+        self.params = branch_params
+        query = """
+        MATCH p = (n:Node)
+        WHERE "TestCar" IN LABELS(n)
+        CALL {
+            WITH n
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n, r as rb
+        WHERE rb.status = "active"
+        CALL {
+            WITH n
+            MATCH path = (n)-[:HAS_ATTRIBUTE]-(i:Attribute { name: "nbr_seats" })-[:HAS_VALUE]-(av:AttributeValue)
+            WHERE (av.value = 7 OR av.is_default) AND all(r IN relationships(path) WHERE %(branch_filter)s)
+            WITH
+            n,
+            path,
+            reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
+            [i IN relationships(path) | i.from] AS froms,
+            all(r IN relationships(path) WHERE r.status = "active") AS is_active, av
+            ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+            WITH head(collect([is_active, n, av])) AS latest_node_details
+            WHERE latest_node_details[0] = TRUE
+            WITH latest_node_details[1] AS n, latest_node_details[2] AS av
+            RETURN n AS filter1, av.value AS attr1_node_value, av.is_default AS attr1_is_default
+        }
+        WITH filter1 as n, rb, attr1_node_value, attr1_is_default
+        WHERE attr1_node_value = 7
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query=query)
+        self.return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
+
+async def run_new_simple_filter(db: InfrahubDatabaseAnalyzer):
+    default_branch = await registry.get_branch(db=db)
+    query = await SimpleNewFilterQuery.init(
+        db=db,
+        branch=default_branch,
+    )
+    await query.execute(db=db)
+    query.get_results()
+
+
+class SimpleNewFilterQuery(Query):
+    name = "query_filter_new"
+
+    async def query_init(self, db, **kwargs: Any) -> None:
+        branch_filter, branch_params = self.branch.get_query_filter_path()
+        self.params = branch_params
+        query = """
+        MATCH (root:Root)<-[r:IS_PART_OF]-(n:Node)
+        WHERE "TestCar" IN LABELS(n)
+        AND %(branch_filter)s
+        WITH n, r
+        ORDER BY n.uuid, r.branch_level DESC, r.from DESC
+        WITH n, head(collect(r)) AS latest_r_root
+        WHERE latest_r_root.status = "active"
+        MATCH path = (n)-[r_attr:HAS_ATTRIBUTE]-(i:Attribute { name: "nbr_seats" })-[r_attr_val:HAS_VALUE]-(av:AttributeValue)
+        WHERE (av.value = 7 OR av.is_default)
+        AND all(r IN relationships(path) WHERE %(branch_filter)s)
+        WITH
+            n,
+            latest_r_root,
+            path,
+            r_attr.branch_level + r_attr_val.branch_level AS branch_level
+        ORDER BY n.uuid, branch_level DESC, r_attr_val.from DESC, r_attr.from DESC
+        WITH n, latest_r_root, head(collect(path)) AS latest_path
+        WHERE all(r IN relationships(latest_path) WHERE r.status = "active")
+        WITH n, latest_r_root AS rb, last(nodes(latest_path)) AS av_node
+        WHERE av_node.value = 7
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query=query)
+        self.return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
 
 if __name__ == "__main__":
     app()
