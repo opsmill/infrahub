@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Union
 from uuid import UUID
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.registry import registry

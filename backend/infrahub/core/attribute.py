@@ -9,17 +9,12 @@ import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.timestamp import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
-from infrahub.core.property import (
-    FlagPropertyMixin,
-    NodePropertyData,
-    NodePropertyMixin,
-    ValuePropertyData,
-)
+from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
@@ -55,7 +50,7 @@ class AttributeCreateData(BaseModel):
     is_default: bool
     is_protected: bool
     is_visible: bool
-    source_prop: list[ValuePropertyData] = Field(default_factory=list)
+    source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
     node_type: AttributeDBNodeType = AttributeDBNodeType.DEFAULT
 
