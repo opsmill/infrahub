@@ -419,7 +419,6 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
         "ProfileBuiltinCriticality",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
-        "ProfileCoreStandardGroup",
         "ProfileInfraTinySchema",
     }
 
