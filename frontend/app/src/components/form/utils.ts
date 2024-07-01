@@ -21,6 +21,7 @@ type GetFormFieldsFromSchema = {
   initialObject?: Record<string, AttributeType>;
   user?: any;
   isFilterForm?: boolean;
+  filters?: Array<any>;
 };
 
 export const getFormFieldsFromSchema = ({
@@ -29,6 +30,7 @@ export const getFormFieldsFromSchema = ({
   initialObject,
   user,
   isFilterForm,
+  filters,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields = [
     ...(schema.attributes ?? []),
@@ -50,9 +52,12 @@ export const getFormFieldsFromSchema = ({
     const basicFomFieldProps = {
       name: attribute.name,
       label: attribute.label ?? undefined,
-      defaultValue: isFilterForm
-        ? null
-        : getObjectDefaultValue({ fieldSchema: attribute, initialObject, profile }),
+      defaultValue: getObjectDefaultValue({
+        fieldSchema: attribute,
+        initialObject,
+        profile,
+        isFilterForm,
+      }),
       description: attribute.description ?? undefined,
       disabled,
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
@@ -111,12 +116,15 @@ export const getFormFieldsFromSchema = ({
 
   // Allow kind filter for generic
   if (isFilterForm && schema.used_by?.length) {
+    const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+
     return [
       {
         name: "kind",
         label: "Kind",
         description: "Select a kind to filter nodes",
         type: "Dropdown",
+        defaultValue: kindFilter?.value,
         items: schema.used_by.map((kind) => ({
           id: kind,
           name: kind,
@@ -133,16 +141,22 @@ export type GetObjectDefaultValue = {
   fieldSchema: GetObjectDefaultValueFromSchema;
   initialObject?: Record<string, AttributeType>;
   profile?: Record<string, AttributeType>;
+  isFilterForm?: boolean;
 };
 
 export const getObjectDefaultValue = ({
   fieldSchema,
   initialObject,
   profile,
+  isFilterForm,
 }: GetObjectDefaultValue) => {
   const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
   const defaultValueFromProfile = profile?.[fieldSchema.name]?.value;
   const defaultValueFromSchema = getDefaultValueFromSchema(fieldSchema);
+
+  if (isFilterForm) {
+    return currentFieldValue ?? null;
+  }
 
   return currentFieldValue ?? defaultValueFromProfile ?? defaultValueFromSchema ?? null;
 };

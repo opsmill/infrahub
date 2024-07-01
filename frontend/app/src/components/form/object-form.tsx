@@ -27,6 +27,7 @@ import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { useAuth } from "@/hooks/useAuth";
 import { useObjectItems } from "@/hooks/useObjectItems";
+import useFilters from "@/hooks/useFilters";
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
@@ -174,6 +175,7 @@ const NodeForm = ({
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const [filters] = useFilters();
   const { data, permissions } = useAuth();
 
   const fields = getFormFieldsFromSchema({
@@ -182,6 +184,7 @@ const NodeForm = ({
     initialObject: currentObject,
     user: { ...data, permissions },
     isFilterForm,
+    filters,
   });
 
   async function onSubmit(data: any) {
