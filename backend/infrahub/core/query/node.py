@@ -632,13 +632,16 @@ class NodeListGetInfoQuery(Query):
 
         for result in self.get_results_group_by(("n", "uuid")):
             schema = find_node_schema(db=db, node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
+            node_branch = self.branch
+            if self.branch_agnostic:
+                node_branch = result.get_rel("rb").get("branch")
             yield NodeToProcess(
                 schema=schema,
                 node_id=result.get_node("n").element_id,
                 node_uuid=result.get_node("n").get("uuid"),
                 profile_uuids=[str(puuid) for puuid in result.get("profile_uuids")],
                 updated_at=result.get_rel("rb").get("from"),
-                branch=self.branch.name,
+                branch=node_branch,
                 labels=list(result.get_node("n").labels),
             )
 
