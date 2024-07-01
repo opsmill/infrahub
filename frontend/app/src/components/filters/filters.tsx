@@ -82,6 +82,14 @@ export const Filters = (props: tFilters) => {
       // Get filer key name
       const key = filter.name.split("__")[0];
 
+      if (Array.isArray(filter.value)) {
+        return {
+          [key]: {
+            edges: filter.value.map((value) => ({ node: value })),
+          },
+        };
+      }
+
       return {
         [key]: {
           value: filter.value,
