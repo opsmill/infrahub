@@ -50,9 +50,12 @@ export const getFormFieldsFromSchema = ({
     const basicFomFieldProps = {
       name: attribute.name,
       label: attribute.label ?? undefined,
-      defaultValue: isFilterForm
-        ? null
-        : getObjectDefaultValue({ fieldSchema: attribute, initialObject, profile }),
+      defaultValue: getObjectDefaultValue({
+        fieldSchema: attribute,
+        initialObject,
+        profile,
+        isFilterForm,
+      }),
       description: attribute.description ?? undefined,
       disabled,
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
@@ -133,16 +136,22 @@ export type GetObjectDefaultValue = {
   fieldSchema: GetObjectDefaultValueFromSchema;
   initialObject?: Record<string, AttributeType>;
   profile?: Record<string, AttributeType>;
+  isFilterForm?: boolean;
 };
 
 export const getObjectDefaultValue = ({
   fieldSchema,
   initialObject,
   profile,
+  isFilterForm,
 }: GetObjectDefaultValue) => {
   const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
   const defaultValueFromProfile = profile?.[fieldSchema.name]?.value;
   const defaultValueFromSchema = getDefaultValueFromSchema(fieldSchema);
+
+  if (isFilterForm) {
+    return currentFieldValue ?? null;
+  }
 
   return currentFieldValue ?? defaultValueFromProfile ?? defaultValueFromSchema ?? null;
 };

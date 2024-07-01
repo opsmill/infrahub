@@ -77,6 +77,25 @@ export const Filters = (props: tFilters) => {
 
   const currentFilters = filters.filter((filter) => !SEARCH_FILTERS.includes(filter.name));
 
+  const currentFiltersObject = filters
+    .map((filter) => {
+      // Get filer key name
+      const key = filter.name.split("__")[0];
+
+      return {
+        [key]: {
+          value: filter.value,
+        },
+      };
+    })
+    .reduce(
+      (acc, filter) => ({
+        ...acc,
+        ...filter,
+      }),
+      {}
+    );
+
   return (
     <div className="flex flex-1">
       <div className="flex flex-1 items-center">
@@ -135,6 +154,7 @@ export const Filters = (props: tFilters) => {
           kind={schema?.kind}
           isFilterForm
           submitLabel="Apply filters"
+          currentObject={currentFiltersObject}
         />
       </SlideOver>
     </div>
