@@ -10,6 +10,7 @@ import ObjectItemDetails from "@/screens/object-item-details/object-item-details
 import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { TASK_OBJECT } from "@/config/constants";
+import { Card } from "@/components/ui/card";
 
 export function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();
@@ -46,11 +47,13 @@ export function ObjectDetailsPage() {
 
   return (
     <Content>
-      <ObjectItemDetails
-        schema={schema}
-        objectDetailsData={objectDetailsData}
-        taskData={data[TASK_OBJECT]}
-      />
+      <Card className="pt-0">
+        <ObjectItemDetails
+          schema={schema}
+          objectDetailsData={objectDetailsData}
+          taskData={data[TASK_OBJECT]}
+        />
+      </Card>
     </Content>
   );
 }

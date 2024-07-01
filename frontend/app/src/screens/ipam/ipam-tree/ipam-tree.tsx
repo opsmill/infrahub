@@ -12,7 +12,6 @@ import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE } from "@/screens/ipam/constants";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
 import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
 import {
   PrefixData,
@@ -61,25 +60,21 @@ export default function IpamTree() {
   return (
     <nav className="min-w-64">
       <h3 className="font-semibold text-sm mb-3">Navigation</h3>
+      <Tree
+        loading={isLoading}
+        data={treeData}
+        itemContent={IpamTreeItem}
+        onLoadData={onLoadData}
+        selectedIds={prefix ? [prefix] : []}
+        defaultExpandedIds={expandedIds}
+        onNodeSelect={({ element, isSelected }) => {
+          if (!isSelected) return;
 
-      {isLoading ? (
-        <IpamTreeSkeleton />
-      ) : (
-        <Tree
-          data={treeData}
-          itemContent={IpamTreeItem}
-          onLoadData={onLoadData}
-          selectedIds={prefix ? [prefix] : []}
-          defaultExpandedIds={expandedIds}
-          onNodeSelect={({ element, isSelected }) => {
-            if (!isSelected) return;
-
-            const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
-            navigate(url);
-          }}
-          data-testid="ipam-tree"
-        />
-      )}
+          const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+          navigate(url);
+        }}
+        data-testid="ipam-tree"
+      />
     </nav>
   );
 }

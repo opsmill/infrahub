@@ -2,15 +2,22 @@ import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 import TreeViewPrimitive, { INodeRendererProps, ITreeViewProps } from "react-accessible-treeview";
+import { TreeSkeleton } from "./tree-sheleton";
 
 export type TreeItemProps = Pick<INodeRendererProps, "element">;
 
 export interface TreeProps extends Omit<ITreeViewProps, "nodeRenderer"> {
   itemContent?: (props: TreeItemProps) => React.ReactNode;
+  loading?: boolean;
 }
 
-export const Tree = ({ itemContent, className, ...props }: TreeProps) => {
+export const Tree = ({ itemContent, className, loading, ...props }: TreeProps) => {
   const NodeComp = itemContent || DefaultTreeItem;
+
+  if (loading) {
+    return <TreeSkeleton />;
+  }
+
   return (
     <TreeViewPrimitive
       propagateSelectUpwards
