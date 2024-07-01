@@ -17,26 +17,45 @@ test.describe("Object filters", () => {
     });
 
     await test.step("start filtering objects", async () => {
-      await page.getByTestId("apply-filters").click();
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Status")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
-      await page.getByRole("option", { name: "Provisioning In the process" }).click();
+      await test.step("select filters", async () => {
+        await page.getByTestId("apply-filters").click();
+        await page
+          .getByTestId("side-panel-container")
+          .getByText("Status")
+          .locator("../..")
+          .getByTestId("select-open-option-button")
+          .click();
+        await page.getByRole("option", { name: "Provisioning In the process" }).click();
 
-      const tagsMultiSelectOpenButton = page
-        .getByTestId("side-panel-container")
-        .getByText("Tags")
-        .locator("../..")
-        .getByTestId("select-open-option-button");
-      await tagsMultiSelectOpenButton.click();
+        const tagsMultiSelectOpenButton = page
+          .getByTestId("side-panel-container")
+          .getByText("Tags")
+          .locator("../..")
+          .getByTestId("select-open-option-button");
+        await tagsMultiSelectOpenButton.click();
 
-      await page.getByTestId("side-panel-container").getByText("red").click();
+        await page.getByTestId("side-panel-container").getByText("red").click();
 
-      // Closes the multiselect
-      await tagsMultiSelectOpenButton.click();
+        // Closes the multiselect
+        await tagsMultiSelectOpenButton.click();
+
+        await page.getByRole("button", { name: "Apply filters" }).scrollIntoViewIfNeeded();
+        await page.getByRole("button", { name: "Apply filters" }).click();
+      });
+
+      await test.step("verify filter initial value", async () => {
+        await page.getByTestId("apply-filters").click();
+
+        await expect(
+          page
+            .getByTestId("side-panel-container")
+            .getByText("Tags")
+            .locator("../..")
+            .getByTestId("select-input")
+        ).toHaveValue("Provisioning In the process");
+      });
+
+      await expect(page.locator("form")).toContainText("red");
 
       await page.getByRole("button", { name: "Apply filters" }).scrollIntoViewIfNeeded();
       await page.getByRole("button", { name: "Apply filters" }).click();
@@ -95,11 +114,19 @@ test.describe("Object filters", () => {
     const kindSelector = page
       .getByTestId("side-panel-container")
       .getByText("Kind")
-      .locator("../..")
-      .getByTestId("select-open-option-button");
-    await kindSelector.click();
-    await page.getByRole("option", { name: "InfraInterfaceL2", exact: true }).click();
-    await page.getByRole("button", { name: "Apply filters" }).click();
-    await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 510 results");
+      .locator("../..");
+
+    await test.step("filter objects", async () => {
+      await kindSelector.getByTestId("select-open-option-button").click();
+      await page.getByRole("option", { name: "InfraInterfaceL2", exact: true }).click();
+      await page.getByRole("button", { name: "Apply filters" }).click();
+      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 510 results");
+    });
+
+    await test.step("verify filter initial value", async () => {
+      await page.getByTestId("apply-filters").click();
+      await kindSelector.getByTestId("select-input");
+      await expect(kindSelector.getByTestId("select-input")).toHaveValue("InfraInterfaceL2");
+    });
   });
 });
