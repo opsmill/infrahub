@@ -331,6 +331,13 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
     ip_namespace: RelationshipManager
 
 
+class CoreNumberPool(CoreResourcePool, LineageSource):
+    node: String
+    node_attribute: String
+    start_range: Integer
+    end_range: Integer
+
+
 class CoreObjectThread(CoreThread):
     object_path: String
 

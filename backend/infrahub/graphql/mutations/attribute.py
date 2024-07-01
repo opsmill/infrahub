@@ -47,6 +47,7 @@ class StringAttributeUpdate(BaseAttributeUpdate):
 
 class NumberAttributeCreate(BaseAttributeCreate):
     value = Int(required=False)
+    from_pool = String(required=False)
 
 
 class NumberAttributeUpdate(BaseAttributeUpdate):

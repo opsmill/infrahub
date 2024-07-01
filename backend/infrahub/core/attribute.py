@@ -92,6 +92,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.at = at
         self.is_default = is_default
         self.is_from_profile = is_from_profile
+        self.from_pool: Optional[str] = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -103,6 +104,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         elif isinstance(data, dict):
             self.value = data.get("value")
+            self.from_pool = data.get("from_pool")
 
             if "is_default" in data:
                 self.is_default = data.get("is_default")
@@ -594,6 +596,7 @@ class HashedPassword(BaseAttribute):
 
 class Integer(BaseAttribute):
     type = int
+    from_pool: Optional[str] = None
 
 
 class Boolean(BaseAttribute):
