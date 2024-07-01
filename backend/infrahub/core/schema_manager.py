@@ -707,10 +707,10 @@ class SchemaBranch:
 
                 infrahub_attribute_type = ATTRIBUTE_TYPES[node_attr.kind].get_infrahub_class()
                 try:
-                    infrahub_attribute_type.validate_content(
+                    infrahub_attribute_type.validate_format(
                         value=node_attr.default_value, name=node_attr.name, schema=node_attr
                     )
-                    infrahub_attribute_type.validate_format(
+                    infrahub_attribute_type.validate_content(
                         value=node_attr.default_value, name=node_attr.name, schema=node_attr
                     )
                 except ValidationError as exc:
