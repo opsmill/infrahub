@@ -8,6 +8,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ObjectForm from "@/components/form/object-form";
+import usePagination from "@/hooks/usePagination";
 
 type tFilters = {
   schema: any;
@@ -45,10 +46,16 @@ export const Filters = (props: tFilters) => {
 
   const branch = useAtomValue(currentBranchAtom);
   const [filters, setFilters] = useFilters();
+  const [pagination, setPagination] = usePagination();
   const [showFilters, setShowFilters] = useState(false);
 
   const removeFilters = () => {
     const newFilters = filters.filter((filter) => SEARCH_FILTERS.includes(filter.name));
+
+    setPagination({
+      ...pagination,
+      offset: 0,
+    });
 
     setFilters(newFilters);
   };
@@ -57,6 +64,11 @@ export const Filters = (props: tFilters) => {
 
   const handleSubmit = (data: any) => {
     const newFilters = constructNewFilters(data) as Filter[];
+
+    setPagination({
+      ...pagination,
+      offset: 0,
+    });
 
     setFilters([...filters, ...newFilters]);
 
