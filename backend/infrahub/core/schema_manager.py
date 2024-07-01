@@ -701,8 +701,7 @@ class SchemaBranch:
     def validate_default_values(self):
         for name in self.generic_names + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
-
-            for node_attr in node_schema.attributes:
+            for node_attr in node_schema.local_attributes:
                 if node_attr.default_value is None:
                     continue
 
@@ -711,9 +710,12 @@ class SchemaBranch:
                     infrahub_attribute_type.validate_content(
                         value=node_attr.default_value, name=node_attr.name, schema=node_attr
                     )
+                    infrahub_attribute_type.validate_format(
+                        value=node_attr.default_value, name=node_attr.name, schema=node_attr
+                    )
                 except ValidationError as exc:
                     raise ValidationError(
-                        f"{node_schema.namespace}{node_schema.name}: {node_attr.name} default value {exc.message}"
+                        f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
     def validate_human_friendly_id(self) -> None:
