@@ -1,5 +1,5 @@
+import { useAtomValue } from "jotai";
 import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
-import { atom, useAtomValue } from "jotai/index";
 import {
   EMPTY_IPAM_TREE,
   getTreeItemAncestors,
@@ -17,8 +17,6 @@ import { constructPath } from "@/utils/fetch";
 import { NodeId } from "react-accessible-treeview";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { objectTreeQuery } from "@/graphql/queries/objects/objectTreeQuery";
-
-export const hierarchicalTreeAtom = atom<TreeProps["data"]>(EMPTY_IPAM_TREE);
 
 export type HierarchicalTreeProps = {
   schema: IModelSchema;

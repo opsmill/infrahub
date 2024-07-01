@@ -28,7 +28,7 @@ const ObjectPageLayout = () => {
     <>
       <ObjectHeader schema={schema} objectId={objectid} />
 
-      <main className="flex gap-2 p-2 overflow-auto">
+      <div className="flex gap-2 p-2 overflow-auto">
         {treeSchema && (
           <HierarchicalTree
             className="w-full max-w-sm self-start"
@@ -40,7 +40,7 @@ const ObjectPageLayout = () => {
         <div className="flex-grow">
           <Outlet />
         </div>
-      </main>
+      </div>
     </>
   );
 };
