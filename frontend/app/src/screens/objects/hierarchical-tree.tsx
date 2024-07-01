@@ -1,5 +1,5 @@
 import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
-import { atom, useAtom, useAtomValue } from "jotai/index";
+import { atom, useAtomValue } from "jotai/index";
 import {
   EMPTY_IPAM_TREE,
   getTreeItemAncestors,
@@ -28,7 +28,7 @@ export type HierarchicalTreeProps = {
 
 export const HierarchicalTree = ({ schema, currentNodeId, className }: HierarchicalTreeProps) => {
   const navigate = useNavigate();
-  const [treeData, setTreeData] = useAtom(hierarchicalTreeAtom);
+  const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_IPAM_TREE);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
 
   const [isLoading, setLoading] = useState(true);
@@ -59,7 +59,9 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
           },
         };
       });
+
       const newTree = [{ ...ROOT_TREE_ITEM, children: rootNodeIds }, ...tree];
+
       if (currentNodeId) {
         const ancestorIds = getTreeItemAncestors(newTree, currentNodeId).map(({ id }) => id);
         setExpandedIds(ancestorIds);
@@ -67,7 +69,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
       setTreeData(newTree);
       setLoading(false);
     });
-  }, [currentNodeId]);
+  }, [schema.kind, currentNodeId]);
 
   if (isLoading && treeData.length === 1) return null;
 
