@@ -777,8 +777,8 @@ class NodeGetListQuery(Query):
         AND %(branch_filter)s
         WITH n, r
         ORDER BY n.uuid, r.branch_level DESC, r.from DESC
-        WITH n, head(collect(r)) AS latest_r_root
-        WHERE latest_r_root.status = "active"
+        WITH n, head(collect(r)) AS rb
+        WHERE rb.status = "active"
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
         use_simple = False
