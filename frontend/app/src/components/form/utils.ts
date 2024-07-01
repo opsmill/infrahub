@@ -21,6 +21,7 @@ type GetFormFieldsFromSchema = {
   initialObject?: Record<string, AttributeType>;
   user?: any;
   isFilterForm?: boolean;
+  filters?: Array<any>;
 };
 
 export const getFormFieldsFromSchema = ({
@@ -29,6 +30,7 @@ export const getFormFieldsFromSchema = ({
   initialObject,
   user,
   isFilterForm,
+  filters,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields = [
     ...(schema.attributes ?? []),
@@ -114,12 +116,15 @@ export const getFormFieldsFromSchema = ({
 
   // Allow kind filter for generic
   if (isFilterForm && schema.used_by?.length) {
+    const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+
     return [
       {
         name: "kind",
         label: "Kind",
         description: "Select a kind to filter nodes",
         type: "Dropdown",
+        defaultValue: kindFilter?.value,
         items: schema.used_by.map((kind) => ({
           id: kind,
           name: kind,
