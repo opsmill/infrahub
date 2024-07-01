@@ -9,17 +9,12 @@ import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.timestamp import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
-from infrahub.core.property import (
-    FlagPropertyMixin,
-    NodePropertyData,
-    NodePropertyMixin,
-    ValuePropertyData,
-)
+from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
@@ -55,7 +50,7 @@ class AttributeCreateData(BaseModel):
     is_default: bool
     is_protected: bool
     is_visible: bool
-    source_prop: list[ValuePropertyData] = Field(default_factory=list)
+    source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
     node_type: AttributeDBNodeType = AttributeDBNodeType.DEFAULT
 
@@ -92,6 +87,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.at = at
         self.is_default = is_default
         self.is_from_profile = is_from_profile
+        self.from_pool: Optional[str] = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -103,6 +99,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         elif isinstance(data, dict):
             self.value = data.get("value")
+            self.from_pool = data.get("from_pool")
 
             if "is_default" in data:
                 self.is_default = data.get("is_default")
@@ -202,7 +199,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if schema.enum and isinstance(value, Enum):
             value_to_check = value.value
         if not isinstance(value_to_check, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
-            raise ValidationError({name: f"{name} is not of type {schema.kind}"})
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -594,6 +591,7 @@ class HashedPassword(BaseAttribute):
 
 class Integer(BaseAttribute):
     type = int
+    from_pool: Optional[str] = None
 
 
 class Boolean(BaseAttribute):

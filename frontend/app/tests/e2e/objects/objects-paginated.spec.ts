@@ -19,7 +19,7 @@ test.describe("/objects/:objectKind", () => {
     page,
   }) => {
     await page.goto("/objects/CoreStandardGroup");
-    await page.getByRole("link", { name: "arista_devices" }).click();
+    await page.getByTestId("object-items").getByRole("link", { name: "arista_devices" }).click();
     await page.getByText("Members").click();
     await expect(page.getByRole("columnheader", { name: "Type" })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();

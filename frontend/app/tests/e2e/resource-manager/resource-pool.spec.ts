@@ -20,16 +20,7 @@ test.describe("/resource-manager - Resource Manager", () => {
 
     await page.getByLabel("Select an object type").click();
 
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "ProfileCoreIPPrefixPool" && status === 200;
-      }),
-
-      page.getByRole("option", { name: "CoreIPPrefixPool" }).click(),
-    ]);
+    await page.getByRole("option", { name: "CoreIPPrefixPool" }).click();
 
     await page.getByLabel("Name *").fill("test prefix pool");
     await page.getByLabel("Resources *").click();

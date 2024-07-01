@@ -8,6 +8,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ObjectForm from "@/components/form/object-form";
+import usePagination from "@/hooks/usePagination";
 
 type tFilters = {
   schema: any;
@@ -45,10 +46,16 @@ export const Filters = (props: tFilters) => {
 
   const branch = useAtomValue(currentBranchAtom);
   const [filters, setFilters] = useFilters();
+  const [pagination, setPagination] = usePagination();
   const [showFilters, setShowFilters] = useState(false);
 
   const removeFilters = () => {
     const newFilters = filters.filter((filter) => SEARCH_FILTERS.includes(filter.name));
+
+    setPagination({
+      ...pagination,
+      offset: 0,
+    });
 
     setFilters(newFilters);
   };
@@ -58,12 +65,44 @@ export const Filters = (props: tFilters) => {
   const handleSubmit = (data: any) => {
     const newFilters = constructNewFilters(data) as Filter[];
 
+    setPagination({
+      ...pagination,
+      offset: 0,
+    });
+
     setFilters([...filters, ...newFilters]);
 
     setShowFilters(false);
   };
 
   const currentFilters = filters.filter((filter) => !SEARCH_FILTERS.includes(filter.name));
+
+  const currentFiltersObject = filters
+    .map((filter) => {
+      // Get filer key name
+      const key = filter.name.split("__")[0];
+
+      if (Array.isArray(filter.value)) {
+        return {
+          [key]: {
+            edges: filter.value.map((value) => ({ node: value })),
+          },
+        };
+      }
+
+      return {
+        [key]: {
+          value: filter.value,
+        },
+      };
+    })
+    .reduce(
+      (acc, filter) => ({
+        ...acc,
+        ...filter,
+      }),
+      {}
+    );
 
   return (
     <div className="flex flex-1">
@@ -123,6 +162,7 @@ export const Filters = (props: tFilters) => {
           kind={schema?.kind}
           isFilterForm
           submitLabel="Apply filters"
+          currentObject={currentFiltersObject}
         />
       </SlideOver>
     </div>

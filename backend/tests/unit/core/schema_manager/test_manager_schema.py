@@ -26,7 +26,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import SchemaNotFoundError
+from infrahub.exceptions import SchemaNotFoundError, ValidationError
 
 from .conftest import _get_schema_by_kind
 
@@ -381,7 +381,6 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
-        "ProfileCoreStandardGroup",
         "ProfileInfraTinySchema",
     }
 
@@ -396,7 +395,6 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
-        "ProfileCoreStandardGroup",
         "ProfileInfraTinySchema",
     }
 
@@ -421,7 +419,6 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
         "ProfileBuiltinCriticality",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
-        "ProfileCoreStandardGroup",
         "ProfileInfraTinySchema",
     }
 
@@ -1140,6 +1137,51 @@ async def test_validate_default_filter_error(schema_all_in_one, default_filter, 
 
     with pytest.raises(ValueError, match=expected_error):
         schema.validate_default_filters()
+
+
+@pytest.mark.parametrize(
+    "default_value_attr",
+    [
+        {"name": "something", "kind": "Number", "optional": True, "default_value": 0},
+        {"name": "something", "kind": "Text", "optional": True, "default_value": "abcdef"},
+    ],
+)
+async def test_validate_default_value_success(schema_all_in_one, default_value_attr):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
+    schema_dict["attributes"].append(default_value_attr)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_default_values()
+
+
+@pytest.mark.parametrize(
+    "default_value_attr,expected_error",
+    [
+        (
+            {"name": "something", "kind": "DateTime", "optional": True, "default_value": 0},
+            "InfraTinySchema: default value 0 is not a valid DateTime",
+        ),
+        (
+            {"name": "something", "kind": "IPHost", "optional": True, "default_value": "abcdef"},
+            "InfraTinySchema: default value abcdef is not a valid IPHost",
+        ),
+        (
+            {"name": "something", "kind": "Number", "optional": True, "default_value": "abcdef"},
+            "InfraTinySchema: default value abcdef is not a valid Number",
+        ),
+    ],
+)
+async def test_validate_default_value_error(schema_all_in_one, default_value_attr, expected_error):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
+    schema_dict["attributes"].append(default_value_attr)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValidationError, match=expected_error):
+        schema.validate_default_values()
 
 
 async def test_schema_branch_load_schema_extension(

@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 @dataclass
 class Registry:
     id: Optional[str] = None
-    attribute: dict[str, BaseAttribute] = field(default_factory=dict)
+    attribute: dict[str, type[BaseAttribute]] = field(default_factory=dict)
     branch: dict[str, Branch] = field(default_factory=dict)
     node: dict = field(default_factory=dict)
     _default_branch: Optional[str] = None

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Iterator, Optional, Sequence, U
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection, is_valid_uuid
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind
@@ -50,9 +50,9 @@ class RelationshipCreateData(BaseModel):
     uuid: str
     name: str
     destination_id: str
-    branch: Optional[str]
+    branch: Optional[str] = None
     branch_level: int
-    branch_support: Optional[str]
+    branch_support: Optional[str] = None
     direction: str
     status: str
     is_protected: bool

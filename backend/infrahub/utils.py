@@ -33,6 +33,16 @@ def format_label(slug: str) -> str:
     return " ".join([word.title() for word in slug.split("_")])
 
 
+def find_next_free(start: int, end: int, used_numbers: list[int]) -> Optional[int]:
+    used_set = set(used_numbers)
+
+    for num in range(start, end + 1):
+        if num not in used_set:
+            return num
+
+    return None
+
+
 class MetaEnum(EnumMeta):
     def __contains__(cls, item: Any) -> bool:
         try:

@@ -2,6 +2,7 @@ import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";
 import ObjectHeader from "@/screens/objects/object-header";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();
@@ -14,10 +15,40 @@ const ObjectPageLayout = () => {
 
   if (!schema) return null;
 
+  const isHierarchicalModel = "hierarchical" in schema && schema.hierarchical;
+  const inheritFormHierarchicalModel = "hierarchy" in schema && schema.hierarchy;
+
+  const getTreeSchema = () => {
+    if (isHierarchicalModel) {
+      return schema;
+    }
+
+    if (inheritFormHierarchicalModel) {
+      return generics.find(({ kind }) => kind === schema.hierarchy);
+    }
+
+    return null;
+  };
+
+  const treeSchema = getTreeSchema();
+
   return (
     <>
       <ObjectHeader schema={schema} objectId={objectid} />
-      <Outlet />
+
+      <div className="flex gap-2 p-2 overflow-auto">
+        {treeSchema && (
+          <HierarchicalTree
+            className="w-full max-w-sm self-start"
+            schema={treeSchema}
+            currentNodeId={objectid}
+          />
+        )}
+
+        <div className="flex-grow">
+          <Outlet />
+        </div>
+      </div>
     </>
   );
 };

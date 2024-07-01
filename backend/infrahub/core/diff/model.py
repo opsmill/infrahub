@@ -5,10 +5,7 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from infrahub.core.constants import (
-    DiffAction,
-    PathType,
-)
+from infrahub.core.constants import DiffAction, PathType
 from infrahub.core.timestamp import Timestamp
 
 
@@ -18,8 +15,7 @@ class RelationshipPath(BaseModel):
 
 
 class BaseDiffElement(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def to_graphql(self) -> dict[str, Any]:
         """Recursively Export the model to a dict for GraphQL.
@@ -249,7 +245,7 @@ class ObjectConflict(BaseModel):
     id: str
 
     def to_conflict_dict(self) -> dict[str, Any]:
-        return self.dict()
+        return self.model_dump()
 
 
 class DataConflict(ObjectConflict):
@@ -261,7 +257,7 @@ class DataConflict(ObjectConflict):
     changes: list[BranchChanges] = Field(default_factory=list)
 
     def to_conflict_dict(self) -> dict[str, Any]:
-        conflict_dict = self.dict(exclude={"path_type"})
+        conflict_dict = self.model_dump(exclude={"path_type"})
         conflict_dict["path_type"] = self.path_type.value
         return conflict_dict
 

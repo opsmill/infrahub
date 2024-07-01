@@ -177,7 +177,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 log.error(exc.message)
                 continue
 
-            transform = InfrahubRepositoryJinja2(repository=str(self.id), **config_transform.dict())
+            transform = InfrahubRepositoryJinja2(repository=str(self.id), **config_transform.model_dump())
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.sdk.get(
@@ -316,7 +316,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     ) -> InfrahubNode:
         schema = await self.sdk.schema.get(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name)
         create_payload = self.sdk.schema.generate_payload_create(
-            schema=schema, data=data.dict(), source=self.id, is_protected=True
+            schema=schema, data=data.model_dump(), source=self.id, is_protected=True
         )
         obj = await self.sdk.create(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name, **create_payload)
         await obj.save()

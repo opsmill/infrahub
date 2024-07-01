@@ -28,8 +28,9 @@ const ObjectHeader = ({ schema, objectId }: ObjectHeaderProps) => {
 const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
   const [filters] = useFilters();
   const { data, loading, error } = useObjectItems(schema, filters);
+  const kindFilter = filters?.find((filter) => filter.name == "kind__value");
 
-  const schemaKind = schema.kind as string;
+  const schemaKind = kindFilter?.value || (schema.kind as string);
   const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
   const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;
 
@@ -59,6 +60,7 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
     </Content.Title>
   );
 };
+
 const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectId: string }) => {
   const { data, loading, error } = useObjectDetails(schema, objectId);
 

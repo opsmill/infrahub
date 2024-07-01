@@ -193,7 +193,7 @@ class TestInfrahubClientSync:
                 obj.save(allow_upsert=True)
                 tags.append(obj)
 
-            org = clt.create(kind="CoreOrganization", name=orgname, tags=tags)
+            org = clt.create(kind="TestOrganization", name=orgname, tags=tags)
             org.save(allow_upsert=True)
 
         # First execution, we create one org with 3 tags

@@ -61,6 +61,8 @@ export default function ObjectItems({
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+
   if (schema && MENU_EXCLUDELIST.includes(schema.kind as string) && !preventBlock) {
     return <Navigate to="/" />;
   }
@@ -70,7 +72,7 @@ export default function ObjectItems({
 
   const { loading, error, data = {} } = useObjectItems(schema, filters);
 
-  const result = data && schema?.kind ? data[schema?.kind] ?? {} : {};
+  const result = data && schema?.kind ? data[kindFilter?.value || schema?.kind] ?? {} : {};
 
   const { count = "...", edges } = result;
 
@@ -154,7 +156,9 @@ export default function ObjectItems({
 
   return (
     <>
-      <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
+      <div
+        className="rounded-md border overflow-hidden bg-custom-white shadow-sm"
+        data-testid="object-items">
         <div className="flex items-center p-2">
           <SearchInput
             loading={loading}
