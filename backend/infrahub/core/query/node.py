@@ -772,18 +772,13 @@ class NodeGetListQuery(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH p = (n:Node)
+        MATCH (root:Root)<-[r:IS_PART_OF]-(n:Node)
         WHERE $node_kind IN LABELS(n)
-        CALL {
-            WITH n
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n, r as rb
-        WHERE rb.status = "active"
+        AND %(branch_filter)s
+        WITH n, r
+        ORDER BY n.uuid, r.branch_level DESC, r.from DESC
+        WITH n, head(collect(r)) AS latest_r_root
+        WHERE latest_r_root.status = "active"
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
         use_simple = False
