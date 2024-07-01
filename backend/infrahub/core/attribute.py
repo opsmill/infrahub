@@ -204,7 +204,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if schema.enum and isinstance(value, Enum):
             value_to_check = value.value
         if not isinstance(value_to_check, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
-            raise ValidationError({name: f"{name} is not of type {schema.kind}"})
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:

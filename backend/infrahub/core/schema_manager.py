@@ -54,9 +54,10 @@ from infrahub.core.schema import (
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.utils import parse_node_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
-from infrahub.exceptions import SchemaNotFoundError
+from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
+from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
@@ -482,6 +483,7 @@ class SchemaBranch:
         self.validate_names()
         self.validate_menu_placements()
         self.validate_kinds()
+        self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
         self.validate_uniqueness_constraints()
@@ -695,6 +697,26 @@ class SchemaBranch:
                 allowed_path_types=SchemaElementPathType.ATTR,
                 element_name="default_filter",
             )
+
+    def validate_default_values(self):
+        for name in self.generic_names + self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+            for node_attr in node_schema.local_attributes:
+                if node_attr.default_value is None:
+                    continue
+
+                infrahub_attribute_type = ATTRIBUTE_TYPES[node_attr.kind].get_infrahub_class()
+                try:
+                    infrahub_attribute_type.validate_format(
+                        value=node_attr.default_value, name=node_attr.name, schema=node_attr
+                    )
+                    infrahub_attribute_type.validate_content(
+                        value=node_attr.default_value, name=node_attr.name, schema=node_attr
+                    )
+                except ValidationError as exc:
+                    raise ValidationError(
+                        f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
+                    ) from exc
 
     def validate_human_friendly_id(self) -> None:
         for name in self.generic_names + self.node_names:
