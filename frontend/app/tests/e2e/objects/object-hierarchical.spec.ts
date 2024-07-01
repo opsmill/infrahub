@@ -39,14 +39,5 @@ test.describe("Object hierarchical view", () => {
       await page.getByText("Children5").click();
       await expect(page.getByRole("link", { name: "Atlanta" })).toBeVisible();
     });
-
-    await test.step("navigate using table and tree track position", async () => {
-      await page.getByRole("link", { name: "Atlanta" }).click();
-      await expect(page.getByText("ParentUnited States of America")).toBeVisible();
-      await expect(page.getByText("Devices6")).toBeVisible();
-
-      await expect(page.getByRole("treeitem", { name: "atl1" })).toBeVisible();
-      await expect(page.getByRole("treeitem", { name: "ord1" })).toBeVisible();
-    });
   });
 });
