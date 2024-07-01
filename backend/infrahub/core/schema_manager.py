@@ -57,6 +57,7 @@ from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
+from infrahub.types import ATTRIBUTE_PYTHON_TYPES, Dropdown
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
@@ -482,6 +483,7 @@ class SchemaBranch:
         self.validate_names()
         self.validate_menu_placements()
         self.validate_kinds()
+        self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
         self.validate_uniqueness_constraints()
@@ -695,6 +697,39 @@ class SchemaBranch:
                 allowed_path_types=SchemaElementPathType.ATTR,
                 element_name="default_filter",
             )
+
+    def validate_default_values(self):
+        for name in self.generic_names + self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            for node_attr in node_schema.attributes:
+                if node_attr.default_value is None:
+                    continue
+
+                # Check if the default value is within the enum allowed values
+                if node_attr.enum:
+                    if node_attr.default_value not in node_attr.enum:
+                        raise ValueError(
+                            f"{node_schema.namespace}{node_schema.name}: '{node_attr.name}' default value '{node_attr.default_value}' is not valid. "
+                            f"Must be one of {', '.join(node_attr.enum)}"
+                        )
+                # Check if the default value is within the dropdown allowed values
+                elif node_attr.kind == Dropdown.infrahub:
+                    allowed_values = [v.name for v in node_attr.choices]
+                    if node_attr.default_value not in allowed_values:
+                        raise ValueError(
+                            f"{node_schema.namespace}{node_schema.name}: '{node_attr.name}' default value '{node_attr.default_value}' is not valid. "
+                            f"Must be one of {', '.join(allowed_values)}"
+                        )
+                # Try passing the default value into the defined Python type and see if it fails
+                else:
+                    try:
+                        ATTRIBUTE_PYTHON_TYPES[node_attr.kind](node_attr.default_value)
+                    except Exception as exc:
+                        raise ValueError(
+                            f"{node_schema.namespace}{node_schema.name}: '{node_attr.name}' default value '{node_attr.default_value}' is not valid "
+                            f"for kind {node_attr.kind}."
+                        ) from exc
 
     def validate_human_friendly_id(self) -> None:
         for name in self.generic_names + self.node_names:
