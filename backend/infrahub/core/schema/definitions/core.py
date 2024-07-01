@@ -453,6 +453,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
+            "generate_profile": False,
             "attributes": [
                 {
                     "name": "name",

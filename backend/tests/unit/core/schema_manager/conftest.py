@@ -167,7 +167,7 @@ def schema_all_in_one():
                 "namespace": "Infra",
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
-                    {"name": "mybool", "kind": "Boolean", "default_value": False},
+                    {"name": "mybool", "kind": "Boolean", "default_value": False, "optional": True},
                     {"name": "local_attr", "kind": "Number", "branch": BranchSupportType.LOCAL.value},
                 ],
                 "relationships": [

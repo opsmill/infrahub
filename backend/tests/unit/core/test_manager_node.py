@@ -282,6 +282,28 @@ async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branc
     assert source.id == crit_profile_1.id
 
 
+async def test_get_many_with_profile_generic(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
+):
+    generic_profile_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
+    generic_profile = await Node.init(db=db, schema=generic_profile_schema)
+    await generic_profile.new(db=db, profile_name="generic_profile", color="green", profile_priority=1001)
+    await generic_profile.save(db=db)
+    crit_profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    crit_profile = await Node.init(db=db, schema=crit_profile_schema)
+    await crit_profile.new(db=db, profile_name="crit_profile", color="blue", profile_priority=1002)
+    await crit_profile.save(db=db)
+    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
+    await crit_low.profiles.update(db=db, data=[crit_profile, generic_profile])
+    await crit_low.save(db=db)
+
+    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
+    assert len(node_map) == 2
+    assert node_map[criticality_low.id].color.value == "green"
+    source = await node_map[criticality_low.id].color.get_source(db=db)
+    assert source.id == generic_profile.id
+
+
 async def test_get_many_with_multiple_profiles_same_priority(
     db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
 ):

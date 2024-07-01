@@ -370,10 +370,12 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     schema.process_inheritance()
     schema.manage_profile_schemas()
 
-    profile = schema.get(name="ProfileBuiltinCriticality", duplicate=False)
-    assert profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
-    assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
-    assert set(profile.attribute_names) == {"profile_name", "profile_priority", "description"}
+    node_profile = schema.get(name="ProfileBuiltinCriticality", duplicate=False)
+    assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
+    assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
+    assert set(node_profile.attribute_names) == {"profile_name", "profile_priority", "description", "mybool"}
+    generic_profile = schema.get(name="ProfileInfraGenericInterface", duplicate=False)
+    assert set(generic_profile.attribute_names) == {"profile_name", "profile_priority", "mybool"}
     core_profile_schema = schema.get("CoreProfile")
     core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {
@@ -382,6 +384,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
         "ProfileInfraTinySchema",
+        "ProfileInfraGenericInterface",
     }
 
     assert set(core_node_schema.used_by) == {
@@ -396,6 +399,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
         "ProfileInfraTinySchema",
+        "ProfileInfraGenericInterface",
     }
 
 
@@ -404,6 +408,8 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
     schema_all_in_one["generics"].append(core_profile_schema)
     builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="BuiltinTag")
     builtin_tag_schema["generate_profile"] = False
+    generic_interface_schema = schema_all_in_one["generics"][0]
+    generic_interface_schema["generate_profile"] = False
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
@@ -2408,7 +2414,11 @@ async def test_load_schema_from_db(
 
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
-    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
+    assert set(schema2.profiles.keys()) == {
+        "ProfileBuiltinTag",
+        "ProfileTestCriticality",
+        "ProfileTestGenericInterface",
+    }
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
@@ -2482,7 +2492,11 @@ async def test_load_schema(
 
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
-    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
+    assert set(schema2.profiles.keys()) == {
+        "ProfileBuiltinTag",
+        "ProfileTestCriticality",
+        "ProfileTestGenericInterface",
+    }
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()

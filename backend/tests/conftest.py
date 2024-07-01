@@ -294,6 +294,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text"},
+                    {"name": "weight", "kind": "Number", "optional": True},
                 ],
                 "relationships": [
                     {

@@ -1691,23 +1691,32 @@ async def all_attribute_default_types_schema(
 
 @pytest.fixture
 async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
-    SCHEMA: dict[str, Any] = {
+    generic_schema: dict[str, Any] = {
+        "name": "GenericCriticality",
+        "namespace": "Test",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "color", "kind": "Text", "default_value": "#444444", "optional": True},
+            {"name": "is_true", "kind": "Boolean", "default_value": True, "optional": True},
+            {"name": "is_false", "kind": "Boolean", "default_value": False, "optional": True},
+            {"name": "description", "kind": "Text", "optional": True},
+        ],
+    }
+    generic = GenericSchema(**generic_schema)
+    node_schema: dict[str, Any] = {
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
         "display_labels": ["label__value"],
+        "inherit_from": ["TestGenericCriticality"],
         "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
             {"name": "level", "kind": "Number"},
-            {"name": "color", "kind": "Text", "default_value": "#444444"},
             {"name": "mylist", "kind": "List", "default_value": ["one", "two"]},
-            {"name": "is_true", "kind": "Boolean", "default_value": True},
-            {"name": "is_false", "kind": "Boolean", "default_value": False},
             {"name": "json_no_default", "kind": "JSON", "optional": True},
             {"name": "json_default", "kind": "JSON", "default_value": {"value": "bob"}},
-            {"name": "description", "kind": "Text", "optional": True},
             {"name": "time", "kind": "DateTime", "optional": True},
             {
                 "name": "status",
@@ -1720,9 +1729,10 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
             },
         ],
     }
+    node = NodeSchema(**node_schema)
 
-    node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
+    registry.schema.set(name=generic.kind, schema=generic, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
     return registry.schema.get(name=node.kind, branch=default_branch.name)
 

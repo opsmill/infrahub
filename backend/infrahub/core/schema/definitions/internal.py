@@ -844,6 +844,14 @@ generic_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
+            name="generate_profile",
+            kind="Boolean",
+            description="Indicate if a profile schema should be generated for this schema",
+            default_value=True,
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
             name="used_by",
             kind="List",
             internal_kind=str,

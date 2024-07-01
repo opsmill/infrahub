@@ -13,6 +13,11 @@ class GeneratedGenericSchema(BaseNodeSchema):
         description="Defines if the Generic support the hierarchical mode.",
         json_schema_extra={"update": "validate_constraint"},
     )
+    generate_profile: bool = Field(
+        default=True,
+        description="Indicate if a profile schema should be generated for this schema",
+        json_schema_extra={"update": "validate_constraint"},
+    )
     used_by: list[str] = Field(
         default_factory=list,
         description="List of Nodes that are referencing this Generic",
