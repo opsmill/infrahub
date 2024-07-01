@@ -19,14 +19,14 @@ nodes:
         optional: true
     relationships:
       - name: Organization
-        peer: CoreOrganization
+        peer: TestOrganization
         optional: false
         cardinality: one
         kind: Attribute
 
 extensions:
   nodes:
-    - kind: CoreOrganization
+    - kind: TestOrganization
       relationships:
         - name: contract
           peer: ProcurementContract

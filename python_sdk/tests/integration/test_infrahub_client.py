@@ -191,7 +191,7 @@ class TestInfrahubClient:
                 await obj.save(allow_upsert=True)
                 tags.append(obj)
 
-            org = await clt.create(kind="CoreOrganization", name=orgname, tags=tags)
+            org = await clt.create(kind="TestOrganization", name=orgname, tags=tags)
             await org.save(allow_upsert=True)
 
         # First execution, we create one org with 3 tags
