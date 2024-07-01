@@ -49,10 +49,10 @@ test.describe("Object filters", () => {
         await expect(
           page
             .getByTestId("side-panel-container")
-            .getByText("Tags")
+            .getByText("Status")
             .locator("../..")
             .getByTestId("select-input")
-        ).toHaveValue("Provisioning In the process");
+        ).toHaveValue("Provisioning");
       });
 
       await expect(page.locator("form")).toContainText("red");
