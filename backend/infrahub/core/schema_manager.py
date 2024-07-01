@@ -1427,8 +1427,8 @@ class SchemaBranch:
             core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
 
         profile_schema_kinds = set()
-        for node_name in self.nodes.keys():
-            node = self.get_node(name=node_name, duplicate=False)
+        for node_name in self.node_names + self.generic_names:
+            node = self.get(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
                 try:
                     self.delete(name=self._get_profile_kind(node_kind=node.kind))

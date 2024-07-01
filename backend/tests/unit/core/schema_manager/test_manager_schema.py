@@ -382,6 +382,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
         "ProfileInfraTinySchema",
+        "ProfileInfraGenericInterface",
     }
 
     assert set(core_node_schema.used_by) == {
@@ -396,6 +397,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
         "ProfileInfraTinySchema",
+        "ProfileInfraGenericInterface",
     }
 
 
@@ -404,6 +406,8 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
     schema_all_in_one["generics"].append(core_profile_schema)
     builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="BuiltinTag")
     builtin_tag_schema["generate_profile"] = False
+    generic_interface_schema = schema_all_in_one["generics"][0]
+    generic_interface_schema["generate_profile"] = False
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
@@ -2408,7 +2412,11 @@ async def test_load_schema_from_db(
 
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
-    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
+    assert set(schema2.profiles.keys()) == {
+        "ProfileBuiltinTag",
+        "ProfileTestCriticality",
+        "ProfileTestGenericInterface",
+    }
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
@@ -2482,7 +2490,11 @@ async def test_load_schema(
 
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
-    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
+    assert set(schema2.profiles.keys()) == {
+        "ProfileBuiltinTag",
+        "ProfileTestCriticality",
+        "ProfileTestGenericInterface",
+    }
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
