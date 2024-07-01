@@ -18,11 +18,19 @@ const ObjectPageLayout = () => {
   const isHierarchicalModel = "hierarchical" in schema && schema.hierarchical;
   const inheritFormHierarchicalModel = "hierarchy" in schema && schema.hierarchy;
 
-  const treeSchema = isHierarchicalModel
-    ? schema
-    : inheritFormHierarchicalModel
-    ? generics.find(({ kind }) => kind === schema.hierarchy)
-    : null;
+  const getTreeSchema = () => {
+    if (isHierarchicalModel) {
+      return schema;
+    }
+
+    if (inheritFormHierarchicalModel) {
+      return generics.find(({ kind }) => kind === schema.hierarchy);
+    }
+
+    return null;
+  };
+
+  const treeSchema = getTreeSchema();
 
   return (
     <>
