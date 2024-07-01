@@ -28,6 +28,8 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     result = gqlm.generate_graphql_object(schema=criticality_schema)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
@@ -78,6 +80,8 @@ async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_br
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     input_type = gqlm.generate_graphql_mutation_create_input(schema=criticality_schema)
     result = gqlm.generate_graphql_mutation_create(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityCreate"
@@ -88,6 +92,8 @@ async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_br
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     input_type = gqlm.generate_graphql_mutation_update_input(schema=criticality_schema)
     result = gqlm.generate_graphql_mutation_update(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityUpdate"
