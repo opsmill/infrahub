@@ -1,11 +1,22 @@
 import useQuery from "@/hooks/useQuery";
-import { IModelSchema } from "@/state/atoms/schema.atom";
+import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { gql } from "@apollo/client";
 import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import { getObjectAttributes, getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { Filter } from "@/hooks/useFilters";
+import { useAtomValue } from "jotai";
 
 export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) => {
+  const nodes = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
+  const profiles = useAtomValue(profilesAtom);
+
+  const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+
+  const kindFilterSchema = [...nodes, ...generics, ...profiles].find(
+    ({ kind }) => kind === kindFilter?.value
+  );
+
   // All the filter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
   const filtersString = filters
@@ -33,7 +44,7 @@ export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) =
   const query = gql(
     schema
       ? getObjectItemsPaginated({
-          kind: schema.kind,
+          kind: kindFilterSchema?.kind || schema.kind,
           attributes,
           relationships,
           filters: filtersString,
