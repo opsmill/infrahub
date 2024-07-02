@@ -5,7 +5,7 @@ name: New Preview Release
 on:
   push:
     tags:
-      - 'infrahub-v*rc*'
+      - 'infrahub-v*-*'
 
 jobs:
   meta_data:
@@ -21,9 +21,9 @@ jobs:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}
           tags: |
-            type=match,pattern=infrahub-v(\d+\.\d+\.\d+rc\d+),group=1
-            type=match,pattern=infrahub-v(\d+\.\d+rc\d+),group=1
-            type=raw,value=rc
+            type=match,pattern=infrahub-v(\d+\.\d+\.\d+-\w+),group=1
+            type=match,pattern=infrahub-v(\d+\.\d+-\w+),group=1
+            type=raw,value=preview
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
 

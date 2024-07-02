@@ -6,7 +6,7 @@ on:
   push:
     tags:
       - 'infrahub-v*'
-      - '!infrahub-v*rc*'
+      - '!infrahub-v*-*'
 
 jobs:
   meta_data:
