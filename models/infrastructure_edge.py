@@ -5,10 +5,8 @@ from collections import defaultdict
 from ipaddress import IPv4Network, IPv6Network
 
 from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
-from infrahub_sdk.exceptions import GraphQLError, NodeNotFoundError
-from infrahub_sdk.graphql import Mutation
+from infrahub_sdk.exceptions import GraphQLError
 
-# flake8: noqa
 # pylint: skip-file
 
 CONTINENT_COUNTRIES = {
@@ -81,7 +79,7 @@ def site_generator(nbr_site=2) -> list[dict[str, str]]:
         if idx == nbr_loop:
             nbr_this_loop = nbr_last_loop
 
-        sites.extend([{**site, **{"name": f"{site['name']}{idx}"}} for site in SITES[:nbr_this_loop]])
+        sites.extend([{**site, "name": f"{site['name']}{idx}"} for site in SITES[:nbr_this_loop]])
 
     return sites
 
@@ -681,7 +679,7 @@ async def generate_site(
     # --------------------------------------------------
     # Connect both devices within the Site together with 2 interfaces
     # --------------------------------------------------
-    for idx in range(0, 2):
+    for idx in range(2):
         intf1 = store.get(kind="InfraInterfaceL3", key=f"{site_name}-edge1-l3-{idx}")
         intf2 = store.get(kind="InfraInterfaceL3", key=f"{site_name}-edge2-l3-{idx}")
 
@@ -697,9 +695,9 @@ async def generate_site(
     # --------------------------------------------------
     # Connect both leaf devices within a Site together with the 2 peer interfaces
     # --------------------------------------------------
-    for idx in range(0, 2):
-        intf1 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf1-l2-Ethernet{idx+1}")
-        intf2 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf2-l2-Ethernet{idx+1}")
+    for idx in range(2):
+        intf1 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf1-l2-Ethernet{idx + 1}")
+        intf2 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf2-l2-Ethernet{idx + 1}")
 
         intf1.description.value = f"Connected to {site_name}-leaf2 {intf2.name.value}"
         intf1.connected_endpoint = intf2
@@ -723,7 +721,7 @@ async def generate_site(
     # --------------------------------------------------
     # Create iBGP Sessions within the Site
     # --------------------------------------------------
-    for idx in range(0, 2):
+    for idx in range(2):
         if idx == 0:
             device1 = f"{site_name}-{DEVICES[0][0]}"
             device2 = f"{site_name}-{DEVICES[1][0]}"
@@ -768,7 +766,7 @@ async def branch_scenario_add_upstream(
     device_name = f"{site_name}-edge1"
 
     new_branch_name = f"{site_name}-add-upstream"
-    new_branch = await client.branch.create(
+    await client.branch.create(
         branch_name=new_branch_name, sync_with_git=False, description=f"Add a new Upstream link in {site_name}"
     )
     log.info(f"- Creating branch: {new_branch_name!r}")
@@ -877,7 +875,7 @@ async def branch_scenario_replace_ip_addresses(
     device2_name = f"{site_name}-edge2"
 
     new_branch_name = f"{site_name}-update-edge-ips"
-    new_branch = await client.branch.create(
+    await client.branch.create(
         branch_name=new_branch_name,
         sync_with_git=False,
         description=f"Change the IP addresses between edge1 and edge2 in {site_name}",
@@ -933,7 +931,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
     """
     log.info("Create a new Branch and Delete Colt Upstream Circuit")
     new_branch_name = f"{site_name}-delete-upstream"
-    new_branch = await client.branch.create(
+    await client.branch.create(
         branch_name=new_branch_name,
         sync_with_git=False,
         description=f"Delete upstream circuit with colt in {site_name}",
@@ -1003,7 +1001,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
     f"{site_name}-edge2"
 
     new_branch_name = f"{site_name}-maintenance-conflict"
-    new_branch = await client.branch.create(
+    await client.branch.create(
         branch_name=new_branch_name,
         sync_with_git=False,
         description=f"Put {device1_name} in maintenance mode",
@@ -1042,11 +1040,11 @@ async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging
     Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE
     """
     log.info("Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE")
-    new_branch_name = f"platform-conflict"
-    new_branch = await client.branch.create(
+    new_branch_name = "platform-conflict"
+    await client.branch.create(
         branch_name=new_branch_name,
         sync_with_git=False,
-        description=f"Add new platform",
+        description="Add new platform",
     )
     log.info(f"- Creating branch: {new_branch_name!r}")
 
@@ -1103,7 +1101,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     # Create User Accounts, Groups, Organizations & Platforms
     # ------------------------------------------
-    log.info(f"Creating User Accounts, Groups & Organizations & Platforms")
+    log.info("Creating User Accounts, Groups & Organizations & Platforms")
     for account in ACCOUNTS:
         try:
             obj = await client.create(
@@ -1186,7 +1184,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     # Create BGP Peer Groups
     # ------------------------------------------
-    log.info(f"Creating BGP Peer Groups")
+    log.info("Creating BGP Peer Groups")
     batch = await client.create_batch()
     for peer_group in BGP_PEER_GROUPS:
         remote_as_id = None
@@ -1367,7 +1365,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         await client.allocate_next_ip_prefix(resource_pool=ipv6_supernet_pool, branch=branch),
     ]
 
-    log.debug(f"IP Prefixes Creation Completed")
+    log.debug("IP Prefixes Creation Completed")
 
     # ------------------------------------------
     # Create IPv6 IP from IPv6 Prefix pool

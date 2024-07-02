@@ -599,6 +599,16 @@ max-complexity = 33
     "S106", #  Possible hardcoded password assigned to argument
 ]
 
+"models/infrastructure_edge.py" = [
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one. Alternatively ignored after further       #
+# investigation if they are deemed to not make sense.                                            #
+##################################################################################################
+    "C416", # Unnecessary `dict` comprehension (rewrite using `dict()`)
+    "C901", # `run` is too complex
+    "E501", # Line too long
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
