@@ -11,7 +11,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.model import (
+from infrahub.core.diff.model.diff import (
     ArtifactTarget,
     BranchDiff,
     BranchDiffArtifact,

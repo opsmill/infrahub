@@ -9,7 +9,7 @@ from pytest_httpx import HTTPXMock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
-from infrahub.core.diff.model import DiffElementType
+from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase

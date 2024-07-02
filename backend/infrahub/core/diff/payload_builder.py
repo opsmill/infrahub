@@ -9,7 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.log import get_logger
 
-from .model import (
+from .model.diff import (
     BranchDiff,
     BranchDiffAttribute,
     BranchDiffElement,
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
     from .branch_differ import BranchDiffer
-    from .model import NodeDiffElement, RelationshipDiffElement
+    from .model.diff import NodeDiffElement, RelationshipDiffElement
 
 
 log = get_logger(__name__)

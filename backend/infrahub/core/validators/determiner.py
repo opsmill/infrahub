@@ -5,7 +5,7 @@ from infrahub_sdk.client import NodeDiff
 
 from infrahub.core.constants import RelationshipKind, SchemaPathType
 from infrahub.core.constants.schema import UpdateSupport
-from infrahub.core.diff.model import DiffElementType
+from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes

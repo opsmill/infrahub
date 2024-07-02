@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Generator, Iterator, Optional, Union
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
+from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
 
 from infrahub import config
@@ -254,6 +255,12 @@ class QueryResult:
         for item in self.data:
             if isinstance(item, Neo4jNode):
                 yield item
+
+    def get_paths(self, label: str) -> Generator[Neo4jPath, None, None]:
+        """Return all nodes."""
+        for path in self.get(label=label):
+            if isinstance(path, Neo4jPath):
+                yield path
 
     def __iter__(self) -> Iterator:
         yield from self.data
