@@ -75,12 +75,13 @@ class GraphQLQueryAnalyzer:
                 continue
             for variable in variable_definitions:
                 data = {"name": variable.variable.name.value}
-                non_null = False
-                if variable.type.kind == "non_null_type":
-                    data["type"] = variable.type.type.name.value
-                    non_null = True
-                else:
-                    data["type"] = variable.type.name.value
+                variable_type = variable.type
+                non_null = variable_type.kind == "non_null_type"
+
+                # This should not iterate a lot but it allows to inspect non-nullable iterables
+                while hasattr(variable_type, "type"):
+                    variable_type = variable_type.type
+                data["type"] = variable_type.name.value
 
                 if variable.default_value:
                     if data["type"] == "Int":
