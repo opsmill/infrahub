@@ -76,11 +76,15 @@ class GraphQLQueryAnalyzer:
             for variable in variable_definitions:
                 data = {"name": variable.variable.name.value}
                 non_null = False
-                if variable.type.kind == "non_null_type":
-                    data["type"] = variable.type.type.name.value
-                    non_null = True
-                else:
-                    data["type"] = variable.type.name.value
+
+                match variable.type.kind:
+                    case "list_type":
+                        data["type"] = variable.type.type.name.value
+                    case "non_null_type":
+                        data["type"] = variable.type.type.name.value
+                        non_null = True
+                    case _:
+                        data["type"] = variable.type.name.value
 
                 if variable.default_value:
                     if data["type"] == "Int":
