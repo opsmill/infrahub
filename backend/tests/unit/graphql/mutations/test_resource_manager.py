@@ -634,10 +634,40 @@ mutation CreateNumberPool(
 }
 """
 
+UPDATE_NUMBER_POOL = """
+mutation UpdateNumberPool(
+    $id: String!,
+    $name: String,
+    $node: String,
+    $node_attribute: String,
+    $start_range: Int,
+    $end_range: Int
+  ) {
+  CoreNumberPoolUpdate(
+    data: {
+      id: $id,
+      name: {value: $name},
+      node:{value: $node},
+      node_attribute: {value: $node_attribute},
+      start_range: {value: $start_range},
+      end_range: {value: $end_range}
+    }
+  ) {
+    object {
+      display_label
+      id
+    }
+  }
+}
+"""
 
-async def test_test_number_pool_creation(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+
+async def test_test_number_pool_creation_errors(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+):
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
     no_model = await graphql(
         schema=gql_params.schema,
         source=CREATE_NUMBER_POOL,
@@ -651,6 +681,20 @@ async def test_test_number_pool_creation(db: InfrahubDatabase, default_branch: B
             "end_range": 3,
         },
     )
+    not_a_node = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "pool1",
+            "node": "CoreGroup",
+            "node_attribute": "ticket_id",
+            "start_range": 1,
+            "end_range": 3,
+        },
+    )
+
     missing_attribute = await graphql(
         schema=gql_params.schema,
         source=CREATE_NUMBER_POOL,
@@ -678,9 +722,93 @@ async def test_test_number_pool_creation(db: InfrahubDatabase, default_branch: B
         },
     )
 
+    invalid_range = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "pool1",
+            "node": "TestingTicket",
+            "node_attribute": "ticket_id",
+            "start_range": 10,
+            "end_range": 5,
+        },
+    )
+
     assert no_model.errors
     assert "The selected model does not exist" in str(no_model.errors[0])
+    assert not_a_node.errors
+    assert "The selected model is not a Node" in str(not_a_node.errors[0])
     assert missing_attribute.errors
     assert "The selected attribute doesn't exist in the selected" in str(missing_attribute.errors[0])
     assert wrong_attribute.errors
     assert "The selected attribute is not of the kind Number" in str(wrong_attribute.errors[0])
+    assert invalid_range.errors
+    assert "start_range can't be larger than end_range" in str(invalid_range.errors[0])
+
+
+async def test_test_number_pool_update(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    create_ok = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "pool1",
+            "node": "TestingTicket",
+            "node_attribute": "ticket_id",
+            "start_range": 10,
+            "end_range": 20,
+        },
+    )
+
+    assert create_ok.data
+    assert not create_ok.errors
+
+    pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
+    update_forbidden = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": pool_id,
+            "node": "TestingIncident",
+            "node_attribute": "ticket_id",
+            "start_range": 1,
+            "end_range": 10,
+        },
+    )
+
+    update_invalid_range = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": pool_id,
+            "start_range": 30,
+        },
+    )
+
+    update_ok = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": pool_id,
+            "name": "pool1b",
+        },
+    )
+
+    assert update_forbidden.errors
+    assert "The fields 'model' or 'model_attribute' can't be changed." in str(update_forbidden.errors[0])
+    assert update_invalid_range.errors
+    assert "start_range can't be larger than end_range" in str(update_invalid_range.errors[0])
+    assert update_ok.data
+    assert not update_ok.errors
