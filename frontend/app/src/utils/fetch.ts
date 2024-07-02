@@ -83,6 +83,10 @@ export const constructPath = (
   // Prevent having a trailing '?'
   if (!newURLSearchParams.toString()) return path;
 
+  if (path.includes("?")) {
+    return `${path}&${newURLSearchParams.toString()}`;
+  }
+
   return `${path}?${newURLSearchParams.toString()}`;
 };
 
