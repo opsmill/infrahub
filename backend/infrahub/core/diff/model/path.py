@@ -60,6 +60,8 @@ class DiffNode:
 
 @dataclass
 class DiffRoot:
+    from_time: Timestamp
+    to_time: Timestamp
     uuid: str
     branch: str
     nodes: list[DiffNode] = field(default_factory=list)

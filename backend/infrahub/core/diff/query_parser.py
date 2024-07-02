@@ -28,6 +28,9 @@ class DiffNoChildPathError(Exception): ...
 class DiffNoPeerIdError(Exception): ...
 
 
+class DiffNotFoundError(Exception): ...
+
+
 @dataclass
 class TrackedStatusUpdates:
     timestamp_status_map: dict[Timestamp, RelationshipStatus] = field(kw_only=True, default_factory=dict)
@@ -337,9 +340,9 @@ class DiffRootIntermediate:
     branch: str
     nodes_by_id: dict[str, DiffNodeIntermediate] = field(default_factory=dict)
 
-    def to_diff_root(self, from_time: Timestamp) -> DiffRoot:
+    def to_diff_root(self, from_time: Timestamp, to_time: Timestamp) -> DiffRoot:
         nodes = [node.to_diff_node(from_time=from_time) for node in self.nodes_by_id.values()]
-        return DiffRoot(uuid=self.uuid, branch=self.branch, nodes=nodes)
+        return DiffRoot(uuid=self.uuid, branch=self.branch, nodes=nodes, from_time=from_time, to_time=to_time)
 
 
 class DiffQueryParser:
@@ -362,8 +365,11 @@ class DiffQueryParser:
     def get_branches(self) -> set[str]:
         return set(self._final_diff_root_by_branch.keys())
 
-    def get_diff_root_for_branch(self, branch: str) -> Optional[DiffRoot]:
-        return self._final_diff_root_by_branch.get(branch)
+    def get_diff_root_for_branch(self, branch: str) -> DiffRoot:
+        try:
+            return self._final_diff_root_by_branch[branch]
+        except KeyError as exc:
+            raise DiffNotFoundError(f"No diff found for branch {branch}") from exc
 
     def parse(self) -> None:
         if not self.diff_query.has_been_executed:
@@ -537,4 +543,6 @@ class DiffQueryParser:
 
     def _finalize(self) -> None:
         for branch, diff_root_intermediate in self._diff_root_by_branch.items():
-            self._final_diff_root_by_branch[branch] = diff_root_intermediate.to_diff_root(from_time=self.from_time)
+            self._final_diff_root_by_branch[branch] = diff_root_intermediate.to_diff_root(
+                from_time=self.from_time, to_time=self.to_time
+            )

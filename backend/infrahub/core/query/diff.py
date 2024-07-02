@@ -457,11 +457,11 @@ class DiffAllPathsQuery(DiffQuery):
     def __init__(
         self,
         base_branch: Branch,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         *args,
         **kwargs,
     ):
