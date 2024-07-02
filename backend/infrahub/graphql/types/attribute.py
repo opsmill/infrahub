@@ -131,6 +131,25 @@ class IPNetworkType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
+class MacAddressType(BaseAttribute):
+    value = Field(String)
+    oui = Field(String)
+    ei = Field(String)
+    version = Field(Int)
+    binary = Field(String)
+    eui48 = Field(String)
+    eui64 = Field(String)
+    bare = Field(String)
+    cisco = Field(String)
+    unix = Field(String)
+    pgsql = Field(String)
+
+    class Meta:
+        description = "Attribute of type Text"
+        name = "MacAddress"
+        interfaces = {AttributeInterface}
+
+
 class NumberAttributeType(BaseAttribute):
     value = Field(Int)
 

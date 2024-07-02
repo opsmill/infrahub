@@ -5,6 +5,7 @@ import re
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+import netaddr
 import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.timestamp import TimestampFormatError
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,c-extension-no-member
+# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines
 
 
 class AttributeCreateData(BaseModel):
@@ -913,6 +914,105 @@ class IPHost(BaseAttribute):
             data["prefixlen"] = self.prefixlen
 
         return data
+
+
+class MacAddress(BaseAttribute):
+    type = str
+
+    @property
+    def obj(self) -> netaddr.EUI:
+        """Return the MAC adress."""
+        if not self.value:
+            raise ValueError("value for MAC address must be defined")
+        return netaddr.EUI(addr=self.value)
+
+    @property
+    def oui(self) -> Optional[str]:
+        """Return the OUI (Organisationally Unique Identifier) for the MAC address."""
+        if not self.value:
+            return None
+        return str(self.obj.oui)
+
+    @property
+    def ei(self) -> Optional[str]:
+        """Return the EI (Extension Identifier) for the MAC address."""
+        if not self.value:
+            return None
+        return self.obj.ei
+
+    @property
+    def version(self) -> Optional[int]:
+        """Return the version of the MAC address."""
+        if not self.value:
+            return None
+        return self.obj.version
+
+    @property
+    def binary(self) -> Optional[str]:
+        """Return the MAC address in binary format."""
+        if not self.value:
+            return None
+        return self.obj.bin
+
+    @property
+    def eui48(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_eui48)
+
+    @property
+    def eui64(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return str(self.obj.eui64())
+
+    @property
+    def bare(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_bare)
+
+    @property
+    def cisco(self) -> Optional[str]:
+        # FIXME: rename it
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_cisco)
+
+    @property
+    def unix(self) -> Optional[str]:
+        # FIXME: rename it
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_unix)
+
+    @property
+    def pgsql(self) -> Optional[str]:
+        # FIXME: rename it
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_pgsql)
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the format of the attribute.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Format of the attribute value is not valid
+        """
+        super().validate_format(value=value, name=name, schema=schema)
+
+        if not netaddr.valid_mac(addr=str(value)):
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
+
+    def serialize_value(self) -> str:
+        """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
+        return str(netaddr.EUI(addr=str(self.value)))
 
 
 class ListAttribute(BaseAttribute):

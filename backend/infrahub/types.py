@@ -198,11 +198,11 @@ class File(InfrahubDataType):
 class MacAddress(InfrahubDataType):
     label: str = "MacAddress"
     graphql = graphene.String
-    graphql_query = "TextAttributeType"
+    graphql_query = "MacAddressType"
     graphql_create = "TextAttributeCreate"
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
-    infrahub = "String"
+    infrahub = "MacAddress"
 
 
 class Color(InfrahubDataType):
