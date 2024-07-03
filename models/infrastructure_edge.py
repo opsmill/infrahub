@@ -35,6 +35,16 @@ class BgpPeerGroup(BaseModel):
     remote_as: Optional[str] = Field(default=None)
 
 
+class Device(BaseModel):
+    name: str
+    status: str
+    type: str
+    profile: str
+    role: str
+    tags: list[str]
+    platform: str
+
+
 class Group(BaseModel):
     name: str
     label: str
@@ -118,12 +128,60 @@ PLATFORMS = (
 )
 
 DEVICES = (
-    ("edge1", "active", "7280R3", "profile1", "edge", ["red", "green"], "Arista EOS"),
-    ("edge2", "active", "ASR1002-HX", "profile1", "edge", ["red", "blue", "green"], "Cisco IOS"),
-    ("core1", "drained", "MX204", "profile1", "core", ["blue"], "Juniper JunOS"),
-    ("core2", "provisioning", "MX204", "profile1", "core", ["red"], "Juniper JunOS"),
-    ("leaf1", "active", "7010TX-48", "profile1", "leaf", ["red", "green"], "Arista EOS"),
-    ("leaf2", "active", "7010TX-48", "profile1", "leaf", ["red", "green"], "Arista EOS"),
+    Device(
+        name="edge1",
+        status="active",
+        type="7280R3",
+        profile="profile1",
+        role="edge",
+        tags=["red", "green"],
+        platform="Arista EOS",
+    ),
+    Device(
+        name="edge2",
+        status="active",
+        type="ASR1002-HX",
+        profile="profile1",
+        role="edge",
+        tags=["red", "blue", "green"],
+        platform="Cisco IOS",
+    ),
+    Device(
+        name="core1",
+        status="drained",
+        type="MX204",
+        profile="profile1",
+        role="core",
+        tags=["blue"],
+        platform="Juniper JunOS",
+    ),
+    Device(
+        name="core2",
+        status="provisioning",
+        type="MX204",
+        profile="profile1",
+        role="core",
+        tags=["red"],
+        platform="Juniper JunOS",
+    ),
+    Device(
+        name="leaf1",
+        status="active",
+        type="7010TX-48",
+        profile="profile1",
+        role="leaf",
+        tags=["red", "green"],
+        platform="Arista EOS",
+    ),
+    Device(
+        name="leaf2",
+        status="active",
+        type="7010TX-48",
+        profile="profile1",
+        role="leaf",
+        tags=["red", "green"],
+        platform="Arista EOS",
+    ),
 )
 
 
@@ -484,22 +542,19 @@ async def generate_site(
     peer_network_hosts = {0: peer_networks[0].prefix.value.hosts(), 1: peer_networks[1].prefix.value.hosts()}
 
     for idx, device in enumerate(DEVICES):
-        device_name = f"{site.name}-{device[0]}"
-        device_status = device[1]
-        device_role = device[4]
-        device_type = device[2]
-        platform_id = store.get(kind="InfraPlatform", key=device[6]).id
+        device_name = f"{site.name}-{device.name}"
+        platform_id = store.get(kind="InfraPlatform", key=device.platform).id
 
         obj = await client.create(
             branch=branch,
             kind="InfraDevice",
             site={"id": site_obj.id, "source": account_pop.id, "is_protected": True},
             name={"value": device_name, "source": account_pop.id, "is_protected": True},
-            status={"value": device_status, "owner": group_ops.id},
-            type={"value": device[2], "source": account_pop.id},
-            role={"value": device_role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
+            status={"value": device.status, "owner": group_ops.id},
+            type={"value": device.type, "source": account_pop.id},
+            role={"value": device.role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
             asn={"id": internal_as.id, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
-            tags=[store.get(kind="BuiltinTag", key=tag_name).id for tag_name in device[5]],
+            tags=[store.get(kind="BuiltinTag", key=tag_name).id for tag_name in device.tags],
             platform={"id": platform_id, "source": account_pop.id, "is_protected": True},
         )
         await obj.save()
@@ -507,14 +562,14 @@ async def generate_site(
         log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
 
         # Add device to groups
-        if "edge" in device_role:
+        if "edge" in device.role:
             group_edge_router.members.add(obj)
-        elif "core" in device_role:
+        elif "core" in device.role:
             group_core_router.members.add(obj)
 
-        if "Arista" in device[6]:
+        if "Arista" in device.platform:
             group_arista_devices.members.add(obj)
-        elif "Cisco" in device[6]:
+        elif "Cisco" in device.platform:
             group_cisco_devices.members.add(obj)
 
         # Loopback Interface
@@ -540,7 +595,7 @@ async def generate_site(
             branch=branch,
             kind="InfraInterfaceL3",
             device={"id": obj.id, "is_protected": True},
-            name={"value": INTERFACE_MGMT_NAME[device_type], "source": account_pop.id},
+            name={"value": INTERFACE_MGMT_NAME[device.type], "source": account_pop.id},
             enabled={"value": True, "owner": group_eng.id},
             status={"value": ACTIVE_STATUS, "owner": group_eng.id},
             role={"value": "management", "source": account_pop.id, "is_protected": True},
@@ -556,8 +611,8 @@ async def generate_site(
         await obj.save()
 
         # L3 Interfaces
-        for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES[device_type]):
-            intf_role = INTERFACE_L3_ROLES_MAPPING[device[4]][intf_idx]
+        for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES[device.type]):
+            intf_role = INTERFACE_L3_ROLES_MAPPING[device.role][intf_idx]
 
             intf = await client.create(
                 branch=branch,
@@ -584,7 +639,7 @@ async def generate_site(
             if intf_role == "upstream":
                 group_upstream_interfaces.members.add(intf)
 
-            if intf_role in ["upstream", "peering"] and "edge" in device_role:
+            if intf_role in ["upstream", "peering"] and "edge" in device.role:
                 subnet = await client.allocate_next_ip_prefix(
                     resource_pool=external_pool, identifier=f"{device_name}__{intf_role}__{intf_idx}", branch=branch
                 )
@@ -673,9 +728,9 @@ async def generate_site(
                     )
 
         # L2 Interfaces
-        for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES[device_type]):
+        for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES[device.type]):
             try:
-                intf_role = INTERFACE_L2_ROLES_MAPPING.get(device[4], [])[intf_idx]
+                intf_role = INTERFACE_L2_ROLES_MAPPING.get(device.role, [])[intf_idx]
             except IndexError:
                 intf_role = "server"
 
@@ -700,9 +755,9 @@ async def generate_site(
             await intf.save()
             store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
 
-        for lag_intf in LAG_INTERFACE_L2.get(device_type, []):
+        for lag_intf in LAG_INTERFACE_L2.get(device.type, []):
             try:
-                intf_role = LAG_INTERFACE_L2_ROLES_MAPPING[device[4]][lag_intf["name"]]
+                intf_role = LAG_INTERFACE_L2_ROLES_MAPPING[device.role][lag_intf["name"]]
             except KeyError:
                 intf_role = "server"
 
@@ -749,8 +804,8 @@ async def generate_site(
         name = f"{site.name}-{role}-12"
 
         peer_interfaces = [
-            store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{domain['peer_interfaces'][idx]}")
-            for idx, device in enumerate(devices)
+            store.get(kind="InfraLagInterfaceL2", key=f"{device_obj.name.value}-lagl2-{domain['peer_interfaces'][idx]}")
+            for idx, device_obj in enumerate(devices)
         ]
 
         mlag_domain = await client.create(
@@ -775,8 +830,8 @@ async def generate_site(
 
         for mlag in mlags:
             members = [
-                store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{mlag['members'][idx]}")
-                for idx, device in enumerate(devices)
+                store.get(kind="InfraLagInterfaceL2", key=f"{device_obj.name.value}-lagl2-{mlag['members'][idx]}")
+                for idx, device_obj in enumerate(devices)
             ]
             mlag_domain = store.get(kind="InfraMlagDomain", key=f"mlag-domain-{site.name}-{role}-12")
 
@@ -833,11 +888,11 @@ async def generate_site(
     # --------------------------------------------------
     for idx in range(2):
         if idx == 0:
-            device1 = f"{site.name}-{DEVICES[0][0]}"
-            device2 = f"{site.name}-{DEVICES[1][0]}"
+            device1 = f"{site.name}-{DEVICES[0].name}"
+            device2 = f"{site.name}-{DEVICES[1].name}"
         elif idx == 1:
-            device1 = f"{site.name}-{DEVICES[1][0]}"
-            device2 = f"{site.name}-{DEVICES[0][0]}"
+            device1 = f"{site.name}-{DEVICES[1].name}"
+            device2 = f"{site.name}-{DEVICES[0].name}"
 
         peer_group_name = "POP_INTERNAL"
 
