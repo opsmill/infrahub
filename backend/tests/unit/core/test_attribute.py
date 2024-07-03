@@ -257,6 +257,7 @@ async def test_validate_mac_address_returns(
     assert test_mac.binary == "0b11000000010001101101100110001001001111101111110"
     assert test_mac.oui == "60-23-6C"
     assert test_mac.ei == "C4-9F-7E"
+    assert test_mac.bare == "60236CC49F7E"
     assert test_mac.cisco == "6023.6cc4.9f7e"
     assert test_mac.unix == "60:23:6c:c4:9f:7e"
     assert test_mac.pgsql == "60236c:c49f7e"
