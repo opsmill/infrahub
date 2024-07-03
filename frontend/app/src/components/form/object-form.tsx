@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import useFilters from "@/hooks/useFilters";
 import useQuery from "@/hooks/useQuery";
 import { getProfiles } from "@/graphql/queries/objects/getProfiles";
+import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
@@ -93,6 +94,7 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
   const [profileSelected, setProfileSelected] = useState<
     Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
   >(currentProfile);
+  console.log("profileSelected: ", profileSelected);
 
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
@@ -139,7 +141,19 @@ const ProfilesSelector = ({ schema, nodeSchema, value, onChange }: ProfilesSelec
   // The profiles should include the current object profile + all generic profiles
   const profilesList = [schema.kind, ...nodeGenericsProfiles];
 
-  const queryString = getProfiles({ profiles: profilesList });
+  // Add attributes for each profiles to get the values in the form
+  const completeProfilesList = profilesList.map((profile) => {
+    const profileSchema = profiles.find((profileSchema) => profileSchema.kind === profile);
+
+    const attributes = getObjectAttributes({ schema: profileSchema, forListView: true });
+
+    return {
+      name: profile,
+      attributes,
+    };
+  });
+
+  const queryString = getProfiles({ profiles: completeProfilesList });
 
   const query = gql`
     ${queryString}
