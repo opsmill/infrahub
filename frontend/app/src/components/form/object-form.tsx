@@ -137,10 +137,10 @@ const ProfilesSelector = ({ schema, nodeSchema, value, onChange }: ProfilesSelec
     .filter(Boolean);
 
   // The profiles should include the current object profile + all generic profiles
-  const profilesList = [schema.kind, ...nodeGenericsProfiles];
+  const profilesKindList = [schema.kind, ...nodeGenericsProfiles];
 
   // Add attributes for each profiles to get the values in the form
-  const completeProfilesList = profilesList.map((profile) => {
+  const profilesList = profilesKindList.map((profile) => {
     const profileSchema = profiles.find((profileSchema) => profileSchema.kind === profile);
 
     const attributes = getObjectAttributes({ schema: profileSchema, forListView: true });
@@ -151,7 +151,7 @@ const ProfilesSelector = ({ schema, nodeSchema, value, onChange }: ProfilesSelec
     };
   });
 
-  const queryString = getProfiles({ profiles: completeProfilesList });
+  const queryString = getProfiles({ profiles: profilesList });
 
   const query = gql`
     ${queryString}
@@ -164,7 +164,7 @@ const ProfilesSelector = ({ schema, nodeSchema, value, onChange }: ProfilesSelec
   if (error) return <ErrorScreen message={error.message} />;
 
   // Get data for each profile in the query result
-  const profilesData = profilesList.reduce(
+  const profilesData = profilesKindList.reduce(
     (acc, profile) => [...acc, ...(data?.[profile!]?.edges ?? [])],
     []
   );
