@@ -931,7 +931,12 @@ class MacAddress(BaseAttribute):
         """Return the OUI (Organisationally Unique Identifier) for the MAC address."""
         if not self.value:
             return None
-        return str(self.obj.oui)
+        try:
+            return str(self.obj.oui)
+        except netaddr.NotRegisteredError:
+            # Workaround OUI lookup failure
+            # netaddr might not be up-to-date, or actual OUI just not exist (i.e. random mac address)
+            return str(self.obj).removesuffix(f"-{self.ei}")
 
     @property
     def ei(self) -> Optional[str]:
