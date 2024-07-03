@@ -161,10 +161,9 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         )
         await another_civic.save()
 
-        exc = None
         with pytest.raises(GraphQLError) as exc:
             await client.branch.rebase(branch_name=branch_2.name)
 
-        assert initial_dataset["accord"] in exc.value.message
-        assert another_civic.id in exc.value.message
-        assert "node.uniqueness_constraints.update" in exc.value.message
+            assert initial_dataset["accord"] in exc.value.message
+            assert another_civic.id in exc.value.message
+            assert "node.uniqueness_constraints.update" in exc.value.message

@@ -43,7 +43,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.6"
+ruff = "0.5.0"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -175,7 +175,6 @@ select = [
     "RET",   # flake8-return
     "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
     "UP",    # pyupgrade
     "W",     # pycodestyle warnings
