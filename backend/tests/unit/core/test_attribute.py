@@ -249,7 +249,7 @@ async def test_validate_mac_address_returns(
 
     mac_address = "60:23:6c:c4:9f:7e"
     test_mac = MacAddress(
-        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="60:23:6c:c4:9f:7e"
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=mac_address
     )
 
     assert test_mac.value == mac_address
@@ -262,6 +262,11 @@ async def test_validate_mac_address_returns(
     assert test_mac.unix == "60:23:6c:c4:9f:7e"
     assert test_mac.pgsql == "60236c:c49f7e"
     assert test_mac.to_db() == {"is_default": False, "value": "60-23-6C-C4-9F-7E"}
+
+    with pytest.raises(ValidationError, match=r"thisisnotamacaddress is not a valid"):
+        MacAddress(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisisnotamacaddress"
+        )
 
 
 async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
