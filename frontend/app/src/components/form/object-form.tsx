@@ -26,8 +26,9 @@ import { classNames } from "@/utils/common";
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { useAuth } from "@/hooks/useAuth";
-import { useObjectItems } from "@/hooks/useObjectItems";
 import useFilters from "@/hooks/useFilters";
+import useQuery from "@/hooks/useQuery";
+import { getProfiles } from "@/graphql/queries/objects/getProfiles";
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
@@ -106,6 +107,7 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
       {nodeProfileSchema && (
         <ProfilesSelector
           schema={nodeProfileSchema}
+          nodeSchema={nodeSchema}
           value={profileSelected?.display_label}
           onChange={setProfileSelected}
         />
@@ -117,20 +119,43 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
 
 type ProfilesSelectorProps = {
   schema: IProfileSchema;
+  nodeSchema: iNodeSchema;
   value?: Record<string, Pick<AttributeType, "value" | "__typename">>;
   onChange: (item: Record<string, Pick<AttributeType, "value" | "__typename">>) => void;
 };
 
-const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
+const ProfilesSelector = ({ schema, nodeSchema, value, onChange }: ProfilesSelectorProps) => {
   const id = useId();
 
-  const { data, error, loading } = useObjectItems(schema);
+  const profiles = useAtomValue(profilesAtom);
 
-  if (loading) return <LoadingScreen size={30} hideText className="p-12 pb-0" />;
+  const nodeGenerics = nodeSchema?.inherit_from ?? [];
+
+  // Get all available generic profiles
+  const nodeGenericsProfiles = nodeGenerics
+    .map((generic) => profiles.find((profile) => profile.name === generic)?.kind)
+    .filter(Boolean);
+
+  // The profiles should include the current object profile + all generic profiles
+  const profilesList = [schema.kind, ...nodeGenericsProfiles];
+
+  const queryString = getProfiles({ profiles: profilesList });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { data, error, loading } = useQuery(query);
+
+  if (loading) return <LoadingScreen size={30} hideText className="p-4 pb-0" />;
 
   if (error) return <ErrorScreen message={error.message} />;
 
-  const profilesData = data?.[schema.kind!]?.edges;
+  // Get data for each profile in the query result
+  const profilesData = profilesList.reduce(
+    (acc, profile) => [...acc, ...(data?.[profile!]?.edges ?? [])],
+    []
+  );
 
   if (!profilesData || profilesData.length === 0) return null;
 
