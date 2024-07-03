@@ -820,8 +820,12 @@ jobs:
       - name: "Install Package"
         run: "poetry install"
 
+      - name: Select infrahub port
+        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Select infrahub db port
         run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
 
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
@@ -829,6 +833,12 @@ jobs:
         run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: Initialize Demo
+        run: invoke dev.build dev.start dev.load-infra-schema dev.load-infra-data
+
+      - name: Stop Demo
+        run: invoke dev.stop
 
       - name: Create docker compose override
         run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
