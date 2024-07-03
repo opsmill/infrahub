@@ -94,8 +94,6 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
   const [profileSelected, setProfileSelected] = useState<
     Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
   >(currentProfile);
-  console.log("profileSelected: ", profileSelected);
-
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
