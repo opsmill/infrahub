@@ -802,7 +802,7 @@ jobs:
     runs-on:
       group: huge-runners
     env:
-      INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
