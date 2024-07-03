@@ -13,7 +13,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.constraints import ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import GRAPH_SCHEMA
-from infrahub.core.initialization import first_time_initialization, initialization
+from infrahub.core.initialization import create_branch, first_time_initialization, initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.query import Query
 from infrahub.core.schema import SchemaRoot
@@ -276,13 +276,14 @@ async def get_filtered_nodes_simple(
     query_stats.start_tracking()
 
     log.info("Start loading data .. ")
+    branch = await create_branch(db=db, branch_name="branch")
     with Progress() as progress:
         loader = GenerateBranchedAttributeNodes(db=db, progress=progress, concurrent_execution=parallel)
         if use_old:
             loader.add_callback(callback_name="query_nbr_seats_old", task=run_old_simple_filter)
         else:
             loader.add_callback(callback_name="query_nbr_seats_new", task=run_new_simple_filter)
-        await loader.load_data(nbr_cars=count)
+        await loader.load_data(nbr_cars=count, branch_name=branch.name)
 
     query_stats.create_graphs()
 
@@ -305,6 +306,7 @@ class SimpleOldFilterQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path()
         self.params = branch_params
         query = """
+        CYPHER runtime = parallel
         MATCH p = (n:Node)
         WHERE "TestCar" IN LABELS(n)
         CALL {
@@ -356,26 +358,41 @@ class SimpleNewFilterQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path()
         self.params = branch_params
         query = """
-        MATCH (root:Root)<-[r:IS_PART_OF]-(n:Node)
+        CYPHER runtime = parallel
+        MATCH (n:Node)
         WHERE "TestCar" IN LABELS(n)
-        AND %(branch_filter)s
-        WITH n, r
-        ORDER BY n.uuid, r.branch_level DESC, r.from DESC
-        WITH n, head(collect(r)) AS latest_r_root
-        WHERE latest_r_root.status = "active"
-        MATCH path = (n)-[r_attr:HAS_ATTRIBUTE]-(i:Attribute { name: "nbr_seats" })-[r_attr_val:HAS_VALUE]-(av:AttributeValue)
-        WHERE (av.value = 7 OR av.is_default)
-        AND all(r IN relationships(path) WHERE %(branch_filter)s)
-        WITH
-            n,
-            latest_r_root,
-            path,
-            r_attr.branch_level + r_attr_val.branch_level AS branch_level
-        ORDER BY n.uuid, branch_level DESC, r_attr_val.from DESC, r_attr.from DESC
-        WITH n, latest_r_root, head(collect(path)) AS latest_path
-        WHERE all(r IN relationships(latest_path) WHERE r.status = "active")
-        WITH n, latest_r_root AS rb, last(nodes(latest_path)) AS av_node
-        WHERE av_node.value = 7
+        CALL {
+            WITH n
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %(branch_filter)s
+            RETURN r AS rb
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH rb, n
+        WHERE rb.status = "active"
+        CALL {
+            WITH n
+            MATCH (n)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: "nbr_seats" })
+            WHERE %(branch_filter)s
+            RETURN attr, r AS r_attr
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH rb, n, r_attr, attr
+        WHERE r_attr.status = "active"
+        CALL {
+            WITH attr
+            MATCH (attr)-[r:HAS_VALUE]-(av:AttributeValue)
+            WHERE %(branch_filter)s
+            AND (av.value = 7 or av.is_default)
+            RETURN r AS r_attr_val, av
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH rb, n, r_attr, attr, r_attr_val, av
+        WHERE r_attr_val.status = "active"
+        AND av.value = 7
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query=query)
         self.return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]

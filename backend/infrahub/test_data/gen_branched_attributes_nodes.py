@@ -1,5 +1,6 @@
 import random
 import uuid
+from typing import Optional
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
@@ -12,10 +13,7 @@ log = get_logger()
 
 
 class GenerateBranchedAttributeNodes(DataGenerator):
-    async def load_data(
-        self,
-        nbr_cars: int = 100,
-    ) -> None:
+    async def load_data(self, nbr_cars: int = 100, branch_name: Optional[str] = None) -> None:
         """Generate a large number of Cars with attribute values on a branch called 'branch'"""
         default_branch = await registry.get_branch(db=self.db)
 
@@ -41,9 +39,13 @@ class GenerateBranchedAttributeNodes(DataGenerator):
             if self.progress:
                 self.progress.advance(task_car)
 
+        branch = None
+        if branch_name:
+            branch = registry.branch[branch_name]
+            await branch.rebase(db=self.db)
         batch = self.create_batch()
         for car in cars:
-            batch.add(task=self._random_car_update, branch=None, car_id=car.id)
+            batch.add(task=self._random_car_update, branch=branch, car_id=car.id)
 
         async for _ in batch.execute():
             if self.progress:
