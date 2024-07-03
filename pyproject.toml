@@ -77,7 +77,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.6"
+ruff = "0.5.0"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
@@ -499,7 +499,6 @@ select = [
     "RET",   # flake8-return
     "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
     "UP",    # pyupgrade
     "W",     # pycodestyle warnings
@@ -513,7 +512,8 @@ ignore = [
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
 # investigation if they are deemed to not make sense.                                            #
 ##################################################################################################
-    "ASYNC101", # Async functions should not call `open`, `time.sleep`, or `subprocess` methods
+    "ASYNC230", # Async functions should not open files with blocking methods like `open`
+    "ASYNC251", # Async functions should not call `time.sleep`
     "B007",     # Loop control variable not used within loop body
     "B008",     # Do not perform function call `Depends` in argument defaults;
     "B009",     # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
