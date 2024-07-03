@@ -452,10 +452,10 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "changed": {
                 "generate_profile": None,
                 "relationships": {
-                     "added": {},
-                     "changed": {},
-                     "removed": {"profiles": None},
-                }
+                    "added": {},
+                    "changed": {},
+                    "removed": {"profiles": None},
+                },
             },
         }
 
