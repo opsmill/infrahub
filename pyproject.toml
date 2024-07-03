@@ -600,6 +600,7 @@ max-complexity = 33
 ]
 
 "models/infrastructure_edge.py" = [
+    "S106", # Hardcoded password
 ##################################################################################################
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #

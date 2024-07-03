@@ -6,8 +6,30 @@ from ipaddress import IPv4Network, IPv6Network
 
 from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
 from infrahub_sdk.exceptions import GraphQLError
+from pydantic import BaseModel
+
 
 # pylint: skip-file
+class Account(BaseModel):
+    name: str
+    password: str
+    type: str
+    role: str
+
+
+class Asn(BaseModel):
+    asn: int
+    organization: str
+
+    @property
+    def name(self) -> str:
+        return f"AS{self.asn}"
+
+
+class Group(BaseModel):
+    name: str
+    label: str
+
 
 CONTINENT_COUNTRIES = {
     "North America": ["United States of America", "Canada"],
@@ -230,52 +252,51 @@ ORGANIZATIONS = (
 )
 
 ASNS = (
-    # asn, organization
-    (1299, "Arelion"),
-    (64496, "Duff"),
-    (8220, "Colt Technology Services"),
-    (701, "Verizon Business"),
-    (3257, "GTT Communications"),
-    (6939, "Hurricane Electric"),
-    (3356, "Lumen"),
-    (6461, "Zayo"),
-    (24115, "Equinix"),
-    (20710, "Interxion"),
-    (3491, "PCCW Global"),
-    (5511, "Orange S.A"),
-    (6453, "Tata Communications"),
-    (1239, "Sprint"),
-    (2914, "NTT America"),
-    (174, "Cogent Communications"),
-    (7922, "Comcast Cable Communication"),
-    (6762, "Telecom Italia Sparkle"),
-    (7018, "AT&T Services"),
+    Asn(asn=1299, organization="Arelion"),
+    Asn(asn=64496, organization="Duff"),
+    Asn(asn=8220, organization="Colt Technology Services"),
+    Asn(asn=701, organization="Verizon Business"),
+    Asn(asn=3257, organization="GTT Communications"),
+    Asn(asn=6939, organization="Hurricane Electric"),
+    Asn(asn=3356, organization="Lumen"),
+    Asn(asn=6461, organization="Zayo"),
+    Asn(asn=24115, organization="Equinix"),
+    Asn(asn=20710, organization="Interxion"),
+    Asn(asn=3491, organization="PCCW Global"),
+    Asn(asn=5511, organization="Orange S.A"),
+    Asn(asn=6453, organization="Tata Communications"),
+    Asn(asn=1239, organization="Sprint"),
+    Asn(asn=2914, organization="NTT America"),
+    Asn(asn=174, organization="Cogent Communications"),
+    Asn(asn=7922, organization="Comcast Cable Communication"),
+    Asn(asn=6762, organization="Telecom Italia Sparkle"),
+    Asn(asn=7018, organization="AT&T Services"),
 )
 
 INTERFACE_OBJS: dict[str, list[InfrahubNode]] = defaultdict(list)
 
 ACCOUNTS = (
-    ("pop-builder", "Script", "Password123", "read-write"),
-    ("CRM Synchronization", "Script", "Password123", "read-write"),
-    ("Jack Bauer", "User", "Password123", "read-only"),
-    ("Chloe O'Brian", "User", "Password123", "read-write"),
-    ("David Palmer", "User", "Password123", "read-write"),
-    ("Operation Team", "User", "Password123", "read-only"),
-    ("Engineering Team", "User", "Password123", "read-write"),
-    ("Architecture Team", "User", "Password123", "read-only"),
+    Account(name="pop-builder", type="Script", password="Password123", role="read-write"),
+    Account(name="CRM Synchronization", type="Script", password="Password123", role="read-write"),
+    Account(name="Jack Bauer", type="User", password="Password123", role="read-only"),
+    Account(name="Chloe O'Brian", type="User", password="Password123", role="read-write"),
+    Account(name="David Palmer", type="User", password="Password123", role="read-write"),
+    Account(name="Operation Team", type="User", password="Password123", role="read-only"),
+    Account(name="Engineering Team", type="User", password="Password123", role="read-write"),
+    Account(name="Architecture Team", type="User", password="Password123", role="read-only"),
 )
 
 
 GROUPS = (
-    ("edge_router", "Edge Router"),
-    ("core_router", "Core Router"),
-    ("cisco_devices", "Cisco Devices"),
-    ("arista_devices", "Arista Devices"),
-    ("upstream_interfaces", "Upstream Interfaces"),
-    ("backbone_interfaces", "Backbone Interfaces"),
-    ("maintenance_circuits", "Circuits in Maintenance"),
-    ("provisioning_circuits", "Circuits in Provisioning"),
-    ("backbone_services", "Backbone Services"),
+    Group(name="edge_router", label="Edge Router"),
+    Group(name="core_router", label="Core Router"),
+    Group(name="cisco_devices", label="Cisco Devices"),
+    Group(name="arista_devices", label="Arista Devices"),
+    Group(name="upstream_interfaces", label="Upstream Interfaces"),
+    Group(name="backbone_interfaces", label="Backbone Interfaces"),
+    Group(name="maintenance_circuits", label="Circuits in Maintenance"),
+    Group(name="provisioning_circuits", label="Circuits in Provisioning"),
+    Group(name="backbone_services", label="Backbone Services"),
 )
 
 BGP_PEER_GROUPS = (
@@ -1107,13 +1128,13 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             obj = await client.create(
                 branch=branch,
                 kind="CoreAccount",
-                data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
+                data=account.model_dump(),
             )
             await obj.save()
         except GraphQLError:
             pass
-        store.set(key=account[0], node=obj)
-        log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
+        store.set(key=account.name, node=obj)
+        log.info(f"- Created {obj._schema.kind} - {account.name}")
 
     account_pop = store.get("pop-builder")
     account_chloe = store.get("Chloe O'Brian")
@@ -1121,10 +1142,10 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     batch = await client.create_batch()
     for group in GROUPS:
-        obj = await client.create(branch=branch, kind="CoreStandardGroup", data={"name": group[0], "label": group[1]})
+        obj = await client.create(branch=branch, kind="CoreStandardGroup", data=group.model_dump())
 
         batch.add(task=obj.save, node=obj)
-        store.set(key=group[0], node=obj)
+        store.set(key=group.name, node=obj)
 
     for org in ORGANIZATIONS:
         data_org = {
@@ -1141,27 +1162,27 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     organizations_dict = {name: type for name, type in ORGANIZATIONS}
     batch = await client.create_batch()
     for asn in ASNS:
-        organization_type = organizations_dict.get(asn[1], None)
-        asn_name = f"AS{asn[0]}"
+        organization_type = organizations_dict.get(asn.organization, None)
+        asn_name = f"AS{asn.asn}"
         data_asn = {
-            "name": {"value": asn_name, "source": account_crm.id, "owner": account_chloe.id},
-            "asn": {"value": asn[0], "source": account_crm.id, "owner": account_chloe.id},
+            "name": {"value": asn.name, "source": account_crm.id, "owner": account_chloe.id},
+            "asn": {"value": asn.asn, "source": account_crm.id, "owner": account_chloe.id},
         }
         if organization_type:
             data_asn["description"] = {
-                "value": f"{asn_name} for {asn[1]}",
+                "value": f"{asn_name} for {asn.organization}",
                 "source": account_crm.id,
                 "owner": account_chloe.id,
             }
             data_asn["organization"] = {
-                "id": store.get(kind=f"Organization{organization_type.title()}", key=asn[1]).id,
+                "id": store.get(kind=f"Organization{organization_type.title()}", key=asn.organization).id,
                 "source": account_crm.id,
             }
         else:
             data_asn["description"] = {"value": f"{asn_name}", "source": account_crm.id, "owner": account_chloe.id}
         obj = await client.create(branch=branch, kind="InfraAutonomousSystem", data=data_asn)
         batch.add(task=obj.save, node=obj)
-        store.set(key=asn[1], node=obj)
+        store.set(key=asn.organization, node=obj)
 
     for platform in PLATFORMS:
         obj = await client.create(
