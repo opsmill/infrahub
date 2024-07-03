@@ -3,10 +3,11 @@ import random
 import uuid
 from collections import defaultdict
 from ipaddress import IPv4Network, IPv6Network
+from typing import Optional
 
 from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
 from infrahub_sdk.exceptions import GraphQLError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # pylint: skip-file
@@ -26,9 +27,41 @@ class Asn(BaseModel):
         return f"AS{self.asn}"
 
 
+class BgpPeerGroup(BaseModel):
+    name: str
+    import_policies: str
+    export_policies: str
+    local_as: str
+    remote_as: Optional[str] = Field(default=None)
+
+
 class Group(BaseModel):
     name: str
     label: str
+
+
+class Platform(BaseModel):
+    name: str
+    nornir_platform: str
+    napalm_driver: str
+    netmiko_device_type: str
+    ansible_network_os: str
+
+
+class Organization(BaseModel):
+    name: str
+    type: str
+
+    @property
+    def kind(self) -> str:
+        return f"Organization{self.type.title()}"
+
+
+class Site(BaseModel):
+    name: str
+    country: str
+    city: str
+    contact: str
 
 
 CONTINENT_COUNTRIES = {
@@ -41,23 +74,47 @@ CONTINENT_COUNTRIES = {
 }
 
 SITES = [
-    {"name": "atl", "country": "United States of America", "city": "Atlanta", "contact": "Bailey Li"},
-    {"name": "ord", "country": "United States of America", "city": "Chicago", "contact": "Kayden Kennedy"},
-    {"name": "jfk", "country": "United States of America", "city": "New York", "contact": "Micaela Marsh"},
-    {"name": "den", "country": "United States of America", "city": "Denver", "contact": "Francesca Wilcox"},
-    {"name": "dfw", "country": "United States of America", "city": "Dallas", "contact": "Carmelo Moran"},
-    {"name": "iad", "country": "United States of America", "city": "Washington D.C.", "contact": "Avery Jimenez"},
-    {"name": "sea", "country": "United States of America", "city": "Seattle", "contact": "Charlotte Little"},
-    {"name": "sfo", "country": "United States of America", "city": "San Francisco", "contact": "Taliyah Sampson"},
-    {"name": "iah", "country": "United States of America", "city": "Houston", "contact": "Fernanda Solomon"},
-    {"name": "mco", "country": "United States of America", "city": "Orlando", "contact": "Arthur Rose"},
+    Site(name="atl", country="United States of America", city="Atlanta", contact="Bailey Li"),
+    Site(name="ord", country="United States of America", city="Chicago", contact="Kayden Kennedy"),
+    Site(name="jfk", country="United States of America", city="New York", contact="Micaela Marsh"),
+    Site(name="den", country="United States of America", city="Denver", contact="Francesca Wilcox"),
+    Site(name="dfw", country="United States of America", city="Dallas", contact="Carmelo Moran"),
+    Site(name="iad", country="United States of America", city="Washington D.C.", contact="Avery Jimenez"),
+    Site(name="sea", country="United States of America", city="Seattle", contact="Charlotte Little"),
+    Site(name="sfo", country="United States of America", city="San Francisco", contact="Taliyah Sampson"),
+    Site(name="iah", country="United States of America", city="Houston", contact="Fernanda Solomon"),
+    Site(name="mco", country="United States of America", city="Orlando", contact="Arthur Rose"),
 ]
 
 PLATFORMS = (
-    ("Cisco IOS", "ios", "ios", "cisco_ios", "ios"),
-    ("Cisco NXOS SSH", "nxos_ssh", "nxos_ssh", "cisco_nxos", "nxos"),
-    ("Juniper JunOS", "junos", "junos", "juniper_junos", "junos"),
-    ("Arista EOS", "eos", "eos", "arista_eos", "eos"),
+    Platform(
+        name="Cisco IOS",
+        nornir_platform="ios",
+        napalm_driver="ios",
+        netmiko_device_type="cisco_ios",
+        ansible_network_os="ios",
+    ),
+    Platform(
+        name="Cisco NXOS SSH",
+        nornir_platform="nxos_ssh",
+        napalm_driver="nxos_ssh",
+        netmiko_device_type="cisco_nxos",
+        ansible_network_os="nxos",
+    ),
+    Platform(
+        name="Juniper JunOS",
+        nornir_platform="junos",
+        napalm_driver="junos",
+        netmiko_device_type="juniper_junos",
+        ansible_network_os="junos",
+    ),
+    Platform(
+        name="Arista EOS",
+        nornir_platform="eos",
+        napalm_driver="eos",
+        netmiko_device_type="arista_eos",
+        ansible_network_os="eos",
+    ),
 )
 
 DEVICES = (
@@ -79,7 +136,7 @@ ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
 
 
-def site_generator(nbr_site=2) -> list[dict[str, str]]:
+def site_generator(nbr_site=2) -> list[Site]:
     """Generate a list of site names by iterating over the list of SITES defined above and by increasing the id.
 
     site_names_generator(nbr_site=5)
@@ -89,7 +146,7 @@ def site_generator(nbr_site=2) -> list[dict[str, str]]:
         result >> ["atl1", "ord1", "jfk1", "den1", "dfw1", "iad1", "bkk1", "sfo1", "iah1", "mco1", "atl2", "ord2"]
     """
 
-    sites: list[dict[str, str]] = []
+    sites: list[Site] = []
 
     # Calculate how many loop over the entire list we need to make
     # and how many site we need to generate on the last loop
@@ -101,7 +158,12 @@ def site_generator(nbr_site=2) -> list[dict[str, str]]:
         if idx == nbr_loop:
             nbr_this_loop = nbr_last_loop
 
-        sites.extend([{**site, "name": f"{site['name']}{idx}"} for site in SITES[:nbr_this_loop]])
+        sites.extend(
+            [
+                Site(name=f"{site.name}{idx}", country=site.country, city=site.city, contact=site.contact)
+                for site in SITES[:nbr_this_loop]
+            ]
+        )
 
     return sites
 
@@ -226,29 +288,28 @@ MLAG_INTERFACE_L2 = {
 TAGS = ["blue", "green", "red"]
 
 ORGANIZATIONS = (
-    # name, type
-    ("Arelion", "provider"),
-    ("Colt Technology Services", "provider"),
-    ("Verizon Business", "provider"),
-    ("GTT Communications", "provider"),
-    ("Hurricane Electric", "provider"),
-    ("Lumen", "provider"),
-    ("Zayo", "provider"),
-    ("Equinix", "provider"),
-    ("Interxion", "provider"),
-    ("PCCW Global", "provider"),
-    ("Orange S.A", "provider"),
-    ("Tata Communications", "provider"),
-    ("Sprint", "provider"),
-    ("NTT America", "provider"),
-    ("Cogent Communications", "provider"),
-    ("Comcast Cable Communication", "provider"),
-    ("Telecom Italia Sparkle", "provider"),
-    ("AT&T Services", "provider"),
-    ("Duff", "tenant"),
-    ("Juniper", "manufacturer"),
-    ("Cisco", "manufacturer"),
-    ("Arista", "manufacturer"),
+    Organization(name="Arelion", type="provider"),
+    Organization(name="Colt Technology Services", type="provider"),
+    Organization(name="Verizon Business", type="provider"),
+    Organization(name="GTT Communications", type="provider"),
+    Organization(name="Hurricane Electric", type="provider"),
+    Organization(name="Lumen", type="provider"),
+    Organization(name="Zayo", type="provider"),
+    Organization(name="Equinix", type="provider"),
+    Organization(name="Interxion", type="provider"),
+    Organization(name="PCCW Global", type="provider"),
+    Organization(name="Orange S.A", type="provider"),
+    Organization(name="Tata Communications", type="provider"),
+    Organization(name="Sprint", type="provider"),
+    Organization(name="NTT America", type="provider"),
+    Organization(name="Cogent Communications", type="provider"),
+    Organization(name="Comcast Cable Communication", type="provider"),
+    Organization(name="Telecom Italia Sparkle", type="provider"),
+    Organization(name="AT&T Services", type="provider"),
+    Organization(name="Duff", type="tenant"),
+    Organization(name="Juniper", type="manufacturer"),
+    Organization(name="Cisco", type="manufacturer"),
+    Organization(name="Arista", type="manufacturer"),
 )
 
 ASNS = (
@@ -300,11 +361,41 @@ GROUPS = (
 )
 
 BGP_PEER_GROUPS = (
-    ("POP_INTERNAL", "IMPORT_INTRA_POP", "EXPORT_INTRA_POP", "Duff", "Duff"),
-    ("POP_GLOBAL", "IMPORT_POP_GLOBAL", "EXPORT_POP_GLOBLA", "Duff", None),
-    ("UPSTREAM_DEFAULT", "IMPORT_UPSTREAM", "EXPORT_PUBLIC_PREFIX", "Duff", None),
-    ("UPSTREAM_ARELION", "IMPORT_UPSTREAM", "EXPORT_PUBLIC_PREFIX", "Duff", "Arelion"),
-    ("IX_DEFAULT", "IMPORT_IX", "EXPORT_PUBLIC_PREFIX", "Duff", None),
+    BgpPeerGroup(
+        name="POP_INTERNAL",
+        import_policies="IMPORT_INTRA_POP",
+        export_policies="EXPORT_INTRA_POP",
+        local_as="Duff",
+        remote_as="Duff",
+    ),
+    BgpPeerGroup(
+        name="POP_GLOBAL",
+        import_policies="IMPORT_POP_GLOBAL",
+        export_policies="EXPORT_POP_GLOBLA",
+        local_as="Duff",
+        remote_as=None,
+    ),
+    BgpPeerGroup(
+        name="UPSTREAM_DEFAULT",
+        import_policies="IMPORT_UPSTREAM",
+        export_policies="EXPORT_PUBLIC_PREFIX",
+        local_as="Duff",
+        remote_as=None,
+    ),
+    BgpPeerGroup(
+        name="UPSTREAM_ARELION",
+        import_policies="IMPORT_UPSTREAM",
+        export_policies="EXPORT_PUBLIC_PREFIX",
+        local_as="Duff",
+        remote_as="Arelion",
+    ),
+    BgpPeerGroup(
+        name="IX_DEFAULT",
+        import_policies="IMPORT_IX",
+        export_policies="EXPORT_PUBLIC_PREFIX",
+        local_as="Duff",
+        remote_as=None,
+    ),
 )
 
 INTERFACE_PROFILES = (
@@ -325,7 +416,7 @@ async def generate_site(
     client: InfrahubClient,
     log: logging.Logger,
     branch: str,
-    site: dict[str, str],
+    site: Site,
     interconnection_pool: InfrahubNode,
     loopback_pool: InfrahubNode,
     management_pool: InfrahubNode,
@@ -350,34 +441,32 @@ async def generate_site(
     group_backbone_interfaces = store.get(kind="CoreStandardGroup", key="backbone_interfaces")
     await group_backbone_interfaces.members.fetch()
 
-    country = store.get(kind="LocationCountry", key=site["country"])
+    country = store.get(kind="LocationCountry", key=site.country)
     # --------------------------------------------------
     # Create the Site
     # --------------------------------------------------
-    site = await client.create(
+    site_obj = await client.create(
         branch=branch,
         kind="LocationSite",
-        name={"value": site["name"], "is_protected": True, "source": account_crm.id},
-        contact={"value": site["contact"], "is_protected": True, "source": account_crm.id},
-        city={"value": site["city"], "is_protected": True, "source": account_crm.id},
+        name={"value": site.name, "is_protected": True, "source": account_crm.id},
+        contact={"value": site.contact, "is_protected": True, "source": account_crm.id},
+        city={"value": site.city, "is_protected": True, "source": account_crm.id},
         parent=country,
     )
-    await site.save()
-    log.info(f"- Created {site._schema.kind} - {site.name.value}")
-
-    site_name = site.name.value
+    await site_obj.save()
+    log.info(f"- Created {site_obj._schema.kind} - {site.name}")
 
     # --------------------------------------------------
     # Create the site specific VLAN
     # --------------------------------------------------
     for vlan in VLANS:
         vlan_role = vlan[1]
-        vlan_name = f"{site_name}_{vlan[1]}"
+        vlan_name = f"{site.name}_{vlan[1]}"
         obj = await client.create(
             branch=branch,
             kind="InfraVLAN",
-            site={"id": site.id, "source": account_pop.id, "is_protected": True},
-            name={"value": f"{site_name}_{vlan[1]}", "is_protected": True, "source": account_pop.id},
+            site={"id": site_obj.id, "source": account_pop.id, "is_protected": True},
+            name={"value": f"{site.name}_{vlan[1]}", "is_protected": True, "source": account_pop.id},
             vlan_id={"value": int(vlan[0]), "is_protected": True, "owner": group_eng.id, "source": account_pop.id},
             status={"value": ACTIVE_STATUS, "owner": group_ops.id},
             role={"value": vlan_role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
@@ -395,7 +484,7 @@ async def generate_site(
     peer_network_hosts = {0: peer_networks[0].prefix.value.hosts(), 1: peer_networks[1].prefix.value.hosts()}
 
     for idx, device in enumerate(DEVICES):
-        device_name = f"{site_name}-{device[0]}"
+        device_name = f"{site.name}-{device[0]}"
         device_status = device[1]
         device_role = device[4]
         device_type = device[2]
@@ -404,7 +493,7 @@ async def generate_site(
         obj = await client.create(
             branch=branch,
             kind="InfraDevice",
-            site={"id": site.id, "source": account_pop.id, "is_protected": True},
+            site={"id": site_obj.id, "source": account_pop.id, "is_protected": True},
             name={"value": device_name, "source": account_pop.id, "is_protected": True},
             status={"value": device_status, "owner": group_ops.id},
             type={"value": device[2], "source": account_pop.id},
@@ -540,7 +629,7 @@ async def generate_site(
                 endpoint1 = await client.create(
                     branch=branch,
                     kind="InfraCircuitEndpoint",
-                    site=site,
+                    site=site_obj,
                     circuit=circuit.id,
                     connected_endpoint=intf.id,
                 )
@@ -594,7 +683,7 @@ async def generate_site(
 
             untagged_vlan = None
             if l2_mode == "Access":
-                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
+                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site.name}_server")
 
             intf = await client.create(
                 branch=branch,
@@ -623,7 +712,7 @@ async def generate_site(
 
             untagged_vlan = None
             if l2_mode == "Access":
-                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
+                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site.name}_server")
 
             lag = await client.create(
                 branch=branch,
@@ -654,10 +743,10 @@ async def generate_site(
     # --------------------------------------------------
     for role, domain in MLAG_DOMAINS.items():
         devices = [
-            store.get(kind="InfraDevice", key=f"{site_name}-{role}1"),
-            store.get(kind="InfraDevice", key=f"{site_name}-{role}2"),
+            store.get(kind="InfraDevice", key=f"{site.name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site.name}-{role}2"),
         ]
-        name = f"{site_name}-{role}-12"
+        name = f"{site.name}-{role}-12"
 
         peer_interfaces = [
             store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{domain['peer_interfaces'][idx]}")
@@ -680,8 +769,8 @@ async def generate_site(
     # --------------------------------------------------
     for role, mlags in MLAG_INTERFACE_L2.items():
         devices = [
-            store.get(kind="InfraDevice", key=f"{site_name}-{role}1"),
-            store.get(kind="InfraDevice", key=f"{site_name}-{role}2"),
+            store.get(kind="InfraDevice", key=f"{site.name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site.name}-{role}2"),
         ]
 
         for mlag in mlags:
@@ -689,7 +778,7 @@ async def generate_site(
                 store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{mlag['members'][idx]}")
                 for idx, device in enumerate(devices)
             ]
-            mlag_domain = store.get(kind="InfraMlagDomain", key=f"mlag-domain-{site_name}-{role}-12")
+            mlag_domain = store.get(kind="InfraMlagDomain", key=f"mlag-domain-{site.name}-{role}-12")
 
             mlag_interface = await client.create(
                 kind="InfraMlagInterfaceL2", mlag_domain=mlag_domain, mlag_id=mlag["mlag_id"], members=members
@@ -701,33 +790,33 @@ async def generate_site(
     # Connect both devices within the Site together with 2 interfaces
     # --------------------------------------------------
     for idx in range(2):
-        intf1 = store.get(kind="InfraInterfaceL3", key=f"{site_name}-edge1-l3-{idx}")
-        intf2 = store.get(kind="InfraInterfaceL3", key=f"{site_name}-edge2-l3-{idx}")
+        intf1 = store.get(kind="InfraInterfaceL3", key=f"{site.name}-edge1-l3-{idx}")
+        intf2 = store.get(kind="InfraInterfaceL3", key=f"{site.name}-edge2-l3-{idx}")
 
-        intf1.description.value = f"Connected to {site_name}-edge2 {intf2.name.value}"
+        intf1.description.value = f"Connected to {site.name}-edge2 {intf2.name.value}"
         intf1.connected_endpoint = intf2
         await intf1.save()
 
-        intf2.description.value = f"Connected to {site_name}-edge1 {intf1.name.value}"
+        intf2.description.value = f"Connected to {site.name}-edge1 {intf1.name.value}"
         await intf2.save()
 
-        log.info(f" - Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
+        log.info(f" - Connected '{site.name}-edge1::{intf1.name.value}' <> '{site.name}-edge2::{intf2.name.value}'")
 
     # --------------------------------------------------
     # Connect both leaf devices within a Site together with the 2 peer interfaces
     # --------------------------------------------------
     for idx in range(2):
-        intf1 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf1-l2-Ethernet{idx + 1}")
-        intf2 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf2-l2-Ethernet{idx + 1}")
+        intf1 = store.get(kind="InfraInterfaceL2", key=f"{site.name}-leaf1-l2-Ethernet{idx + 1}")
+        intf2 = store.get(kind="InfraInterfaceL2", key=f"{site.name}-leaf2-l2-Ethernet{idx + 1}")
 
-        intf1.description.value = f"Connected to {site_name}-leaf2 {intf2.name.value}"
+        intf1.description.value = f"Connected to {site.name}-leaf2 {intf2.name.value}"
         intf1.connected_endpoint = intf2
         await intf1.save()
 
-        intf2.description.value = f"Connected to {site_name}-leaf1 {intf1.name.value}"
+        intf2.description.value = f"Connected to {site.name}-leaf1 {intf1.name.value}"
         await intf2.save()
 
-        log.info(f" - Connected '{site_name}-leaf1::{intf1.name.value}' <> '{site_name}-leaf2::{intf2.name.value}'")
+        log.info(f" - Connected '{site.name}-leaf1::{intf1.name.value}' <> '{site.name}-leaf2::{intf2.name.value}'")
 
     # --------------------------------------------------
     # Update all the group we may have touch during the site creation
@@ -744,11 +833,11 @@ async def generate_site(
     # --------------------------------------------------
     for idx in range(2):
         if idx == 0:
-            device1 = f"{site_name}-{DEVICES[0][0]}"
-            device2 = f"{site_name}-{DEVICES[1][0]}"
+            device1 = f"{site.name}-{DEVICES[0][0]}"
+            device2 = f"{site.name}-{DEVICES[1][0]}"
         elif idx == 1:
-            device1 = f"{site_name}-{DEVICES[1][0]}"
-            device2 = f"{site_name}-{DEVICES[0][0]}"
+            device1 = f"{site.name}-{DEVICES[1][0]}"
+            device2 = f"{site.name}-{DEVICES[0][0]}"
 
         peer_group_name = "POP_INTERNAL"
 
@@ -774,7 +863,7 @@ async def generate_site(
             f" - Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
         )
 
-    return site_name
+    return site.name
 
 
 async def branch_scenario_add_upstream(
@@ -1149,17 +1238,17 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     for org in ORGANIZATIONS:
         data_org = {
-            "name": {"value": org[0], "is_protected": True},
+            "name": {"value": org.name, "is_protected": True},
         }
-        obj = await client.create(branch=branch, kind=f"Organization{org[1].title()}", data=data_org)
+        obj = await client.create(branch=branch, kind=org.kind, data=data_org)
         batch.add(task=obj.save, node=obj)
-        store.set(key=org[0], node=obj)
+        store.set(key=org.name, node=obj)
     async for node, _ in batch.execute():
         accessor = f"{node._schema.default_filter.split('__')[0]}"
         log.info(f"- Created {node._schema.kind} - {getattr(node, accessor).value}")
 
     # Autonomous System
-    organizations_dict = {name: type for name, type in ORGANIZATIONS}
+    organizations_dict = {org.name: org.type for org in ORGANIZATIONS}
     batch = await client.create_batch()
     for asn in ASNS:
         organization_type = organizations_dict.get(asn.organization, None)
@@ -1188,16 +1277,10 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         obj = await client.create(
             branch=branch,
             kind="InfraPlatform",
-            data={
-                "name": platform[0],
-                "nornir_platform": platform[1],
-                "napalm_driver": platform[2],
-                "netmiko_device_type": platform[3],
-                "ansible_network_os": platform[4],
-            },
+            data=platform.model_dump(),
         )
         batch.add(task=obj.save, node=obj)
-        store.set(key=platform[0], node=obj)
+        store.set(key=platform.name, node=obj)
 
     async for node, _ in batch.execute():
         log.info(f"- Created {node._schema.kind} - {node.name.value}")
@@ -1210,8 +1293,12 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     for peer_group in BGP_PEER_GROUPS:
         remote_as_id = None
         local_as_id = None
-        local_as = store.get(kind="InfraAutonomousSystem", key=peer_group[3], raise_when_missing=False)
-        remote_as = store.get(kind="InfraAutonomousSystem", key=peer_group[4], raise_when_missing=False)
+        local_as = store.get(kind="InfraAutonomousSystem", key=peer_group.local_as, raise_when_missing=False)
+        remote_as = (
+            store.get(kind="InfraAutonomousSystem", key=peer_group.remote_as, raise_when_missing=False)
+            if peer_group.remote_as
+            else None
+        )
         if remote_as:
             remote_as_id = remote_as.id
         if local_as:
@@ -1220,14 +1307,14 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         obj = await client.create(
             branch=branch,
             kind="InfraBGPPeerGroup",
-            name={"value": peer_group[0], "source": account_pop.id},
-            import_policies={"value": peer_group[1], "source": account_pop.id},
-            export_policies={"value": peer_group[2], "source": account_pop.id},
+            name={"value": peer_group.name, "source": account_pop.id},
+            import_policies={"value": peer_group.import_policies, "source": account_pop.id},
+            export_policies={"value": peer_group.export_policies, "source": account_pop.id},
             local_as={"id": local_as_id},
             remote_as={"id": remote_as_id},
         )
         batch.add(task=obj.save, node=obj)
-        store.set(key=peer_group[0], node=obj)
+        store.set(key=peer_group.name, node=obj)
 
     async for node, _ in batch.execute():
         log.info(f"- Created {node._schema.kind} - {node.name.value}")
@@ -1466,8 +1553,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
             for idx1 in range(1, 3):
                 for idx2 in range(1, 3):
-                    device1 = f"{site1['name']}-edge{idx1}"
-                    device2 = f"{site2['name']}-edge{idx2}"
+                    device1 = f"{site1.name}-edge{idx1}"
+                    device2 = f"{site2.name}-edge{idx2}"
 
                     loopback1 = store.get(key=f"{device1}-loopback")
                     loopback2 = store.get(key=f"{device2}-loopback")
@@ -1591,12 +1678,10 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
     if branch == "main":
-        await branch_scenario_add_upstream(
-            site_name=sites[1]["name"], client=client, log=log, external_pool=external_pool
-        )
+        await branch_scenario_add_upstream(site_name=sites[1].name, client=client, log=log, external_pool=external_pool)
         await branch_scenario_replace_ip_addresses(
-            site_name=sites[2]["name"], client=client, log=log, interconnection_pool=interconnection_pool
+            site_name=sites[2].name, client=client, log=log, interconnection_pool=interconnection_pool
         )
-        await branch_scenario_remove_colt(site_name=sites[0]["name"], client=client, log=log)
-        await branch_scenario_conflict_device(site_name=sites[3]["name"], client=client, log=log)
+        await branch_scenario_remove_colt(site_name=sites[0].name, client=client, log=log)
+        await branch_scenario_conflict_device(site_name=sites[3].name, client=client, log=log)
         await branch_scenario_conflict_platform(client=client, log=log)
