@@ -1464,8 +1464,11 @@ class SchemaBranch:
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
     def add_profile_relationships(self) -> None:
-        for node_name in self.nodes.keys():
-            node = self.get_node(name=node_name, duplicate=False)
+        for node_name in self.node_names + self.generic_names:
+            # if "Criticality" in node_name:
+            #     breakpoint()
+
+            node = self.get(name=node_name, duplicate=False)
             profile_relationship = None
             for rel in node.relationships:
                 if rel.name == "profiles":
@@ -1475,10 +1478,7 @@ class SchemaBranch:
             if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
                 needs_profile_relationship = False
 
-            if needs_profile_relationship and profile_relationship:
-                # set the peer kind in case this schema has been renamed
-                profile_relationship.peer = self._get_profile_kind(node_kind=node.kind)
-            elif not needs_profile_relationship and profile_relationship:
+            if not needs_profile_relationship and profile_relationship:
                 node.relationships = [rel for rel in node.relationships if rel.name != "profiles"]
             elif needs_profile_relationship and not profile_relationship:
                 # Add relationship between node and profile
@@ -1486,7 +1486,7 @@ class SchemaBranch:
                     RelationshipSchema(
                         name="profiles",
                         identifier="node__profile",
-                        peer=self._get_profile_kind(node_kind=node.kind),
+                        peer=InfrahubKind.PROFILE,
                         kind=RelationshipKind.PROFILE,
                         cardinality=RelationshipCardinality.MANY,
                         branch=BranchSupportType.AWARE,

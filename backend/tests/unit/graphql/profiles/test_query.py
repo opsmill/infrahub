@@ -7,25 +7,49 @@ from infrahub.core.constants import BranchSupportType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 
 
 @pytest.fixture
 def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
-    SCHEMA = {
-        "name": "Criticality",
+    GENERIC_SCHEMA = {
+        "name": "GenericCriticality",
         "namespace": "Test",
         "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "level", "kind": "Number", "optional": True},
+        ],
+    }
+    generic_schema = GenericSchema(**GENERIC_SCHEMA)
+    registry.schema.set(name=generic_schema.kind, schema=generic_schema)
+
+    NODE_SCHEMA = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "branch": BranchSupportType.AWARE.value,
+        "inherit_from": [generic_schema.kind],
+        "attributes": [
             {"name": "fancy", "kind": "Text", "optional": True},
         ],
     }
-
-    tmp_schema = NodeSchema(**SCHEMA)
+    tmp_schema = NodeSchema(**NODE_SCHEMA)
     registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+
+    NODE_SCHEMA = {
+        "name": "ColorfulCriticality",
+        "namespace": "Test",
+        "branch": BranchSupportType.AWARE.value,
+        "inherit_from": [generic_schema.kind],
+        "attributes": [
+            {"name": "color", "kind": "Text", "optional": True},
+        ],
+    }
+    tmp_schema = NodeSchema(**NODE_SCHEMA)
+    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+
     registry.schema.process_schema_branch(name=default_branch.name)
 
 
@@ -173,6 +197,81 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     } in crits
     assert {
         "node": {
+            "name": {"value": "crit_2"},
+            "level": {"value": 9},
+            "id": crit_2.id,
+            "profiles": {"edges": [{"node": {"id": prof_2.id}}]},
+        }
+    } in crits
+
+
+async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    profile_generic_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
+    prof_1 = await Node.init(db=db, schema=profile_generic_schema)
+    await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
+    await prof_1.save(db=db)
+    prof_2 = await Node.init(db=db, schema=profile_generic_schema)
+    await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
+    await prof_2.save(db=db)
+
+    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
+    crit_1 = await Node.init(db=db, schema=crit_schema)
+    await crit_1.new(db=db, name="crit_1")
+    crit_1.level.is_default = True
+    await crit_1.profiles.update(db=db, data=[prof_1])
+    await crit_1.save(db=db)
+    colorful_crit_schema = registry.schema.get("TestColorfulCriticality", branch=default_branch)
+    crit_2 = await Node.init(db=db, schema=colorful_crit_schema)
+    await crit_2.new(db=db, name="crit_2", color="green")
+    crit_2.level.is_default = True
+    await crit_2.profiles.update(db=db, data=[prof_2])
+    await crit_2.save(db=db)
+
+    query = """
+    query {
+        TestGenericCriticality {
+            edges {
+                node {
+                    __typename
+                    name { value }
+                    level { value }
+                    id
+                    profiles {
+                        edges {
+                            node { id }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    crits = result.data["TestGenericCriticality"]["edges"]
+    assert len(crits) == 2
+    assert {
+        "node": {
+            "__typename": "TestCriticality",
+            "name": {"value": "crit_1"},
+            "level": {"value": 8},
+            "id": crit_1.id,
+            "profiles": {"edges": [{"node": {"id": prof_1.id}}]},
+        }
+    } in crits
+    assert {
+        "node": {
+            "__typename": "TestColorfulCriticality",
             "name": {"value": "crit_2"},
             "level": {"value": 9},
             "id": crit_2.id,
