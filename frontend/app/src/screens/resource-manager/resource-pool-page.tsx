@@ -4,8 +4,6 @@ import { Property, PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
 import { CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
-import { TASK_OBJECT } from "@/config/constants";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
@@ -18,15 +16,15 @@ import {
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
-import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
-import { gql, useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";
 import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 import { RESOURCE_GENERIC_KIND, RESOURCE_POOL_UTILIZATION_KIND } from "./constants";
 import ResourceSelector, { ResourceProps } from "./resource-selector";
+import { useObjectDetails } from "@/hooks/useObjectDetails";
 
 const ResourcePoolPage = () => {
   const { resourcePoolId } = useParams();
@@ -54,21 +52,8 @@ type ResourcePoolContentProps = {
 };
 
 const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
-  const columns = getSchemaObjectColumns({ schema });
-  const relationshipsTabs = getTabs(schema);
+  const { loading, error, data, refetch } = useObjectDetails(schema, id);
 
-  const query = gql(
-    getObjectDetailsPaginated({
-      objectid: id,
-      kind: schema.kind,
-      taskKind: TASK_OBJECT,
-      columns,
-      relationshipsTabs,
-      queryProfiles: true,
-    })
-  );
-
-  const { loading, error, data, refetch } = useQuery(query);
   const getResourcePoolUtilizationQuery = useQuery(GET_RESOURCE_POOL_UTILIZATION, {
     variables: {
       poolId: id,
