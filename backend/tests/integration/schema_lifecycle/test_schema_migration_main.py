@@ -173,17 +173,6 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
                         "changed": {
                             "label": None,
                             "name": None,
-                            "relationships": {
-                                "added": {},
-                                "changed": {
-                                    "profiles": {
-                                        "added": {},
-                                        "changed": {"peer": None},
-                                        "removed": {},
-                                    },
-                                },
-                                "removed": {},
-                            },
                         },
                         "removed": {},
                     },

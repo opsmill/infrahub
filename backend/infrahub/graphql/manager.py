@@ -319,6 +319,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 ) and rel.name in ("parent", "children", "ancestors", "descendants"):
                     continue
 
+                if rel.name == "profiles" and isinstance(node_schema, GenericSchema):
+                    continue
+
                 peer_schema = self.schema.get(name=rel.peer, duplicate=False)
                 if peer_schema.namespace == "Internal":
                     continue
