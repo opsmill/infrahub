@@ -606,7 +606,6 @@ max-complexity = 33
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
 # investigation if they are deemed to not make sense.                                            #
 ##################################################################################################
-    "C416", # Unnecessary `dict` comprehension (rewrite using `dict()`)
     "C901", # `run` is too complex
     "E501", # Line too long
 ]
