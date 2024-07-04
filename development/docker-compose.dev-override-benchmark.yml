@@ -1,5 +1,8 @@
 ---
 services:
+  cache:
+    ports:
+      - "${INFRAHUB_CACHE_PORT:-6379}:6379"
   database:
     ports:
       - "${INFRAHUB_DB_PORT:-7687}:7687"

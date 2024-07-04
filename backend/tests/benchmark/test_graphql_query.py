@@ -11,7 +11,7 @@ from infrahub.test_data.dataset04 import load_data
 NBR_WARMUP = int(os.getenv("INFRAHUB_BENCHMARK_NBR_WARMUP", 5))
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 async def dataset04(db: InfrahubDatabase, default_branch, register_default_schema):
     await load_data(db=db, nbr_query=250)
 

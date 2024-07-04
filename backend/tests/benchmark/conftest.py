@@ -9,6 +9,7 @@ from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,
     create_root_node,
+    initialization,
 )
 from infrahub.core.schema import (
     SchemaRoot,
@@ -57,6 +58,8 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
         default_branch.update_schema_hash()
         return schema_branch
 
+    return registry.schema.get_schema_branch(name=default_branch.name)
+
 
 @pytest.fixture
 async def reset_environment(db: InfrahubDatabase) -> None:
@@ -64,6 +67,8 @@ async def reset_environment(db: InfrahubDatabase) -> None:
         registry.delete_all()
         await delete_all_nodes(db=db)
         await create_root_node(db=db)
+    else:
+        await initialization(db=db)
 
 
 @pytest.fixture
@@ -75,7 +80,7 @@ async def default_branch(reset_environment, db: InfrahubDatabase) -> Branch:
         await create_global_branch(db=db)
         registry.schema = SchemaManager()
     else:
-        branch = registry.default_branch
+        branch = registry.get_branch_from_registry()
     return branch
 
 
@@ -89,3 +94,5 @@ async def register_default_schema(db: InfrahubDatabase, default_branch: Branch) 
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
         return schema_branch
+
+    return registry.schema.get_schema_branch(name=default_branch.name)

@@ -82,6 +82,7 @@ invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
 deepdiff = "^6.2"
+pytest-order = "^1.2.1"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"

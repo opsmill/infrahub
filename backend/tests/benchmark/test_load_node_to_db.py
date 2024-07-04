@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.schema import (
     NodeSchema,
@@ -8,6 +10,7 @@ from infrahub.core.schema_manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 
 
+@pytest.mark.order(-1)
 def test_load_node_to_db_node_schema(aio_benchmark, db: InfrahubDatabase, default_branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)

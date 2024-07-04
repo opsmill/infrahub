@@ -803,6 +803,7 @@ jobs:
       group: huge-runners
     env:
       INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_BENCHMARK_USE_DEMO: "true"
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -842,6 +843,9 @@ jobs:
 
       - name: Create docker compose override
         run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
+
+      - name: Select infrahub cache port
+        run: echo "INFRAHUB_CACHE_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
 
       - name: Start dependencies
         run: invoke dev.deps
