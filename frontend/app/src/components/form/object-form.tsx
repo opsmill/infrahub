@@ -100,14 +100,13 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
     return <NoDataFound message={`${kind} schema not found. Try to reload the page.`} />;
   }
 
-  const nodeProfileSchema = profiles.find((profile) => profile.name === kind);
-
+  console.log("nodeSchema: ", nodeSchema);
+  console.log("nodeSchema.generate_profile: ", nodeSchema.generate_profile);
   return (
     <>
-      {nodeProfileSchema && (
+      {nodeSchema.generate_profile && (
         <ProfilesSelector
-          schema={nodeProfileSchema}
-          nodeSchema={nodeSchema}
+          schema={nodeSchema}
           value={profileSelected?.display_label}
           onChange={setProfileSelected}
         />
@@ -118,38 +117,55 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
 };
 
 type ProfilesSelectorProps = {
-  schema: IProfileSchema;
-  nodeSchema: iNodeSchema;
+  schema: iNodeSchema;
   value?: Record<string, Pick<AttributeType, "value" | "__typename">>;
   onChange: (item: Record<string, Pick<AttributeType, "value" | "__typename">>) => void;
 };
 
-const ProfilesSelector = ({ schema, nodeSchema, value, onChange }: ProfilesSelectorProps) => {
+const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
   const id = useId();
 
+  const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
 
-  const nodeGenerics = nodeSchema?.inherit_from ?? [];
+  const nodeGenerics = schema?.inherit_from ?? [];
 
   // Get all available generic profiles
   const nodeGenericsProfiles = nodeGenerics
-    .map((generic) => profiles.find((profile) => profile.name === generic)?.kind)
+    // Find all generic schema
+    .map((nodeGeneric) => generics.find((generic) => generic.kind === nodeGeneric))
+    // Filter for generate_profile ones
+    .filter((generic) => generic.generate_profile)
+    // Get only the kind
+    .map((generic) => generic.kind)
     .filter(Boolean);
 
   // The profiles should include the current object profile + all generic profiles
-  const profilesKindList = [schema.kind, ...nodeGenericsProfiles];
+  const kindList = [schema.kind, ...nodeGenericsProfiles];
 
   // Add attributes for each profiles to get the values in the form
-  const profilesList = profilesKindList.map((profile) => {
-    const profileSchema = profiles.find((profileSchema) => profileSchema.kind === profile);
+  const profilesList = kindList
+    .map((profile) => {
+      // Get the profile schema for the current kind
+      const profileSchema = profiles.find((profileSchema) => profileSchema.name === profile);
 
-    const attributes = getObjectAttributes({ schema: profileSchema, forListView: true });
+      // Get attributes for query + form data
+      const attributes = getObjectAttributes({ schema: profileSchema, forListView: true });
 
-    return {
-      name: profile,
-      attributes,
-    };
-  });
+      if (!attributes.length) return null;
+
+      return {
+        name: profileSchema.kind,
+        attributes,
+      };
+    })
+    .filter(Boolean);
+
+  // Get all profiles kind to retrieve the informations from the result
+  const profilesKindList = profilesList.map((profile) => profile.name);
+
+  if (!profilesList.length)
+    return <ErrorScreen message="Something went wrong while fetching profiles" />;
 
   const queryString = getProfiles({ profiles: profilesList });
 
