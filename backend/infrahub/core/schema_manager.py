@@ -1465,22 +1465,12 @@ class SchemaBranch:
 
     def add_profile_relationships(self) -> None:
         for node_name in self.node_names + self.generic_names:
-            # if "Criticality" in node_name:
-            #     breakpoint()
-
             node = self.get(name=node_name, duplicate=False)
-            profile_relationship = None
-            for rel in node.relationships:
-                if rel.name == "profiles":
-                    profile_relationship = rel
-                    break
-            needs_profile_relationship = True
-            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+            needs_profile_relationship = "profiles" not in node.relationship_names
+            if node.namespace in RESTRICTED_NAMESPACES:
                 needs_profile_relationship = False
 
-            if not needs_profile_relationship and profile_relationship:
-                node.relationships = [rel for rel in node.relationships if rel.name != "profiles"]
-            elif needs_profile_relationship and not profile_relationship:
+            if needs_profile_relationship:
                 # Add relationship between node and profile
                 node.relationships.append(
                     RelationshipSchema(
