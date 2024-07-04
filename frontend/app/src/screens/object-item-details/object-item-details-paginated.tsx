@@ -143,7 +143,8 @@ export default function ObjectItemDetails({
                 onClick={() => setShowEditDrawer(true)}
                 className="mr-4 rounded-full text-custom-blue-500 p-4"
                 variant={"outline"}
-                size={"icon"}>
+                size={"icon"}
+                data-testid="edit-button">
                 <Icon icon="mdi:pencil-outline" className="" aria-hidden="true" />
               </ButtonWithTooltip>
 
@@ -155,7 +156,8 @@ export default function ObjectItemDetails({
                   onClick={() => setShowAddToGroupDrawer(true)}
                   className="mr-4 rounded-full text-custom-blue-500 p-4"
                   variant={"outline"}
-                  size={"icon"}>
+                  size={"icon"}
+                  data-testid="manage-groups">
                   <Icon icon="mdi:group" className="" aria-hidden="true" />
                 </ButtonWithTooltip>
               )}

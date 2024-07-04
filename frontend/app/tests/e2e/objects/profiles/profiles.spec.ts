@@ -144,7 +144,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Edit the profile", async () => {
-      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("edit-button").click();
       await page.getByLabel("Description").fill("A profile for E2E test edited");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();

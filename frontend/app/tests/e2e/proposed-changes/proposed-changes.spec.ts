@@ -77,7 +77,7 @@ test.describe("/proposed-changes", () => {
         });
 
         await test.step("edit proposed change reviewers", async () => {
-          await page.getByRole("button", { name: "Edit" }).click();
+          await page.getByTestId("edit-button").click();
           await page
             .getByText("Empty list")
             .locator("..")
@@ -101,7 +101,7 @@ test.describe("/proposed-changes", () => {
 
         await test.step("not able to edit proposed change", async () => {
           await expect(page.getByRole("button", { name: "Merge" })).toBeDisabled();
-          await expect(page.getByRole("button", { name: "Edit" })).toBeDisabled();
+          await expect(page.getByTestId("edit-button")).toBeDisabled();
         });
       });
 

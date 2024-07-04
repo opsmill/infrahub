@@ -35,7 +35,7 @@ test.describe("Getting started with Infrahub - Integration with Git", () => {
     });
 
     await test.step("Update the interface Ethernet 1 for atl1-edge1", async () => {
-      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("edit-button").click();
       await page.getByLabel("Description").fill("New description in the branch");
       await saveScreenshotForDocs(page, "tutorial_6_interface_update");
       await page.getByRole("button", { name: "Save" }).click();

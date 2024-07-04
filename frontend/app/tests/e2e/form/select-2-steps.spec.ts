@@ -69,7 +69,7 @@ test.describe("Verifies the object creation", () => {
     });
 
     await test.step("verifies the form values", async () => {
-      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("edit-button").click();
       await expect(page.getByLabel("Speed *")).toHaveValue(ETHERNET_SPEED);
       await expect(
         page.locator("div:below(:text('Device *'))").getByTestId("select-input").first()

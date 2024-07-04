@@ -15,8 +15,8 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await page.goto("/objects/InfraBGPSession");
       await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
 
-      await expect(page.getByRole("button", { name: "Edit" })).toBeDisabled();
-      await expect(page.getByRole("button", { name: "Manage groups" })).toBeDisabled();
+      await expect(page.getByTestId("edit-button")).toBeDisabled();
+      await expect(page.getByTestId("manage-groups")).toBeDisabled();
     });
   });
 
@@ -27,8 +27,8 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await page.goto("/objects/InfraBGPSession");
       await page.getByRole("link", { name: "EXTERNAL" }).first().click();
 
-      await expect(page.getByRole("button", { name: "Edit" })).toBeEnabled();
-      await expect(page.getByRole("button", { name: "Manage groups" })).toBeEnabled();
+      await expect(page.getByTestId("edit-button")).toBeEnabled();
+      await expect(page.getByTestId("manage-groups")).toBeEnabled();
     });
 
     test("should display relationships correctly", async ({ page }) => {
@@ -62,7 +62,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
       await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
-      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("edit-button").click();
 
       const kindSelector = page
         .getByTestId("side-panel-container")
