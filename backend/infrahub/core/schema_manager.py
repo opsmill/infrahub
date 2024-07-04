@@ -1429,7 +1429,7 @@ class SchemaBranch:
         profile_schema_kinds = set()
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
-            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+            if node.namespace in ["Schema"] or not node.generate_profile:
                 try:
                     self.delete(name=self._get_profile_kind(node_kind=node.kind))
                 except SchemaNotFoundError:
@@ -1472,7 +1472,7 @@ class SchemaBranch:
                     profile_relationship = rel
                     break
             needs_profile_relationship = True
-            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+            if node.namespace in ["Schema"] or not node.generate_profile:
                 needs_profile_relationship = False
 
             if needs_profile_relationship and profile_relationship:

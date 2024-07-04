@@ -1722,6 +1722,7 @@ core_models: dict[str, Any] = {
             "label": "IP Prefix Pool",
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
             "attributes": [
                 {
@@ -1776,6 +1777,7 @@ core_models: dict[str, Any] = {
             "label": "IP Address Pool",
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
             "attributes": [
                 {
@@ -1823,6 +1825,7 @@ core_models: dict[str, Any] = {
             "label": "Number Pool",
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
             "attributes": [
                 {
