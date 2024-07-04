@@ -16,6 +16,7 @@ import {
 } from "@/state/atoms/schema.atom";
 import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { stateAtom } from "@/state/atoms/state.atom";
 import { findSelectedBranch } from "@/utils/branches";
 import { sortByName, sortByOrderWeight } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
@@ -42,6 +43,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
   const setGenerics = useSetAtom(genericsState);
   const setNamespaces = useSetAtom(namespacesState);
   const setProfiles = useSetAtom(profilesAtom);
+  const setState = useSetAtom(stateAtom);
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
@@ -86,6 +88,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
       setSchemaKindLabelState(schemaKindLabelMap);
       setNamespaces(namespaces);
       setProfiles(profiles);
+      setState({ isReady: true });
     } catch (error) {
       toast(() => (
         <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
