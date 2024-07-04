@@ -13,7 +13,7 @@ function IpamPage() {
       </Content.Title>
 
       <Content className="flex p-2 gap-2">
-        <Card className="overflow-auto">
+        <Card className="flex overflow-auto">
           <IpamTree />
         </Card>
 
