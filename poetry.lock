@@ -2525,9 +2525,8 @@ version = "5.20.0"
 description = "Neo4j Bolt driver for Python"
 optional = false
 python-versions = ">=3.7"
-files = [
-    {file = "neo4j-5.20.0.tar.gz", hash = "sha256:c59e54a0c0fa1f109f1d2fa5293c29c2bb30ba388b4f9dd9656919793c10063a"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 pytz = "*"
@@ -2536,6 +2535,12 @@ pytz = "*"
 numpy = ["numpy (>=1.7.0,<2.0.0)"]
 pandas = ["numpy (>=1.7.0,<2.0.0)", "pandas (>=1.1.0,<3.0.0)"]
 pyarrow = ["pyarrow (>=1.0.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/fatih-acar/neo4j-python-driver.git"
+reference = "5.20.0.1"
+resolved_reference = "0622939d75733d11b59aa6fed41e46222d6ec2d1"
 
 [[package]]
 name = "neo4j-rust-ext"
@@ -5124,4 +5129,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "a54606a81ebd9bc93413a50cf89e67f0fe9775b4b01dd1b776a8ff51660c6c11"
+content-hash = "245ea91250a5ad21b89ede15d444ac84313bde0248009aa413b038307e264b67"
