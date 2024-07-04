@@ -32,7 +32,7 @@ test.describe("Object groups update", () => {
 
     await test.step("go to the new tag", async () => {
       await page.getByRole("link", { name: NEW_TAG }).click();
-      await page.getByRole("button", { name: "Manage groups" }).click();
+      await page.getByTestId("manage-groups").click();
       await expect(page.getByText("Empty list")).toBeVisible();
     });
 
@@ -43,7 +43,7 @@ test.describe("Object groups update", () => {
       await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Group updated")).toBeVisible();
-      await page.getByRole("button", { name: "Manage groups" }).click();
+      await page.getByTestId("manage-groups").click();
       await expect(
         page.getByTestId("multi-select-input").getByText("Arista Devices")
       ).toBeVisible();
@@ -61,7 +61,7 @@ test.describe("Object groups update", () => {
       await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Group updated")).toBeVisible();
-      await page.getByRole("button", { name: "Manage groups" }).click();
+      await page.getByTestId("manage-groups").click();
       await expect(
         page.getByTestId("multi-select-input").getByText("Arista Devices")
       ).toBeVisible();
