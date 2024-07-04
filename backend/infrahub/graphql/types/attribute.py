@@ -140,9 +140,9 @@ class MacAddressType(BaseAttribute):
     eui48 = Field(String)
     eui64 = Field(String)
     bare = Field(String)
-    cisco = Field(String)
-    unix = Field(String)
-    pgsql = Field(String)
+    dot_notation = Field(String)
+    semicolon_notation = Field(String)
+    split_notation = Field(String)
 
     class Meta:
         description = "Attribute of type Text"

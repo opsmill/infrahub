@@ -978,22 +978,19 @@ class MacAddress(BaseAttribute):
         return self.obj.format(dialect=netaddr.mac_bare)
 
     @property
-    def cisco(self) -> Optional[str]:
-        # FIXME: rename it
+    def dot_notation(self) -> Optional[str]:
         if not self.value:
             return None
         return self.obj.format(dialect=netaddr.mac_cisco)
 
     @property
-    def unix(self) -> Optional[str]:
-        # FIXME: rename it
+    def semicolon_notation(self) -> Optional[str]:
         if not self.value:
             return None
         return self.obj.format(dialect=netaddr.mac_unix)
 
     @property
-    def pgsql(self) -> Optional[str]:
-        # FIXME: rename it
+    def split_notation(self) -> Optional[str]:
         if not self.value:
             return None
         return self.obj.format(dialect=netaddr.mac_pgsql)
