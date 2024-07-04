@@ -17,6 +17,7 @@ import { constructPath } from "@/utils/fetch";
 import { NodeId } from "react-accessible-treeview";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { objectTreeQuery } from "@/graphql/queries/objects/objectTreeQuery";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 
 export type HierarchicalTreeProps = {
   schema: IModelSchema;
@@ -26,6 +27,8 @@ export type HierarchicalTreeProps = {
 
 export const HierarchicalTree = ({ schema, currentNodeId, className }: HierarchicalTreeProps) => {
   const navigate = useNavigate();
+  const branch = useAtomValue(currentBranchAtom);
+
   const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_IPAM_TREE);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
 
@@ -34,6 +37,8 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
   const [isLoading, setLoading] = useState(true);
 
   const fetchTree = async () => {
+    setLoading(true);
+
     const { data } = await getObjectTree();
 
     let rootNodeIds: string[] = [];
@@ -70,7 +75,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
 
   useEffect(() => {
     fetchTree();
-  }, [schema.kind, currentNodeId]);
+  }, [schema.kind, currentNodeId, branch]);
 
   return (
     <Card className={className}>
