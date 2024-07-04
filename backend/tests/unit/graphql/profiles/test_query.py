@@ -280,6 +280,93 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
     } in crits
 
 
+async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    profile_generic_schema = registry.schema.get(
+        "ProfileTestGenericCriticality", branch=default_branch, duplicate=False
+    )
+    generic_profile = await Node.init(db=db, schema=profile_generic_schema)
+    await generic_profile.new(db=db, profile_name="prof1", profile_priority=1, level=8)
+    await generic_profile.save(db=db)
+    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch, duplicate=False)
+    node_profile = await Node.init(db=db, schema=profile_schema)
+    await node_profile.new(db=db, profile_name="prof1", profile_priority=1, level=8)
+    await node_profile.save(db=db)
+    generic_schema = registry.schema.get("TestGenericCriticality", branch=default_branch, duplicate=False)
+    crit_schema = registry.schema.get("TestCriticality", branch=default_branch, duplicate=False)
+    crit_1 = await Node.init(db=db, schema=crit_schema)
+    await crit_1.new(db=db, name="crit_1")
+    await crit_1.save(db=db)
+
+    query = """
+    mutation UpdateCrit($crit_id: String!, $prof_id: String!){
+        TestCriticalityUpdate(data: {id: $crit_id, profiles: [{id: $prof_id}]})
+        {
+            ok
+            object {
+                profiles {
+                    edges {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_mutation=True, include_subscription=False, branch=default_branch)
+
+    crit_schema.generate_profile = False
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"crit_id": crit_1.id, "prof_id": node_profile.id},
+    )
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "TestCriticality does not allow profiles" in result.errors[0].message
+
+    generic_schema.generate_profile = False
+    crit_schema.generate_profile = True
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"crit_id": crit_1.id, "prof_id": generic_profile.id},
+    )
+    assert result.errors
+    assert len(result.errors) == 1
+    assert f"{generic_profile.id} is of kind ProfileTestGenericCriticality" in result.errors[0].message
+    assert "only ['ProfileTestCriticality'] are allowed" in result.errors[0].message
+
+    generic_schema.generate_profile = True
+    crit_schema.generate_profile = True
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"crit_id": crit_1.id, "prof_id": generic_profile.id},
+    )
+    assert result.errors is None
+    assert result.data["TestCriticalityUpdate"]["ok"] is True
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"crit_id": crit_1.id, "prof_id": node_profile.id},
+    )
+    assert result.errors is None
+    assert result.data["TestCriticalityUpdate"]["ok"] is True
+    assert result.data["TestCriticalityUpdate"]["object"] == {
+        "profiles": {"edges": [{"node": {"id": node_profile.id}}]}
+    }
+
+
 async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
