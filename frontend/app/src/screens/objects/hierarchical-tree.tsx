@@ -17,6 +17,7 @@ import { constructPath } from "@/utils/fetch";
 import { NodeId } from "react-accessible-treeview";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { objectTreeQuery } from "@/graphql/queries/objects/objectTreeQuery";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 
 export type HierarchicalTreeProps = {
   schema: IModelSchema;
@@ -26,11 +27,14 @@ export type HierarchicalTreeProps = {
 
 export const HierarchicalTree = ({ schema, currentNodeId, className }: HierarchicalTreeProps) => {
   const navigate = useNavigate();
+  const branch = useAtomValue(currentBranchAtom);
+
   const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_IPAM_TREE);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
 
   const query = gql(objectTreeQuery({ kind: schema.kind, id: currentNodeId }));
-  const [getObjectTree, { loading }] = useLazyQuery(query);
+  const [getObjectTree] = useLazyQuery(query);
+  const [isLoading, setLoading] = useState(true);
 
   const fetchTree = async () => {
     const { data } = await getObjectTree();
@@ -64,16 +68,17 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
       setExpandedIds(ancestorIds);
     }
     setTreeData(newTree);
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchTree();
-  }, [schema.kind, currentNodeId]);
+  }, [schema.kind, currentNodeId, branch]);
 
   return (
     <Card className={className}>
       <Tree
-        loading={loading}
+        loading={isLoading}
         data={treeData}
         itemContent={ObjectTreeItem}
         defaultExpandedIds={expandedIds}
