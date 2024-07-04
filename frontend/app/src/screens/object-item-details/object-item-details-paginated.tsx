@@ -138,7 +138,7 @@ export default function ObjectItemDetails({
 
               <ButtonWithTooltip
                 disabled={!permission.write.allow}
-                tooltipEnabled={!permission.write.allow}
+                tooltipEnabled
                 tooltipContent={permission.write.message ?? "Edit object"}
                 onClick={() => setShowEditDrawer(true)}
                 className="mr-4 rounded-full text-custom-blue-500 p-4"
@@ -150,7 +150,7 @@ export default function ObjectItemDetails({
               {!schema.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
                 <ButtonWithTooltip
                   disabled={!permission.write.allow}
-                  tooltipEnabled={!permission.write.allow}
+                  tooltipEnabled
                   tooltipContent={permission.write.message ?? "Manage groups"}
                   onClick={() => setShowAddToGroupDrawer(true)}
                   className="mr-4 rounded-full text-custom-blue-500 p-4"
