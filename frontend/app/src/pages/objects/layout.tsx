@@ -4,6 +4,8 @@ import ObjectHeader from "@/screens/objects/object-header";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
 import NoDataFound from "@/screens/errors/no-data-found";
+import { stateAtom } from "@/state/atoms/state.atom";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();
@@ -11,8 +13,15 @@ const ObjectPageLayout = () => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
-
+  const state = useAtomValue(stateAtom);
   const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
+
+  if (!state.isReady)
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <LoadingScreen message="Loading schema..." />
+      </div>
+    );
 
   if (!schema) return <NoDataFound message="No schema found for this kind." />;
 
