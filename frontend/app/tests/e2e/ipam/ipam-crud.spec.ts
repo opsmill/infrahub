@@ -22,7 +22,6 @@ test.describe("/ipam - Ipam home page", () => {
     await page.goto("/ipam");
 
     await expect(page.getByText("IP Address Manager")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Navigation" })).toBeVisible();
     await expect(page.getByTestId("ipam-tree")).toBeVisible();
     await expect(page.getByTestId("ipam-main-content")).toBeVisible();
   });

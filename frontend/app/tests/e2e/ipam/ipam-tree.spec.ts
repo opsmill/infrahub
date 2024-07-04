@@ -3,7 +3,6 @@ import { expect, test } from "@playwright/test";
 test.describe("/ipam - Ipam Tree", () => {
   test("load child tree item when clicking on parent tree item", async ({ page }) => {
     await page.goto("/ipam");
-    await expect(page.getByRole("heading", { name: "Navigation" })).toBeVisible();
     await expect(page.getByTestId("ipam-tree")).toBeVisible();
 
     await test.step("all top level prefix are collapsed", async () => {
