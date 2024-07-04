@@ -1,8 +1,10 @@
 import logging
+from functools import wraps
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Union
 
 import pendulum
+import typer
 from pendulum.datetime import DateTime
 from rich.console import Console
 from rich.logging import RichHandler
@@ -22,6 +24,25 @@ def init_logging(debug: bool = False) -> None:
     FORMAT = "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     logging.getLogger("infrahubctl")
+
+
+def catch_exception(
+    which_exception: Union[type[Exception], Iterable[type[Exception]]], console: Console, exit_code: int = 1
+):
+    """Decorator to handle exception for commands."""
+
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any):
+            try:
+                return func(*args, **kwargs)
+            except which_exception as e:
+                console.print(f"[red]{str(e)}")
+                raise typer.Exit(code=exit_code)
+
+        return wrapper
+
+    return decorator
 
 
 def execute_graphql_query(

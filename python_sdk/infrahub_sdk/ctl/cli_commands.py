@@ -28,7 +28,7 @@ from infrahub_sdk.ctl.render import list_jinja2_transforms
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
 from infrahub_sdk.ctl.transform import list_transforms
-from infrahub_sdk.ctl.utils import execute_graphql_query, parse_cli_vars
+from infrahub_sdk.ctl.utils import catch_exception, execute_graphql_query, parse_cli_vars
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import (
     AuthenticationError,
@@ -412,17 +412,12 @@ def protocols(  # noqa: PLR0915
 
 
 @app.command(name="version")
+@catch_exception((AuthenticationError, HTTPError, ServerNotReachableError, ServerNotResponsiveError), console)
 def version(_: str = CONFIG_PARAM):
     """Display the version of Infrahub and the version of the Python SDK in use."""
 
     client = initialize_client_sync()
-
-    query = "query { InfrahubInfo { version }}"
-    try:
-        response = client.execute_graphql(query=query, raise_for_error=True)
-    except (AuthenticationError, GraphQLError, HTTPError, ServerNotReachableError, ServerNotResponsiveError) as exc:
-        console.print("Unable to gather infrahub version")
-        raise typer.Exit(1) from exc
+    response = client.execute_graphql(query="query { InfrahubInfo { version }}")
 
     infrahub_version = response["InfrahubInfo"]["version"]
-    console.print(f"Infrahub: v{infrahub_version}\nSDK: v{sdk_version}")
+    console.print(f"Infrahub: v{infrahub_version}\nPython SDK: v{sdk_version}")
