@@ -37,8 +37,6 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
   const [isLoading, setLoading] = useState(true);
 
   const fetchTree = async () => {
-    setLoading(true);
-
     const { data } = await getObjectTree();
 
     let rootNodeIds: string[] = [];
