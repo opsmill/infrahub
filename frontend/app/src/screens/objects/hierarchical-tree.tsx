@@ -30,7 +30,8 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
 
   const query = gql(objectTreeQuery({ kind: schema.kind, id: currentNodeId }));
-  const [getObjectTree, { loading }] = useLazyQuery(query);
+  const [getObjectTree] = useLazyQuery(query);
+  const [isLoading, setLoading] = useState(true);
 
   const fetchTree = async () => {
     const { data } = await getObjectTree();
@@ -64,6 +65,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
       setExpandedIds(ancestorIds);
     }
     setTreeData(newTree);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -73,7 +75,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
   return (
     <Card className={className}>
       <Tree
-        loading={loading}
+        loading={isLoading}
         data={treeData}
         itemContent={ObjectTreeItem}
         defaultExpandedIds={expandedIds}
