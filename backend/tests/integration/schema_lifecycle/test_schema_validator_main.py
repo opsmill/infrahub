@@ -431,7 +431,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "removed": {},
             "changed": {
                 "generate_profile": None,
-                "relationships": {"added": {}, "changed": {}, "removed": {"profiles": None}},
             },
         }
 
@@ -451,11 +450,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "removed": {},
             "changed": {
                 "generate_profile": None,
-                "relationships": {
-                    "added": {},
-                    "changed": {},
-                    "removed": {"profiles": None},
-                },
             },
         }
 
