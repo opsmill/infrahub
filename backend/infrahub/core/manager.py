@@ -4,6 +4,7 @@ from functools import reduce
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
+from opentelemetry import trace
 
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
@@ -263,6 +264,7 @@ class NodeManager:
         return await query.count(db=db)
 
     @classmethod
+    @trace.get_tracer(__name__).start_as_current_span("query_peers")
     async def query_peers(
         cls,
         db: InfrahubDatabase,
@@ -675,6 +677,7 @@ class NodeManager:
 
     @overload
     @classmethod
+    @trace.get_tracer(__name__).start_as_current_span("get_one")
     async def get_one(
         cls,
         id: str,
@@ -693,6 +696,7 @@ class NodeManager:
 
     @overload
     @classmethod
+    @trace.get_tracer(__name__).start_as_current_span("get_one")
     async def get_one(
         cls,
         id: str,
@@ -710,6 +714,7 @@ class NodeManager:
     ) -> Any: ...
 
     @classmethod
+    @trace.get_tracer(__name__).start_as_current_span("get_one")
     async def get_one(
         cls,
         id: str,
@@ -769,6 +774,7 @@ class NodeManager:
         return node
 
     @classmethod
+    @trace.get_tracer(__name__).start_as_current_span("get_many")
     async def get_many(  # pylint: disable=too-many-branches,too-many-statements
         cls,
         db: InfrahubDatabase,

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Iterator, Optional, Sequence, U
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection, is_valid_uuid
+from opentelemetry import trace
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
@@ -235,6 +236,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             self._peer = value
             self.peer_id = value.get_id()
 
+    @trace.get_tracer(__name__).start_as_current_span("get_peer")
     async def get_peer(self, db: InfrahubDatabase) -> Node:
         """Return the peer of the relationship."""
         if self._peer is None:
@@ -725,6 +727,7 @@ class RelationshipManager:
 
         return len(self._relationships)
 
+    @trace.get_tracer(__name__).start_as_current_span("get_peer")
     async def get_peer(self, db: InfrahubDatabase) -> Optional[Node]:
         if self.schema.cardinality == "many":
             raise TypeError("peer is not available for relationship with multiple cardinality")
