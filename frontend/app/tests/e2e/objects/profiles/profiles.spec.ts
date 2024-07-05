@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 
 const PROFILE_NAME = "Interface L2 profile test";
+const GENERIC_PROFILE_NAME = "Generic Interface profile test";
 
 test.describe("/objects/CoreProfile - Profiles page", () => {
   test.describe.configure({ mode: "serial" });
@@ -279,6 +280,39 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     });
   });
 
+  test("should create a new profile successfully for generic interface", async ({ page }) => {
+    await test.step("access Interface form", async () => {
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "CoreProfile" && status === 200;
+        }),
+
+        page.goto("/objects/CoreProfile"),
+      ]);
+      await page.getByTestId("create-object-button").click();
+      await page.getByLabel("Select an object type").click();
+      await page.getByText("ProfileInfraInterface").click();
+    });
+
+    await test.step("fill and submit form", async () => {
+      await page.getByLabel("Profile Name *").fill(GENERIC_PROFILE_NAME);
+      await page.getByLabel("Profile Priority").fill("2000");
+      await page
+        .locator("div:below(:text('Status'))")
+        .first()
+        .getByTestId("select-open-option-button")
+        .click();
+      await page.getByText("Maintenance").click();
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(
+        page.locator("#alert-success-InfraInterface-created").getByText("InfraInterface created")
+      ).toBeVisible();
+    });
+  });
+
   test("should verify profile values after creation", async ({ page }) => {
     await page.goto("/objects/CoreProfile");
     await page.getByRole("link", { name: PROFILE_NAME }).click();
@@ -293,5 +327,15 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .first()
     ).toBeVisible();
     await expect(page.getByText("Provisioning")).toBeVisible();
+  });
+
+  test("should verify the available profiles in the object form", async ({ page }) => {
+    await page.goto("/objects/InfraInterface");
+    await page.getByTestId("create-object-button").click();
+    await page.getByLabel("Select an object type").click();
+    await page.getByRole("option", { name: "InfraInterfaceL2" }).locator("div").click();
+    await page.getByLabel("Select a Profile optional").click();
+    await expect(page.getByText(PROFILE_NAME)).toBeVisible();
+    await expect(page.getByText(GENERIC_PROFILE_NAME)).toBeVisible();
   });
 });
