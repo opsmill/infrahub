@@ -474,6 +474,78 @@ VLANS = (
 store = NodeStore()
 
 
+async def generate_site_vlans(
+    client: InfrahubClient, log: logging.Logger, branch: str, site: Site, site_id: int
+) -> None:
+    account_pop = store.get("pop-builder")
+    group_eng = store.get("Engineering Team")
+    group_ops = store.get("Operation Team")
+
+    for vlan in VLANS:
+        vlan_name = f"{site.name}_{vlan.role}"
+        obj = await client.create(
+            branch=branch,
+            kind="InfraVLAN",
+            site={"id": site_id, "source": account_pop.id, "is_protected": True},
+            name={"value": vlan_name, "is_protected": True, "source": account_pop.id},
+            vlan_id={"value": vlan.id, "is_protected": True, "owner": group_eng.id, "source": account_pop.id},
+            status={"value": ACTIVE_STATUS, "owner": group_ops.id},
+            role={"value": vlan.role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
+        )
+        await obj.save()
+        store.set(key=vlan_name, node=obj)
+
+
+async def generate_site_mlag_domain(client: InfrahubClient, log: logging.Logger, branch: str, site: Site) -> None:
+    # --------------------------------------------------
+    # Set up MLAG domains
+    # --------------------------------------------------
+    for role, domain in MLAG_DOMAINS.items():
+        devices = [
+            store.get(kind="InfraDevice", key=f"{site.name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site.name}-{role}2"),
+        ]
+        name = f"{site.name}-{role}-12"
+
+        peer_interfaces = [
+            store.get(kind="InfraLagInterfaceL2", key=f"{device_obj.name.value}-lagl2-{domain['peer_interfaces'][idx]}")
+            for idx, device_obj in enumerate(devices)
+        ]
+
+        mlag_domain = await client.create(
+            kind="InfraMlagDomain",
+            name=name,
+            domain_id=domain["domain_id"],
+            devices=devices,
+            peer_interfaces=peer_interfaces,
+        )
+
+        await mlag_domain.save()
+        store.set(key=f"mlag-domain-{name}", node=mlag_domain)
+
+    # --------------------------------------------------
+    # Set up MLAG Interfaces
+    # --------------------------------------------------
+    for role, mlags in MLAG_INTERFACE_L2.items():
+        devices = [
+            store.get(kind="InfraDevice", key=f"{site.name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site.name}-{role}2"),
+        ]
+
+        for mlag in mlags:
+            members = [
+                store.get(kind="InfraLagInterfaceL2", key=f"{device_obj.name.value}-lagl2-{mlag['members'][idx]}")
+                for idx, device_obj in enumerate(devices)
+            ]
+            mlag_domain = store.get(kind="InfraMlagDomain", key=f"mlag-domain-{site.name}-{role}-12")
+
+            mlag_interface = await client.create(
+                kind="InfraMlagInterfaceL2", mlag_domain=mlag_domain, mlag_id=mlag["mlag_id"], members=members
+            )
+
+            await mlag_interface.save()
+
+
 async def generate_site(
     client: InfrahubClient,
     log: logging.Logger,
@@ -490,19 +562,6 @@ async def generate_site(
     account_crm = store.get("CRM Synchronization")
     internal_as = store.get(kind="InfraAutonomousSystem", key="Duff")
 
-    group_edge_router = store.get(kind="CoreStandardGroup", key="edge_router")
-    await group_edge_router.members.fetch()
-    group_core_router = store.get(kind="CoreStandardGroup", key="core_router")
-    await group_core_router.members.fetch()
-    group_cisco_devices = store.get(kind="CoreStandardGroup", key="cisco_devices")
-    await group_cisco_devices.members.fetch()
-    group_arista_devices = store.get(kind="CoreStandardGroup", key="arista_devices")
-    await group_arista_devices.members.fetch()
-    group_upstream_interfaces = store.get(kind="CoreStandardGroup", key="upstream_interfaces")
-    await group_upstream_interfaces.members.fetch()
-    group_backbone_interfaces = store.get(kind="CoreStandardGroup", key="backbone_interfaces")
-    await group_backbone_interfaces.members.fetch()
-
     country = store.get(kind="LocationCountry", key=site.country)
     # --------------------------------------------------
     # Create the Site
@@ -518,22 +577,7 @@ async def generate_site(
     await site_obj.save()
     log.info(f"- Created {site_obj._schema.kind} - {site.name}")
 
-    # --------------------------------------------------
-    # Create the site specific VLAN
-    # --------------------------------------------------
-    for vlan in VLANS:
-        vlan_name = f"{site.name}_{vlan.role}"
-        obj = await client.create(
-            branch=branch,
-            kind="InfraVLAN",
-            site={"id": site_obj.id, "source": account_pop.id, "is_protected": True},
-            name={"value": vlan_name, "is_protected": True, "source": account_pop.id},
-            vlan_id={"value": vlan.id, "is_protected": True, "owner": group_eng.id, "source": account_pop.id},
-            status={"value": ACTIVE_STATUS, "owner": group_ops.id},
-            role={"value": vlan.role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
-        )
-        await obj.save()
-        store.set(key=vlan_name, node=obj)
+    await generate_site_vlans(client=client, log=log, branch=branch, site=site, site_id=site_obj.id)
 
     # --------------------------------------------------
     # Create the site specific IP prefixes
@@ -543,6 +587,13 @@ async def generate_site(
         await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, branch=branch),
     ]
     peer_network_hosts = {0: peer_networks[0].prefix.value.hosts(), 1: peer_networks[1].prefix.value.hosts()}
+
+    group_core_router_members = []
+    group_edge_router_members = []
+    group_cisco_devices_members = []
+    group_arista_devices_members = []
+    group_upstream_interfaces_members = []
+    group_backbone_interfaces_members = []
 
     for idx, device in enumerate(DEVICES):
         device_name = f"{site.name}-{device.name}"
@@ -566,14 +617,14 @@ async def generate_site(
 
         # Add device to groups
         if "edge" in device.role:
-            group_edge_router.members.add(obj)
+            group_edge_router_members.append(obj.id)
         elif "core" in device.role:
-            group_core_router.members.add(obj)
+            group_core_router_members.append(obj.id)
 
         if "Arista" in device.platform:
-            group_arista_devices.members.add(obj)
+            group_arista_devices_members.append(obj.id)
         elif "Cisco" in device.platform:
-            group_cisco_devices.members.add(obj)
+            group_cisco_devices_members.append(obj.id)
 
         # Loopback Interface
         intf = await client.create(
@@ -632,7 +683,7 @@ async def generate_site(
             store.set(key=f"{device_name}-l3-{intf_idx}", node=intf)
             if intf_role == "backbone":
                 INTERFACE_OBJS[device_name].append(intf)
-                group_backbone_interfaces.members.add(intf)
+                group_backbone_interfaces_members.append(intf.id)
 
             subnet = None
             address = None
@@ -640,7 +691,7 @@ async def generate_site(
                 address = f"{str(next(peer_network_hosts[intf_idx]))}/31"
 
             if intf_role == "upstream":
-                group_upstream_interfaces.members.add(intf)
+                group_upstream_interfaces_members.append(intf.id)
 
             if intf_role in ["upstream", "peering"] and "edge" in device.role:
                 subnet = await client.allocate_next_ip_prefix(
@@ -723,9 +774,7 @@ async def generate_site(
                     )
                     await bgp_session.save()
 
-                    await circuit.bgp_sessions.fetch()
-                    circuit.bgp_sessions.add(bgp_session)
-                    await circuit.save()
+                    await circuit.add_relationships(relation_to_update="bgp_sessions", related_nodes=[bgp_session.id])
                     log.debug(
                         f" - Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
                     )
@@ -788,61 +837,13 @@ async def generate_site(
             )
 
             await lag.save()
-            await lag.members.fetch()
 
             store.set(key=f"{device_name}-lagl2-{lag_intf['name']}", node=lag)
 
-            members = [store.get(key=f"{device_name}-l2-{member}") for member in lag_intf["members"]]
-            lag.members.extend(members)
-            await lag.save()
+            members = [store.get(key=f"{device_name}-l2-{member}").id for member in lag_intf["members"]]
+            await lag.add_relationships(relation_to_update="members", related_nodes=members)
 
-    # --------------------------------------------------
-    # Set up MLAG domains
-    # --------------------------------------------------
-    for role, domain in MLAG_DOMAINS.items():
-        devices = [
-            store.get(kind="InfraDevice", key=f"{site.name}-{role}1"),
-            store.get(kind="InfraDevice", key=f"{site.name}-{role}2"),
-        ]
-        name = f"{site.name}-{role}-12"
-
-        peer_interfaces = [
-            store.get(kind="InfraLagInterfaceL2", key=f"{device_obj.name.value}-lagl2-{domain['peer_interfaces'][idx]}")
-            for idx, device_obj in enumerate(devices)
-        ]
-
-        mlag_domain = await client.create(
-            kind="InfraMlagDomain",
-            name=name,
-            domain_id=domain["domain_id"],
-            devices=devices,
-            peer_interfaces=peer_interfaces,
-        )
-
-        await mlag_domain.save()
-        store.set(key=f"mlag-domain-{name}", node=mlag_domain)
-
-    # --------------------------------------------------
-    # Set up MLAG Interfaces
-    # --------------------------------------------------
-    for role, mlags in MLAG_INTERFACE_L2.items():
-        devices = [
-            store.get(kind="InfraDevice", key=f"{site.name}-{role}1"),
-            store.get(kind="InfraDevice", key=f"{site.name}-{role}2"),
-        ]
-
-        for mlag in mlags:
-            members = [
-                store.get(kind="InfraLagInterfaceL2", key=f"{device_obj.name.value}-lagl2-{mlag['members'][idx]}")
-                for idx, device_obj in enumerate(devices)
-            ]
-            mlag_domain = store.get(kind="InfraMlagDomain", key=f"mlag-domain-{site.name}-{role}-12")
-
-            mlag_interface = await client.create(
-                kind="InfraMlagInterfaceL2", mlag_domain=mlag_domain, mlag_id=mlag["mlag_id"], members=members
-            )
-
-            await mlag_interface.save()
+    await generate_site_mlag_domain(client=client, log=log, branch=branch, site=site)
 
     # --------------------------------------------------
     # Connect both devices within the Site together with 2 interfaces
@@ -877,14 +878,39 @@ async def generate_site(
         log.info(f" - Connected '{site.name}-leaf1::{intf1.name.value}' <> '{site.name}-leaf2::{intf2.name.value}'")
 
     # --------------------------------------------------
-    # Update all the group we may have touch during the site creation
+    # Update all the group we may have touched during the site creation
     # --------------------------------------------------
-    await group_upstream_interfaces.save()
-    await group_backbone_interfaces.save()
-    await group_edge_router.save()
-    await group_core_router.save()
-    await group_arista_devices.save()
-    await group_cisco_devices.save()
+
+    if group_edge_router_members:
+        group_edge_router = store.get(kind="CoreStandardGroup", key="edge_router")
+        await group_edge_router.add_relationships(relation_to_update="members", related_nodes=group_edge_router_members)
+
+    if group_core_router_members:
+        group_core_router = store.get(kind="CoreStandardGroup", key="core_router")
+        await group_core_router.add_relationships(relation_to_update="members", related_nodes=group_core_router_members)
+
+    if group_cisco_devices_members:
+        group_cisco_devices = store.get(kind="CoreStandardGroup", key="cisco_devices")
+        await group_cisco_devices.add_relationships(
+            relation_to_update="members", related_nodes=group_cisco_devices_members
+        )
+    if group_arista_devices_members:
+        group_arista_devices = store.get(kind="CoreStandardGroup", key="arista_devices")
+        await group_arista_devices.add_relationships(
+            relation_to_update="members", related_nodes=group_arista_devices_members
+        )
+
+    if group_upstream_interfaces_members:
+        group_upstream_interfaces = store.get(kind="CoreStandardGroup", key="upstream_interfaces")
+        await group_upstream_interfaces.add_relationships(
+            relation_to_update="members", related_nodes=group_upstream_interfaces_members
+        )
+
+    if group_backbone_interfaces_members:
+        group_backbone_interfaces = store.get(kind="CoreStandardGroup", key="backbone_interfaces")
+        await group_backbone_interfaces.add_relationships(
+            relation_to_update="members", related_nodes=group_backbone_interfaces_members
+        )
 
     # --------------------------------------------------
     # Create iBGP Sessions within the Site
@@ -1633,7 +1659,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str, num_site
         backbone_profiles.append(interface)
 
     async for _, response in batch.execute():
-        log.debug(f"{response} - Creation Completed")
+        log.debug(f"{response} - Fetch Completed")
 
     # Apply profiles
     batch = await client.create_batch()
