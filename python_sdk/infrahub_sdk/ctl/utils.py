@@ -46,7 +46,7 @@ def catch_exception(
         if asyncio.iscoroutinefunction(func):
 
             @wraps(func)
-            async def wrapper(*args: Any, **kwargs: Any):
+            async def async_wrapper(*args: Any, **kwargs: Any):
                 try:
                     return await func(*args, **kwargs)
                 except AuthenticationError as exc:
@@ -68,7 +68,7 @@ def catch_exception(
                     console.print(f"[red]{str(exc)}")
                     raise typer.Exit(code=exit_code)
 
-            return wrapper
+            return async_wrapper
 
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any):
