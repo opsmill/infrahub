@@ -319,6 +319,13 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
     ip_namespace: Union[RelatedNode, RelatedNodeSync]
 
 
+class CoreNumberPool(CoreResourcePool, LineageSource):
+    node: str
+    node_attribute: str
+    start_range: int
+    end_range: int
+
+
 class CoreObjectThread(CoreThread):
     object_path: str
 
