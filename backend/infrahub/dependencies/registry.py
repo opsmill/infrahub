@@ -3,6 +3,7 @@ from .builder.constraint.node.grouped_uniqueness import NodeGroupedUniquenessCon
 from .builder.constraint.node.uniqueness import NodeAttributeUniquenessConstraintDependency
 from .builder.constraint.relationship_manager.count import RelationshipCountConstraintDependency
 from .builder.constraint.relationship_manager.peer_kind import RelationshipPeerKindConstraintDependency
+from .builder.constraint.relationship_manager.profiles_kind import RelationshipProfilesKindConstraintDependency
 from .builder.constraint.schema.aggregated import AggregatedSchemaConstraintsDependency
 from .builder.constraint.schema.attribute_regex import SchemaAttributeRegexConstraintDependency
 from .builder.constraint.schema.attribute_uniqueness import SchemaAttributeUniqueConstraintDependency
@@ -22,6 +23,7 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(NodeAttributeUniquenessConstraintDependency)
     component_registry.track_dependency(NodeGroupedUniquenessConstraintDependency)
     component_registry.track_dependency(RelationshipCountConstraintDependency)
+    component_registry.track_dependency(RelationshipProfilesKindConstraintDependency)
     component_registry.track_dependency(RelationshipPeerKindConstraintDependency)
     component_registry.track_dependency(NodeConstraintRunnerDependency)
     component_registry.track_dependency(NodeDeleteValidatorDependency)

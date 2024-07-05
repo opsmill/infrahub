@@ -15,19 +15,19 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration009(InternalSchemaMigration):
-    name: str = "009_add_generate_profile_attr"
-    minimum_version: int = 8
+class Migration010(InternalSchemaMigration):
+    name: str = "010_add_generate_profile_attr_generic"
+    minimum_version: int = 9
 
     @classmethod
     def init(cls, **kwargs: dict[str, Any]) -> Self:
         internal_schema = cls.get_internal_schema()
-        schema_node = internal_schema.get_node(name="SchemaNode")
+        schema_generic = internal_schema.get_node(name="SchemaGeneric")
 
         migrations = [
             NodeAttributeAddMigration(
-                new_node_schema=schema_node,
-                previous_node_schema=schema_node,
+                new_node_schema=schema_generic,
+                previous_node_schema=schema_generic,
                 schema_path=SchemaPath(
                     schema_kind="SchemaNode", path_type=SchemaPathType.ATTRIBUTE, field_name="generate_profile"
                 ),

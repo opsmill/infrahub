@@ -5,6 +5,7 @@ from ..node.grouped_uniqueness import NodeGroupedUniquenessConstraintDependency
 from ..node.uniqueness import NodeAttributeUniquenessConstraintDependency
 from ..relationship_manager.count import RelationshipCountConstraintDependency
 from ..relationship_manager.peer_kind import RelationshipPeerKindConstraintDependency
+from ..relationship_manager.profiles_kind import RelationshipProfilesKindConstraintDependency
 
 
 class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
@@ -20,5 +21,6 @@ class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
             relationship_manager_constraints=[
                 RelationshipPeerKindConstraintDependency.build(context=context),
                 RelationshipCountConstraintDependency.build(context=context),
+                RelationshipProfilesKindConstraintDependency.build(context=context),
             ],
         )

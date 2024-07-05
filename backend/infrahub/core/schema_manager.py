@@ -1427,8 +1427,8 @@ class SchemaBranch:
             core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
 
         profile_schema_kinds = set()
-        for node_name in self.nodes.keys():
-            node = self.get_node(name=node_name, duplicate=False)
+        for node_name in self.node_names + self.generic_names:
+            node = self.get(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
                 try:
                     self.delete(name=self._get_profile_kind(node_kind=node.kind))
@@ -1464,29 +1464,19 @@ class SchemaBranch:
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
     def add_profile_relationships(self) -> None:
-        for node_name in self.nodes.keys():
-            node = self.get_node(name=node_name, duplicate=False)
-            profile_relationship = None
-            for rel in node.relationships:
-                if rel.name == "profiles":
-                    profile_relationship = rel
-                    break
-            needs_profile_relationship = True
-            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+        for node_name in self.node_names + self.generic_names:
+            node = self.get(name=node_name, duplicate=False)
+            needs_profile_relationship = "profiles" not in node.relationship_names
+            if node.namespace in RESTRICTED_NAMESPACES:
                 needs_profile_relationship = False
 
-            if needs_profile_relationship and profile_relationship:
-                # set the peer kind in case this schema has been renamed
-                profile_relationship.peer = self._get_profile_kind(node_kind=node.kind)
-            elif not needs_profile_relationship and profile_relationship:
-                node.relationships = [rel for rel in node.relationships if rel.name != "profiles"]
-            elif needs_profile_relationship and not profile_relationship:
+            if needs_profile_relationship:
                 # Add relationship between node and profile
                 node.relationships.append(
                     RelationshipSchema(
                         name="profiles",
                         identifier="node__profile",
-                        peer=self._get_profile_kind(node_kind=node.kind),
+                        peer=InfrahubKind.PROFILE,
                         kind=RelationshipKind.PROFILE,
                         cardinality=RelationshipCardinality.MANY,
                         branch=BranchSupportType.AWARE,
