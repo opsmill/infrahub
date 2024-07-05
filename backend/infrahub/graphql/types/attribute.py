@@ -109,7 +109,7 @@ class IPHostType(BaseAttribute):
     with_netmask = Field(String)
 
     class Meta:
-        description = "Attribute of type Text"
+        description = "Attribute of type IPHost"
         name = "IPHost"
         interfaces = {AttributeInterface}
 
@@ -126,7 +126,7 @@ class IPNetworkType(BaseAttribute):
     with_netmask = Field(String)
 
     class Meta:
-        description = "Attribute of type Text"
+        description = "Attribute of type IPNetwork"
         name = "IPNetwork"
         interfaces = {AttributeInterface}
 
@@ -145,7 +145,7 @@ class MacAddressType(BaseAttribute):
     split_notation = Field(String)
 
     class Meta:
-        description = "Attribute of type Text"
+        description = "Attribute of type MacAddress"
         name = "MacAddress"
         interfaces = {AttributeInterface}
 
