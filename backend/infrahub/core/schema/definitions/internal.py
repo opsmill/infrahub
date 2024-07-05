@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     DEFAULT_DESCRIPTION_LENGTH,
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
+    DEFAULT_LABEL_MAX_LENGTH,
     DEFAULT_NAME_MAX_LENGTH,
     DEFAULT_NAME_MIN_LENGTH,
     DEFAULT_REL_IDENTIFIER_LENGTH,
@@ -252,7 +253,7 @@ base_node_schema = SchemaNode(
             kind="Text",
             description="Human friendly representation of the name/kind",
             optional=True,
-            max_length=DEFAULT_NAME_MAX_LENGTH,
+            max_length=DEFAULT_LABEL_MAX_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
