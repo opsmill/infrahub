@@ -294,7 +294,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByText("ProfileInfraInterface").click();
+      await page.getByRole("option", { name: "ProfileInfraInterface", exact: true }).click();
     });
 
     await test.step("fill and submit form", async () => {
@@ -305,7 +305,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .first()
         .getByTestId("select-open-option-button")
         .click();
-      await page.getByText("Maintenance").click();
+      await page.getByText("Maintenance", { exact: true }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(
         page.locator("#alert-success-InfraInterface-created").getByText("InfraInterface created")
