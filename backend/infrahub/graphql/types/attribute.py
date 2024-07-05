@@ -109,7 +109,7 @@ class IPHostType(BaseAttribute):
     with_netmask = Field(String)
 
     class Meta:
-        description = "Attribute of type Text"
+        description = "Attribute of type IPHost"
         name = "IPHost"
         interfaces = {AttributeInterface}
 
@@ -126,8 +126,27 @@ class IPNetworkType(BaseAttribute):
     with_netmask = Field(String)
 
     class Meta:
-        description = "Attribute of type Text"
+        description = "Attribute of type IPNetwork"
         name = "IPNetwork"
+        interfaces = {AttributeInterface}
+
+
+class MacAddressType(BaseAttribute):
+    value = Field(String)
+    oui = Field(String)
+    ei = Field(String)
+    version = Field(Int)
+    binary = Field(String)
+    eui48 = Field(String)
+    eui64 = Field(String)
+    bare = Field(String, description="Format without delimiters")
+    dot_notation = Field(String, description="Format often used by Cisco devices")
+    semicolon_notation = Field(String, description="Format used by UNIX based systems")
+    split_notation = Field(String, description="Format used by PostgreSQL")
+
+    class Meta:
+        description = "Attribute of type MacAddress"
+        name = "MacAddress"
         interfaces = {AttributeInterface}
 
 
