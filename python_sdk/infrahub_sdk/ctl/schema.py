@@ -12,7 +12,7 @@ from infrahub_sdk import InfrahubClient
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import FileNotValidError
-from infrahub_sdk.ctl.utils import init_logging
+from infrahub_sdk.ctl.utils import catch_exception, init_logging
 from infrahub_sdk.queries import SCHEMA_HASH_SYNC_STATUS
 from infrahub_sdk.utils import find_files
 from infrahub_sdk.yaml import SchemaFile
@@ -20,6 +20,7 @@ from infrahub_sdk.yaml import SchemaFile
 from .parameters import CONFIG_PARAM
 
 app = AsyncTyper()
+console = Console()
 
 
 @app.callback()
@@ -132,6 +133,7 @@ def get_node(schemas_data: list[dict], schema_index: int, node_index: int) -> Op
 
 
 @app.command()
+@catch_exception(console=console)
 async def load(
     schemas: list[Path],
     debug: bool = False,
@@ -142,8 +144,6 @@ async def load(
     """Load one or multiple schema files into Infrahub."""
 
     init_logging(debug=debug)
-
-    console = Console()
 
     schemas_data = load_schemas_from_disk_and_exit(console=console, schemas=schemas)
     schema_definition = "schema" if len(schemas_data) == 1 else "schemas"
@@ -184,6 +184,7 @@ async def load(
 
 
 @app.command()
+@catch_exception(console=console)
 async def check(
     schemas: list[Path],
     debug: bool = False,
@@ -193,8 +194,6 @@ async def check(
     """Check if schema files are valid and what would be the impact of loading them with Infrahub."""
 
     init_logging(debug=debug)
-
-    console = Console()
 
     schemas_data = load_schemas_from_disk_and_exit(console=console, schemas=schemas)
     client = await initialize_client()
