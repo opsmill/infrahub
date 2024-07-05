@@ -1,5 +1,4 @@
 import logging
-import random
 import uuid
 from collections import defaultdict
 from ipaddress import IPv4Network, IPv6Network
@@ -72,6 +71,11 @@ class Site(BaseModel):
     country: str
     city: str
     contact: str
+
+
+class Vlan(BaseModel):
+    id: int
+    role: str
 
 
 CONTINENT_COUNTRIES = {
@@ -463,8 +467,8 @@ INTERFACE_PROFILES = (
 )
 
 VLANS = (
-    ("200", "server"),
-    ("400", "management"),
+    Vlan(id=200, role="server"),
+    Vlan(id=400, role="management"),
 )
 
 store = NodeStore()
@@ -518,16 +522,15 @@ async def generate_site(
     # Create the site specific VLAN
     # --------------------------------------------------
     for vlan in VLANS:
-        vlan_role = vlan[1]
-        vlan_name = f"{site.name}_{vlan[1]}"
+        vlan_name = f"{site.name}_{vlan.role}"
         obj = await client.create(
             branch=branch,
             kind="InfraVLAN",
             site={"id": site_obj.id, "source": account_pop.id, "is_protected": True},
-            name={"value": f"{site.name}_{vlan[1]}", "is_protected": True, "source": account_pop.id},
-            vlan_id={"value": int(vlan[0]), "is_protected": True, "owner": group_eng.id, "source": account_pop.id},
+            name={"value": vlan_name, "is_protected": True, "source": account_pop.id},
+            vlan_id={"value": vlan.id, "is_protected": True, "owner": group_eng.id, "source": account_pop.id},
             status={"value": ACTIVE_STATUS, "owner": group_ops.id},
-            role={"value": vlan_role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
+            role={"value": vlan.role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
         )
         await obj.save()
         store.set(key=vlan_name, node=obj)
@@ -1255,14 +1258,17 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
 #   infrahubctl run models/infrastructure_edge.py
 #
 # ---------------------------------------------------------------
-async def run(client: InfrahubClient, log: logging.Logger, branch: str):
+async def run(client: InfrahubClient, log: logging.Logger, branch: str, num_sites: int = 5):
     # ------------------------------------------
     # Create Continents, Countries
     # ------------------------------------------
+    num_sites = int(num_sites)
+    log.info("Creating Infrastructure Data")
+
     batch = await client.create_batch()
     batch.add(task=generate_continents_countries, client=client, branch=branch, log=log)
     async for _, response in batch.execute():
-        log.debug(f"{response} - Creation Completed")
+        log.info(f"{response} - Creation Completed")
     # ------------------------------------------
     # Create User Accounts, Groups, Organizations & Platforms
     # ------------------------------------------
@@ -1528,16 +1534,17 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         await client.allocate_next_ip_prefix(resource_pool=ipv6_supernet_pool, branch=branch),
     ]
 
-    log.debug("IP Prefixes Creation Completed")
+    log.info("IP Prefixes Creation Completed")
 
     # ------------------------------------------
     # Create IPv6 IP from IPv6 Prefix pool
     # ------------------------------------------
     ipv6_addresses = []
-    for network in ipv6_internal_networks[:4]:
+    for index, network in enumerate(ipv6_internal_networks[:4]):
+        multiplier = index + 1
         host_list = list(network.prefix.value.hosts())
-        random_size = random.randint(0, len(host_list))
-        ipv6_addresses.extend(host_list[:random_size])
+        number_of_hosts = min(multiplier * 17, len(host_list))
+        ipv6_addresses.extend(host_list[:number_of_hosts])
 
     batch = await client.create_batch()
     for ipv6_addr in ipv6_addresses:
@@ -1548,6 +1555,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     async for _, response in batch.execute():
         log.debug(f"{response} - Creation Completed")
+
+    log.info("IPv6 Address Creation Completed")
 
     # ------------------------------------------
     # Create Profiles
@@ -1565,7 +1574,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # Create Sites
     # ------------------------------------------
     log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
-    sites = site_generator(nbr_site=5)
+    sites = site_generator(nbr_site=num_sites)
     for site in sites:
         response = await generate_site(
             client=client,
@@ -1577,24 +1586,47 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             management_pool=management_pool,
             external_pool=external_pool,
         )
-        log.debug(f"{response} - Creation Completed")
+        log.info(f"{response} - Creation Completed")
 
     # ------------------------------------------
     # Add profile on interfaces upstream/backbone
     # ------------------------------------------
     # FIXME - Could do it better
+    log.info("Starting to apply profiles to interfaces")
     upstream_interfaces = await client.filters(branch=branch, kind="InfraInterfaceL3", role__value="upstream")
     backbone_interfaces = await client.filters(branch=branch, kind="InfraInterfaceL3", role__value="backbone")
+    upstream_profile = store.get(key="upstream_profile", kind="ProfileInfraInterfaceL3")
+    backbone_profile = store.get(key="backbone_profile", kind="ProfileInfraInterfaceL3")
+
+    batch = await client.create_batch()
+    backbone_profiles = []
+    upstream_profiles = []
+
+    # Fetch interface profiles
     for interface in upstream_interfaces:
-        profile_id = store.get(key="upstream_profile", kind="ProfileInfraInterfaceL3").id
-        await interface.profiles.fetch()
-        interface.profiles.add(profile_id)
-        await interface.save()
+        batch.add(task=interface.profiles.fetch, node=interface)
+        upstream_profiles.append(interface)
     for interface in backbone_interfaces:
-        profile_id = store.get(key="backbone_profile", kind="ProfileInfraInterfaceL3").id
-        await interface.profiles.fetch()
-        interface.profiles.add(profile_id)
-        await interface.save()
+        batch.add(task=interface.profiles.fetch, node=interface)
+        backbone_profiles.append(interface)
+
+    async for _, response in batch.execute():
+        log.debug(f"{response} - Creation Completed")
+
+    # Apply profiles
+    batch = await client.create_batch()
+    for interface in backbone_profiles:
+        interface.profiles.add(backbone_profile.id)
+        batch.add(task=interface.save, node=interface)
+
+    for interface in upstream_profiles:
+        interface.profiles.add(upstream_profile.id)
+        batch.add(task=interface.save, node=interface)
+
+    async for _, response in batch.execute():
+        log.debug(f"{response} - Creation Completed")
+
+    log.info("Done applying profiles to interfaces")
 
     # --------------------------------------------------
     # CREATE Full Mesh iBGP SESSION between all the Edge devices
@@ -1667,7 +1699,6 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             circuit_id=BACKBONE_CIRCUIT_IDS[idx],
             vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
             provider=provider,
-            # type="DARK FIBER",
             status=ACTIVE_STATUS,
             role=BACKBONE_ROLE,
         )
