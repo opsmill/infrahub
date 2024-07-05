@@ -134,7 +134,7 @@ class StorageSettings(BaseSettings):
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DB_")
     db_type: DatabaseType = Field(
-        default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("INFRAHUB_DB_TYPE", "db_type")
+        default=DatabaseType.NEO4J, validation_alias=AliasChoices("INFRAHUB_DB_TYPE", "db_type")
     )
     protocol: str = "bolt"
     username: str = "neo4j"
