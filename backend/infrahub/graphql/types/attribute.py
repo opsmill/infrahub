@@ -139,10 +139,10 @@ class MacAddressType(BaseAttribute):
     binary = Field(String)
     eui48 = Field(String)
     eui64 = Field(String)
-    bare = Field(String)
-    dot_notation = Field(String)
-    semicolon_notation = Field(String)
-    split_notation = Field(String)
+    bare = Field(String, description="Format without delimiters")
+    dot_notation = Field(String, description="Format often used by Cisco devices")
+    semicolon_notation = Field(String, description="Format used by UNIX based systems")
+    split_notation = Field(String, description="Format used by PostgreSQL")
 
     class Meta:
         description = "Attribute of type MacAddress"
