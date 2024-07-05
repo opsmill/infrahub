@@ -263,6 +263,18 @@ async def test_validate_mac_address_returns(
     assert test_mac.split_notation == "60236c:c49f7e"
     assert test_mac.to_db() == {"is_default": False, "value": "60-23-6C-C4-9F-7E"}
 
+    test_mac = MacAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=None)
+
+    assert test_mac.value is None
+    assert test_mac.version is None
+    assert test_mac.binary is None
+    assert test_mac.oui is None
+    assert test_mac.ei is None
+    assert test_mac.bare is None
+    assert test_mac.dot_notation is None
+    assert test_mac.semicolon_notation is None
+    assert test_mac.split_notation is None
+
     with pytest.raises(ValidationError, match=r"thisisnotamacaddress is not a valid"):
         MacAddress(
             name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisisnotamacaddress"
