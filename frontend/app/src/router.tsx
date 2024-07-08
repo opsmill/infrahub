@@ -77,11 +77,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "/tasks/:task",
-            lazy: () => import("@/screens/tasks/task-item-details-screen"),
+            lazy: () => import("@/pages/tasks/task-details"),
           },
           {
             path: "/tasks",
-            lazy: () => import("@/screens/tasks/task-items-screen"),
+            lazy: () => import("@/pages/tasks"),
           },
           {
             path: "/graphql/:branch",
