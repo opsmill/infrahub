@@ -25,14 +25,14 @@ import { useAtom } from "jotai";
 import { useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Conversations } from "./conversations";
-import { ProposedChangesChecksTab } from "./proposed-changes-checks-tab";
+import { Conversations } from "@/screens/proposed-changes/conversations";
+import { ProposedChangesChecksTab } from "@/screens/proposed-changes/proposed-changes-checks-tab";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
 };
 
-const ProposedChangesDetails = () => {
+const ProposedChangesDetailsPage = () => {
   const { proposedchange } = useParams();
   const location = useLocation();
   const { pathname } = location;
@@ -74,7 +74,9 @@ const ProposedChangesDetails = () => {
   // TODO: refactor to not need the ref to refetch child query
   const handleRefetch = () => {
     refetch();
+    // @ts-ignore
     if (refetchRef?.current?.refetch) {
+      // @ts-ignore
       refetchRef?.current?.refetch();
     }
   };
@@ -85,7 +87,7 @@ const ProposedChangesDetails = () => {
     );
   }
 
-  const result = data && data[schemaData?.kind]?.edges[0]?.node;
+  const result = data && data[schemaData?.kind!]?.edges[0]?.node;
 
   if (result) setProposedChange(result);
 
@@ -190,5 +192,5 @@ const ProposedChangesDetails = () => {
 };
 
 export function Component() {
-  return <ProposedChangesDetails />;
+  return <ProposedChangesDetailsPage />;
 }
