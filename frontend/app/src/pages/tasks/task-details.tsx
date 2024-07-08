@@ -11,9 +11,9 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
-import { TaskItemDetails } from "./task-item-details";
+import { TaskItemDetails } from "../../screens/tasks/task-item-details";
 
-const TaskItemDetailsScreen = () => {
+const TaskDetailsPage = () => {
   useTitle("Task details");
 
   const { task } = useParams();
@@ -61,6 +61,7 @@ const TaskItemDetailsScreen = () => {
     </Content>
   );
 };
+
 export function Component() {
-  return <TaskItemDetailsScreen />;
+  return <TaskDetailsPage />;
 }
