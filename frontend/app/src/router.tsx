@@ -43,7 +43,7 @@ export const router = createBrowserRouter([
           },
           {
             path: `/objects/${GRAPHQL_QUERY_OBJECT}/:graphqlQueryId`,
-            lazy: () => import("@/screens/graphql/details/graphql-query-details-page"),
+            lazy: () => import("@/pages/objects/CoreGraphQLQuery/graphql-query-details"),
           },
           {
             path: "/objects",
