@@ -1,10 +1,10 @@
+import { useAtomValue } from "jotai";
 import { Badge } from "@/components/ui/badge";
 import { useTitle } from "@/hooks/useTitle";
-import Content from "@/screens/layout/content";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { useAtomValue } from "jotai";
-import { SchemaSelector } from "./schema-selector";
-import { SchemaViewerStack } from "./schema-viewer";
+import Content from "@/screens/layout/content";
+import { SchemaSelector } from "@/screens/schema/schema-selector";
+import { SchemaViewerStack } from "@/screens/schema/schema-viewer";
 
 function SchemaPage() {
   useTitle("Schema");
@@ -30,6 +30,7 @@ function SchemaPage() {
     </Content>
   );
 }
+
 export function Component() {
   return <SchemaPage />;
 }
