@@ -159,6 +159,7 @@ const RelationshipField = ({
                     <RelationshipInput
                       {...field}
                       {...props}
+                      options={[]}
                       peer={selectedKind?.id}
                       parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                       disabled={props.disabled || !selectedKind?.id}

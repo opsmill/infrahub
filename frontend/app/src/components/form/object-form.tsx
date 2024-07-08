@@ -128,8 +128,6 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
     return <NoDataFound message={`${kind} schema not found. Try to reload the page.`} />;
   }
 
-  console.log("nodeSchema: ", nodeSchema);
-  console.log("nodeSchema.generate_profile: ", nodeSchema.generate_profile);
   return (
     <>
       {nodeSchema.generate_profile && (
