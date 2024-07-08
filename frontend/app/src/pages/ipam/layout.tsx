@@ -2,10 +2,10 @@ import { Outlet } from "react-router-dom";
 
 import { Card } from "@/components/ui/card";
 import Content from "@/screens/layout/content";
-import IpNamespaceSelector from "./ip-namespace-selector";
-import IpamTree from "./ipam-tree/ipam-tree";
+import IpNamespaceSelector from "../../screens/ipam/ip-namespace-selector";
+import IpamTree from "../../screens/ipam/ipam-tree/ipam-tree";
 
-function IpamPage() {
+function IpamLayout() {
   return (
     <>
       <Content.Title title="IP Address Manager">
@@ -26,5 +26,5 @@ function IpamPage() {
 }
 
 export function Component() {
-  return <IpamPage />;
+  return <IpamLayout />;
 }
