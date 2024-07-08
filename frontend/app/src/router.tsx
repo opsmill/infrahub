@@ -39,7 +39,7 @@ export const router = createBrowserRouter([
           },
           {
             path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
-            lazy: () => import("@/screens/artifacts/object-item-details-paginated"),
+            lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
           },
           {
             path: `/objects/${GRAPHQL_QUERY_OBJECT}/:graphqlQueryId`,
