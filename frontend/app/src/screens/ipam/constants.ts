@@ -9,7 +9,7 @@ export const POOLS_DICTIONNARY = {
   IpamIPPrefix: "CoreIPPrefixPool",
 };
 
-export const IPAM_TREE_ROOT_ID = "root" as const;
+export const TREE_ROOT_ID = "root" as const;
 
 export const IPAM_TABS = {
   SUMMARY: "summary",
