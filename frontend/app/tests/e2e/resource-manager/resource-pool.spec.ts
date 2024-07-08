@@ -20,7 +20,7 @@ test.describe("/resource-manager - Resource Manager", () => {
 
     await page.getByLabel("Select an object type").click();
 
-    await page.getByRole("option", { name: "CoreIPPrefixPool" }).click();
+    await page.getByRole("option", { name: "IP Prefix Pool Core" }).click();
 
     await page.getByLabel("Name *").fill("test prefix pool");
     await page.getByLabel("Resources *").click();

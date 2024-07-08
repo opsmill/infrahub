@@ -1,11 +1,12 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { classNames } from "@/utils/common";
-import { ComboboxOptionProps, Combobox as ComboboxPrimitive } from "@headlessui/react";
+import { Combobox as ComboboxPrimitive } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { forwardRef, ReactNode, useState } from "react";
+import React, { forwardRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { SearchInput } from "./search-input";
+import { Badge } from "./badge";
 
 export interface ComboboxProps extends Omit<ButtonProps, "onChange"> {
   children?: React.ReactNode;
@@ -23,11 +24,16 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(
       setOpen(false);
     };
 
+    const item = items.find((item) => item.value === value);
+
     return (
       <ComboboxPrimitive onChange={handleChange}>
         <Popover open={open} onOpenChange={setOpen}>
           <ComboboxTrigger ref={ref} {...props}>
-            {value}
+            <div className="flex flex-grow justify-between">
+              {item?.label}
+              {item?.badge && <Badge className="mr-2">{item.badge}</Badge>}
+            </div>
           </ComboboxTrigger>
 
           <ComboboxList items={items} onReset={handleChange} />
@@ -61,7 +67,7 @@ export const ComboboxTrigger = forwardRef<HTMLButtonElement, ComboboxTriggerProp
 );
 
 type ComboboxListProps = {
-  items: Array<string | { value: any; label: string }>;
+  items: Array<tComboboxItem>;
   onReset: (value: unknown) => void;
 };
 
@@ -71,9 +77,18 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
   const filteredOptions =
     query === ""
       ? items
-      : items
-          .map((item) => (typeof item === "string" ? item : item.label))
-          .filter((item) => item.toLowerCase().includes(query.toLowerCase()));
+      : items.filter((item) => {
+          const matchLabel = item.label.toLowerCase().includes(query.toLowerCase());
+          const matchValue = item.value.toLowerCase().includes(query.toLowerCase());
+
+          if (item.badge) {
+            return (
+              matchLabel || matchValue || item.badge.toLowerCase().includes(query.toLowerCase())
+            );
+          }
+
+          return matchLabel || matchValue;
+        });
 
   return (
     <PopoverContent
@@ -86,11 +101,12 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
         <div className="flex-grow">
           <ComboboxPrimitive.Input
             as={SearchInput}
+            value={query}
             className="h-8 shrink-0"
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
-        <Button size="sm" variant="ghost" onClick={() => onReset(null)}>
+        <Button size="sm" variant="ghost" onClick={() => onReset("")}>
           Clear
         </Button>
       </div>
@@ -99,13 +115,9 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
         <ComboboxPrimitive.Options static className="h-full overflow-auto">
           {filteredOptions.map((item) => {
             return typeof item === "string" ? (
-              <ComboboxItem key={item} value={item}>
-                {item}
-              </ComboboxItem>
+              <ComboboxItem key={item} item={item} />
             ) : (
-              <ComboboxItem key={item.label} value={item.value}>
-                {item.label}
-              </ComboboxItem>
+              <ComboboxItem key={item.label} item={item} />
             );
           })}
         </ComboboxPrimitive.Options>
@@ -116,11 +128,14 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
   );
 };
 
-export const ComboboxItem = <T,>({
-  className,
-  children,
-  ...props
-}: ComboboxOptionProps<"li", T>) => {
+export type tComboboxItem = { value: any; label: string; badge?: string };
+
+type ComboboxItemProps = {
+  className?: string;
+  item: tComboboxItem;
+};
+
+export const ComboboxItem = ({ className, item }: ComboboxItemProps) => {
   return (
     <ComboboxPrimitive.Option
       className={({ active, selected }) =>
@@ -131,11 +146,15 @@ export const ComboboxItem = <T,>({
           className
         )
       }
-      {...props}>
+      value={item.value}>
       {({ selected }) => (
         <div className="flex justify-between items-center">
-          {children as ReactNode}
-          {selected && <Icon icon="mdi:check" />}
+          {item.label}
+          <div className="flex">
+            {item.badge && <Badge className="mr-2">{item.badge}</Badge>}
+
+            <div className="w-6">{selected && <Icon icon="mdi:check" />}</div>
+          </div>
         </div>
       )}
     </ComboboxPrimitive.Option>

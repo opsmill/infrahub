@@ -8,7 +8,7 @@ import {
 import { useAtomValue } from "jotai/index";
 import { getFormFieldsFromSchema } from "./utils";
 import { useId, useState } from "react";
-import { Combobox } from "@/components/ui/combobox";
+import { Combobox, tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Label from "@/components/ui/label";
 import { gql } from "@apollo/client";
@@ -44,6 +44,8 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
   // get all attributes and relationship ordered
   // map them into form fields
   // render form
+  const schemas = useAtomValue(schemaState);
+  const profiles = useAtomValue(profilesAtom);
   const generics = useAtomValue(genericsState);
   const generic = generics.find((g) => g.kind === kind);
   const [kindToCreate, setKindToCreate] = useState<string>();
@@ -56,12 +58,38 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
     }
 
     if (!kindToCreate && generic.used_by.length === 1) {
-      setKindToCreate(generic.used_by[0]);
+      const genericKind = generic.used_by[0];
+
+      const relatedSchema = schemas.find((schema) => schema.kind === genericKind);
+
+      if (!relatedSchema) return;
+
+      const currentGeneric = {
+        value: relatedSchema.kind,
+        label: relatedSchema.label ?? relatedSchema.name,
+        badge: relatedSchema.namespace,
+      };
+
+      setKindToCreate(currentGeneric.value ?? "");
     }
+
+    const items = generic.used_by
+      .map((kind) => {
+        const relatedSchema = [...schemas, ...profiles].find((schema) => schema.kind === kind);
+
+        if (!relatedSchema) return null;
+
+        return {
+          value: relatedSchema.kind,
+          label: relatedSchema.label ?? relatedSchema.name,
+          badge: relatedSchema.namespace,
+        };
+      })
+      .filter(Boolean) as Array<tComboboxItem>;
 
     return (
       <>
-        <GenericSelector items={generic.used_by} value={kindToCreate} onChange={setKindToCreate} />
+        <GenericSelector items={items} value={kindToCreate} onChange={setKindToCreate} />
         {kindToCreate && <NodeWithProfileForm kind={kindToCreate} {...props} />}
       </>
     );
@@ -71,7 +99,7 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
 };
 
 type GenericSelectorProps = {
-  items: Array<string>;
+  items: Array<tComboboxItem>;
   value?: string;
   onChange: (item: string) => void;
 };
@@ -228,11 +256,13 @@ const NodeForm = ({
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const schemas = useAtomValue(schemaState);
   const [filters] = useFilters();
   const { data, permissions } = useAuth();
 
   const fields = getFormFieldsFromSchema({
     schema,
+    schemas,
     profile,
     initialObject: currentObject,
     user: { ...data, permissions },

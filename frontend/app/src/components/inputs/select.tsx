@@ -23,7 +23,6 @@ import { classNames, getTextColor } from "@/utils/common";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Combobox } from "@headlessui/react";
-import { CheckIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { forwardRef, useContext, useEffect, useState } from "react";
@@ -37,6 +36,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 import DynamicForm from "@/components/form/dynamic-form";
+import { Badge } from "../ui/badge";
 
 export type Parent = {
   name?: string;
@@ -48,6 +48,7 @@ export type SelectOption = {
   name: string;
   color?: string; // For dropdown
   description?: string; // For dropdown
+  badge?: string;
 };
 
 export enum SelectDirection {
@@ -945,9 +946,15 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
                         )}
                       </div>
 
-                      {selected && (
-                        <CheckIcon className="w-4 h-4 text-custom-blue-700" aria-hidden="true" />
-                      )}
+                      <div className="flex">
+                        {option.badge && <Badge className="mr-2">{option.badge}</Badge>}
+
+                        <div className="w-4">
+                          {selected && (
+                            <Icon icon={"mdi:check"} className="w-4 h-4 text-custom-blue-700" />
+                          )}
+                        </div>
+                      </div>
 
                       {canRemoveOption(option.id) && (
                         <Tooltip

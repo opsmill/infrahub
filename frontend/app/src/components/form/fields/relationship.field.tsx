@@ -4,7 +4,7 @@ import { components } from "@/infraops";
 import { store } from "@/state";
 import { genericsState, IModelSchema, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { Select } from "@/components/inputs/select";
+import { Select, SelectOption } from "@/components/inputs/select";
 import { DynamicRelationshipFieldProps, FormFieldProps } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
 
@@ -38,33 +38,30 @@ const RelationshipField = ({
     const schemaData = schemaList.find((schema) => schema.kind === selectedKind?.id);
     const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
 
-    const genericOptions = (generic.used_by || []).map((name: string) => {
-      const relatedSchema = [...nodes, ...profiles].find((s: any) => s.kind === name);
+    const genericOptions = (generic.used_by || [])
+      .map((name: string) => {
+        const relatedSchema = [...nodes, ...profiles].find((s: any) => s.kind === name);
 
-      if (relatedSchema) {
-        return {
-          id: name,
-          name: relatedSchema.label || relatedSchema.name,
-        };
-      }
-    });
+        if (relatedSchema) {
+          return {
+            id: name,
+            name: relatedSchema.label || relatedSchema.name,
+            badge: relatedSchema.namespace,
+          };
+        }
+      })
+      .filter(Boolean) as SelectOption[];
 
-    const kindOptions = Array.isArray(genericOptions)
-      ? genericOptions.map((option) => ({
-          name: option?.name,
-          id: option?.id,
-        }))
-      : [];
-    const selectedKindOption = kindOptions?.find((option) => option.id === selectedKind?.id);
+    const selectedKindOption = genericOptions?.find((option) => option.id === selectedKind?.id);
 
     // Select the first option if the only available
-    if (kindOptions?.length === 1 && !selectedKind) {
-      setSelectedKind(kindOptions[0]);
+    if (genericOptions?.length === 1 && !selectedKind) {
+      setSelectedKind(genericOptions[0]);
     }
 
     // Select the kind after building the options from generics
-    if (parent && !selectedKind && kindOptions?.length) {
-      setSelectedKind(kindOptions?.find((option) => option.id === parent));
+    if (parent && !selectedKind && genericOptions?.length) {
+      setSelectedKind(genericOptions?.find((option) => option.id === parent));
     }
 
     return (
@@ -96,7 +93,7 @@ const RelationshipField = ({
                   <RelationshipInput
                     {...field}
                     {...props}
-                    options={kindOptions}
+                    options={genericOptions}
                     onChange={setSelectedKind}
                     value={selectedKind?.id}
                   />
@@ -276,7 +273,7 @@ interface RelationshipInputProps extends FormFieldProps, RelationshipFieldProps 
   relationship: components["schemas"]["RelationshipSchema-Output"];
   schema: IModelSchema;
   onChange: (value: any) => void;
-  value?: string;
+  value?: string | number;
   multiple?: boolean;
   className?: string;
 }
