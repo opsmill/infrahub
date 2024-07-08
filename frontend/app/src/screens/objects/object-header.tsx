@@ -72,14 +72,6 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
 
   const objectDetailsData = data?.[schema.kind!]?.edges[0]?.node;
 
-  if (!objectDetailsData) {
-    return (
-      <Content.Title
-        title={<div className="text-md flex gap-2 items-center">No item found</div>}
-        data-testid="object-header"></Content.Title>
-    );
-  }
-
   return (
     <Content.Title
       title={

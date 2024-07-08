@@ -1,10 +1,6 @@
 import { useAtomValue } from "jotai";
 import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
-import {
-  EMPTY_IPAM_TREE,
-  getTreeItemAncestors,
-  ROOT_TREE_ITEM,
-} from "@/screens/ipam/ipam-tree/utils";
+import { EMPTY_IPAM_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
 import { genericsState, IModelSchema, schemaState } from "@/state/atoms/schema.atom";
 import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
@@ -14,9 +10,13 @@ import { IPAM_TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
 import { constructPath } from "@/utils/fetch";
-import { NodeId } from "react-accessible-treeview";
+import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { getObjectDetailsUrl } from "@/utils/objects";
-import { objectTreeQuery } from "@/graphql/queries/objects/objectTreeQuery";
+import {
+  objectAncestorsQuery,
+  objectChildrenQuery,
+  objectTopLevelTreeQuery,
+} from "@/graphql/queries/objects/objectTreeQuery";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 
 export type HierarchicalTreeProps = {
@@ -31,49 +31,93 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
 
   const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_IPAM_TREE);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
+  const [selectedIds, setSelectedIds] = useState<NodeId[]>([]);
 
-  const query = gql(objectTreeQuery({ kind: schema.kind, id: currentNodeId }));
-  const [getObjectTree] = useLazyQuery(query);
+  const [getObjectTopLevelTree] = useLazyQuery(gql(objectTopLevelTreeQuery({ kind: schema.kind })));
+  const [getObjectAncestors] = useLazyQuery(gql(objectAncestorsQuery({ kind: schema.kind })));
+  const [getTreeItemChildren] = useLazyQuery(gql(objectChildrenQuery({ kind: schema.kind })));
   const [isLoading, setLoading] = useState(true);
 
   const fetchTree = async () => {
-    const { data } = await getObjectTree();
+    setLoading(true);
+    const { data } = await getObjectTopLevelTree();
+    if (!data) return;
 
-    let rootNodeIds: string[] = [];
-    const objectTreeData = data[schema.kind as string].edges;
-    const tree = objectTreeData.map(({ node }: { node: any }) => {
-      const nodeId = node?.id;
-      const parentId = node.parent?.node?.id ?? IPAM_TREE_ROOT_ID;
+    const topLevelTreeItems = formatResponseDataForTreeView(data[schema.kind!]);
+    const treeWithTopLevelPrefixesOnly = updateTreeData(
+      EMPTY_IPAM_TREE,
+      IPAM_TREE_ROOT_ID,
+      topLevelTreeItems
+    );
 
-      if (parentId === IPAM_TREE_ROOT_ID) rootNodeIds.push(nodeId);
+    if (!currentNodeId) {
+      return treeWithTopLevelPrefixesOnly;
+    }
 
-      return {
-        id: node.id,
-        name: node.display_label,
-        children: objectTreeData
-          .filter((object: any) => object.node?.parent?.node?.id === nodeId)
-          .map((object: any) => object.node?.id),
-        parent: parentId,
-        isBranch: node.children.count > 0,
-        metadata: {
-          kind: node.__typename,
-        },
-      };
+    const { data: objectAncestorsData } = await getObjectAncestors({
+      variables: { ids: [currentNodeId] },
     });
 
-    const newTree = [{ ...ROOT_TREE_ITEM, children: rootNodeIds }, ...tree];
+    const currentObjectData = objectAncestorsData[schema.kind!].edges[0];
 
-    if (currentNodeId) {
-      const ancestorIds = getTreeItemAncestors(newTree, currentNodeId).map(({ id }) => id);
-      setExpandedIds(ancestorIds);
+    if (!currentObjectData) {
+      console.error(`Prefix ${currentNodeId} not found.`);
+      return treeWithTopLevelPrefixesOnly;
     }
-    setTreeData(newTree);
-    setLoading(false);
+
+    const ancestors = currentObjectData.node.ancestors.edges;
+    const orderedAncestors: typeof ancestors = [];
+
+    const traverseHierarchy = (map: typeof ancestors, parentId: string | null) => {
+      const child = map.find(({ node }: any) => {
+        return node.parent.node === parentId || node.parent.node?.id === parentId;
+      });
+      if (!child) return;
+
+      orderedAncestors.push(child);
+
+      if (child?.node?.children?.count > 0) {
+        child.node.children.edges.forEach((c: any) => orderedAncestors.push(c));
+      }
+      traverseHierarchy(map, child.node.id);
+    };
+
+    traverseHierarchy(ancestors, null);
+
+    const orderedAncestorsFormattedForTree = formatResponseDataForTreeView({
+      edges: [...orderedAncestors, currentObjectData],
+    });
+    setExpandedIds(orderedAncestorsFormattedForTree.map((x) => x.id));
+    return updateHierarchicalTree(treeWithTopLevelPrefixesOnly, orderedAncestorsFormattedForTree);
   };
 
   useEffect(() => {
-    fetchTree();
-  }, [schema.kind, currentNodeId, branch]);
+    setLoading(true);
+    setSelectedIds([]);
+    setExpandedIds([]);
+    fetchTree().then((tree) => {
+      if (!tree) return;
+
+      setLoading(false);
+      setTreeData(tree);
+      if (currentNodeId) {
+        setSelectedIds([currentNodeId]);
+      }
+    });
+  }, [schema.kind, branch]);
+
+  const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
+    if (element.children.length > 0) return; // To avoid refetching data
+
+    const { data } = await getTreeItemChildren({
+      variables: { parentIds: [element.id.toString()] },
+    });
+
+    if (!data) return;
+
+    const treeNodes = formatResponseDataForTreeView(data[schema.kind!]);
+    setTreeData((tree) => updateTreeData(tree, element.id.toString(), treeNodes));
+  };
 
   return (
     <Card className={className}>
@@ -82,13 +126,15 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
         data={treeData}
         itemContent={ObjectTreeItem}
         defaultExpandedIds={expandedIds}
-        selectedIds={currentNodeId ? [currentNodeId] : undefined}
-        onNodeSelect={({ element, isSelected, isBranch }) => {
-          if (!isSelected || isBranch) return;
+        selectedIds={selectedIds}
+        onLoadData={onLoadData}
+        onNodeSelect={({ element, isSelected }) => {
+          if (!isSelected) return;
 
           const url = getObjectDetailsUrl(element.id.toString(), element.metadata?.kind as string);
           navigate(url);
         }}
+        className="overflow-auto h-full"
         data-testid="hierarchical-tree"
       />
     </Card>
@@ -103,13 +149,42 @@ const ObjectTreeItem = ({ element }: TreeItemProps) => {
 
   const url = constructPath(getObjectDetailsUrl(element.id.toString(), schema?.kind as string));
   return (
-    <Link
-      to={url}
-      tabIndex={-1}
-      className="flex items-center gap-2 overflow-hidden"
-      data-testid="ipam-tree-item">
+    <Link to={url} tabIndex={-1} className="flex items-center gap-2" data-testid="ipam-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
-      <span className="truncate">{element.name}</span>
+      <span className="whitespace-nowrap">{element.name}</span>
     </Link>
   );
+};
+
+export const formatResponseDataForTreeView = (data: {
+  edges: Array<{ node: PrefixNode }>;
+}): TreeItemProps["element"][] => {
+  return data.edges.map(({ node }) => ({
+    id: node.id,
+    name: node.display_label,
+    parent: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
+    children: node.children?.edges?.map(({ node }) => node.id) ?? [],
+    isBranch: node.children.count > 0,
+    metadata: {
+      kind: node.__typename,
+    },
+  }));
+};
+
+export const updateHierarchicalTree = (list: TreeProps["data"], children: TreeProps["data"]) => {
+  return children.reduce((acc, currentChild) => {
+    // new tree item needs to be added in 2 locations:
+    // 1. new tree item should be ths in list (once only)
+    // 2. new tree item's id should be in its parent's children array (once only)
+    const data = acc.map((node) => {
+      if (node.id === currentChild.parent) {
+        node.children = [...new Set([...node.children, currentChild.id])];
+      }
+      return node;
+    });
+
+    const isChildrenAlreadyPresent = data.some(({ id }) => id === currentChild.id);
+
+    return isChildrenAlreadyPresent ? data : [...data, currentChild];
+  }, list);
 };
