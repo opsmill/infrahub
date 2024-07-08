@@ -80,4 +80,18 @@ test.describe("Verifies the object creation", () => {
       );
     });
   });
+
+  test("verifies empty values after kind select", async ({ page }) => {
+    await page.goto("/objects/CoreGraphQLQuery");
+    await page.getByTestId("create-object-button").click();
+    await page.getByLabel("Kind").click();
+    await page
+      .getByTestId("side-panel-container")
+      .getByLabel("", { exact: true })
+      .getByText("Repository", { exact: true })
+      .click();
+    await page.getByLabel("Repository").click();
+    await expect(page.getByText("Empty", { exact: true })).toBeVisible();
+    await expect(page.getByText("Read-Only Repository", { exact: true })).not.toBeVisible();
+  });
 });
