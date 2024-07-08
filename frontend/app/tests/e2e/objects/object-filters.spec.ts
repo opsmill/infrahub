@@ -105,7 +105,7 @@ test.describe("Object filters", () => {
       .locator("../..")
       .getByTestId("select-open-option-button");
     await kindSelector.click();
-    await expect(page.getByRole("option", { name: "Tag", exact: true })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Tag Builtin", exact: true })).toBeVisible();
   });
 
   test("should correctly filter from a kind", async ({ page }) => {
@@ -118,7 +118,7 @@ test.describe("Object filters", () => {
 
     await test.step("filter objects", async () => {
       await kindSelector.getByTestId("select-open-option-button").click();
-      await page.getByRole("option", { name: "Interface L2", exact: true }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
       await page.getByRole("button", { name: "Apply filters" }).click();
       await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 510 results");
     });
