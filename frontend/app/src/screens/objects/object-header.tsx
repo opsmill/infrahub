@@ -79,9 +79,7 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
           <Link
             to={constructPath(`/objects/${isProfile ? PROFILE_KIND : schemaKind}`)}
             className="flex items-center cursor-pointer">
-            <h1 className="font-semibold text-gray-900 mr-2 hover:underline">
-              {breadcrumbModelLabel}
-            </h1>
+            <h1 className="font-semibold text-gray-900 hover:underline">{breadcrumbModelLabel}</h1>
           </Link>
 
           {loading ? (
@@ -92,7 +90,7 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
           ) : (
             <>
               <Icon icon="mdi:chevron-right" />
-              <p>{objectDetailsData.display_label}</p>
+              <p>{objectDetailsData?.display_label ?? "not found"}</p>
             </>
           )}
         </div>
