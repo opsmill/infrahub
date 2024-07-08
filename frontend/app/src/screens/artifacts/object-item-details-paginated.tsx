@@ -434,7 +434,3 @@ export default function ArtifactsDetails() {
     </Content>
   );
 }
-
-export function Component() {
-  return <ArtifactsDetails />;
-}
