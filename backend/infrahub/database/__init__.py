@@ -12,6 +12,7 @@ from neo4j import (
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
+    Query,
     Record,
     TrustAll,
     TrustCustomCAs,
@@ -214,12 +215,14 @@ class InfrahubDatabase:
         self._is_session_local = True
         return self._session
 
-    async def transaction(self) -> AsyncTransaction:
+    async def transaction(self, name: Optional[str]) -> AsyncTransaction:
         if self._transaction:
             return self._transaction
 
         session = await self.session()
-        self._transaction = await session.begin_transaction()
+        self._transaction = await session.begin_transaction(
+            metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"}
+        )
         return self._transaction
 
     async def __aenter__(self) -> Self:
@@ -270,6 +273,7 @@ class InfrahubDatabase:
     ) -> list[Record]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
             span.set_attribute("query", query)
+            span.set_attribute("query_name", name)
 
             with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params)
@@ -280,20 +284,28 @@ class InfrahubDatabase:
     ) -> tuple[list[Record], dict[str, Any]]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
+            span.set_attribute("query_name", name)
 
             with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
-                response = await self.run_query(query=query, params=params)
+                response = await self.run_query(query=query, params=params, name=name)
                 results = [item async for item in response]
                 return results, response._metadata or {}
 
-    async def run_query(self, query: str, params: Optional[dict[str, Any]] = None) -> AsyncResult:
+    async def run_query(
+        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+    ) -> AsyncResult:
+        _query: Union[str | Query] = query
         if self.is_transaction:
-            execution_method = await self.transaction()
+            execution_method = await self.transaction(name=name)
         else:
+            _query = Query(
+                text=query,
+                metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"},
+            )
             execution_method = await self.session()
 
         try:
-            response = await execution_method.run(query=query, parameters=params)
+            response = await execution_method.run(query=_query, parameters=params)
         except ServiceUnavailable as exc:
             log.error("Database Service unavailable", error=str(exc))
             raise DatabaseError(message="Unable to connect to the database") from exc
