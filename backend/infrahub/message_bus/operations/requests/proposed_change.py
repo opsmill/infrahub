@@ -552,19 +552,25 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
             # Redirect stdout/stderr to avoid showing pytest lines in the git agent
             old_out = sys.stdout
             old_err = sys.stderr
-            sys.stdout = Path(os.devnull).open(mode="w", encoding="utf-8")
-            sys.stderr = Path(os.devnull).open(mode="w", encoding="utf-8")
 
-            exit_code = pytest.main(
-                [
-                    str(test_directory),
-                    f"--infrahub-repo-config={config_file}",
-                    f"--infrahub-address={config.SETTINGS.main.internal_address}",
-                    "-qqqq",
-                    "-s",
-                ],
-                plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
-            )
+            with Path(os.devnull).open(mode="w", encoding="utf-8") as stdout, Path(os.devnull).open(
+                mode="w", encoding="utf-8"
+            ) as stderr:
+                sys.stdout = stdout
+                sys.stderr = stderr
+
+                exit_code = pytest.main(
+                    [
+                        str(test_directory),
+                        f"--infrahub-repo-config={config_file}",
+                        f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                        "-qqqq",
+                        "-s",
+                    ],
+                    plugins=[
+                        InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)
+                    ],
+                )
 
             # Restore stdout/stderr back to their orignal states
             sys.stdout = old_out
