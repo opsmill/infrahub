@@ -18,6 +18,7 @@ import {
   objectTopLevelTreeQuery,
 } from "@/graphql/queries/objects/objectTreeQuery";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 
 export type HierarchicalTreeProps = {
   schema: IModelSchema;
@@ -27,7 +28,8 @@ export type HierarchicalTreeProps = {
 
 export const HierarchicalTree = ({ schema, currentNodeId, className }: HierarchicalTreeProps) => {
   const navigate = useNavigate();
-  const branch = useAtomValue(currentBranchAtom);
+  const currentBranch = useAtomValue(currentBranchAtom);
+  const currentDate = useAtomValue(datetimeAtom);
 
   const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_TREE);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
@@ -87,7 +89,9 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
     const orderedAncestorsFormattedForTree = formatResponseDataForTreeView({
       edges: [...orderedAncestors, currentObjectData],
     });
-    setExpandedIds(orderedAncestorsFormattedForTree.map((x) => x.id));
+    setExpandedIds(
+      orderedAncestorsFormattedForTree.map((x) => x.id).filter((id) => id !== currentNodeId)
+    );
     return updateHierarchicalTree(treeWithTopLevelPrefixesOnly, orderedAncestorsFormattedForTree);
   };
 
@@ -104,7 +108,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
         setSelectedIds([currentNodeId]);
       }
     });
-  }, [schema.kind, branch]);
+  }, [schema.kind, currentBranch, currentDate]);
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (!element.isBranch || element.children.length > 0) return; // To avoid refetching data
@@ -131,10 +135,12 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
         onNodeSelect={({ element, isSelected }) => {
           if (!isSelected) return;
 
-          const url = getObjectDetailsUrl(element.id.toString(), element.metadata?.kind as string);
+          const url = constructPath(
+            getObjectDetailsUrl(element.id.toString(), element.metadata?.kind as string)
+          );
           navigate(url);
         }}
-        className="overflow-auto h-full"
+        className="overflow-auto h-full p-1"
         data-testid="hierarchical-tree"
       />
     </Card>

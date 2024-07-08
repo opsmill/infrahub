@@ -58,11 +58,6 @@ export const objectAncestorsQuery = Handlebars.compile(`
           }
           children {
             count
-            edges {
-              node {
-                id
-              }
-            }
           }
           ancestors {
             edges {
@@ -89,11 +84,6 @@ export const objectAncestorsQuery = Handlebars.compile(`
                       }
                       children {
                         count
-                        edges {
-                          node {
-                            id
-                          }
-                        }
                       }
                     }
                   }
