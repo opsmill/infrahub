@@ -159,6 +159,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "/signin",
-    lazy: () => import("@/screens/sign-in/sign-in"),
+    lazy: () => import("@/pages/sign-in"),
   },
 ]);
