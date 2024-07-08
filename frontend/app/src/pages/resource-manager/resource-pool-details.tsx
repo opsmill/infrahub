@@ -21,12 +21,15 @@ import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";
-import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
-import { RESOURCE_GENERIC_KIND, RESOURCE_POOL_UTILIZATION_KIND } from "./constants";
-import ResourceSelector, { ResourceProps } from "./resource-selector";
+import ResourcePoolUtilization from "@/screens/resource-manager/common/ResourcePoolUtilization";
+import {
+  RESOURCE_GENERIC_KIND,
+  RESOURCE_POOL_UTILIZATION_KIND,
+} from "@/screens/resource-manager/constants";
+import ResourceSelector, { ResourceProps } from "@/screens/resource-manager/resource-selector";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 
-const ResourcePoolPage = () => {
+const ResourcePoolDetailsPage = () => {
   const { resourcePoolId } = useParams();
   const nodes = useAtomValue(schemaState);
 
@@ -165,5 +168,5 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
 };
 
 export function Component() {
-  return <ResourcePoolPage />;
+  return <ResourcePoolDetailsPage />;
 }

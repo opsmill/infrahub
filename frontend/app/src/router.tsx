@@ -97,11 +97,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "/resource-manager/:resourcePoolId",
-            lazy: () => import("@/screens/resource-manager/resource-pool-page"),
+            lazy: () => import("@/pages/resource-manager/resource-pool-details"),
             children: [
               {
                 path: "resources/:resourceId",
-                lazy: () => import("@/screens/resource-manager/resource-allocation-page"),
+                lazy: () => import("@/pages/resource-manager/resource-allocation-details"),
               },
             ],
           },
