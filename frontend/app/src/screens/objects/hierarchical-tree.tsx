@@ -1,12 +1,12 @@
 import { useAtomValue } from "jotai";
 import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
-import { EMPTY_IPAM_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
+import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
 import { genericsState, IModelSchema, schemaState } from "@/state/atoms/schema.atom";
 import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
-import { IPAM_TREE_ROOT_ID } from "@/screens/ipam/constants";
+import { TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
 import { constructPath } from "@/utils/fetch";
@@ -29,7 +29,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
   const navigate = useNavigate();
   const branch = useAtomValue(currentBranchAtom);
 
-  const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_IPAM_TREE);
+  const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_TREE);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
   const [selectedIds, setSelectedIds] = useState<NodeId[]>([]);
 
@@ -45,8 +45,8 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
 
     const topLevelTreeItems = formatResponseDataForTreeView(data[schema.kind!]);
     const treeWithTopLevelPrefixesOnly = updateTreeData(
-      EMPTY_IPAM_TREE,
-      IPAM_TREE_ROOT_ID,
+      EMPTY_TREE,
+      TREE_ROOT_ID,
       topLevelTreeItems
     );
 
@@ -149,7 +149,11 @@ const ObjectTreeItem = ({ element }: TreeItemProps) => {
 
   const url = constructPath(getObjectDetailsUrl(element.id.toString(), schema?.kind as string));
   return (
-    <Link to={url} tabIndex={-1} className="flex items-center gap-2" data-testid="ipam-tree-item">
+    <Link
+      to={url}
+      tabIndex={-1}
+      className="flex items-center gap-2"
+      data-testid="hierarchical-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span className="whitespace-nowrap">{element.name}</span>
     </Link>
@@ -162,7 +166,7 @@ export const formatResponseDataForTreeView = (data: {
   return data.edges.map(({ node }) => ({
     id: node.id,
     name: node.display_label,
-    parent: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
+    parent: node.parent.node?.id ?? TREE_ROOT_ID,
     children: node.children?.edges?.map(({ node }) => node.id) ?? [],
     isBranch: node.children.count > 0,
     metadata: {
