@@ -43,6 +43,7 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
   // map them into form fields
   // render form
   const schemas = useAtomValue(schemaState);
+  const profiles = useAtomValue(profilesAtom);
   const generics = useAtomValue(genericsState);
   const generic = generics.find((g) => g.kind === kind);
   const [kindToCreate, setKindToCreate] = useState<string>();
@@ -72,7 +73,7 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
 
     const items = generic.used_by
       .map((kind) => {
-        const relatedSchema = schemas.find((schema) => schema.kind === kind);
+        const relatedSchema = [...schemas, ...profiles].find((schema) => schema.kind === kind);
 
         if (!relatedSchema) return null;
 
