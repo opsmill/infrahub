@@ -268,7 +268,8 @@ class SchemaBranch:
         If a schema with the same name already exist, it will be replaced
         """
         schema_hash = schema.get_hash()
-        self._cache[schema_hash] = schema
+        if schema_hash not in self._cache:
+            self._cache[schema_hash] = schema
 
         if "Node" in schema.__class__.__name__:
             self.nodes[name] = schema_hash
@@ -1885,7 +1886,9 @@ class SchemaManager(NodeManager):
 
         # Update the attributes and the relationships nodes as well
         await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
-        await obj.relationships.update(db=db, data=[item.id for item in node.local_relationships if item.id])
+        await obj.relationships.update(
+            db=db, data=[item.id for item in node.local_relationships if item.id and item.name != "profiles"]
+        )
         await obj.save(db=db)
 
         # Then Update the Attributes and the relationships
@@ -1911,8 +1914,9 @@ class SchemaManager(NodeManager):
             if item.id and item.id in items:
                 await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
             elif not item.id:
-                if item.name == "profiles" and "profiles" not in new_node.relationship_names:
-                    new_node.relationships.append(item)
+                if item.name == "profiles":
+                    if "profiles" not in new_node.relationship_names:
+                        new_node.relationships.append(item)
                     continue
                 new_rel = await self.create_relationship_in_db(
                     schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
@@ -2218,6 +2222,8 @@ class SchemaManager(NodeManager):
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
+                if rel_name == "profiles":
+                    continue
                 node_data[rel_name] = []
 
             rm = getattr(schema_node, rel_name)

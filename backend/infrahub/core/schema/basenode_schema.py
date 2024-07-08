@@ -75,8 +75,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             md5hash.update(self.get_attribute(name=attr_name).get_hash(display_values=display_values).encode())
 
         for rel_name in sorted(self.relationship_names):
-            if rel_name == "profiles":
-                continue
             md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
 
         for filter_name in sorted(self.filter_names):
