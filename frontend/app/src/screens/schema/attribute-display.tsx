@@ -5,7 +5,7 @@ import { AccordionStyled, NullDisplay, PropertyRow } from "./styled";
 export const AttributeDisplay = ({
   attribute,
 }: {
-  attribute: components["schemas"]["AttributeSchema"];
+  attribute: components["schemas"]["AttributeSchema-Output"];
 }) => (
   <AccordionStyled
     title={attribute.label || attribute.name}
