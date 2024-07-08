@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
 from enum import IntFlag
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
@@ -536,17 +538,39 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
             directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
         ) -> Union[int, pytest.ExitCode]:
             config_file = str(directory / ".infrahub.yml")
-            return pytest.main(
+            test_directory = directory / "tests"
+
+            if not test_directory.is_dir():
+                log.debug(
+                    event="repository_tests_ignored",
+                    proposed_change=proposed_change,
+                    repository=repository.repository_name,
+                    message="tests directory not found",
+                )
+                return 1
+
+            # Redirect stdout/stderr to avoid showing pytest lines in the git agent
+            old_out = sys.stdout
+            old_err = sys.stderr
+            sys.stdout = Path(os.devnull).open(mode="w", encoding="utf-8")
+            sys.stderr = Path(os.devnull).open(mode="w", encoding="utf-8")
+
+            exit_code = pytest.main(
                 [
-                    str(directory),
+                    str(test_directory),
                     f"--infrahub-repo-config={config_file}",
                     f"--infrahub-address={config.SETTINGS.main.internal_address}",
-                    "--continue-on-collection-errors",  # FIXME: Non-Infrahub tests should be ignored
                     "-qqqq",
                     "-s",
                 ],
                 plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
             )
+
+            # Restore stdout/stderr back to their orignal states
+            sys.stdout = old_out
+            sys.stderr = old_err
+
+            return exit_code
 
         for repository in message.branch_diff.repositories:
             log_line = "Skipping tests for data only branch"
@@ -563,7 +587,7 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
 
                 return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
                 log.info(
-                    "repository_tests_completed",
+                    event="repository_tests_completed",
                     proposed_change=message.proposed_change,
                     repository=repository.repository_name,
                     return_code=return_code,

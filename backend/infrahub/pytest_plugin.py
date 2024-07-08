@@ -109,12 +109,13 @@ class InfrahubBackendPlugin:
 
         If a check already exists, reset it to its default values.
         """
+        created_at = Timestamp().to_string()
         check = self.checks.get(item.nodeid, None)
         if check:
             check.message.value = ""
             check.conclusion.value = "unknown"
             check.severity.value = "info"
-            check.created_at.value = Timestamp().to_string()
+            check.created_at.value = created_at
         else:
             check = self.client.create(
                 kind=InfrahubKind.STANDARDCHECK,
@@ -123,7 +124,7 @@ class InfrahubBackendPlugin:
                     "origin": item.nodeid,
                     "kind": "TestReport",
                     "validator": self.validator.id,
-                    "created_at": Timestamp().to_string(),
+                    "created_at": created_at,
                     "severity": "info",
                 },
             )
