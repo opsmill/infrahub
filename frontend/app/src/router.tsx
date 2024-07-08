@@ -85,11 +85,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "/graphql/:branch",
-            lazy: () => import("@/screens/graphql/redirect-to-graphql-sandbox-page"),
+            lazy: () => import("@/pages/graphql/redirect-to-graphql-sandbox-page"),
           },
           {
             path: "graphql",
-            lazy: () => import("@/screens/graphql/graphql-sandbox-page"),
+            lazy: () => import("@/pages/graphql"),
           },
           {
             path: "/resource-manager",
