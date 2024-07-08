@@ -26,7 +26,7 @@ const fields: Array<DynamicFieldProps> = [
   },
 ];
 
-function SignIn() {
+function SignInPage() {
   let navigate = useNavigate();
   let location = useLocation();
   const { signIn } = useAuth();
@@ -62,5 +62,5 @@ export function Component() {
     return <Navigate to="/" replace />;
   }
 
-  return <SignIn />;
+  return <SignInPage />;
 }
