@@ -25,7 +25,7 @@ const renderContent = (tab: string | null | undefined) => {
   }
 };
 
-const BranchItemDetails = () => {
+const BranchDetailsPage = () => {
   const { branchName } = useParams();
   const [qspTab, setQspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   useTitle(`${branchName} details`);
@@ -69,5 +69,5 @@ const BranchItemDetails = () => {
 };
 
 export function Component() {
-  return <BranchItemDetails />;
+  return <BranchDetailsPage />;
 }
