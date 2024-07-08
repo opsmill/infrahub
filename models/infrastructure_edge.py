@@ -43,6 +43,17 @@ class Device(BaseModel):
     tags: list[str]
     platform: str
 
+    @property
+    def l2_interface_names(self) -> list[str]:
+        INTERFACE_L2_NAMES = {
+            "7280R3": ["Ethernet11", "Ethernet12"],
+            "ASR1002-HX": ["Ethernet11", "Ethernet12"],
+            "MX204": ["et-0/0/3"],
+            "7010TX-48": [f"Ethernet{idx}" for idx in range(1, 49)],
+        }
+
+        return INTERFACE_L2_NAMES.get(self.type, [])
+
 
 class Group(BaseModel):
     name: str
@@ -302,12 +313,6 @@ INTERFACE_L3_NAMES = {
     ],
     "7010TX-48": [],
     "MX204": ["et-0/0/0", "et-0/0/1", "et-0/0/2"],
-}
-INTERFACE_L2_NAMES = {
-    "7280R3": ["Ethernet11", "Ethernet12"],
-    "ASR1002-HX": ["Ethernet11", "Ethernet12"],
-    "MX204": ["et-0/0/3"],
-    "7010TX-48": [f"Ethernet{idx}" for idx in range(1, 49)],
 }
 
 LAG_INTERFACE_L2 = {
@@ -988,7 +993,9 @@ async def generate_site(
                     )
 
         # L2 Interfaces
-        for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES[device.type]):
+        batch = await client.create_batch()
+
+        for intf_idx, intf_name in enumerate(device.l2_interface_names):
             try:
                 intf_role = INTERFACE_L2_ROLES_MAPPING.get(device.role, [])[intf_idx]
             except IndexError:
@@ -1012,8 +1019,12 @@ async def generate_site(
                 l2_mode=l2_mode,
                 untagged_vlan=untagged_vlan,
             )
-            await intf.save()
+
+            batch.add(task=intf.save, node=intf)
             store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
+
+        async for node, _ in batch.execute():
+            log.debug(f"- Created {node._schema.kind} - {node.name.value}")
 
         for lag_intf in LAG_INTERFACE_L2.get(device.type, []):
             try:
