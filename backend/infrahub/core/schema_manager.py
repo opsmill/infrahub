@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
+from opentelemetry import trace
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -2197,6 +2198,7 @@ class SchemaManager(NodeManager):
         return schema
 
     @classmethod
+    @trace.get_tracer(__name__).start_as_current_span("_prepare_node_data")
     async def _prepare_node_data(cls, schema_node: Node, db: InfrahubDatabase) -> dict[str, Any]:
         node_data = {"id": schema_node.id}
 

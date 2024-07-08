@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub_sdk.utils import extract_fields
+from opentelemetry import trace
 
 from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
 
 
+@trace.get_tracer(__name__).start_as_current_span("default_resolver")
 async def default_resolver(*args, **kwargs):
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
@@ -93,6 +95,7 @@ async def default_resolver(*args, **kwargs):
         return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
 
 
+@trace.get_tracer(__name__).start_as_current_span("single_relationship_resolver")
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
     """Resolver for relationships of cardinality=one for Edged responses
 
@@ -148,6 +151,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
         return response
 
 
+@trace.get_tracer(__name__).start_as_current_span("many_relationship_resolver")
 async def many_relationship_resolver(
     parent: dict, info: GraphQLResolveInfo, include_descendants: Optional[bool] = False, **kwargs
 ) -> dict[str, Any]:
