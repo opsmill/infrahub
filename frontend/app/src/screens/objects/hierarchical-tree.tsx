@@ -107,7 +107,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
   }, [schema.kind, branch]);
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
-    if (element.children.length > 0) return; // To avoid refetching data
+    if (!element.isBranch || element.children.length > 0) return; // To avoid refetching data
 
     const { data } = await getTreeItemChildren({
       variables: { parentIds: [element.id.toString()] },
