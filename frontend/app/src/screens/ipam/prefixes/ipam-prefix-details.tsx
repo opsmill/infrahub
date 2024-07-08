@@ -106,9 +106,13 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       prefix: child?.node?.prefix?.value,
       description: child?.node?.description?.value,
       member_type:
-        child?.node?.member_type?.value && memberIcons[child?.node?.member_type?.value]
-          ? memberIcons[child?.node?.member_type?.value]
-          : child?.node?.member_type?.value ?? "-",
+        child?.node?.member_type?.value && memberIcons[child?.node?.member_type?.value] ? (
+          <span className="flex gap-0.5 items-center">
+            {memberIcons[child?.node?.member_type?.value]} {child?.node?.member_type?.value}
+          </span>
+        ) : (
+          child?.node?.member_type?.value ?? "-"
+        ),
       is_pool: child?.node?.is_pool?.value ? <Icon icon="mdi:check" /> : <Icon icon="mdi:close" />,
       utilization: <ProgressBarChart value={child?.node?.utilization?.value} />,
       netmask: child?.node?.netmask?.value,
