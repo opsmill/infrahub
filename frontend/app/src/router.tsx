@@ -65,7 +65,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "/proposed-changes/new",
-            lazy: () => import("@/screens/proposed-changes/proposed-changes-create-page"),
+            lazy: () => import("@/pages/proposed-changes/new"),
           },
           {
             path: "/proposed-changes/:proposedchange",
