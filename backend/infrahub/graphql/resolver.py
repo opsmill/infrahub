@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub_sdk.utils import extract_fields
@@ -237,24 +238,32 @@ async def many_relationship_resolver(
             branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
         )
 
-        if not objs:
-            return response
-        node_graph = [
-            await obj.to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids) for obj in objs
-        ]
-
-        entries = []
-        for node in node_graph:
-            entry = {"node": {}, "properties": {}}
-            for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
-                value = node.pop(key, None)
-                if value:
-                    entry["properties"][mapped] = value
-            entry["node"] = node
-            entries.append(entry)
-        response["edges"] = entries
-
+    if not objs:
         return response
+    tasks = []
+    sessions = []
+    for obj in objs:
+        db = await context.db.start_session().__aenter__()
+        sessions.append(db)
+        tasks.append(obj.to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids))
+
+    node_graph = await asyncio.gather(*tasks)
+
+    for db in sessions:
+        await db.__aexit__(None, None, None)
+
+    entries = []
+    for node in node_graph:
+        entry = {"node": {}, "properties": {}}
+        for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
+            value = node.pop(key, None)
+            if value:
+                entry["properties"][mapped] = value
+        entry["node"] = node
+        entries.append(entry)
+    response["edges"] = entries
+
+    return response
 
 
 async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:

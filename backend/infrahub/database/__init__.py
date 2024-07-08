@@ -229,11 +229,15 @@ class InfrahubDatabase:
         if self._mode == InfrahubDatabaseMode.SESSION:
             if self._session_mode == InfrahubDatabaseSessionMode.READ:
                 self._session = self._driver.session(
-                    database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
+                    database=config.SETTINGS.database.database_name,
+                    default_access_mode=READ_ACCESS,
+                    fetch_size=100000,
                 )
             else:
                 self._session = self._driver.session(
-                    database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
+                    database=config.SETTINGS.database.database_name,
+                    default_access_mode=WRITE_ACCESS,
+                    fetch_size=100000,
                 )
 
         elif self._mode == InfrahubDatabaseMode.TRANSACTION:
@@ -384,6 +388,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
+        max_connection_pool_size=10000,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:
