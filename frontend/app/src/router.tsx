@@ -31,11 +31,11 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/branches/:branchName",
-            lazy: () => import("@/screens/branches/branch-item-details"),
+            lazy: () => import("@/pages/branches/branch-details"),
           },
           {
             path: "/branches",
-            lazy: () => import("@/screens/branches/branches-items"),
+            lazy: () => import("@/pages/branches"),
           },
           {
             path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
