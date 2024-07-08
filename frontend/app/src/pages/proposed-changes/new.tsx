@@ -1,4 +1,4 @@
-import { ProposedChangeCreateForm } from "@/screens/proposed-changes/proposed-changes-create-page";
+import { ProposedChangeCreateForm } from "@/screens/proposed-changes/proposed-changes-create-form";
 import { usePermission } from "@/hooks/usePermission";
 import { Navigate } from "react-router-dom";
 import { constructPath } from "@/utils/fetch";
