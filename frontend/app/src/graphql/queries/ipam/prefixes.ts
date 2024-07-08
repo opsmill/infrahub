@@ -120,6 +120,7 @@ export const GET_PREFIX = gql`
                 }
                 member_type {
                   value
+                  color
                 }
                 is_pool {
                   value

@@ -5,7 +5,6 @@ import { Table } from "@/components/table/table";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link } from "@/components/ui/link";
 import { Pagination } from "@/components/ui/pagination";
-import { Tooltip } from "@/components/ui/tooltip";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
@@ -14,17 +13,11 @@ import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
-import {
-  IPAM_QSP,
-  IPAM_ROUTE,
-  IP_ADDRESS_GENERIC,
-  IP_PREFIX_GENERIC,
-} from "@/screens/ipam/constants";
+import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
 import { reloadIpamTreeAtom } from "@/screens/ipam/ipam-tree/ipam-tree.state";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { genericsState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
@@ -34,6 +27,7 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ColorDisplay } from "@/components/display/color-display";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -42,13 +36,9 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const [isLoading, setIsLoading] = useState(false);
-  const generics = useAtomValue(genericsState);
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
-
-  const prefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_GENERIC);
-  const addressSchema = generics.find(({ kind }) => kind === IP_ADDRESS_GENERIC);
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIX, {
     variables: { ids: [prefix] },
@@ -73,23 +63,6 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const parent = prefixData?.parent?.node;
   const children = prefixData?.children;
 
-  const memberIcons: Record<string, any> = {
-    address: prefixSchema?.icon ? (
-      <Tooltip content="Prefix" enabled>
-        <Icon icon={prefixSchema.icon as string} />
-      </Tooltip>
-    ) : (
-      ""
-    ),
-    prefix: addressSchema?.icon ? (
-      <Tooltip content="IP Adress" enabled>
-        <Icon icon={addressSchema.icon as string} />
-      </Tooltip>
-    ) : (
-      ""
-    ),
-  };
-
   const columns = [
     { name: "prefix", label: "Prefix" },
     { name: "description", label: "Description" },
@@ -105,10 +78,12 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     values: {
       prefix: child?.node?.prefix?.value,
       description: child?.node?.description?.value,
-      member_type:
-        child?.node?.member_type?.value && memberIcons[child?.node?.member_type?.value]
-          ? memberIcons[child?.node?.member_type?.value]
-          : child?.node?.member_type?.value ?? "-",
+      member_type: (
+        <ColorDisplay
+          value={child?.node?.member_type.value}
+          color={child?.node?.member_type.color}
+        />
+      ),
       is_pool: child?.node?.is_pool?.value ? <Icon icon="mdi:check" /> : <Icon icon="mdi:close" />,
       utilization: <ProgressBarChart value={child?.node?.utilization?.value} />,
       netmask: child?.node?.netmask?.value,
