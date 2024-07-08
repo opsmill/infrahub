@@ -15,9 +15,9 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link } from "react-router-dom";
-import { ProposedChange } from "./proposed-changes-item";
+import { ProposedChange } from "@/screens/proposed-changes/proposed-changes-item";
 
-const ProposedChanges = () => {
+const ProposedChangesPage = () => {
   const [schemaList] = useAtom(schemaState);
   const permission = usePermission();
   useTitle("Proposed changes list");
@@ -102,5 +102,5 @@ const ProposedChanges = () => {
 };
 
 export function Component() {
-  return <ProposedChanges />;
+  return <ProposedChangesPage />;
 }
