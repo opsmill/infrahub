@@ -111,7 +111,7 @@ export const router = createBrowserRouter([
           },
           {
             path: IPAM_ROUTE.INDEX,
-            lazy: () => import("@/screens/ipam/ipam-page"),
+            lazy: () => import("@/pages/ipam/layout"),
             children: [
               {
                 index: true,
