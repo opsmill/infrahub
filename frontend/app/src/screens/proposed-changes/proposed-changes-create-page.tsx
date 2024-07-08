@@ -104,7 +104,10 @@ export const ProposedChangeCreateForm = () => {
                 <Combobox
                   {...field}
                   placeholder="Select a branch..."
-                  items={branchesToSelectOptions(sourceBranches).map(({ name }) => name)}
+                  items={branchesToSelectOptions(sourceBranches).map(({ name }) => ({
+                    value: name,
+                    label: name,
+                  }))}
                 />
               </FormInput>
               <FormMessage />
