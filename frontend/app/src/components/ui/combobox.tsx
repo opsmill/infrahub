@@ -31,7 +31,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(
         <Popover open={open} onOpenChange={setOpen}>
           <ComboboxTrigger ref={ref} {...props}>
             <div className="flex flex-grow justify-between">
-              {item?.label}
+              {item?.label || value}
               {item?.badge && <Badge className="mr-2">{item.badge}</Badge>}
             </div>
           </ComboboxTrigger>
@@ -79,7 +79,7 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
       ? items
       : items.filter((item) => {
           const matchLabel = item.label.toLowerCase().includes(query.toLowerCase());
-          const matchValue = item.value.toLowerCase().includes(query.toLowerCase());
+          const matchValue = item.value?.toLowerCase?.()?.includes(query.toLowerCase());
 
           if (item.badge) {
             return (
