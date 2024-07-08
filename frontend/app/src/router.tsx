@@ -147,7 +147,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "/",
-            lazy: () => import("@/screens/homepage"),
+            lazy: () => import("@/pages/homepage"),
           },
           {
             path: "*",
