@@ -273,7 +273,8 @@ class InfrahubDatabase:
     ) -> list[Record]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
             span.set_attribute("query", query)
-            span.set_attribute("query_name", name)
+            if name:
+                span.set_attribute("query_name", name)
 
             with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params)
@@ -284,7 +285,8 @@ class InfrahubDatabase:
     ) -> tuple[list[Record], dict[str, Any]]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
-            span.set_attribute("query_name", name)
+            if name:
+                span.set_attribute("query_name", name)
 
             with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params, name=name)
