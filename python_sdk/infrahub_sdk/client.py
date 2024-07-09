@@ -622,11 +622,7 @@ class InfrahubClient(BaseClient):
 
     @handle_relogin
     async def _post(
-        self,
-        url: str,
-        payload: dict,
-        headers: Optional[dict] = None,
-        timeout: Optional[int] = None,
+        self, url: str, payload: dict, headers: Optional[dict] = None, timeout: Optional[int] = None
     ) -> httpx.Response:
         """Execute a HTTP POST with HTTPX.
 
@@ -1607,11 +1603,7 @@ class InfrahubClientSync(BaseClient):
 
     @handle_relogin_sync
     def _post(
-        self,
-        url: str,
-        payload: dict,
-        headers: Optional[dict] = None,
-        timeout: Optional[int] = None,
+        self, url: str, payload: dict, headers: Optional[dict] = None, timeout: Optional[int] = None
     ) -> httpx.Response:
         """Execute a HTTP POST with HTTPX.
 

@@ -1,5 +1,4 @@
-import { ButtonWithTooltip as ButtonWithTooltip2 } from "@/components/buttons/button-primitive";
-import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
+import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
 import SlideOver from "@/components/display/slide-over";
 import { Tabs } from "@/components/tabs";
@@ -35,7 +34,7 @@ import {
   getTabs,
 } from "@/utils/getSchemaObjectColumns";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { LockClosedIcon, PencilIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
@@ -139,23 +138,27 @@ export default function ObjectItemDetails({
 
               <ButtonWithTooltip
                 disabled={!permission.write.allow}
-                tooltipEnabled={!permission.write.allow}
-                tooltipContent={permission.write.message ?? undefined}
+                tooltipEnabled
+                tooltipContent={permission.write.message ?? "Edit object"}
                 onClick={() => setShowEditDrawer(true)}
-                className="mr-4">
-                Edit
-                <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                className="mr-4 rounded-full text-custom-blue-500 p-4"
+                variant={"outline"}
+                size={"icon"}
+                data-testid="edit-button">
+                <Icon icon="mdi:pencil-outline" className="" aria-hidden="true" />
               </ButtonWithTooltip>
 
               {!schema.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
                 <ButtonWithTooltip
                   disabled={!permission.write.allow}
-                  tooltipEnabled={!permission.write.allow}
-                  tooltipContent={permission.write.message ?? undefined}
+                  tooltipEnabled
+                  tooltipContent={permission.write.message ?? "Manage groups"}
                   onClick={() => setShowAddToGroupDrawer(true)}
-                  className="mr-4">
-                  Manage groups
-                  <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                  className="mr-4 rounded-full text-custom-blue-500 p-4"
+                  variant={"outline"}
+                  size={"icon"}
+                  data-testid="manage-groups">
+                  <Icon icon="mdi:group" className="" aria-hidden="true" />
                 </ButtonWithTooltip>
               )}
             </>
@@ -195,7 +198,7 @@ export default function ObjectItemDetails({
                         header={
                           <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                             <div className="font-semibold">{attribute.label}</div>
-                            <ButtonWithTooltip2
+                            <ButtonWithTooltip
                               disabled={!permission.write.allow}
                               tooltipEnabled={!permission.write.allow}
                               tooltipContent={permission.write.message ?? undefined}
@@ -212,7 +215,7 @@ export default function ObjectItemDetails({
                               data-testid="edit-metadata-button"
                               data-cy="metadata-edit-button">
                               <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                            </ButtonWithTooltip2>
+                            </ButtonWithTooltip>
                           </div>
                         }
                       />
@@ -288,10 +291,7 @@ export default function ObjectItemDetails({
               <div className="flex-grow flex items-center flex-wrap overflow-hidden">
                 <span className="font-semibold text-gray-900 truncate">{schema.label}</span>
 
-                <ChevronRightIcon
-                  className="w-4 h-4 flex-shrink-0 mx-2 text-gray-400"
-                  aria-hidden="true"
-                />
+                <Icon icon="mdi:chevron" className="w-4 h-4 flex-shrink-0 text-gray-400" />
 
                 <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
                   {objectDetailsData.display_label}

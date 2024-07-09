@@ -17,7 +17,7 @@ const ResourceManagerPage = () => {
     <>
       <ObjectHeader schema={resourcePoolSchema} />
 
-      <Content>
+      <Content className="p-2">
         <ObjectItems
           schema={resourcePoolSchema}
           overrideDetailsViewUrl={(objectId) => constructPath(`/resource-manager/${objectId}`)}

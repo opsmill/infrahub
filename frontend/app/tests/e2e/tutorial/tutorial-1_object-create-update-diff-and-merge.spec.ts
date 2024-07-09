@@ -70,7 +70,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Edit the organization description on branch cr1234", async () => {
-      const editButton = page.getByRole("button", { name: "Edit" });
+      const editButton = page.getByTestId("edit-button");
       await expect(editButton).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_organization_details");
       await editButton.click();

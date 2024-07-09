@@ -16,39 +16,15 @@ import { Input } from "@/components/ui/input";
 import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
 import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "@/hooks/useAuth";
-import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
-import Content from "@/screens/layout/content";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { constructPath } from "@/utils/fetch";
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-
-const ProposedChangesCreatePage = () => {
-  const permission = usePermission();
-
-  if (!permission.write.allow) {
-    return <Navigate to={constructPath("/proposed-changes")} replace />;
-  }
-
-  return (
-    <Content>
-      <Card className="p-4 px-8 max-w-2xl m-auto mt-0 md:mt-4">
-        <h1 className="text-xl font-semibold text-gray-700">Create a proposed change</h1>
-        <p className="text-xs text-gray-700 mb-6">
-          A proposed change lets you compare two branches, run tests, and finally merge one branch
-          into another.
-        </p>
-
-        <ProposedChangeCreateForm />
-      </Card>
-    </Content>
-  );
-};
 
 export const ProposedChangeCreateForm = () => {
   const { user } = useAuth();
@@ -104,7 +80,10 @@ export const ProposedChangeCreateForm = () => {
                 <Combobox
                   {...field}
                   placeholder="Select a branch..."
-                  items={branchesToSelectOptions(sourceBranches).map(({ name }) => name)}
+                  items={branchesToSelectOptions(sourceBranches).map(({ name }) => ({
+                    value: name,
+                    label: name,
+                  }))}
                 />
               </FormInput>
               <FormMessage />
@@ -197,7 +176,3 @@ export const ProposedChangeCreateForm = () => {
     </Form>
   );
 };
-
-export function Component() {
-  return <ProposedChangesCreatePage />;
-}

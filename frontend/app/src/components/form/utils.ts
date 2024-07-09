@@ -17,6 +17,7 @@ import { components } from "@/infraops";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
+  schemas?: iNodeSchema[] | iGenericSchema[];
   profile?: Object;
   initialObject?: Record<string, AttributeType>;
   user?: any;
@@ -26,6 +27,7 @@ type GetFormFieldsFromSchema = {
 
 export const getFormFieldsFromSchema = ({
   schema,
+  schemas,
   profile,
   initialObject,
   user,
@@ -118,6 +120,23 @@ export const getFormFieldsFromSchema = ({
   if (isFilterForm && schema.used_by?.length) {
     const kindFilter = filters?.find((filter) => filter.name == "kind__value");
 
+    const items = schema.used_by
+      .map((kind) => {
+        if (!schemas) return null;
+
+        const relatedSchema = schemas.find((schema) => schema.kind === kind);
+        console.log("relatedSchema: ", relatedSchema);
+
+        if (!relatedSchema) return null;
+
+        return {
+          id: relatedSchema.kind,
+          name: relatedSchema.label ?? relatedSchema.name,
+          badge: relatedSchema.namespace,
+        };
+      })
+      .filter(Boolean);
+
     return [
       {
         name: "kind",
@@ -125,10 +144,7 @@ export const getFormFieldsFromSchema = ({
         description: "Select a kind to filter nodes",
         type: "Dropdown",
         defaultValue: kindFilter?.value,
-        items: schema.used_by.map((kind) => ({
-          id: kind,
-          name: kind,
-        })),
+        items,
       },
       ...formFields,
     ];

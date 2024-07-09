@@ -20,7 +20,7 @@ class Migration009(InternalSchemaMigration):
     minimum_version: int = 8
 
     @classmethod
-    def init(cls, *args: Any, **kwargs: dict[str, Any]) -> Self:
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_node = internal_schema.get_node(name="SchemaNode")
 
@@ -33,7 +33,7 @@ class Migration009(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(*args, migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()

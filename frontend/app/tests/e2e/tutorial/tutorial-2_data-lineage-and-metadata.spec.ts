@@ -41,7 +41,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
     });
 
     await test.step("Not allowed to updated description because user is not admin", async () => {
-      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("edit-button").click();
       await expect(page.getByLabel("Description")).toBeDisabled();
     });
   });

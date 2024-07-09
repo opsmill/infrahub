@@ -1,14 +1,25 @@
+import asyncio
 import logging
+from functools import wraps
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Union
 
 import pendulum
+import typer
+from httpx import HTTPError
 from pendulum.datetime import DateTime
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.markup import escape
 
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
+from infrahub_sdk.exceptions import (
+    AuthenticationError,
+    Error,
+    GraphQLError,
+    ServerNotReachableError,
+    ServerNotResponsiveError,
+)
 
 from .client import initialize_client_sync
 
@@ -22,6 +33,71 @@ def init_logging(debug: bool = False) -> None:
     FORMAT = "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     logging.getLogger("infrahubctl")
+
+
+def catch_exception(  # noqa: C901
+    which_exception: Union[type[Exception], Iterable[type[Exception]]] = Exception,
+    console: Optional[Console] = None,
+    exit_code: int = 1,
+):
+    """Decorator to handle exception for commands."""
+    if not console:
+        console = Console()
+
+    def decorator(func: Callable):
+        if asyncio.iscoroutinefunction(func):
+
+            @wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any):
+                try:
+                    return await func(*args, **kwargs)
+                except AuthenticationError as exc:
+                    console.print(f"[red]Authentication failure: {str(exc)}")
+                    raise typer.Exit(code=2)
+                except (ServerNotReachableError, ServerNotResponsiveError) as exc:
+                    console.print(f"[red]{str(exc)}")
+                    raise typer.Exit(code=3)
+                except HTTPError as exc:
+                    console.print(f"[red]{str(exc)}")
+                    raise typer.Exit(code=4)
+                except GraphQLError as exc:
+                    print_graphql_errors(console, exc.errors)
+                    raise typer.Exit(code=5)
+                except Error as exc:
+                    console.print(f"[red]{str(exc)}")
+                    raise typer.Exit(code=6)
+                except which_exception as exc:
+                    console.print(f"[red]{str(exc)}")
+                    raise typer.Exit(code=exit_code)
+
+            return async_wrapper
+
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any):
+            try:
+                return func(*args, **kwargs)
+            except AuthenticationError as exc:
+                console.print(f"[red]Authentication failure: {str(exc)}")
+                raise typer.Exit(code=2)
+            except (ServerNotReachableError, ServerNotResponsiveError) as exc:
+                console.print(f"[red]{str(exc)}")
+                raise typer.Exit(code=3)
+            except HTTPError as exc:
+                console.print(f"[red]{str(exc)}")
+                raise typer.Exit(code=4)
+            except GraphQLError as exc:
+                print_graphql_errors(console, exc.errors)
+                raise typer.Exit(code=5)
+            except Error as exc:
+                console.print(f"[red]{str(exc)}")
+                raise typer.Exit(code=6)
+            except which_exception as exc:
+                console.print(f"[red]{str(exc)}")
+                raise typer.Exit(code=exit_code)
+
+        return wrapper
+
+    return decorator
 
 
 def execute_graphql_query(

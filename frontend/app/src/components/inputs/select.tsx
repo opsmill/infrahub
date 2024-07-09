@@ -16,14 +16,13 @@ import { useLazyQuery } from "@/hooks/useQuery";
 import { FormFieldError } from "@/screens/edit-form-hook/form";
 import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
+import { namespacesState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames, getTextColor } from "@/utils/common";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Combobox } from "@headlessui/react";
-import { CheckIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { forwardRef, useContext, useEffect, useState } from "react";
@@ -37,6 +36,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 import DynamicForm from "@/components/form/dynamic-form";
+import { Badge } from "../ui/badge";
 
 export type Parent = {
   name?: string;
@@ -48,6 +48,7 @@ export type SelectOption = {
   name: string;
   color?: string; // For dropdown
   description?: string; // For dropdown
+  badge?: string;
 };
 
 export enum SelectDirection {
@@ -110,6 +111,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const { checkSchemaUpdate } = useContext(SchemaContext);
 
   const schemaList = useAtomValue(schemaState);
+  const profiles = useAtomValue(profilesAtom);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -134,7 +136,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
 
-  const schemaData = schemaList.find((s) => s.kind === peer);
+  const schemaData = [...schemaList, ...profiles].find((s) => s.kind === peer);
 
   // Check if any kind from inheritance is one of the available for pools
   const canRequestPools = !!schemaData?.inherit_from
@@ -569,10 +571,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   const getOptionButton = () => {
-    if (!namespaceData?.user_editable) {
-      return null;
-    }
-
     if (peer && !preventObjectsCreation) {
       return (
         <Combobox.Option
@@ -590,7 +588,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       );
     }
 
-    if (dropdown || enumBoolean) {
+    if (namespaceData?.user_editable && (dropdown || enumBoolean)) {
       if (field.inherited) {
         return (
           <Combobox.Option
@@ -628,10 +626,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   const getOptionContent = () => {
-    if (!namespaceData?.user_editable) {
-      return;
-    }
-
     if (peer && !preventObjectsCreation) {
       return (
         <SlideOver
@@ -665,6 +659,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
           <ObjectForm kind={peer} onSuccess={handleCreate} onCancel={() => setOpen(false)} />
         </SlideOver>
       );
+    }
+
+    if (!namespaceData?.user_editable) {
+      return;
     }
 
     if (dropdown) {
@@ -945,9 +943,15 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
                         )}
                       </div>
 
-                      {selected && (
-                        <CheckIcon className="w-4 h-4 text-custom-blue-700" aria-hidden="true" />
-                      )}
+                      <div className="flex">
+                        {option.badge && <Badge className="mr-2">{option.badge}</Badge>}
+
+                        <div className="w-4">
+                          {selected && (
+                            <Icon icon={"mdi:check"} className="w-4 h-4 text-custom-blue-700" />
+                          )}
+                        </div>
+                      </div>
 
                       {canRemoveOption(option.id) && (
                         <Tooltip

@@ -256,17 +256,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                         "changed": {
                             "label": None,
                             "name": None,
-                            "relationships": {
-                                "added": {},
-                                "changed": {
-                                    "profiles": {
-                                        "added": {},
-                                        "changed": {"peer": None},
-                                        "removed": {},
-                                    },
-                                },
-                                "removed": {},
-                            },
                         },
                         "removed": {},
                     },
@@ -375,11 +364,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                         "added": {},
                         "changed": {
                             "generate_profile": None,
-                            "relationships": {
-                                "added": {},
-                                "changed": {},
-                                "removed": {"profiles": None},
-                            },
                         },
                         "removed": {},
                     },
@@ -395,5 +379,4 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         with pytest.raises(SchemaNotFoundError):
             registry.schema.get(name=f"Profile{CAR_KIND}", branch=self.branch1, check_branch_only=True)
         car_schema = registry.schema.get(name=CAR_KIND, branch=self.branch1, duplicate=False)
-        with pytest.raises(ValueError):
-            car_schema.get_relationship(name="profiles")
+        assert "profiles" in car_schema.relationship_names

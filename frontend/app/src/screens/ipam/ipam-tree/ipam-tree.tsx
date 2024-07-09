@@ -58,8 +58,7 @@ export default function IpamTree() {
   };
 
   return (
-    <nav className="min-w-64">
-      <h3 className="font-semibold text-sm mb-3">Navigation</h3>
+    <nav className="flex min-w-64">
       <Tree
         loading={isLoading}
         data={treeData}

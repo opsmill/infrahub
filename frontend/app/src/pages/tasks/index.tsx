@@ -7,9 +7,9 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { gql } from "@apollo/client";
-import { TaskItems } from "./task-items";
+import { TaskItems } from "@/screens/tasks/task-items";
 
-const TaskItemsScreen = () => {
+const TasksPage = () => {
   useTitle("Task Overview");
 
   const queryString = getTasksItemsCount({
@@ -48,6 +48,7 @@ const TaskItemsScreen = () => {
     </Content>
   );
 };
+
 export function Component() {
-  return <TaskItemsScreen />;
+  return <TasksPage />;
 }

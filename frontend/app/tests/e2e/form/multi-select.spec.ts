@@ -19,7 +19,7 @@ test.describe("Verify multi select behaviour", () => {
       await page.getByRole("cell", { name: "Ethernet11" }).first().click();
     });
 
-    await page.getByRole("button", { name: "Edit" }).click();
+    await page.getByTestId("edit-button").click();
 
     await test.step("Select multiple tags", async () => {
       const tagsMultiSelectOpenButton = page

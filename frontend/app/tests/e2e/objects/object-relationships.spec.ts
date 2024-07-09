@@ -19,8 +19,8 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       });
 
       await test.step("all buttons are disabled", async () => {
-        await expect(page.getByRole("button", { name: "Edit" })).toBeDisabled();
-        await expect(page.getByRole("button", { name: "Manage groups" })).toBeDisabled();
+        await expect(page.getByTestId("edit-button")).toBeDisabled();
+        await expect(page.getByTestId("manage-groups")).toBeDisabled();
         await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
       });
     });

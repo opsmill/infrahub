@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
+  ARTIFACT_OBJECT,
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
   SEARCH_ANY_FILTER,
@@ -170,19 +171,21 @@ export default function ObjectItems({
 
           <Filters schema={schema} />
 
-          <Tooltip
-            enabled={!permission.write.allow}
-            content={permission.write.message ?? undefined}>
-            <Button
-              data-cy="create"
-              data-testid="create-object-button"
-              disabled={!permission.write.allow}
-              onClick={() => setShowCreateDrawer(true)}
-              size="sm">
-              <Icon icon="mdi:plus" className="text-sm" />
-              Add {schema?.label}
-            </Button>
-          </Tooltip>
+          {schema.kind !== ARTIFACT_OBJECT && (
+            <Tooltip
+              enabled={!permission.write.allow}
+              content={permission.write.message ?? undefined}>
+              <Button
+                data-cy="create"
+                data-testid="create-object-button"
+                disabled={!permission.write.allow}
+                onClick={() => setShowCreateDrawer(true)}
+                size="sm">
+                <Icon icon="mdi:plus" className="text-sm" />
+                Add {schema?.label}
+              </Button>
+            </Tooltip>
+          )}
         </div>
 
         {loading && !rows && <LoadingScreen />}

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.15.0-dev"
+version = "0.15.0-beta1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -599,6 +599,16 @@ max-complexity = 33
     "S106", #  Possible hardcoded password assigned to argument
 ]
 
+"models/infrastructure_edge.py" = [
+    "S106", # Hardcoded password
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one. Alternatively ignored after further       #
+# investigation if they are deemed to not make sense.                                            #
+##################################################################################################
+    "C901", # `generate_site` is too complex (34 > 33)"
+    "E501", # Line too long
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
