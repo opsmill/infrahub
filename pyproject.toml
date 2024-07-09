@@ -276,10 +276,6 @@ module = "infrahub.git.base"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.git.integrator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.git.repository"
 ignore_errors = true
 
