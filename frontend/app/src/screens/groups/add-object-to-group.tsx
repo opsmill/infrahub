@@ -1,5 +1,5 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { GROUP_OBJECT } from "@/config/constants";
+import { ARTIFACT_OBJECT, GROUP_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { addRelationship } from "@/graphql/mutations/relationships/addRelationship";
 import { removeRelationship } from "@/graphql/mutations/relationships/removeRelationship";
@@ -14,7 +14,7 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import { useParams } from "react-router-dom";
+import { useMatch, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import DynamicForm from "@/components/form/dynamic-form";
 
@@ -33,12 +33,15 @@ export default function AddObjectToGroup(props: Props) {
   const allProfiles = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const match = useMatch(`/objects/${ARTIFACT_OBJECT}/:objectid`);
+
+  const currentObjectKind = match ? ARTIFACT_OBJECT : objectKind;
 
   const schemaData = allGenerics.find((s) => s.kind === GROUP_OBJECT);
 
-  const schema = allSchemas.find((s) => s.kind === objectKind);
-  const profile = allProfiles.find((s) => s.kind === objectKind);
-  const generic = allGenerics.filter((s) => s.name === objectKind)[0];
+  const schema = allSchemas.find((s) => s.kind === currentObjectKind);
+  const profile = allProfiles.find((s) => s.kind === currentObjectKind);
+  const generic = allGenerics.filter((s) => s.name === currentObjectKind)[0];
   const objectSchemaData = schema || profile || generic;
 
   const queryString = schemaData
