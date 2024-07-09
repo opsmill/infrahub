@@ -223,6 +223,7 @@ select = [
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
     "N",     # pep8-naming
+    "PERF",  # Perflint
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PTH",   # flake8-use-pathlib
@@ -251,6 +252,9 @@ ignore = [
     "C414",    # Unnecessary `list` call within `sorted()`
     "N802",    # Function name should be lowercase
     "N806",    # Variable in function should be lowercase
+    "PERF102", # When using only the values of a dict use the `values()` method
+    "PERF203", # `try`-`except` within a loop incurs performance overhead
+    "PERF401", # Use a list comprehension to create a transformed list
     "PLC0206", # Extracting value from dictionary without calling `.items()`
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition

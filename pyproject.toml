@@ -491,6 +491,7 @@ select = [
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
     "N",     # pep8-naming
+    "PERF",  # Perflint
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PTH",   # flake8-use-pathlib
@@ -527,6 +528,11 @@ ignore = [
     "N805",     # First argument of a method should be named self
     "N806",     # Variable in function should be lowercase
     "N812",     # Lowercase imported as non-lowercase
+    "PERF102",  # When using only the values of a dict use the `values()` method
+    "PERF203",  # `try`-`except` within a loop incurs performance overhead
+    "PERF401",  # Use a list comprehension to create a transformed list
+    "PERF402",  # Use `list` or `list.copy` to create a copy of a list
+    "PERF403",  # Use a dictionary comprehension instead of a for-loop
     "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
