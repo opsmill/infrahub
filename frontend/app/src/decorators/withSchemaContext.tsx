@@ -71,9 +71,17 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
 
-      const schemaKinds = [...schema.map((s) => s.kind), ...generics.map((s) => s.kind)];
+      const schemaKinds = [
+        ...schema.map((s) => s.kind),
+        ...generics.map((s) => s.kind),
+        ...profiles.map((s) => s.kind),
+      ];
 
-      const schemaNames = [...schema.map((s) => s.name), ...generics.map((s) => s.name)];
+      const schemaNames = [
+        ...schema.map((s) => s.label),
+        ...generics.map((s) => s.label),
+        ...profiles.map((s) => s.label),
+      ];
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
