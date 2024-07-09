@@ -676,10 +676,10 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
     assert len(yaml_files) == 4
 
-    yaml_files = await repo.find_files(extension="yml", directory="test_files", branch_name="main")
+    yaml_files = await repo.find_files(extension="yml", directory=Path("test_files"), branch_name="main")
     assert len(yaml_files) == 2
 
-    yaml_files = await repo.find_files(extension="yml", directory="notpresent", branch_name="main")
+    yaml_files = await repo.find_files(extension="yml", directory=Path("notpresent"), branch_name="main")
     assert len(yaml_files) == 0
 
 
