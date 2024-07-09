@@ -328,6 +328,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                     message=f"The branch {self.default_branch} isn't a valid branch for the repository {self.name} at {self.location}.",
                 ) from exc
 
+            if "authentication failed for" in exc.stderr.lower():
+                raise RepositoryError(
+                    identifier=self.name,
+                    message=f"Authentication failed for {self.name}, please validate the credentials.",
+                ) from exc
             raise RepositoryError(identifier=self.name) from exc
 
         self.has_origin = True
