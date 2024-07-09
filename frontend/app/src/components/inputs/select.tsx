@@ -570,10 +570,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   const getOptionButton = () => {
-    if (!namespaceData?.user_editable) {
-      return null;
-    }
-
     if (peer && !preventObjectsCreation) {
       return (
         <Combobox.Option
@@ -591,7 +587,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       );
     }
 
-    if (dropdown || enumBoolean) {
+    if (namespaceData?.user_editable && (dropdown || enumBoolean)) {
       if (field.inherited) {
         return (
           <Combobox.Option
@@ -629,10 +625,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   const getOptionContent = () => {
-    if (!namespaceData?.user_editable) {
-      return;
-    }
-
     if (peer && !preventObjectsCreation) {
       return (
         <SlideOver
@@ -666,6 +658,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
           <ObjectForm kind={peer} onSuccess={handleCreate} onCancel={() => setOpen(false)} />
         </SlideOver>
       );
+    }
+
+    if (!namespaceData?.user_editable) {
+      return;
     }
 
     if (dropdown) {
