@@ -10,8 +10,5 @@ def load_configuration(value: str) -> str:
 
 
 CONFIG_PARAM = typer.Option(
-    config.DEFAULT_CONFIG_FILE,
-    "--config-file",
-    envvar=config.ENVVAR_CONFIG_FILE,
-    callback=load_configuration,
+    config.DEFAULT_CONFIG_FILE, "--config-file", envvar=config.ENVVAR_CONFIG_FILE, callback=load_configuration
 )

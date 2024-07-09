@@ -9,7 +9,6 @@ from typing import Any, Callable, Optional, Union
 import jinja2
 import typer
 import ujson
-from httpx import HTTPError
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.traceback import Traceback
@@ -28,15 +27,9 @@ from infrahub_sdk.ctl.render import list_jinja2_transforms
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
 from infrahub_sdk.ctl.transform import list_transforms
-from infrahub_sdk.ctl.utils import execute_graphql_query, parse_cli_vars
+from infrahub_sdk.ctl.utils import catch_exception, execute_graphql_query, parse_cli_vars
 from infrahub_sdk.ctl.validate import app as validate_app
-from infrahub_sdk.exceptions import (
-    AuthenticationError,
-    GraphQLError,
-    InfrahubTransformNotFoundError,
-    ServerNotReachableError,
-    ServerNotResponsiveError,
-)
+from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
 from infrahub_sdk.jinja2 import identify_faulty_jinja_code
 from infrahub_sdk.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from infrahub_sdk.transforms import get_transform_class_instance
@@ -58,6 +51,7 @@ console = Console()
 
 
 @app.command(name="check")
+@catch_exception(console=console)
 def check(
     check_name: str = typer.Argument(default="", help="Name of the Python check"),
     branch: Optional[str] = None,
@@ -85,6 +79,7 @@ def check(
 
 
 @app.command(name="generator")
+@catch_exception(console=console)
 async def generator(
     generator_name: str = typer.Argument(default="", help="Name of the Generator"),
     branch: Optional[str] = None,
@@ -108,6 +103,7 @@ async def generator(
 
 
 @app.command(name="run")
+@catch_exception(console=console)
 async def run(
     script: Path,
     method: str = "run",
@@ -215,6 +211,7 @@ def _run_transform(query: str, variables: dict[str, Any], transformer: Callable,
 
 
 @app.command(name="render")
+@catch_exception(console=console)
 def render(
     transform_name: str = typer.Argument(default="", help="Name of the Python transformation", show_default=False),
     variables: Optional[list[str]] = typer.Argument(
@@ -252,6 +249,7 @@ def render(
 
 
 @app.command(name="transform")
+@catch_exception(console=console)
 def transform(
     transform_name: str = typer.Argument(default="", help="Name of the Python transformation", show_default=False),
     variables: Optional[list[str]] = typer.Argument(
@@ -300,6 +298,7 @@ def transform(
 
 
 @app.command(name="protocols")
+@catch_exception(console=console)
 def protocols(  # noqa: PLR0915
     branch: str = typer.Option(None, help="Branch of schema to export Python protocols for."),
     _: str = CONFIG_PARAM,
@@ -412,17 +411,12 @@ def protocols(  # noqa: PLR0915
 
 
 @app.command(name="version")
+@catch_exception(console=console)
 def version(_: str = CONFIG_PARAM):
     """Display the version of Infrahub and the version of the Python SDK in use."""
 
     client = initialize_client_sync()
-
-    query = "query { InfrahubInfo { version }}"
-    try:
-        response = client.execute_graphql(query=query, raise_for_error=True)
-    except (AuthenticationError, GraphQLError, HTTPError, ServerNotReachableError, ServerNotResponsiveError) as exc:
-        console.print("Unable to gather infrahub version")
-        raise typer.Exit(1) from exc
+    response = client.execute_graphql(query="query { InfrahubInfo { version }}")
 
     infrahub_version = response["InfrahubInfo"]["version"]
-    console.print(f"Infrahub: v{infrahub_version}\nSDK: v{sdk_version}")
+    console.print(f"Infrahub: v{infrahub_version}\nPython SDK: v{sdk_version}")

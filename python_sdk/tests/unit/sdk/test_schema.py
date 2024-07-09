@@ -25,11 +25,6 @@ sync_schema_methods = [method for method in dir(InfrahubSchemaSync) if not metho
 client_types = ["standard", "sync"]
 
 
-@pytest.fixture
-async def console_output():
-    return Console(file=StringIO(), width=1000)
-
-
 async def test_method_sanity():
     """Validate that there is at least one public method and that both clients look the same."""
     assert async_schema_methods
@@ -261,7 +256,7 @@ async def test_infrahub_repository_config_dups():
         "attributes": [{"name": "name", "kind": "Text"}, {"name": "status", "kind": "Dropdown"}],
     },
 )
-async def test_display_schema_load_errors_details(mock_get_node, console_output):
+async def test_display_schema_load_errors_details(mock_get_node):
     """Validate error message with details when loading schema."""
     error = {
         "detail": [
@@ -273,10 +268,11 @@ async def test_display_schema_load_errors_details(mock_get_node, console_output)
             }
         ]
     }
-    display_schema_load_errors(console=console_output, response=error, schemas_data=[])
-    mock_get_node.assert_called_once()
-    output = console_output.file.getvalue()
-    expected_console = """Unable to load the schema:
+    with mock.patch("infrahub_sdk.ctl.schema.console", Console(file=StringIO(), width=1000)) as console:
+        display_schema_load_errors(response=error, schemas_data=[])
+        mock_get_node.assert_called_once()
+        output = console.file.getvalue()
+        expected_console = """Unable to load the schema:
   Node: CloudInstance | Attribute: status ({'name': 'status', 'kind': 'Dropdown'}) | Value error, The property 'choices' is required for kind=Dropdown (value_error)
 """  # noqa: E501
-    assert output == expected_console
+        assert output == expected_console

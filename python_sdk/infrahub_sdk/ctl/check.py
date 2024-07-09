@@ -17,10 +17,11 @@ from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.repository import get_repository_config
-from infrahub_sdk.ctl.utils import execute_graphql_query
+from infrahub_sdk.ctl.utils import catch_exception, execute_graphql_query
 from infrahub_sdk.schema import InfrahubCheckDefinitionConfig, InfrahubRepositoryConfig
 
 app = typer.Typer()
+console = Console()
 
 
 @dataclass
@@ -41,6 +42,7 @@ def callback() -> None:
 
 
 @app.command()
+@catch_exception(console=console)
 def run(
     *,
     path: str,
@@ -56,8 +58,6 @@ def run(
     log_level = "DEBUG" if debug else "INFO"
     FORMAT = "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-
-    console = Console()
 
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
 
@@ -231,7 +231,6 @@ def get_modules(check_definitions: list[InfrahubCheckDefinitionConfig]) -> list[
 
 
 def list_checks(repository_config: InfrahubRepositoryConfig) -> None:
-    console = Console()
     console.print(f"Python checks defined in repository: {len(repository_config.check_definitions)}")
 
     for check in repository_config.check_definitions:
