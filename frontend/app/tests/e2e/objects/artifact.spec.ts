@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/CoreArtifact - Artifact page", () => {
+  test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -37,6 +39,35 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
     }
     await page.getByRole("link", { name: "startup Config for Edge devices" }).first().click();
     await expect(page.getByText("no aaa root").first()).toBeVisible();
+  });
+
+  test("should add generated artifact to a group", async ({ page }) => {
+    await page.goto(
+      // eslint-disable-next-line quotes
+      '/objects/CoreArtifact?filters=[{"name":"name__value","value":"Startup Config for Edge devices"}]'
+    );
+    await page.getByRole("link", { name: "startup Config for Edge devices" }).first().click();
+
+    await test.step("add artifact to a group", async () => {
+      await page.getByRole("button", { name: "Manage groups" }).click();
+
+      await page.getByTestId("select-open-option-button").click();
+      await page.getByRole("option", { name: "arista_devices" }).click();
+      await page.getByTestId("select-open-option-button").click();
+      await page.getByRole("button", { name: "Save" }).click();
+
+      await expect(page.getByText("Group updated")).toBeVisible();
+    });
+
+    await test.step("remove artifact from a group", async () => {
+      await page.getByRole("button", { name: "Manage groups" }).click();
+
+      await page.getByTestId("badge-delete").click();
+      await page.getByTestId("select-open-option-button").click();
+      await page.getByRole("button", { name: "Save" }).click();
+
+      await expect(page.getByText("Group updated")).toBeVisible();
+    });
   });
 
   test.describe("when logged in", async () => {
