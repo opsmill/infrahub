@@ -16,7 +16,7 @@ import { useLazyQuery } from "@/hooks/useQuery";
 import { FormFieldError } from "@/screens/edit-form-hook/form";
 import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
+import { namespacesState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames, getTextColor } from "@/utils/common";
@@ -111,6 +111,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const { checkSchemaUpdate } = useContext(SchemaContext);
 
   const schemaList = useAtomValue(schemaState);
+  const profiles = useAtomValue(profilesAtom);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -135,7 +136,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
 
-  const schemaData = schemaList.find((s) => s.kind === peer);
+  const schemaData = [...schemaList, ...profiles].find((s) => s.kind === peer);
 
   // Check if any kind from inheritance is one of the available for pools
   const canRequestPools = !!schemaData?.inherit_from
