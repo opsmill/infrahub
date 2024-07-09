@@ -42,11 +42,10 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
   test.describe("when logged in", async () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test("should be able to create a new artifact", async ({ page }) => {
-      page.goto("/objects/CoreArtifact");
+    test("should not be able to create a new artifact", async ({ page }) => {
+      await page.goto("/objects/CoreArtifact");
       await expect(page.getByRole("heading", { name: "Artifact" })).toBeVisible();
-      await page.getByTestId("create-object-button").click();
-      await expect(page.getByText("Create Artifact")).toBeVisible();
+      await expect(page.getByTestId("create-object-button")).not.toBeVisible();
     });
 
     test("should add generated artifact to a group", async ({ page }) => {
