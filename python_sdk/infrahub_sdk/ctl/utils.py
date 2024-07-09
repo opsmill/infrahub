@@ -35,12 +35,14 @@ def init_logging(debug: bool = False) -> None:
     logging.getLogger("infrahubctl")
 
 
-def catch_exception(
+def catch_exception(  # noqa: C901
     which_exception: Union[type[Exception], Iterable[type[Exception]]] = Exception,
-    console: Console = None,
+    console: Optional[Console] = None,
     exit_code: int = 1,
 ):
     """Decorator to handle exception for commands."""
+    if not console:
+        console = Console()
 
     def decorator(func: Callable):
         if asyncio.iscoroutinefunction(func):
