@@ -8,6 +8,46 @@ import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { SearchInput } from "./search-input";
 import { Badge } from "./badge";
 
+export interface MultiComboboxProps extends Omit<ButtonProps, "onChange"> {
+  children?: React.ReactNode;
+  placeholder?: string;
+  value: string[];
+  items?: ComboboxListProps["items"];
+  onChange?: (value: string[]) => void;
+}
+
+export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
+  ({ value = [], onChange, items = [], ...props }, ref) => {
+    const [open, setOpen] = React.useState(false);
+
+    const handleChange = (v: unknown) => {
+      if (onChange) onChange(v as string[]);
+      setOpen(false);
+    };
+
+    const selectedProfiles = value.map((profile) => profile.id);
+    const selectedItems = items.filter((item) => selectedProfiles.includes(item.value.id)) ?? [];
+
+    return (
+      <ComboboxPrimitive onChange={handleChange} multiple>
+        <Popover open={open} onOpenChange={setOpen}>
+          <ComboboxTrigger ref={ref} {...props}>
+            <div className="flex">
+              {selectedItems.map((item) => (
+                <Badge key={item.value} className="mr-2 last:mr-0">
+                  {item.label}
+                </Badge>
+              ))}
+            </div>
+          </ComboboxTrigger>
+
+          <ComboboxList items={items} onReset={handleChange} />
+        </Popover>
+      </ComboboxPrimitive>
+    );
+  }
+);
+
 export interface ComboboxProps extends Omit<ButtonProps, "onChange"> {
   children?: React.ReactNode;
   placeholder?: string;
@@ -30,7 +70,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(
       <ComboboxPrimitive onChange={handleChange}>
         <Popover open={open} onOpenChange={setOpen}>
           <ComboboxTrigger ref={ref} {...props}>
-            <div className="flex flex-grow justify-between">
+            <div className="flex justify-between">
               {item?.label || value}
               {item?.badge && <Badge className="mr-2">{item.badge}</Badge>}
             </div>
@@ -59,7 +99,9 @@ export const ComboboxTrigger = forwardRef<HTMLButtonElement, ComboboxTriggerProp
           className
         )}
         {...props}>
-        {children || <span className="text-gray-400 font-normal">{placeholder}</span>}
+        <div className="flex-grow">
+          {children || <span className="text-gray-400 font-normal">{placeholder}</span>}
+        </div>
         <Icon icon="mdi:unfold-more-horizontal" className="text-gray-600" />
       </PopoverTrigger>
     );
@@ -92,7 +134,7 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
 
   return (
     <PopoverContent
-      className="p-2 space-y-1 overflow-hidden flex flex-col"
+      className="p-2 space-y-2 overflow-hidden flex flex-col"
       style={{
         width: "var(--radix-popover-trigger-width)",
         maxHeight: "min(var(--radix-popover-content-available-height), 264px)",
@@ -140,7 +182,7 @@ export const ComboboxItem = ({ className, item }: ComboboxItemProps) => {
     <ComboboxPrimitive.Option
       className={({ active, selected }) =>
         classNames(
-          "px-2 py-1.5 rounded",
+          "px-2 py-1.5 rounded mb-2 last:mb-0",
           selected && "bg-sky-100",
           active && "bg-gray-100",
           className

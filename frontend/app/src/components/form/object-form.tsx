@@ -8,7 +8,7 @@ import {
 import { useAtomValue } from "jotai/index";
 import { getFormFieldsFromSchema } from "./utils";
 import { useId, useState } from "react";
-import { Combobox, tComboboxItem } from "@/components/ui/combobox";
+import { Combobox, MultiCombobox, tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Label from "@/components/ui/label";
 import { gql } from "@apollo/client";
@@ -119,9 +119,10 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
-  const [profileSelected, setProfileSelected] = useState<
+  const [selectedProfiles, setSelectedProfiles] = useState<
     Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
   >(currentProfile);
+  console.log("selectedProfiles: ", selectedProfiles);
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
@@ -133,11 +134,11 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
       {nodeSchema.generate_profile && (
         <ProfilesSelector
           schema={nodeSchema}
-          value={profileSelected?.display_label}
-          onChange={setProfileSelected}
+          value={selectedProfiles}
+          onChange={setSelectedProfiles}
         />
       )}
-      <NodeForm schema={nodeSchema} profile={profileSelected} {...props} />
+      <NodeForm schema={nodeSchema} profile={selectedProfiles} {...props} />
     </>
   );
 };
@@ -219,7 +220,7 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
         Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
       </Label>
 
-      <Combobox
+      <MultiCombobox
         id={id}
         items={profilesData.map((edge: any) => ({
           value: edge.node,
