@@ -1,5 +1,5 @@
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { iNodeSchema } from "@/state/atoms/schema.atom";
+import { IProfileSchema, iNodeSchema } from "@/state/atoms/schema.atom";
 import * as R from "ramda";
 
 export type MutationMode = "create" | "update";
@@ -10,7 +10,7 @@ const getMutationDetailsFromFormData = (
   formData: any,
   mode: MutationMode,
   existingObject?: any,
-  profile?: any
+  profiles?: IProfileSchema[]
 ) => {
   if (!schema) return;
 
@@ -19,8 +19,19 @@ const getMutationDetailsFromFormData = (
   schema.attributes?.forEach((attribute) => {
     const updatedValue = updatedObject[attribute.name] ?? attribute?.default_value;
 
+    // Sort profiles from profile_priority value
+    const orderedProfiles = profiles?.sort(
+      (a, b) => a.profile_priority.value - b.profile_priority.value
+    );
+
+    // Get value from profiles depending on the priority
+    const selectedProfile = orderedProfiles.find(
+      (profile) => profile[attribute.name]?.value?.id || profile[attribute.name]?.value
+    );
+
     const profileValue =
-      profile && (profile[attribute.name]?.value?.id ?? profile[attribute.name]?.value);
+      (selectedProfile && selectedProfile[attribute.name]?.value?.id) ??
+      (selectedProfile && selectedProfile[attribute.name]?.value);
 
     if (attribute.read_only) {
       // Delete the attribute if it's read-only

@@ -138,7 +138,7 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
           onChange={setSelectedProfiles}
         />
       )}
-      <NodeForm schema={nodeSchema} profile={selectedProfiles} {...props} />
+      <NodeForm schema={nodeSchema} profiles={selectedProfiles} {...props} />
     </>
   );
 };
@@ -189,7 +189,7 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
     .filter(Boolean);
 
   // Get all profiles kind to retrieve the informations from the result
-  const profilesKindList = profilesList.map((profile) => profile.name);
+  const profilesKindList = profilesList.map((profile) => profile.kind);
 
   if (!profilesList.length)
     return <ErrorScreen message="Something went wrong while fetching profiles" />;
@@ -217,7 +217,7 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
   return (
     <div className="p-4 bg-gray-100">
       <Label htmlFor={id}>
-        Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
+        Select profiles <span className="text-xs italic text-gray-500 ml-1">optional</span>
       </Label>
 
       <MultiCombobox
@@ -236,7 +236,7 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
 type NodeFormProps = {
   className?: string;
   schema: iNodeSchema | IProfileSchema;
-  profile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
+  profiles?: IProfileSchema[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   isFilterForm?: boolean;
@@ -247,7 +247,7 @@ const NodeForm = ({
   className,
   currentObject,
   schema,
-  profile,
+  profiles,
   onSuccess,
   isFilterForm,
   onSubmit: onSubmitOverride,
@@ -262,7 +262,7 @@ const NodeForm = ({
   const fields = getFormFieldsFromSchema({
     schema,
     schemas,
-    profile,
+    profiles,
     initialObject: currentObject,
     user: { ...data, permissions },
     isFilterForm,
@@ -271,17 +271,19 @@ const NodeForm = ({
 
   async function onSubmit(data: any) {
     try {
-      const newObject = getMutationDetailsFromFormData(schema, data, "create", null, profile);
+      const newObject = getMutationDetailsFromFormData(schema, data, "create", null, profiles);
 
       if (!Object.keys(newObject).length) {
         return;
       }
 
+      const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];
+
       const mutationString = createObject({
         kind: schema?.kind,
         data: stringifyWithoutQuotes({
           ...newObject,
-          ...(profile ? { profiles: [{ id: profile.id }] } : {}),
+          ...(profilesId.length ? { profiles: profilesId } : {}),
         }),
       });
 

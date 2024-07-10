@@ -18,7 +18,7 @@ import { components } from "@/infraops";
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
   schemas?: iNodeSchema[] | iGenericSchema[];
-  profile?: Object;
+  profiles?: Object[];
   initialObject?: Record<string, AttributeType>;
   user?: any;
   isFilterForm?: boolean;
@@ -28,7 +28,7 @@ type GetFormFieldsFromSchema = {
 export const getFormFieldsFromSchema = ({
   schema,
   schemas,
-  profile,
+  profiles,
   initialObject,
   user,
   isFilterForm,
@@ -57,7 +57,7 @@ export const getFormFieldsFromSchema = ({
       defaultValue: getObjectDefaultValue({
         fieldSchema: attribute,
         initialObject,
-        profile,
+        profiles,
         isFilterForm,
       }),
       description: attribute.description ?? undefined,
@@ -156,20 +156,33 @@ export const getFormFieldsFromSchema = ({
 export type GetObjectDefaultValue = {
   fieldSchema: GetObjectDefaultValueFromSchema;
   initialObject?: Record<string, AttributeType>;
-  profile?: Record<string, AttributeType>;
+  profiles?: Record<string, AttributeType>[];
   isFilterForm?: boolean;
 };
 
 export const getObjectDefaultValue = ({
   fieldSchema,
   initialObject,
-  profile,
+  profiles = [],
   isFilterForm,
 }: GetObjectDefaultValue) => {
+  // Sort profiles from profile_priority value
+  const orderedProfiles = profiles.sort(
+    (a, b) => a.profile_priority.value - b.profile_priority.value
+  );
+
+  // Get current object value
   const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
-  const defaultValueFromProfile = profile?.[fieldSchema.name]?.value;
+
+  // Get value from profiles depending on the priority
+  const defaultValueFromProfile = orderedProfiles.find(
+    (profile) => profile?.[fieldSchema.name]?.value
+  )?.[fieldSchema.name]?.value;
+
+  // Get default value from schema
   const defaultValueFromSchema = getDefaultValueFromSchema(fieldSchema);
 
+  // Do not use profiles nor default values in filters
   if (isFilterForm) {
     return currentFieldValue ?? null;
   }
