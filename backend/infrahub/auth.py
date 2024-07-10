@@ -18,7 +18,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 
 if TYPE_CHECKING:
-    from infrahub.core.protocols import CoreAccount
+    from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
 
 # from ..datatypes import AuthResult
@@ -50,17 +50,23 @@ async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
     selected_branch = await registry.get_branch(db=db, branch=branch)
-    response: list[CoreAccount] = await NodeManager.query(
-        schema=InfrahubKind.ACCOUNT,
-        db=db,
-        branch=selected_branch,
-        filters={"name__value": credentials.username},
-        limit=1,
-    )
+
+    response: list[CoreGenericAccount] = []
+    for account_kind in registry.get_account_schemas(branch=branch):
+        response = await NodeManager.query(
+            schema=account_kind.kind,
+            db=db,
+            branch=selected_branch,
+            filters={"name__value": credentials.username},
+            limit=1,
+        )
+        if response:
+            break
+
     if not response:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
-            node_type=InfrahubKind.ACCOUNT,
+            node_type="Account",
             identifier=credentials.username,
             message="That login user doesn't exist in the system",
         )
@@ -72,7 +78,6 @@ async def authenticate_with_password(
         raise AuthorizationError("Incorrect password")
 
     now = datetime.now(tz=timezone.utc)
-
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, role=account.role.value.value, session_id=session_id)
@@ -97,7 +102,7 @@ async def create_fresh_access_token(
     if not refresh_token:
         raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
-    account: Optional[CoreAccount] = await NodeManager.get_one(id=refresh_data.account_id, db=db)
+    account: Optional[CoreGenericAccount] = await NodeManager.get_one(id=refresh_data.account_id, db=db)
     if not account:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
