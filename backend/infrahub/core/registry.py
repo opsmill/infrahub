@@ -124,16 +124,18 @@ class Registry:
             raise DataTypeNotFoundError(name=name)
         return self.data_type[name]
 
-    def get_full_schema(self, branch: Optional[Union[Branch, str]] = None) -> dict[str, MainSchemaTypes]:
+    def get_full_schema(
+        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> dict[str, MainSchemaTypes]:
         """Return all the nodes in the schema for a given branch."""
-        return self.schema.get_full(branch=branch)
+        return self.schema.get_full(branch=branch, duplicate=duplicate)
 
     def get_account_schemas(self, branch: Optional[Union[Branch, str]] = None) -> list[NodeSchema]:
         """Return nodes related to user accounts in the schema, for a given branch."""
         schemas: list[NodeSchema] = []
-        for schema in self.get_full_schema(branch=branch).values():
-            if schema.is_node_schema and InfrahubKind.GENERICACCOUNT in schema.inherit_from:
-                schemas.append(schema)
+        for schema in self.get_full_schema(branch=branch, duplicate=False).values():
+            if schema.is_node_schema and InfrahubKind.GENERICACCOUNT in schema.inherit_from:  # type: ignore[union-attr]
+                schemas.append(schema)  # type: ignore[arg-type]
 
         return schemas
 

@@ -202,7 +202,7 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
     account_menu_items: list[InterfaceMenu] = []
     for schema in registry.get_account_schemas(branch=branch):
         account_menu_items.append(
-            InterfaceMenu(title=schema.label, path=f"/objects/{schema.kind}", icon=_extract_node_icon(schema))
+            InterfaceMenu(title=str(schema.label), path=f"/objects/{schema.kind}", icon=_extract_node_icon(schema))
         )
 
     admin = InterfaceMenu(
