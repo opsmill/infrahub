@@ -57,8 +57,10 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                             uuid
                             base_branch_action
                             base_branch_value
+                            base_branch_changed_at
                             diff_branch_action
                             diff_branch_value
+                            diff_branch_changed_at
                             selected_branch
                         }
                     }
@@ -74,6 +76,16 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                         peer_id
                         last_changed_at
                         contains_conflict
+                        conflict {
+                            uuid
+                            base_branch_action
+                            base_branch_changed_at
+                            base_branch_value
+                            diff_branch_action
+                            diff_branch_value
+                            diff_branch_changed_at
+                            selected_branch
+                        }
                         properties {
                             property_type
                             last_changed_at
@@ -84,8 +96,10 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                                 uuid
                                 base_branch_action
                                 base_branch_value
+                                base_branch_changed_at
                                 diff_branch_action
                                 diff_branch_value
+                                diff_branch_changed_at
                                 selected_branch
                             }
                         }
@@ -234,6 +248,7 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                                 "status": "UPDATED",
                                 "peer_id": "7f0d1a04-1543-4d7e-b348-8fb1d19f7a8c",
                                 "contains_conflict": True,
+                                "conflict": None,
                                 "properties": [
                                     {
                                         "property_type": "peer_id",
@@ -245,8 +260,10 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                                             "uuid": "0a7a5898-e8a0-4baf-b7ae-1fac1fcdf468",
                                             "base_branch_action": "REMOVED",
                                             "base_branch_value": None,
+                                            "base_branch_changed_at": "2024-02-03T04:05:06+00:00",
                                             "diff_branch_action": "UPDATED",
                                             "diff_branch_value": "c411c56f-d88b-402d-8753-0a35defaab1f",
+                                            "diff_branch_changed_at": "2024-02-03T04:05:06+00:00",
                                             "selected_branch": None,
                                         },
                                     },
@@ -260,8 +277,10 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                                             "uuid": "60b2456b-0dcd-47c9-a9f1-590b30a597de",
                                             "base_branch_action": "REMOVED",
                                             "base_branch_value": None,
+                                            "base_branch_changed_at": "2024-02-03T04:05:06+00:00",
                                             "diff_branch_action": "UPDATED",
                                             "diff_branch_value": "true",
+                                            "diff_branch_changed_at": "2024-02-03T04:05:06+00:00",
                                             "selected_branch": "DIFF_BRANCH",
                                         },
                                     },

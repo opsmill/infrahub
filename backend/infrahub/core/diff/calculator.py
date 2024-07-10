@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.query_parser import DiffQueryParser
@@ -7,15 +5,7 @@ from infrahub.core.query.diff import DiffAllPathsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
-from .model.path import DiffRoot
-
-
-@dataclass
-class CalculatedDiffs:
-    base_branch_name: str
-    diff_branch_name: str
-    base_branch_diff: DiffRoot
-    diff_branch_diff: DiffRoot
+from .model.path import CalculatedDiffs
 
 
 class DiffCalculator:
