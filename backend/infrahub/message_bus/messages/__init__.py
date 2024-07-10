@@ -17,6 +17,7 @@ from .git_branch_create import GitBranchCreate
 from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_add import GitRepositoryAdd
+from .git_repository_importobjects import GitRepositoryImportObjects
 from .git_repository_merge import GitRepositoryMerge
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
 from .git_repository_read_only_pull import GitRepositoryPullReadOnly
@@ -75,6 +76,7 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "git.repository.add": GitRepositoryAdd,
     "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
+    "git.repository.import_objects": GitRepositoryImportObjects,
     "git.repository.pull_read_only": GitRepositoryPullReadOnly,
     "schema.migration.path": SchemaMigrationPath,
     "schema.validator.path": SchemaValidatorPath,
