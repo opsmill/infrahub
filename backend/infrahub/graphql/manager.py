@@ -389,10 +389,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             )
             if node_name == InfrahubKind.ACCOUNT:
                 node_type = self.get_type(name=InfrahubKind.ACCOUNT)
-                class_attrs["AccountProfile"] = graphene.Field(
-                    node_type,
-                    resolver=account_resolver,
-                )
+                class_attrs["AccountProfile"] = graphene.Field(node_type, resolver=account_resolver)
 
         return type("QueryMixin", (object,), class_attrs)
 

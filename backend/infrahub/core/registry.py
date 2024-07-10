@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub import lock
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.exceptions import BranchNotFoundError, DataTypeNotFoundError, InitializationError
 
 if TYPE_CHECKING:
@@ -127,6 +127,15 @@ class Registry:
     def get_full_schema(self, branch: Optional[Union[Branch, str]] = None) -> dict[str, MainSchemaTypes]:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch)
+
+    def get_account_schemas(self, branch: Optional[Union[Branch, str]] = None) -> list[NodeSchema]:
+        """Return nodes related to user accounts in the schema, for a given branch."""
+        schemas: list[NodeSchema] = []
+        for schema in self.get_full_schema(branch=branch).values():
+            if schema.is_node_schema and InfrahubKind.GENERICACCOUNT in schema.inherit_from:
+                schemas.append(schema)
+
+        return schemas
 
     def delete_all(self) -> None:
         self.branch = {}
