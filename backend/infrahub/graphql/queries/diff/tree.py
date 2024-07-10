@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
-from graphene import Union as GrapheneUnion
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import DiffAction
@@ -26,6 +25,18 @@ query DiffTree
         depth: Number
         limit: Number
         offset: Number
+"""
+
+
+"""
+- query to get all diffs for a list of branches that returns summary counts
+- some way to track conflicts that have been addressed
+- use flat structure with IDs and the front-end can build the tree from them
+- some way (a new mutation?) to allow discarding ANY change for an UPDATE
+  - add a comment on the proposed change automatically
+- track number of changes on main as part of cached diff for a given branch
+- rebasing will require recalculating the diff and invalidating the cached diffs for this branch
+- when merging, we need to lock main, calculate the small interval of the diff to make it current, then merge if no conflicts
 """
 
 
@@ -67,9 +78,14 @@ class DiffSingleRelationship(DiffSummaryCounts):
     contains_conflict = Boolean(required=True)
     properties = List(DiffProperty)
 
-    @classmethod
-    def is_type_of(cls, result: dict[str, Any], info: GraphQLResolveInfo) -> bool:
-        return bool(result.get("properties"))
+
+class DiffRelationship(DiffSummaryCounts):
+    name = String(required=True)
+    last_changed_at = DateTime(required=False)
+    status = Field(GrapheneDiffActionEnum, required=True)
+    elements = List(DiffSingleRelationship, required=True)
+    node_uuids = List(String, required=True)
+    contains_conflict = Boolean(required=True)
 
 
 class DiffNode(DiffSummaryCounts):
@@ -80,24 +96,7 @@ class DiffNode(DiffSummaryCounts):
     contains_conflict = Boolean(required=True)
     last_changed_at = DateTime(required=False)
     attributes = List(DiffAttribute, required=True)
-    relationships = List(of_type=lambda: DiffRelationship, required=True)
-
-    @classmethod
-    def is_type_of(cls, result: dict[str, Any], info: GraphQLResolveInfo) -> bool:
-        return bool(result.get("uuid"))
-
-
-class DiffRelationshipElement(GrapheneUnion):
-    class Meta:
-        types = (DiffNode, DiffSingleRelationship)
-
-
-class DiffRelationship(DiffSummaryCounts):
-    name = String(required=True)
-    last_changed_at = DateTime(required=False)
-    status = Field(GrapheneDiffActionEnum, required=True)
-    elements = List(DiffRelationshipElement)
-    contains_conflict = Boolean(required=True)
+    relationships = List(DiffRelationship, required=True)
 
 
 class DiffTree(DiffSummaryCounts):
@@ -149,6 +148,42 @@ class DiffTreeResolver:
                                 previous_value=None,
                                 new_value=42,
                                 status=DiffAction.ADDED,
+                                conflict=None,
+                            )
+                        ],
+                    )
+                ],
+            ),
+            DiffNode(
+                uuid="990e1eda-687b-454d-a6c3-dc6039f125dd",
+                kind="ChildKind",
+                num_added=0,
+                num_updated=1,
+                num_removed=0,
+                num_conflicts=0,
+                last_changed_at=the_time,
+                label="ChildLabel",
+                status=DiffAction.UPDATED,
+                contains_conflict=False,
+                relationships=[],
+                attributes=[
+                    DiffAttribute(
+                        name="ChildAttribute",
+                        last_changed_at=the_time,
+                        status=DiffAction.UPDATED,
+                        num_added=0,
+                        num_updated=1,
+                        num_removed=0,
+                        num_conflicts=0,
+                        contains_conflict=False,
+                        properties=[
+                            DiffProperty(
+                                property_type="owner",
+                                last_changed_at=the_time,
+                                previous_value="herbert",
+                                new_value="willy",
+                                status=DiffAction.UPDATED,
+                                conflict=None,
                             )
                         ],
                     )
@@ -172,41 +207,8 @@ class DiffTreeResolver:
                         last_changed_at=the_time,
                         status=DiffAction.UPDATED,
                         contains_conflict=False,
-                        elements=[
-                            DiffNode(
-                                uuid="990e1eda-687b-454d-a6c3-dc6039f125dd",
-                                kind="ChildKind",
-                                num_added=0,
-                                num_updated=1,
-                                num_removed=0,
-                                num_conflicts=0,
-                                last_changed_at=the_time,
-                                label="ChildLabel",
-                                status=DiffAction.UPDATED,
-                                contains_conflict=False,
-                                attributes=[
-                                    DiffAttribute(
-                                        name="ChildAttribute",
-                                        last_changed_at=the_time,
-                                        status=DiffAction.UPDATED,
-                                        num_added=0,
-                                        num_updated=1,
-                                        num_removed=0,
-                                        num_conflicts=0,
-                                        contains_conflict=False,
-                                        properties=[
-                                            DiffProperty(
-                                                property_type="owner",
-                                                last_changed_at=the_time,
-                                                previous_value="herbert",
-                                                new_value="willy",
-                                                status=DiffAction.UPDATED,
-                                            )
-                                        ],
-                                    )
-                                ],
-                            )
-                        ],
+                        elements=[],
+                        node_uuids=["990e1eda-687b-454d-a6c3-dc6039f125dd"],
                     )
                 ],
             ),
@@ -228,6 +230,7 @@ class DiffTreeResolver:
                         last_changed_at=the_time,
                         status=DiffAction.UPDATED,
                         contains_conflict=True,
+                        node_uuids=[],
                         elements=[
                             DiffSingleRelationship(
                                 last_changed_at=the_time,

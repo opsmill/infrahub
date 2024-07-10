@@ -53,6 +53,12 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                         previous_value
                         new_value
                         status
+                        conflict {
+                            base_branch_action
+                            base_branch_value
+                            diff_branch_action
+                            diff_branch_value
+                        }
                     }
                 }
                 relationships {
@@ -60,59 +66,23 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                     last_changed_at
                     status
                     contains_conflict
+                    node_uuids
                     elements {
-                        ... on DiffNode {
-                            uuid
-                            kind
-                            label
-                            status
+                        status
+                        peer_id
+                        last_changed_at
+                        contains_conflict
+                        properties {
+                            property_type
                             last_changed_at
-                            contains_conflict
-                            num_added
-                            num_removed
-                            num_updated
-                            num_conflicts
-                            attributes {
-                                name
-                                last_changed_at
-                                status
-                                num_added
-                                num_removed
-                                num_updated
-                                num_conflicts
-                                contains_conflict
-                                properties {
-                                    property_type
-                                    last_changed_at
-                                    previous_value
-                                    new_value
-                                    status
-                                    conflict {
-                                        base_branch_action
-                                        base_branch_value
-                                        diff_branch_action
-                                        diff_branch_value
-                                    }
-                                }
-                            }
-                        }
-                        ... on DiffSingleRelationship {
+                            previous_value
+                            new_value
                             status
-                            peer_id
-                            last_changed_at
-                            contains_conflict
-                            properties {
-                                property_type
-                                last_changed_at
-                                previous_value
-                                new_value
-                                status
-                                conflict {
-                                    base_branch_action
-                                    base_branch_value
-                                    diff_branch_action
-                                    diff_branch_value
-                                }
+                            conflict {
+                                base_branch_action
+                                base_branch_value
+                                diff_branch_action
+                                diff_branch_value
                             }
                         }
                     }
@@ -171,6 +141,42 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                                 "previous_value": None,
                                 "new_value": "42",
                                 "status": "ADDED",
+                                "conflict": None,
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "uuid": "990e1eda-687b-454d-a6c3-dc6039f125dd",
+                "kind": "ChildKind",
+                "label": "ChildLabel",
+                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                "status": "UPDATED",
+                "contains_conflict": False,
+                "num_added": 0,
+                "num_removed": 0,
+                "num_updated": 1,
+                "num_conflicts": 0,
+                "relationships": [],
+                "attributes": [
+                    {
+                        "name": "ChildAttribute",
+                        "last_changed_at": "2024-02-03T04:05:06+00:00",
+                        "num_added": 0,
+                        "num_removed": 0,
+                        "num_updated": 1,
+                        "num_conflicts": 0,
+                        "status": "UPDATED",
+                        "contains_conflict": False,
+                        "properties": [
+                            {
+                                "property_type": "owner",
+                                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                                "previous_value": "herbert",
+                                "new_value": "willy",
+                                "status": "UPDATED",
+                                "conflict": None,
                             }
                         ],
                     }
@@ -194,42 +200,8 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                         "last_changed_at": "2024-02-03T04:05:06+00:00",
                         "status": "UPDATED",
                         "contains_conflict": False,
-                        "elements": [
-                            {
-                                "uuid": "990e1eda-687b-454d-a6c3-dc6039f125dd",
-                                "kind": "ChildKind",
-                                "label": "ChildLabel",
-                                "last_changed_at": "2024-02-03T04:05:06+00:00",
-                                "status": "UPDATED",
-                                "contains_conflict": False,
-                                "num_added": 0,
-                                "num_removed": 0,
-                                "num_updated": 1,
-                                "num_conflicts": 0,
-                                "attributes": [
-                                    {
-                                        "name": "ChildAttribute",
-                                        "last_changed_at": "2024-02-03T04:05:06+00:00",
-                                        "num_added": 0,
-                                        "num_removed": 0,
-                                        "num_updated": 1,
-                                        "num_conflicts": 0,
-                                        "status": "UPDATED",
-                                        "contains_conflict": False,
-                                        "properties": [
-                                            {
-                                                "conflict": None,
-                                                "property_type": "owner",
-                                                "last_changed_at": "2024-02-03T04:05:06+00:00",
-                                                "previous_value": "herbert",
-                                                "new_value": "willy",
-                                                "status": "UPDATED",
-                                            }
-                                        ],
-                                    }
-                                ],
-                            }
-                        ],
+                        "elements": [],
+                        "node_uuids": ["990e1eda-687b-454d-a6c3-dc6039f125dd"],
                     }
                 ],
             },
@@ -251,6 +223,7 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                         "last_changed_at": "2024-02-03T04:05:06+00:00",
                         "status": "UPDATED",
                         "contains_conflict": True,
+                        "node_uuids": [],
                         "elements": [
                             {
                                 "last_changed_at": "2024-02-03T04:05:06+00:00",
