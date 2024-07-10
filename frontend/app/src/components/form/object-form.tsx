@@ -122,7 +122,6 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
   const [selectedProfiles, setSelectedProfiles] = useState<
     Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
   >(currentProfile);
-  console.log("selectedProfiles: ", selectedProfiles);
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
@@ -188,12 +187,13 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
     })
     .filter(Boolean);
 
-  // Get all profiles kind to retrieve the informations from the result
-  const profilesKindList = profilesList.map((profile) => profile.kind);
+  // Get all profiles name to retrieve the informations from the result
+  const profilesNameList = profilesList.map((profile) => profile.name);
 
   if (!profilesList.length)
     return <ErrorScreen message="Something went wrong while fetching profiles" />;
 
+  console.log("profilesList: ", profilesList);
   const queryString = getProfiles({ profiles: profilesList });
 
   const query = gql`
@@ -207,11 +207,12 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
   if (error) return <ErrorScreen message={error.message} />;
 
   // Get data for each profile in the query result
-  const profilesData = profilesKindList.reduce(
+  const profilesData = profilesNameList.reduce(
     (acc, profile) => [...acc, ...(data?.[profile!]?.edges ?? [])],
     []
   );
 
+  console.log("profilesData: ", profilesData);
   if (!profilesData || profilesData.length === 0) return null;
 
   return (
