@@ -74,6 +74,15 @@ class CoreComment(CoreNode):
     created_by: Union[RelatedNode, RelatedNodeSync]
 
 
+class CoreGenericAccount(CoreNode):
+    name: str
+    password: str
+    label: str
+    description: str
+    account_type: str
+    role: str
+
+
 class CoreGenericRepository(CoreNode):
     name: str
     description: Optional[str]

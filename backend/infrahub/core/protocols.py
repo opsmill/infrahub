@@ -84,6 +84,15 @@ class CoreComment(CoreNode):
     created_by: RelationshipManager
 
 
+class CoreGenericAccount(CoreNode):
+    name: String
+    password: HashedPassword
+    label: String
+    description: String
+    account_type: Enum
+    role: Enum
+
+
 class CoreGenericRepository(CoreNode):
     name: String
     description: StringOptional
