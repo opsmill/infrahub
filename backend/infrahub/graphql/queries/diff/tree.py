@@ -57,6 +57,7 @@ class ConflictSelection(GrapheneEnum):
     BASE_BRANCH = "base"
     DIFF_BRANCH = "diff"
 
+
 class ConflictDetails(ObjectType):
     uuid = String(required=True)
     base_branch_action = Field(GrapheneDiffActionEnum, required=True)
@@ -284,7 +285,7 @@ class DiffTreeResolver:
                                             base_branch_value=None,
                                             diff_branch_action=DiffAction.UPDATED,
                                             diff_branch_value=True,
-                                            selected_branch=ConflictSelection.DIFF_BRANCH
+                                            selected_branch=ConflictSelection.DIFF_BRANCH,
                                         ),
                                     ),
                                 ],
