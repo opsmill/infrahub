@@ -32,11 +32,9 @@ export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
       <ComboboxPrimitive onChange={handleChange} multiple>
         <Popover open={open} onOpenChange={setOpen}>
           <ComboboxTrigger ref={ref} {...props}>
-            <div className="flex">
+            <div className="flex flex-wrap gap-2">
               {selectedItems.map((item, index) => (
-                <Badge key={index} className="mr-2 last:mr-0">
-                  {item.label}
-                </Badge>
+                <Badge key={index}>{item.label}</Badge>
               ))}
             </div>
           </ComboboxTrigger>
@@ -95,7 +93,7 @@ export const ComboboxTrigger = forwardRef<HTMLButtonElement, ComboboxTriggerProp
         ref={ref}
         role="combobox"
         className={classNames(
-          "h-10 px-2 flex justify-between items-center w-full rounded-md border border-gray-300 bg-custom-white text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
+          "min-h-10 p-2 flex justify-between items-center w-full rounded-md border border-gray-300 bg-custom-white text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
           className
         )}
         {...props}>
@@ -182,7 +180,7 @@ export const ComboboxItem = ({ className, item }: ComboboxItemProps) => {
     <ComboboxPrimitive.Option
       className={({ active, selected }) =>
         classNames(
-          "px-2 py-1.5 rounded mb-2 last:mb-0",
+          "px-2 py-1.5 rounded mb-2 last:mb-0 cursor-pointer",
           selected && "bg-sky-100",
           active && "bg-gray-100",
           className
