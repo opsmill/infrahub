@@ -33,8 +33,8 @@ export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
         <Popover open={open} onOpenChange={setOpen}>
           <ComboboxTrigger ref={ref} {...props}>
             <div className="flex">
-              {selectedItems.map((item) => (
-                <Badge key={item.value} className="mr-2 last:mr-0">
+              {selectedItems.map((item, index) => (
+                <Badge key={index} className="mr-2 last:mr-0">
                   {item.label}
                 </Badge>
               ))}
