@@ -25,7 +25,7 @@ const getMutationDetailsFromFormData = (
     );
 
     // Get value from profiles depending on the priority
-    const selectedProfile = orderedProfiles.find(
+    const selectedProfile = orderedProfiles?.find(
       (profile) => profile[attribute.name]?.value?.id || profile[attribute.name]?.value
     );
 
