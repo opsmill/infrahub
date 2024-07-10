@@ -4,6 +4,7 @@ import ModalConfirm from "@/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
+  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -25,6 +26,9 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
+import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "@/config/qsp";
+import { DIFF_TABS } from "@/screens/diff/diff";
 
 type tThread = {
   thread: any;
@@ -44,6 +48,7 @@ export const Thread = (props: tThread) => {
 
   const auth = useAuth();
 
+  const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,6 +110,21 @@ export const Thread = (props: tThread) => {
     }
   };
 
+  const getMutation = () => {
+    // for artifacts view
+    if (qspTab === DIFF_TABS.ARTIFACTS) {
+      return PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT;
+    }
+
+    // for conversations view
+    if (displayContext) {
+      return PROPOSED_CHANGES_CHANGE_THREAD_OBJECT;
+    }
+
+    // for object views
+    return PROPOSED_CHANGES_OBJECT_THREAD_OBJECT;
+  };
+
   const handleResolve = async () => {
     if (!thread.id) {
       return;
@@ -118,9 +138,7 @@ export const Thread = (props: tThread) => {
     }
 
     const mutationString = updateObjectWithId({
-      kind: displayContext
-        ? PROPOSED_CHANGES_CHANGE_THREAD_OBJECT // for conversations view
-        : PROPOSED_CHANGES_OBJECT_THREAD_OBJECT, // for object views
+      kind: getMutation(),
       data: stringifyWithoutQuotes({
         id: thread.id,
         resolved: {
