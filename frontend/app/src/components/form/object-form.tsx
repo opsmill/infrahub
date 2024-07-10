@@ -239,7 +239,7 @@ type NodeFormProps = {
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   isFilterForm?: boolean;
-  onSubmit?: (data: any) => void;
+  onSubmit?: (data: any, profiles?: IProfileSchema[]) => void;
 };
 
 const NodeForm = ({
@@ -308,10 +308,18 @@ const NodeForm = ({
     }
   }
 
+  const handleSubmit = (data: any) => {
+    if (onSubmitOverride) {
+      return onSubmitOverride(data, profiles);
+    }
+
+    return onSubmit(data);
+  };
+
   return (
     <DynamicForm
       fields={fields}
-      onSubmit={onSubmitOverride || onSubmit}
+      onSubmit={handleSubmit}
       className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
       {...props}
     />
