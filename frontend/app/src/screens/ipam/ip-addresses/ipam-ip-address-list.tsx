@@ -145,7 +145,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   }
 
   return (
-    <div>
+    <div className="flex flex-col flex-grow">
       {prefixData && (
         <div className="flex items-center mb-2">
           <Link

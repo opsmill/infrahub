@@ -28,7 +28,7 @@ export const Tree = ({ itemContent, className, loading, ...props }: TreeProps) =
         </TreeItemWrapper>
       )}
       className={classNames(
-        "border rounded text-sm",
+        "border rounded text-sm flex-grow",
         "[&_li:focus-visible]:rounded [&_li:focus-visible]:outline-none [&_li:focus-visible]:ring-2 [&_li:focus-visible]:ring-custom-blue-500 [&_li:focus-visible]:ring-offset-2",
         className
       )}

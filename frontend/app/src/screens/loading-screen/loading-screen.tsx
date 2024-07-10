@@ -3,6 +3,7 @@ import ReactLoading, { LoadingType } from "react-loading";
 
 interface Props {
   size?: string | number;
+  message?: string;
   hideText?: boolean;
   className?: string;
   colorClass?: string;
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export default function LoadingScreen(props: Props) {
-  const { hideText, size, className, colorClass, type } = props;
+  const { hideText, message, size, className, colorClass, type } = props;
 
   const color = colorClass ?? "!fill-custom-blue-500";
 
@@ -23,10 +24,10 @@ export default function LoadingScreen(props: Props) {
       <ReactLoading
         className={color}
         type={type ?? "bars"}
-        height={size ?? 70}
-        width={size ?? 70}
+        height={size ?? 40}
+        width={size ?? 40}
       />
-      {!hideText && <div className="text-xl mt-2">Just a moment</div>}
+      {!hideText && <div className="text-xl mt-2">{message ?? "Just a moment"}</div>}
     </div>
   );
 }

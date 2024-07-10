@@ -33,7 +33,7 @@ export default function IpAddressSummary() {
   const ipAddressData = data[IP_ADDRESS_GENERIC].edges[0].node;
 
   return (
-    <div>
+    <div className="flex flex-col flex-grow">
       <div className="flex items-center mb-2">
         <Link to={parentLink}>All IP Addresses</Link>
         <Icon icon={"mdi:chevron-right"} />

@@ -21,8 +21,6 @@ test.describe("Object hierarchical view", () => {
 
       await expect(page.getByRole("treeitem", { name: "United States of America" })).toBeVisible();
       await expect(page.getByRole("treeitem", { name: "Canada" })).toBeVisible();
-
-      await expect(page.url()).toContain("/objects/LocationGeneric");
     });
 
     await test.step("navigate using tree", async () => {

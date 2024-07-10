@@ -8,7 +8,7 @@ import {
 import { useAtomValue } from "jotai/index";
 import { getFormFieldsFromSchema } from "./utils";
 import { useId, useState } from "react";
-import { Combobox } from "@/components/ui/combobox";
+import { Combobox, tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Label from "@/components/ui/label";
 import { gql } from "@apollo/client";
@@ -26,8 +26,10 @@ import { classNames } from "@/utils/common";
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { useAuth } from "@/hooks/useAuth";
-import { useObjectItems } from "@/hooks/useObjectItems";
 import useFilters from "@/hooks/useFilters";
+import useQuery from "@/hooks/useQuery";
+import { getProfiles } from "@/graphql/queries/objects/getProfiles";
+import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
@@ -42,6 +44,8 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
   // get all attributes and relationship ordered
   // map them into form fields
   // render form
+  const schemas = useAtomValue(schemaState);
+  const profiles = useAtomValue(profilesAtom);
   const generics = useAtomValue(genericsState);
   const generic = generics.find((g) => g.kind === kind);
   const [kindToCreate, setKindToCreate] = useState<string>();
@@ -54,12 +58,38 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
     }
 
     if (!kindToCreate && generic.used_by.length === 1) {
-      setKindToCreate(generic.used_by[0]);
+      const genericKind = generic.used_by[0];
+
+      const relatedSchema = schemas.find((schema) => schema.kind === genericKind);
+
+      if (!relatedSchema) return;
+
+      const currentGeneric = {
+        value: relatedSchema.kind,
+        label: relatedSchema.label ?? relatedSchema.name,
+        badge: relatedSchema.namespace,
+      };
+
+      setKindToCreate(currentGeneric.value ?? "");
     }
+
+    const items = generic.used_by
+      .map((kind) => {
+        const relatedSchema = [...schemas, ...profiles].find((schema) => schema.kind === kind);
+
+        if (!relatedSchema) return null;
+
+        return {
+          value: relatedSchema.kind,
+          label: relatedSchema.label ?? relatedSchema.name,
+          badge: relatedSchema.namespace,
+        };
+      })
+      .filter(Boolean) as Array<tComboboxItem>;
 
     return (
       <>
-        <GenericSelector items={generic.used_by} value={kindToCreate} onChange={setKindToCreate} />
+        <GenericSelector items={items} value={kindToCreate} onChange={setKindToCreate} />
         {kindToCreate && <NodeWithProfileForm kind={kindToCreate} {...props} />}
       </>
     );
@@ -69,7 +99,7 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
 };
 
 type GenericSelectorProps = {
-  items: Array<string>;
+  items: Array<tComboboxItem>;
   value?: string;
   onChange: (item: string) => void;
 };
@@ -92,20 +122,17 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
   const [profileSelected, setProfileSelected] = useState<
     Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
   >(currentProfile);
-
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
     return <NoDataFound message={`${kind} schema not found. Try to reload the page.`} />;
   }
 
-  const nodeProfileSchema = profiles.find((profile) => profile.name === kind);
-
   return (
     <>
-      {nodeProfileSchema && (
+      {nodeSchema.generate_profile && (
         <ProfilesSelector
-          schema={nodeProfileSchema}
+          schema={nodeSchema}
           value={profileSelected?.display_label}
           onChange={setProfileSelected}
         />
@@ -116,7 +143,7 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
 };
 
 type ProfilesSelectorProps = {
-  schema: IProfileSchema;
+  schema: iNodeSchema;
   value?: Record<string, Pick<AttributeType, "value" | "__typename">>;
   onChange: (item: Record<string, Pick<AttributeType, "value" | "__typename">>) => void;
 };
@@ -124,13 +151,65 @@ type ProfilesSelectorProps = {
 const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
   const id = useId();
 
-  const { data, error, loading } = useObjectItems(schema);
+  const generics = useAtomValue(genericsState);
+  const profiles = useAtomValue(profilesAtom);
 
-  if (loading) return <LoadingScreen size={30} hideText className="p-12 pb-0" />;
+  const nodeGenerics = schema?.inherit_from ?? [];
+
+  // Get all available generic profiles
+  const nodeGenericsProfiles = nodeGenerics
+    // Find all generic schema
+    .map((nodeGeneric) => generics.find((generic) => generic.kind === nodeGeneric))
+    // Filter for generate_profile ones
+    .filter((generic) => generic.generate_profile)
+    // Get only the kind
+    .map((generic) => generic.kind)
+    .filter(Boolean);
+
+  // The profiles should include the current object profile + all generic profiles
+  const kindList = [schema.kind, ...nodeGenericsProfiles];
+
+  // Add attributes for each profiles to get the values in the form
+  const profilesList = kindList
+    .map((profile) => {
+      // Get the profile schema for the current kind
+      const profileSchema = profiles.find((profileSchema) => profileSchema.name === profile);
+
+      // Get attributes for query + form data
+      const attributes = getObjectAttributes({ schema: profileSchema, forListView: true });
+
+      if (!attributes.length) return null;
+
+      return {
+        name: profileSchema.kind,
+        attributes,
+      };
+    })
+    .filter(Boolean);
+
+  // Get all profiles kind to retrieve the informations from the result
+  const profilesKindList = profilesList.map((profile) => profile.name);
+
+  if (!profilesList.length)
+    return <ErrorScreen message="Something went wrong while fetching profiles" />;
+
+  const queryString = getProfiles({ profiles: profilesList });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { data, error, loading } = useQuery(query);
+
+  if (loading) return <LoadingScreen size={30} hideText className="p-4 pb-0" />;
 
   if (error) return <ErrorScreen message={error.message} />;
 
-  const profilesData = data?.[schema.kind!]?.edges;
+  // Get data for each profile in the query result
+  const profilesData = profilesKindList.reduce(
+    (acc, profile) => [...acc, ...(data?.[profile!]?.edges ?? [])],
+    []
+  );
 
   if (!profilesData || profilesData.length === 0) return null;
 
@@ -175,11 +254,13 @@ const NodeForm = ({
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const schemas = useAtomValue(schemaState);
   const [filters] = useFilters();
   const { data, permissions } = useAuth();
 
   const fields = getFormFieldsFromSchema({
     schema,
+    schemas,
     profile,
     initialObject: currentObject,
     user: { ...data, permissions },

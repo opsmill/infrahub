@@ -5,20 +5,20 @@ import {
   GET_PREFIXES_ONLY,
   GET_TOP_LEVEL_PREFIXES,
 } from "@/graphql/queries/ipam/prefixes";
-import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "@/screens/ipam/constants";
+import { IP_PREFIX_GENERIC, TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { atom } from "jotai";
 import * as R from "ramda";
 import {
   AncestorsData,
-  EMPTY_IPAM_TREE,
+  EMPTY_TREE,
   formatIPPrefixResponseForTreeView,
   PrefixData,
   updateTreeData,
 } from "./utils";
 
-export const ipamTreeAtom = atom<TreeProps["data"]>(EMPTY_IPAM_TREE);
+export const ipamTreeAtom = atom<TreeProps["data"]>(EMPTY_TREE);
 
 export const reloadIpamTreeAtom = atom(
   null,
@@ -40,8 +40,8 @@ export const reloadIpamTreeAtom = atom(
 
     const topLevelTreeItems = formatIPPrefixResponseForTreeView(getTopLevelPrefixData);
     const treeWithTopLevelPrefixesOnly = updateTreeData(
-      EMPTY_IPAM_TREE,
-      IPAM_TREE_ROOT_ID,
+      EMPTY_TREE,
+      TREE_ROOT_ID,
       topLevelTreeItems
     );
 
@@ -72,7 +72,7 @@ export const reloadIpamTreeAtom = atom(
     const ancestors = prefixAncestorsData.node.ancestors.edges.map(({ node }) => ({
       id: node.id,
       name: node.display_label,
-      parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
+      parentId: node.parent.node?.id ?? TREE_ROOT_ID,
     }));
 
     const parentToChildMap: Record<string, string> = {};
@@ -91,7 +91,7 @@ export const reloadIpamTreeAtom = atom(
       traverseHierarchy(map, childId);
     };
 
-    traverseHierarchy(parentToChildMap, IPAM_TREE_ROOT_ID);
+    traverseHierarchy(parentToChildMap, TREE_ROOT_ID);
 
     const { data: getFetchPrefixesData } = await graphqlClient.query<
       PrefixData,
@@ -110,7 +110,7 @@ export const reloadIpamTreeAtom = atom(
     const newtreeItems = formatIPPrefixResponseForTreeView(getFetchPrefixesData);
 
     const groupedByParent = R.groupBy(
-      (node) => node.parent?.toString() ?? IPAM_TREE_ROOT_ID,
+      (node) => node.parent?.toString() ?? TREE_ROOT_ID,
       newtreeItems
     );
 

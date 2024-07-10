@@ -42,11 +42,39 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
   test.describe("when logged in", async () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test("should be able to create a new artifact", async ({ page }) => {
-      page.goto("/objects/CoreArtifact");
+    test("should not be able to create a new artifact", async ({ page }) => {
+      await page.goto("/objects/CoreArtifact");
       await expect(page.getByRole("heading", { name: "Artifact" })).toBeVisible();
-      await page.getByTestId("create-object-button").click();
-      await expect(page.getByText("Create Artifact")).toBeVisible();
+      await expect(page.getByTestId("create-object-button")).not.toBeVisible();
+    });
+
+    test("should add generated artifact to a group", async ({ page }) => {
+      await page.goto(
+        // eslint-disable-next-line quotes
+        '/objects/CoreArtifact?filters=[{"name":"name__value","value":"Startup Config for Edge devices"}]'
+      );
+      await page.getByRole("link", { name: "startup Config for Edge devices" }).first().click();
+
+      await test.step("add artifact to a group", async () => {
+        await page.getByRole("button", { name: "Manage groups" }).click();
+
+        await page.getByTestId("select-open-option-button").click();
+        await page.getByRole("option", { name: "arista_devices" }).click();
+        await page.getByTestId("select-open-option-button").click();
+        await page.getByRole("button", { name: "Save" }).click();
+
+        await expect(page.getByText("Group updated")).toBeVisible();
+      });
+
+      await test.step("remove artifact from a group", async () => {
+        await page.getByRole("button", { name: "Manage groups" }).click();
+
+        await page.getByTestId("badge-delete").click();
+        await page.getByTestId("select-open-option-button").click();
+        await page.getByRole("button", { name: "Save" }).click();
+
+        await expect(page.getByText("Group updated")).toBeVisible();
+      });
     });
   });
 });

@@ -31,19 +31,19 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/branches/:branchName",
-            lazy: () => import("@/screens/branches/branch-item-details"),
+            lazy: () => import("@/pages/branches/branch-details"),
           },
           {
             path: "/branches",
-            lazy: () => import("@/screens/branches/branches-items"),
+            lazy: () => import("@/pages/branches"),
           },
           {
             path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
-            lazy: () => import("@/screens/artifacts/object-item-details-paginated"),
+            lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
           },
           {
             path: `/objects/${GRAPHQL_QUERY_OBJECT}/:graphqlQueryId`,
-            lazy: () => import("@/screens/graphql/details/graphql-query-details-page"),
+            lazy: () => import("@/pages/objects/CoreGraphQLQuery/graphql-query-details"),
           },
           {
             path: "/objects",
@@ -61,35 +61,35 @@ export const router = createBrowserRouter([
           },
           {
             path: "/profile",
-            lazy: () => import("@/screens/user-profile/user-profile"),
+            lazy: () => import("@/pages/profile"),
           },
           {
             path: "/proposed-changes/new",
-            lazy: () => import("@/screens/proposed-changes/proposed-changes-create-page"),
+            lazy: () => import("@/pages/proposed-changes/new"),
           },
           {
             path: "/proposed-changes/:proposedchange",
-            lazy: () => import("@/screens/proposed-changes/proposed-changes-details"),
+            lazy: () => import("@/pages/proposed-changes/proposed-changes-details"),
           },
           {
             path: "/proposed-changes",
-            lazy: () => import("@/screens/proposed-changes/proposed-changes-items"),
+            lazy: () => import("@/pages/proposed-changes/proposed-changes-items"),
           },
           {
             path: "/tasks/:task",
-            lazy: () => import("@/screens/tasks/task-item-details-screen"),
+            lazy: () => import("@/pages/tasks/task-details"),
           },
           {
             path: "/tasks",
-            lazy: () => import("@/screens/tasks/task-items-screen"),
+            lazy: () => import("@/pages/tasks"),
           },
           {
             path: "/graphql/:branch",
-            lazy: () => import("@/screens/graphql/redirect-to-graphql-sandbox-page"),
+            lazy: () => import("@/pages/graphql/redirect-to-graphql-sandbox-page"),
           },
           {
             path: "graphql",
-            lazy: () => import("@/screens/graphql/graphql-sandbox-page"),
+            lazy: () => import("@/pages/graphql"),
           },
           {
             path: "/resource-manager",
@@ -97,21 +97,21 @@ export const router = createBrowserRouter([
           },
           {
             path: "/resource-manager/:resourcePoolId",
-            lazy: () => import("@/screens/resource-manager/resource-pool-page"),
+            lazy: () => import("@/pages/resource-manager/resource-pool-details"),
             children: [
               {
                 path: "resources/:resourceId",
-                lazy: () => import("@/screens/resource-manager/resource-allocation-page"),
+                lazy: () => import("@/pages/resource-manager/resource-allocation-details"),
               },
             ],
           },
           {
             path: "/schema",
-            lazy: () => import("@/screens/schema/schema-page"),
+            lazy: () => import("@/pages/schema"),
           },
           {
             path: IPAM_ROUTE.INDEX,
-            lazy: () => import("@/screens/ipam/ipam-page"),
+            lazy: () => import("@/pages/ipam/layout"),
             children: [
               {
                 index: true,
@@ -147,7 +147,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "/",
-            lazy: () => import("@/screens/homepage"),
+            lazy: () => import("@/pages/homepage"),
           },
           {
             path: "*",
@@ -159,6 +159,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "/signin",
-    lazy: () => import("@/screens/sign-in/sign-in"),
+    lazy: () => import("@/pages/sign-in"),
   },
 ]);

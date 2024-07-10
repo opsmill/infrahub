@@ -141,7 +141,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   }
 
   return (
-    <div>
+    <div className="w-full">
       {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
 
       {data && (

@@ -12,7 +12,7 @@ from infrahub_sdk import InfrahubClient
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import FileNotValidError
-from infrahub_sdk.ctl.utils import init_logging
+from infrahub_sdk.ctl.utils import catch_exception, init_logging
 from infrahub_sdk.queries import SCHEMA_HASH_SYNC_STATUS
 from infrahub_sdk.utils import find_files
 from infrahub_sdk.yaml import SchemaFile
@@ -20,6 +20,7 @@ from infrahub_sdk.yaml import SchemaFile
 from .parameters import CONFIG_PARAM
 
 app = AsyncTyper()
+console = Console()
 
 
 @app.callback()
@@ -48,7 +49,7 @@ def load_schemas_from_disk(schemas: list[Path]) -> list[SchemaFile]:
     return schemas_data
 
 
-def load_schemas_from_disk_and_exit(schemas: list[Path], console: Console):
+def load_schemas_from_disk_and_exit(schemas: list[Path]):
     has_error = False
     try:
         schemas_data = load_schemas_from_disk(schemas=schemas)
@@ -68,7 +69,7 @@ def load_schemas_from_disk_and_exit(schemas: list[Path], console: Console):
     return schemas_data
 
 
-def validate_schema_content_and_exit(client: InfrahubClient, console: Console, schemas: list[SchemaFile]) -> None:
+def validate_schema_content_and_exit(client: InfrahubClient, schemas: list[SchemaFile]) -> None:
     has_error: bool = False
     for schema_file in schemas:
         try:
@@ -84,10 +85,10 @@ def validate_schema_content_and_exit(client: InfrahubClient, console: Console, s
         raise typer.Exit(2)
 
 
-def display_schema_load_errors(console: Console, response: dict[str, Any], schemas_data: list[dict]) -> None:
+def display_schema_load_errors(response: dict[str, Any], schemas_data: list[dict]) -> None:
     console.print("[red]Unable to load the schema:")
     if "detail" not in response:
-        handle_non_detail_errors(console=console, response=response)
+        handle_non_detail_errors(response=response)
         return
 
     for error in response["detail"]:
@@ -111,7 +112,7 @@ def display_schema_load_errors(console: Console, response: dict[str, Any], schem
         console.print(f"  Node: {node.get('namespace', None)}{node.get('name', None)} | {error_message}")
 
 
-def handle_non_detail_errors(console: Console, response: dict[str, Any]) -> None:
+def handle_non_detail_errors(response: dict[str, Any]) -> None:
     if "error" in response:
         console.print(f"  {response.get('error')}")
     elif "errors" in response:
@@ -132,6 +133,7 @@ def get_node(schemas_data: list[dict], schema_index: int, node_index: int) -> Op
 
 
 @app.command()
+@catch_exception(console=console)
 async def load(
     schemas: list[Path],
     debug: bool = False,
@@ -143,19 +145,17 @@ async def load(
 
     init_logging(debug=debug)
 
-    console = Console()
-
-    schemas_data = load_schemas_from_disk_and_exit(console=console, schemas=schemas)
+    schemas_data = load_schemas_from_disk_and_exit(schemas=schemas)
     schema_definition = "schema" if len(schemas_data) == 1 else "schemas"
     client = await initialize_client()
-    validate_schema_content_and_exit(console=console, client=client, schemas=schemas_data)
+    validate_schema_content_and_exit(client=client, schemas=schemas_data)
 
     start_time = time.time()
     response = await client.schema.load(schemas=[item.content for item in schemas_data], branch=branch)
     loading_time = time.time() - start_time
 
     if response.errors:
-        display_schema_load_errors(console=console, response=response.errors, schemas_data=schemas_data)
+        display_schema_load_errors(response=response.errors, schemas_data=schemas_data)
         raise typer.Exit(1)
 
     if response.schema_updated:
@@ -184,6 +184,7 @@ async def load(
 
 
 @app.command()
+@catch_exception(console=console)
 async def check(
     schemas: list[Path],
     debug: bool = False,
@@ -194,16 +195,14 @@ async def check(
 
     init_logging(debug=debug)
 
-    console = Console()
-
-    schemas_data = load_schemas_from_disk_and_exit(console=console, schemas=schemas)
+    schemas_data = load_schemas_from_disk_and_exit(schemas=schemas)
     client = await initialize_client()
-    validate_schema_content_and_exit(console=console, client=client, schemas=schemas_data)
+    validate_schema_content_and_exit(client=client, schemas=schemas_data)
 
     success, response = await client.schema.check(schemas=[item.content for item in schemas_data], branch=branch)
 
     if not success:
-        display_schema_load_errors(console=console, response=response, schemas_data=schemas_data)
+        display_schema_load_errors(response=response, schemas_data=schemas_data)
     else:
         for schema_file in schemas_data:
             console.print(f"[green] schema '{schema_file.location}' is Valid!")

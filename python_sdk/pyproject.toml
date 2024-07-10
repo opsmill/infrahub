@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sdk"
-version = "0.12.0-dev"
+version = "0.12.0-beta1"
 description = "Python Client to interact with Infrahub"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -63,7 +63,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.6"
+ruff = "0.5.0"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -223,6 +223,7 @@ select = [
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
     "N",     # pep8-naming
+    "PERF",  # Perflint
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PTH",   # flake8-use-pathlib
@@ -231,7 +232,6 @@ select = [
     "RET",   # flake8-return
     "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
     "UP",    # pyupgrade
     "W",     # pycodestyle warnings
@@ -252,6 +252,10 @@ ignore = [
     "C414",    # Unnecessary `list` call within `sorted()`
     "N802",    # Function name should be lowercase
     "N806",    # Variable in function should be lowercase
+    "PERF102", # When using only the values of a dict use the `values()` method
+    "PERF203", # `try`-`except` within a loop incurs performance overhead
+    "PERF401", # Use a list comprehension to create a transformed list
+    "PLC0206", # Extracting value from dictionary without calling `.items()`
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments

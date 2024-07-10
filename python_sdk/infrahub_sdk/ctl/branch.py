@@ -1,22 +1,18 @@
 import logging
-import sys
 from typing import Optional
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from infrahub_sdk import Error, GraphQLError
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl.client import initialize_client
-from infrahub_sdk.ctl.utils import (
-    calculate_time_diff,
-    print_graphql_errors,
-)
+from infrahub_sdk.ctl.utils import calculate_time_diff, catch_exception
 
 from .parameters import CONFIG_PARAM
 
 app = AsyncTyper()
+console = Console()
 
 
 DEFAULT_CONFIG_FILE = "infrahubctl.toml"
@@ -33,25 +29,14 @@ def callback() -> None:
 
 
 @app.command("list")
-async def list_branch(
-    _: str = CONFIG_PARAM,
-) -> None:
+@catch_exception(console=console)
+async def list_branch(_: str = CONFIG_PARAM) -> None:
     """List all existing branches."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
     client = await initialize_client()
-
-    console = Console()
-
-    try:
-        branches = await client.branch.all()
-    except GraphQLError as exc:
-        print_graphql_errors(console, exc.errors)
-        sys.exit(1)
-    except Error as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
+    branches = await client.branch.all()
 
     table = Table(title="List of all branches")
 
@@ -93,6 +78,7 @@ async def list_branch(
 
 
 @app.command()
+@catch_exception(console=console)
 async def create(
     branch_name: str = typer.Argument(..., help="Name of the branch to create"),
     description: Optional[str] = typer.Option("", help="Description of the branch"),
@@ -106,117 +92,52 @@ async def create(
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
-    console = Console()
-
     client = await initialize_client()
-
-    try:
-        branch = await client.branch.create(
-            branch_name=branch_name, description=description, sync_with_git=sync_with_git
-        )
-    except GraphQLError as exc:
-        print_graphql_errors(console, exc.errors)
-        sys.exit(1)
-    except Error as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
-
+    branch = await client.branch.create(branch_name=branch_name, description=description, sync_with_git=sync_with_git)
     console.print(f"Branch {branch_name!r} created successfully ({branch.id}).")
 
 
 @app.command()
-async def delete(
-    branch_name: str,
-    _: str = CONFIG_PARAM,
-) -> None:
+@catch_exception(console=console)
+async def delete(branch_name: str, _: str = CONFIG_PARAM) -> None:
     """Delete a branch."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
-    console = Console()
-
     client = await initialize_client()
-
-    try:
-        await client.branch.delete(branch_name=branch_name)
-    except GraphQLError as exc:
-        print_graphql_errors(console, exc.errors)
-        sys.exit(1)
-    except Error as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
-
+    await client.branch.delete(branch_name=branch_name)
     console.print(f"Branch '{branch_name}' deleted successfully.")
 
 
 @app.command()
-async def rebase(
-    branch_name: str,
-    _: str = CONFIG_PARAM,
-) -> None:
+@catch_exception(console=console)
+async def rebase(branch_name: str, _: str = CONFIG_PARAM) -> None:
     """Rebase a Branch with main."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
-    console = Console()
-
     client = await initialize_client()
-
-    try:
-        await client.branch.rebase(branch_name=branch_name)
-    except GraphQLError as exc:
-        print_graphql_errors(console, exc.errors)
-        sys.exit(1)
-    except Error as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
-
+    await client.branch.rebase(branch_name=branch_name)
     console.print(f"Branch '{branch_name}' rebased successfully.")
 
 
 @app.command()
-async def merge(
-    branch_name: str,
-    _: str = CONFIG_PARAM,
-) -> None:
+@catch_exception(console=console)
+async def merge(branch_name: str, _: str = CONFIG_PARAM) -> None:
     """Merge a Branch with main."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
-    console = Console()
-
     client = await initialize_client()
-
-    try:
-        await client.branch.merge(branch_name=branch_name)
-    except GraphQLError as exc:
-        print_graphql_errors(console, exc.errors)
-        sys.exit(1)
-    except Error as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
-
+    await client.branch.merge(branch_name=branch_name)
     console.print(f"Branch '{branch_name}' merged successfully.")
 
 
 @app.command()
-async def validate(
-    branch_name: str,
-    _: str = CONFIG_PARAM,
-) -> None:
+@catch_exception(console=console)
+async def validate(branch_name: str, _: str = CONFIG_PARAM) -> None:
     """Validate if a branch has some conflict and is passing all the tests (NOT IMPLEMENTED YET)."""
 
-    console = Console()
-
     client = await initialize_client()
-
-    try:
-        await client.branch.validate(branch_name=branch_name)
-    except GraphQLError as exc:
-        print_graphql_errors(console, exc.errors)
-        sys.exit(1)
-    except Error as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
-
+    await client.branch.validate(branch_name=branch_name)
     console.print(f"Branch '{branch_name}' is valid.")

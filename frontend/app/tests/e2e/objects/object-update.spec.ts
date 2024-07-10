@@ -19,7 +19,7 @@ test.describe("Object update", () => {
 
     await test.step("go to device edit form", async () => {
       await page.getByRole("link", { name: "atl1-core1" }).click();
-      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("edit-button").click();
     });
 
     await test.step("update the object", async () => {
@@ -63,7 +63,7 @@ test.describe("Object update", () => {
       await expect(page.getByRole("link", { name: "blue" })).not.toBeVisible();
 
       // Verify updates in form
-      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("edit-button").click();
       await expect(page.getByLabel("Name *")).toHaveValue("atl1-core1-new-name");
       await expect(page.getByLabel("Description")).toHaveValue("New description");
       await expect(page.getByLabel("Type *")).toHaveValue("MX204");
@@ -105,7 +105,7 @@ test.describe("Object update", () => {
     });
 
     await test.step("edit object values", async () => {
-      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("edit-button").click();
 
       await page.getByTestId("side-panel-container").getByLabel("Status").click();
       await page.getByText("Empty").click();

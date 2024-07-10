@@ -21,6 +21,7 @@ from .shared import (
 
 # pylint: disable=unused-argument
 ACCORD_COLOR = "#3443eb"
+VELOCIPEDE_KIND = "TestingVelocipede"
 
 
 class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
@@ -193,6 +194,46 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     ) -> Dict[str, Any]:
         return {
             "version": "1.0",
+            "nodes": [
+                schema_person_base,
+                schema_07_car_generate_profile_false,
+                schema_manufacturer_base,
+                schema_tag_base,
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_velocipede_generic(self) -> Dict[str, Any]:
+        return {
+            "name": "Velocipede",
+            "namespace": "Testing",
+            "include_in_menu": True,
+            "attributes": [
+                {"name": "name", "kind": "Text"},
+                {"name": "num_wheels", "kind": "Number", "optional": True},
+            ],
+            "relationships": [
+                {
+                    "name": "owner",
+                    "optional": True,
+                    "peer": "TestingPerson",
+                    "cardinality": "one",
+                },
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_09_add_generic(
+        self,
+        schema_07_car_generate_profile_false,
+        schema_person_base,
+        schema_manufacturer_base,
+        schema_tag_base,
+        schema_velocipede_generic,
+    ) -> Dict[str, Any]:
+        return {
+            "version": "1.0",
+            "generics": [schema_velocipede_generic],
             "nodes": [
                 schema_person_base,
                 schema_07_car_generate_profile_false,
@@ -390,6 +431,39 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "removed": {},
             "changed": {
                 "generate_profile": None,
-                "relationships": {"added": {}, "changed": {}, "removed": {"profiles": None}},
             },
         }
+
+    async def test_step_09_add_generic_and_profile(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_09_add_generic
+    ):
+        await load_schema(db=db, schema=schema_09_add_generic)
+        schema_09_add_generic["generics"][0]["generate_profile"] = False
+
+        success, response = await client.schema.check(schemas=[schema_09_add_generic])
+        assert success is True
+        assert "diff" in response
+        assert "changed" in response["diff"]
+        assert "TestingVelocipede" in response["diff"]["changed"]
+        assert response["diff"]["changed"][VELOCIPEDE_KIND] == {
+            "added": {},
+            "removed": {},
+            "changed": {
+                "generate_profile": None,
+            },
+        }
+
+        generic_profile_schema = registry.schema.get(name=f"Profile{VELOCIPEDE_KIND}", duplicate=False)
+        assert isinstance(generic_profile_schema, ProfileSchema)
+        generic_profile = await Node.init(db=db, schema=generic_profile_schema)
+        await generic_profile.new(db=db, profile_name="cool unicycle", num_wheels=1)
+        await generic_profile.save(db=db)
+
+        success, response = await client.schema.check(schemas=[schema_09_add_generic])
+        assert success is False
+        assert "errors" in response
+        assert len(response["errors"]) == 1
+        err_msg = response["errors"][0]["message"]
+
+        assert generic_profile.id in err_msg
+        assert "node.generate_profile.update" in err_msg

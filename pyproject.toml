@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.15.0-dev"
+version = "0.15.0-beta1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -77,7 +77,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.6"
+ruff = "0.5.0"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
@@ -491,6 +491,7 @@ select = [
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
     "N",     # pep8-naming
+    "PERF",  # Perflint
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PTH",   # flake8-use-pathlib
@@ -499,7 +500,6 @@ select = [
     "RET",   # flake8-return
     "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
     "UP",    # pyupgrade
     "W",     # pycodestyle warnings
@@ -513,7 +513,8 @@ ignore = [
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
 # investigation if they are deemed to not make sense.                                            #
 ##################################################################################################
-    "ASYNC101", # Async functions should not call `open`, `time.sleep`, or `subprocess` methods
+    "ASYNC230", # Async functions should not open files with blocking methods like `open`
+    "ASYNC251", # Async functions should not call `time.sleep`
     "B007",     # Loop control variable not used within loop body
     "B008",     # Do not perform function call `Depends` in argument defaults;
     "B009",     # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
@@ -527,6 +528,11 @@ ignore = [
     "N805",     # First argument of a method should be named self
     "N806",     # Variable in function should be lowercase
     "N812",     # Lowercase imported as non-lowercase
+    "PERF102",  # When using only the values of a dict use the `values()` method
+    "PERF203",  # `try`-`except` within a loop incurs performance overhead
+    "PERF401",  # Use a list comprehension to create a transformed list
+    "PERF402",  # Use `list` or `list.copy` to create a copy of a list
+    "PERF403",  # Use a dictionary comprehension instead of a for-loop
     "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
@@ -599,6 +605,16 @@ max-complexity = 33
     "S106", #  Possible hardcoded password assigned to argument
 ]
 
+"models/infrastructure_edge.py" = [
+    "S106", # Hardcoded password
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one. Alternatively ignored after further       #
+# investigation if they are deemed to not make sense.                                            #
+##################################################################################################
+    "C901", # `generate_site` is too complex (34 > 33)"
+    "E501", # Line too long
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

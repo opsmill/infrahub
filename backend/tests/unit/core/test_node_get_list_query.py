@@ -504,6 +504,60 @@ async def test_query_NodeGetListQuery_filter_with_profiles(
     assert query.get_node_ids() == [person_alfred_main.id, person_jim_main.id, person_john_main.id]
 
 
+async def test_query_NodeGetListQuery_filter_with_generic_profiles(
+    db: InfrahubDatabase, animal_person_schema, default_branch: Branch
+):
+    animal_profile_schema = registry.schema.get("ProfileTestAnimal", duplicate=False)
+    animal_profile = await Node.init(db=db, schema=animal_profile_schema)
+    await animal_profile.new(db=db, profile_name="animal_profile", profile_priority=1000, weight=100)
+    await animal_profile.save(db=db)
+    cat_profile_schema = registry.schema.get("ProfileTestCat", duplicate=False)
+    cat_profile = await Node.init(db=db, schema=cat_profile_schema)
+    await cat_profile.new(db=db, profile_name="cat_profile", profile_priority=1001, weight=10)
+    await cat_profile.save(db=db)
+    dog_profile_schema = registry.schema.get("ProfileTestDog", duplicate=False)
+    dog_profile = await Node.init(db=db, schema=dog_profile_schema)
+    await dog_profile.new(db=db, profile_name="dog_profile", profile_priority=1002, weight=50)
+    await dog_profile.save(db=db)
+    person_schema = registry.schema.get("TestPerson", duplicate=False)
+    person = await Node.init(db=db, schema=person_schema)
+    await person.new(db=db, name="Ernest")
+    await person.save(db=db)
+    dog_schema = registry.schema.get("TestDog", duplicate=False)
+    big_dog = await Node.init(db=db, schema=dog_schema)
+    await big_dog.new(db=db, name="bigdog", breed="mixed", owner=person, profiles=[animal_profile, dog_profile])
+    await big_dog.save(db=db)
+    medium_dog = await Node.init(db=db, schema=dog_schema)
+    await medium_dog.new(db=db, name="mediumdog", breed="mixed", owner=person, profiles=[dog_profile])
+    await medium_dog.save(db=db)
+    cat_schema = registry.schema.get("TestCat", duplicate=False)
+    gigantic_cat = await Node.init(db=db, schema=cat_schema)
+    await gigantic_cat.new(
+        db=db, name="giganticcat", breed="orange", owner=person, profiles=[cat_profile, animal_profile]
+    )
+    await gigantic_cat.save(db=db)
+    small_cat = await Node.init(db=db, schema=cat_schema)
+    await small_cat.new(db=db, name="smallcat", breed="orange", owner=person, weight=7)
+    await small_cat.save(db=db)
+    animal_schema = registry.schema.get("TestAnimal", duplicate=False)
+
+    animal_profile_query = await NodeGetListQuery.init(
+        db=db, schema=animal_schema, branch=default_branch, filters={"weight__value": 100}
+    )
+    await animal_profile_query.execute(db=db)
+    assert set(animal_profile_query.get_node_ids()) == {big_dog.id, gigantic_cat.id}
+    medium_dog_query = await NodeGetListQuery.init(
+        db=db, schema=animal_schema, branch=default_branch, filters={"weight__value": 50}
+    )
+    await medium_dog_query.execute(db=db)
+    assert medium_dog_query.get_node_ids() == [medium_dog.id]
+    small_cat_query = await NodeGetListQuery.init(
+        db=db, schema=animal_schema, branch=default_branch, filters={"weight__value": 7}
+    )
+    await small_cat_query.execute(db=db)
+    assert small_cat_query.get_node_ids() == [small_cat.id]
+
+
 async def test_query_NodeGetListQuery_order_with_profiles(
     db: InfrahubDatabase, car_camry_main, car_accord_main, car_volt_main, branch: Branch
 ):
