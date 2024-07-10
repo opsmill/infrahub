@@ -54,10 +54,12 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                         new_value
                         status
                         conflict {
+                            uuid
                             base_branch_action
                             base_branch_value
                             diff_branch_action
                             diff_branch_value
+                            selected_branch
                         }
                     }
                 }
@@ -79,10 +81,12 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                             new_value
                             status
                             conflict {
+                                uuid
                                 base_branch_action
                                 base_branch_value
                                 diff_branch_action
                                 diff_branch_value
+                                selected_branch
                             }
                         }
                     }
@@ -238,10 +242,12 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                                         "new_value": "c411c56f-d88b-402d-8753-0a35defaab1f",
                                         "status": "UPDATED",
                                         "conflict": {
+                                            "uuid": "0a7a5898-e8a0-4baf-b7ae-1fac1fcdf468",
                                             "base_branch_action": "REMOVED",
                                             "base_branch_value": None,
                                             "diff_branch_action": "UPDATED",
                                             "diff_branch_value": "c411c56f-d88b-402d-8753-0a35defaab1f",
+                                            "selected_branch": None,
                                         },
                                     },
                                     {
@@ -251,10 +257,12 @@ async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_sche
                                         "new_value": "true",
                                         "status": "UPDATED",
                                         "conflict": {
+                                            "uuid": "60b2456b-0dcd-47c9-a9f1-590b30a597de",
                                             "base_branch_action": "REMOVED",
                                             "base_branch_value": None,
                                             "diff_branch_action": "UPDATED",
                                             "diff_branch_value": "true",
+                                            "selected_branch": "DIFF_BRANCH",
                                         },
                                     },
                                 ],

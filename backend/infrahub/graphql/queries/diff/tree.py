@@ -31,7 +31,6 @@ query DiffTree
 """
 - query to get all diffs for a list of branches that returns summary counts
 - some way to track conflicts that have been addressed
-- use flat structure with IDs and the front-end can build the tree from them
 - some way (a new mutation?) to allow discarding ANY change for an UPDATE
   - add a comment on the proposed change automatically
 - track number of changes on main as part of cached diff for a given branch
@@ -39,12 +38,32 @@ query DiffTree
 - when merging, we need to lock main, calculate the small interval of the diff to make it current, then merge if no conflicts
 """
 
+"""
+Cached Diff Graph Format
+(DiffRoot)-[DIFF_HAS_NODE]->(DiffNode)
+    (DiffNode)-[DIFF_HAS_ATTRIBUTE]->(DiffAttribute)
+        (DiffAttribute)-[DIFF_HAS_PROPERTY]->(DiffProperty)
+            (DiffProperty)-[DIFF_HAS_CONFLICT]->(DiffConflict)
+
+    (DiffNode)-[DIFF_HAS_RELATIONSHIP]->(DiffRelationship)
+        (DiffRelationship)-[DIFF_HAS_NODE]->(DiffNode)
+        (DiffRelationship)-[DIFF_HAS_ELEMENT]->(DiffRelationshipElement)
+            (DiffRelationshipElement)-[DIFF_HAS_PROPERTY]->(DiffProperty)
+                (DiffProperty)-[DIFF_HAS_CONFLICT]->(DiffConflict)
+"""
+
+
+class ConflictSelection(GrapheneEnum):
+    BASE_BRANCH = "base"
+    DIFF_BRANCH = "diff"
 
 class ConflictDetails(ObjectType):
+    uuid = String(required=True)
     base_branch_action = Field(GrapheneDiffActionEnum, required=True)
     base_branch_value = String()
     diff_branch_action = Field(GrapheneDiffActionEnum, required=True)
     diff_branch_value = String()
+    selected_branch = Field(ConflictSelection)
 
 
 class DiffSummaryCounts(ObjectType):
@@ -245,10 +264,12 @@ class DiffTreeResolver:
                                         new_value="c411c56f-d88b-402d-8753-0a35defaab1f",
                                         status=DiffAction.UPDATED,
                                         conflict=ConflictDetails(
+                                            uuid="0a7a5898-e8a0-4baf-b7ae-1fac1fcdf468",
                                             base_branch_action=DiffAction.REMOVED,
                                             base_branch_value=None,
                                             diff_branch_action=DiffAction.UPDATED,
                                             diff_branch_value="c411c56f-d88b-402d-8753-0a35defaab1f",
+                                            selected_branch=None,
                                         ),
                                     ),
                                     DiffProperty(
@@ -258,10 +279,12 @@ class DiffTreeResolver:
                                         new_value=True,
                                         status=DiffAction.UPDATED,
                                         conflict=ConflictDetails(
+                                            uuid="60b2456b-0dcd-47c9-a9f1-590b30a597de",
                                             base_branch_action=DiffAction.REMOVED,
                                             base_branch_value=None,
                                             diff_branch_action=DiffAction.UPDATED,
                                             diff_branch_value=True,
+                                            selected_branch=ConflictSelection.DIFF_BRANCH
                                         ),
                                     ),
                                 ],
