@@ -22,7 +22,6 @@ export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
 
     const handleChange = (v: unknown) => {
       if (onChange) onChange(v as string[]);
-      setOpen(false);
     };
 
     const selectedProfiles = value.map((profile) => profile.id);
