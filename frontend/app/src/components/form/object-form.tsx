@@ -35,7 +35,7 @@ interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
-  currentProfile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
+  currentProfiles?: IProfileSchema[];
   isFilterForm?: boolean;
   onSubmit?: (data: any) => Promise<void>;
 }
@@ -115,13 +115,13 @@ const GenericSelector = (props: GenericSelectorProps) => {
   );
 };
 
-const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps) => {
+const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
-  const [selectedProfiles, setSelectedProfiles] = useState<
-    Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
-  >(currentProfile);
+  const [selectedProfiles, setSelectedProfiles] = useState<IProfileSchema[] | undefined>(
+    currentProfiles
+  );
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
@@ -193,7 +193,6 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
   if (!profilesList.length)
     return <ErrorScreen message="Something went wrong while fetching profiles" />;
 
-  console.log("profilesList: ", profilesList);
   const queryString = getProfiles({ profiles: profilesList });
 
   const query = gql`
@@ -212,7 +211,6 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
     []
   );
 
-  console.log("profilesData: ", profilesData);
   if (!profilesData || profilesData.length === 0) return null;
 
   return (
