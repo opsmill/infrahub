@@ -236,7 +236,7 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
 
   if (!value && defaultValue) {
     const ids = defaultValue.map((profile) => profile.id);
-    console.log("ids: ", ids);
+
     handleChange(ids);
   }
 
