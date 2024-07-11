@@ -31,7 +31,7 @@ test.describe("Object groups update", () => {
     });
 
     await test.step("add groups to an object", async () => {
-      await page.getByRole("button", { name: "+ Add Groups" }).click();
+      await page.getByTestId("open-group-form-button").click();
       await expect(page.getByTestId("multi-select-input")).toContainText("Empty list");
       await page.getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "arista_devices" }).click();
@@ -72,7 +72,7 @@ test.describe("Object groups update", () => {
     });
 
     await test.step("add group form does not contains object groups", async () => {
-      await page.getByRole("button", { name: "+ Add Groups" }).click();
+      await page.getByTestId("open-group-form-button").click();
       await expect(page.getByTestId("multi-select-input")).toContainText("Empty list");
     });
   });

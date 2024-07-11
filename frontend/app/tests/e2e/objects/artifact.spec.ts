@@ -57,7 +57,7 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
 
       await test.step("add artifact to a group", async () => {
         await page.getByRole("button", { name: "Manage groups" }).click();
-        await page.getByRole("button", { name: "+ Add Groups" }).click();
+        await page.getByTestId("open-group-form-button").click();
 
         await page.getByTestId("select-open-option-button").click();
         await page.getByRole("option", { name: "arista_devices" }).click();

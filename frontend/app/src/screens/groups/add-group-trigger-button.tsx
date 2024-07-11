@@ -38,6 +38,7 @@ export default function AddGroupTriggerButton({
         disabled={!permission.write.allow}
         tooltipContent={permission.write.message ?? "Add groups"}
         tooltipEnabled
+        data-testid="open-group-form-button"
         {...props}>
         <Icon icon="mdi:plus" className="text-lg" />
       </ButtonWithTooltip>

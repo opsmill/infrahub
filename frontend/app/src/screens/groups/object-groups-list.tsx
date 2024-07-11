@@ -1,4 +1,4 @@
-import ItemGroup from "@/components/ui/item-group";
+import ItemGroup from "@/components/layouts/item-group";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/buttons/button-primitive";
