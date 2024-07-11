@@ -517,6 +517,7 @@ class NodeListGetAttributeQuery(Query):
 
         raise IndexError(f"Unable to find the result with ID: {node_id} and NAME: {attr_name}")
 
+    @trace.get_tracer(__name__).start_as_current_span("_extract_attribute_data")
     def _extract_attribute_data(self, result: QueryResult) -> AttributeFromDB:
         attr = result.get_node("a")
         attr_value = result.get_node("av")
