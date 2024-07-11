@@ -133,3 +133,7 @@
 - name: "ci/skip-changelog"
   description: "Don't include this PR in the changelog"
   color: "c30664"
+
+- name: "cd/preview"
+  description: "Deploy preview branch"
+  color: "d77e96"
