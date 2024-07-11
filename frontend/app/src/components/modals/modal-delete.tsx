@@ -9,8 +9,8 @@ interface iProps {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
   description: string | React.ReactNode;
-  onDelete: Function;
-  onCancel: Function;
+  onDelete: () => void;
+  onCancel: () => void;
 }
 
 export default function ModalDelete(props: iProps) {

@@ -23,3 +23,6 @@ export const capitalizeFirstLetter = (string: string) => {
 };
 
 export const concatString = (acc: string, elem: string) => `${acc}${elem}`;
+
+export const pluralize = (count: number, word: string, suffix = "s") =>
+  `${count} ${word}${count > 1 ? suffix : ""}`;
