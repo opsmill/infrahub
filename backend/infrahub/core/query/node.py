@@ -6,6 +6,8 @@ from dataclasses import field as dataclass_field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator, Optional, Union
 
+from opentelemetry import trace
+
 from infrahub import config
 from infrahub.core.constants import AttributeDBNodeType, RelationshipDirection, RelationshipHierarchyDirection
 from infrahub.core.query import Query, QueryResult, QueryType
@@ -491,6 +493,7 @@ class NodeListGetAttributeQuery(Query):
             self.add_to_query(query)
             self.return_labels.extend(["owner", "rel_owner"])
 
+    @trace.get_tracer(__name__).start_as_current_span("get_attributes_group_by_node")
     def get_attributes_group_by_node(self) -> dict[str, NodeAttributesFromDB]:
         attrs_by_node: dict[str, NodeAttributesFromDB] = {}
 
