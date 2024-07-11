@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Generator, Iterator, Optional, Union
 import ujson
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Relationship as Neo4jRelationship
+from opentelemetry import trace
 
 from infrahub import config
 from infrahub.core.constants import PermissionLevel
@@ -598,13 +599,14 @@ class Query(ABC):
             attrs_info[tuple(identifier)].append(info)
 
         for values in attrs_info.values():
-            attr_info = sorted(values, key=lambda i: (i["branch_score"], i["time_score"], i["deleted"]), reverse=True)[
-                0
-            ]
-            if attr_info["deleted"]:
-                continue
+            with trace.get_tracer(__name__).start_as_current_span("get_results_group_by_sort"):
+                attr_info = sorted(
+                    values, key=lambda i: (i["branch_score"], i["time_score"], i["deleted"]), reverse=True
+                )[0]
+                if attr_info["deleted"]:
+                    continue
 
-            yield self.results[attr_info["idx"]]
+                yield self.results[attr_info["idx"]]
 
     @property
     def num_of_results(self) -> int:
