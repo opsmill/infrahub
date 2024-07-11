@@ -20,15 +20,15 @@ export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
   ({ value = [], onChange, items = [], ...props }, ref) => {
     const [open, setOpen] = React.useState(false);
 
-    const handleChange = (v: unknown) => {
-      if (onChange) onChange(v as string[]);
+    const handleChange = (newValues: any[]) => {
+      if (onChange) onChange(newValues);
     };
 
-    const selectedProfiles = value.map((profile) => profile.id);
-    const selectedItems = items.filter((item) => selectedProfiles.includes(item.value.id)) ?? [];
+    const selectedValues = value.map((profile) => profile.id);
+    const selectedItems = items.filter((item) => selectedValues.includes(item.value)) ?? [];
 
     return (
-      <ComboboxPrimitive onChange={handleChange} multiple>
+      <ComboboxPrimitive onChange={handleChange} multiple value={selectedValues}>
         <Popover open={open} onOpenChange={setOpen}>
           <ComboboxTrigger ref={ref} {...props}>
             <div className="flex flex-wrap gap-2">
@@ -185,7 +185,7 @@ export const ComboboxItem = ({ className, item }: ComboboxItemProps) => {
           className
         )
       }
-      value={item.value}>
+      value={item.value?.id || item.value}>
       {({ selected }) => (
         <div className="flex justify-between items-center">
           {item.label}

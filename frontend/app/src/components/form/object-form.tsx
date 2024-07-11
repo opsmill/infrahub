@@ -119,9 +119,9 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
-  const [selectedProfiles, setSelectedProfiles] = useState<IProfileSchema[] | undefined>(
-    currentProfiles
-  );
+
+  const [selectedProfiles, setSelectedProfiles] = useState<IProfileSchema[] | undefined>();
+
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
@@ -133,8 +133,10 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
       {nodeSchema.generate_profile && (
         <ProfilesSelector
           schema={nodeSchema}
+          defaultValue={currentProfiles}
           value={selectedProfiles}
           onChange={setSelectedProfiles}
+          currentProfiles={currentProfiles}
         />
       )}
       <NodeForm schema={nodeSchema} profiles={selectedProfiles} {...props} />
@@ -144,11 +146,13 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
 
 type ProfilesSelectorProps = {
   schema: iNodeSchema;
-  value?: Record<string, Pick<AttributeType, "value" | "__typename">>;
-  onChange: (item: Record<string, Pick<AttributeType, "value" | "__typename">>) => void;
+  value: any[];
+  defaultValue: any[];
+  profiles: any[];
+  onChange: (item: any[]) => void;
 };
 
-const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
+const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSelectorProps) => {
   const id = useId();
 
   const generics = useAtomValue(genericsState);
@@ -159,11 +163,11 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
   // Get all available generic profiles
   const nodeGenericsProfiles = nodeGenerics
     // Find all generic schema
-    .map((nodeGeneric) => generics.find((generic) => generic.kind === nodeGeneric))
+    .map((nodeGeneric: any) => generics.find((generic) => generic.kind === nodeGeneric))
     // Filter for generate_profile ones
-    .filter((generic) => generic.generate_profile)
+    .filter((generic: any) => generic.generate_profile)
     // Get only the kind
-    .map((generic) => generic.kind)
+    .map((generic: any) => generic.kind)
     .filter(Boolean);
 
   // The profiles should include the current object profile + all generic profiles
@@ -181,14 +185,15 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
       if (!attributes.length) return null;
 
       return {
-        name: profileSchema.kind,
+        name: profileSchema?.kind,
+        schema: profileSchema,
         attributes,
       };
     })
     .filter(Boolean);
 
   // Get all profiles name to retrieve the informations from the result
-  const profilesNameList = profilesList.map((profile) => profile.name);
+  const profilesNameList = profilesList.map((profile) => profile?.name);
 
   if (!profilesList.length)
     return <ErrorScreen message="Something went wrong while fetching profiles" />;
@@ -211,7 +216,29 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
     []
   );
 
+  // Build combobox options
+  const items = profilesData?.map((edge: any) => ({
+    value: edge.node.id,
+    label: edge.node.display_label,
+    data: edge.node,
+  }));
+
+  const handleChange = (newProfilesId: string[]) => {
+    const newSelectedProfiles = newProfilesId
+      .map((profileId) => items.find((option) => option.value === profileId))
+      .filter(Boolean)
+      .map((option) => option.data);
+
+    onChange(newSelectedProfiles);
+  };
+
   if (!profilesData || profilesData.length === 0) return null;
+
+  if (!value && defaultValue) {
+    const ids = defaultValue.map((profile) => profile.id);
+    console.log("ids: ", ids);
+    handleChange(ids);
+  }
 
   return (
     <div className="p-4 bg-gray-100">
@@ -219,15 +246,7 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
         Select profiles <span className="text-xs italic text-gray-500 ml-1">optional</span>
       </Label>
 
-      <MultiCombobox
-        id={id}
-        items={profilesData.map((edge: any) => ({
-          value: edge.node,
-          label: edge.node.display_label,
-        }))}
-        onChange={onChange}
-        value={value}
-      />
+      <MultiCombobox id={id} items={items} onChange={handleChange} value={value} />
     </div>
   );
 };
