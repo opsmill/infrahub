@@ -168,7 +168,7 @@ export const getObjectDefaultValue = ({
 }: GetObjectDefaultValue) => {
   // Sort profiles from profile_priority value
   const orderedProfiles = profiles.sort(
-    (a, b) => a.profile_priority.value - b.profile_priority.value
+    (optionA, optionB) => optionA.profile_priority.value - optionB.profile_priority.value
   );
 
   // Get current object value
