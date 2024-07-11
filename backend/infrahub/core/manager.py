@@ -823,93 +823,95 @@ class NodeManager:
             branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
-        all_node_attributes = query.get_attributes_group_by_node()
-        profile_attributes: dict[str, dict[str, AttributeFromDB]] = {}
-        node_attributes: dict[str, dict[str, AttributeFromDB]] = {}
-        for node_id, attribute_dict in all_node_attributes.items():
-            if node_id in all_profile_ids:
-                profile_attributes[node_id] = attribute_dict
-            else:
-                node_attributes[node_id] = attribute_dict
-        profile_index = ProfileAttributeIndex(
-            profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
-        )
-
-        # if prefetch_relationships is enabled
-        # Query all the peers associated with all nodes at once.
-        peers_per_node = None
-        peers = None
-        if prefetch_relationships:
-            query = await NodeListGetRelationshipsQuery.init(
-                db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic
-            )
-            await query.execute(db=db)
-            peers_per_node = query.get_peers_group_by_node()
-            peer_ids = []
-
-            for _, node_data in peers_per_node.items():
-                for _, node_peers in node_data.items():
-                    peer_ids.extend(node_peers)
-
-            peer_ids = list(set(peer_ids))
-            peers = await cls.get_many(
-                ids=peer_ids,
-                branch=branch,
-                at=at,
-                db=db,
-                include_owner=include_owner,
-                include_source=include_source,
+        with trace.get_tracer(__name__).start_as_current_span("get_many_process_step_1"):
+            all_node_attributes = query.get_attributes_group_by_node()
+            profile_attributes: dict[str, dict[str, AttributeFromDB]] = {}
+            node_attributes: dict[str, dict[str, AttributeFromDB]] = {}
+            for node_id, attribute_dict in all_node_attributes.items():
+                if node_id in all_profile_ids:
+                    profile_attributes[node_id] = attribute_dict
+                else:
+                    node_attributes[node_id] = attribute_dict
+            profile_index = ProfileAttributeIndex(
+                profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
             )
 
-        nodes = {}
+            # if prefetch_relationships is enabled
+            # Query all the peers associated with all nodes at once.
+            peers_per_node = None
+            peers = None
+            if prefetch_relationships:
+                query = await NodeListGetRelationshipsQuery.init(
+                    db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic
+                )
+                await query.execute(db=db)
+                peers_per_node = query.get_peers_group_by_node()
+                peer_ids = []
 
-        for node_id in ids:  # pylint: disable=too-many-nested-blocks
-            if node_id not in nodes_info_by_id:
-                continue
+                for _, node_data in peers_per_node.items():
+                    for _, node_peers in node_data.items():
+                        peer_ids.extend(node_peers)
 
-            node = nodes_info_by_id[node_id]
-            new_node_data: dict[str, Union[str, AttributeFromDB]] = {
-                "db_id": node.node_id,
-                "id": node_id,
-                "updated_at": node.updated_at,
-            }
-
-            if not node.schema:
-                raise SchemaNotFoundError(
-                    branch_name=branch.name,
-                    identifier=node_id,
-                    message=f"Unable to find the Schema associated with {node_id}, {node.labels}",
+                peer_ids = list(set(peer_ids))
+                peers = await cls.get_many(
+                    ids=peer_ids,
+                    branch=branch,
+                    at=at,
+                    db=db,
+                    include_owner=include_owner,
+                    include_source=include_source,
                 )
 
-            # --------------------------------------------------------
-            # Attributes
-            # --------------------------------------------------------
-            if node_id in node_attributes:
-                for attr_name, attr in node_attributes[node_id].attrs.items():
-                    new_node_data[attr_name] = attr
+            nodes = {}
 
-            # --------------------------------------------------------
-            # Relationships
-            # --------------------------------------------------------
-            if prefetch_relationships and peers:
-                for rel_schema in node.schema.relationships:
-                    if node_id in peers_per_node and rel_schema.identifier in peers_per_node[node_id]:
-                        rel_peers = [peers.get(id) for id in peers_per_node[node_id][rel_schema.identifier]]
-                        if rel_schema.cardinality == "one":
-                            if len(rel_peers) == 1:
-                                new_node_data[rel_schema.name] = rel_peers[0]
-                        elif rel_schema.cardinality == "many":
-                            new_node_data[rel_schema.name] = rel_peers
+            with trace.get_tracer(__name__).start_as_current_span("get_many_process_step_2"):
+                for node_id in ids:  # pylint: disable=too-many-nested-blocks
+                    if node_id not in nodes_info_by_id:
+                        continue
 
-            new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
-            node_class = identify_node_class(node=node)
-            node_branch = await registry.get_branch(db=db, branch=node.branch)
-            item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
-            await item.load(**new_node_data_with_profile_overrides, db=db)
+                    node = nodes_info_by_id[node_id]
+                    new_node_data: dict[str, Union[str, AttributeFromDB]] = {
+                        "db_id": node.node_id,
+                        "id": node_id,
+                        "updated_at": node.updated_at,
+                    }
 
-            nodes[node_id] = item
+                    if not node.schema:
+                        raise SchemaNotFoundError(
+                            branch_name=branch.name,
+                            identifier=node_id,
+                            message=f"Unable to find the Schema associated with {node_id}, {node.labels}",
+                        )
 
-        return nodes
+                    # --------------------------------------------------------
+                    # Attributes
+                    # --------------------------------------------------------
+                    if node_id in node_attributes:
+                        for attr_name, attr in node_attributes[node_id].attrs.items():
+                            new_node_data[attr_name] = attr
+
+                    # --------------------------------------------------------
+                    # Relationships
+                    # --------------------------------------------------------
+                    if prefetch_relationships and peers:
+                        for rel_schema in node.schema.relationships:
+                            if node_id in peers_per_node and rel_schema.identifier in peers_per_node[node_id]:
+                                rel_peers = [peers.get(id) for id in peers_per_node[node_id][rel_schema.identifier]]
+                                if rel_schema.cardinality == "one":
+                                    if len(rel_peers) == 1:
+                                        new_node_data[rel_schema.name] = rel_peers[0]
+                                elif rel_schema.cardinality == "many":
+                                    new_node_data[rel_schema.name] = rel_peers
+
+                    new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
+                    node_class = identify_node_class(node=node)
+                    node_branch = await registry.get_branch(db=db, branch=node.branch)
+                    item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
+                    await item.load(**new_node_data_with_profile_overrides, db=db)
+
+                    nodes[node_id] = item
+
+                return nodes
 
     @classmethod
     async def delete(
