@@ -100,7 +100,7 @@ async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path)
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
 
-    assert "An error occurred with GitRepository" in str(exc.value)
+    assert f"fatal: repository '{tmp_path}' does not exist" in str(exc.value)
 
 
 async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmp_path):
