@@ -5,6 +5,8 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
+
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.tasks.keepalive import refresh_heartbeat
@@ -95,7 +97,8 @@ async def run_schedule(schedule: Schedule, service: InfrahubServices) -> None:
 
     while service.scheduler.running:
         try:
-            await schedule.function(service)
+            with trace.get_tracer(__name__).start_as_current_span(schedule.name):
+                await schedule.function(service)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             service.log.error(str(exc))
         for _ in range(schedule.interval):
