@@ -50,7 +50,7 @@ type ObjectGroupProps = {
 
 const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
   return (
-    <div className="flex justify-between gap-2 px-2 py-4">
+    <div className="flex justify-between items-center gap-4 p-2 bg-gray-100 rounded-md border border-gray-300 relative">
       <div className="overflow-hidden space-y-1">
         <Link
           to={getObjectDetailsUrl2(group.__typename, group.id)}
@@ -74,7 +74,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
           </Link>
         </div>
 
-        {group.description && <p className="text-sm">{group.description.value}</p>}
+        {group.description && <p className="text-xs">{group.description.value}</p>}
       </div>
 
       {objectId && <RemoveGroupButton objectId={objectId} group={group} />}
@@ -94,7 +94,7 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="flex-shrink-0"
+          className="flex-shrink-0 hover:bg-gray-200"
           onClick={() => setShowDeleteModal(true)}
           data-testid="leave-group-button">
           <Icon icon="mdi:link-variant-remove" className="text-lg text-red-600" />

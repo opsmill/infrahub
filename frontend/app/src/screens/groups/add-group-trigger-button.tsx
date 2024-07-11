@@ -9,6 +9,8 @@ import AddGroupForm from "@/screens/groups/add-group-form";
 import { iNodeSchema } from "@/state/atoms/schema.atom";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { Badge } from "@/components/ui/badge";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
 
 type AddGroupTriggerButtonProps = {
   schema: iNodeSchema;
@@ -31,37 +33,46 @@ export default function AddGroupTriggerButton({
   return (
     <>
       <ButtonWithTooltip
-        className="ml-auto"
         onClick={() => setIsAddGroupFormOpen(true)}
+        className="p-2"
         disabled={!permission.write.allow}
-        tooltipEnabled={!permission.write.allow}
-        tooltipContent={permission.write.message ?? undefined}
+        tooltipContent={permission.write.message ?? "Add groups"}
+        tooltipEnabled
         {...props}>
-        + Add Groups
+        <Icon icon="mdi:plus" className="text-lg" />
       </ButtonWithTooltip>
 
       <SlideOver
         offset={1}
         title={
-          <div>
+          <div className="space-y-2">
+            <div className="flex">
+              <Badge variant="blue" className="flex items-center gap-1">
+                <Icon icon="mdi:layers-triple" />
+                <span>{currentBranch?.name}</span>
+              </Badge>
+
+              <ObjectHelpButton
+                kind={schema.kind}
+                documentationUrl={schema.documentation}
+                className="ml-auto"
+              />
+            </div>
+
             <div className="flex justify-between">
-              <div className="flex items-center gap-2 whitespace-nowrap">
+              <div className="text-sm flex items-center gap-2 whitespace-nowrap">
                 {schema.label}
 
                 <Icon icon="mdi:chevron-right" />
 
                 <span className="truncate">{objectDetailsData?.display_label}</span>
               </div>
-
-              <div className="flex items-center gap-1">
-                <Icon icon="mdi:layers-triple" />
-                <span>{currentBranch?.name}</span>
-              </div>
             </div>
 
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              Manage groups <Icon icon="mdi:chevron-right" /> Add groups
-            </h3>
+            <div>
+              <h3 className="text-lg font-semibold">Select group(s)</h3>
+              <p className="text-sm">Select one or more groups to assign</p>
+            </div>
           </div>
         }
         open={isAddGroupFormOpen}

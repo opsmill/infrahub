@@ -11,14 +11,16 @@ import NoDataFound from "@/screens/errors/no-data-found";
 import ErrorScreen from "@/screens/errors/error-screen";
 import ObjectGroupsList, { ObjectGroup } from "@/screens/groups/object-groups-list";
 import AddGroupTriggerButton from "@/screens/groups/add-group-trigger-button";
+import { classNames } from "@/utils/common";
 
 export type GroupsManagerProps = {
+  className?: string;
   schema: IModelSchema;
   objectId: string;
   onUpdateCompleted?: () => void;
 };
 
-export const GroupsManager = ({ schema, objectId }: GroupsManagerProps) => {
+export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProps) => {
   const generics = useAtomValue(genericsState);
   const coreGroupSchema = generics.find((s) => s.kind === GROUP_OBJECT);
   const [query, setQuery] = useState("");
@@ -75,10 +77,11 @@ export const GroupsManager = ({ schema, objectId }: GroupsManagerProps) => {
         );
 
   return (
-    <div className="h-full overflow-hidden flex flex-col">
-      <div className="flex gap-2 h-10">
+    <div className={classNames("h-full flex flex-col gap-4", className)}>
+      <div className="flex gap-2">
         <SearchInput
           containerClassName="flex-grow"
+          className="h-9"
           onChange={(e) => setQuery(e.target.value)}
           placeholder="filter groups..."
         />
