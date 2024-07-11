@@ -172,7 +172,8 @@ export const getObjectDefaultValue = ({
   );
 
   // Get current object value
-  const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
+  const currentField = initialObject?.[fieldSchema.name];
+  const currentFieldValue = currentField?.is_from_profile ? null : currentField?.value;
 
   // Get value from profiles depending on the priority
   const defaultValueFromProfile = orderedProfiles.find(
