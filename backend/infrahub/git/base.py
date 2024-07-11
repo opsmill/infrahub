@@ -700,6 +700,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return path
 
+    def check_connectivity(self, url: str) -> None:
+        repo = self.get_git_repo_main()
+        try:
+            repo.git.ls_remote([url, "HEAD"])
+        except GitCommandError as exc:
+            self._raise_enriched_error(error=exc)
+
     def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
         if "Repository not found" in error.stderr or "does not appear to be a git" in error.stderr:
             raise RepositoryError(
