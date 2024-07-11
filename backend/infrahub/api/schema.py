@@ -135,7 +135,6 @@ def evaluate_candidate_schemas(
 
 
 @router.get("")
-@router.get("/")
 async def get_schema(
     branch: Branch = Depends(get_branch_dep), namespaces: Union[list[str], None] = Query(default=None)
 ) -> SchemaReadAPI:
