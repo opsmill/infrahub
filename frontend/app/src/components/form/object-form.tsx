@@ -148,9 +148,8 @@ type ProfilesSelectorProps = {
   schema: iNodeSchema;
   value?: any[];
   defaultValue?: any[];
-  profiles: any[];
   onChange: (item: any[]) => void;
-  currentProfiles: any[];
+  currentProfiles?: any[];
 };
 
 const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSelectorProps) => {
@@ -194,7 +193,7 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
     .filter(Boolean);
 
   // Get all profiles name to retrieve the informations from the result
-  const profilesNameList = profilesList.map((profile) => profile?.name);
+  const profilesNameList: string[] = profilesList.map((profile) => profile?.name);
 
   if (!profilesList.length)
     return <ErrorScreen message="Something went wrong while fetching profiles" />;
@@ -212,7 +211,7 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
   if (error) return <ErrorScreen message={error.message} />;
 
   // Get data for each profile in the query result
-  const profilesData = profilesNameList.reduce(
+  const profilesData: any[] = profilesNameList.reduce(
     (acc, profile) => [...acc, ...(data?.[profile!]?.edges ?? [])],
     []
   );
