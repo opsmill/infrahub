@@ -1,5 +1,5 @@
 ---
-# yamllint disable rule:truthy
+# yamllint disable rule:truthy rule:line-length
 name: Publish development docker image
 
 on:
@@ -41,7 +41,7 @@ jobs:
       short_ref: ${{ steps.short_ref.outputs.short_ref }}
     steps:
       - name: Set GIT ref
-        run: echo "ref=${{ inputs.commit == '' && github.sha || inputs.commit }} " >> $GITHUB_OUTPUT
+        run: echo "ref=${{ inputs.commit == '' && (github.event.pull_request.head.sha == '' && github.sha || github.event.pull_request.head.sha) || inputs.commit }} " >> $GITHUB_OUTPUT
         id: ref
       - name: Set GIT short ref
         run: echo "short_ref=$(echo ${{ steps.ref.outputs.ref }} | cut -c1-7)" >> $GITHUB_OUTPUT
