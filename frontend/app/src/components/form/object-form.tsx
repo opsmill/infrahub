@@ -146,10 +146,11 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
 
 type ProfilesSelectorProps = {
   schema: iNodeSchema;
-  value: any[];
-  defaultValue: any[];
+  value?: any[];
+  defaultValue?: any[];
   profiles: any[];
   onChange: (item: any[]) => void;
+  currentProfiles: any[];
 };
 
 const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSelectorProps) => {
