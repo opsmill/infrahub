@@ -44,7 +44,13 @@ export const GroupsManagerTriggerButton = ({
         title={
           <div>
             <div className="flex justify-between">
-              <h3 className="text-lg font-semibold">Manage groups</h3>
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                {schema.label}
+
+                <Icon icon="mdi:chevron-right" />
+
+                <span className="truncate">{objectDetailsData?.display_label}</span>
+              </div>
 
               <div className="flex items-center gap-1">
                 <Icon icon="mdi:layers-triple" />
@@ -52,11 +58,7 @@ export const GroupsManagerTriggerButton = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              {schema.label}
-              <Icon icon="mdi:chevron-right" />
-              <span className="truncate">{objectDetailsData?.display_label}</span>
-            </div>
+            <h3 className="text-lg font-semibold">Manage groups</h3>
           </div>
         }>
         <Card className="m-2 overflow-hidden">

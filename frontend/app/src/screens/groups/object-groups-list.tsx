@@ -54,7 +54,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
       <div className="overflow-hidden space-y-1">
         <Link
           to={getObjectDetailsUrl2(group.__typename, group.id)}
-          className="font-semibold hover:underline overflow-auto block">
+          className="font-semibold hover:underline truncate block">
           {group.display_label}
         </Link>
 
