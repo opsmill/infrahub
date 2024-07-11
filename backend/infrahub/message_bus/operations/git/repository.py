@@ -1,6 +1,6 @@
 from infrahub import lock
 from infrahub.exceptions import RepositoryError
-from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
@@ -48,6 +48,21 @@ async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: Inf
             )
             await repo.import_objects_from_files(branch_name=message.infrahub_branch_name)
             await repo.sync_from_remote()
+
+
+async def import_objects(message: messages.GitRepositoryImportObjects, service: InfrahubServices) -> None:
+    async with service.task_report(
+        related_node=message.repository_id,
+        title=f"Processing repository ({message.repository_name})",
+    ) as task_report:
+        repo = await get_initialized_repo(
+            repository_id=message.repository_id,
+            name=message.repository_name,
+            service=service,
+            repository_kind=message.repository_kind,
+        )
+        repo.task_report = task_report
+        await repo.import_objects_from_files(branch_name=message.infrahub_branch_name, commit=message.commit)
 
 
 async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: InfrahubServices) -> None:

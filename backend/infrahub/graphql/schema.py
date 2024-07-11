@@ -21,6 +21,7 @@ from .mutations import (
     CoreAccountTokenDelete,
     IPAddressPoolGetResource,
     IPPrefixPoolGetResource,
+    ProcessRepository,
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
@@ -118,6 +119,7 @@ class InfrahubBaseMutation(ObjectType):
     BranchMerge = BranchMerge.Field()
     BranchUpdate = BranchUpdate.Field()
     BranchValidate = BranchValidate.Field()
+    InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubTaskCreate = TaskCreate.Field()
     InfrahubTaskUpdate = TaskUpdate.Field()
 
