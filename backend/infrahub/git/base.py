@@ -4,7 +4,7 @@ import os
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, NoReturn, Optional, Union
 from uuid import UUID  # noqa: TCH003
 
 from git import Repo
@@ -316,24 +316,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             repo = Repo.clone_from(self.location, self.directory_default)
             repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
-            if "Repository not found" in exc.stderr or "does not appear to be a git" in exc.stderr:
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"Unable to clone the repository {self.name}, please check the address and the credential",
-                ) from exc
-
-            if "error: pathspec" in exc.stderr:
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"The branch {self.default_branch} isn't a valid branch for the repository {self.name} at {self.location}.",
-                ) from exc
-
-            if "authentication failed for" in exc.stderr.lower():
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"Authentication failed for {self.name}, please validate the credentials.",
-                ) from exc
-            raise RepositoryError(identifier=self.name) from exc
+            self._raise_enriched_error(error=exc)
 
         self.has_origin = True
 
@@ -568,7 +551,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         log.debug("Fetching the latest updates from remote origin.", repository=self.name)
 
         repo = self.get_git_repo_main()
-        repo.remotes.origin.fetch()
+        try:
+            repo.remotes.origin.fetch()
+        except GitCommandError as exc:
+            self._raise_enriched_error(error=exc)
 
         return True
 
@@ -638,12 +624,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             commit_before = str(repo.head.commit)
             repo.remotes.origin.pull(branch_name)
         except GitCommandError as exc:
-            if "Need to specify how to reconcile" in exc.stderr:
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"Unable to pull the branch {branch_name} for repository {self.name}, there is a conflict that must be resolved.",
-                ) from exc
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+            self._raise_enriched_error(error=exc, branch_name=branch_name)
 
         commit_after = str(repo.head.commit)
 
@@ -718,3 +699,30 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             raise RepositoryFileNotFoundError(repository_name=self.name, commit=commit, location=file_path)
 
         return path
+
+    def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
+        if "Repository not found" in error.stderr or "does not appear to be a git" in error.stderr:
+            raise RepositoryError(
+                identifier=self.name,
+                message=f"Unable to clone the repository {self.name}, please check the address and the credential",
+            ) from error
+
+        if "error: pathspec" in error.stderr:
+            raise RepositoryError(
+                identifier=self.name,
+                message=f"The branch {self.default_branch} isn't a valid branch for the repository {self.name} at {self.location}.",
+            ) from error
+
+        if "authentication failed for" in error.stderr.lower():
+            raise RepositoryError(
+                identifier=self.name,
+                message=f"Authentication failed for {self.name}, please validate the credentials.",
+            ) from error
+
+        if "Need to specify how to reconcile" in error.stderr:
+            raise RepositoryError(
+                identifier=self.name,
+                message=f"Unable to pull the branch {branch_name} for repository {self.name}, there is a conflict that must be resolved.",
+            ) from error
+
+        raise RepositoryError(identifier=self.name, message=error.stderr) from error
