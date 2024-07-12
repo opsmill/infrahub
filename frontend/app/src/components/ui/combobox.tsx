@@ -11,7 +11,7 @@ import { Badge } from "./badge";
 export interface MultiComboboxProps extends Omit<ButtonProps, "onChange"> {
   children?: React.ReactNode;
   placeholder?: string;
-  value: Array<any[]>;
+  value: Array<string>;
   items?: ComboboxListProps["items"];
   onChange?: (value: string[]) => void;
 }
