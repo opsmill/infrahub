@@ -167,7 +167,6 @@ export const getObjectDefaultValue = ({
   isFilterForm,
 }: GetObjectDefaultValue) => {
   // Sort profiles from profile_priority value
-  console.log("profiles: ", profiles);
   const orderedProfiles = profiles.sort((optionA, optionB) => {
     if (optionA.profile_priority.value < optionB.profile_priority.value) return -1;
     return 1;
