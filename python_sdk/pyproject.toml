@@ -174,11 +174,39 @@ ignore_missing_imports = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "infrahub_sdk.ctl.*"
+module = "infrahub_sdk.ctl.branch"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub_sdk.analyzer"
+module = "infrahub_sdk.ctl.check"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.ctl.client"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.ctl.cli_commands"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.ctl.exporter"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.ctl.generator"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.ctl.importer"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.ctl.schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.ctl.utils"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
