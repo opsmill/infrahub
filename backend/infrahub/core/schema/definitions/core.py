@@ -734,6 +734,9 @@ core_models: dict[str, Any] = {
                     "enum": AccountRole.available_types(),
                 },
             ],
+            "relationships": [
+                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
+            ],
         },
     ],
     "nodes": [
@@ -820,9 +823,6 @@ core_models: dict[str, Any] = {
             "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICACCOUNT],
-            "relationships": [
-                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
-            ],
         },
         {
             "name": "AccountToken",

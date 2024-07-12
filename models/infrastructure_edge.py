@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class Account(BaseModel):
     name: str
     password: str
-    type: str
+    account_type: str
     role: str
 
 

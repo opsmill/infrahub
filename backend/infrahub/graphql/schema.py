@@ -72,14 +72,17 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
     async with context.db.start_session() as db:
         results = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, fields=fields, db=db
+            schema=InfrahubKind.GENERICACCOUNT,
+            filters={"ids": [context.account_session.account_id]},
+            fields=fields,
+            db=db,
         )
         if results:
             account_profile = await results[0].to_graphql(db=db, fields=fields)
             return account_profile
 
         raise NodeNotFoundError(
-            node_type=InfrahubKind.ACCOUNT,
+            node_type=InfrahubKind.GENERICACCOUNT,
             identifier=context.account_session.account_id,
         )
 
