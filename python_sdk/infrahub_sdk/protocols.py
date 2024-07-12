@@ -77,10 +77,11 @@ class CoreComment(CoreNode):
 class CoreGenericAccount(CoreNode):
     name: str
     password: str
-    label: str
-    description: str
+    label: Optional[str]
+    description: Optional[str]
     account_type: str
     role: str
+    tokens: Union[RelationshipManager, RelationshipManagerSync]
 
 
 class CoreGenericRepository(CoreNode):
@@ -170,14 +171,8 @@ class BuiltinTag(CoreNode):
     description: Optional[str]
 
 
-class CoreAccount(LineageOwner, LineageSource):
-    name: str
-    password: str
-    label: Optional[str]
-    description: Optional[str]
-    type: str
-    role: str
-    tokens: Union[RelationshipManager, RelationshipManagerSync]
+class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
+    pass
 
 
 class CoreArtifact(CoreTaskTarget):
