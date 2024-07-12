@@ -51,22 +51,18 @@ async def authenticate_with_password(
 ) -> models.UserToken:
     selected_branch = await registry.get_branch(db=db, branch=branch)
 
-    response: list[CoreGenericAccount] = []
-    for account_kind in registry.get_account_schemas(branch=branch):
-        response = await NodeManager.query(
-            schema=account_kind.kind,
-            db=db,
-            branch=selected_branch,
-            filters={"name__value": credentials.username},
-            limit=1,
-        )
-        if response:
-            break
+    response: list[CoreGenericAccount] = await NodeManager.query(
+        schema=InfrahubKind.GENERICACCOUNT,
+        db=db,
+        branch=selected_branch,
+        filters={"name__value": credentials.username},
+        limit=1,
+    )
 
     if not response:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
-            node_type="Account",
+            node_type=InfrahubKind.GENERICACCOUNT,
             identifier=credentials.username,
             message="That login user doesn't exist in the system",
         )

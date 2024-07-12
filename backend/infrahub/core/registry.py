@@ -130,15 +130,6 @@ class Registry:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch, duplicate=duplicate)
 
-    def get_account_schemas(self, branch: Optional[Union[Branch, str]] = None) -> list[NodeSchema]:
-        """Return nodes related to user accounts in the schema, for a given branch."""
-        schemas: list[NodeSchema] = []
-        for schema in self.get_full_schema(branch=branch, duplicate=False).values():
-            if schema.is_node_schema and InfrahubKind.GENERICACCOUNT in schema.inherit_from:  # type: ignore[union-attr]
-                schemas.append(schema)  # type: ignore[arg-type]
-
-        return schemas
-
     def delete_all(self) -> None:
         self.branch = {}
         self.node = {}
