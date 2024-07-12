@@ -3,6 +3,10 @@ from infrahub.exceptions import RepositoryError
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
+from infrahub.message_bus.messages.git_repository_connectivity import (
+    GitRepositoryConnectivityResponse,
+    GitRepositoryConnectivityResponseData,
+)
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -48,6 +52,27 @@ async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: Inf
             )
             await repo.import_objects_from_files(branch_name=message.infrahub_branch_name)
             await repo.sync_from_remote()
+
+
+async def connectivity(message: messages.GitRepositoryConnectivity, service: InfrahubServices) -> None:
+    repo = await get_initialized_repo(
+        repository_id=message.repository_id,
+        name=message.repository_name,
+        service=service,
+        repository_kind=message.repository_kind,
+    )
+    response_data = GitRepositoryConnectivityResponseData(message="Successfully accessed repository", success=True)
+    try:
+        repo.check_connectivity(url=message.repository_location)
+    except RepositoryError as exc:
+        response_data.success = False
+        response_data.message = exc.message
+
+    if message.reply_requested:
+        response = GitRepositoryConnectivityResponse(
+            data=response_data,
+        )
+        await service.reply(message=response, initiator=message)
 
 
 async def import_objects(message: messages.GitRepositoryImportObjects, service: InfrahubServices) -> None:

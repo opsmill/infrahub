@@ -31,6 +31,7 @@ from .mutations import (
     SchemaEnumRemove,
     TaskCreate,
     TaskUpdate,
+    ValidateRepositoryConnectivity,
 )
 from .parser import extract_selection
 from .queries import (
@@ -120,6 +121,7 @@ class InfrahubBaseMutation(ObjectType):
     BranchUpdate = BranchUpdate.Field()
     BranchValidate = BranchValidate.Field()
     InfrahubRepositoryProcess = ProcessRepository.Field()
+    InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubTaskCreate = TaskCreate.Field()
     InfrahubTaskUpdate = TaskUpdate.Field()
 

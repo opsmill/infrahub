@@ -38,6 +38,7 @@ COMMAND_MAP = {
     "git.file.get": git.file.get,
     "git.repository.add": git.repository.add,
     "git.repository.add_read_only": git.repository.add_read_only,
+    "git.repository.connectivity": git.repository.connectivity,
     "git.repository.import_objects": git.repository.import_objects,
     "git.repository.pull_read_only": git.repository.pull_read_only,
     "git.repository.merge": git.repository.merge,
