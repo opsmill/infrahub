@@ -44,7 +44,7 @@ test.describe("Object groups update", () => {
     await test.step("new groups are visible in groups manager", async () => {
       await expect(page.getByRole("link", { name: "arista_devices" })).toBeVisible();
       await expect(page.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "CoreStandardGroup" }).first()).toBeVisible();
+      await expect(page.getByRole("link", { name: "Standard Group" }).first()).toBeVisible();
     });
 
     await test.step("filter groups", async () => {

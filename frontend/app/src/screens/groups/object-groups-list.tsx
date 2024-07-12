@@ -12,6 +12,8 @@ import { useMutation } from "@apollo/client";
 import { REMOVE_GROUP } from "@/graphql/mutations/groups/removeGroup";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { pluralize } from "@/utils/string";
+import { useAtomValue } from "jotai";
+import { schemaState } from "@/state/atoms/schema.atom";
 
 export type ObjectGroup = {
   id: string;
@@ -49,6 +51,9 @@ type ObjectGroupProps = {
 };
 
 const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
+  const nodes = useAtomValue(schemaState);
+  const groupSchema = nodes.find((node) => node.kind === group.__typename);
+
   return (
     <div className="flex justify-between items-center gap-4 p-2 bg-gray-100 rounded-md border border-gray-300 relative">
       <div className="overflow-hidden space-y-1">
@@ -69,7 +74,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
 
           <Link to={getObjectDetailsUrl2(group.__typename)}>
             <Badge variant="blue" className="hover:underline">
-              {group.__typename}
+              {groupSchema?.label}
             </Badge>
           </Link>
         </div>
