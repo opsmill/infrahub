@@ -11,7 +11,7 @@ import { Badge } from "./badge";
 export interface MultiComboboxProps extends Omit<ButtonProps, "onChange"> {
   children?: React.ReactNode;
   placeholder?: string;
-  value: string[];
+  value: Array<any[]>;
   items?: ComboboxListProps["items"];
   onChange?: (value: string[]) => void;
 }
@@ -20,15 +20,14 @@ export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
   ({ value = [], onChange, items = [], ...props }, ref) => {
     const [open, setOpen] = React.useState(false);
 
-    const handleChange = (newValues: any[]) => {
-      if (onChange) onChange(newValues);
+    const handleChange = (newValues: unknown) => {
+      if (onChange) onChange(newValues as string[]);
     };
 
-    const selectedValues = value.map((profile) => profile.id);
-    const selectedItems = items.filter((item) => selectedValues.includes(item.value)) ?? [];
+    const selectedItems = items.filter((item) => value.includes(item.value)) ?? [];
 
     return (
-      <ComboboxPrimitive onChange={handleChange} multiple value={selectedValues}>
+      <ComboboxPrimitive onChange={handleChange} multiple value={value}>
         <Popover open={open} onOpenChange={setOpen}>
           <ComboboxTrigger ref={ref} {...props}>
             <div className="flex flex-wrap gap-2">

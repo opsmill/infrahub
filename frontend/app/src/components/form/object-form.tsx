@@ -193,7 +193,9 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
     .filter(Boolean);
 
   // Get all profiles name to retrieve the informations from the result
-  const profilesNameList: string[] = profilesList.map((profile) => profile?.name);
+  const profilesNameList: string[] = profilesList
+    .map((profile) => profile?.name ?? "")
+    .filter(Boolean);
 
   if (!profilesList.length)
     return <ErrorScreen message="Something went wrong while fetching profiles" />;
@@ -223,11 +225,13 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
     data: edge.node,
   }));
 
+  const selectedValues = value?.map((profile) => profile.id) ?? [];
+
   const handleChange = (newProfilesId: string[]) => {
     const newSelectedProfiles = newProfilesId
       .map((profileId) => items.find((option) => option.value === profileId))
       .filter(Boolean)
-      .map((option) => option.data);
+      .map((option) => option?.data);
 
     onChange(newSelectedProfiles);
   };
@@ -246,7 +250,7 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
         Select profiles <span className="text-xs italic text-gray-500 ml-1">optional</span>
       </Label>
 
-      <MultiCombobox id={id} items={items} onChange={handleChange} value={value} />
+      <MultiCombobox id={id} items={items} onChange={handleChange} value={selectedValues} />
     </div>
   );
 };
