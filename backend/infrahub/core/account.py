@@ -34,6 +34,7 @@ class AccountTokenValidateQuery(Query):
 
         self.params["token_value"] = self.token
 
+        # ruff: noqa: E501
         query = """
         MATCH (at:InternalAccountToken)-[r1:HAS_ATTRIBUTE]-(a:Attribute {name: "token"})-[r2:HAS_VALUE]-(av:AttributeValue { value: $token_value })
         WHERE %s
