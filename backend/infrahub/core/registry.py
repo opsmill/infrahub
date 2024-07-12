@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub import lock
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import BranchNotFoundError, DataTypeNotFoundError, InitializationError
 
 if TYPE_CHECKING:
