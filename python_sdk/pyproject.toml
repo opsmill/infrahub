@@ -178,10 +178,6 @@ module = "infrahub_sdk.ctl.check"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub_sdk.ctl.client"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub_sdk.ctl.cli_commands"
 ignore_errors = true
 
