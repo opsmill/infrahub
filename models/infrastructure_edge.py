@@ -54,6 +54,38 @@ class Device(BaseModel):
 
         return INTERFACE_L2_NAMES.get(self.type, [])
 
+    @property
+    def l3_interface_names(self) -> list[str]:
+        INTERFACE_L3_NAMES = {
+            "7280R3": [
+                "Ethernet1",
+                "Ethernet2",
+                "Ethernet3",
+                "Ethernet4",
+                "Ethernet5",
+                "Ethernet6",
+                "Ethernet7",
+                "Ethernet8",
+                "Ethernet9",
+                "Ethernet10",
+            ],
+            "ASR1002-HX": [
+                "Ethernet1",
+                "Ethernet2",
+                "Ethernet3",
+                "Ethernet4",
+                "Ethernet5",
+                "Ethernet6",
+                "Ethernet7",
+                "Ethernet8",
+                "Ethernet9",
+                "Ethernet10",
+            ],
+            "7010TX-48": [],
+            "MX204": ["et-0/0/0", "et-0/0/1", "et-0/0/2"],
+        }
+        return INTERFACE_L3_NAMES.get(self.type, [])
+
 
 class Group(BaseModel):
     name: str
@@ -286,34 +318,6 @@ INTERFACE_MGMT_NAME = {
     "MX204": "MGMT",
 }
 
-INTERFACE_L3_NAMES = {
-    "7280R3": [
-        "Ethernet1",
-        "Ethernet2",
-        "Ethernet3",
-        "Ethernet4",
-        "Ethernet5",
-        "Ethernet6",
-        "Ethernet7",
-        "Ethernet8",
-        "Ethernet9",
-        "Ethernet10",
-    ],
-    "ASR1002-HX": [
-        "Ethernet1",
-        "Ethernet2",
-        "Ethernet3",
-        "Ethernet4",
-        "Ethernet5",
-        "Ethernet6",
-        "Ethernet7",
-        "Ethernet8",
-        "Ethernet9",
-        "Ethernet10",
-    ],
-    "7010TX-48": [],
-    "MX204": ["et-0/0/0", "et-0/0/1", "et-0/0/2"],
-}
 
 LAG_INTERFACE_L2 = {
     "7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}],
@@ -878,7 +882,7 @@ async def generate_site(
         await obj.save()
 
         # L3 Interfaces
-        for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES[device.type]):
+        for intf_idx, intf_name in enumerate(device.l3_interface_names):
             intf_role = INTERFACE_L3_ROLES_MAPPING[device.role][intf_idx]
 
             intf = await client.create(
