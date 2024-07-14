@@ -33,10 +33,10 @@ This release focuses on enhancing the user experience and laying the groundwork 
 
 #### Profiles enhancements
 
-	•	You can now create profiles on a Generic, in addition to Nodes.
-	•	A node inheriting from multiple Generics can utilize any profiles associated with these Generics.
-	•	Introduced a new attribute generate_profile in the schema for more precise control over which nodes should have profiles generated or supported.
-	•	Profiles have been disabled on most core models.
+- You can now create profiles on a Generic, in addition to Nodes.
+- A node inheriting from multiple Generics can utilize any profiles associated with these Generics.
+- Introduced a new attribute `generate_profile` in the schema for more precise control over which nodes should have profiles generated or supported.
+- Profiles have been disabled on most core models.
 
 ### Schema
 
@@ -71,11 +71,12 @@ The official helm chart to deploy Infrahub now leverages the upstream charts for
 Added the initial version of the Infrahub Sync adapter for IP Fabric.
 
 ### Other
-
+<!-- vale off -->
 #### Support for `isnull` filter for attributes and relationships
 
 In most GraphQL queries, it’s now possible to search for objects based on the absence of an attribute or a relationship using the new isnull filter. For example, the following query returns all groups that have a parent group defined:
 As an example the following query will return all groups that have a parent group defined.
+
 ```GraphQL
 query {
   CoreGroup(parent__isnull: false){
@@ -87,10 +88,11 @@ query {
   }
 }
 ```
+<!-- vale on -->
 
 #### Dedicated search anywhere query in GraphQL
 
-The search anywhere bar in the frontend now leverages a dedicated GraphQL query. 
+The search anywhere bar in the frontend now leverages a dedicated GraphQL query.  
 This new query can search for objects by their UUID, improving search results.
 
 #### Generate Protocol for Core models
@@ -110,7 +112,6 @@ The script infrastructure_edge.py used to load data in the demo environment has 
 #### New Services models
 
 A new service model has been added to the demo schema
-
 
 ## Migration Guide
 
