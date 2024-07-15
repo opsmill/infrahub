@@ -26,6 +26,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByLabel("Profile Name *").fill("Generic profile");
       await page.getByLabel("Description").fill("Desc from generic profile");
       await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("InfraInterface created")).toBeVisible();
 
       // L2 profile v1
       await page.getByTestId("create-object-button").click();
@@ -34,6 +35,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByLabel("Profile Name *").fill("L2 profile v1");
       await page.getByLabel("Description").fill("Desc from L2 profile v1");
       await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("InfraInterfaceL2 created")).toBeVisible();
 
       // L2 profile v2
       await page.getByTestId("create-object-button").click();
@@ -43,6 +45,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByLabel("Description").fill("Desc from L2 profile v2");
       await page.getByLabel("Profile Priority").fill("10");
       await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("InfraInterfaceL2 created")).toBeVisible();
     });
 
     await test.step("use profiles in interface form", async () => {
