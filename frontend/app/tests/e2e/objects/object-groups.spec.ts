@@ -21,7 +21,7 @@ test.describe("Object groups update", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(NEW_TAG);
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("Tag created")).not.toBeVisible();
+      await expect(page.getByText("Tag created")).toBeVisible();
     });
 
     await test.step("go to the new tag", async () => {
