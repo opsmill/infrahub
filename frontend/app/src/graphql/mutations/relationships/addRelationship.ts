@@ -1,9 +1,13 @@
-import Handlebars from "handlebars";
+import { gql } from "@apollo/client";
 
-export const addRelationship = Handlebars.compile(`
-mutation RelationshipAdd {
-  RelationshipAdd (data: {{{data}}}) {
+export const ADD_RELATIONSHIP = gql`
+  mutation RelationshipAdd(
+    $objectId: String!
+    $relationshipName: String!
+    $relationshipIds: [RelatedNodeInput]
+  ) {
+    RelationshipAdd(data: { id: $objectId, name: $relationshipName, nodes: $relationshipIds }) {
       ok
+    }
   }
-}
-`);
+`;

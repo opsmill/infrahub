@@ -1,5 +1,11 @@
 import { Dialog, Transition } from "@headlessui/react";
 import React, { Fragment } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Icon } from "@iconify-icon/react";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 
 interface Props {
   open: boolean;
@@ -67,3 +73,55 @@ export default function SlideOver(props: Props) {
     </Transition.Root>
   );
 }
+
+type SlideOverTitleProps = {
+  schema: IModelSchema;
+  currentObjectLabel?: string;
+  title: React.ReactNode;
+  subtitle: React.ReactNode;
+};
+
+export const SlideOverTitle = ({
+  currentObjectLabel,
+  schema,
+  title,
+  subtitle,
+}: SlideOverTitleProps) => {
+  const currentBranch = useAtomValue(currentBranchAtom);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex">
+        <Badge variant="blue" className="flex items-center gap-1">
+          <Icon icon="mdi:layers-triple" />
+          <span>{currentBranch?.name}</span>
+        </Badge>
+
+        <ObjectHelpButton
+          kind={schema.kind}
+          documentationUrl={schema.documentation}
+          className="ml-auto"
+        />
+      </div>
+
+      <div className="flex justify-between">
+        <div className="text-sm flex items-center gap-2 whitespace-nowrap">
+          {schema.label}
+
+          {currentObjectLabel && (
+            <>
+              <Icon icon="mdi:chevron-right" />
+
+              <span className="truncate">{currentObjectLabel}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <p className="text-sm">{subtitle}</p>
+      </div>
+    </div>
+  );
+};
