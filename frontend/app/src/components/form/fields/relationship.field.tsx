@@ -125,6 +125,7 @@ const RelationshipField = ({
                     <RelationshipInput
                       {...field}
                       {...props}
+                      value={undefined}
                       peer={parentRelationship?.peer}
                       disabled={props.disabled || !parentRelationship || !selectedKind?.id}
                       onChange={setSelectedParent}
