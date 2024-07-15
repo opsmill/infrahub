@@ -16,8 +16,16 @@ import {
   getRelationshipValue,
   getSelectParent,
 } from "./getSchemaObjectColumns";
+import { AuthContextType } from "@/hooks/useAuth";
 
-export const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
+type getIsDisabledParams = {
+  owner?: { id: string };
+  user?: AuthContextType;
+  isProtected?: boolean;
+  isReadOnly?: boolean;
+};
+
+export const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: getIsDisabledParams) => {
   // Field is read only
   if (isReadOnly) return true;
 
