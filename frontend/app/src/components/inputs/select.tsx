@@ -217,6 +217,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       handleFocus();
     }
 
+    if (!newValue) {
+      setSelectedOption(undefined);
+      if (onChange) onChange(null);
+      return;
+    }
+
     if (newValue.id === addOption.id) {
       setOpen(true);
       return;
@@ -224,7 +230,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
     if (newValue.id === emptyOption.id) {
       setSelectedOption(emptyOption);
-      onChange(null);
+      if (onChange) onChange(null);
       return;
     }
 
@@ -240,11 +246,11 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       setSelectedOption(newValue);
 
       if (hasPoolsBeenOpened) {
-        onChange(newValue.map((item) => ({ from_pool: { id: item.id } })));
+        if (onChange) onChange(newValue.map((item) => ({ from_pool: { id: item.id } })));
         return;
       }
 
-      onChange(newValue.map((item) => ({ id: item.id })));
+      if (onChange) onChange(newValue.map((item) => ({ id: item.id })));
       return;
     }
 
@@ -253,16 +259,17 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     setOpen(false);
 
     if (hasPoolsBeenOpened) {
-      onChange(hasPoolsBeenOpened ? { from_pool: { id: newValue.id } } : { id: newValue.id });
+      if (onChange)
+        onChange(hasPoolsBeenOpened ? { from_pool: { id: newValue.id } } : { id: newValue.id });
       return;
     }
 
     if (dropdown || enumBoolean) {
-      onChange(newValue.id);
+      if (onChange) onChange(newValue.id);
       return;
     }
 
-    onChange({ id: newValue.id });
+    if (onChange) onChange({ id: newValue.id });
   };
 
   const handleCreate = (response: any) => {
@@ -860,6 +867,11 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   useEffect(() => {
     setLocalOptions(options);
   }, [options?.length]);
+
+  // If kind or parent has changed, remove the current value
+  useEffect(() => {
+    if (peer || parent?.value) handleChange(undefined);
+  }, [peer, parent?.value]);
 
   return (
     <div className={classNames("relative", className)} data-testid="select-container">
