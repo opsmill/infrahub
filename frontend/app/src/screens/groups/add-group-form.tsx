@@ -4,8 +4,8 @@ import NoDataFound from "@/screens/errors/no-data-found";
 import { useMutation } from "@apollo/client";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import { ADD_GROUPS } from "@/graphql/mutations/groups/addGroups";
 import { pluralize } from "@/utils/string";
+import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   objectId: string;
@@ -19,7 +19,10 @@ export default function AddGroupForm({
   schema,
   ...props
 }: AddGroupFormProps) {
-  const [addObjectToGroups] = useMutation(ADD_GROUPS);
+  const [addObjectToGroups] = useMutation(ADD_RELATIONSHIP, {
+    variables: { relationshipName: "member_of_groups" },
+  });
+
   const memberOfGroupsRelationship = schema.relationships?.find(
     ({ name }) => name === "member_of_groups"
   );
@@ -30,7 +33,7 @@ export default function AddGroupForm({
 
   async function onSubmit({ groupIds }: { groupIds: Array<{ id: string }> }) {
     try {
-      await addObjectToGroups({ variables: { objectId, groupIds } });
+      await addObjectToGroups({ variables: { objectId, relationshipIds: groupIds } });
 
       toast(() => (
         <Alert

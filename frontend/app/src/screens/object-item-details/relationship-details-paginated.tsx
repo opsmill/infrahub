@@ -9,7 +9,7 @@ import { Link as StyledLink } from "@/components/ui/link";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { addRelationship } from "@/graphql/mutations/relationships/addRelationship";
+import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
 import { usePermission } from "@/hooks/usePermission";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
@@ -26,7 +26,7 @@ import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
-import { gql } from "@apollo/client";
+import { gql, useMutation } from "@apollo/client";
 import { EyeSlashIcon, LockClosedIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
@@ -67,6 +67,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const date = useAtomValue(datetimeAtom);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
+
+  const [addRelationship] = useMutation(ADD_RELATIONSHIP);
+
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
@@ -165,23 +168,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     const { relation } = data;
 
     if (relation?.id || relation?.from_pool) {
-      const mutationString = addRelationship({
-        data: stringifyWithoutQuotes({
-          id: objectid,
-          name: relationshipSchema.name,
-          nodes: [relation],
-        }),
-      });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
+      await addRelationship({
+        variables: {
+          objectId: objectid,
+          relationshipIds: [relation],
+          relationshipName: relationshipSchema.name,
         },
       });
 

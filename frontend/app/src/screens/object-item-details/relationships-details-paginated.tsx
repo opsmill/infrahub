@@ -1,20 +1,15 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Pagination } from "@/components/ui/pagination";
 import { QSP } from "@/config/qsp";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { removeRelationship } from "@/graphql/mutations/relationships/removeRelationship";
+import { REMOVE_RELATIONSHIP } from "@/graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "@/graphql/queries/objects/getObjectRelationshipDetails";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
-import { stringifyWithoutQuotes } from "@/utils/string";
-import { gql } from "@apollo/client";
+import { gql, useMutation } from "@apollo/client";
 import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
 import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -35,8 +30,8 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+  const [removeRelationship] = useMutation(REMOVE_RELATIONSHIP);
+
   const parentSchema = schemaList.find((s) => s.kind === objectKind);
   const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
@@ -94,25 +89,16 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
   }
 
   const handleDeleteRelationship = async (name: string, id: string) => {
-    const mutationString = removeRelationship({
-      data: stringifyWithoutQuotes({
-        id: objectid,
-        name,
-        nodes: [
+    await removeRelationship({
+      variables: {
+        objectId: objectid,
+        relationshipName: name,
+        relationshipIds: [
           {
             id,
           },
         ],
-      }),
-    });
-
-    const mutation = gql`
-      ${mutationString}
-    `;
-
-    await graphqlClient.mutate({
-      mutation,
-      context: { branch: branch?.name, date },
+      },
     });
 
     updatePageData();

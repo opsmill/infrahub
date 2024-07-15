@@ -9,11 +9,11 @@ import { QSP } from "@/config/qsp";
 import ModalDelete from "@/components/modals/modal-delete";
 import { useState } from "react";
 import { useMutation } from "@apollo/client";
-import { REMOVE_GROUP } from "@/graphql/mutations/groups/removeGroup";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { pluralize } from "@/utils/string";
 import { useAtomValue } from "jotai";
 import { schemaState } from "@/state/atoms/schema.atom";
+import { REMOVE_RELATIONSHIP } from "@/graphql/mutations/relationships/removeRelationship";
 
 export type ObjectGroup = {
   id: string;
@@ -88,7 +88,8 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
 };
 
 const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
-  const [removeGroup, { loading }] = useMutation(REMOVE_GROUP, {
+  const [removeGroup, { loading }] = useMutation(REMOVE_RELATIONSHIP, {
+    variables: { relationshipName: "member_of_groups" },
     onCompleted: () => graphqlClient.refetchQueries({ include: ["GET_GROUPS"] }),
   });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -110,7 +111,9 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
         title="Leave Group"
         description={`Are you sure you want to leave group ${group.display_label}?`}
         onCancel={() => setShowDeleteModal(false)}
-        onDelete={() => removeGroup({ variables: { objectId, groupId: group.id } })}
+        onDelete={() =>
+          removeGroup({ variables: { objectId, relationshipIds: [{ id: group.id }] } })
+        }
         open={showDeleteModal}
         setOpen={() => setShowDeleteModal(false)}
         isLoading={loading}
