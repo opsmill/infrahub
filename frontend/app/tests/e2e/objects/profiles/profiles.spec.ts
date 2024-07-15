@@ -44,7 +44,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await expect(
         page.locator("#alert-success-BuiltinTag-created").getByText("BuiltinTag created")
       ).toBeVisible();
-      await expect(page.getByRole("link", { name: "Profile Tag" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "ProfileBuiltinTag" })).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" })).toBeVisible();
     });
   });
