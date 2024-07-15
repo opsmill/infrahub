@@ -31,11 +31,13 @@ import useQuery from "@/hooks/useQuery";
 import { getProfiles } from "@/graphql/queries/objects/getProfiles";
 import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
 
+type Profile = Record<string, Pick<AttributeType, "value" | "__typename">>;
+
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
-  currentProfiles?: IProfileSchema[];
+  currentProfiles?: Profile[];
   isFilterForm?: boolean;
   onSubmit?: (data: any) => Promise<void>;
 }
@@ -120,7 +122,7 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
 
-  const [selectedProfiles, setSelectedProfiles] = useState<IProfileSchema[] | undefined>();
+  const [selectedProfiles, setSelectedProfiles] = useState<Profile[] | undefined>();
 
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
@@ -258,7 +260,7 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
 type NodeFormProps = {
   className?: string;
   schema: iNodeSchema | IProfileSchema;
-  profiles?: IProfileSchema[];
+  profiles?: Profile[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   isFilterForm?: boolean;
@@ -299,13 +301,13 @@ const NodeForm = ({
         return;
       }
 
-      const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];
+      const profileIds = profiles?.map((profile) => ({ id: profile.id })) ?? [];
 
       const mutationString = createObject({
         kind: schema?.kind,
         data: stringifyWithoutQuotes({
           ...newObject,
-          ...(profilesId.length ? { profiles: profilesId } : {}),
+          ...(profileIds.length ? { profiles: profileIds } : {}),
         }),
       });
 
