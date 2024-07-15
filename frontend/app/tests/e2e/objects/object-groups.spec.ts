@@ -16,18 +16,12 @@ test.describe("Object groups update", () => {
 
   test("should contain initial values and update them", async ({ page }) => {
     await test.step("access the tags and create a new one", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "BuiltinTag" && status === 200;
-        }),
-        page.goto("/objects/BuiltinTag"),
-      ]);
+      await page.goto("/objects/BuiltinTag");
+      await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(NEW_TAG);
       await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("Tag created")).not.toBeVisible();
     });
 
     await test.step("go to the new tag", async () => {
