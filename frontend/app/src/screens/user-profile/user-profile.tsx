@@ -11,20 +11,26 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
+import TabTokens from "./tab-tokens";
 
 const PROFILE_TABS = {
-  PREFERENCES: "preferences",
   PROFILE: "profile",
+  TOKENS: "tokens",
+  PREFERENCES: "preferences",
 };
 
 const tabs = [
   {
     label: "Profile",
     name: PROFILE_TABS.PROFILE,
+  },
+  {
+    label: "Tokens",
+    name: PROFILE_TABS.TOKENS,
   },
   {
     label: "Preferences",
@@ -36,6 +42,8 @@ const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
     case PROFILE_TABS.PREFERENCES:
       return <TabPreferences />;
+    case PROFILE_TABS.TOKENS:
+      return <TabTokens />;
     default:
       return <TabProfile />;
   }
@@ -43,7 +51,7 @@ const renderContent = (tab: string | null | undefined) => {
 
 export function UserProfilePage() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const [schemaList] = useAtom(schemaState);
+  const schemaList = useAtomValue(schemaState);
   useTitle("Profile");
 
   const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
