@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getFormFieldsFromSchema } from "../../../src/components/form/utils";
 import { IModelSchema } from "../../../src/state/atoms/schema.atom";
+import { AuthContextType } from "@/hooks/useAuth";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {
@@ -279,6 +281,162 @@ describe("getFormFieldsFromSchema", () => {
       field: schema.attributes?.[0],
       schema,
       unique: false,
+    });
+  });
+
+  it("should disable a protected field if the owner is not the current user", () => {
+    // GIVEN
+    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
+      attributes: [
+        {
+          id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
+          state: "present",
+          name: "name",
+          kind: "Text",
+          enum: null,
+          choices: null,
+          regex: null,
+          max_length: null,
+          min_length: null,
+          label: "Name",
+          description: null,
+          read_only: false,
+          unique: true,
+          optional: false,
+          branch: "aware",
+          order_weight: 1000,
+          default_value: null,
+          inherited: false,
+          allow_override: "any",
+        },
+      ],
+    };
+
+    const initialObject: { name: AttributeType } = {
+      name: {
+        is_from_profile: false,
+        is_protected: true,
+        is_visible: true,
+        owner: {
+          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
+          display_label: "Architecture Team",
+          __typename: "CoreAccount",
+        },
+        source: null,
+        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        value: "test-value",
+        __typename: "TextAttribute",
+      },
+    };
+
+    const user: AuthContextType = {
+      accessToken: "abc",
+      isAuthenticated: true,
+      isLoading: false,
+      data: {
+        sub: "1",
+      },
+      signIn: async () => {},
+      signOut: () => {},
+      user: {
+        id: "1",
+      },
+    };
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, initialObject, user });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).to.deep.equal({
+      defaultValue: "test-value",
+      description: undefined,
+      disabled: true,
+      name: "name",
+      label: "Name",
+      type: "Text",
+      unique: true,
+      rules: {
+        required: true,
+      },
+    });
+  });
+
+  it("should enable a protected field if the owner is the current user", () => {
+    // GIVEN
+    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
+      attributes: [
+        {
+          id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
+          state: "present",
+          name: "name",
+          kind: "Text",
+          enum: null,
+          choices: null,
+          regex: null,
+          max_length: null,
+          min_length: null,
+          label: "Name",
+          description: null,
+          read_only: false,
+          unique: true,
+          optional: false,
+          branch: "aware",
+          order_weight: 1000,
+          default_value: null,
+          inherited: false,
+          allow_override: "any",
+        },
+      ],
+    };
+
+    const initialObject: { name: AttributeType } = {
+      name: {
+        is_from_profile: false,
+        is_protected: true,
+        is_visible: true,
+        owner: {
+          id: "1",
+          display_label: "Architecture Team",
+          __typename: "CoreAccount",
+        },
+        source: null,
+        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        value: "test-value",
+        __typename: "TextAttribute",
+      },
+    };
+
+    const user: AuthContextType = {
+      accessToken: "abc",
+      isAuthenticated: true,
+      isLoading: false,
+      data: {
+        sub: "1",
+      },
+      signIn: async () => {},
+      signOut: () => {},
+      user: {
+        id: "1",
+      },
+    };
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, initialObject, user });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).to.deep.equal({
+      defaultValue: "test-value",
+      description: undefined,
+      disabled: false,
+      name: "name",
+      label: "Name",
+      type: "Text",
+      unique: true,
+      rules: {
+        required: true,
+      },
     });
   });
 });

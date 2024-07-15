@@ -862,7 +862,9 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   }, [options?.length]);
 
   return (
-    <div className={classNames("relative", className)} data-testid="select-container">
+    <div
+      className={classNames("relative", dropdown && disabled && "opacity-60", className)}
+      data-testid="select-container">
       <Combobox
         as="div"
         value={multiple ? selectedOption ?? [] : selectedOption ?? ""}
