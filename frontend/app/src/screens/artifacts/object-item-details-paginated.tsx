@@ -13,7 +13,6 @@ import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
-import AddObjectToGroup from "@/screens/groups/add-object-to-group";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
@@ -43,13 +42,13 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [showAddToGroupDrawer, setShowAddToGroupDrawer] = useState(false);
   const auth = useAuth();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
@@ -148,21 +147,22 @@ export default function ArtifactsDetails() {
       <Tabs
         tabs={tabs}
         rightItems={
-          <>
+          <div className="pr-2">
             <Generate
               label="Re-generate"
               artifactid={objectid}
               definitionid={objectDetailsData?.definition?.node?.id}
             />
 
-            <Button
-              disabled={!auth?.permissions?.write}
-              onClick={() => setShowAddToGroupDrawer(true)}
-              className="mr-4">
+            <GroupsManagerTriggerButton
+              schema={schemaData}
+              objectId={objectid}
+              size="default"
+              variant="outline">
               Manage groups
               <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-            </Button>
-          </>
+            </GroupsManagerTriggerButton>
+          </div>
         }
       />
 
@@ -345,61 +345,6 @@ export default function ArtifactsDetails() {
           onUpdateComplete={() => refetch()}
           objectid={objectid!}
           objectname={ARTIFACT_OBJECT}
-        />
-      </SlideOver>
-
-      <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <div className="flex items-center">
-                <div className="text-base font-semibold leading-6 text-gray-900">
-                  {schemaData.label}
-                </div>
-                <ChevronRightIcon
-                  className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-                  aria-hidden="true"
-                />
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  {objectDetailsData.display_label}
-                </p>
-              </div>
-
-              <div className="flex-1"></div>
-
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-
-            <div className="text-sm">{schemaData?.description}</div>
-
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {schemaData.kind}
-            </span>
-            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              ID: {objectDetailsData.id}
-            </div>
-          </div>
-        }
-        open={showAddToGroupDrawer}
-        setOpen={setShowAddToGroupDrawer}>
-        <AddObjectToGroup
-          closeDrawer={() => setShowAddToGroupDrawer(false)}
-          onUpdateComplete={() => refetch()}
         />
       </SlideOver>
 

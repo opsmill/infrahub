@@ -25,7 +25,7 @@ export const resolve = (path: string, object: any, separator: string = ".") => {
 
 export const getObjectDetailsUrl2 = (
   objectKind: string,
-  objectId: string,
+  objectId?: string,
   overrideParams?: overrideQueryParams[]
 ) => {
   const nodes = store.get(schemaState);
@@ -45,5 +45,6 @@ export const getObjectDetailsUrl2 = (
     ]);
   }
 
-  return constructPath(`/objects/${objectKind}/${objectId}`, overrideParams);
+  const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
+  return constructPath(path, overrideParams);
 };

@@ -14,13 +14,14 @@ import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { store } from "@/state";
 import { getIsDisabled } from "@/utils/formStructureForCreateEdit";
 import { components } from "@/infraops";
+import { AuthContextType } from "@/hooks/useAuth";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
   schemas?: iNodeSchema[] | iGenericSchema[];
   profiles?: Object[];
   initialObject?: Record<string, AttributeType>;
-  user?: any;
+  user?: AuthContextType;
   isFilterForm?: boolean;
   filters?: Array<any>;
 };
