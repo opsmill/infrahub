@@ -199,8 +199,7 @@ async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, 
     relationship_diff = node_diff.relationships[0]
     attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
     assert set(attributes_by_name.keys()) == {"name", "nbr_seats", "color", "is_electric", "transmission"}
-    for attribute_name in attributes_by_name:
-        attribute_diff = attributes_by_name[attribute_name]
+    for attribute_diff in attributes_by_name.values():
         assert attribute_diff.action is DiffAction.REMOVED
         properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
         diff_property = properties_by_type["HAS_VALUE"]
