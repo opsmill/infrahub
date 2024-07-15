@@ -121,14 +121,16 @@ describe("getObjectDefaultValue", () => {
       allow_override: "any",
     } satisfies GetObjectDefaultValue["fieldSchema"];
 
-    const profile = {
-      name: {
-        value: null,
+    const profiles = [
+      {
+        name: {
+          value: null,
+        },
       },
-    };
+    ];
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, profile });
+    const defaultValue = getObjectDefaultValue({ fieldSchema, profiles });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-schema");
@@ -158,11 +160,13 @@ describe("getObjectDefaultValue", () => {
       allow_override: "any",
     } satisfies GetObjectDefaultValue["fieldSchema"];
 
-    const profile = {
-      name: {
-        value: null,
+    const profiles = [
+      {
+        name: {
+          value: null,
+        },
       },
-    };
+    ];
 
     const initialObject = {
       name: {
@@ -171,7 +175,7 @@ describe("getObjectDefaultValue", () => {
     };
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profile });
+    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profiles });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-schema");
@@ -201,11 +205,13 @@ describe("getObjectDefaultValue", () => {
       allow_override: "any",
     } satisfies GetObjectDefaultValue["fieldSchema"];
 
-    const profile = {
-      name: {
-        value: "test-value-form-profile",
+    const profiles = [
+      {
+        name: {
+          value: "test-value-form-profile",
+        },
       },
-    };
+    ];
 
     const initialObject = {
       name: {
@@ -214,7 +220,7 @@ describe("getObjectDefaultValue", () => {
     };
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profile });
+    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profiles });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-profile");
@@ -244,11 +250,13 @@ describe("getObjectDefaultValue", () => {
       allow_override: "any",
     } satisfies GetObjectDefaultValue["fieldSchema"];
 
-    const profile = {
-      name: {
-        value: "test-value-form-profile",
+    const profiles = [
+      {
+        name: {
+          value: "test-value-form-profile",
+        },
       },
-    };
+    ];
 
     const initialObject = {
       name: {
@@ -257,7 +265,7 @@ describe("getObjectDefaultValue", () => {
     };
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profile });
+    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profiles });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-profile");
@@ -287,11 +295,13 @@ describe("getObjectDefaultValue", () => {
       allow_override: "any",
     } satisfies GetObjectDefaultValue["fieldSchema"];
 
-    const profile = {
-      name: {
-        value: "test-value-form-profile",
+    const profiles = [
+      {
+        name: {
+          value: "test-value-form-profile",
+        },
       },
-    };
+    ];
 
     const initialObject = {
       name: {
@@ -300,7 +310,7 @@ describe("getObjectDefaultValue", () => {
     };
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profile });
+    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profiles });
 
     // THEN
     expect(defaultValue).to.equal("data-from-current-object");
