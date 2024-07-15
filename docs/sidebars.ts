@@ -282,16 +282,46 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
-      'Release Notes': [
-        'release-notes/release-0_14',
-        'release-notes/release-0_13',
-        'release-notes/release-0_12',
-        'release-notes/release-0_11',
-        'release-notes/release-0_10',
-        'release-notes/release-0_9',
-        'release-notes/release-0_8',
-        'release-notes/release-0_7',
-        'release-notes/release-0_6'],
+      type: 'category',
+      label: 'Release Notes',
+      link: {
+        type: 'generated-index',
+        slug: 'release-notes'
+      },
+      items: [
+        {
+          type: 'category',
+          label: 'Infrahub',
+          link: {
+            type: 'generated-index',
+            slug: 'release-notes/infrahub',
+          },
+          items: [
+            // 'release-notes/infrahub/release-0_16-DRAFT',
+            'release-notes/infrahub/release-0_15',
+            'release-notes/infrahub/release-0_14',
+            'release-notes/infrahub/release-0_13',
+            'release-notes/infrahub/release-0_12',
+            'release-notes/infrahub/release-0_11',
+            'release-notes/infrahub/release-0_10',
+            'release-notes/infrahub/release-0_9',
+            'release-notes/infrahub/release-0_8',
+            'release-notes/infrahub/release-0_7',
+            'release-notes/infrahub/release-0_6'
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Python SDK',
+          link: {
+            type: 'generated-index',
+            slug: 'release-notes/python-sdk',
+          },
+          items: [
+            // 'release-notes/python-sdk/release-0_13-DRAFT'
+          ],
+        },
+      ],
     },
     'faq/faq',
   ],
