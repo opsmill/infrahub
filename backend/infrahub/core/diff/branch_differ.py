@@ -971,7 +971,7 @@ class BranchDiffer:
                     FileDiffElement(
                         branch=branch_name,
                         location=filename,
-                        repository=repository.id,
+                        repository=repository,
                         action=diff_action,
                         commit_to=commit_to,
                         commit_from=commit_from,

@@ -6,6 +6,7 @@ from typing import Any, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from infrahub.core.constants import DiffAction, PathType
+from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 
 
@@ -36,6 +37,8 @@ class BaseDiffElement(BaseModel):
                 resp[key] = value.value
             elif isinstance(value, Timestamp):
                 resp[key] = value.to_string()
+            elif isinstance(value, Node):
+                resp[key] = value.get_id()
             else:
                 resp[key] = value
 
@@ -117,7 +120,7 @@ class RelationshipDiffElement(BaseDiffElement):
 class FileDiffElement(BaseDiffElement):
     branch: str
     location: str
-    repository: str
+    repository: Node
     action: DiffAction
     commit_from: str
     commit_to: str
