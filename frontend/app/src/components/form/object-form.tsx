@@ -8,7 +8,7 @@ import {
 import { useAtomValue } from "jotai/index";
 import { getFormFieldsFromSchema } from "./utils";
 import { useId, useState } from "react";
-import { Combobox, tComboboxItem } from "@/components/ui/combobox";
+import { Combobox, MultiCombobox, tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Label from "@/components/ui/label";
 import { gql } from "@apollo/client";
@@ -31,11 +31,13 @@ import useQuery from "@/hooks/useQuery";
 import { getProfiles } from "@/graphql/queries/objects/getProfiles";
 import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
 
+type Profile = Record<string, Pick<AttributeType, "value" | "__typename">>;
+
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
-  currentProfile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
+  currentProfiles?: Profile[];
   isFilterForm?: boolean;
   onSubmit?: (data: any) => Promise<void>;
 }
@@ -115,13 +117,13 @@ const GenericSelector = (props: GenericSelectorProps) => {
   );
 };
 
-const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps) => {
+const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
-  const [profileSelected, setProfileSelected] = useState<
-    Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
-  >(currentProfile);
+
+  const [selectedProfiles, setSelectedProfiles] = useState<Profile[] | undefined>();
+
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
@@ -133,22 +135,26 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
       {nodeSchema.generate_profile && (
         <ProfilesSelector
           schema={nodeSchema}
-          value={profileSelected?.display_label}
-          onChange={setProfileSelected}
+          defaultValue={currentProfiles}
+          value={selectedProfiles}
+          onChange={setSelectedProfiles}
+          currentProfiles={currentProfiles}
         />
       )}
-      <NodeForm schema={nodeSchema} profile={profileSelected} {...props} />
+      <NodeForm schema={nodeSchema} profiles={selectedProfiles} {...props} />
     </>
   );
 };
 
 type ProfilesSelectorProps = {
   schema: iNodeSchema;
-  value?: Record<string, Pick<AttributeType, "value" | "__typename">>;
-  onChange: (item: Record<string, Pick<AttributeType, "value" | "__typename">>) => void;
+  value?: any[];
+  defaultValue?: any[];
+  onChange: (item: any[]) => void;
+  currentProfiles?: any[];
 };
 
-const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
+const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSelectorProps) => {
   const id = useId();
 
   const generics = useAtomValue(genericsState);
@@ -159,11 +165,11 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
   // Get all available generic profiles
   const nodeGenericsProfiles = nodeGenerics
     // Find all generic schema
-    .map((nodeGeneric) => generics.find((generic) => generic.kind === nodeGeneric))
+    .map((nodeGeneric: any) => generics.find((generic) => generic.kind === nodeGeneric))
     // Filter for generate_profile ones
-    .filter((generic) => generic.generate_profile)
+    .filter((generic: any) => generic.generate_profile)
     // Get only the kind
-    .map((generic) => generic.kind)
+    .map((generic: any) => generic.kind)
     .filter(Boolean);
 
   // The profiles should include the current object profile + all generic profiles
@@ -181,14 +187,17 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
       if (!attributes.length) return null;
 
       return {
-        name: profileSchema.kind,
+        name: profileSchema?.kind,
+        schema: profileSchema,
         attributes,
       };
     })
     .filter(Boolean);
 
-  // Get all profiles kind to retrieve the informations from the result
-  const profilesKindList = profilesList.map((profile) => profile.name);
+  // Get all profiles name to retrieve the informations from the result
+  const profilesNameList: string[] = profilesList
+    .map((profile) => profile?.name ?? "")
+    .filter(Boolean);
 
   if (!profilesList.length)
     return <ErrorScreen message="Something went wrong while fetching profiles" />;
@@ -206,28 +215,44 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
   if (error) return <ErrorScreen message={error.message} />;
 
   // Get data for each profile in the query result
-  const profilesData = profilesKindList.reduce(
+  const profilesData: any[] = profilesNameList.reduce(
     (acc, profile) => [...acc, ...(data?.[profile!]?.edges ?? [])],
     []
   );
 
+  // Build combobox options
+  const items = profilesData?.map((edge: any) => ({
+    value: edge.node.id,
+    label: edge.node.display_label,
+    data: edge.node,
+  }));
+
+  const selectedValues = value?.map((profile) => profile.id) ?? [];
+
+  const handleChange = (newProfilesId: string[]) => {
+    const newSelectedProfiles = newProfilesId
+      .map((profileId) => items.find((option) => option.value === profileId))
+      .filter(Boolean)
+      .map((option) => option?.data);
+
+    onChange(newSelectedProfiles);
+  };
+
   if (!profilesData || profilesData.length === 0) return null;
+
+  if (!value && defaultValue) {
+    const ids = defaultValue.map((profile) => profile.id);
+
+    handleChange(ids);
+  }
 
   return (
     <div className="p-4 bg-gray-100">
       <Label htmlFor={id}>
-        Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
+        Select profiles <span className="text-xs italic text-gray-500 ml-1">optional</span>
       </Label>
 
-      <Combobox
-        id={id}
-        items={profilesData.map((edge: any) => ({
-          value: edge.node,
-          label: edge.node.display_label,
-        }))}
-        onChange={onChange}
-        value={value}
-      />
+      <MultiCombobox id={id} items={items} onChange={handleChange} value={selectedValues} />
     </div>
   );
 };
@@ -235,18 +260,18 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
 type NodeFormProps = {
   className?: string;
   schema: iNodeSchema | IProfileSchema;
-  profile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
+  profiles?: Profile[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   isFilterForm?: boolean;
-  onSubmit?: (data: any) => void;
+  onSubmit?: (data: any, profiles?: IProfileSchema[]) => void;
 };
 
 const NodeForm = ({
   className,
   currentObject,
   schema,
-  profile,
+  profiles,
   onSuccess,
   isFilterForm,
   onSubmit: onSubmitOverride,
@@ -256,31 +281,33 @@ const NodeForm = ({
   const date = useAtomValue(datetimeAtom);
   const schemas = useAtomValue(schemaState);
   const [filters] = useFilters();
-  const { data, permissions } = useAuth();
+  const auth = useAuth();
 
   const fields = getFormFieldsFromSchema({
     schema,
     schemas,
-    profile,
+    profiles,
     initialObject: currentObject,
-    user: { ...data, permissions },
+    user: auth,
     isFilterForm,
     filters,
   });
 
   async function onSubmit(data: any) {
     try {
-      const newObject = getMutationDetailsFromFormData(schema, data, "create", null, profile);
+      const newObject = getMutationDetailsFromFormData(schema, data, "create", null, profiles);
 
       if (!Object.keys(newObject).length) {
         return;
       }
 
+      const profileIds = profiles?.map((profile) => ({ id: profile.id })) ?? [];
+
       const mutationString = createObject({
         kind: schema?.kind,
         data: stringifyWithoutQuotes({
           ...newObject,
-          ...(profile ? { profiles: [{ id: profile.id }] } : {}),
+          ...(profileIds.length ? { profiles: profileIds } : {}),
         }),
       });
 
@@ -306,10 +333,18 @@ const NodeForm = ({
     }
   }
 
+  const handleSubmit = (data: any) => {
+    if (onSubmitOverride) {
+      return onSubmitOverride(data, profiles);
+    }
+
+    return onSubmit(data);
+  };
+
   return (
     <DynamicForm
       fields={fields}
-      onSubmit={onSubmitOverride || onSubmit}
+      onSubmit={handleSubmit}
       className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
       {...props}
     />

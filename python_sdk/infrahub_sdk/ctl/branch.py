@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -81,7 +80,7 @@ async def list_branch(_: str = CONFIG_PARAM) -> None:
 @catch_exception(console=console)
 async def create(
     branch_name: str = typer.Argument(..., help="Name of the branch to create"),
-    description: Optional[str] = typer.Option("", help="Description of the branch"),
+    description: str = typer.Option(default="", help="Description of the branch"),
     sync_with_git: bool = typer.Option(
         False, help="Extend the branch to Git and have Infrahub create the branch in connected repositories."
     ),

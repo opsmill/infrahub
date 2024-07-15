@@ -14,13 +14,14 @@ import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { store } from "@/state";
 import { getIsDisabled } from "@/utils/formStructureForCreateEdit";
 import { components } from "@/infraops";
+import { AuthContextType } from "@/hooks/useAuth";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
   schemas?: iNodeSchema[] | iGenericSchema[];
-  profile?: Object;
+  profiles?: Object[];
   initialObject?: Record<string, AttributeType>;
-  user?: any;
+  user?: AuthContextType;
   isFilterForm?: boolean;
   filters?: Array<any>;
 };
@@ -28,7 +29,7 @@ type GetFormFieldsFromSchema = {
 export const getFormFieldsFromSchema = ({
   schema,
   schemas,
-  profile,
+  profiles,
   initialObject,
   user,
   isFilterForm,
@@ -57,7 +58,7 @@ export const getFormFieldsFromSchema = ({
       defaultValue: getObjectDefaultValue({
         fieldSchema: attribute,
         initialObject,
-        profile,
+        profiles,
         isFilterForm,
       }),
       description: attribute.description ?? undefined,
@@ -156,20 +157,35 @@ export const getFormFieldsFromSchema = ({
 export type GetObjectDefaultValue = {
   fieldSchema: GetObjectDefaultValueFromSchema;
   initialObject?: Record<string, AttributeType>;
-  profile?: Record<string, AttributeType>;
+  profiles?: Record<string, AttributeType>[];
   isFilterForm?: boolean;
 };
 
 export const getObjectDefaultValue = ({
   fieldSchema,
   initialObject,
-  profile,
+  profiles = [],
   isFilterForm,
 }: GetObjectDefaultValue) => {
-  const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
-  const defaultValueFromProfile = profile?.[fieldSchema.name]?.value;
+  // Sort profiles from profile_priority value
+  const orderedProfiles = profiles.sort((optionA, optionB) => {
+    if (optionA.profile_priority.value < optionB.profile_priority.value) return -1;
+    return 1;
+  });
+
+  // Get current object value
+  const currentField = initialObject?.[fieldSchema.name];
+  const currentFieldValue = currentField?.is_from_profile ? null : currentField?.value;
+
+  // Get value from profiles depending on the priority
+  const defaultValueFromProfile = orderedProfiles.find(
+    (profile) => profile?.[fieldSchema.name]?.value
+  )?.[fieldSchema.name]?.value;
+
+  // Get default value from schema
   const defaultValueFromSchema = getDefaultValueFromSchema(fieldSchema);
 
+  // Do not use profiles nor default values in filters
   if (isFilterForm) {
     return currentFieldValue ?? null;
   }

@@ -15,7 +15,6 @@ from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
-from infrahub.git.actions import sync_remote_repositories
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
@@ -49,11 +48,8 @@ def callback() -> None:
 
 
 async def initialize_git_agent(service: InfrahubServices) -> None:
-    log.info("Initializing Git Agent ...")
+    service.log.info("Initializing Git Agent ...")
     initialize_repositories_directory()
-
-    # TODO Validate access to the GraphQL API with the proper credentials
-    await sync_remote_repositories(service=service)
 
 
 @app.command()

@@ -65,10 +65,6 @@ export interface paths {
     /** Graphql Query Post */
     post: operations["graphql_query_post_api_query__query_id__post"];
   };
-  "/api/schema/": {
-    /** Get Schema */
-    get: operations["get_schema_api_schema__get"];
-  };
   "/api/schema": {
     /** Get Schema */
     get: operations["get_schema_api_schema_get"];
@@ -80,6 +76,10 @@ export interface paths {
   "/api/schema/{schema_kind}": {
     /** Get Schema By Kind */
     get: operations["get_schema_by_kind_api_schema__schema_kind__get"];
+  };
+  "/api/schema/json_schema/{schema_kind}": {
+    /** Get Json Schema By Kind */
+    get: operations["get_json_schema_by_kind_api_schema_json_schema__schema_kind__get"];
   };
   "/api/schema/load": {
     /** Load Schema */
@@ -154,9 +154,14 @@ export interface components {
       branch?: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
-       * @description Default filter used to search for a node in addition to its ID.
+       * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
        */
       default_filter?: string | null;
+      /**
+       * Human Friendly Id
+       * @description Human friendly and unique identifier for the object.
+       */
+      human_friendly_id?: string[] | null;
       /**
        * Display Labels
        * @description List of attributes to use to generate the display label
@@ -214,6 +219,12 @@ export interface components {
        */
       hierarchical?: boolean;
       /**
+       * Generate Profile
+       * @description Indicate if a profile schema should be generated for this schema
+       * @default true
+       */
+      generate_profile?: boolean;
+      /**
        * Used By
        * @description List of Nodes that are referencing this Generic
        */
@@ -262,9 +273,14 @@ export interface components {
       branch?: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
-       * @description Default filter used to search for a node in addition to its ID.
+       * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
        */
       default_filter?: string | null;
+      /**
+       * Human Friendly Id
+       * @description Human friendly and unique identifier for the object.
+       */
+      human_friendly_id?: string[] | null;
       /**
        * Display Labels
        * @description List of attributes to use to generate the display label
@@ -320,6 +336,12 @@ export interface components {
        * @description List of Generic Kind that this node is inheriting from
        */
       inherit_from?: string[];
+      /**
+       * Generate Profile
+       * @description Indicate if a profile schema should be generated for this schema
+       * @default true
+       */
+      generate_profile?: boolean;
       /**
        * Hierarchy
        * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
@@ -379,9 +401,14 @@ export interface components {
       branch?: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
-       * @description Default filter used to search for a node in addition to its ID.
+       * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
        */
       default_filter?: string | null;
+      /**
+       * Human Friendly Id
+       * @description Human friendly and unique identifier for the object.
+       */
+      human_friendly_id?: string[] | null;
       /**
        * Display Labels
        * @description List of attributes to use to generate the display label
@@ -1033,9 +1060,14 @@ export interface components {
       branch?: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
-       * @description Default filter used to search for a node in addition to its ID.
+       * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
        */
       default_filter?: string | null;
+      /**
+       * Human Friendly Id
+       * @description Human friendly and unique identifier for the object.
+       */
+      human_friendly_id?: string[] | null;
       /**
        * Display Labels
        * @description List of attributes to use to generate the display label
@@ -1092,6 +1124,12 @@ export interface components {
        * @default false
        */
       hierarchical?: boolean;
+      /**
+       * Generate Profile
+       * @description Indicate if a profile schema should be generated for this schema
+       * @default true
+       */
+      generate_profile?: boolean;
       /**
        * Used By
        * @description List of Nodes that are referencing this Generic
@@ -1160,6 +1198,49 @@ export interface components {
        */
       kind?: string;
     };
+    /** JSONSchema */
+    JSONSchema: {
+      /**
+       * Title
+       * @description Title of the schema
+       */
+      title?: string | null;
+      /**
+       * Description
+       * @description Description of the schema
+       */
+      description?: string | null;
+      /**
+       * Type
+       * @description Type of the schema element (e.g., 'object', 'array', 'string')
+       */
+      type: string;
+      /**
+       * Properties
+       * @description Properties of the object if type is 'object'
+       */
+      properties?: Record<string, never> | null;
+      /**
+       * Items
+       * @description Items of the array if type is 'array'
+       */
+      items?: Record<string, never> | Record<string, never>[] | null;
+      /**
+       * Required
+       * @description List of required properties if type is 'object'
+       */
+      required?: string[] | null;
+      /**
+       * $Schema
+       * @description Schema version identifier
+       */
+      $schema?: string | null;
+      /**
+       * Additionalproperties
+       * @description Specifies whether additional properties are allowed
+       */
+      additionalProperties?: boolean | Record<string, never> | null;
+    };
     /** LoggingSettings */
     LoggingSettings: {
       /**
@@ -1188,6 +1269,23 @@ export interface components {
        * @default true
        */
       allow_anonymous_access?: boolean;
+      /**
+       * Telemetry Optout
+       * @description Disable anonymous usage reporting
+       * @default false
+       */
+      telemetry_optout?: boolean;
+      /**
+       * Telemetry Endpoint
+       * @default https://telemetry.opsmill.cloud/infrahub
+       */
+      telemetry_endpoint?: string;
+      /**
+       * Telemetry Interval
+       * @description Time (in seconds) between telemetry usage push
+       * @default 86400
+       */
+      telemetry_interval?: number;
     };
     /** NodeExtensionSchema */
     NodeExtensionSchema: {
@@ -1241,9 +1339,14 @@ export interface components {
       branch?: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
-       * @description Default filter used to search for a node in addition to its ID.
+       * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
        */
       default_filter?: string | null;
+      /**
+       * Human Friendly Id
+       * @description Human friendly and unique identifier for the object.
+       */
+      human_friendly_id?: string[] | null;
       /**
        * Display Labels
        * @description List of attributes to use to generate the display label
@@ -1299,6 +1402,12 @@ export interface components {
        * @description List of Generic Kind that this node is inheriting from
        */
       inherit_from?: string[];
+      /**
+       * Generate Profile
+       * @description Indicate if a profile schema should be generated for this schema
+       * @default true
+       */
+      generate_profile?: boolean;
       /**
        * Hierarchy
        * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
@@ -2116,30 +2225,6 @@ export interface operations {
     };
   };
   /** Get Schema */
-  get_schema_api_schema__get: {
-    parameters: {
-      query?: {
-        namespaces?: string[] | null;
-        /** @description Name of the branch to use for the query */
-        branch?: string | null;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["SchemaReadAPI"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  /** Get Schema */
   get_schema_api_schema_get: {
     parameters: {
       query?: {
@@ -2202,8 +2287,35 @@ export interface operations {
       200: {
         content: {
           "application/json":
+            | components["schemas"]["APIProfileSchema"]
             | components["schemas"]["APINodeSchema"]
             | components["schemas"]["APIGenericSchema"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Json Schema By Kind */
+  get_json_schema_by_kind_api_schema_json_schema__schema_kind__get: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string | null;
+      };
+      path: {
+        schema_kind: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["JSONSchema"];
         };
       };
       /** @description Validation Error */

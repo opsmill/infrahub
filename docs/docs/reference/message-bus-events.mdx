@@ -399,6 +399,23 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **default_branch_name** | Default branch for this repository | N/A | None |
 <!-- vale on -->
 <!-- vale off -->
+#### Event git.repository.connectivity
+<!-- vale on -->
+
+**Description**: Validate connectivity and credentials to remote repository
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **repository_location** | The location of repository | string | None |
+<!-- vale on -->
+<!-- vale off -->
 #### Event git.repository.merge
 <!-- vale on -->
 
@@ -432,6 +449,24 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **ref** | Ref to track on the external repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event git.repository.import_objects
+<!-- vale on -->
+
+**Description**: Re run import job against an existing commit.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **commit** | Specific commit to pull | string | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
@@ -1548,6 +1583,24 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **default_branch_name** | Default branch for this repository | N/A | None |
 <!-- vale on -->
 <!-- vale off -->
+#### Event git.repository.connectivity
+<!-- vale on -->
+
+**Description**: Validate connectivity and credentials to remote repository
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **repository_location** | The location of repository | string | None |
+<!-- vale on -->
+<!-- vale off -->
 #### Event git.repository.merge
 <!-- vale on -->
 
@@ -1583,6 +1636,25 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **ref** | Ref to track on the external repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event git.repository.import_objects
+<!-- vale on -->
+
+**Description**: Re run import job against an existing commit.
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **commit** | Specific commit to pull | string | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
 <!-- vale on -->
 <!-- vale off -->

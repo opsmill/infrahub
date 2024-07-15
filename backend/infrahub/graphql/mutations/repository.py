@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from graphene import InputObjectType, Mutation
+from graphene import Boolean, InputObjectType, Mutation, String
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
+from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
+from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql import GraphqlContext
 
@@ -137,3 +140,76 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if context.service:
             await context.service.send(message=message)
         return obj, result
+
+
+class ProcessRepository(Mutation):
+    class Arguments:
+        data = IdentifierInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # pylint: disable=unused-argument
+        info: GraphQLResolveInfo,
+        data: IdentifierInput,
+    ) -> dict[str, bool]:
+        context: GraphqlContext = info.context
+        branch = context.branch
+        repository_id = str(data.id)
+        repo: CoreReadOnlyRepository | CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
+            db=context.db,
+            kind=InfrahubKind.GENERICREPOSITORY,
+            id=str(data.id),
+            branch=branch,
+        )
+
+        message = messages.GitRepositoryImportObjects(
+            repository_id=repository_id,
+            repository_name=str(repo.name.value),
+            repository_kind=repo.get_kind(),
+            commit=str(repo.commit.value),
+            infrahub_branch_name=branch.name,
+        )
+        if context.service:
+            await context.service.send(message=message)
+        return {"ok": True}
+
+
+class ValidateRepositoryConnectivity(Mutation):
+    class Arguments:
+        data = IdentifierInput(required=True)
+
+    ok = Boolean(required=True)
+    message = String(required=True)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # pylint: disable=unused-argument
+        info: GraphQLResolveInfo,
+        data: IdentifierInput,
+    ) -> dict[str, Any]:
+        context: GraphqlContext = info.context
+        branch = context.branch
+        repository_id = str(data.id)
+        repo: CoreReadOnlyRepository | CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
+            db=context.db,
+            kind=InfrahubKind.GENERICREPOSITORY,
+            id=str(data.id),
+            branch=branch,
+        )
+
+        message = messages.GitRepositoryConnectivity(
+            repository_id=repository_id,
+            repository_name=str(repo.name.value),
+            repository_kind=repo.get_kind(),
+            repository_location=str(repo.location.value),
+        )
+        if context.service:
+            response = await context.service.message_bus.rpc(
+                message=message, response_class=GitRepositoryConnectivityResponse
+            )
+
+        return {"ok": response.data.success, "message": response.data.message}

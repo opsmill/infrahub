@@ -1082,6 +1082,9 @@ query InfraDevice {
             node {
               display_label
               id
+              profile_priority {
+                value
+              }
             }
           }
         }

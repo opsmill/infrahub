@@ -1194,12 +1194,15 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            attrs_to_update = [attr for attr in node.attributes if attr.default_value is not None and not attr.optional]
-            if not attrs_to_update:
+            attr_names_to_update = [
+                attr.name for attr in node.attributes if attr.default_value is not None and not attr.optional
+            ]
+            if not attr_names_to_update:
                 continue
 
             node = node.duplicate()
-            for attr in attrs_to_update:
+            for attr_name in attr_names_to_update:
+                attr = node.get_attribute(name=attr_name)
                 attr.optional = True
 
             self.set(name=name, schema=node)
@@ -1471,8 +1474,9 @@ class SchemaBranch:
                 needs_profile_relationship = False
 
             if needs_profile_relationship:
+                node_schema = self.get(name=node_name, duplicate=True)
                 # Add relationship between node and profile
-                node.relationships.append(
+                node_schema.relationships.append(
                     RelationshipSchema(
                         name="profiles",
                         identifier="node__profile",
@@ -1482,6 +1486,7 @@ class SchemaBranch:
                         branch=BranchSupportType.AWARE,
                     )
                 )
+                self.set(name=node_name, schema=node_schema)
                 # Add relationship between group and profile
 
     def _get_profile_kind(self, node_kind: str) -> str:
@@ -1841,6 +1846,9 @@ class SchemaManager(NodeManager):
                 new_node.attributes.append(new_attr)
 
             for item in node.relationships:
+                if item.name == "profiles":
+                    new_node.relationships.append(item)
+                    continue
                 new_rel = await self.create_relationship_in_db(
                     schema=relationship_schema, item=item, parent=obj, branch=branch, db=db
                 )
@@ -1878,7 +1886,9 @@ class SchemaManager(NodeManager):
 
         # Update the attributes and the relationships nodes as well
         await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
-        await obj.relationships.update(db=db, data=[item.id for item in node.local_relationships if item.id])
+        await obj.relationships.update(
+            db=db, data=[item.id for item in node.local_relationships if item.id and item.name != "profiles"]
+        )
         await obj.save(db=db)
 
         # Then Update the Attributes and the relationships
@@ -1904,6 +1914,10 @@ class SchemaManager(NodeManager):
             if item.id and item.id in items:
                 await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
             elif not item.id:
+                if item.name == "profiles":
+                    if "profiles" not in new_node.relationship_names:
+                        new_node.relationships.append(item)
+                    continue
                 new_rel = await self.create_relationship_in_db(
                     schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
                 )
@@ -2208,6 +2222,8 @@ class SchemaManager(NodeManager):
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
+                if rel_name == "profiles":
+                    continue
                 node_data[rel_name] = []
 
             rm = getattr(schema_node, rel_name)

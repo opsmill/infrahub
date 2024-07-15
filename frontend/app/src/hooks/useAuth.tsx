@@ -19,7 +19,7 @@ type User = {
   id: string;
 };
 
-type AuthContextType = {
+export type AuthContextType = {
   accessToken: string | null;
   data?: any;
   isAuthenticated: boolean;

@@ -100,7 +100,7 @@ async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path)
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
 
-    assert "An error occurred with GitRepository" in str(exc.value)
+    assert f"fatal: repository '{tmp_path}' does not exist" in str(exc.value)
 
 
 async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmp_path):
@@ -676,10 +676,10 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
     assert len(yaml_files) == 4
 
-    yaml_files = await repo.find_files(extension="yml", directory="test_files", branch_name="main")
+    yaml_files = await repo.find_files(extension="yml", directory=Path("test_files"), branch_name="main")
     assert len(yaml_files) == 2
 
-    yaml_files = await repo.find_files(extension="yml", directory="notpresent", branch_name="main")
+    yaml_files = await repo.find_files(extension="yml", directory=Path("notpresent"), branch_name="main")
     assert len(yaml_files) == 0
 
 

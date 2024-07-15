@@ -31,7 +31,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent>
+      <DropdownMenuContent className="z-10">
         <DropdownMenuItem disabled={!documentationUrl} asChild>
           <Link to={docFullUrl} target="_blank" className="flex gap-2">
             <Icon icon="mdi:book-open-variant-outline" className="text-lg text-custom-blue-700" />

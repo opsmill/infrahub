@@ -35,7 +35,7 @@ from .proposed_change import (
     ProposedChangeRequestRunCheck,
 )
 from .relationship import RelationshipAdd, RelationshipRemove
-from .repository import InfrahubRepositoryMutation
+from .repository import InfrahubRepositoryMutation, ProcessRepository, ValidateRepositoryConnectivity
 from .resource_manager import InfrahubNumberPoolMutation, IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .task import TaskCreate, TaskUpdate
@@ -77,6 +77,7 @@ __all__ = [
     "NumberAttributeCreate",
     "NumberAttributeUpdate",
     "ProposedChangeRequestRunCheck",
+    "ProcessRepository",
     "RelationshipAdd",
     "RelationshipRemove",
     "StringAttributeCreate",
@@ -89,4 +90,5 @@ __all__ = [
     "SchemaEnumRemove",
     "TaskCreate",
     "TaskUpdate",
+    "ValidateRepositoryConnectivity",
 ]
