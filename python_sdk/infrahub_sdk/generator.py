@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Optional
 
 from git.repo import Repo
 
@@ -21,11 +21,11 @@ class InfrahubGenerator:
         self,
         query: str,
         client: InfrahubClient,
-        infrahub_node: Type[InfrahubNode],
+        infrahub_node: type[InfrahubNode],
         branch: Optional[str] = None,
         root_directory: str = "",
         generator_instance: str = "",
-        params: Optional[Dict] = None,
+        params: Optional[dict] = None,
         convert_query_response: bool = False,
     ) -> None:
         self.query = query
@@ -48,17 +48,17 @@ class InfrahubGenerator:
         return self._init_client.store
 
     @property
-    def nodes(self) -> List[InfrahubNode]:
+    def nodes(self) -> list[InfrahubNode]:
         """Returns nodes collected and parsed during the data collection process if this feature is enables"""
         return self._nodes
 
     @property
-    def related_nodes(self) -> List[InfrahubNode]:
+    def related_nodes(self) -> list[InfrahubNode]:
         """Returns nodes collected and parsed during the data collection process if this feature is enables"""
         return self._related_nodes
 
     @property
-    def subscribers(self) -> Optional[List[str]]:
+    def subscribers(self) -> Optional[list[str]]:
         if self.generator_instance:
             return [self.generator_instance]
         return None
@@ -87,7 +87,7 @@ class InfrahubGenerator:
 
         return self.branch
 
-    async def collect_data(self) -> Dict:
+    async def collect_data(self) -> dict:
         """Query the result of the GraphQL Query defined in self.query and return the result"""
 
         data = await self._init_client.query_gql_query(

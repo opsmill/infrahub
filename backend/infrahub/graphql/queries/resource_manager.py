@@ -12,11 +12,13 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import IPPrefixUtilization
 from infrahub.core.query.resource_manager import IPAddressPoolGetIdentifiers, PrefixPoolGetIdentifiers
 from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.pools.number import NumberUtilizationGetter
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreNode
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql import GraphqlContext
 
@@ -51,8 +53,12 @@ class PoolAllocatedEdge(ObjectType):
     node = Field(PoolAllocatedNode, required=True)
 
 
-def _validate_pool_type(pool_id: str, pool: Optional[Node] = None) -> Node:
-    if not pool or pool._schema.kind not in [InfrahubKind.IPADDRESSPOOL, InfrahubKind.IPPREFIXPOOL]:
+def _validate_pool_type(pool_id: str, pool: Optional[CoreNode] = None) -> CoreNode:
+    if not pool or pool.get_kind() not in [
+        InfrahubKind.IPADDRESSPOOL,
+        InfrahubKind.IPPREFIXPOOL,
+        InfrahubKind.NUMBERPOOL,
+    ]:
         raise NodeNotFoundError(node_type="ResourcePool", identifier=pool_id)
     return pool
 
@@ -71,9 +77,16 @@ class PoolAllocated(ObjectType):
         limit: int = 10,
     ) -> dict:
         context: GraphqlContext = info.context
-        pool = await NodeManager.get_one(id=pool_id, db=context.db, branch=context.branch)
+        pool: Optional[CoreNode] = await NodeManager.get_one(id=pool_id, db=context.db, branch=context.branch)
+
+        fields = await extract_fields_first_node(info=info)
 
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
+        if pool.get_kind() == "CoreNumberPool":
+            return await resolve_number_pool_allocation(
+                db=context.db, context=context, pool=pool, fields=fields, offset=offset, limit=limit
+            )
+
         resources = await pool.resources.get_peers(db=context.db)  # type: ignore[attr-defined,union-attr]
         if resource_id not in resources:
             raise ValidationError(
@@ -85,7 +98,6 @@ class PoolAllocated(ObjectType):
         query = await IPPrefixUtilization.init(
             db=context.db, at=context.at, ip_prefixes=[resource], offset=offset, limit=limit
         )
-        fields = await extract_fields_first_node(info=info)
         response: dict[str, Any] = {}
         if "count" in fields:
             response["count"] = await query.count(db=context.db)
@@ -154,8 +166,11 @@ class PoolUtilization(ObjectType):
     ) -> dict:
         context: GraphqlContext = info.context
         db: InfrahubDatabase = context.db
-        pool = await NodeManager.get_one(id=pool_id, db=db, branch=context.branch)
-        _validate_pool_type(pool_id=pool_id, pool=pool)
+        pool: Optional[CoreNode] = await NodeManager.get_one(id=pool_id, db=db, branch=context.branch)
+        pool = _validate_pool_type(pool_id=pool_id, pool=pool)
+        if pool.get_kind() == "CoreNumberPool":
+            return await resolve_number_pool_utilization(db=db, context=context, pool=pool)
+
         resources_map: dict[str, Node] = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
         utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=list(resources_map.values()), at=context.at)
         fields = await extract_fields_first_node(info=info)
@@ -223,6 +238,71 @@ class PoolUtilization(ObjectType):
                     response["edges"].append({"node": node_response})
 
         return response
+
+
+async def resolve_number_pool_allocation(
+    db: InfrahubDatabase, context: GraphqlContext, pool: CoreNode, fields: dict, offset: int, limit: int
+) -> dict:
+    response: dict[str, Any] = {}
+    if "count" in fields:
+        response["count"] = await registry.manager.count(
+            db=db,
+            schema=pool.node.value,  # type: ignore[attr-defined]
+            at=context.at,
+            branch_agnostic=True,
+        )
+    if "edges" in fields:
+        allocated_numbers = await registry.manager.query(
+            db=db,
+            schema=pool.node.value,  # type: ignore[attr-defined]
+            at=context.at,
+            branch_agnostic=True,
+            limit=limit,
+            offset=offset,
+        )
+        edges = []
+        for entry in allocated_numbers:
+            node = {
+                "node": {
+                    "id": entry.get_id(),
+                    "kind": pool.node.value,  # type: ignore[attr-defined]
+                    "branch": entry._branch.name,
+                    "display_label": getattr(entry, pool.node_attribute.value).value,  # type: ignore[attr-defined]
+                }
+            }
+            edges.append(node)
+
+        response["edges"] = edges
+    return response
+
+
+async def resolve_number_pool_utilization(db: InfrahubDatabase, context: GraphqlContext, pool: CoreNode) -> dict:
+    number_pool = NumberUtilizationGetter(
+        db=db,
+        pool=pool,
+        at=context.at,
+    )
+    await number_pool.load_data()
+
+    return {
+        "count": 1,
+        "utilization": number_pool.utilization,
+        "utilization_default_branch": number_pool.utilization_default_branch,
+        "utilization_branches": number_pool.utilization_branches,
+        "edges": [
+            {
+                "node": {
+                    "id": pool.get_id(),
+                    "kind": "CoreNumberPool",
+                    "display_label": pool.name.value,  # type: ignore[attr-defined]
+                    "weight": 1,
+                    "utilization": number_pool.utilization,
+                    "utilization_default_branch": number_pool.utilization_default_branch,
+                    "utilization_branches": number_pool.utilization_branches,
+                }
+            }
+        ],
+    }
 
 
 InfrahubResourcePoolAllocated = Field(

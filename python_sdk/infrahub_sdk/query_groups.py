@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import NodeNotFoundError
@@ -16,21 +16,21 @@ class InfrahubGroupContextBase:
     """Base class for InfrahubGroupContext and InfrahubGroupContextSync"""
 
     def __init__(self) -> None:
-        self.related_node_ids: List[str] = []
-        self.related_group_ids: List[str] = []
-        self.unused_member_ids: Optional[List[str]] = None
-        self.unused_child_ids: Optional[List[str]] = None
-        self.previous_members: Optional[List[RelatedNodeBase]] = None
-        self.previous_children: Optional[List[RelatedNodeBase]] = None
+        self.related_node_ids: list[str] = []
+        self.related_group_ids: list[str] = []
+        self.unused_member_ids: Optional[list[str]] = None
+        self.unused_child_ids: Optional[list[str]] = None
+        self.previous_members: Optional[list[RelatedNodeBase]] = None
+        self.previous_children: Optional[list[RelatedNodeBase]] = None
         self.identifier: Optional[str] = None
-        self.params: Dict[str, str] = {}
+        self.params: dict[str, str] = {}
         self.delete_unused_nodes: bool = False
         self.group_type: str = "CoreStandardGroup"
 
     def set_properties(
         self,
         identifier: str,
-        params: Optional[Dict[str, str]] = None,
+        params: Optional[dict[str, str]] = None,
         delete_unused_nodes: bool = False,
         group_type: Optional[str] = None,
     ) -> None:
@@ -47,7 +47,7 @@ class InfrahubGroupContextBase:
 
     def _get_params_as_str(self) -> str:
         """Convert the params in dict format, into a string"""
-        params_as_str: List[str] = []
+        params_as_str: list[str] = []
         for key, value in self.params.items():
             params_as_str.append(f"{key}: {str(value)}")
         return ", ".join(params_as_str)
@@ -110,12 +110,12 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
                 if child.id in self.unused_child_ids and child.typename:
                     await self.client.delete(kind=child.typename, id=child.id)
 
-    async def add_related_nodes(self, ids: List[str], update_group_context: Optional[bool] = None) -> None:
+    async def add_related_nodes(self, ids: list[str], update_group_context: Optional[bool] = None) -> None:
         """
         Add related Nodes IDs to the context.
 
         Args:
-            ids (List[str]): List of node IDs to be added.
+            ids (list[str]): List of node IDs to be added.
             update_group_context (Optional[bool], optional): Flag to control whether to update the group context.
         """
         if update_group_context is not False and (
@@ -123,12 +123,12 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         ):
             self.related_node_ids.extend(ids)
 
-    async def add_related_groups(self, ids: List[str], update_group_context: Optional[bool] = None) -> None:
+    async def add_related_groups(self, ids: list[str], update_group_context: Optional[bool] = None) -> None:
         """
         Add related Groups IDs to the context.
 
         Args:
-            ids (List[str]): List of group IDs to be added.
+            ids (list[str]): List of group IDs to be added.
             update_group_context (Optional[bool], optional): Flag to control whether to update the group context.
         """
         if update_group_context is not False and (
@@ -140,8 +140,8 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         """
         Create or update (using upsert) a CoreStandardGroup to store all the Nodes and Groups used during an execution.
         """
-        children: List[str] = []
-        members: List[str] = []
+        children: list[str] = []
+        members: list[str] = []
 
         if self.related_group_ids:
             children = self.related_group_ids
@@ -216,12 +216,12 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
                 if child.id in self.unused_child_ids and child.typename:
                     self.client.delete(kind=child.typename, id=child.id)
 
-    def add_related_nodes(self, ids: List[str], update_group_context: Optional[bool] = None) -> None:
+    def add_related_nodes(self, ids: list[str], update_group_context: Optional[bool] = None) -> None:
         """
         Add related Nodes IDs to the context.
 
         Args:
-            ids (List[str]): List of node IDs to be added.
+            ids (list[str]): List of node IDs to be added.
             update_group_context (Optional[bool], optional): Flag to control whether to update the group context.
         """
         if update_group_context is not False and (
@@ -229,12 +229,12 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         ):
             self.related_node_ids.extend(ids)
 
-    def add_related_groups(self, ids: List[str], update_group_context: Optional[bool] = None) -> None:
+    def add_related_groups(self, ids: list[str], update_group_context: Optional[bool] = None) -> None:
         """
         Add related Groups IDs to the context.
 
         Args:
-            ids (List[str]): List of group IDs to be added.
+            ids (list[str]): List of group IDs to be added.
             update_group_context (Optional[bool], optional): Flag to control whether to update the group context.
         """
         if update_group_context is not False and (
@@ -246,8 +246,8 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         """
         Create or update (using upsert) a CoreStandardGroup to store all the Nodes and Groups used during an execution.
         """
-        children: List[str] = []
-        members: List[str] = []
+        children: list[str] = []
+        members: list[str] = []
 
         if self.related_group_ids:
             children = self.related_group_ids

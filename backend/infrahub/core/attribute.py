@@ -3,22 +3,18 @@ from __future__ import annotations
 import ipaddress
 import re
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import ujson
 from infrahub_sdk import UUIDT
+from infrahub_sdk.timestamp import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
-from infrahub.core.property import (
-    FlagPropertyMixin,
-    NodePropertyData,
-    NodePropertyMixin,
-    ValuePropertyData,
-)
+from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
@@ -50,17 +46,17 @@ class AttributeCreateData(BaseModel):
     branch_level: int
     branch_support: str
     status: str
-    content: Dict[str, Any]
+    content: dict[str, Any]
     is_default: bool
     is_protected: bool
     is_visible: bool
-    source_prop: List[ValuePropertyData] = Field(default_factory=list)
-    owner_prop: List[NodePropertyData] = Field(default_factory=list)
+    source_prop: list[NodePropertyData] = Field(default_factory=list)
+    owner_prop: list[NodePropertyData] = Field(default_factory=list)
     node_type: AttributeDBNodeType = AttributeDBNodeType.DEFAULT
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
-    type: Optional[Union[Type, Tuple[Type]]] = None
+    type: Optional[Union[type, tuple[type]]] = None
 
     _rel_to_node_label: str = RELATIONSHIP_TO_NODE_LABEL
     _rel_to_value_label: str = RELATIONSHIP_TO_VALUE_LABEL
@@ -91,6 +87,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.at = at
         self.is_default = is_default
         self.is_from_profile = is_from_profile
+        self.from_pool: Optional[str] = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -102,6 +99,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         elif isinstance(data, dict):
             self.value = data.get("value")
+            self.from_pool = data.get("from_pool")
 
             if "is_default" in data:
                 self.is_default = data.get("is_default")
@@ -201,7 +199,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if schema.enum and isinstance(value, Enum):
             value_to_check = value.value
         if not isinstance(value_to_check, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
-            raise ValidationError({name: f"{name} is not of type {schema.kind}"})
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -240,9 +238,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             except ValueError as exc:
                 raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         """Return the properties of the AttributeValue node in Dict format."""
-        data: Dict[str, Any] = {"is_default": self.is_default}
+        data: dict[str, Any] = {"is_default": self.is_default}
         if self.value is None:
             data["value"] = NULL_VALUE
         else:
@@ -593,10 +591,27 @@ class HashedPassword(BaseAttribute):
 
 class Integer(BaseAttribute):
     type = int
+    from_pool: Optional[str] = None
 
 
 class Boolean(BaseAttribute):
     type = bool
+
+
+class DateTime(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        super().validate_format(value=value, name=name, schema=schema)
+
+        if not value and schema.optional:
+            return
+
+        try:
+            Timestamp(value)
+        except TimestampFormatError as exc:
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
 
 class Dropdown(BaseAttribute):
@@ -768,7 +783,7 @@ class IPNetwork(BaseAttribute):
             return AttributeDBNodeType.IPNETWORK
         return AttributeDBNodeType.DEFAULT
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         data = super().to_db()
 
         if self.value is not None:
@@ -889,7 +904,7 @@ class IPHost(BaseAttribute):
             return AttributeDBNodeType.IPHOST
         return AttributeDBNodeType.DEFAULT
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         data = super().to_db()
 
         if self.value is not None:

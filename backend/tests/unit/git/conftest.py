@@ -18,11 +18,12 @@ from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
+from tests.helpers.test_client import dummy_async_request
 
 
 @pytest.fixture
-async def client() -> InfrahubClient:
-    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True))
+def client() -> InfrahubClient:
+    return InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
 
 
 @pytest.fixture
@@ -70,16 +71,16 @@ def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
     There is conflict between branch01 and branch02."""
 
     name = "infrahub-test-fixture-01"
-    here = os.path.abspath(os.path.dirname(__file__))
-    fixtures_dir = os.path.join(here, "..", "..", "fixtures")
-    fixture_repo = os.path.join(fixtures_dir, "infrahub-test-fixture-01-0b341c0.tar.gz")
+    here = Path(__file__).parent.resolve()
+    fixtures_dir = here.parent.parent / "fixtures"
+    fixture_repo = fixtures_dir / "infrahub-test-fixture-01-0b341c0.tar.gz"
 
     # Extract the fixture package in the source directory
     file = tarfile.open(fixture_repo)
     file.extractall(git_sources_dir)
     file.close()
 
-    return {"name": name, "path": str(os.path.join(git_sources_dir, name))}
+    return {"name": name, "path": str(git_sources_dir / name)}
 
 
 @pytest.fixture
@@ -134,6 +135,7 @@ async def git_repo_01(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     return repo
@@ -149,6 +151,7 @@ async def git_repo_01_read_only(client, git_upstream_repo_01, git_repos_dir) -> 
         location=git_upstream_repo_01["path"],
         ref="branch01",
         infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     return repo
@@ -169,6 +172,7 @@ async def git_repo_02(git_upstream_repo_02, git_repos_dir) -> InfrahubRepository
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     return repo
@@ -185,8 +189,12 @@ async def git_repo_02_w_client(git_repo_02, client) -> InfrahubRepository:
 @pytest.fixture
 async def git_repo_03(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_03 as remote"""
+
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_03["name"], location=git_upstream_repo_03["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_03["name"],
+        location=git_upstream_repo_03["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     return repo
@@ -212,6 +220,7 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir, branch01: Bra
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
         location=git_upstream_repo_03["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
@@ -221,7 +230,7 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir, branch01: Bra
     upstream.git.checkout("branch01")
 
     first_file = find_first_file_in_directory(git_upstream_repo_03["path"])
-    with open(os.path.join(git_upstream_repo_03["path"], first_file), "a", encoding="utf-8") as file:
+    with Path(os.path.join(git_upstream_repo_03["path"], first_file)).open(mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -245,12 +254,13 @@ async def git_repo_05(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Update the first file at the top level and commit the change in the branch
     upstream = Repo(git_upstream_repo_01["path"])
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a", encoding="utf-8") as file:
+    with Path(os.path.join(git_upstream_repo_01["path"], first_file)).open(mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -272,6 +282,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: Bra
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
@@ -281,7 +292,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: Bra
     upstream.git.checkout(branch01.name)
 
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a", encoding="utf-8") as file:
+    with Path(os.path.join(git_upstream_repo_01["path"], first_file)).open(mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -291,8 +302,8 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: Bra
     # Update the local branch branch01 to create a conflict.
     branch_wt = repo.get_worktree(identifier=branch01.name)
     branch_repo = Repo(branch_wt.directory)
-    first_file_in_repo = os.path.join(branch_wt.directory, first_file)
-    with open(first_file_in_repo, "a", encoding="utf-8") as file:
+    first_file_in_repo = Path(os.path.join(branch_wt.directory, first_file))
+    with first_file_in_repo.open(mode="a", encoding="utf-8") as file:
         file.write("not the same line\n")
     branch_repo.index.add([first_file])
     branch_repo.index.commit("Change first file in main")
@@ -334,9 +345,8 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
     ]
 
     for file_to_add in files_to_add:
-        file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(file_to_add["content"])
+        file_path = Path(os.path.join(git_upstream_repo_02["path"], file_to_add["name"]))
+        file_path.write_text(file_to_add["content"], encoding="utf-8")
 
         upstream.index.add(file_to_add["name"])
     upstream.index.commit("Add 2 Jinja templates")
@@ -347,14 +357,13 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
     upstream.git.checkout(branch01.name)
 
     file_to_add = files_to_add[0]
-    file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
+    file_path = Path(os.path.join(git_upstream_repo_02["path"], file_to_add["name"]))
     new_content = """
 {% for item in data["items"] %}
  - {{ item }} -
 {% endfor %}
 """
-    with open(file_path, "w", encoding="utf-8") as file:
-        file.write(new_content)
+    file_path.write_text(new_content, encoding="utf-8")
     upstream.index.add(file_to_add["name"])
     upstream.index.commit("Update the first jinja template in the branch")
     upstream.git.checkout("main")
@@ -364,6 +373,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
@@ -401,6 +411,7 @@ async def git_repo_checks(client, git_upstream_repo_02, git_repos_dir) -> Infrah
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
     return repo
 
@@ -430,6 +441,7 @@ async def git_repo_transforms(client, git_upstream_repo_02, git_repos_dir) -> In
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
     return repo
 
@@ -448,6 +460,7 @@ async def git_repo_10(client, git_upstream_repo_10, git_repos_dir) -> InfrahubRe
         id=UUIDT.new(),
         name=git_upstream_repo_10["name"],
         location=git_upstream_repo_10["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     repo.client = client

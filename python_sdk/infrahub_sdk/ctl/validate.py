@@ -1,29 +1,25 @@
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import typer
 import ujson
 import yaml
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
-
+from pydantic import ValidationError
 from rich.console import Console
 from ujson import JSONDecodeError
 
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
-from infrahub_sdk.ctl.utils import find_graphql_query, parse_cli_vars
+from infrahub_sdk.ctl.utils import catch_exception, find_graphql_query, parse_cli_vars
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.utils import get_branch, write_to_file
 
 from .parameters import CONFIG_PARAM
 
 app = AsyncTyper()
+console = Console()
 
 
 @app.callback()
@@ -34,13 +30,9 @@ def callback() -> None:
 
 
 @app.command(name="schema")
-async def validate_schema(
-    schema: Path,
-    _: str = CONFIG_PARAM,
-) -> None:
+@catch_exception(console=console)
+async def validate_schema(schema: Path, _: str = CONFIG_PARAM) -> None:
     """Validate the format of a schema file either in JSON or YAML"""
-
-    console = Console()
 
     try:
         schema_data = yaml.safe_load(schema.read_text())
@@ -52,7 +44,7 @@ async def validate_schema(
 
     try:
         client.schema.validate(schema_data)
-    except pydantic.ValidationError as exc:
+    except ValidationError as exc:
         console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s)")
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]
@@ -63,9 +55,10 @@ async def validate_schema(
 
 
 @app.command(name="graphql-query")
+@catch_exception(console=console)
 def validate_graphql(
     query: str,
-    variables: Optional[List[str]] = typer.Argument(
+    variables: Optional[list[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
     debug: bool = typer.Option(False, help="Display more troubleshooting information."),
@@ -74,8 +67,6 @@ def validate_graphql(
     out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Validate the format of a GraphQL Query stored locally by executing it on a remote GraphQL endpoint"""
-
-    console = Console()
 
     branch = get_branch(branch)
 

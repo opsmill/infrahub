@@ -15,7 +15,6 @@ class IPAddressPoolGetIdentifiers(Query):
 
     def __init__(
         self,
-        *args: Any,
         pool_id: str,
         allocated: list[str],
         **kwargs: dict[str, Any],
@@ -23,9 +22,9 @@ class IPAddressPoolGetIdentifiers(Query):
         self.pool_id = pool_id
         self.addresses = allocated
 
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         self.params["pool_id"] = self.pool_id
         self.params["addresses"] = self.addresses
 
@@ -42,7 +41,6 @@ class IPAddressPoolGetReserved(Query):
 
     def __init__(
         self,
-        *args: Any,
         pool_id: str,
         identifier: str,
         **kwargs: dict[str, Any],
@@ -50,9 +48,9 @@ class IPAddressPoolGetReserved(Query):
         self.pool_id = pool_id
         self.identifier = identifier
 
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -72,16 +70,15 @@ class IPAddressPoolSetReserved(Query):
         pool_id: str,
         address_id: str,
         identifier: str,
-        *args: Any,
         **kwargs: dict[str, Any],
     ) -> None:
         self.pool_id = pool_id
         self.address_id = address_id
         self.identifier = identifier
 
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         self.params["pool_id"] = self.pool_id
         self.params["address_id"] = self.address_id
         self.params["identifier"] = self.identifier
@@ -110,7 +107,6 @@ class PrefixPoolGetIdentifiers(Query):
 
     def __init__(
         self,
-        *args: Any,
         pool_id: str,
         allocated: list[str],
         **kwargs: dict[str, Any],
@@ -118,9 +114,9 @@ class PrefixPoolGetIdentifiers(Query):
         self.pool_id = pool_id
         self.prefixes = allocated
 
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         self.params["pool_id"] = self.pool_id
         self.params["prefixes"] = self.prefixes
 
@@ -137,7 +133,6 @@ class PrefixPoolGetReserved(Query):
 
     def __init__(
         self,
-        *args: Any,
         pool_id: str,
         identifier: str,
         **kwargs: dict[str, Any],
@@ -145,9 +140,9 @@ class PrefixPoolGetReserved(Query):
         self.pool_id = pool_id
         self.identifier = identifier
 
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -167,16 +162,15 @@ class PrefixPoolSetReserved(Query):
         pool_id: str,
         prefix_id: str,
         identifier: str,
-        *args: Any,
         **kwargs: dict[str, Any],
     ) -> None:
         self.pool_id = pool_id
         self.prefix_id = prefix_id
         self.identifier = identifier
 
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         self.params["pool_id"] = self.pool_id
         self.params["prefix_id"] = self.prefix_id
         self.params["identifier"] = self.identifier

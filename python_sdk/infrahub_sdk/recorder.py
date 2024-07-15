@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import enum
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 import httpx
 import ujson
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub_sdk.utils import generate_request_filename
 
@@ -35,7 +32,8 @@ class NoRecorder:
         return cls()
 
 
-class JSONRecorder(pydantic.BaseSettings):
+class JSONRecorder(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_JSON_RECORDER_")
     directory: str = "."
     host: str = ""
 
@@ -47,11 +45,11 @@ class JSONRecorder(pydantic.BaseSettings):
             "method": response.request.method,
             "url": str(response.request.url),
             "headers": dict(response.request.headers),
-            "response_content": response.content.decode("UTF-8"),
-            "request_content": response.request.content.decode("UTF-8"),
+            "response_content": response.content.decode("utf-8"),
+            "request_content": response.request.content.decode("utf-8"),
         }
 
-        with open(f"{self.directory}/{filename}.json", "w", encoding="UTF-8") as fobj:
+        with Path(f"{self.directory}/{filename}.json").open(mode="w", encoding="utf-8") as fobj:
             ujson.dump(data, fobj, indent=4, sort_keys=True)
 
     def _set_url_host(self, response: httpx.Response) -> None:
@@ -70,7 +68,3 @@ class JSONRecorder(pydantic.BaseSettings):
             )
 
         response.request.url = httpx.URL(url=modified)
-
-    class Config:
-        env_prefix = "INFRAHUB_JSON_RECORDER_"
-        case_sensitive = False

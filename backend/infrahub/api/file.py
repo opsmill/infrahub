@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import PlainTextResponse
@@ -18,6 +18,7 @@ from infrahub.exceptions import CommitNotFoundError
 from infrahub.message_bus.messages import GitFileGet, GitFileGetResponse
 
 if TYPE_CHECKING:
+    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
     from infrahub.services import InfrahubServices
 
 
@@ -37,7 +38,7 @@ async def get_file(
     """Retrieve a file from a git repository."""
     service: InfrahubServices = request.app.state.service
 
-    repo = await NodeManager.get_one_by_id_or_default_filter(
+    repo: Union[CoreRepository, CoreReadOnlyRepository] = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=repository_id,
         kind=InfrahubKind.GENERICREPOSITORY,
@@ -45,16 +46,16 @@ async def get_file(
         at=branch_params.at,
     )
 
-    commit = commit or repo.commit.value  # type: ignore[attr-defined]
+    commit = commit or repo.commit.value
 
     if not commit:
         raise CommitNotFoundError(identifier=repository_id, commit="", message="No commits found on this repository")
 
     message = GitFileGet(
         repository_id=repo.id,
-        repository_name=repo.name.value,  # type: ignore[attr-defined]
+        repository_name=str(repo.name.value),
         repository_kind=repo.get_kind(),
-        commit=commit,
+        commit=str(commit),
         file=file_path,
     )
 

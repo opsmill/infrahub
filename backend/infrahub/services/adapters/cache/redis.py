@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 import redis.asyncio as redis
 
@@ -36,7 +36,7 @@ class RedisCache(InfrahubCache):
         values = await self.connection.mget(keys=keys)
         return [value.decode() if value is not None else value for value in values]
 
-    async def list_keys(self, filter_pattern: str) -> List[str]:
+    async def list_keys(self, filter_pattern: str) -> list[str]:
         cursor = 0
         has_remaining_keys = True
         keys = []

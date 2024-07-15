@@ -3,7 +3,7 @@ import hashlib
 import hmac
 from datetime import datetime, timezone
 from math import floor
-from typing import Any, Dict, Optional
+from typing import Any, Optional, Union
 from uuid import uuid4
 
 import httpx
@@ -19,10 +19,10 @@ class Webhook(BaseModel):
     service: InfrahubServices = Field(...)
     url: str = Field(...)
     event_type: str = Field(...)
-    data: Dict[str, Any] = Field(...)
+    data: dict[str, Any] = Field(...)
     validate_certificates: bool = Field(...)
     _payload: Any = None
-    _headers: Optional[Dict[str, Any]] = None
+    _headers: Optional[dict[str, Any]] = None
 
     async def _prepare_payload(self) -> None:
         self._payload = {"event_type": self.event_type, "data": self.data}
@@ -76,6 +76,7 @@ class TransformWebhook(Webhook):
     transform_file: str = Field(...)
 
     async def _prepare_payload(self) -> None:
+        repo: Union[InfrahubReadOnlyRepository, InfrahubRepository]
         if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
             repo = await InfrahubReadOnlyRepository.init(id=self.repository_id, name=self.repository_name)
         else:

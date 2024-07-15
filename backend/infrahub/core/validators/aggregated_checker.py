@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from infrahub.core import registry
 from infrahub.exceptions import ValidationError
@@ -19,19 +19,19 @@ if TYPE_CHECKING:
 
 class AggregatedConstraintChecker:
     def __init__(
-        self, constraints: List[ConstraintCheckerInterface], db: InfrahubDatabase, branch: Optional[Branch] = None
+        self, constraints: list[ConstraintCheckerInterface], db: InfrahubDatabase, branch: Optional[Branch] = None
     ):
         self.constraints = constraints
         self.db = db
         self.branch = branch
 
-    async def run_constraints(self, request: SchemaConstraintValidatorRequest) -> List[SchemaViolation]:
-        grouped_data_paths_by_constraint_name: Dict[str, List[GroupedDataPaths]] = {}
+    async def run_constraints(self, request: SchemaConstraintValidatorRequest) -> list[SchemaViolation]:
+        grouped_data_paths_by_constraint_name: dict[str, list[GroupedDataPaths]] = {}
         for constraint in self.constraints:
             if constraint.supports(request):
                 grouped_data_paths_by_constraint_name[constraint.name] = await constraint.check(request)
 
-        ids: List[str] = []
+        ids: list[str] = []
         for grouped_path in chain(*grouped_data_paths_by_constraint_name.values()):
             ids.extend([path.node_id for path in grouped_path.get_all_data_paths()])
         # Try to query the nodes with their display label
@@ -47,13 +47,15 @@ class AggregatedConstraintChecker:
             for path in chain(*[gp.get_all_data_paths() for gp in grouped_paths]):
                 node = nodes.get(path.node_id)
                 node_display_label = None
+                display_label = None
                 if node:
-                    node_display_label = await node.render_display_label()
-                    if request.node_schema.display_labels:
+                    node_display_label = await node.render_display_label(db=self.db)
+                if node_display_label:
+                    if request.node_schema.display_labels and node:
                         display_label = f"Node {node_display_label} ({node.get_kind()}: {path.node_id})"
                     else:
                         display_label = f"Node {node_display_label}"
-                else:
+                if not display_label:
                     display_label = f"Node ({path.kind}: {path.node_id})"
 
                 violation = SchemaViolation(

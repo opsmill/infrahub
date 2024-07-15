@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ssl
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 import nats
 
@@ -17,7 +17,7 @@ class NATSCache(InfrahubCache):
     def __init__(self) -> None:
         self.connection: nats.NATS
         self.jetstream: nats.js.JetStreamContext
-        self.kv: Dict[int, nats.js.kv.KeyValue]
+        self.kv: dict[int, nats.js.kv.KeyValue]
 
         # FIXME: remove once NATS supports TTL for keys (2.11)
         self.kv_buckets = {
@@ -83,7 +83,7 @@ class NATSCache(InfrahubCache):
     async def get_values(self, keys: list[str]) -> list[Optional[str]]:
         return [await self.get(key) for key in keys]
 
-    async def _keys(self, kv: nats.js.kv.KeyValue, filter_pattern: str) -> List[str]:
+    async def _keys(self, kv: nats.js.kv.KeyValue, filter_pattern: str) -> list[str]:
         # code borrowed from py-nats keys()
         watcher = await kv.watch(
             filter_pattern,
@@ -104,7 +104,7 @@ class NATSCache(InfrahubCache):
 
         return keys
 
-    async def list_keys(self, filter_pattern: str) -> List[str]:
+    async def list_keys(self, filter_pattern: str) -> list[str]:
         # return await self.kv[None].keys() # does not support filtering
         filter_pattern = self._tokenize_key_name(filter_pattern)
         filter_pattern = filter_pattern.replace("*", ">")  # NATS uses * as token wildcard and > as full wildcard

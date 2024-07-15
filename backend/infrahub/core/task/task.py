@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Optional
 
 from pydantic import ConfigDict, Field
 
 from infrahub.core.constants import TaskConclusion
-from infrahub.core.definitions import NodeInfo
 from infrahub.core.node.standard import StandardNode
+from infrahub.core.protocols import CoreNode
 from infrahub.core.query.standard_node import StandardNodeQuery
 from infrahub.core.query.task import TaskNodeCreateQuery, TaskNodeQuery, TaskNodeQueryWithLogs
 from infrahub.core.timestamp import current_timestamp
@@ -22,13 +22,13 @@ class Task(StandardNode):
     account_id: Optional[str] = Field(default=None, description="The ID of the account that created this task")
     created_at: str = Field(default_factory=current_timestamp, description="The time when this task was created")
     updated_at: str = Field(default_factory=current_timestamp, description="The time when this task was last updated")
-    related_node: Optional[NodeInfo] = Field(default=None, description="The Infrahub node that this object refers to")
+    related_node: Optional[CoreNode] = Field(default=None, description="The Infrahub node that this object refers to")
 
-    _exclude_attrs: List[str] = ["id", "uuid", "account_id", "_query", "related_node"]
-    _query: Type[StandardNodeQuery] = TaskNodeCreateQuery
+    _exclude_attrs: list[str] = ["id", "uuid", "account_id", "_query", "related_node"]
+    _query: type[StandardNodeQuery] = TaskNodeCreateQuery
 
     @property
-    def related(self) -> NodeInfo:
+    def related(self) -> CoreNode:
         if self.related_node:
             return self.related_node
         raise ValueError("The related_node field has not been populated")
@@ -37,12 +37,12 @@ class Task(StandardNode):
     async def query(
         cls,
         db: InfrahubDatabase,
-        fields: Dict[str, Any],
+        fields: dict[str, Any],
         limit: int,
         offset: int,
-        ids: List[str],
-        related_nodes: List[str],
-    ) -> Dict[str, Any]:
+        ids: list[str],
+        related_nodes: list[str],
+    ) -> dict[str, Any]:
         log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "logs", "edges", "node"])
         count = None
         if "count" in fields:

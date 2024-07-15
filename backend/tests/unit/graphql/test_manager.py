@@ -28,6 +28,8 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     result = gqlm.generate_graphql_object(schema=criticality_schema)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
@@ -48,6 +50,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
         "mylist",
         "name",
         "status",
+        "time",
     ]
 
 
@@ -77,6 +80,8 @@ async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_br
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     input_type = gqlm.generate_graphql_mutation_create_input(schema=criticality_schema)
     result = gqlm.generate_graphql_mutation_create(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityCreate"
@@ -87,6 +92,8 @@ async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_br
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     input_type = gqlm.generate_graphql_mutation_update_input(schema=criticality_schema)
     result = gqlm.generate_graphql_mutation_update(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityUpdate"
@@ -187,6 +194,7 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "cars__color__value",
         "cars__color__values",
         "cars__ids",
+        "cars__isnull",
         "cars__name__is_protected",
         "cars__name__is_visible",
         "cars__name__owner__id",
@@ -201,6 +209,7 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "cars__nbr_seats__values",
         "height__is_protected",
         "height__is_visible",
+        "height__isnull",
         "height__owner__id",
         "height__source__id",
         "height__value",
@@ -208,23 +217,20 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "member_of_groups__description__value",
         "member_of_groups__description__values",
         "member_of_groups__ids",
+        "member_of_groups__isnull",
         "member_of_groups__label__value",
         "member_of_groups__label__values",
         "member_of_groups__name__value",
         "member_of_groups__name__values",
         "name__is_protected",
         "name__is_visible",
+        "name__isnull",
         "name__owner__id",
         "name__source__id",
         "name__value",
         "name__values",
-        "profiles__height__is_protected",
-        "profiles__height__is_visible",
-        "profiles__height__owner__id",
-        "profiles__height__source__id",
-        "profiles__height__value",
-        "profiles__height__values",
         "profiles__ids",
+        "profiles__isnull",
         "profiles__profile_name__is_protected",
         "profiles__profile_name__is_visible",
         "profiles__profile_name__owner__id",
@@ -240,6 +246,7 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "subscriber_of_groups__description__value",
         "subscriber_of_groups__description__values",
         "subscriber_of_groups__ids",
+        "subscriber_of_groups__isnull",
         "subscriber_of_groups__label__value",
         "subscriber_of_groups__label__values",
         "subscriber_of_groups__name__value",

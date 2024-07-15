@@ -1,16 +1,25 @@
-import glob
+import asyncio
 import logging
-import os
+from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Union
 
 import pendulum
+import typer
+from httpx import HTTPError
 from pendulum.datetime import DateTime
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.markup import escape
 
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
+from infrahub_sdk.exceptions import (
+    AuthenticationError,
+    Error,
+    GraphQLError,
+    ServerNotReachableError,
+    ServerNotResponsiveError,
+)
 
 from .client import initialize_client_sync
 
@@ -26,9 +35,74 @@ def init_logging(debug: bool = False) -> None:
     logging.getLogger("infrahubctl")
 
 
+def catch_exception(  # noqa: C901
+    which_exception: Union[type[Exception], Iterable[type[Exception]]] = Exception,
+    console: Optional[Console] = None,
+    exit_code: int = 1,
+):
+    """Decorator to handle exception for commands."""
+    if not console:
+        console = Console()
+
+    def decorator(func: Callable):
+        if asyncio.iscoroutinefunction(func):
+
+            @wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any):
+                try:
+                    return await func(*args, **kwargs)
+                except AuthenticationError as exc:
+                    console.print(f"[red]Authentication failure: {str(exc)}")
+                    raise typer.Exit(code=2)
+                except (ServerNotReachableError, ServerNotResponsiveError) as exc:
+                    console.print(f"[red]{str(exc)}")
+                    raise typer.Exit(code=3)
+                except HTTPError as exc:
+                    console.print(f"[red]{str(exc)}")
+                    raise typer.Exit(code=4)
+                except GraphQLError as exc:
+                    print_graphql_errors(console, exc.errors)
+                    raise typer.Exit(code=5)
+                except Error as exc:
+                    console.print(f"[red]{str(exc)}")
+                    raise typer.Exit(code=6)
+                except which_exception as exc:
+                    console.print(f"[red]{str(exc)}")
+                    raise typer.Exit(code=exit_code)
+
+            return async_wrapper
+
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any):
+            try:
+                return func(*args, **kwargs)
+            except AuthenticationError as exc:
+                console.print(f"[red]Authentication failure: {str(exc)}")
+                raise typer.Exit(code=2)
+            except (ServerNotReachableError, ServerNotResponsiveError) as exc:
+                console.print(f"[red]{str(exc)}")
+                raise typer.Exit(code=3)
+            except HTTPError as exc:
+                console.print(f"[red]{str(exc)}")
+                raise typer.Exit(code=4)
+            except GraphQLError as exc:
+                print_graphql_errors(console, exc.errors)
+                raise typer.Exit(code=5)
+            except Error as exc:
+                console.print(f"[red]{str(exc)}")
+                raise typer.Exit(code=6)
+            except which_exception as exc:
+                console.print(f"[red]{str(exc)}")
+                raise typer.Exit(code=exit_code)
+
+        return wrapper
+
+    return decorator
+
+
 def execute_graphql_query(
-    query: str, variables_dict: Dict[str, Any], branch: Optional[str] = None, debug: bool = False
-) -> Dict:
+    query: str, variables_dict: dict[str, Any], branch: Optional[str] = None, debug: bool = False
+) -> dict:
     console = Console()
     query_str = find_graphql_query(query)
 
@@ -47,7 +121,7 @@ def execute_graphql_query(
     return response
 
 
-def print_graphql_errors(console: Console, errors: List) -> None:
+def print_graphql_errors(console: Console, errors: list) -> None:
     if not isinstance(errors, list):
         console.print(f"[red]{escape(str(errors))}")
 
@@ -58,7 +132,7 @@ def print_graphql_errors(console: Console, errors: List) -> None:
             console.print(f"[red]{escape(str(error))}")
 
 
-def parse_cli_vars(variables: Optional[List[str]]) -> Dict[str, str]:
+def parse_cli_vars(variables: Optional[list[str]]) -> dict[str, str]:
     if not variables:
         return {}
 
@@ -80,16 +154,13 @@ def calculate_time_diff(value: str) -> Optional[str]:
 
 
 def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> str:
-    for query_file in glob.glob(f"{directory}/**/*.gql", recursive=True):
-        filename = os.path.basename(query_file)
-        query_name = os.path.splitext(filename)[0]
+    if isinstance(directory, str):
+        directory = Path(directory)
 
-        if query_name != name:
+    for query_file in directory.glob("**/*.gql"):
+        if query_file.stem != name:
             continue
-        with open(query_file, "r", encoding="UTF-8") as file_data:
-            query_string = file_data.read()
-
-        return query_string
+        return query_file.read_text(encoding="utf-8")
 
     raise QueryNotFoundError(name=name)
 

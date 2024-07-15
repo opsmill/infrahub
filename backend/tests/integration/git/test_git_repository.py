@@ -23,7 +23,7 @@ from tests.helpers.test_client import InfrahubTestClient
 
 
 async def load_infrastructure_schema(db: InfrahubDatabase):
-    base_dir = get_models_dir() + "/base"
+    base_dir = get_models_dir() / "base"
 
     default_branch_name = registry.default_branch
     branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
@@ -33,7 +33,7 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
         file_path = os.path.join(base_dir, file_name)
 
         if file_path.endswith((".yml", ".yaml")):
-            schema_txt = Path(file_path).read_text()
+            schema_txt = Path(file_path).read_text(encoding="utf-8")
             loaded_schema = yaml.safe_load(schema_txt)
             tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
     tmp_schema.process()
@@ -62,7 +62,7 @@ class TestInfrahubClient:
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
 
-        return await InfrahubClient.init(config=config)
+        return InfrahubClient(config=config)
 
     @pytest.fixture(scope="class")
     async def query_99(self, db: InfrahubDatabase, test_client):
@@ -95,9 +95,8 @@ class TestInfrahubClient:
             name=git_repo_infrahub_demo_edge.name,
             location=git_repo_infrahub_demo_edge.path,
             task_report=FakeTaskReportLogger(),
+            client=client,
         )
-
-        repo.client = client
 
         return repo
 
@@ -105,6 +104,18 @@ class TestInfrahubClient:
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)
         assert config_file
+        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)
+
+        assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
+
+    async def test_import_schema_files_from_directory(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
+    ):
+        commit = repo.get_commit_value(branch_name="main")
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)
+        assert config_file
+
+        config_file.schemas = [Path("schemas")]
         await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)
 
         assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)

@@ -1,7 +1,8 @@
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from invoke import Context, task
 
@@ -13,8 +14,8 @@ from .shared import (
 )
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
-CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
-DOCUMENTATION_DIRECTORY = os.path.join(CURRENT_DIRECTORY, "../docs")
+CURRENT_DIRECTORY = Path(__file__).parent.resolve()
+DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
 
 
 @task
@@ -251,10 +252,23 @@ def _generate_infrahub_schema_documentation() -> None:
         template = environment.from_string(template_text)
         rendered_file = template.render(schema=schema)
 
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(rendered_file)
-
+        Path(output_file).write_text(rendered_file, encoding="utf-8")
         print(f"Docs saved to: {output_label}")
+
+
+def _get_env_vars() -> dict[str, str]:
+    from infrahub_sdk.config import ConfigBase
+    from pydantic_settings import EnvSettingsSource
+
+    env_vars: dict[str, list[str]] = defaultdict(list[str])
+    settings = ConfigBase()
+    env_settings = EnvSettingsSource(settings.__class__, env_prefix=settings.model_config.get("env_prefix"))
+
+    for field_name, field in settings.model_fields.items():
+        for field_key, field_env_name, _ in env_settings._extract_field_info(field, field_name):
+            env_vars[field_key].append(field_env_name.upper())
+
+    return env_vars
 
 
 def _generate_infrahub_sdk_configuration_documentation() -> None:
@@ -262,25 +276,28 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     import jinja2
     from infrahub_sdk.config import ConfigBase
 
-    schema = ConfigBase.schema()
-
-    definitions = schema["definitions"]
+    schema = ConfigBase.model_json_schema()
+    env_vars = _get_env_vars()
+    definitions = schema["$defs"]
 
     properties = []
     for name, prop in schema["properties"].items():
-        choices: List[Dict[str, Any]] = []
+        choices: list[dict[str, Any]] = []
         kind = ""
+        composed_type = ""
         if "allOf" in prop:
             choices = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("enum", [])
             kind = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("type", "")
+        if "anyOf" in prop:
+            composed_type = ", ".join(i["type"] for i in prop.get("anyOf", []) if "type" in i and i["type"] != "null")
         properties.append(
             {
                 "name": name,
                 "description": prop.get("description", ""),
-                "type": prop.get("type", kind),
+                "type": prop.get("type", kind) or composed_type or "object",
                 "choices": choices,
                 "default": prop.get("default", ""),
-                "env_vars": list(prop.get("env_names", set())),
+                "env_vars": env_vars[name],
             }
         )
 
@@ -298,9 +315,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     template = environment.from_string(template_text)
     rendered_file = template.render(properties=properties)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(rendered_file)
-
+    Path(output_file).write_text(rendered_file, encoding="utf-8")
     print(f"Docs saved to: {output_label}")
 
 
@@ -311,7 +326,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     import jinja2
     from infrahub_sdk.schema import InfrahubRepositoryConfig
 
-    schema = InfrahubRepositoryConfig.schema()
+    schema = InfrahubRepositoryConfig.model_json_schema()
 
     properties = [
         {
@@ -327,13 +342,17 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
         for name, property in schema["properties"].items()
     ]
 
-    definitions = deepcopy(schema["definitions"])
+    definitions = deepcopy(schema["$defs"])
 
-    for name, definition in schema["definitions"].items():
-        for property in definition["properties"].keys():
+    for name, definition in schema["$defs"].items():
+        for property, value in definition["properties"].items():
             definitions[name]["properties"][property]["required"] = (
                 True if property in definition["required"] else False
             )
+            if "anyOf" in value:
+                definitions[name]["properties"][property]["type"] = ", ".join(
+                    [i["type"] for i in value["anyOf"] if i["type"] != "null"]
+                )
 
     print(" - Generate Infrahub repository configuration documentation")
 
@@ -349,8 +368,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     template = environment.from_string(template_text)
     rendered_file = template.render(properties=properties, definitions=definitions)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(rendered_file)
+    Path(output_file).write_text(rendered_file, encoding="utf-8")
 
 
 def _generate_infrahub_events_documentation() -> None:
@@ -359,14 +377,14 @@ def _generate_infrahub_events_documentation() -> None:
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
     from collections import defaultdict
-    from typing import Dict, List, Optional, Type, Union
+    from typing import Optional, Union
 
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
     def group_classes_by_category(
-        classes: Dict[str, Type[Union[InfrahubMessage, InfrahubResponse]]],
-        priority_map: Optional[Dict[str, int]] = None,
-    ) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
+        classes: dict[str, type[Union[InfrahubMessage, InfrahubResponse]]],
+        priority_map: Optional[dict[str, int]] = None,
+    ) -> dict[str, dict[str, list[dict[str, any]]]]:
         """
         Group classes into a nested dictionary by primary and secondary categories, including priority.
         """
@@ -394,9 +412,8 @@ def _generate_infrahub_events_documentation() -> None:
             grouped[primary][secondary].append(event_info)
         return grouped
 
-    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/message-bus-events.j2"
-    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/message-bus-events.mdx"
-    output_label = "docs/docs/reference/message-bus-events.mdx"
+    template_file = DOCUMENTATION_DIRECTORY / "_templates" / "message-bus-events.j2"
+    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "message-bus-events.mdx"
 
     print(" - Generate Infrahub Bus Events documentation")
 
@@ -408,7 +425,7 @@ def _generate_infrahub_events_documentation() -> None:
 
     from infrahub.message_bus.messages import MESSAGE_MAP, PRIORITY_MAP, RESPONSE_MAP
 
-    template_text = Path(template_file).read_text(encoding="utf-8")
+    template_text = template_file.read_text(encoding="utf-8")
     environment = jinja2.Environment()
     template = environment.from_string(template_text)
 
@@ -417,8 +434,6 @@ def _generate_infrahub_events_documentation() -> None:
 
     rendered_doc = template.render(message_classes=message_classes, response_classes=response_classes)
 
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(rendered_doc)
-
-    print(f"Docs saved to: {output_label}")
+    output_file.parent.mkdir(exist_ok=True)
+    output_file.write_text(rendered_doc, encoding="utf-8")
+    print(f"Docs saved to: {output_file}")

@@ -114,8 +114,8 @@ def pylint(context: Context, docker: bool = False):
 def lint(context: Context, docker: bool = False):
     """This will run all linter."""
     ruff(context, docker=docker)
-    pylint(context, docker=docker)
     mypy(context, docker=docker)
+    pylint(context, docker=docker)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 

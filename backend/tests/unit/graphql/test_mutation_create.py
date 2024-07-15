@@ -1093,3 +1093,51 @@ async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branc
         result.errors[0].message
         == f"""TestDog - {dog2.id} cannot be added to relationship, must be of type: ['TestPerson'] at owner"""
     )
+
+
+async def test_create_valid_datetime_success(db: InfrahubDatabase, default_branch, criticality_schema):
+    query = """
+    mutation {
+        TestCriticalityCreate(data: {name: { value: "HIGH"}, level: {value: 1}, time: {value: "2021-01-01T00:00:00Z"}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data["TestCriticalityCreate"]["ok"] is True
+    crit = await NodeManager.get_one(db=db, id=result.data["TestCriticalityCreate"]["object"]["id"])
+    assert crit.time.value == "2021-01-01T00:00:00Z"
+    assert crit.time.is_default is False
+    assert crit.name.value == "HIGH"
+    assert crit.level.value == 1
+
+
+async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branch, criticality_schema):
+    query = """
+    mutation {
+        TestCriticalityCreate(data: {name: { value: "HIGH"}, level: {value: 1}, time: {value: "10:1010"}}) {
+            ok
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors[0].args[0] == "10:1010 is not a valid DateTime at time"
+    assert result.data["TestCriticalityCreate"] is None

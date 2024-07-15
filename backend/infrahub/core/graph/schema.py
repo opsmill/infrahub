@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -229,7 +229,7 @@ class GraphRelationshipDefault(BaseModel):
     hierarchy: Optional[str] = Field(None, description="Name of the hierarchy this relationship is part of")
 
 
-GRAPH_SCHEMA: Dict[str, Dict[str, Any]] = {
+GRAPH_SCHEMA: dict[str, dict[str, Any]] = {
     "nodes": {
         "Node": GraphNodeNode,
         "Relationship": GraphRelationshipNode,

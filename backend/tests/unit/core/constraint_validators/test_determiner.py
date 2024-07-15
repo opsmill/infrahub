@@ -152,8 +152,11 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        assert len(constraints) == len(constraint_info_set)
-        assert set(constraints) == constraint_info_set
+        non_generate_profile_constraints = [
+            c for c in constraints if c.constraint_name != "node.generate_profile.update"
+        ]
+        assert len(non_generate_profile_constraints) == len(constraint_info_set)
+        assert set(non_generate_profile_constraints) == constraint_info_set
 
     async def test_many_relationship_update(self, car_person_schema, default_branch, person_cars_node_diff):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -162,8 +165,8 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        assert len(constraints) == len(constraint_info_set)
-        assert set(constraints) == constraint_info_set
+        assert len(constraints) >= len(constraint_info_set)
+        assert constraint_info_set < set(constraints)
 
     async def test_node_property_constraints_included(self, car_person_schema, default_branch, person_name_node_diff):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -196,5 +199,8 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        assert len(constraints) == len(constraint_info_set)
-        assert set(constraints) == constraint_info_set
+        non_generate_profile_constraints = [
+            c for c in constraints if c.constraint_name != "node.generate_profile.update"
+        ]
+        assert len(non_generate_profile_constraints) == len(constraint_info_set)
+        assert set(non_generate_profile_constraints) == constraint_info_set

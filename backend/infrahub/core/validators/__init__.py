@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Type
+from typing import Optional
 
 from .attribute.choices import AttributeChoicesChecker
 from .attribute.enum import AttributeEnumChecker
@@ -8,13 +8,14 @@ from .attribute.optional import AttributeOptionalChecker
 from .attribute.regex import AttributeRegexChecker
 from .attribute.unique import AttributeUniquenessChecker
 from .interface import ConstraintCheckerInterface
+from .node.generate_profile import NodeGenerateProfileChecker
 from .node.hierarchy import NodeHierarchyChecker
 from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
 from .relationship.peer import RelationshipPeerChecker
 from .uniqueness.checker import UniquenessChecker
 
-CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] = {
+CONSTRAINT_VALIDATOR_MAP: dict[str, Optional[type[ConstraintCheckerInterface]]] = {
     "attribute.regex.update": AttributeRegexChecker,
     "attribute.enum.update": AttributeEnumChecker,
     "attribute.kind.update": AttributeKindChecker,
@@ -31,4 +32,5 @@ CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] 
     "node.uniqueness_constraints.update": UniquenessChecker,
     "node.parent.update": NodeHierarchyChecker,
     "node.children.update": NodeHierarchyChecker,
+    "node.generate_profile.update": NodeGenerateProfileChecker,
 }

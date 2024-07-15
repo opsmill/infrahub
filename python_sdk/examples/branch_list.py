@@ -6,7 +6,7 @@ from infrahub_sdk import InfrahubClient
 
 
 async def main():
-    client = await InfrahubClient.init(address="http://localhost:8000")
+    client = InfrahubClient(address="http://localhost:8000")
     branches = await client.branch.all()
     rprint(branches)
 

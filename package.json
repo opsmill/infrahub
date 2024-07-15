@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "lint:frontend": "cd frontend && npm run format-code",
+        "lint:frontend": "cd frontend/app && npm run format-code",
         "prepare": "husky install"
     },
     "dependencies": {

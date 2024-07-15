@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
@@ -32,7 +32,7 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
     def render_node_remove_query(self, branch_filter: str) -> str:
         raise NotImplementedError()
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

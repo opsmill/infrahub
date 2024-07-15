@@ -5,7 +5,7 @@ name: New Preview Release
 on:
   push:
     tags:
-      - 'infrahub-v*rc*'
+      - 'infrahub-v*-*'
 
 jobs:
   meta_data:
@@ -21,11 +21,13 @@ jobs:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}
           tags: |
-            type=match,pattern=infrahub-v(\d+\.\d+\.\d+rc\d+),group=1
-            type=match,pattern=infrahub-v(\d+\.\d+rc\d+),group=1
-            type=raw,value=rc
+            type=match,pattern=infrahub-v(\d+\.\d+\.\d+-\w+),group=1
+            type=match,pattern=infrahub-v(\d+\.\d+-\w+),group=1
+            type=raw,value=preview
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
+          flavor: |
+            latest=false
 
   # Commented until we agree to link Infrahub version and chart version
   # extract-version:
@@ -47,11 +49,3 @@ jobs:
       ref: ${{ github.sha }}
       tags: ${{ needs.meta_data.outputs.tags }}
       labels: ${{ needs.meta_data.outputs.labels }}
-
-  publish-helm-chart:
-    uses: ./.github/workflows/publish-helm-chart.yml
-    secrets: inherit
-    # needs: extract-version
-    with:
-      publish: true
-      # version: ${{ needs.extract-version.outputs.version }}

@@ -14,7 +14,7 @@ from .parameters import CONFIG_PARAM
 
 def local_directory():
     # We use a function here to avoid failure when generating the documentation due to directory name
-    return Path().absolute()
+    return Path().resolve()
 
 
 def load(

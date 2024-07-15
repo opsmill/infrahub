@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.14.2"
+version = "0.15.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -11,7 +11,6 @@ documentation = "https://docs.infrahub.app/"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -26,16 +25,16 @@ packages = [
 optional = true
 
 [tool.poetry.dependencies]
-python = "^3.9, < 3.13"
+python = "^3.10, < 3.13"
 neo4j = "~5.20"
 neo4j-rust-ext = "^5.20.0.0"
 infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
-pydantic = "~2.6"
+pydantic = "2.7.2"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
 aio-pika = "~9.4"
 structlog = "24.1.0"
-boto3 = "~1.33.11"
+boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
 typer = "~0.7"
@@ -57,7 +56,7 @@ opentelemetry-instrumentation-fastapi = "^0.45b0"
 opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
 opentelemetry-exporter-otlp-proto-http = "^1.24.0"
 nats-py = "^2.7.2"
-netaddr = "1.2.1"
+netaddr = "1.3.0"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
@@ -78,7 +77,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.3"
+ruff = "0.4.6"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
@@ -201,23 +200,7 @@ module = "tests.integration.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = "infrahub.api.artifact"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.api.diff.diff"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.api.storage"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.auth"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.account"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -289,7 +272,7 @@ module = "infrahub.database"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.exceptions"
+module = "infrahub.git.base"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -302,14 +285,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.api.endpoints"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.app"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -369,14 +344,6 @@ module = "infrahub.graphql.types.mixin"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.types.node"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.types.interface"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.types.standard_node"
 ignore_errors = true
 
@@ -389,21 +356,97 @@ module = "infrahub.lock"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.*"
+module = "infrahub.message_bus.operations"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.test_data.*"
+module = "infrahub.message_bus.operations.check.artifact"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.check.generator"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.check.repository"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.refresh.webhook"
+ignore_errors = true
+
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.artifact"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.generator"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.graphql_query_group"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.proposed_change"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.repository"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.schema.migration"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.schema.validator"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.send.telemetry"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.send.webhook"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.trigger.ipam"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.dataset01"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.dataset03"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.dataset04"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.gen_connected_nodes"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.gen_isolated_node"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.gen_node_profile_node"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.shared"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.trace"
 ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.types"
-disallow_untyped_defs = false
-
 
 [tool.ruff]
 line-length = 120
@@ -450,9 +493,11 @@ select = [
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
+    "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
     "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
+    "UP",    # pyupgrade
     "W",     # pycodestyle warnings
     "YTT",   # flake8-2020
 ]
@@ -469,7 +514,6 @@ ignore = [
     "B008",     # Do not perform function call `Depends` in argument defaults;
     "B009",     # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
     "B010",     # [*] Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.
-    "B026",     # Star-arg unpacking after a keyword argument is strongly discouraged
     "B904",     # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
     "C403",     # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
@@ -478,7 +522,6 @@ ignore = [
     "N802",     # Function name should be lowercase
     "N805",     # First argument of a method should be named self
     "N806",     # Variable in function should be lowercase
-    "N811",     # Constant imported as non-constant
     "N812",     # Lowercase imported as non-lowercase
     "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
@@ -507,13 +550,20 @@ ignore = [
     "PTH113",   # `os.path.isfile()` should be replaced by `Path.is_file()`
     "PTH117",   # `os.path.isabs()` should be replaced by `Path.is_absolute()`
     "PTH118",   # `os.path.join()` should be replaced by `Path` with `/` operator
-    "PTH119",   # `os.path.basename()` should be replaced by `Path.name`
-    "PTH120",   # `os.path.dirname()` should be replaced by `Path.parent`
-    "PTH122",   # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
-    "PTH123",   # `open()` should be replaced by `Path.open()`
-    "PTH207",   # Replace `glob` with `Path.glob` or `Path.rglob`
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement
+    "S101",     # Use of `assert` detected
+    "S105",     # Possible hardcoded password assigned to: "REGEX_PASSWORD"
+    "S108",     # Probable insecure usage of temporary file or directory
+    "S202",     # Uses of `tarfile.extractall()`
+    "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
+    "UP007",    # Use X | Y for type annotations
+    "UP008",    # Use super() instead of super(__class__, self)
+    "UP012",    # Unnecessary call to encode as UTF-8
+    "UP018",    # Unnecessary {literal_type} call (rewrite as a literal)
+    "UP031",    # Use format specifiers instead of percent format
+    "UP034",    # Avoid extraneous parentheses
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
@@ -537,6 +587,23 @@ max-complexity = 33
 
 "backend/infrahub/git/repository.py" = [
     "TCH003", # Pydantic needs UUID import to not only be available under TYPE_CHECKING clause
+]
+
+"backend/tests/**.py" = [
+    "S101", # Use of assert detected
+    "S105", #  Possible hardcoded password assigned to variable
+    "S106", #  Possible hardcoded password assigned to argument
+]
+
+"models/infrastructure_edge.py" = [
+    "S106", # Hardcoded password
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one. Alternatively ignored after further       #
+# investigation if they are deemed to not make sense.                                            #
+##################################################################################################
+    "C901", # `generate_site` is too complex (34 > 33)"
+    "E501", # Line too long
 ]
 
 [build-system]

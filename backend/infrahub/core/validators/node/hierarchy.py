@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -23,16 +23,15 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 
     def __init__(
         self,
-        *args: Any,
         check_children: bool = False,
         check_parent: bool = False,
         **kwargs: Any,
     ):
         self.check_children = check_children
         self.check_parent = check_parent
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         if self.check_children and self.check_parent:
             raise RuntimeError("Cannot check children and parent at same time")
         if self.check_children:
@@ -154,8 +153,8 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name in ("node.parent.update", "node.children.update")
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list: List[GroupedDataPaths] = []
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
+        grouped_data_paths_list: list[GroupedDataPaths] = []
 
         if not isinstance(request.node_schema, NodeSchema):
             return grouped_data_paths_list

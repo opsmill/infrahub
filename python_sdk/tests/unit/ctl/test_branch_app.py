@@ -22,11 +22,11 @@ def test_branch_create_no_auth(httpx_mock: HTTPXMock, authentication_error_paylo
         match_headers={"X-Infrahub-Tracker": "mutation-branch-create"},
     )
     result = runner.invoke(app=app, args=["create", "branch2"])
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "Authentication is required" in result.stdout
 
 
 def test_branch_create_wrong_name(mock_branch_create_error):
     result = runner.invoke(app=app, args=["create", "branch2"])
-    assert result.exit_code == 1
+    assert result.exit_code == 5
     assert 'invalid field name: string does not match regex "^[a-z][a-z0-9' in result.stdout.replace("\n", "")

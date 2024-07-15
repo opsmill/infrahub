@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     DEFAULT_DESCRIPTION_LENGTH,
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
+    DEFAULT_LABEL_MAX_LENGTH,
     DEFAULT_NAME_MAX_LENGTH,
     DEFAULT_NAME_MIN_LENGTH,
     DEFAULT_REL_IDENTIFIER_LENGTH,
@@ -165,7 +166,7 @@ class SchemaNode(BaseModel):
     namespace: str
     branch: str
     include_in_menu: bool
-    default_filter: Optional[str]
+    default_filter: Optional[str] = None
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
     display_labels: list[str]
@@ -252,7 +253,7 @@ base_node_schema = SchemaNode(
             kind="Text",
             description="Human friendly representation of the name/kind",
             optional=True,
-            max_length=DEFAULT_NAME_MAX_LENGTH,
+            max_length=DEFAULT_LABEL_MAX_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
@@ -393,6 +394,14 @@ node_schema = SchemaNode(
             description="List of Generic Kind that this node is inheriting from",
             optional=True,
             extra={"update": UpdateSupport.NOT_SUPPORTED},
+        ),
+        SchemaAttribute(
+            name="generate_profile",
+            kind="Boolean",
+            description="Indicate if a profile schema should be generated for this schema",
+            default_value=True,
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="hierarchy",
@@ -833,6 +842,14 @@ generic_schema = SchemaNode(
             description="Defines if the Generic support the hierarchical mode.",
             optional=True,
             default_value=False,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="generate_profile",
+            kind="Boolean",
+            description="Indicate if a profile schema should be generated for this schema",
+            default_value=True,
+            optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(

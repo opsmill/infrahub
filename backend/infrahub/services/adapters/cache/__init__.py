@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from infrahub.message_bus.types import KVTTL
@@ -25,7 +25,7 @@ class InfrahubCache:
         """Return a list the values for requested keys."""
         raise NotImplementedError()
 
-    async def list_keys(self, filter_pattern: str) -> List[str]:
+    async def list_keys(self, filter_pattern: str) -> list[str]:
         """Return a list of active keys that match the provided filter."""
         raise NotImplementedError()
 

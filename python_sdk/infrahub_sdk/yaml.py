@@ -2,15 +2,11 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+from pydantic import BaseModel
 
 
-class SchemaFile(pydantic.BaseModel):
-    identifier: Optional[str]
+class SchemaFile(BaseModel):
+    identifier: Optional[str] = None
     location: Path
     content: Optional[dict] = None
     valid: bool = True

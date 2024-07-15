@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from typing_extensions import Self
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from structlog.stdlib import BoundLogger
 
-    from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql import GraphqlContext
     from infrahub.services.protocols import InfrahubLogger
@@ -27,7 +27,7 @@ class UserTask:
         self,
         title: str,
         db: InfrahubDatabase,
-        account: Optional[Node] = None,
+        account: Optional[CoreAccount] = None,
         account_id: Optional[str] = None,
         logger: Optional[Union[BoundLogger, InfrahubLogger]] = None,
     ) -> None:
@@ -52,7 +52,7 @@ class UserTask:
         raise ValueError("Task hasn't been initialized")
 
     @property
-    def account(self) -> Node:
+    def account(self) -> CoreAccount:
         if self._account:
             return self._account
         raise ValueError("Account hasn't been initialized")
@@ -67,7 +67,7 @@ class UserTask:
         if self._account:
             return False
 
-        account = await registry.manager.get_one(id=self.account_id, db=self.db)
+        account: Optional[CoreAccount] = await registry.manager.get_one(id=self.account_id, db=self.db)
         if not account:
             raise ValueError(f"Unable to find the account associated with {self.account_id}")
         self._account = account
@@ -95,7 +95,7 @@ class UserTask:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:

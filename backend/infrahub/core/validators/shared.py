@@ -12,14 +12,13 @@ class SchemaValidatorQuery(Query):
 
     def __init__(
         self,
-        *args: Any,
         node_schema: Union[NodeSchema, GenericSchema],
         schema_path: SchemaPath,
         **kwargs: Any,
     ):
         self.node_schema = node_schema
         self.schema_path = schema_path
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
     async def get_paths(self) -> GroupedDataPaths:
         raise NotImplementedError()

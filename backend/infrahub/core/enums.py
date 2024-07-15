@@ -1,11 +1,11 @@
 import enum
 import re
-from typing import Any, List, Type
+from typing import Any
 
 ENUM_NAME_REGEX = re.compile("[_a-zA-Z0-9]+")
 
 
-def generate_python_enum(name: str, options: List[Any]) -> Type[enum.Enum]:
+def generate_python_enum(name: str, options: list[Any]) -> type[enum.Enum]:
     main_attrs = {}
     for option in options:
         if isinstance(option, int):

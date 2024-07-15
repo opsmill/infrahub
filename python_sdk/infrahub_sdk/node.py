@@ -2,20 +2,8 @@ from __future__ import annotations
 
 import ipaddress
 import re
-import warnings
 from copy import copy
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    get_args,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Union, get_args
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import (
@@ -25,9 +13,8 @@ from infrahub_sdk.exceptions import (
     NodeNotFoundError,
     UninitializedError,
 )
-from infrahub_sdk.graphql import Mutation
+from infrahub_sdk.graphql import Mutation, Query
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
-from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.utils import compare_lists, get_flat_value
 from infrahub_sdk.uuidt import UUIDT
 
@@ -85,7 +72,7 @@ class Attribute:
         self.is_from_profile: Optional[bool] = data.get("is_from_profile", None)
 
         if self.value:
-            value_mapper: Dict[str, Callable] = {
+            value_mapper: dict[str, Callable] = {
                 "IPHost": ipaddress.ip_interface,
                 "IPNetwork": ipaddress.ip_network,
             }
@@ -105,9 +92,9 @@ class Attribute:
             if data.get(prop_name):
                 setattr(self, prop_name, NodeProperty(data=data.get(prop_name)))  # type: ignore[arg-type]
 
-    def _generate_input_data(self) -> Optional[Dict]:
-        data: Dict[str, Any] = {}
-        variables: Dict[str, Any] = {}
+    def _generate_input_data(self) -> Optional[dict]:
+        data: dict[str, Any] = {}
+        variables: dict[str, Any] = {}
 
         if self.value is None:
             return data
@@ -134,8 +121,8 @@ class Attribute:
 
         return {"data": data, "variables": variables}
 
-    def _generate_query_data(self) -> Optional[Dict]:
-        data: Dict[str, Any] = {"value": None, "is_default": None, "is_from_profile": None}
+    def _generate_query_data(self) -> Optional[dict]:
+        data: dict[str, Any] = {"value": None, "is_default": None, "is_from_profile": None}
 
         for prop_name in self._properties_flag:
             data[prop_name] = None
@@ -210,7 +197,7 @@ class RelatedNodeBase:
         return self._id
 
     @property
-    def hfid(self) -> Optional[List[Any]]:
+    def hfid(self) -> Optional[list[Any]]:
         if self._peer:
             return self._peer.hfid
         return None
@@ -243,7 +230,7 @@ class RelatedNodeBase:
             return self._peer.typename
         return self._typename
 
-    def _generate_input_data(self) -> Dict[str, Any]:
+    def _generate_input_data(self) -> dict[str, Any]:
         data = {}
 
         if self.is_resource_pool:
@@ -258,27 +245,27 @@ class RelatedNodeBase:
 
         return data
 
-    def _generate_mutation_query(self) -> Dict[str, Any]:
+    def _generate_mutation_query(self) -> dict[str, Any]:
         if self.name and self.is_resource_pool:
             # If a related node points to a pool, ask for the ID of the pool allocated resource
             return {self.name: {"node": {"id": None, "display_label": None, "__typename": None}}}
         return {}
 
     @classmethod
-    def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
+    def _generate_query_data(cls, peer_data: Optional[dict[str, Any]] = None) -> dict:
         """Generates the basic structure of a GraphQL query for a single relationship.
 
         Args:
-            peer_data (Dict[str, Union[Any, Dict]], optional): Additional data to be included in the query for the node.
+            peer_data (dict[str, Union[Any, Dict]], optional): Additional data to be included in the query for the node.
                 This is used to add extra fields when prefetching related node data.
 
         Returns:
             Dict: A dictionary representing the basic structure of a GraphQL query, including the node's ID, display label,
                 and typename. The method also includes additional properties and any peer_data provided.
         """
-        data: Dict[str, Any] = {"node": {"id": None, "display_label": None, "__typename": None}}
+        data: dict[str, Any] = {"node": {"id": None, "display_label": None, "__typename": None}}
 
-        properties: Dict[str, Any] = {}
+        properties: dict[str, Any] = {}
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
@@ -402,37 +389,37 @@ class RelationshipManagerBase:
         self._properties_object = PROPERTIES_OBJECT
         self._properties = self._properties_flag + self._properties_object
 
-        self.peers: List[Union[RelatedNode, RelatedNodeSync]] = []
+        self.peers: list[Union[RelatedNode, RelatedNodeSync]] = []
 
     @property
-    def peer_ids(self) -> List[str]:
+    def peer_ids(self) -> list[str]:
         return [peer.id for peer in self.peers if peer.id]
 
     @property
-    def peer_hfids(self) -> List[List[Any]]:
+    def peer_hfids(self) -> list[list[Any]]:
         return [peer.hfid for peer in self.peers if peer.hfid]
 
     @property
-    def peer_hfids_str(self) -> List[str]:
+    def peer_hfids_str(self) -> list[str]:
         return [peer.hfid_str for peer in self.peers if peer.hfid_str]
 
     @property
     def has_update(self) -> bool:
         return self._has_update
 
-    def _generate_input_data(self) -> List[Dict]:
+    def _generate_input_data(self) -> list[dict]:
         return [peer._generate_input_data() for peer in self.peers]
 
-    def _generate_mutation_query(self) -> Dict[str, Any]:
+    def _generate_mutation_query(self) -> dict[str, Any]:
         # Does nothing for now
         return {}
 
     @classmethod
-    def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
+    def _generate_query_data(cls, peer_data: Optional[dict[str, Any]] = None) -> dict:
         """Generates the basic structure of a GraphQL query for relationships with multiple nodes.
 
         Args:
-            peer_data (Dict[str, Union[Any, Dict]], optional): Additional data to be included in the query for each node.
+            peer_data (dict[str, Union[Any, Dict]], optional): Additional data to be included in the query for each node.
                 This is used to add extra fields when prefetching related node data in many-to-many relationships.
 
         Returns:
@@ -440,12 +427,12 @@ class RelationshipManagerBase:
                 It includes count, edges, and node information (ID, display label, and typename), along with additional properties
                 and any peer_data provided.
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "count": None,
             "edges": {"node": {"id": None, "display_label": None, "__typename": None}},
         }
 
-        properties: Dict[str, Any] = {}
+        properties: dict[str, Any] = {}
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
@@ -717,7 +704,7 @@ class InfrahubNodeBase:
 
         return return_value
 
-    def get_human_friendly_id(self) -> Optional[List[str]]:
+    def get_human_friendly_id(self) -> Optional[list[str]]:
         if not hasattr(self._schema, "human_friendly_id"):
             return None
 
@@ -735,7 +722,7 @@ class InfrahubNodeBase:
         return "__".join(hfid)
 
     @property
-    def hfid(self) -> Optional[List[str]]:
+    def hfid(self) -> Optional[list[str]]:
         return self.get_human_friendly_id()
 
     @property
@@ -751,15 +738,6 @@ class InfrahubNodeBase:
                 attr_name,
                 Attribute(name=attr_name, schema=attr_schema, data=attr_data),
             )
-
-    def _deprecated_parameter(self, **kwargs: Any) -> None:
-        for param_name, param_value in kwargs.items():
-            if param_value is not None:
-                warnings.warn(
-                    f"{param_name} has been deprecated and will be removed completely in a future version",
-                    DeprecationWarning,
-                    stacklevel=3,
-                )
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:
         pass
@@ -786,14 +764,14 @@ class InfrahubNodeBase:
     def is_resource_pool(self) -> bool:
         return hasattr(self._schema, "inherit_from") and "CoreResourcePool" in self._schema.inherit_from  # type: ignore[union-attr]
 
-    def get_raw_graphql_data(self) -> Optional[Dict]:
+    def get_raw_graphql_data(self) -> Optional[dict]:
         return self._data
 
-    def _generate_input_data(self, exclude_unmodified: bool = False, exclude_hfid: bool = False) -> Dict[str, Dict]:  # noqa: C901
+    def _generate_input_data(self, exclude_unmodified: bool = False, exclude_hfid: bool = False) -> dict[str, dict]:  # noqa: C901
         """Generate a dictionary that represent the input data required by a mutation.
 
         Returns:
-            Dict[str, Dict]: Representation of an input data in dict format
+            dict[str, Dict]: Representation of an input data in dict format
         """
         # pylint: disable=too-many-branches
         data = {}
@@ -896,7 +874,7 @@ class InfrahubNodeBase:
         if not data_item and data_item != []:
             data.pop(item)
 
-    def _strip_unmodified(self, data: dict, variables: dict) -> Tuple[dict, dict]:
+    def _strip_unmodified(self, data: dict, variables: dict) -> tuple[dict, dict]:
         original_data = self._data or {}
         for relationship in self._relationships:
             relationship_property = getattr(self, relationship)
@@ -913,33 +891,22 @@ class InfrahubNodeBase:
                     data.pop(item)
                     continue
                 if isinstance(original_data[item], dict):
-                    self._strip_unmodified_dict(
-                        data=data,
-                        original_data=original_data,
-                        variables=variables,
-                        item=item,
-                    )
+                    self._strip_unmodified_dict(data=data, original_data=original_data, variables=variables, item=item)
                     if item in self._relationships and original_data[item].get("node"):
                         relationship_data_cardinality_one = copy(original_data)
                         relationship_data_cardinality_one[item] = original_data[item]["node"]
                         self._strip_unmodified_dict(
-                            data=data,
-                            original_data=relationship_data_cardinality_one,
-                            variables=variables,
-                            item=item,
+                            data=data, original_data=relationship_data_cardinality_one, variables=variables, item=item
                         )
                         # Run again to remove the "id" key if it's the last one remaining
                         self._strip_unmodified_dict(
-                            data=data,
-                            original_data=relationship_data_cardinality_one,
-                            variables=variables,
-                            item=item,
+                            data=data, original_data=relationship_data_cardinality_one, variables=variables, item=item
                         )
 
         return data, variables
 
     @staticmethod
-    def _strip_alias(data: dict) -> Dict[str, Dict]:
+    def _strip_alias(data: dict) -> dict[str, dict]:
         clean = {}
 
         under_node = False
@@ -971,14 +938,14 @@ class InfrahubNodeBase:
 
     def generate_query_data_init(
         self,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[dict[str, Any]] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         partial_match: bool = False,
-    ) -> Dict[str, Union[Any, Dict]]:
-        data: Dict[str, Any] = {
+    ) -> dict[str, Union[Any, dict]]:
+        data: dict[str, Any] = {
             "count": None,
             "edges": {"node": {"id": None, "hfid": None, "display_label": None, "__typename": None}},
         }
@@ -1001,7 +968,7 @@ class InfrahubNodeBase:
 
         return data
 
-    def validate_filters(self, filters: Optional[Dict[str, Any]] = None) -> bool:
+    def validate_filters(self, filters: Optional[dict[str, Any]] = None) -> bool:
         if not filters:
             return True
 
@@ -1021,9 +988,9 @@ class InfrahubNodeBase:
 
         return True
 
-    def extract(self, params: Dict[str, str]) -> Dict[str, Any]:
+    def extract(self, params: dict[str, str]) -> dict[str, Any]:
         """Extract some datapoints defined in a flat notation."""
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
         for key, value in params.items():
             result[key] = get_flat_value(self, key=value)
 
@@ -1037,7 +1004,7 @@ class InfrahubNodeBase:
             return NotImplemented
         return self.id == other.id
 
-    def _relationship_mutation(self, action: str, relation_to_update: str, related_nodes: List[str]) -> str:
+    def _relationship_mutation(self, action: str, relation_to_update: str, related_nodes: list[str]) -> str:
         related_node_str = ["{ id: " + f'"{node}"' + " }" for node in related_nodes]
         return f"""
         mutation {{
@@ -1122,7 +1089,7 @@ class InfrahubNode(InfrahubNodeBase):
                     ),
                 )
 
-    async def generate(self, nodes: Optional[List[str]] = None) -> None:
+    async def generate(self, nodes: Optional[list[str]] = None) -> None:
         self._validate_artifact_definition_support(ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
 
         nodes = nodes or []
@@ -1137,15 +1104,14 @@ class InfrahubNode(InfrahubNodeBase):
         await artifact.definition.fetch()  # type: ignore[attr-defined]
         await artifact.definition.peer.generate([artifact.id])  # type: ignore[attr-defined]
 
-    async def artifact_fetch(self, name: str) -> Union[str, Dict[str, Any]]:
+    async def artifact_fetch(self, name: str) -> Union[str, dict[str, Any]]:
         self._validate_artifact_support(ARTIFACT_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
 
         artifact = await self._client.get(kind="CoreArtifact", definition__name__value=name, object__ids=[self.id])
         content = await self._client.object_store.get(identifier=artifact.storage_id.value)  # type: ignore[attr-defined]
         return content
 
-    async def delete(self, at: Optional[Timestamp] = None) -> None:
-        at = Timestamp(at)
+    async def delete(self) -> None:
         input_data = {"data": {"id": self.id}}
         mutation_query = {"ok": None}
         query = Mutation(
@@ -1156,14 +1122,10 @@ class InfrahubNode(InfrahubNodeBase):
         await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
-            at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
-    async def save(
-        self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group_context: Optional[bool] = None
-    ) -> None:
-        self._deprecated_parameter(at=at)
+    async def save(self, allow_upsert: bool = False, update_group_context: Optional[bool] = None) -> None:
         if self._existing is False or allow_upsert is True:
             await self.create(allow_upsert=allow_upsert)
         else:
@@ -1188,15 +1150,15 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def generate_query_data(
         self,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[dict[str, Any]] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
         partial_match: bool = False,
-    ) -> Dict[str, Union[Any, Dict]]:
+    ) -> dict[str, Union[Any, dict]]:
         data = self.generate_query_data_init(
             filters=filters, offset=offset, limit=limit, include=include, exclude=exclude, partial_match=partial_match
         )
@@ -1237,28 +1199,28 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def generate_query_data_node(
         self,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         inherited: bool = True,
         insert_alias: bool = False,
         prefetch_relationships: bool = False,
-    ) -> Dict[str, Union[Any, Dict]]:
+    ) -> dict[str, Union[Any, dict]]:
         """Generate the node part of a GraphQL Query with attributes and nodes.
 
         Args:
-            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
-            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
+            include (Optional[list[str]], optional): List of attributes or relationships to include. Defaults to None.
+            exclude (Optional[list[str]], optional): List of attributes or relationships to exclude. Defaults to None.
             inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
                                         Defaults to True.
             insert_alias (bool, optional): If True, inserts aliases in the query for each attribute or relationship.
             prefetch_relationships (bool, optional): If True, pre-fetches relationship data as part of the query.
 
         Returns:
-            Dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
+            dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
         """
         # pylint: disable=too-many-branches
 
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
 
         for attr_name in self._attributes:
             if exclude and attr_name in exclude:
@@ -1294,7 +1256,7 @@ class InfrahubNode(InfrahubNodeBase):
             ):
                 continue
 
-            peer_data: Dict[str, Any] = {}
+            peer_data: dict[str, Any] = {}
             if rel_schema and prefetch_relationships:
                 peer_schema = await self._client.schema.get(kind=rel_schema.peer)
                 peer_node = InfrahubNode(client=self._client, schema=peer_schema, branch=self._branch)
@@ -1312,21 +1274,21 @@ class InfrahubNode(InfrahubNodeBase):
 
         return data
 
-    async def add_relationships(self, relation_to_update: str, related_nodes: List[str]) -> None:
+    async def add_relationships(self, relation_to_update: str, related_nodes: list[str]) -> None:
         query = self._relationship_mutation(
             action="Add", relation_to_update=relation_to_update, related_nodes=related_nodes
         )
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipadd-{relation_to_update}"
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    async def remove_relationships(self, relation_to_update: str, related_nodes: List[str]) -> None:
+    async def remove_relationships(self, relation_to_update: str, related_nodes: list[str]) -> None:
         query = self._relationship_mutation(
             action="Remove", relation_to_update=relation_to_update, related_nodes=related_nodes
         )
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    def _generate_mutation_query(self) -> Dict[str, Any]:
+    def _generate_mutation_query(self) -> dict[str, Any]:
         query_result = {"ok": None, "object": {"id": None}}
 
         for rel_name in self._relationships:
@@ -1338,8 +1300,8 @@ class InfrahubNode(InfrahubNodeBase):
 
         return query_result
 
-    async def _process_mutation_result(self, mutation_name: str, response: Dict[str, Any]) -> None:
-        object_response: Dict[str, Any] = response[mutation_name]["object"]
+    async def _process_mutation_result(self, mutation_name: str, response: dict[str, Any]) -> None:
+        object_response: dict[str, Any] = response[mutation_name]["object"]
         self.id = object_response["id"]
         self._existing = True
 
@@ -1356,9 +1318,7 @@ class InfrahubNode(InfrahubNodeBase):
             await related_node.fetch()
             setattr(self, rel_name, related_node)
 
-    async def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
-        self._deprecated_parameter(at=at)
-
+    async def create(self, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data(exclude_hfid=True)
         mutation_query = self._generate_mutation_query()
 
@@ -1379,9 +1339,7 @@ class InfrahubNode(InfrahubNodeBase):
         )
         await self._process_mutation_result(mutation_name=mutation_name, response=response)
 
-    async def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
-        self._deprecated_parameter(at=at)
-
+    async def update(self, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         mutation_query = self._generate_mutation_query()
         mutation_name = f"{self._schema.kind}Update"
@@ -1401,14 +1359,14 @@ class InfrahubNode(InfrahubNodeBase):
         await self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     async def _process_relationships(
-        self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNode]
+        self, node_data: dict[str, Any], branch: str, related_nodes: list[InfrahubNode]
     ) -> None:
         """Processes the Relationships of a InfrahubNode and add Related Nodes to a list.
 
         Args:
-            node_data (Dict[str, Any]): The item from the GraphQL response corresponding to the node.
+            node_data (dict[str, Any]): The item from the GraphQL response corresponding to the node.
             branch (str): The branch name.
-            related_nodes (List[InfrahubNode]): The list to which related nodes will be appended.
+            related_nodes (list[InfrahubNode]): The list to which related nodes will be appended.
         """
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
@@ -1423,6 +1381,108 @@ class InfrahubNode(InfrahubNodeBase):
                     for peer in peers["edges"]:
                         related_node = await InfrahubNode.from_graphql(client=self._client, branch=branch, data=peer)
                         related_nodes.append(related_node)
+
+    async def get_pool_allocated_resources(self, resource: InfrahubNode) -> list[InfrahubNode]:
+        """Fetch all nodes that were allocated for the pool and a given resource.
+
+        Args:
+            resource (InfrahubNode): The resource from which the nodes were allocated.
+
+        Returns:
+            list[InfrahubNode]: The allocated nodes.
+        """
+        if not self.is_resource_pool():
+            raise ValueError("Allocate resources can only be fetched from resource pool nodes.")
+
+        graphql_query_name = "InfrahubResourcePoolAllocated"
+        node_ids_per_kind: dict[str, list[str]] = {}
+
+        has_remaining_items = True
+        page_number = 1
+        while has_remaining_items:
+            page_offset = (page_number - 1) * self._client.pagination_size
+
+            query = Query(
+                query={
+                    graphql_query_name: {
+                        "@filters": {
+                            "pool_id": "$pool_id",
+                            "resource_id": "$resource_id",
+                            "offset": page_offset,
+                            "limit": self._client.pagination_size,
+                        },
+                        "count": None,
+                        "edges": {"node": {"id": None, "kind": None, "branch": None, "identifier": None}},
+                    }
+                },
+                name="GetAllocatedResourceForPool",
+                variables={"pool_id": str, "resource_id": str},
+            )
+            response = await self._client.execute_graphql(
+                query=query.render(),
+                variables={"pool_id": self.id, "resource_id": resource.id},
+                branch_name=self._branch,
+                tracker=f"get-allocated-resources-page{page_number}",
+            )
+
+            for edge in response[graphql_query_name]["edges"]:
+                node = edge["node"]
+                node_ids_per_kind.setdefault(node["kind"], []).append(node["id"])
+
+            remaining_items = response[graphql_query_name].get("count", 0) - (
+                page_offset + self._client.pagination_size
+            )
+            if remaining_items <= 0:
+                has_remaining_items = False
+
+            page_number += 1
+
+        nodes: list[InfrahubNode] = []
+        for kind, node_ids in node_ids_per_kind.items():
+            nodes.extend(await self._client.filters(kind=kind, branch=self._branch, ids=node_ids))
+
+        return nodes
+
+    async def get_pool_resources_utilization(self) -> list[dict[str, Any]]:
+        """Fetch the utilization of each resource for the pool.
+
+        Returns:
+            list[dict[str, Any]]: A list containing the allocation numbers for each resource of the pool.
+        """
+        if not self.is_resource_pool():
+            raise ValueError("Pool utilization can only be fetched for resource pool nodes.")
+
+        graphql_query_name = "InfrahubResourcePoolUtilization"
+
+        query = Query(
+            query={
+                graphql_query_name: {
+                    "@filters": {"pool_id": "$pool_id"},
+                    "count": None,
+                    "edges": {
+                        "node": {
+                            "id": None,
+                            "kind": None,
+                            "utilization": None,
+                            "utilization_branches": None,
+                            "utilization_default_branch": None,
+                        }
+                    },
+                }
+            },
+            name="GetUtilizationForPool",
+            variables={"pool_id": str},
+        )
+        response = await self._client.execute_graphql(
+            query=query.render(),
+            variables={"pool_id": self.id},
+            branch_name=self._branch,
+            tracker="get-pool-utilization",
+        )
+
+        if response[graphql_query_name].get("count", 0):
+            return [edge["node"] for edge in response[graphql_query_name]["edges"]]
+        return []
 
 
 class InfrahubNodeSync(InfrahubNodeBase):
@@ -1493,7 +1553,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
                     ),
                 )
 
-    def generate(self, nodes: Optional[List[str]] = None) -> None:
+    def generate(self, nodes: Optional[list[str]] = None) -> None:
         self._validate_artifact_definition_support(ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
         nodes = nodes or []
         payload = {"nodes": nodes}
@@ -1506,14 +1566,13 @@ class InfrahubNodeSync(InfrahubNodeBase):
         artifact.definition.fetch()  # type: ignore[attr-defined]
         artifact.definition.peer.generate([artifact.id])  # type: ignore[attr-defined]
 
-    def artifact_fetch(self, name: str) -> Union[str, Dict[str, Any]]:
+    def artifact_fetch(self, name: str) -> Union[str, dict[str, Any]]:
         self._validate_artifact_support(ARTIFACT_FETCH_FEATURE_NOT_SUPPORTED_MESSAGE)
         artifact = self._client.get(kind="CoreArtifact", definition__name__value=name, object__ids=[self.id])
         content = self._client.object_store.get(identifier=artifact.storage_id.value)  # type: ignore[attr-defined]
         return content
 
-    def delete(self, at: Optional[Timestamp] = None) -> None:
-        self._deprecated_parameter(at=at)
+    def delete(self) -> None:
         input_data = {"data": {"id": self.id}}
         mutation_query = {"ok": None}
         query = Mutation(
@@ -1527,10 +1586,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
-    def save(
-        self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group_context: Optional[bool] = None
-    ) -> None:
-        self._deprecated_parameter(at=at)
+    def save(self, allow_upsert: bool = False, update_group_context: Optional[bool] = None) -> None:
         if self._existing is False or allow_upsert is True:
             self.create(allow_upsert=allow_upsert)
         else:
@@ -1551,15 +1607,15 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def generate_query_data(
         self,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[dict[str, Any]] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
         partial_match: bool = False,
-    ) -> Dict[str, Union[Any, Dict]]:
+    ) -> dict[str, Union[Any, dict]]:
         data = self.generate_query_data_init(
             filters=filters, offset=offset, limit=limit, include=include, exclude=exclude, partial_match=partial_match
         )
@@ -1599,28 +1655,28 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def generate_query_data_node(
         self,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
+        include: Optional[list[str]] = None,
+        exclude: Optional[list[str]] = None,
         inherited: bool = True,
         insert_alias: bool = False,
         prefetch_relationships: bool = False,
-    ) -> Dict[str, Union[Any, Dict]]:
+    ) -> dict[str, Union[Any, dict]]:
         """Generate the node part of a GraphQL Query with attributes and nodes.
 
         Args:
-            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
-            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
+            include (Optional[list[str]], optional): List of attributes or relationships to include. Defaults to None.
+            exclude (Optional[list[str]], optional): List of attributes or relationships to exclude. Defaults to None.
             inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
                                         Defaults to True.
             insert_alias (bool, optional): If True, inserts aliases in the query for each attribute or relationship.
             prefetch_relationships (bool, optional): If True, pre-fetches relationship data as part of the query.
 
         Returns:
-            Dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
+            dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
         """
         # pylint: disable=too-many-branches
 
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
 
         for attr_name in self._attributes:
             if exclude and attr_name in exclude:
@@ -1656,7 +1712,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             ):
                 continue
 
-            peer_data: Dict[str, Any] = {}
+            peer_data: dict[str, Any] = {}
             if rel_schema and prefetch_relationships:
                 peer_schema = self._client.schema.get(kind=rel_schema.peer)
                 peer_node = InfrahubNodeSync(client=self._client, schema=peer_schema, branch=self._branch)
@@ -1677,7 +1733,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
     def add_relationships(
         self,
         relation_to_update: str,
-        related_nodes: List[str],
+        related_nodes: list[str],
     ) -> None:
         query = self._relationship_mutation(
             action="Add", relation_to_update=relation_to_update, related_nodes=related_nodes
@@ -1685,14 +1741,14 @@ class InfrahubNodeSync(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipadd-{relation_to_update}"
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    def remove_relationships(self, relation_to_update: str, related_nodes: List[str]) -> None:
+    def remove_relationships(self, relation_to_update: str, related_nodes: list[str]) -> None:
         query = self._relationship_mutation(
             action="Remove", relation_to_update=relation_to_update, related_nodes=related_nodes
         )
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    def _generate_mutation_query(self) -> Dict[str, Any]:
+    def _generate_mutation_query(self) -> dict[str, Any]:
         query_result = {"ok": None, "object": {"id": None}}
 
         for rel_name in self._relationships:
@@ -1704,8 +1760,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         return query_result
 
-    def _process_mutation_result(self, mutation_name: str, response: Dict[str, Any]) -> None:
-        object_response: Dict[str, Any] = response[mutation_name]["object"]
+    def _process_mutation_result(self, mutation_name: str, response: dict[str, Any]) -> None:
+        object_response: dict[str, Any] = response[mutation_name]["object"]
         self.id = object_response["id"]
         self._existing = True
 
@@ -1722,9 +1778,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             related_node.fetch()
             setattr(self, rel_name, related_node)
 
-    def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
-        self._deprecated_parameter(at=at)
-
+    def create(self, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data(exclude_hfid=True)
         mutation_query = self._generate_mutation_query()
 
@@ -1742,13 +1796,11 @@ class InfrahubNodeSync(InfrahubNodeBase):
         )
 
         response = self._client.execute_graphql(
-            query=query.render(), branch_name=self._branch, at=at, tracker=tracker, variables=input_data["variables"]
+            query=query.render(), branch_name=self._branch, tracker=tracker, variables=input_data["variables"]
         )
         self._process_mutation_result(mutation_name=mutation_name, response=response)
 
-    def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
-        self._deprecated_parameter(at=at)
-
+    def update(self, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         mutation_query = self._generate_mutation_query()
         mutation_name = f"{self._schema.kind}Update"
@@ -1763,21 +1815,20 @@ class InfrahubNodeSync(InfrahubNodeBase):
         response = self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
-            at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
         self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     def _process_relationships(
-        self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNodeSync]
+        self, node_data: dict[str, Any], branch: str, related_nodes: list[InfrahubNodeSync]
     ) -> None:
         """Processes the Relationships of a InfrahubNodeSync and add Related Nodes to a list.
 
         Args:
-            node_data (Dict[str, Any]): The item from the GraphQL response corresponding to the node.
+            node_data (dict[str, Any]): The item from the GraphQL response corresponding to the node.
             branch (str): The branch name.
-            related_nodes (List[InfrahubNodeSync]): The list to which related nodes will be appended.
+            related_nodes (list[InfrahubNodeSync]): The list to which related nodes will be appended.
         """
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
@@ -1792,6 +1843,108 @@ class InfrahubNodeSync(InfrahubNodeBase):
                     for peer in peers["edges"]:
                         related_node = InfrahubNodeSync.from_graphql(client=self._client, branch=branch, data=peer)
                         related_nodes.append(related_node)
+
+    def get_pool_allocated_resources(self, resource: InfrahubNodeSync) -> list[InfrahubNodeSync]:
+        """Fetch all nodes that were allocated for the pool and a given resource.
+
+        Args:
+            resource (InfrahubNodeSync): The resource from which the nodes were allocated.
+
+        Returns:
+            list[InfrahubNodeSync]: The allocated nodes.
+        """
+        if not self.is_resource_pool():
+            raise ValueError("Allocate resources can only be fetched from resource pool nodes.")
+
+        graphql_query_name = "InfrahubResourcePoolAllocated"
+        node_ids_per_kind: dict[str, list[str]] = {}
+
+        has_remaining_items = True
+        page_number = 1
+        while has_remaining_items:
+            page_offset = (page_number - 1) * self._client.pagination_size
+
+            query = Query(
+                query={
+                    graphql_query_name: {
+                        "@filters": {
+                            "pool_id": "$pool_id",
+                            "resource_id": "$resource_id",
+                            "offset": page_offset,
+                            "limit": self._client.pagination_size,
+                        },
+                        "count": None,
+                        "edges": {"node": {"id": None, "kind": None, "branch": None, "identifier": None}},
+                    }
+                },
+                name="GetAllocatedResourceForPool",
+                variables={"pool_id": str, "resource_id": str},
+            )
+            response = self._client.execute_graphql(
+                query=query.render(),
+                variables={"pool_id": self.id, "resource_id": resource.id},
+                branch_name=self._branch,
+                tracker=f"get-allocated-resources-page{page_number}",
+            )
+
+            for edge in response[graphql_query_name]["edges"]:
+                node = edge["node"]
+                node_ids_per_kind.setdefault(node["kind"], []).append(node["id"])
+
+            remaining_items = response[graphql_query_name].get("count", 0) - (
+                page_offset + self._client.pagination_size
+            )
+            if remaining_items <= 0:
+                has_remaining_items = False
+
+            page_number += 1
+
+        nodes: list[InfrahubNodeSync] = []
+        for kind, node_ids in node_ids_per_kind.items():
+            nodes.extend(self._client.filters(kind=kind, branch=self._branch, ids=node_ids))
+
+        return nodes
+
+    def get_pool_resources_utilization(self) -> list[dict[str, Any]]:
+        """Fetch the utilization of each resource for the pool.
+
+        Returns:
+            list[dict[str, Any]]: A list containing the allocation numbers for each resource of the pool.
+        """
+        if not self.is_resource_pool():
+            raise ValueError("Pool utilization can only be fetched for resource pool nodes.")
+
+        graphql_query_name = "InfrahubResourcePoolUtilization"
+
+        query = Query(
+            query={
+                graphql_query_name: {
+                    "@filters": {"pool_id": "$pool_id"},
+                    "count": None,
+                    "edges": {
+                        "node": {
+                            "id": None,
+                            "kind": None,
+                            "utilization": None,
+                            "utilization_branches": None,
+                            "utilization_default_branch": None,
+                        }
+                    },
+                }
+            },
+            name="GetUtilizationForPool",
+            variables={"pool_id": str},
+        )
+        response = self._client.execute_graphql(
+            query=query.render(),
+            variables={"pool_id": self.id},
+            branch_name=self._branch,
+            tracker="get-pool-utilization",
+        )
+
+        if response[graphql_query_name].get("count", 0):
+            return [edge["node"] for edge in response[graphql_query_name]["edges"]]
+        return []
 
 
 class NodeProperty:

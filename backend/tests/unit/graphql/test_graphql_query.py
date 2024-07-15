@@ -1161,6 +1161,138 @@ async def test_query_filter_ids(db: InfrahubDatabase, default_branch: Branch, cr
     assert len(result.data["TestCriticality"]["edges"]) == 2
 
 
+async def test_query_filter_relationship_isnull(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_albert_main,
+    person_john_main,
+    person_jane_main,
+    car_camry_main,
+    car_accord_main,
+):
+    query = """
+    query {
+        TestPerson(cars__isnull: true) {
+            count
+            edges {
+                node {
+                    id
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestPerson"]["count"] == 1
+    assert len(result.data["TestPerson"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["id"] == person_albert_main.id
+
+    query = """
+    query {
+        TestPerson(cars__isnull: false) {
+            count
+            edges {
+                node {
+                    id
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestPerson"]["count"] == 2
+    assert len(result.data["TestPerson"]["edges"]) == 2
+    result_person_ids = {node["node"]["id"] for node in result.data["TestPerson"]["edges"]}
+    assert result_person_ids == {person_john_main.id, person_jane_main.id}
+
+
+async def test_query_filter_attribute_isnull(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_albert_main,
+    person_john_main,
+    person_jane_main,
+    car_camry_main,
+    car_accord_main,
+):
+    person_albert = await NodeManager.get_one(db=db, id=person_albert_main.id)
+    person_albert.height.value = None
+    await person_albert.save(db=db)
+
+    query = """
+    query {
+        TestPerson(height__isnull: true) {
+            count
+            edges {
+                node {
+                    id
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestPerson"]["count"] == 1
+    assert len(result.data["TestPerson"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["id"] == person_albert_main.id
+
+    query = """
+    query {
+        TestPerson(height__isnull: false) {
+            count
+            edges {
+                node {
+                    id
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestPerson"]["count"] == 2
+    assert len(result.data["TestPerson"]["edges"]) == 2
+    result_person_ids = {node["node"]["id"] for node in result.data["TestPerson"]["edges"]}
+    assert result_person_ids == {person_john_main.id, person_jane_main.id}
+
+
 async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)

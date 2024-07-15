@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sdk"
-version = "0.11.1"
+version = "0.12.0-beta1"
 description = "Python Client to interact with Infrahub"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -22,7 +22,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.9"
-pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
+pydantic = ">=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
+pydantic-settings = ">=2.0"
 graphql-core = ">=3.1,<3.3"
 httpx = [
     { version = ">=0.20", python = ">=3.9,<3.11"},
@@ -62,7 +63,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.3"
+ruff = "0.4.6"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -188,14 +189,14 @@ ignore_errors = true
 line-length = 120
 
 exclude = [
-        ".git",
-        ".tox",
-        ".venv",
-        "env",
-        "_build",
-        "build",
-        "dist",
-        "examples",
+    ".git",
+    ".tox",
+    ".venv",
+    "env",
+    "_build",
+    "build",
+    "dist",
+    "examples",
 ]
 
 
@@ -207,7 +208,6 @@ task-tags = [
     "TODO",
     "XXX",
 ]
-
 
 select = [
     "ASYNC", # flake8-async
@@ -229,9 +229,11 @@ select = [
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
+    "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
     "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
+    "UP",    # pyupgrade
     "W",     # pycodestyle warnings
     "YTT",   # flake8-2020
 ]
@@ -260,12 +262,14 @@ ignore = [
     "PLW1641", # Object does not implement `__hash__` method
     "PTH100",  # `os.path.abspath()` should be replaced by `Path.resolve()`
     "PTH109",  # `os.getcwd()` should be replaced by `Path.cwd()`
-    "PTH119",  # `os.path.basename()` should be replaced by `Path.name`
-    "PTH120",  # `os.path.dirname()` should be replaced by `Path.parent`
-    "PTH122",  # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
-    "PTH123",  # `open()` should be replaced by `Path.open()`
-    "PTH207",  # Replace `glob` with `Path.glob` or `Path.rglob`
     "RET504",  # Unnecessary assignment to `data` before `return` statement
+    "S105",    # Possible hardcoded password assigned to: "PASS"
+    "S108",    # Probable insecure usage of temporary file or directory
+    "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
+    "UP007",   # Use X | Y for type annotations
+    "UP031",   # Use format specifiers instead of percent format
+    "UP034",   # Avoid extraneous parentheses
 ]
 
 
@@ -290,6 +294,9 @@ max-complexity = 17
 
 "tests/**/*.py" = [
     "PLR2004", # Magic value used in comparison
+    "S101",    # Use of assert detected
+    "S106",    # Possible hardcoded password assigned to variable
+    "S106",    # Possible hardcoded password assigned to argument
 ]
 
 "tests/unit/sdk/test_client.py" = [

@@ -1,7 +1,7 @@
 from typing import Any
 
 from fastapi.responses import JSONResponse
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from infrahub.exceptions import Error
 

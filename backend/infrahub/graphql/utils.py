@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Set, Union
+from typing import TYPE_CHECKING, Union
 
 from graphene.types.definitions import GrapheneInterfaceType, GrapheneObjectType
 from graphql import (  # pylint: disable=no-name-in-module
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from graphql.execution import ExecutionResult
 
 
-def extract_data(query_name: str, result: ExecutionResult) -> Dict:
+def extract_data(query_name: str, result: ExecutionResult) -> dict:
     if result.errors:
         errors = []
         for error in result.errors:
@@ -209,7 +209,7 @@ def print_selection_set(selection_set: SelectionSetNode, level: int = 1) -> int:
 
 def find_types_implementing_interface(
     interface: GrapheneInterfaceType, root_schema: GraphQLSchema
-) -> List[GrapheneObjectType]:
+) -> list[GrapheneObjectType]:
     results = []
     for _, value in root_schema.type_map.items():
         if not hasattr(value, "interfaces"):
@@ -224,7 +224,7 @@ def find_types_implementing_interface(
 
 async def extract_schema_models(
     fields: dict, schema: Union[GrapheneObjectType, GraphQLUnionType], root_schema: GraphQLSchema
-) -> Set[str]:
+) -> set[str]:
     response = set()
 
     if isinstance(schema, GraphQLUnionType):

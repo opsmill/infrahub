@@ -1,8 +1,9 @@
 import os
+from pathlib import Path
 
 import pytest
 from git import Repo
-from infrahub_sdk import UUIDT, InfrahubNode
+from infrahub_sdk import UUIDT, Config, InfrahubClient, InfrahubNode
 from infrahub_sdk.branch import BranchData
 
 from infrahub.core.constants import InfrahubKind
@@ -13,24 +14,28 @@ from infrahub.exceptions import (
     RepositoryFileNotFoundError,
     TransformError,
 )
-from infrahub.git import (
-    BRANCHES_DIRECTORY_NAME,
-    COMMITS_DIRECTORY_NAME,
-    TEMPORARY_DIRECTORY_NAME,
+from infrahub.git import InfrahubRepository
+from infrahub.git.base import (
+    RepoFileInformation,
+    extract_repo_file_information,
+)
+from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
     GraphQLQueryInformation,
-    InfrahubRepository,
-    RepoFileInformation,
-    Worktree,
-    extract_repo_file_information,
 )
+from infrahub.git.worktree import Worktree
 from infrahub.utils import find_first_file_in_directory
+from tests.helpers.test_client import dummy_async_request
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     assert repo.directory_root == os.path.join(git_repos_dir, git_upstream_repo_01["name"])
@@ -41,7 +46,10 @@ async def test_directories_props(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present
@@ -54,10 +62,13 @@ async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
 async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
     # Create a directory and a file where the repository will be created
     os.mkdir(os.path.join(git_repos_dir, git_upstream_repo_01["name"]))
-    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt"), mode="w", encoding="utf-8").close()
+    Path(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt")).touch()
 
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present
@@ -69,10 +80,13 @@ async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
     # Create a file where the repository will be created
-    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"]), mode="w", encoding="utf-8").close()
+    Path(os.path.join(git_repos_dir, git_upstream_repo_01["name"])).touch()
 
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present
@@ -126,7 +140,7 @@ async def test_create_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
+    with Path(os.path.join(repo.directory_default, first_file)).open(mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -174,7 +188,7 @@ async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
+    with Path(os.path.join(repo.directory_default, first_file)).open(mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -343,7 +357,7 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData):
     # Add a new commit in the main branch to have something to rebase.
     git_repo = repo.get_git_repo_main()
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
+    with Path(os.path.join(repo.directory_default, first_file)).open("a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -662,10 +676,10 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
     assert len(yaml_files) == 4
 
-    yaml_files = await repo.find_files(extension="yml", directory="test_files", branch_name="main")
+    yaml_files = await repo.find_files(extension="yml", directory=Path("test_files"), branch_name="main")
     assert len(yaml_files) == 2
 
-    yaml_files = await repo.find_files(extension="yml", directory="notpresent", branch_name="main")
+    yaml_files = await repo.find_files(extension="yml", directory=Path("notpresent"), branch_name="main")
     assert len(yaml_files) == 0
 
 
@@ -707,8 +721,7 @@ async def test_calculate_diff_between_commits(
 
     # Add a file
     new_file = "mynewfile.txt"
-    with open(os.path.join(worktree.directory, new_file), "w", encoding="utf-8") as file:
-        file.writelines(["this is a new file\n"])
+    Path(os.path.join(worktree.directory, new_file)).write_text("this is a new file\n", encoding="utf-8")
 
     # Remove a file
     file_to_remove = "pyproject.toml"

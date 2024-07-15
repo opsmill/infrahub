@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import difflib
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import pytest
 import ujson
@@ -25,7 +25,7 @@ class InfrahubItem(pytest.Item):
         resource_name: str,
         resource_config: InfrahubRepositoryConfigElement,
         test: InfrahubTest,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
@@ -35,7 +35,7 @@ class InfrahubItem(pytest.Item):
 
         # Smoke tests do not need this, hence this clause
         if isinstance(self.test.spec, InfrahubInputOutputTest):
-            self.test.spec.update_paths(base_dir=self.fspath.dirpath())
+            self.test.spec.update_paths(base_dir=self.path.parent)
 
     def validate_resource_config(self) -> None:
         """Make sure that a test resource config is properly defined."""
@@ -73,5 +73,5 @@ class InfrahubItem(pytest.Item):
 
         return str(excinfo.value)
 
-    def reportinfo(self) -> Tuple[Union[Path, str], Optional[int], str]:
+    def reportinfo(self) -> tuple[Union[Path, str], Optional[int], str]:
         return self.path, 0, f"resource: {self.name}"

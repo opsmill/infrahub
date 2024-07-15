@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub_sdk.utils import extract_fields
 
@@ -93,7 +93,7 @@ async def default_resolver(*args, **kwargs):
         return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
 
 
-async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
     """Resolver for relationships of cardinality=one for Edged responses
 
     This resolver is used for paginated responses and as such we redefined the requested
@@ -121,7 +121,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
         for key, value in kwargs.items()
         if "__" in key and value or key in ["id", "ids"]
     }
-    response: Dict[str, Any] = {"node": None, "properties": {}}
+    response: dict[str, Any] = {"node": None, "properties": {}}
 
     async with context.db.start_session() as db:
         objs = await NodeManager.query_peers(
@@ -150,7 +150,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
 async def many_relationship_resolver(
     parent: dict, info: GraphQLResolveInfo, include_descendants: Optional[bool] = False, **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Resolver for relationships of cardinality=many for Edged responses
 
     This resolver is used for paginated responses and as such we redefined the requested
@@ -183,7 +183,7 @@ async def many_relationship_resolver(
         if "__" in key and value or key in ["id", "ids"]
     }
 
-    response: Dict[str, Any] = {"edges": [], "count": None}
+    response: dict[str, Any] = {"edges": [], "count": None}
 
     source_kind = node_schema.kind
 
@@ -253,13 +253,13 @@ async def many_relationship_resolver(
         return response
 
 
-async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
     return await hierarchy_resolver(
         direction=RelationshipHierarchyDirection.ANCESTORS, parent=parent, info=info, **kwargs
     )
 
 
-async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
     return await hierarchy_resolver(
         direction=RelationshipHierarchyDirection.DESCENDANTS, parent=parent, info=info, **kwargs
     )
@@ -267,7 +267,7 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
 
 async def hierarchy_resolver(
     direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Resolver for ancestors and dependants for Hierarchical nodes
 
     This resolver is used for paginated responses and as such we redefined the requested
@@ -292,7 +292,7 @@ async def hierarchy_resolver(
         if "__" in key and value or key in ["id", "ids"]
     }
 
-    response: Dict[str, Any] = {"edges": [], "count": None}
+    response: dict[str, Any] = {"edges": [], "count": None}
 
     async with context.db.start_session() as db:
         if "count" in fields:

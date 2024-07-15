@@ -100,12 +100,12 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: frontend/app/package-lock.json
       - name: Install frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: npm install
       - name: Run ESLint
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: npm run eslint
 
   python-lint:
@@ -117,9 +117,9 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
       - name: "Setup environment"
-        run: "pip install ruff==0.4.3"
+        run: "pip install ruff==0.4.6"
       - name: "Linting: ruff check"
-        run: "ruff check --diff ."
+        run: "ruff check ."
       - name: "Linting: ruff format"
         run: "ruff format --check --diff ."
 
@@ -194,7 +194,6 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
-        pydantic-version: ["1.10.14", "^2"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -220,14 +219,12 @@ jobs:
           pipx install poetry
           poetry config virtualenvs.prefer-active-python true
           pip install invoke toml
-      - name: Set Version of Pydantic
-        run: poetry add pydantic@${{ matrix.pydantic-version }}
       - name: "Install Package"
         run: "poetry install --all-extras"
-      - name: "Pylint Tests"
-        run: "poetry run pylint infrahub_sdk/"
       - name: "Mypy Tests"
         run: "poetry run mypy --show-error-codes infrahub_sdk/"
+      - name: "Pylint Tests"
+        run: "poetry run pylint infrahub_sdk/"
       - name: "Unit Tests"
         run: "poetry --directory python_sdk run coverage run --source=infrahub_sdk -m pytest python_sdk/tests/unit/"
         working-directory: ./
@@ -360,7 +357,7 @@ jobs:
           flag-name: backend-unit
           parallel: true
       - name: Generate tracing spans
-        if: always()
+        if: always() && github.event.pull_request.head.repo.fork == false
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
           jobName: "backend-tests-unit"
@@ -396,10 +393,10 @@ jobs:
         run: "invoke dev.build"
       - name: "Pull External Docker Images"
         run: "invoke dev.pull"
-      - name: "Pylint Tests"
-        run: "invoke backend.pylint --docker"
       - name: "Mypy Tests"
         run: "invoke backend.mypy --docker"
+      - name: "Pylint Tests"
+        run: "invoke backend.pylint --docker"
       - name: "Integration Tests"
         run: "invoke backend.test-integration"
       - name: "Coveralls : Integration Tests"
@@ -500,15 +497,15 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: frontend/app/package-lock.json
       - name: "Install frontend"
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: npm install
       - name: "Run unit tests"
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: "npm run test:coverage"
       - name: "Run integration tests"
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: "npm run cypress:run"
       - name: Upload cypress screenshots
         if: failure()
@@ -521,7 +518,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: frontend/cypress/videos/*
+          path: frontend/app/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -530,7 +527,7 @@ jobs:
         with:
           flag-name: frontend-unit
           parallel: true
-          file: frontend/coverage/lcov.info
+          file: frontend/app/coverage/lcov.info
 
   documentation:
     defaults:
@@ -609,7 +606,7 @@ jobs:
   E2E-testing-playwright:
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./frontend/app
     needs:
       - javascript-lint
       - files-changed
@@ -664,6 +661,7 @@ jobs:
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
 
       - name: Enable tracing
+        if: github.event.pull_request.head.repo.fork == false
         run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
       - name: Set tracing configuration
         run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
@@ -734,12 +732,12 @@ jobs:
         run: npm run ci:test:e2e
 
       - name: Generate tracing spans
-        if: always()
+        if: always() && github.event.pull_request.head.repo.fork == false
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
           jobName: "E2E-testing-playwright"
           stepName: "Run Playwright tests"
-          path: "frontend/playwright-junit.xml"
+          path: "frontend/app/playwright-junit.xml"
           type: "junit"
           githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
@@ -748,7 +746,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: frontend/playwright-report/
+          path: frontend/app/playwright-report/
 
       - name: Containers after tests
         if: always()

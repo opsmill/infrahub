@@ -1,7 +1,6 @@
 from typing import Optional
 
-from pydantic.v1 import BaseModel, root_validator, validator
-from pydantic.v1.error_wrappers import ValidationError
+from pydantic import BaseModel, ValidationError, field_validator
 from ujson import loads
 
 from infrahub.api.exception_handlers import generic_api_exception_handler
@@ -10,15 +9,16 @@ from infrahub.exceptions import Error
 
 class ModelForTesting(BaseModel):
     field_1: Optional[str] = None
+    field_2: str
 
-    @validator("field_1", always=True)
+    @field_validator("field_1", mode="before")
     @classmethod
-    def always_fail(cls, *args, **kwargs):
+    def always_fail(cls, value: Optional[str] = None) -> str:
         raise ValueError("this is the error message")
 
-    @root_validator
+    @field_validator("field_2", mode="before")
     @classmethod
-    def always_fail_2(cls, values):
+    def always_fail_more(cls, value: Optional[str] = None) -> str:
         raise ValueError("another error message")
 
 
@@ -27,12 +27,12 @@ class MockError(Error):
     DESCRIPTION = "the teapot error"
 
     def __init__(self, message: Optional[str]):
-        self.message = message
+        self.message = message or ""
 
 
 class TestAPIExceptionHandler:
     def setup_method(self):
-        self.error_message = "this is the error message"
+        self.error_message = "Value error, this is the error message"
 
     async def test_plain_exception_error(self):
         exception = ValueError(self.error_message)
@@ -43,10 +43,10 @@ class TestAPIExceptionHandler:
         assert error_dict["errors"] == [{"message": self.error_message, "extensions": {"code": 500}}]
 
     async def test_pydantic_validation_error(self):
-        error_message_2 = "another error message"
-        exception = None
+        error_message_2 = "Value error, another error message"
+        exception = Error()
         try:
-            ModelForTesting(field_1="abc")
+            ModelForTesting(field_1="abc", field_2="def")
         except ValidationError as exc:
             exception = exc
 

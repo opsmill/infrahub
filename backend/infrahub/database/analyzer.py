@@ -2,7 +2,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -10,7 +10,6 @@ from infrahub_sdk import Timestamp
 from neo4j import Record
 
 # pylint: skip-file
-from infrahub import config
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
@@ -32,8 +31,8 @@ class QueryAnalyzer:
         self._start_time: Optional[Timestamp] = None
         self.name = "query_analyzer"
         self.index = 0
-        self.measurements: List[QueryMeasurement] = []
-        self.count_per_query: Dict[str, int] = defaultdict(int)
+        self.measurements: list[QueryMeasurement] = []
+        self.count_per_query: dict[str, int] = defaultdict(int)
         self._df: Optional[pd.DataFrame] = None
         self.measure_memory_usage: bool = False
         self.sampling_memory_usage: int = 25
@@ -155,8 +154,8 @@ query_stats = QueryAnalyzer()
 
 class InfrahubDatabaseAnalyzer(InfrahubDatabase):
     async def execute_query(
-        self, query: str, params: config.Dict[str, Any] | None = None, name: str | None = "undefined"
-    ) -> List[Record]:
+        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
+    ) -> list[Record]:
         time_start = time.time()
         if name and query_stats.sample_memory(name=name):
             query = "PROFILE\n" + query
@@ -181,8 +180,8 @@ class InfrahubDatabaseAnalyzer(InfrahubDatabase):
         return response
 
     async def execute_query_with_metadata(
-        self, query: str, params: config.Dict[str, Any] | None = None, name: str | None = "undefined"
-    ) -> Tuple[List[Record], Dict[str, Any]]:
+        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
+    ) -> tuple[list[Record], dict[str, Any]]:
         time_start = time.time()
         if name and query_stats.sample_memory(name=name):
             query = "PROFILE\n" + query

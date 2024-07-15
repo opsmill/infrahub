@@ -282,6 +282,28 @@ async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branc
     assert source.id == crit_profile_1.id
 
 
+async def test_get_many_with_profile_generic(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
+):
+    generic_profile_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
+    generic_profile = await Node.init(db=db, schema=generic_profile_schema)
+    await generic_profile.new(db=db, profile_name="generic_profile", color="green", profile_priority=1001)
+    await generic_profile.save(db=db)
+    crit_profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    crit_profile = await Node.init(db=db, schema=crit_profile_schema)
+    await crit_profile.new(db=db, profile_name="crit_profile", color="blue", profile_priority=1002)
+    await crit_profile.save(db=db)
+    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
+    await crit_low.profiles.update(db=db, data=[crit_profile, generic_profile])
+    await crit_low.save(db=db)
+
+    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
+    assert len(node_map) == 2
+    assert node_map[criticality_low.id].color.value == "green"
+    source = await node_map[criticality_low.id].color.get_source(db=db)
+    assert source.id == generic_profile.id
+
+
 async def test_get_many_with_multiple_profiles_same_priority(
     db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
 ):
@@ -302,6 +324,39 @@ async def test_get_many_with_multiple_profiles_same_priority(
     assert node_map[criticality_low.id].color.value == lowest_uuid_profile.color.value
     source = await node_map[criticality_low.id].color.get_source(db=db)
     assert source.id == lowest_uuid_profile.id
+
+
+async def test_get_many_branch_agnostic(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    crit_schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
+    new_crit = await Node.init(schema=crit_schema, db=db, branch=branch)
+    await new_crit.new(db=db, name="new crit", level=42)
+    await new_crit.save(db=db)
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=default_branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id], branch_agnostic=True
+    )
+    assert len(node_map) == 3
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=default_branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id]
+    )
+    assert len(node_map) == 2
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == default_branch.name
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id]
+    )
+    assert len(node_map) == 3
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == branch.name
+    assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
 
 
 async def test_query_no_filter(

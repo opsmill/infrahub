@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Generator, Optional, Union
 
 from infrahub_sdk import UUIDT
 
@@ -70,7 +70,7 @@ class RelationshipPeerData:
     peer_kind: str
     """Kind of the Peer Node."""
 
-    properties: Dict[str, Union[FlagPropertyData, NodePropertyData]]
+    properties: dict[str, Union[FlagPropertyData, NodePropertyData]]
     """UUID of the Relationship Node."""
 
     rel_node_id: Optional[UUID] = None
@@ -82,12 +82,12 @@ class RelationshipPeerData:
     rel_node_db_id: Optional[str] = None
     """Internal DB ID of the Relationship Node."""
 
-    rels: Optional[List[RelData]] = None
+    rels: Optional[list[RelData]] = None
     """Both relationships pointing at this Relationship Node."""
 
     updated_at: Optional[str] = None
 
-    def rel_ids_per_branch(self) -> dict[str, List[Union[str, int]]]:
+    def rel_ids_per_branch(self) -> dict[str, list[Union[str, int]]]:
         response = defaultdict(list)
         for rel in self.rels:
             response[rel.branch].append(rel.db_id)
@@ -128,7 +128,7 @@ class FullRelationshipIdentifier:
 class RelationshipQuery(Query):
     def __init__(
         self,
-        rel: Union[Type[Relationship], Relationship] = None,
+        rel: Union[type[Relationship], Relationship] = None,
         rel_type: Optional[str] = None,
         source: Node = None,
         source_id: UUID = None,
@@ -137,7 +137,6 @@ class RelationshipQuery(Query):
         schema: RelationshipSchema = None,
         branch: Branch = None,
         at: Union[Timestamp, str] = None,
-        *args,
         **kwargs,
     ):
         if not source and not source_id:
@@ -175,7 +174,7 @@ class RelationshipQuery(Query):
         else:
             self.at = Timestamp()
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
     def get_relationship_properties_dict(self, status: RelationshipStatus) -> dict[str, Optional[str]]:
         rel_prop_dict = {
@@ -199,15 +198,14 @@ class RelationshipCreateQuery(RelationshipQuery):
         self,
         destination: Node = None,
         destination_id: UUID = None,
-        *args,
         **kwargs,
     ):
         if not destination and not destination_id:
             raise ValueError("Either destination or destination_id must be provided.")
 
-        super().__init__(destination=destination, destination_id=destination_id, *args, **kwargs)
+        super().__init__(destination=destination, destination_id=destination_id, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -284,17 +282,16 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def __init__(
         self,
-        properties_to_update: List[str],
+        properties_to_update: list[str],
         data: RelationshipPeerData,
-        *args,
         **kwargs,
     ):
         self.properties_to_update = properties_to_update
         self.data = data
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -368,13 +365,12 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
     def __init__(
         self,
         data: RelationshipPeerData,
-        *args,
         **kwargs,
     ):
         self.data = data
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.data.peer_id
         self.params["rel_node_id"] = self.data.rel_node_id
@@ -420,7 +416,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
         for prop_name, prop in self.data.properties.items():
             self.add_to_query(
-                "CREATE (prop_%s)-[rel_prop_%s:%s $rel_prop ]->(rl)" % (prop_name, prop_name, prop_name.upper()),
+                "CREATE (prop_%s)<-[rel_prop_%s:%s $rel_prop ]-(rl)" % (prop_name, prop_name, prop_name.upper()),
             )
             self.return_labels.append(f"rel_prop_{prop_name}")
 
@@ -430,17 +426,13 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(
-        self,
-        *args,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         if inspect.isclass(self.rel):
             raise TypeError("An instance of Relationship must be provided to RelationshipDeleteQuery")
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
@@ -456,15 +448,36 @@ class RelationshipDeleteQuery(RelationshipQuery):
         MATCH (s:Node { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d:Node { uuid: $destination_id })
         CREATE (s)%s(rl)
         CREATE (rl)%s(d)
+        WITH rl
+        CALL {
+            WITH rl
+            MATCH (rl)-[edge:IS_VISIBLE]->(visible)
+            CREATE (rl)-[deleted_edge:IS_VISIBLE $rel_prop]->(visible)
+        }
+        CALL {
+            WITH rl
+            MATCH (rl)-[edge:IS_PROTECTED]->(protected)
+            CREATE (rl)-[deleted_edge:IS_PROTECTED $rel_prop]->(protected)
+        }
+        CALL {
+            WITH rl
+            MATCH (rl)-[edge:HAS_OWNER]->(owner_node)
+            CREATE (rl)-[deleted_edge:HAS_OWNER $rel_prop]->(owner_node)
+        }
+        CALL {
+            WITH rl
+            MATCH (rl)-[edge:HAS_SOURCE]->(source_node)
+            CREATE (rl)-[deleted_edge:HAS_SOURCE $rel_prop]->(source_node)
+        }
         """ % (
             r1,
             r2,
         )
 
         self.params["at"] = self.at.to_string()
+        self.return_labels = ["rl"]
 
         self.add_to_query(query)
-        self.return_labels = ["s", "d", "rl", "r1", "r2"]
 
 
 class RelationshipGetPeerQuery(Query):
@@ -476,14 +489,13 @@ class RelationshipGetPeerQuery(Query):
         self,
         filters: Optional[dict] = None,
         source: Optional[Node] = None,
-        source_ids: Optional[List[str]] = None,
+        source_ids: Optional[list[str]] = None,
         source_kind: Optional[str] = None,
-        rel: Union[Type[Relationship], Relationship] = None,
+        rel: Union[type[Relationship], Relationship] = None,
         rel_type: Optional[str] = None,
         schema: RelationshipSchema = None,
         branch: Branch = None,
         at: Union[Timestamp, str] = None,
-        *args,
         **kwargs,
     ):
         if not source and not source_ids:
@@ -517,9 +529,9 @@ class RelationshipGetPeerQuery(Query):
         else:
             self.at = Timestamp(at)
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs):  # pylint: disable=too-many-statements
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -671,7 +683,7 @@ class RelationshipGetPeerQuery(Query):
         else:
             self.order_by.append("peer.uuid")
 
-    def get_peer_ids(self) -> List[str]:
+    def get_peer_ids(self) -> list[str]:
         """Return a list of UUID of nodes associated with this relationship."""
 
         return [peer.peer_id for peer in self.get_peers()]
@@ -719,7 +731,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -759,10 +771,9 @@ class RelationshipGetByIdentifierQuery(Query):
 
     def __init__(
         self,
-        identifiers: Optional[List[str]] = None,
-        full_identifiers: Optional[List[FullRelationshipIdentifier]] = None,
-        excluded_namespaces: Optional[List[str]] = None,
-        *args,
+        identifiers: Optional[list[str]] = None,
+        full_identifiers: Optional[list[FullRelationshipIdentifier]] = None,
+        excluded_namespaces: Optional[list[str]] = None,
         **kwargs,
     ) -> None:
         if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
@@ -780,9 +791,9 @@ class RelationshipGetByIdentifierQuery(Query):
         if "Internal" not in self.excluded_namespaces:
             self.excluded_namespaces.append("Internal")
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["identifiers"] = self.identifiers
         self.params["full_identifiers"] = [
             [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
@@ -836,19 +847,18 @@ class RelationshipCountPerNodeQuery(Query):
 
     def __init__(
         self,
-        node_ids: List[str],
+        node_ids: list[str],
         identifier: str,
         direction: RelationshipDirection,
-        *args,
         **kwargs,
     ):
         self.node_ids = node_ids
         self.identifier = identifier
         self.direction = direction
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -878,8 +888,8 @@ class RelationshipCountPerNodeQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]
 
-    async def get_count_per_peer(self) -> Dict[str, int]:
-        data: Dict[str, int] = {}
+    async def get_count_per_peer(self) -> dict[str, int]:
+        data: dict[str, int] = {}
         for result in self.results:
             data[result.get("peer_node.uuid")] = result.get("nbr_peers")
 

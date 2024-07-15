@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.manager import NodeManager
@@ -42,8 +42,8 @@ log = get_logger(__name__)
 
 
 async def get_display_labels_per_kind(
-    kind: str, ids: List[str], branch_name: str, db: InfrahubDatabase
-) -> Dict[str, str]:
+    kind: str, ids: list[str], branch_name: str, db: InfrahubDatabase
+) -> dict[str, str]:
     """Return the display_labels of a list of nodes of a specific kind."""
     branch = await registry.get_branch(branch=branch_name, db=db)
     schema_branch = db.schema.get_schema_branch(name=branch.name)
@@ -52,9 +52,9 @@ async def get_display_labels_per_kind(
     return {node_id: await node.render_display_label(db=db) for node_id, node in nodes.items()}
 
 
-async def get_display_labels(nodes: Dict[str, Dict[str, List[str]]], db: InfrahubDatabase) -> Dict[str, Dict[str, str]]:
+async def get_display_labels(nodes: dict[str, dict[str, list[str]]], db: InfrahubDatabase) -> dict[str, dict[str, str]]:
     """Query the display_labels of a group of nodes organized per branch and per kind."""
-    response: Dict[str, Dict[str, str]] = {}
+    response: dict[str, dict[str, str]] = {}
     for branch_name, items in nodes.items():
         if branch_name not in response:
             response[branch_name] = {}
@@ -66,16 +66,16 @@ async def get_display_labels(nodes: Dict[str, Dict[str, List[str]]], db: Infrahu
 
 
 class DiffPayloadBuilder:
-    def __init__(self, db: InfrahubDatabase, diff: BranchDiffer, kinds_to_include: Optional[List[str]] = None):
+    def __init__(self, db: InfrahubDatabase, diff: BranchDiffer, kinds_to_include: Optional[list[str]] = None):
         self.db = db
         self.diff = diff
         self.kinds_to_include = kinds_to_include
-        self.diffs: List[BranchDiffNode] = []
-        self.entries: Dict[str, BranchDiffEntry] = {}
-        self.rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = {}
-        self.display_labels: Dict[str, Dict[str, str]] = {}
-        self.rels: Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]] = {}
-        self.nodes: Dict[str, Dict[str, NodeDiffElement]] = {}
+        self.diffs: list[BranchDiffNode] = []
+        self.entries: dict[str, BranchDiffEntry] = {}
+        self.rels_per_node: dict[str, dict[str, dict[str, list[RelationshipDiffElement]]]] = {}
+        self.display_labels: dict[str, dict[str, str]] = {}
+        self.rels: dict[str, dict[str, dict[str, RelationshipDiffElement]]] = {}
+        self.nodes: dict[str, dict[str, NodeDiffElement]] = {}
         self.is_parsed: bool = False
 
     def _add_node_summary(self, branch_diff_node: BranchDiffNode, action: DiffAction) -> None:
@@ -87,7 +87,7 @@ class DiffPayloadBuilder:
             return
         self.entries[node_id].display_label[branch] = display_label
 
-    def _get_branch_display_label_map(self, branch_name: str) -> Dict[str, str]:
+    def _get_branch_display_label_map(self, branch_name: str) -> dict[str, str]:
         return self.display_labels.get(branch_name, {})
 
     def _get_node_display_label(self, branch_name: str, node_id: str) -> str:
@@ -374,7 +374,7 @@ class DiffPayloadBuilder:
                     self.diffs.append(branch_diff_node)
 
     async def _process_one_node_relationships(
-        self, node_id: str, relationship_diffs_by_name: Dict[str, List[RelationshipDiffElement]], branch_name: str
+        self, node_id: str, relationship_diffs_by_name: dict[str, list[RelationshipDiffElement]], branch_name: str
     ) -> Optional[BranchDiffNode]:
         node_diff = None
         node_display_label = self._get_node_display_label(branch_name=branch_name, node_id=node_id)
@@ -455,22 +455,22 @@ class DiffPayloadBuilder:
             await self._parse_diff()
         return BranchDiff(diffs=list(self.entries.values()))
 
-    async def get_node_diffs_by_branch(self) -> Dict[str, List[BranchDiffNode]]:
+    async def get_node_diffs_by_branch(self) -> dict[str, list[BranchDiffNode]]:
         if not self.is_parsed:
             await self._parse_diff()
-        node_diffs_by_branch: Dict[str, List[BranchDiffNode]] = defaultdict(list)
+        node_diffs_by_branch: dict[str, list[BranchDiffNode]] = defaultdict(list)
         for node_diff in self.diffs:
             node_diffs_by_branch[node_diff.branch].append(node_diff)
         return node_diffs_by_branch
 
-    async def get_branch_diff_nodes(self) -> List[BranchDiffNode]:
+    async def get_branch_diff_nodes(self) -> list[BranchDiffNode]:
         if not self.is_parsed:
             await self._parse_diff()
         return self.diffs
 
 
 def extract_diff_relationship_one(
-    node_id: str, name: str, identifier: str, rels: List[RelationshipDiffElement], display_labels: Dict[str, str]
+    node_id: str, name: str, identifier: str, rels: list[RelationshipDiffElement], display_labels: dict[str, str]
 ) -> Optional[BranchDiffRelationshipOne]:
     """Extract a BranchDiffRelationshipOne object from a list of RelationshipDiffElement."""
 
@@ -552,7 +552,7 @@ def extract_diff_relationship_one(
 
 
 def extract_diff_relationship_many(
-    node_id: str, name: str, identifier: str, rels: List[RelationshipDiffElement], display_labels: Dict[str, str]
+    node_id: str, name: str, identifier: str, rels: list[RelationshipDiffElement], display_labels: dict[str, str]
 ) -> Optional[BranchDiffRelationshipMany]:
     """Extract a BranchDiffRelationshipMany object from a list of RelationshipDiffElement."""
 

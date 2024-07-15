@@ -41,7 +41,7 @@ class InfraCircuit(NetboxModel):
 
 class InfraDevice(NetboxModel):
     _modelname = "InfraDevice"
-    _identifiers = ("name", "location", "rack", "organization")
+    _identifiers = ("location", "rack", "organization", "name")
     _attributes = ("model", "role", "tags", "description", "serial_number", "asset_tag")
     name: Optional[str] = None
     description: Optional[str] = None
@@ -69,7 +69,7 @@ class InfraIPAddress(NetboxModel):
 
 class InfraInterfaceL2L3(NetboxModel):
     _modelname = "InfraInterfaceL2L3"
-    _identifiers = ("name", "device")
+    _identifiers = ("device", "name")
     _attributes = ("tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
     l2_mode: Optional[str] = None
     name: str
@@ -114,7 +114,7 @@ class InfraRack(NetboxModel):
     _identifiers = ("name", "location")
     _attributes = ("role", "tags", "height", "facility_id", "serial_number", "asset_tag")
     name: str
-    height: int
+    height: Optional[int] = None
     facility_id: Optional[str] = None
     serial_number: Optional[str] = None
     asset_tag: Optional[str] = None

@@ -4,7 +4,7 @@ import hashlib
 import keyword
 import os
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Literal, Optional, Type, Union, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
@@ -30,8 +30,8 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-public-methods
-    _exclude_from_hash: List[str] = ["attributes", "relationships", "filters"]
-    _sort_by: List[str] = ["namespace", "name"]
+    _exclude_from_hash: list[str] = ["attributes", "relationships", "filters"]
+    _sort_by: list[str] = ["namespace", "name"]
 
     @property
     def is_node_schema(self) -> bool:
@@ -68,7 +68,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""
 
-        md5hash = hashlib.md5()
+        md5hash = hashlib.md5(usedforsecurity=False)
         md5hash.update(super().get_hash(display_values=display_values).encode())
 
         for attr_name in sorted(self.attribute_names):
@@ -114,7 +114,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         other: Self,
         get_func: Callable,
         get_map_func: Callable,
-        obj_type: Union[Type[AttributeSchema], Type[RelationshipSchema], Type[FilterSchema]],
+        obj_type: type[Union[AttributeSchema, RelationshipSchema, FilterSchema]],
     ) -> HashableModelDiff:
         """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff
         The logic is the same for both, except that the functions we are using to access these objects are differents
@@ -125,8 +125,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         """
         # Build a mapping between name and id for all element as well as the reverse mapping to make it easy to access the data
-        local_map: Dict[str, str] = get_map_func(self)
-        other_map: Dict[str, str] = get_map_func(other)
+        local_map: dict[str, str] = get_map_func(self)
+        other_map: dict[str, str] = get_map_func(other)
 
         reversed_map_local = dict(map(reversed, local_map.items()))
         reversed_map_other = dict(map(reversed, other_map.items()))
@@ -264,9 +264,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         raise ValueError(f"Unable to find the relationship {id}")
 
-    def get_relationships_by_identifier(self, id: str) -> List[RelationshipSchema]:
+    def get_relationships_by_identifier(self, id: str) -> list[RelationshipSchema]:
         """Return a list of relationship instead of a single one"""
-        rels: List[RelationshipSchema] = []
+        rels: list[RelationshipSchema] = []
         for item in self.relationships:
             if item.identifier == id:
                 rels.append(item)
@@ -276,62 +276,62 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     def get_relationships_of_kind(self, relationship_kinds: Iterable[RelationshipKind]) -> list[RelationshipSchema]:
         return [r for r in self.relationships if r.kind in relationship_kinds]
 
-    def get_attributes_name_id_map(self) -> Dict[str, str]:
+    def get_attributes_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for attr in self.attributes:
             name_id_map[attr.name] = attr.id
         return name_id_map
 
-    def get_relationship_name_id_map(self) -> Dict[str, str]:
+    def get_relationship_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for rel in self.relationships:
             name_id_map[rel.name] = rel.id
         return name_id_map
 
-    def get_filter_name_id_map(self) -> Dict[str, str]:
+    def get_filter_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for filter in self.filters:
             name_id_map[filter.name] = filter.id
         return name_id_map
 
     @property
-    def valid_input_names(self) -> List[str]:
+    def valid_input_names(self) -> list[str]:
         return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES
 
     @property
-    def attribute_names(self) -> List[str]:
+    def attribute_names(self) -> list[str]:
         return [item.name for item in self.attributes]
 
     @property
-    def relationship_names(self) -> List[str]:
+    def relationship_names(self) -> list[str]:
         return [item.name for item in self.relationships]
 
     @property
-    def filter_names(self) -> List[str]:
+    def filter_names(self) -> list[str]:
         return [item.name for item in self.filters]
 
     @property
-    def mandatory_input_names(self) -> List[str]:
+    def mandatory_input_names(self) -> list[str]:
         return self.mandatory_attribute_names + self.mandatory_relationship_names
 
     @property
-    def mandatory_attribute_names(self) -> List[str]:
+    def mandatory_attribute_names(self) -> list[str]:
         return [item.name for item in self.attributes if not item.optional and item.default_value is None]
 
     @property
-    def mandatory_relationship_names(self) -> List[str]:
+    def mandatory_relationship_names(self) -> list[str]:
         return [item.name for item in self.relationships if not item.optional]
 
     @property
-    def local_attributes(self) -> List[AttributeSchema]:
+    def local_attributes(self) -> list[AttributeSchema]:
         return [item for item in self.attributes if not item.inherited]
 
     @property
-    def local_relationships(self) -> List[RelationshipSchema]:
+    def local_relationships(self) -> list[RelationshipSchema]:
         return [item for item in self.relationships if not item.inherited]
 
     @property
-    def unique_attributes(self) -> List[AttributeSchema]:
+    def unique_attributes(self) -> list[AttributeSchema]:
         return [item for item in self.attributes if item.unique]
 
     @classmethod
@@ -345,7 +345,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         return fields
 
     def generate_fields_for_display_label(self) -> Optional[dict]:
-        """Generate a Dictionary containing the list of fields that are required
+        """Generate a dictionary containing the list of fields that are required
         to generate the display_label.
 
         If display_labels is not defined, we return None which equal to everything.
@@ -360,7 +360,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         return fields
 
     def generate_fields_for_hfid(self) -> Optional[dict]:
-        """Generate a Dictionary containing the list of fields that are required
+        """Generate a dictionary containing the list of fields that are required
         to generate the hfid.
 
         If display_labels is not defined, we return None which equal to everything.
@@ -427,7 +427,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         self,
         schema_branch: SchemaBranch,
         include_unique_attributes: bool = False,
-    ) -> List[List[SchemaAttributePath]]:
+    ) -> list[list[SchemaAttributePath]]:
         constraint_paths_groups = []
         if include_unique_attributes:
             for attribute_schema in self.unique_attributes:

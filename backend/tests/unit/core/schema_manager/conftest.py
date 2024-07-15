@@ -167,7 +167,7 @@ def schema_all_in_one():
                 "namespace": "Infra",
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
-                    {"name": "mybool", "kind": "Boolean", "default_value": False},
+                    {"name": "mybool", "kind": "Boolean", "default_value": False, "optional": True},
                     {"name": "local_attr", "kind": "Number", "branch": BranchSupportType.LOCAL.value},
                 ],
                 "relationships": [
@@ -345,6 +345,42 @@ def schema_parent_component() -> dict:
                     },
                 ],
             },
+        ],
+    }
+    return FULL_SCHEMA
+
+
+@pytest.fixture
+def schema_diff_attr_inheritance_types():
+    """Two generics with the same attribute but different types and a single node implementation."""
+    FULL_SCHEMA = {
+        "generics": [
+            {
+                "name": "Adapter",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "order_by": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text"}, {"name": "choice", "kind": "Text", "optional": True}],
+            },
+            {
+                "name": "Status",
+                "namespace": "Test",
+                "display_labels": ["label__value"],
+                "order_by": ["label__value"],
+                "attributes": [
+                    {"name": "label", "kind": "Text"},
+                    {"name": "choice", "kind": "Number", "optional": True},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "description": "A Circuit endpoint is attached to each end of a circuit",
+                "attributes": [{"name": "widget", "kind": "Text"}],
+                "inherit_from": ["TestAdapter", "TestStatus"],
+            }
         ],
     }
     return FULL_SCHEMA

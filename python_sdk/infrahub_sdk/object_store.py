@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 
@@ -41,7 +41,7 @@ class ObjectStore(ObjectStoreBase):
 
         return resp.text
 
-    async def upload(self, content: str, tracker: Optional[str] = None) -> Dict[str, str]:
+    async def upload(self, content: str, tracker: Optional[str] = None) -> dict[str, str]:
         url = f"{self.client.address}/api/storage/upload/content"
         headers = copy.copy(self.client.headers or {})
         if self.client.insert_tracker and tracker:
@@ -89,7 +89,7 @@ class ObjectStoreSync(ObjectStoreBase):
 
         return resp.text
 
-    def upload(self, content: str, tracker: Optional[str] = None) -> Dict[str, str]:
+    def upload(self, content: str, tracker: Optional[str] = None) -> dict[str, str]:
         url = f"{self.client.address}/api/storage/upload/content"
         headers = copy.copy(self.client.headers or {})
         if self.client.insert_tracker and tracker:

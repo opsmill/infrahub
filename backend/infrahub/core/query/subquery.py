@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.query import QueryNode
 
@@ -27,8 +27,10 @@ async def build_subquery_filter(
     result_prefix: str = "filter",
     support_profiles: bool = False,
     extra_tail_properties: Optional[dict[str, str]] = None,
-) -> Tuple[str, dict[str, Any], str]:
-    support_profiles = support_profiles and field and field.is_attribute and filter_name in ("value", "values")
+) -> tuple[str, dict[str, Any], str]:
+    support_profiles = (
+        support_profiles and field and field.is_attribute and filter_name in ("value", "values", "isnull")
+    )
     params = {}
     prefix = f"{result_prefix}{subquery_idx}"
 
@@ -62,13 +64,23 @@ async def build_subquery_filter(
     to_return = f"{node_alias} AS {prefix}"
     with_extra = ""
     final_with_extra = ""
-    if extra_tail_properties:
+    is_isnull = filter_name == "isnull"
+    if extra_tail_properties or is_isnull:
         tail_node = field_filter[-1]
         with_extra += f", {tail_node.name}"
         final_with_extra += f", latest_node_details[2] AS {tail_node.name}"
+    if extra_tail_properties:
         for variable_name, tail_property in extra_tail_properties.items():
             to_return += f", {tail_node.name}.{tail_property} AS {variable_name}"
-    match = "OPTIONAL MATCH" if optional_match else "MATCH"
+    match = "MATCH"
+    if optional_match or is_isnull:
+        match = "OPTIONAL MATCH"
+    is_active_filter = "latest_node_details[0] = TRUE"
+    if is_isnull and filter_value is True:
+        if field is not None and field.is_relationship:
+            is_active_filter = "latest_node_details[0] = FALSE OR latest_node_details[0] IS NULL"
+        elif field is not None and field.is_attribute:
+            is_active_filter = "(latest_node_details[2]).value = 'NULL'"
     query = f"""
     WITH {node_alias}
     {match} path = {filter_str}
@@ -81,7 +93,7 @@ async def build_subquery_filter(
         all(r IN relationships(path) WHERE r.status = "active") AS is_active{with_extra}
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     WITH head(collect([is_active, {node_alias}{with_extra}])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
+    WHERE {is_active_filter}
     WITH latest_node_details[1] AS {node_alias}{final_with_extra}
     RETURN {to_return}
     """
@@ -100,7 +112,7 @@ async def build_subquery_order(
     result_prefix: Optional[str] = None,
     support_profiles: bool = False,
     extra_tail_properties: Optional[dict[str, str]] = None,
-) -> Tuple[str, dict[str, Any], str]:
+) -> tuple[str, dict[str, Any], str]:
     support_profiles = support_profiles and field and field.is_attribute and order_by in ("value", "values")
     params = {}
     prefix = result_prefix or f"order{subquery_idx}"

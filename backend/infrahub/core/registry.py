@@ -2,15 +2,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Optional, Type, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub import lock
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from infrahub.exceptions import (
-    BranchNotFoundError,
-    DataTypeNotFoundError,
-    InitializationError,
-)
+from infrahub.exceptions import BranchNotFoundError, DataTypeNotFoundError, InitializationError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -32,32 +28,32 @@ if TYPE_CHECKING:
 @dataclass
 class Registry:
     id: Optional[str] = None
-    attribute: Dict[str, BaseAttribute] = field(default_factory=dict)
-    branch: dict = field(default_factory=dict)
+    attribute: dict[str, type[BaseAttribute]] = field(default_factory=dict)
+    branch: dict[str, Branch] = field(default_factory=dict)
     node: dict = field(default_factory=dict)
     _default_branch: Optional[str] = None
     _default_ipnamespace: Optional[str] = None
     _schema: Optional[SchemaManager] = None
-    default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
+    default_graphql_type: dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
-    data_type: Dict[str, InfrahubDataType] = field(default_factory=dict)
-    input_type: Dict[str, Union[BaseAttributeCreate, BaseAttributeUpdate]] = field(default_factory=dict)
+    data_type: dict[str, type[InfrahubDataType]] = field(default_factory=dict)
+    input_type: dict[str, Union[BaseAttributeCreate, BaseAttributeUpdate]] = field(default_factory=dict)
     account: dict = field(default_factory=dict)
     account_id: dict = field(default_factory=dict)
     node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
-    _branch_object: Optional[Type[Branch]] = None
-    _manager: Optional[Type[NodeManager]] = None
+    _branch_object: Optional[type[Branch]] = None
+    _manager: Optional[type[NodeManager]] = None
     _storage: Optional[InfrahubObjectStorage] = None
 
     @property
-    def branch_object(self) -> Type[Branch]:
+    def branch_object(self) -> type[Branch]:
         if not self._branch_object:
             raise InitializationError
         return self._branch_object
 
     @branch_object.setter
-    def branch_object(self, value: Type[Branch]) -> None:
+    def branch_object(self, value: type[Branch]) -> None:
         self._branch_object = value
 
     @property
@@ -94,14 +90,14 @@ class Registry:
         self._schema = value
 
     @property
-    def manager(self) -> Type[NodeManager]:
+    def manager(self) -> type[NodeManager]:
         if not self._manager:
             raise InitializationError
 
         return self._manager
 
     @manager.setter
-    def manager(self, value: Type[NodeManager]) -> None:
+    def manager(self, value: type[NodeManager]) -> None:
         self._manager = value
 
     @property
@@ -123,15 +119,12 @@ class Registry:
     def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
         return self.schema.get_node_schema(name=name, branch=branch)
 
-    def get_data_type(
-        self,
-        name: str,
-    ) -> InfrahubDataType:
+    def get_data_type(self, name: str) -> type[InfrahubDataType]:
         if name not in self.data_type:
             raise DataTypeNotFoundError(name=name)
         return self.data_type[name]
 
-    def get_full_schema(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, MainSchemaTypes]:
+    def get_full_schema(self, branch: Optional[Union[Branch, str]] = None) -> dict[str, MainSchemaTypes]:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch)
 

@@ -3,7 +3,7 @@ from typing import Dict
 import pendulum
 import pytest
 from deepdiff import DeepDiff
-from pydantic.v1 import Field
+from pydantic import Field
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind
@@ -591,7 +591,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
     assert (
         DeepDiff(
             expected_result_branch1_r1,
-            rels["branch1"]["testcar__testperson"]["r1"].dict(),
+            rels["branch1"]["testcar__testperson"]["r1"].model_dump(),
             ignore_order=True,
         ).to_dict()
         == {}
@@ -634,7 +634,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
     assert (
         DeepDiff(
             expected_result_branch1_r2,
-            rels["branch1"]["testcar__testperson"]["r2"].dict(),
+            rels["branch1"]["testcar__testperson"]["r2"].model_dump(),
             ignore_order=True,
         ).to_dict()
         == {}
@@ -670,7 +670,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
     assert (
         DeepDiff(
             expected_result_main_r1,
-            rels["main"]["testcar__testperson"]["r1"].dict(),
+            rels["main"]["testcar__testperson"]["r1"].model_dump(),
             ignore_order=True,
         ).to_dict()
         == {}
@@ -711,7 +711,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
     assert len(rels["branch2"]["person_previous__car"].keys()) == 2
 
     rel_id_main = list(rels["main"]["person_previous__car"].keys())[0]
-    rels_branch = [value.dict() for value in rels["branch2"]["person_previous__car"].values()]
+    rels_branch = [value.model_dump() for value in rels["branch2"]["person_previous__car"].values()]
 
     # ---------------------------------------------------
     # Branch
@@ -871,7 +871,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
     assert (
         DeepDiff(
             expected_result_main,
-            {key: value.dict() for key, value in rels["main"]["person_previous__car"].items()},
+            {key: value.model_dump() for key, value in rels["main"]["person_previous__car"].items()},
             exclude_regex_paths=paths_to_exclude,
             ignore_order=True,
         ).to_dict()
@@ -938,7 +938,7 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
     assert (
         DeepDiff(
             expected_result_branch1,
-            rels["branch1"]["builtintag__coreorganization"][rel_id_branch].dict(),
+            rels["branch1"]["builtintag__coreorganization"][rel_id_branch].model_dump(),
             ignore_order=True,
         ).to_dict()
         == {}
@@ -986,7 +986,7 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
     assert (
         DeepDiff(
             expected_result_branch1,
-            rels["main"]["builtintag__coreorganization"][rel_id_main].dict(),
+            rels["main"]["builtintag__coreorganization"][rel_id_main].model_dump(),
             ignore_order=True,
         ).to_dict()
         == {}

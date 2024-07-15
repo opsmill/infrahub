@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from graphene import Interface
 from graphene.types.interface import InterfaceOptions
@@ -20,7 +20,7 @@ class InfrahubInterfaceOptions(InterfaceOptions):
 
 class InfrahubInterface(Interface, GetListMixin):
     @classmethod
-    def resolve_type(cls, instance: Dict[str, Any], info: GraphQLResolveInfo) -> InfrahubObject:
+    def resolve_type(cls, instance: dict[str, Any], info: GraphQLResolveInfo) -> InfrahubObject:
         context: GraphqlContext = info.context
         if "type" in instance:
             return context.types[instance["type"]]

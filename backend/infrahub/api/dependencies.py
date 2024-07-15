@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, AsyncIterator, Optional
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
@@ -31,8 +31,7 @@ class BranchParams(BaseModel):
     branch: Branch
     at: Timestamp
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:

@@ -9,9 +9,11 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
+from tests.helpers.schema import TICKET, load_schema
 
 
 @pytest.fixture
@@ -566,3 +568,185 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
         edge["node"]["id"]
         for edge in resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["edges"]
     } == {peer_id, prefix_id}
+
+
+async def test_number_pool_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    create_ok = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "pool1",
+            "node": "TestingTicket",
+            "node_attribute": "ticket_id",
+            "start_range": 1,
+            "end_range": 10,
+        },
+    )
+
+    assert create_ok.data
+    assert not create_ok.errors
+
+    pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
+
+    first = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_TICKET,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "title": "first",
+            "pool": pool_id,
+        },
+    )
+
+    second = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_TICKET,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "title": "second",
+            "pool": pool_id,
+        },
+    )
+
+    third = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_TICKET,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "title": "second",
+            "pool": pool_id,
+        },
+    )
+
+    assert first.data
+    assert second.data
+    assert third.data
+
+    utilization = await graphql(
+        schema=gql_params.schema,
+        source=POOL_UTILIZATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "pool_id": pool_id,
+        },
+    )
+
+    assert not utilization.errors
+    assert utilization.data
+
+    # Number pools tied to an attribute always has a count of 1
+    assert utilization.data["InfrahubResourcePoolUtilization"]["count"] == 1
+    assert utilization.data["InfrahubResourcePoolUtilization"]["utilization"] == 30.0
+    assert utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]["display_label"] == "pool1"
+    assert utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]["utilization"] == 30.0
+
+    allocation = await graphql(
+        schema=gql_params.schema,
+        source=POOL_ALLOCATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "pool_id": pool_id,
+            "resource_id": pool_id,
+        },
+    )
+
+    assert not allocation.errors
+    assert allocation.data
+    assert allocation.data["InfrahubResourcePoolAllocated"]["count"] == 3
+    numbers = [entry["node"]["display_label"] for entry in allocation.data["InfrahubResourcePoolAllocated"]["edges"]]
+    assert sorted(numbers) == ["1", "2", "3"]
+
+
+CREATE_NUMBER_POOL = """
+mutation CreateNumberPool(
+    $name: String!,
+    $node: String!,
+    $node_attribute: String!,
+    $start_range: Int!,
+    $end_range: Int!
+  ) {
+  CoreNumberPoolCreate(
+    data: {
+      name: {value: $name},
+      node:{value: $node},
+      node_attribute: {value: $node_attribute},
+      start_range: {value: $start_range},
+      end_range: {value: $end_range}
+    }
+  ) {
+    object {
+      display_label
+      id
+    }
+  }
+}
+"""
+
+
+CREATE_TICKET = """
+mutation CreateTestingTicket(
+    $pool: String,
+    $title: String!
+	) {
+  TestingTicketCreate(
+    data: {
+        ticket_id: {from_pool: $pool},
+        title: {value: $title}
+      }) {
+    object {
+      id
+      title { value }
+      ticket_id { value }
+    }
+  }
+}
+"""
+
+POOL_UTILIZATION = """
+query PoolUtilization($pool_id: String!) {
+  InfrahubResourcePoolUtilization(pool_id: $pool_id) {
+    count
+    edges {
+      node {
+        display_label
+        id
+        kind
+        utilization
+        utilization_branches
+        utilization_default_branch
+        weight
+      }
+    }
+    utilization
+    utilization_branches
+    utilization_default_branch
+  }
+}
+"""
+
+POOL_ALLOCATION = """
+query PoolUtilization($pool_id: String!, $resource_id: String!) {
+  InfrahubResourcePoolAllocated(pool_id: $pool_id, resource_id: $resource_id) {
+    count
+    edges {
+      node {
+        branch
+        display_label
+        id
+        identifier
+        kind
+      }
+    }
+  }
+}
+"""

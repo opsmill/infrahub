@@ -20,14 +20,13 @@ class NodeUniqueAttributeConstraintQuery(Query):
         self,
         query_request: NodeUniquenessQueryRequest,
         min_count_required: int = 1,
-        *args: Any,
         **kwargs: Any,
     ):
         self.query_request = query_request
         self.min_count_required = min_count_required
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
         from_times = db.render_list_comprehension(items="relationships(potential_path)", item_name="from")

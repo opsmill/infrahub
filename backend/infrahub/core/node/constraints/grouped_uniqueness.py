@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, List, Optional, Set
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from infrahub.core import registry
 from infrahub.core.schema import (
@@ -38,14 +38,14 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         self,
         updated_node: Node,
         node_schema: MainSchemaTypes,
-        path_groups: List[List[SchemaAttributePath]],
-        filters: Optional[List[str]] = None,
+        path_groups: list[list[SchemaAttributePath]],
+        filters: Optional[list[str]] = None,
     ) -> NodeUniquenessQueryRequest:
         query_request = NodeUniquenessQueryRequest(kind=node_schema.kind)
         for path_group in path_groups:
             include_in_query = not filters
-            query_relationship_paths: Set[QueryRelationshipAttributePath] = set()
-            query_attribute_paths: Set[QueryAttributePath] = set()
+            query_relationship_paths: set[QueryRelationshipAttributePath] = set()
+            query_attribute_paths: set[QueryAttributePath] = set()
             for attribute_path in path_group:
                 if attribute_path.related_schema and attribute_path.relationship_schema:
                     if filters and attribute_path.relationship_schema.name in filters:
@@ -76,8 +76,8 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     async def _get_node_attribute_path_values(
         self,
         updated_node: Node,
-        path_group: List[SchemaAttributePath],
-    ) -> List[SchemaAttributePathValue]:
+        path_group: list[SchemaAttributePath],
+    ) -> list[SchemaAttributePathValue]:
         node_value_combination = []
         for schema_attribute_path in path_group:
             if schema_attribute_path.relationship_schema:
@@ -98,7 +98,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         return node_value_combination
 
     def _check_one_constraint_group(
-        self, schema_attribute_path_values: List[SchemaAttributePathValue], results_index: UniquenessQueryResultsIndex
+        self, schema_attribute_path_values: list[SchemaAttributePathValue], results_index: UniquenessQueryResultsIndex
     ) -> None:
         # constraint cannot be violated if this node is missing any values
         if any((sapv.value is None for sapv in schema_attribute_path_values)):
@@ -121,7 +121,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     async def _check_results(
         self,
         updated_node: Node,
-        path_groups: List[List[SchemaAttributePath]],
+        path_groups: list[list[SchemaAttributePath]],
         query_results: Iterable[QueryResult],
     ) -> None:
         results_index = UniquenessQueryResultsIndex(
@@ -140,7 +140,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         node: Node,
         node_schema: MainSchemaTypes,
         at: Optional[Timestamp] = None,
-        filters: Optional[List[str]] = None,
+        filters: Optional[list[str]] = None,
     ) -> None:
         schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
         path_groups = node_schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
@@ -155,9 +155,9 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         await query.execute(db=self.db)
         await self._check_results(updated_node=node, path_groups=path_groups, query_results=query.get_results())
 
-    async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None) -> None:
+    async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[list[str]] = None) -> None:
         node_schema = node.get_schema()
-        schemas_to_check: List[MainSchemaTypes] = [node_schema]
+        schemas_to_check: list[MainSchemaTypes] = [node_schema]
         if node_schema.inherit_from:
             for parent_schema_name in node_schema.inherit_from:
                 parent_schema = self.schema_branch.get(name=parent_schema_name, duplicate=False)

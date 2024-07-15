@@ -16,32 +16,13 @@ spec:
             - -c
             - infrahub db init
           env:
-            - name: INFRAHUB_CACHE_PORT
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
-            - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.global.kubernetesClusterDomain }}
-            - name: INFRAHUB_INTERNAL_ADDRESS
-              value: "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
-            - name: INFRAHUB_DATABASE_ADDRESS
-              value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
-            - name: INFRAHUB_DATABASE_PORT
-              value: "{{ (index .Values.database.ports 2).port }}"
-            - name: INFRAHUB_BROKER_ADDRESS
-              value: "{{ include "infrahub-helm.fullname" . }}-message-queue.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
-            - name: INFRAHUB_BROKER_USERNAME
-              value: {{ .Values.messageQueue.auth.username | quote }}
-            - name: INFRAHUB_BROKER_PASSWORD
-              value: {{ .Values.messageQueue.auth.password | quote }}
-            - name: INFRAHUB_CACHE_ADDRESS
-              value: "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
-            - name: INFRAHUB_CACHE_PORT
-              value: "{{ (index .Values.cache.ports 0).port }}"
+          {{- include "infrahub-helm.infrahubServer.defaultEnv" . | nindent 12 }}
           {{- with .Values.infrahubServer.infrahubServer.envFromExistingSecret }}
           envFrom:
             - secretRef:
                 name: {{ . }}
           {{- end }}
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          image: {{ default .Values.global.imageRegistry .Values.infrahubServer.infrahubServer.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           name: infrahub-server-db-init-job
           resources: {}
           volumeMounts:

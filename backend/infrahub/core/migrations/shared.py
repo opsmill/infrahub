@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 class MigrationResult(BaseModel):
-    errors: List[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
     nbr_migrations_executed: int = 0
 
     @property
@@ -110,8 +110,8 @@ class GraphMigration(BaseModel):
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @classmethod
-    def init(cls, *args: Any, **kwargs: Dict[str, Any]) -> Self:
-        return cls(*args, **kwargs)  # type: ignore[arg-type]
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
+        return cls(**kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError
@@ -150,8 +150,8 @@ class InternalSchemaMigration(BaseModel):
         return schema_branch
 
     @classmethod
-    def init(cls, *args: Any, **kwargs: Dict[str, Any]) -> Self:
-        return cls(*args, **kwargs)  # type: ignore[arg-type]
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
+        return cls(**kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError

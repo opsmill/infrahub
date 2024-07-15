@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.manager import NodeManager
 
@@ -39,10 +39,12 @@ class GetListMixin:
         partial_match = kwargs.pop("partial_match", False)
 
         async with context.db.start_session() as db:
-            response: Dict[str, Any] = {"edges": []}
+            response: dict[str, Any] = {"edges": []}
             offset = kwargs.pop("offset", None)
             limit = kwargs.pop("limit", None)
-            filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
+            filters = {
+                key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key == "ids"
+            }
             if "count" in fields:
                 response["count"] = await NodeManager.count(
                     db=db,

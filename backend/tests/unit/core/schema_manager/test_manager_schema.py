@@ -26,6 +26,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import SchemaNotFoundError, ValidationError
 
 from .conftest import _get_schema_by_kind
 
@@ -111,6 +112,32 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
         "CoreStandardGroup",
         "InfraTinySchema",
     }
+
+
+async def test_schema_process_inheritance_different_generic_attribute_types(schema_diff_attr_inheritance_types):
+    """Test that we raise an exception if a node is inheriting from two generics with different attribute types for a specific attribute."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_diff_attr_inheritance_types))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process_inheritance()
+
+    assert exc.value.args[0] == 'TestWidget.choice inherited from TestStatus must be the same kind ["Number", "Text"]'
+
+
+async def test_schema_process_inheritance_different_generic_attribute_types_on_node(schema_diff_attr_inheritance_types):
+    """Test that we raise an exception if a node is inheriting an attribute with different attribute type that already exists on node."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema_new = copy.deepcopy(schema_diff_attr_inheritance_types)
+    schema_new["generics"].pop()
+    schema_new["nodes"][0]["inherit_from"].pop()
+    schema_new["nodes"][0]["attributes"].append({"name": "choice", "kind": "List"})
+    schema.load_schema(schema=SchemaRoot(**schema_new))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process_inheritance()
+
+    assert exc.value.args[0] == 'TestWidget.choice inherited from TestAdapter must be the same kind ["Text", "List"]'
 
 
 async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
@@ -341,12 +368,14 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
     schema.process_inheritance()
-    schema.add_profile_schemas()
+    schema.manage_profile_schemas()
 
-    profile = schema.get(name="ProfileBuiltinCriticality")
-    assert profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
-    assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
-    assert set(profile.attribute_names) == {"profile_name", "profile_priority", "description"}
+    node_profile = schema.get(name="ProfileBuiltinCriticality", duplicate=False)
+    assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
+    assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
+    assert set(node_profile.attribute_names) == {"profile_name", "profile_priority", "description", "mybool"}
+    generic_profile = schema.get(name="ProfileInfraGenericInterface", duplicate=False)
+    assert set(generic_profile.attribute_names) == {"profile_name", "profile_priority", "mybool"}
     core_profile_schema = schema.get("CoreProfile")
     core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {
@@ -354,8 +383,8 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
-        "ProfileCoreStandardGroup",
         "ProfileInfraTinySchema",
+        "ProfileInfraGenericInterface",
     }
 
     assert set(core_node_schema.used_by) == {
@@ -369,7 +398,33 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
-        "ProfileCoreStandardGroup",
+        "ProfileInfraTinySchema",
+        "ProfileInfraGenericInterface",
+    }
+
+
+async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one):
+    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    schema_all_in_one["generics"].append(core_profile_schema)
+    builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="BuiltinTag")
+    builtin_tag_schema["generate_profile"] = False
+    generic_interface_schema = schema_all_in_one["generics"][0]
+    generic_interface_schema["generate_profile"] = False
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.manage_profile_schemas()
+
+    with pytest.raises(SchemaNotFoundError):
+        schema.get(name="ProfileBuiltinTag")
+    builtin_tag_schema = schema.get_node(name="BuiltinTag", duplicate=False)
+    with pytest.raises(ValueError):
+        builtin_tag_schema.get_relationship("profiles")
+    core_profile_schema = schema.get("CoreProfile")
+    assert set(core_profile_schema.used_by) == {
+        "ProfileBuiltinCriticality",
+        "ProfileBuiltinStatus",
+        "ProfileBuiltinBadge",
         "ProfileInfraTinySchema",
     }
 
@@ -1088,6 +1143,51 @@ async def test_validate_default_filter_error(schema_all_in_one, default_filter, 
 
     with pytest.raises(ValueError, match=expected_error):
         schema.validate_default_filters()
+
+
+@pytest.mark.parametrize(
+    "default_value_attr",
+    [
+        {"name": "something", "kind": "Number", "optional": True, "default_value": 0},
+        {"name": "something", "kind": "Text", "optional": True, "default_value": "abcdef"},
+    ],
+)
+async def test_validate_default_value_success(schema_all_in_one, default_value_attr):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
+    schema_dict["attributes"].append(default_value_attr)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_default_values()
+
+
+@pytest.mark.parametrize(
+    "default_value_attr,expected_error",
+    [
+        (
+            {"name": "something", "kind": "DateTime", "optional": True, "default_value": 0},
+            "InfraTinySchema: default value 0 is not a valid DateTime",
+        ),
+        (
+            {"name": "something", "kind": "IPHost", "optional": True, "default_value": "abcdef"},
+            "InfraTinySchema: default value abcdef is not a valid IPHost",
+        ),
+        (
+            {"name": "something", "kind": "Number", "optional": True, "default_value": "abcdef"},
+            "InfraTinySchema: default value abcdef is not a valid Number",
+        ),
+    ],
+)
+async def test_validate_default_value_error(schema_all_in_one, default_value_attr, expected_error):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
+    schema_dict["attributes"].append(default_value_attr)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValidationError, match=expected_error):
+        schema.validate_default_values()
 
 
 async def test_schema_branch_load_schema_extension(
@@ -2308,15 +2408,27 @@ async def test_load_schema_from_db(
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    crit_schema = schema1.get(name="TestCriticality", duplicate=False)
+
     await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    start_crit_schema = schema1.get(name="TestCriticality", duplicate=False)
+    start_crit_hash = start_crit_schema.get_hash()
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
-    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
+    assert set(schema2.profiles.keys()) == {
+        "ProfileBuiltinTag",
+        "ProfileTestCriticality",
+        "ProfileTestGenericInterface",
+    }
 
-    assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
+    crit_schema = schema2.get(name="TestCriticality", duplicate=False)
+    profiles_rel_schema = crit_schema.get_relationship("profiles")
+    assert profiles_rel_schema.peer == InfrahubKind.PROFILE
+    assert start_crit_hash == crit_schema.get_hash()
+    assert schema11.get(name="TestCriticality").get_hash() == crit_schema.get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
 
@@ -2388,7 +2500,11 @@ async def test_load_schema(
 
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
-    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
+    assert set(schema2.profiles.keys()) == {
+        "ProfileBuiltinTag",
+        "ProfileTestCriticality",
+        "ProfileTestGenericInterface",
+    }
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
@@ -2495,3 +2611,36 @@ def test_schema_branch_load_schema_update_nested_list(schema_all_in_one):
         ["primary_tag", "status"],
         ["my_generic_name", "mybool", "status"],
     ]
+
+
+def test_schema_branch_conflicting_required_relationships(schema_all_in_one):
+    tag_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="BuiltinTag")
+    tag_schema["relationships"] = [
+        {
+            "name": "crits",
+            "peer": "BuiltinCriticality",
+            "label": "Crits",
+            "optional": False,
+            "cardinality": "many",
+        },
+    ]
+    crit_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="BuiltinCriticality")
+    crit_schema["relationships"] = [
+        {
+            "name": "tags",
+            "peer": InfrahubKind.TAG,
+            "label": "Tags",
+            "optional": False,
+            "cardinality": "many",
+        },
+    ]
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_required_relationships()
+
+    assert "BuiltinTag" in exc.value.args[0]
+    assert "BuiltinCriticality" in exc.value.args[0]
+    assert "cannot both have required relationships" in exc.value.args[0]

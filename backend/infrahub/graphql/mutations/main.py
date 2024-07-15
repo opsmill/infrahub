@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -51,7 +51,7 @@ log = get_logger()
 # Infrahub GraphQLType
 # ------------------------------------------
 class InfrahubMutationOptions(MutationOptions):
-    schema = None
+    schema: Optional[NodeSchema] = None
 
 
 class InfrahubMutationMixin:
@@ -66,12 +66,12 @@ class InfrahubMutationMixin:
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(
-                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, **kwargs
             )
             action = MutationAction.ADDED
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(
-                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, **kwargs
             )
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
@@ -82,7 +82,7 @@ class InfrahubMutationMixin:
                 MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
-                root=root, info=info, branch=context.branch, at=context.at, node_getters=node_getters, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, node_getters=node_getters, **kwargs
             )
             if created:
                 action = MutationAction.ADDED
@@ -90,7 +90,7 @@ class InfrahubMutationMixin:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(
-                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, **kwargs
             )
             action = MutationAction.REMOVED
         else:
@@ -153,7 +153,7 @@ class InfrahubMutationMixin:
         branch: Branch,
         at: str,
         database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self]:
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
         obj = await cls.mutate_create_object(data=data, db=db, branch=branch, at=at)
@@ -213,7 +213,7 @@ class InfrahubMutationMixin:
         at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
-    ):
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
 
@@ -290,9 +290,9 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         at: str,
-        node_getters: List[MutationNodeGetterInterface],
+        node_getters: list[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self, bool]:
+    ) -> tuple[Node, Self, bool]:
         schema_name = cls._meta.schema.kind
 
         context: GraphqlContext = info.context

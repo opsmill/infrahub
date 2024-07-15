@@ -1,12 +1,11 @@
 import importlib
 import logging
-import os
 import sys
 from asyncio import run as aiorun
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, List, Optional
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -18,10 +17,11 @@ from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.repository import get_repository_config
-from infrahub_sdk.ctl.utils import execute_graphql_query
+from infrahub_sdk.ctl.utils import catch_exception, execute_graphql_query
 from infrahub_sdk.schema import InfrahubCheckDefinitionConfig, InfrahubRepositoryConfig
 
 app = typer.Typer()
+console = Console()
 
 
 @dataclass
@@ -42,13 +42,14 @@ def callback() -> None:
 
 
 @app.command()
+@catch_exception(console=console)
 def run(
     *,
     path: str,
     debug: bool,
     format_json: bool,
     list_available: bool,
-    variables: Dict[str, str],
+    variables: dict[str, str],
     name: Optional[str] = None,
     branch: Optional[str] = None,
 ) -> None:
@@ -58,8 +59,6 @@ def run(
     FORMAT = "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
 
-    console = Console()
-
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
 
     if list_available:
@@ -68,7 +67,7 @@ def run(
 
     check_definitions = repository_config.check_definitions
     if name:
-        check_definitions = [check for check in repository_config.check_definitions if check.name == name]
+        check_definitions = [check for check in repository_config.check_definitions if check.name == name]  # pylint: disable=not-an-iterable
         if not check_definitions:
             console.print(f"[red]Unable to find requested transform: {name}")
             list_checks(repository_config=repository_config)
@@ -86,7 +85,7 @@ async def run_check(
     format_json: bool,
     path: str,
     branch: Optional[str] = None,
-    params: Optional[Dict] = None,
+    params: Optional[dict] = None,
 ) -> bool:
     module_name = check_module.name
     output = "stdout" if format_json else None
@@ -124,7 +123,7 @@ async def run_targeted_check(
     client: InfrahubClient,
     format_json: bool,
     path: str,
-    variables: Dict[str, str],
+    variables: dict[str, str],
     branch: Optional[str] = None,
 ) -> bool:
     filters = {}
@@ -137,7 +136,7 @@ async def run_targeted_check(
     if param_key:
         identifier = param_key[0]
 
-    check_summary: List[bool] = []
+    check_summary: list[bool] = []
     if variables:
         result = await run_check(
             check_module=check_module,
@@ -170,15 +169,15 @@ async def run_targeted_check(
 
 
 async def run_checks(
-    check_modules: List[CheckModule],
+    check_modules: list[CheckModule],
     format_json: bool,
     path: str,
-    variables: Dict[str, str],
+    variables: dict[str, str],
     branch: Optional[str] = None,
 ) -> None:
     log = logging.getLogger("infrahub")
 
-    check_summary: List[bool] = []
+    check_summary: list[bool] = []
     client = await initialize_client()
     for check_module in check_modules:
         if check_module.definition.targets:
@@ -207,13 +206,12 @@ async def run_checks(
         sys.exit(1)
 
 
-def get_modules(check_definitions: List[InfrahubCheckDefinitionConfig]) -> List[CheckModule]:
+def get_modules(check_definitions: list[InfrahubCheckDefinitionConfig]) -> list[CheckModule]:
     log = logging.getLogger("infrahub")
     modules = []
     for check_definition in check_definitions:
-        directory_name = os.path.dirname(check_definition.file_path)
-        filename = os.path.basename(check_definition.file_path)
-        module_name = os.path.splitext(filename)[0]
+        directory_name = str(check_definition.file_path.parent)
+        module_name = check_definition.file_path.stem
 
         if directory_name not in sys.path:
             sys.path.append(directory_name)
@@ -233,7 +231,6 @@ def get_modules(check_definitions: List[InfrahubCheckDefinitionConfig]) -> List[
 
 
 def list_checks(repository_config: InfrahubRepositoryConfig) -> None:
-    console = Console()
     console.print(f"Python checks defined in repository: {len(repository_config.check_definitions)}")
 
     for check in repository_config.check_definitions:

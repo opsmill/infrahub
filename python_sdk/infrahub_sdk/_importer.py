@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import os
 import sys
 from typing import TYPE_CHECKING, Optional
 
@@ -15,13 +14,12 @@ if TYPE_CHECKING:
 def import_module(
     module_path: Path, import_root: Optional[str] = None, relative_path: Optional[str] = None
 ) -> ModuleType:
-    import_root = import_root or os.path.dirname(module_path)
+    import_root = import_root or str(module_path.parent)
 
     if import_root not in sys.path:
         sys.path.append(import_root)
 
-    filename = os.path.basename(module_path)
-    module_name = os.path.splitext(filename)[0]
+    module_name = module_path.stem
 
     if relative_path:
         module_name = relative_path.replace("/", ".") + f".{module_name}"

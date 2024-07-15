@@ -154,7 +154,7 @@ async def test_json_schema_kind_default_branch(
 ):
     with client:
         response = client.get(
-            f"/api/schema/json_schema/{InfrahubKind.TAG}",
+            f"/api/schema/json_schema/{InfrahubKind.IPPREFIX}",
             headers=client_headers,
         )
 
@@ -169,6 +169,7 @@ async def test_json_schema_kind_default_branch(
     assert "properties" in schema
     assert "required" in schema
     assert "description" in schema
+    assert "prefix" in schema["properties"]["member_type"]["enum"]
 
 
 async def test_schema_kind_not_valid(

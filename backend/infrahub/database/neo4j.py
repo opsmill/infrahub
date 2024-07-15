@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from .constants import EntityType, IndexType
 from .index import IndexInfo, IndexItem, IndexManagerBase
@@ -43,12 +43,12 @@ class IndexNodeNeo4j(IndexItem):
 
 
 class IndexManagerNeo4j(IndexManagerBase):
-    def init(self, nodes: List[IndexItem], rels: List[IndexItem]) -> None:
+    def init(self, nodes: list[IndexItem], rels: list[IndexItem]) -> None:
         self.nodes = [IndexNodeNeo4j(**item.model_dump()) for item in nodes]
         self.rels = [IndexRelNeo4j(**item.model_dump()) for item in rels]
         self.initialized = True
 
-    async def list(self) -> List[IndexInfo]:
+    async def list(self) -> list[IndexInfo]:
         query = "SHOW INDEXES"
         records = await self.db.execute_query(query=query, params={}, name="index_show")
         results = []

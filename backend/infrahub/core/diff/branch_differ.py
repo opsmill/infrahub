@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from typing_extensions import Self
 
@@ -24,10 +24,7 @@ from infrahub.core.query.diff import (
     DiffRelationshipQuery,
 )
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import (
-    DiffFromRequiredOnDefaultBranchError,
-    DiffRangeValidationError,
-)
+from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeValidationError
 from infrahub.message_bus.messages import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 
 from .model import (
@@ -67,11 +64,11 @@ class BranchDiffer:
         branch_only: bool = False,
         diff_from: Optional[Union[str, Timestamp]] = None,
         diff_to: Optional[Union[str, Timestamp]] = None,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         db: Optional[InfrahubDatabase] = None,
         service: Optional[InfrahubServices] = None,
     ):
@@ -119,7 +116,7 @@ class BranchDiffer:
             raise DiffRangeValidationError("diff_to must be later than diff_from")
 
         # Results organized by Branch
-        self._results: Dict[str, dict] = defaultdict(lambda: {"nodes": {}, "rels": defaultdict(dict), "files": {}})
+        self._results: dict[str, dict] = defaultdict(lambda: {"nodes": {}, "rels": defaultdict(dict), "files": {}})
 
         self._calculated_diff_nodes_at: Optional[Timestamp] = None
         self._calculated_diff_rels_at: Optional[Timestamp] = None
@@ -145,11 +142,11 @@ class BranchDiffer:
         branch_only: bool = False,
         diff_from: Optional[Union[str, Timestamp]] = None,
         diff_to: Optional[Union[str, Timestamp]] = None,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         service: Optional[InfrahubServices] = None,
     ) -> Self:
         origin_branch = branch.get_origin_branch()
@@ -184,14 +181,14 @@ class BranchDiffer:
 
         return False
 
-    async def get_summaries_by_branch_and_id(self) -> Dict[str, Dict[str, DiffSummaryElement]]:
+    async def get_summaries_by_branch_and_id(self) -> dict[str, dict[str, DiffSummaryElement]]:
         """Return a list of changed nodes and associated actions
 
         If only a relationship is modified for a given node it will have the updated action.
         """
         nodes = await self.get_nodes()
         relationships = await self.get_relationships()
-        changes: Dict[str, Dict[str, DiffSummaryElement]] = {}
+        changes: dict[str, dict[str, DiffSummaryElement]] = {}
 
         for branch_name, branch_nodes in nodes.items():
             if branch_name not in changes:
@@ -216,7 +213,7 @@ class BranchDiffer:
                             )
         return changes
 
-    async def get_summary(self) -> List[DiffSummaryElement]:
+    async def get_summary(self) -> list[DiffSummaryElement]:
         changes = await self.get_summaries_by_branch_and_id()
         summary = []
         for branch_diff in changes.values():
@@ -225,9 +222,9 @@ class BranchDiffer:
 
         return summary
 
-    async def get_schema_summary(self) -> Dict[str, List[DiffSummaryElement]]:
+    async def get_schema_summary(self) -> dict[str, list[DiffSummaryElement]]:
         """Return a list of DiffSummaryElement for SchemaNode organized per Branch."""
-        summary: Dict[str, List[DiffSummaryElement]] = defaultdict(list)
+        summary: dict[str, list[DiffSummaryElement]] = defaultdict(list)
         for element in await self.get_summary():
             if element.kind.startswith("Schema"):
                 summary[element.branch].append(element)
@@ -240,14 +237,14 @@ class BranchDiffer:
 
         return False
 
-    async def get_conflicts(self) -> List[DataConflict]:
+    async def get_conflicts(self) -> list[DataConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).
 
         For now we are not able to identify clearly enough the conflicts for the git repositories so this part is ignored.
         """
         return await self.get_conflicts_graph()
 
-    async def get_conflicts_graph(self) -> List[DataConflict]:
+    async def get_conflicts_graph(self) -> list[DataConflict]:
         if self.branch_only:
             return []
 
@@ -292,17 +289,17 @@ class BranchDiffer:
             responses.append(response)
         return responses
 
-    async def get_modified_paths_graph(self) -> Dict[str, Set[ModifiedPath]]:
+    async def get_modified_paths_graph(self) -> dict[str, set[ModifiedPath]]:
         """Return a list of all the modified paths in the graph per branch.
 
         Path for a node : ("node", node_id, attr_name, prop_type)
         Path for a relationship : ("relationships", rel_name, rel_id, prop_type
 
         Returns:
-            Dict[str, set]: Returns a Dictionary by branch with a set of paths
+            dict[str, set]: Returns a Dictionary by branch with a set of paths
         """
 
-        paths: Dict[str, Set[ModifiedPath]] = {}
+        paths: dict[str, set[ModifiedPath]] = {}
 
         nodes = await self.get_nodes()
         for branch_name, node_data in nodes.items():
@@ -332,10 +329,10 @@ class BranchDiffer:
                         paths[branch_name].add(modified_path)
 
         relationships = await self.get_relationships()
-        cardinality_one_branch_relationships: Dict[str, List[ModifiedPath]] = {}
-        branch_kind_node: Dict[str, Dict[str, List[str]]] = {}
-        display_label_map: Dict[str, Dict[str, str]] = {}
-        kind_map: Dict[str, Dict[str, str]] = {}
+        cardinality_one_branch_relationships: dict[str, list[ModifiedPath]] = {}
+        branch_kind_node: dict[str, dict[str, list[str]]] = {}
+        display_label_map: dict[str, dict[str, str]] = {}
+        kind_map: dict[str, dict[str, str]] = {}
         for branch_name in relationships.keys():
             branch_kind_node[branch_name] = {}
             cardinality_one_branch_relationships[branch_name] = []
@@ -343,7 +340,7 @@ class BranchDiffer:
             kind_map[branch_name] = {}
 
         for branch_name, rel_data in relationships.items():  # pylint: disable=too-many-nested-blocks
-            cardinality_one_relationships: Dict[str, ModifiedPath] = {}
+            cardinality_one_relationships: dict[str, ModifiedPath] = {}
             if self.branch_only and branch_name != self.branch.name:
                 continue
 
@@ -435,7 +432,7 @@ class BranchDiffer:
 
         return paths
 
-    async def get_nodes(self) -> Dict[str, Dict[str, NodeDiffElement]]:
+    async def get_nodes(self) -> dict[str, dict[str, NodeDiffElement]]:
         """Return all the nodes calculated by the diff, organized by branch."""
 
         if not self._calculated_diff_nodes_at:
@@ -663,7 +660,7 @@ class BranchDiffer:
 
         self._calculated_diff_nodes_at = Timestamp()
 
-    async def get_relationships(self) -> Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]]:
+    async def get_relationships(self) -> dict[str, dict[str, dict[str, RelationshipDiffElement]]]:
         if not self._calculated_diff_rels_at:
             await self._calculated_diff_rels()
 
@@ -673,11 +670,11 @@ class BranchDiffer:
             if not self.branch_only or branch_name == self.branch.name
         }
 
-    async def get_relationships_per_node(self) -> Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]]:
+    async def get_relationships_per_node(self) -> dict[str, dict[str, dict[str, list[RelationshipDiffElement]]]]:
         rels = await self.get_relationships()
 
         # Organize the Relationships data per node and per relationship name in order to simplify the association with the nodes Later on.
-        rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = defaultdict(
+        rels_per_node: dict[str, dict[str, dict[str, list[RelationshipDiffElement]]]] = defaultdict(
             lambda: defaultdict(lambda: defaultdict(list))
         )
         for branch_name, items in rels.items():
@@ -688,12 +685,12 @@ class BranchDiffer:
 
         return rels_per_node
 
-    async def get_node_id_per_kind(self) -> Dict[str, Dict[str, List[str]]]:
+    async def get_node_id_per_kind(self) -> dict[str, dict[str, list[str]]]:
         # Node IDs organized per Branch and per Kind
         rels = await self.get_relationships()
         nodes = await self.get_nodes()
 
-        node_ids: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
+        node_ids: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
 
         for branch_name, rel_items in rels.items():
             for rel_item in rel_items.values():
@@ -902,7 +899,7 @@ class BranchDiffer:
         self._calculated_diff_rels_at = Timestamp()
 
     def parse_relationship_paths(
-        self, nodes: Dict[str, RelationshipEdgeNodeDiffElement], branch_name: str, relationship_name: str
+        self, nodes: dict[str, RelationshipEdgeNodeDiffElement], branch_name: str, relationship_name: str
     ) -> RelationshipPath:
         node_ids = list(nodes.keys())
         neighbor_map = {node_ids[0]: node_ids[1], node_ids[1]: node_ids[0]}
@@ -920,7 +917,7 @@ class BranchDiffer:
 
         return relationship_paths
 
-    async def get_files(self) -> Dict[str, List[FileDiffElement]]:
+    async def get_files(self) -> dict[str, list[FileDiffElement]]:
         if not self._calculated_diff_files_at:
             await self._calculated_diff_files()
 
@@ -946,7 +943,7 @@ class BranchDiffer:
         repository: Node,
         commit_from: str,
         commit_to: str,
-    ) -> List[FileDiffElement]:
+    ) -> list[FileDiffElement]:
         """Return all the files that have added, changed or removed for a given repository between 2 commits."""
 
         files = []
@@ -983,7 +980,7 @@ class BranchDiffer:
 
         return files
 
-    async def get_files_repositories_for_branch(self, branch: Branch) -> List[FileDiffElement]:
+    async def get_files_repositories_for_branch(self, branch: Branch) -> list[FileDiffElement]:
         tasks = []
         files = []
 

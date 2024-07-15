@@ -3,7 +3,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-ingress
+  name: {{ include "infrahub-helm.fullname" . }}-ingress
   labels:
     {{- include "infrahub-helm.labels" . | nindent 4 }}
   {{- with .Values.infrahubServer.ingress.annotations }}

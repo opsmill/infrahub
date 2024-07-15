@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 from uuid import UUID
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.registry import registry
@@ -27,7 +27,7 @@ class NodePropertyData(BaseModel):
 
 
 class FlagPropertyMixin:
-    _flag_properties: List[str] = [v.value for v in FlagProperty]
+    _flag_properties: list[str] = [v.value for v in FlagProperty]
 
     is_visible = True
     is_protected = False
@@ -42,7 +42,7 @@ class FlagPropertyMixin:
 
 
 class NodePropertyMixin:
-    _node_properties: List[str] = [v.value for v in NodeProperty]
+    _node_properties: list[str] = [v.value for v in NodeProperty]
 
     branch: Branch
     at: Timestamp

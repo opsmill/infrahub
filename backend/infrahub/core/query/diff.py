@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class DiffQuery(Query):
-    branch_names: List[str]
+    branch_names: list[str]
     diff_from: Timestamp
     diff_to: Timestamp
     type: QueryType = QueryType.READ
@@ -22,7 +22,6 @@ class DiffQuery(Query):
         branch: Branch,
         diff_from: Union[Timestamp, str] = None,
         diff_to: Union[Timestamp, str] = None,
-        *args,
         **kwargs,
     ):
         """A diff is always in the context of a branch"""
@@ -44,7 +43,7 @@ class DiffQuery(Query):
 
         self.branch_names = branch.get_branches_in_scope()
 
-        super().__init__(branch, *args, **kwargs)
+        super().__init__(branch, **kwargs)
 
 
 class DiffNodeQuery(DiffQuery):
@@ -52,12 +51,11 @@ class DiffNodeQuery(DiffQuery):
 
     def __init__(
         self,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
-        *args,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         **kwargs,
     ):
         self.namespaces_include = namespaces_include
@@ -66,9 +64,9 @@ class DiffNodeQuery(DiffQuery):
         self.kinds_exclude = kinds_exclude
         self.branch_support = branch_support or [BranchSupportType.AWARE]
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
         # TODO probably also need to consider a node what was merged already
 
@@ -119,12 +117,11 @@ class DiffAttributeQuery(DiffQuery):
 
     def __init__(
         self,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
-        *args,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         **kwargs,
     ):
         self.namespaces_include = namespaces_include
@@ -133,9 +130,9 @@ class DiffAttributeQuery(DiffQuery):
         self.kinds_exclude = kinds_exclude
         self.branch_support = branch_support or [BranchSupportType.AWARE]
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
 
         rels_filters, rels_params = self.branch.get_query_filter_relationships_diff(
@@ -183,12 +180,11 @@ class DiffRelationshipQuery(DiffQuery):
 
     def __init__(
         self,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
-        *args,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
         **kwargs,
     ):
         self.namespaces_include = namespaces_include
@@ -197,9 +193,9 @@ class DiffRelationshipQuery(DiffQuery):
         self.kinds_exclude = kinds_exclude
         self.branch_support = branch_support or [BranchSupportType.AWARE]
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         where_clause = ""
         if self.namespaces_include:
             where_clause += "(src.namespace IN $namespaces_include OR dst.namespace IN $namespaces_include) AND "
@@ -261,7 +257,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
     name: str = "diff_relationship_property"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
             rel_labels=["r"], start_time=self.diff_from, end_time=self.diff_to
         )
@@ -303,23 +299,15 @@ class DiffRelationshipPropertyQuery(DiffQuery):
 class DiffNodePropertiesByIDSRangeQuery(Query):
     name: str = "diff_node_properties_range_ids"
 
-    def __init__(
-        self,
-        ids: List[str],
-        diff_from: str,
-        diff_to: str,
-        account=None,
-        *args,
-        **kwargs,
-    ):
+    def __init__(self, ids: list[str], diff_from: str, diff_to: str, account=None, **kwargs):
         self.account = account
         self.ids = ids
         self.time_from = Timestamp(diff_from)
         self.time_to = Timestamp(diff_to)
 
-        super().__init__(order_by=["a.name"], *args, **kwargs)
+        super().__init__(order_by=["a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -337,7 +325,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["a", "ap", "r"]
 
-    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> List[QueryResult]:
+    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> list[QueryResult]:
         """Return a list of all results matching a given relationship id / property type.
 
         The results are ordered chronologicall (from oldest to newest)
@@ -355,23 +343,22 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
 
 class DiffNodePropertiesByIDSQuery(Query):
     name: str = "diff_node_properties_ids"
-    order_by: List[str] = ["a.name"]
+    order_by: list[str] = ["a.name"]
 
     def __init__(
         self,
-        ids: List[str],
+        ids: list[str],
         at: str,
         account=None,
-        *args,
         **kwargs,
     ):
         self.account = account
         self.ids = ids
         self.at = Timestamp(at)
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -389,7 +376,7 @@ class DiffNodePropertiesByIDSQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["a", "ap", "r"]
 
-    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> List[QueryResult]:
+    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> list[QueryResult]:
         """Return a list of all results matching a given relationship id / property type.
 
         The results are ordered chronologicall (from oldest to newest)
@@ -412,11 +399,10 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
     def __init__(
         self,
-        ids: List[str],
+        ids: list[str],
         diff_from: str,
         diff_to: str,
         account=None,
-        *args,
         **kwargs,
     ):
         self.account = account
@@ -424,9 +410,9 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         self.time_from = Timestamp(diff_from)
         self.time_to = Timestamp(diff_to)
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -447,7 +433,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["rl", "rp", "r"]
 
-    def get_results_by_id_and_prop_type(self, rel_id: str, prop_type: str) -> List[QueryResult]:
+    def get_results_by_id_and_prop_type(self, rel_id: str, prop_type: str) -> list[QueryResult]:
         """Return a list of all results matching a given relationship id / property type.
         The results are ordered chronologically
         """

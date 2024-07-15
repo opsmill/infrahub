@@ -11,9 +11,8 @@ generics:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
-    uniqueness_constraints:
-      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -336,19 +335,15 @@ nodes:
     description: "Generic Device object"
     label: "Device"
     icon: "mdi:router-network"
-    # default_filter: name__value
     inherit_from:
       - "CoreArtifactTarget"
     order_by:
       - name__value
     display_labels:
       - name__value
-    uniqueness_constraints:
-      - ["name__value", "rack", "location", "organization"]
     attributes:
       - name: name
         kind: Text
-        # unique: true
         optional: true
       - name: description
         kind: Text
@@ -357,12 +352,10 @@ nodes:
         label: Serial Number
         kind: Text
         optional: true
-        # unique: true
       - name: asset_tag
         label: Asset Tag
         kind: Text
         optional: true
-        # unique: true
     relationships:
       - name: location
         peer: LocationGeneric
@@ -469,6 +462,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -510,6 +504,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -529,6 +524,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -558,21 +554,9 @@ nodes:
     namespace: Infra
     description: "IP Address"
     label: "IP Address"
-    icon: "mdi:ip-outline"
-    menu_placement: "InfraPrefix"
-    default_filter: address__value
-    order_by:
-      - "address__value"
-    display_labels:
-      - address__value
-    uniqueness_constraints:
-      - ["prefix", "address__value"]
-    attributes:
-      - name: address
-        kind: IPHost
-      - name: description
-        kind: Text
-        optional: true
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPAddress"
     relationships:
       - name: organization
         peer: OrganizationGeneric
@@ -583,13 +567,8 @@ nodes:
         peer: InfraInterfaceL3
         optional: true
         cardinality: one
-      - name: prefix
-        peer: InfraPrefix
-        identifier: "prefix__address"
-        optional: true
-        cardinality: one
       - name: vrf
-        identifier: "vrf__prefix"
+        identifier: "vrf__ipaddress"
         peer: InfraVRF
         optional: true
         cardinality: one
@@ -676,22 +655,9 @@ nodes:
   - name: Prefix
     namespace: Infra
     description: "IPv4 or IPv6 network (with mask)"
-    icon: "mdi:ip-network"
-    label: "Prefix"
-    default_filter: prefix__value
-    order_by:
-      - vrf__name__value
-      - prefix__value
-    display_labels:
-      - prefix__value
-    uniqueness_constraints:
-      - ["vrf", "prefix__value"]
-    attributes:
-      - name: prefix
-        kind: IPNetwork
-      - name: description
-        kind: Text
-        optional: true
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPPrefix"
     relationships:
       - name: organization
         peer: OrganizationGeneric
@@ -730,26 +696,17 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: ip_addresses
-        peer: InfraIPAddress
-        identifier: "prefix__address"
-        cardinality: many
-        kind: Component
   - name: Rack
     namespace: Infra
     description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
     label: "Rack"
     icon: "mdi:server"
     menu_placement: "LocationGeneric"
-    # default_filter: name__value
     display_labels:
       - name__value
-    uniqueness_constraints:
-      - ["name__value", "location"]
     attributes:
       - name: name
         kind: Text
-        # unique: true
       - name: description
         kind: Text
         optional: true
@@ -824,14 +781,11 @@ nodes:
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
     icon: "mdi:lan-pending"   # mdi:lan
-    default_filter: name__value
     order_by:
       - vlan_id__value
     display_labels:
       - name__value
       - vlan_id__value
-    uniqueness_constraints:
-      - ["location", "vlan_group", "vlan_id__value"]
     attributes:
       - name: name
         kind: Text
