@@ -1,0 +1,69 @@
+---
+title: Release 0.16 - DEVELOPMENT
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>TBD</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>TBD</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>TBD</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>TBD</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release XXX
+
+## Main changes
+
+### Unified storage
+
+### Schema
+
+### Helm Chart
+
+### Other
+
+## Migration Guide
+
+To migrate your instance of Infrahub to the latest version, please run the following commands and restart all instances of Infrahub.
+
+<!-- vale off -->
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+<!-- vale on -->
+
+> if you are running in docker these commands need to run from the container where Infrahub is installed
+
+### Migration of the demo instance
+
+If you are using the demo environment, you can migrate to the latest version with the following commands
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+> All data will be lost, please make sure to backup everything you need before running this command.
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
