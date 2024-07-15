@@ -661,7 +661,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         extension: Union[str, list[str]],
         branch_name: Optional[str] = None,
         commit: Optional[str] = None,
-        directory: Optional[str] = None,
+        directory: Optional[Path] = None,
     ) -> list[Path]:
         """Return the path of all files matching a specific extension in a given Branch or Commit."""
         if not branch_name and not commit:
