@@ -13,6 +13,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
   test.describe("when not logged in", () => {
     test("should not be able to edit object", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
+      await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
 
       await expect(page.getByTestId("edit-button")).toBeDisabled();
@@ -25,6 +26,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
 
     test("should be able to edit object", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
+      await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.getByRole("link", { name: "EXTERNAL" }).first().click();
 
       await expect(page.getByTestId("edit-button")).toBeEnabled();
@@ -33,6 +35,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
 
     test("should display relationships correctly", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
+      await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
 
       // Attribute
@@ -59,6 +62,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
     test("should display the select 2 steps correctly", async ({ page }) => {
       await page.goto("/");
       await page.getByRole("link", { name: "All Device(s)" }).click();
+      await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
       await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();

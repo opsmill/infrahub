@@ -8,6 +8,42 @@ import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { SearchInput } from "./search-input";
 import { Badge } from "./badge";
 
+export interface MultiComboboxProps extends Omit<ButtonProps, "onChange"> {
+  children?: React.ReactNode;
+  placeholder?: string;
+  value: Array<string>;
+  items?: ComboboxListProps["items"];
+  onChange?: (value: string[]) => void;
+}
+
+export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
+  ({ value = [], onChange, items = [], ...props }, ref) => {
+    const [open, setOpen] = React.useState(false);
+
+    const handleChange = (newValues: unknown) => {
+      if (onChange) onChange(newValues as string[]);
+    };
+
+    const selectedItems = items.filter((item) => value.includes(item.value)) ?? [];
+
+    return (
+      <ComboboxPrimitive onChange={handleChange} multiple value={value}>
+        <Popover open={open} onOpenChange={setOpen}>
+          <ComboboxTrigger ref={ref} {...props}>
+            <div className="flex flex-wrap gap-2">
+              {selectedItems.map((item, index) => (
+                <Badge key={index}>{item.label}</Badge>
+              ))}
+            </div>
+          </ComboboxTrigger>
+
+          <ComboboxList items={items} onReset={handleChange} />
+        </Popover>
+      </ComboboxPrimitive>
+    );
+  }
+);
+
 export interface ComboboxProps extends Omit<ButtonProps, "onChange"> {
   children?: React.ReactNode;
   placeholder?: string;
@@ -30,7 +66,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(
       <ComboboxPrimitive onChange={handleChange}>
         <Popover open={open} onOpenChange={setOpen}>
           <ComboboxTrigger ref={ref} {...props}>
-            <div className="flex flex-grow justify-between">
+            <div className="flex justify-between">
               {item?.label || value}
               {item?.badge && <Badge className="mr-2">{item.badge}</Badge>}
             </div>
@@ -55,11 +91,13 @@ export const ComboboxTrigger = forwardRef<HTMLButtonElement, ComboboxTriggerProp
         ref={ref}
         role="combobox"
         className={classNames(
-          "h-10 px-2 flex justify-between items-center w-full rounded-md border border-gray-300 bg-custom-white text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
+          "min-h-10 p-2 flex justify-between items-center w-full rounded-md border border-gray-300 bg-custom-white text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
           className
         )}
         {...props}>
-        {children || <span className="text-gray-400 font-normal">{placeholder}</span>}
+        <div className="flex-grow">
+          {children || <span className="text-gray-400 font-normal">{placeholder}</span>}
+        </div>
         <Icon icon="mdi:unfold-more-horizontal" className="text-gray-600" />
       </PopoverTrigger>
     );
@@ -92,7 +130,7 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
 
   return (
     <PopoverContent
-      className="p-2 space-y-1 overflow-hidden flex flex-col"
+      className="p-2 space-y-2 overflow-hidden flex flex-col"
       style={{
         width: "var(--radix-popover-trigger-width)",
         maxHeight: "min(var(--radix-popover-content-available-height), 264px)",
@@ -140,13 +178,13 @@ export const ComboboxItem = ({ className, item }: ComboboxItemProps) => {
     <ComboboxPrimitive.Option
       className={({ active, selected }) =>
         classNames(
-          "px-2 py-1.5 rounded",
+          "px-2 py-1.5 rounded mb-2 last:mb-0 cursor-pointer",
           selected && "bg-sky-100",
           active && "bg-gray-100",
           className
         )
       }
-      value={item.value}>
+      value={item.value?.id || item.value}>
       {({ selected }) => (
         <div className="flex justify-between items-center">
           {item.label}

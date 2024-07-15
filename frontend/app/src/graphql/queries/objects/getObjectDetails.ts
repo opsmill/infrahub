@@ -16,6 +16,9 @@ query {{kind}} {
             node {
               display_label
               id
+              profile_priority {
+                value
+              }
             }
           }
         }
