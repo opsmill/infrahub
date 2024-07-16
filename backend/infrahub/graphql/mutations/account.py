@@ -23,16 +23,16 @@ if TYPE_CHECKING:
 # pylint: disable=unused-argument
 
 
-class CoreAccountTokenCreateInput(InputObjectType):
+class InfrahubAccountTokenCreateInput(InputObjectType):
     name = InputField(String(required=False), description="The name of the token")
     expiration = InputField(String(required=False), description="Timestamp when the token expires")
 
 
-class CoreAccountTokenDeleteInput(InputObjectType):
+class InfrahubAccountTokenDeleteInput(InputObjectType):
     id = InputField(String(required=True), description="The id of the token to delete")
 
 
-class CoreAccountUpdateSelfInput(InputObjectType):
+class InfrahubAccountUpdateSelfInput(InputObjectType):
     password = InputField(String(required=False), description="The new password")
     description = InputField(String(required=False), description="The new description")
 
@@ -41,7 +41,7 @@ class ValueType(InfrahubObjectType):
     value = String(required=True)
 
 
-class CoreAccountTokenType(InfrahubObjectType):
+class InfrahubAccountTokenType(InfrahubObjectType):
     id = String(required=True)
     token = Field(ValueType)
 
@@ -71,9 +71,9 @@ class AccountMixin:
         account = results[0]
 
         mutation_map = {
-            "CoreAccountTokenCreate": cls.create_token,
-            "CoreAccountTokenDelete": cls.delete_token,
-            "CoreAccountSelfUpdate": cls.update_self,
+            "InfrahubAccountTokenCreate": cls.create_token,
+            "InfrahubAccountTokenDelete": cls.delete_token,
+            "InfrahubAccountSelfUpdate": cls.update_self,
         }
         response = await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
 
@@ -137,23 +137,23 @@ class AccountMixin:
         return cls(ok=True)  # type: ignore[call-arg]
 
 
-class CoreAccountTokenCreate(AccountMixin, Mutation):
+class InfrahubAccountTokenCreate(AccountMixin, Mutation):
     class Arguments:
-        data = CoreAccountTokenCreateInput(required=True)
+        data = InfrahubAccountTokenCreateInput(required=True)
 
     ok = Boolean()
-    object = Field(CoreAccountTokenType)
+    object = Field(InfrahubAccountTokenType)
 
 
-class CoreAccountTokenDelete(AccountMixin, Mutation):
+class InfrahubAccountTokenDelete(AccountMixin, Mutation):
     class Arguments:
-        data = CoreAccountTokenDeleteInput(required=True)
+        data = InfrahubAccountTokenDeleteInput(required=True)
 
     ok = Boolean()
 
 
-class CoreAccountSelfUpdate(AccountMixin, Mutation):
+class InfrahubAccountSelfUpdate(AccountMixin, Mutation):
     class Arguments:
-        data = CoreAccountUpdateSelfInput(required=True)
+        data = InfrahubAccountUpdateSelfInput(required=True)
 
     ok = Boolean()

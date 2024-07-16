@@ -16,9 +16,9 @@ from .mutations import (
     BranchRebase,
     BranchUpdate,
     BranchValidate,
-    CoreAccountSelfUpdate,
-    CoreAccountTokenCreate,
-    CoreAccountTokenDelete,
+    InfrahubAccountSelfUpdate,
+    InfrahubAccountTokenCreate,
+    InfrahubAccountTokenDelete,
     IPAddressPoolGetResource,
     IPPrefixPoolGetResource,
     ProcessRepository,
@@ -111,9 +111,9 @@ class InfrahubBaseQuery(ObjectType):
 
 
 class InfrahubBaseMutation(ObjectType):
-    CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
-    CoreAccountSelfUpdate = CoreAccountSelfUpdate.Field()
-    CoreAccountTokenDelete = CoreAccountTokenDelete.Field()
+    InfrahubAccountTokenCreate = InfrahubAccountTokenCreate.Field()
+    InfrahubAccountSelfUpdate = InfrahubAccountSelfUpdate.Field()
+    InfrahubAccountTokenDelete = InfrahubAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
 
     IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
