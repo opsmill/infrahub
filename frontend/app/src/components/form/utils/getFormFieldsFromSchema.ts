@@ -1,4 +1,10 @@
-import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import {
+  genericsState,
+  iGenericSchema,
+  iNodeSchema,
+  profilesAtom,
+  schemaState,
+} from "@/state/atoms/schema.atom";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { AuthContextType } from "@/hooks/useAuth";
 import { DynamicFieldProps } from "@/components/form/type";
@@ -9,17 +15,17 @@ import {
   getRelationshipValue,
   getSelectParent,
 } from "@/utils/getSchemaObjectColumns";
-import { sortByOrderWeight } from "@/utils/common";
+import { isGeneric, sortByOrderWeight } from "@/utils/common";
 import { getFieldDefaultValue } from "@/components/form/utils/getFieldDefaultValue";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { store } from "@/state";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { ProfileData } from "@/components/form/object-form";
 import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
+import { useAtomValue } from "jotai/index";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
-  schemas?: iNodeSchema[] | iGenericSchema[];
   profiles?: Array<ProfileData>;
   initialObject?: Record<string, AttributeType>;
   auth?: AuthContextType;
@@ -29,7 +35,6 @@ type GetFormFieldsFromSchema = {
 
 export const getFormFieldsFromSchema = ({
   schema,
-  schemas,
   profiles,
   initialObject,
   auth,
@@ -117,8 +122,11 @@ export const getFormFieldsFromSchema = ({
   });
 
   // Allow kind filter for generic
-  if (isFilterForm && schema.used_by?.length) {
+  if (isFilterForm && isGeneric(schema) && schema.used_by?.length) {
     const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+    const nodes = useAtomValue(schemaState);
+    const profiles = useAtomValue(profilesAtom);
+    const schemas = [...nodes, ...profiles];
 
     const items = schema.used_by
       .map((kind) => {

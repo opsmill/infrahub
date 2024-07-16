@@ -164,13 +164,11 @@ const NodeForm = ({
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const schemas = useAtomValue(schemaState);
   const [filters] = useFilters();
   const auth = useAuth();
 
   const fields = getFormFieldsFromSchema({
     schema,
-    schemas,
     profiles,
     initialObject: currentObject,
     auth,
