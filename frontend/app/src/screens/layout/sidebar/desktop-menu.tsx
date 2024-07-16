@@ -27,15 +27,13 @@ export function DesktopMenu({ className = "" }: MenuProps) {
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
   const [menu, setMenu] = useAtom(menuAtom);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!menu.length);
   const [query, setQuery] = useState<string>("");
 
   const fetchMenu = async () => {
     if (!currentSchemaHash) return;
 
     try {
-      setIsLoading(true);
-
       const result: MenuItem[] = await fetchUrl(CONFIG.MENU_URL(branch?.name));
 
       setMenu(result);
