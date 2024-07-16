@@ -21,6 +21,7 @@ function Layout() {
   const setBranches = useSetAtom(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
+  const [displaySidebar, setDisplaySidebar] = useState(true);
 
   const fetchBranches = async () => {
     try {
@@ -75,10 +76,13 @@ function Layout() {
 
   return (
     <div className="h-screen flex">
-      <Sidebar />
+      {displaySidebar && <Sidebar />}
 
       <div className="flex flex-1 flex-col bg-gray-100 overflow-hidden">
-        <Header />
+        <Header
+          isSidebarVisible={displaySidebar}
+          onMenuToggle={() => setDisplaySidebar((s) => !s)}
+        />
 
         <Outlet />
       </div>

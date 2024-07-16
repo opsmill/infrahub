@@ -9,6 +9,18 @@ test.describe("Sidebar menu", () => {
     });
   });
 
+  test("toggle sidebar", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByTestId("sidebar-menu")).toBeVisible();
+
+    await page.getByTestId("sidebar-toggle-button").click();
+    await expect(page.getByTestId("sidebar-menu")).not.toBeVisible();
+
+    await page.getByTestId("sidebar-toggle-button").click();
+    await expect(page.getByTestId("sidebar-menu")).toBeVisible();
+  });
+
   test("filter item in menu", async ({ page }) => {
     await page.goto("/");
 
