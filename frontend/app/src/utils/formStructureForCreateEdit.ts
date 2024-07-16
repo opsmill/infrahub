@@ -17,9 +17,10 @@ import {
   getSelectParent,
 } from "./getSchemaObjectColumns";
 import { AuthContextType } from "@/hooks/useAuth";
+import { LineageOwner } from "@/generated/graphql";
 
 type getIsDisabledParams = {
-  owner?: { id: string };
+  owner?: LineageOwner | null;
   user?: AuthContextType;
   isProtected?: boolean;
   isReadOnly?: boolean;

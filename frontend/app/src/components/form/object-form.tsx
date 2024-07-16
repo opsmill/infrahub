@@ -31,13 +31,13 @@ import useQuery from "@/hooks/useQuery";
 import { getProfiles } from "@/graphql/queries/objects/getProfiles";
 import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
 
-type Profile = Record<string, Pick<AttributeType, "value" | "__typename">>;
+export type ProfileData = Record<string, Pick<AttributeType, "value" | "__typename">>;
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
-  currentProfiles?: Profile[];
+  currentProfiles?: ProfileData[];
   isFilterForm?: boolean;
   onSubmit?: (data: any) => Promise<void>;
 }
@@ -122,7 +122,7 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
 
-  const [selectedProfiles, setSelectedProfiles] = useState<Profile[] | undefined>();
+  const [selectedProfiles, setSelectedProfiles] = useState<ProfileData[] | undefined>();
 
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
@@ -132,7 +132,7 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
 
   return (
     <>
-      {nodeSchema.generate_profile && (
+      {"generate_profile" in nodeSchema && nodeSchema.generate_profile && (
         <ProfilesSelector
           schema={nodeSchema}
           defaultValue={currentProfiles}
@@ -175,7 +175,7 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
   // The profiles should include the current object profile + all generic profiles
   const kindList = [schema.kind, ...nodeGenericsProfiles];
 
-  // Add attributes for each profiles to get the values in the form
+  // Add attributes for each profile to get the values in the form
   const profilesList = kindList
     .map((profile) => {
       // Get the profile schema for the current kind
@@ -260,7 +260,7 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
 type NodeFormProps = {
   className?: string;
   schema: iNodeSchema | IProfileSchema;
-  profiles?: Profile[];
+  profiles?: ProfileData[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   isFilterForm?: boolean;
