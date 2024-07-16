@@ -127,7 +127,8 @@ export const Alert = (props: AlertProps) => {
                 "inline-flex rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2",
                 alertClasses?.button
               )}
-              onClick={handleDismiss}>
+              onClick={handleDismiss}
+              data-testid="close-alert">
               <XMarkIcon className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
