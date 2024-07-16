@@ -7,12 +7,11 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/inputs/input";
 
 export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
-  const { id, date, onChange, onClickNow, error, disabled, isProtected } = props;
+  const { id, date, onChange, disabled, isProtected } = props;
 
   const currentDate = date && isValid(date) ? date : null;
 
   const [text, setText] = useState(currentDate ? format(currentDate, "MM/dd/yyy HH:mm") : "");
-  const [hasError, setHasError] = useState(error);
   const refCustomInput = useRef(ref);
 
   const handleChangeDate = (newDate: Date) => {
@@ -24,24 +23,17 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
     setText(value);
 
     if (!value) {
-      setHasError({ message: "Required" });
-      onClickNow();
-    }
-
-    if (value && !isValid(new Date(value))) {
-      setHasError({ message: "Not a valid date" });
+      onChange();
     }
 
     if (value && isValid(new Date(value))) {
-      setHasError({});
       onChange(new Date(value));
     }
   };
 
   const handleClickNow = () => {
     setText("");
-    onClickNow();
-    setHasError({});
+    onChange();
   };
 
   useEffect(() => {
@@ -58,7 +50,6 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
       value={text}
       onChange={handleChangeInput}
       className="rounded-r-none"
-      error={hasError}
       disabled={disabled || isProtected}
     />
   ));

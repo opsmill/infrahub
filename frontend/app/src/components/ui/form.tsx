@@ -1,6 +1,5 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { classNames } from "@/utils/common";
-import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import React, {
   createContext,
@@ -18,7 +17,7 @@ import {
   useFormContext,
 } from "react-hook-form";
 import { Spinner } from "@/components/ui/spinner";
-import Label from "@/components/ui/label";
+import Label, { LabelProps } from "@/components/ui/label";
 
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, unknown>) => Promise<void>;
@@ -66,7 +65,7 @@ export const FormField = (props: ControllerProps) => {
   );
 };
 
-export const FormLabel = ({ ...props }: LabelPrimitive.LabelProps) => {
+export const FormLabel = ({ ...props }: LabelProps) => {
   const { id } = useContext(FormFieldContext);
 
   return <Label htmlFor={id} {...props} />;
