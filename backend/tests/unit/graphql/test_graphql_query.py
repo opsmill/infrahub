@@ -15,6 +15,285 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 
 
+async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_schema):
+    query = """
+    query {
+        DiffTree {
+            base_branch
+            diff_branch
+            from_time
+            to_time
+            num_added
+            num_removed
+            num_updated
+            num_conflicts
+            nodes {
+                uuid
+                kind
+                label
+                last_changed_at
+                status
+                contains_conflict
+                num_added
+                num_removed
+                num_updated
+                num_conflicts
+                attributes {
+                    name
+                    last_changed_at
+                    status
+                    num_added
+                    num_removed
+                    num_updated
+                    num_conflicts
+                    contains_conflict
+                    properties {
+                        property_type
+                        last_changed_at
+                        previous_value
+                        new_value
+                        status
+                    }
+                }
+                relationships {
+                    name
+                    last_changed_at
+                    status
+                    contains_conflict
+                    elements {
+                        ... on DiffNode {
+                            uuid
+                            kind
+                            label
+                            status
+                            last_changed_at
+                            contains_conflict
+                            num_added
+                            num_removed
+                            num_updated
+                            num_conflicts
+                            attributes {
+                                name
+                                last_changed_at
+                                status
+                                num_added
+                                num_removed
+                                num_updated
+                                num_conflicts
+                                contains_conflict
+                                properties {
+                                    property_type
+                                    last_changed_at
+                                    previous_value
+                                    new_value
+                                    status
+                                    conflict {
+                                        base_branch_action
+                                        base_branch_value
+                                        diff_branch_action
+                                        diff_branch_value
+                                    }
+                                }
+                            }
+                        }
+                        ... on DiffSingleRelationship {
+                            status
+                            peer_id
+                            last_changed_at
+                            contains_conflict
+                            properties {
+                                property_type
+                                last_changed_at
+                                previous_value
+                                new_value
+                                status
+                                conflict {
+                                    base_branch_action
+                                    base_branch_value
+                                    diff_branch_action
+                                    diff_branch_value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=params.schema,
+        source=query,
+        context_value=params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["DiffTree"] == {
+        "base_branch": "main",
+        "diff_branch": "branch",
+        "from_time": "2024-02-03T04:05:06+00:00",
+        "to_time": "2024-02-03T04:05:06+00:00",
+        "num_added": 1,
+        "num_removed": 0,
+        "num_updated": 0,
+        "num_conflicts": 0,
+        "nodes": [
+            {
+                "uuid": "cdea5cb3-36eb-4b26-87aa-0a1123dd7960",
+                "kind": "SomethingKind",
+                "label": "SomethingLabel",
+                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                "num_added": 1,
+                "num_removed": 0,
+                "num_updated": 0,
+                "num_conflicts": 0,
+                "status": "ADDED",
+                "contains_conflict": False,
+                "relationships": [],
+                "attributes": [
+                    {
+                        "name": "SomethingAttribute",
+                        "last_changed_at": "2024-02-03T04:05:06+00:00",
+                        "num_added": 1,
+                        "num_removed": 0,
+                        "num_updated": 0,
+                        "num_conflicts": 0,
+                        "status": "ADDED",
+                        "contains_conflict": False,
+                        "properties": [
+                            {
+                                "property_type": "value",
+                                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                                "previous_value": None,
+                                "new_value": "42",
+                                "status": "ADDED",
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "uuid": "2beecc03-8d17-4360-b331-f242c9fb4997",
+                "kind": "ParentKind",
+                "num_added": 0,
+                "num_updated": 0,
+                "num_removed": 0,
+                "num_conflicts": 0,
+                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                "label": "ParentLabel",
+                "status": "UNCHANGED",
+                "contains_conflict": False,
+                "attributes": [],
+                "relationships": [
+                    {
+                        "name": "child_relationship",
+                        "last_changed_at": "2024-02-03T04:05:06+00:00",
+                        "status": "UPDATED",
+                        "contains_conflict": False,
+                        "elements": [
+                            {
+                                "uuid": "990e1eda-687b-454d-a6c3-dc6039f125dd",
+                                "kind": "ChildKind",
+                                "label": "ChildLabel",
+                                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                                "status": "UPDATED",
+                                "contains_conflict": False,
+                                "num_added": 0,
+                                "num_removed": 0,
+                                "num_updated": 1,
+                                "num_conflicts": 0,
+                                "attributes": [
+                                    {
+                                        "name": "ChildAttribute",
+                                        "last_changed_at": "2024-02-03T04:05:06+00:00",
+                                        "num_added": 0,
+                                        "num_removed": 0,
+                                        "num_updated": 1,
+                                        "num_conflicts": 0,
+                                        "status": "UPDATED",
+                                        "contains_conflict": False,
+                                        "properties": [
+                                            {
+                                                "conflict": None,
+                                                "property_type": "owner",
+                                                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                                                "previous_value": "herbert",
+                                                "new_value": "willy",
+                                                "status": "UPDATED",
+                                            }
+                                        ],
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "uuid": "a1b2f0c8-eda7-47e3-b3a2-5a055974c19c",
+                "kind": "RelationshipConflictKind",
+                "num_added": 0,
+                "num_updated": 1,
+                "num_removed": 0,
+                "num_conflicts": 1,
+                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                "label": "RelationshipConflictLabel",
+                "status": "UPDATED",
+                "contains_conflict": True,
+                "attributes": [],
+                "relationships": [
+                    {
+                        "name": "conflict_relationship",
+                        "last_changed_at": "2024-02-03T04:05:06+00:00",
+                        "status": "UPDATED",
+                        "contains_conflict": True,
+                        "elements": [
+                            {
+                                "last_changed_at": "2024-02-03T04:05:06+00:00",
+                                "status": "UPDATED",
+                                "peer_id": "7f0d1a04-1543-4d7e-b348-8fb1d19f7a8c",
+                                "contains_conflict": True,
+                                "properties": [
+                                    {
+                                        "property_type": "peer_id",
+                                        "last_changed_at": "2024-02-03T04:05:06+00:00",
+                                        "previous_value": "87a4e7f8-5d7d-4b22-ab92-92b4d8890e75",
+                                        "new_value": "c411c56f-d88b-402d-8753-0a35defaab1f",
+                                        "status": "UPDATED",
+                                        "conflict": {
+                                            "base_branch_action": "REMOVED",
+                                            "base_branch_value": None,
+                                            "diff_branch_action": "UPDATED",
+                                            "diff_branch_value": "c411c56f-d88b-402d-8753-0a35defaab1f",
+                                        },
+                                    },
+                                    {
+                                        "property_type": "is_visible",
+                                        "last_changed_at": "2024-02-03T04:05:06+00:00",
+                                        "previous_value": "false",
+                                        "new_value": "true",
+                                        "status": "UPDATED",
+                                        "conflict": {
+                                            "base_branch_action": "REMOVED",
+                                            "base_branch_value": None,
+                                            "diff_branch_action": "UPDATED",
+                                            "diff_branch_value": "true",
+                                        },
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+        ],
+    }
+
+
 async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     query = """
     query {
