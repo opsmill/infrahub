@@ -173,7 +173,7 @@ const NodeForm = ({
     schemas,
     profiles,
     initialObject: currentObject,
-    user: auth,
+    auth,
     isFilterForm,
     filters,
   });

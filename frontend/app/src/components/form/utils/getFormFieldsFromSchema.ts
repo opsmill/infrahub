@@ -10,18 +10,19 @@ import {
   getSelectParent,
 } from "@/utils/getSchemaObjectColumns";
 import { sortByOrderWeight } from "@/utils/common";
-import { getIsDisabled } from "@/utils/formStructureForCreateEdit";
-import { getObjectDefaultValue } from "@/components/form/utils/getObjectDefaultValue";
+import { getFieldDefaultValue } from "@/components/form/utils/getFieldDefaultValue";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { store } from "@/state";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { ProfileData } from "@/components/form/object-form";
+import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
   schemas?: iNodeSchema[] | iGenericSchema[];
-  profiles?: Object[];
+  profiles?: Array<ProfileData>;
   initialObject?: Record<string, AttributeType>;
-  user?: AuthContextType;
+  auth?: AuthContextType;
   isFilterForm?: boolean;
   filters?: Array<any>;
 };
@@ -31,7 +32,7 @@ export const getFormFieldsFromSchema = ({
   schemas,
   profiles,
   initialObject,
-  user,
+  auth,
   isFilterForm,
   filters,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
@@ -42,27 +43,25 @@ export const getFormFieldsFromSchema = ({
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
   const formFields = orderedFields.map((attribute) => {
-    const disabled = getIsDisabled({
-      owner: initialObject && initialObject[attribute.name]?.owner,
-      user,
-      isProtected:
-        initialObject &&
-        initialObject[attribute.name] &&
-        !!initialObject[attribute.name].is_protected,
-      isReadOnly: attribute.read_only,
-    });
-
     const basicFomFieldProps = {
       name: attribute.name,
       label: attribute.label ?? undefined,
-      defaultValue: getObjectDefaultValue({
+      defaultValue: getFieldDefaultValue({
         fieldSchema: attribute,
         initialObject,
         profiles,
         isFilterForm,
       }),
       description: attribute.description ?? undefined,
-      disabled,
+      disabled: isFieldDisabled({
+        owner: initialObject && initialObject[attribute.name]?.owner,
+        auth,
+        isProtected:
+          initialObject &&
+          initialObject[attribute.name] &&
+          !!initialObject[attribute.name].is_protected,
+        isReadOnly: attribute.read_only,
+      }),
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
       rules: {
         required: !isFilterForm && !attribute.optional,
@@ -126,7 +125,6 @@ export const getFormFieldsFromSchema = ({
         if (!schemas) return null;
 
         const relatedSchema = schemas.find((schema) => schema.kind === kind);
-        console.log("relatedSchema: ", relatedSchema);
 
         if (!relatedSchema) return null;
 
