@@ -266,7 +266,6 @@ def update_docker_compose_env_vars(
             existing_vars[var_name] = i
 
     all_vars = sorted(existing_vars.keys() | set(env_vars))
-
     pattern = re.compile(r"\$\{(.+):-([^}]+)\}")
 
     new_config_lines = []
@@ -285,10 +284,16 @@ def update_docker_compose_env_vars(
             match = pattern.match(existing_value)
             if match and match.group(1) == var and match.group(2) == default_value_str:
                 new_config_lines.append(docker_compose[line_idx])
+            elif var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
+                key_name = var.replace("INFRAHUB_", "").lower()
+                new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
             elif default_value_str:
                 new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
             else:
                 new_config_lines.append(f"  {var}:")
+        elif var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
+            key_name = var.replace("INFRAHUB_", "").lower()
+            new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
         elif default_value_str:
             new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
         else:
