@@ -166,6 +166,7 @@ services:
       INFRAHUB_BROKER_ADDRESS: "message-queue"
       INFRAHUB_CACHE_ADDRESS: "cache"
       INFRAHUB_DB_ADDRESS: "database"
+      INFRAHUB_SECURITY_SECRET_KEY: "327f747f-efac-42be-9e73-999f08f86b92"
     ports:
       - 8000:8000
     volumes:
@@ -194,6 +195,7 @@ services:
       INFRAHUB_API_TOKEN: *agent_token
       INFRAHUB_ADDRESS: "http://infrahub-server:8000"
       INFRAHUB_INTERNAL_ADDRESS: "http://infrahub-server:8000"
+      INFRAHUB_SECURITY_SECRET_KEY: "327f747f-efac-42be-9e73-999f08f86b92"
       INFRAHUB_BROKER_ADDRESS: "message-queue"
       INFRAHUB_CACHE_ADDRESS: "cache"
       INFRAHUB_DB_ADDRESS: "database"

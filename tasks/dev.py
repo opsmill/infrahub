@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Optional
 
 from invoke.tasks import task
 
@@ -206,13 +207,10 @@ def update_docker_compose(context: Context, docker_file: Optional[str] = "docker
     def replace_version(match):
         return f"registry.opsmill.io/opsmill/infrahub:${{VERSION:-{version}}}"
 
-    with open(docker_file, "r", encoding="utf-8") as file:
-        docker_compose = file.read()
-
+    docker_path = Path(docker_file)
+    docker_compose = docker_path.read_text(encoding="utf-8")
     updated_docker_compose = re.sub(version_pattern, replace_version, docker_compose)
-
-    with open(docker_file, "w", encoding="utf-8") as file:
-        file.write(updated_docker_compose)
+    docker_path.write_text(updated_docker_compose, encoding="utf-8")
 
     print(f"{docker_file} updated with version {version}")
 
@@ -240,13 +238,13 @@ def get_enum_mappings():
 
 def update_docker_compose_env_vars(
     env_vars: list[str],
-    env_defaults: Dict[str, Any],
-    enum_mappings: Dict[Any, str],
+    env_defaults: dict[str, Any],
+    enum_mappings: dict[Any, str],
     docker_file: Optional[str] = "docker-compose.yml",
 ) -> None:
     """Update the docker-compose.yml file with the environment variables."""
-    with open(docker_file, "r", encoding="utf-8") as file:
-        docker_compose = file.readlines()
+    docker_path = Path(docker_file)
+    docker_compose = docker_path.read_text(encoding="utf-8").splitlines()
 
     in_infrahub_config_section = False
     infrahub_config_start = None
@@ -291,33 +289,32 @@ def update_docker_compose_env_vars(
             # Always handle special vars with anchors
             if var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
                 key_name = var.replace("INFRAHUB_", "").lower()
-                new_config_lines.append(f'  {var}: &{key_name} "{default_value_str}"\n')
+                new_config_lines.append(f'  {var}: &{key_name} "{default_value_str}"')
             elif var in ["INFRAHUB_INITIAL_ADMIN_TOKEN", "INFRAHUB_INITIAL_AGENT_TOKEN"]:
                 key_name = var.replace("INFRAHUB_INITIAL_", "").lower()
-                new_config_lines.append(f'  {var}: &{key_name} "{existing_value}"\n')
+                new_config_lines.append(f'  {var}: &{key_name} "{existing_value}"')
             elif default_value_str == "localhost":
-                new_config_lines.append(f"  {var}:\n")
+                new_config_lines.append(f"  {var}:")
             elif existing_value != default_value_str:
                 print(f"{var} value is different old: {existing_value} - new: {default_value_str}")
                 if not default_value_str:
-                    new_config_lines.append(f"  {var}:\n")
+                    new_config_lines.append(f"  {var}:")
                 else:
-                    new_config_lines.append(f'  {var}: "{default_value_str}"\n')
+                    new_config_lines.append(f'  {var}: "{default_value_str}"')
             elif not default_value_str:
-                new_config_lines.append(f"  {var}:\n")
+                new_config_lines.append(f"  {var}:")
             else:
-                new_config_lines.append(f'  {var}: "{default_value_str}"\n')
+                new_config_lines.append(f'  {var}: "{default_value_str}"')
         elif var not in existing_vars and not default_value_str:
             print(f"New variable {var} added")
-            new_config_lines.append(f"  {var}:\n")
+            new_config_lines.append(f"  {var}:")
         else:
             print(f"New variable {var} added with {default_value_str}")
-            new_config_lines.append(f'  {var}: "{default_value_str}"\n')
+            new_config_lines.append(f'  {var}: "{default_value_str}"')
 
     docker_compose = docker_compose[:infrahub_config_start] + new_config_lines + docker_compose[infrahub_config_end:]
 
-    with open(docker_file, "w", encoding="utf-8") as file:
-        file.writelines(docker_compose)
+    docker_path.write_text("\n".join(docker_compose), encoding="utf-8")
     print(f"{docker_file} updated with environment variables")
 
 
@@ -325,7 +322,7 @@ def update_docker_compose_env_vars(
 def gen_config_env(
     context: Context, docker_file: Optional[str] = "docker-compose.yml", update_docker_file: Optional[bool] = False
 ):
-    """Generate list of env vars required for configuration and update docker file.yml if need."""
+    """Generate list of env vars required for configuration and update docker file.yml if need be."""
     from pydantic_settings import BaseSettings
     from pydantic_settings.sources import EnvSettingsSource
 
