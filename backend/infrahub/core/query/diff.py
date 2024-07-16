@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
+from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
@@ -446,3 +447,213 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         ]
 
         return sort_results_by_time(results, rel_label="r")
+
+
+class DiffAllPathsQuery(DiffQuery):
+    """Gets the required Cypher paths for a diff"""
+
+    name: str = "diff_node"
+
+    def __init__(
+        self,
+        base_branch: Branch,
+        namespaces_include: Optional[list[str]] = None,
+        namespaces_exclude: Optional[list[str]] = None,
+        kinds_include: Optional[list[str]] = None,
+        kinds_exclude: Optional[list[str]] = None,
+        branch_support: Optional[list[BranchSupportType]] = None,
+        *args,
+        **kwargs,
+    ):
+        self.base_branch = base_branch
+        self.namespaces_include = namespaces_include
+        self.namespaces_exclude = namespaces_exclude
+        self.kinds_include = kinds_include
+        self.kinds_exclude = kinds_exclude
+        self.branch_support = branch_support or [BranchSupportType.AWARE]
+
+        super().__init__(*args, **kwargs)
+
+    def _get_node_where_clause(self, node_variable_name: str) -> str:
+        where_clause_parts = []
+        where_clause_parts.append(
+            f"($namespaces_include IS NULL OR {node_variable_name}.namespace IN $namespaces_include)"
+        )
+        where_clause_parts.append(
+            f"($namespaces_exclude IS NULL OR NOT({node_variable_name}.namespace IN $namespaces_exclude))"
+        )
+        where_clause_parts.append(f"($kinds_include IS NULL OR {node_variable_name}.kind IN $kinds_include)")
+        where_clause_parts.append(f"($kinds_exclude IS NULL OR NOT({node_variable_name}.kind IN $kinds_exclude))")
+        where_clause = " AND ".join(where_clause_parts)
+        return f"({where_clause})"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
+        self.params.update(
+            {
+                "namespaces_include": self.namespaces_include,
+                "namespaces_exclude": self.namespaces_exclude,
+                "kinds_include": self.kinds_include,
+                "kinds_exclude": self.kinds_exclude,
+                "base_branch_name": self.base_branch.name,
+                "branch_name": self.branch.name,
+                "branch_names": [registry.default_branch, self.branch.name],
+                "from_time": self.diff_from.to_string(),
+                "to_time": self.diff_to.to_string(),
+            }
+        )
+        p_node_where = self._get_node_where_clause(node_variable_name="p")
+        n_node_where = self._get_node_where_clause(node_variable_name="n")
+
+        diff_rel_filter_parts, br_params = self.branch.get_query_filter_range(
+            rel_label="diff_rel",
+            start_time=self.diff_from,
+            end_time=self.diff_to,
+        )
+        diff_rel_filter = " AND ".join(diff_rel_filter_parts)
+
+        self.params.update(br_params)
+        self.params["branch_support"] = [item.value for item in self.branch_support]
+
+        query = """
+            // all updated edges for our branches and time frame
+            MATCH (p)-[diff_rel]-(q)
+            WHERE any(l in labels(p) WHERE l in ["Node", "Attribute", "Relationship"])
+            AND %(diff_rel_filter)s
+            AND p.branch_support IN $branch_support
+            AND %(p_node_where)s
+            // subqueries to get full paths associated with the above update edges
+            WITH p, diff_rel, q
+            // -- DEEPEST EDGE SUBQUERY --
+            // get full path for every HAS_VALUE, HAS_SOURCE/OWNER, IS_VISIBLE/PROTECTED
+            // explicitly add in base branch path, if it exists to capture previous value
+            // explicitly add in far-side of any relationship to get peer_id for rel properties
+            CALL {
+                WITH p, q, diff_rel
+                OPTIONAL MATCH path = (
+                    (:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node]-(inner_p)-[inner_diff_rel]->(inner_q)
+                )
+                WHERE ID(inner_p) = ID(p) AND ID(inner_diff_rel) = ID(diff_rel) AND ID(inner_q) = ID(q)
+                AND any(l in labels(inner_p) WHERE l in ["Attribute", "Relationship"])
+                AND type(inner_diff_rel) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
+                AND any(l in labels(inner_q) WHERE l in ["Boolean", "Node", "AttributeValue"])
+                AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+                AND %(n_node_where)s
+                AND ID(n) <> ID(inner_q)
+                AND ALL(
+                    r in [r_root, r_node]
+                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
+                    AND r.branch IN $branch_names
+                )
+                WITH path AS diff_rel_path, diff_rel, r_root, n, r_node, p
+                ORDER BY
+                    r_node.branch = diff_rel.branch DESC,
+                    r_root.branch = diff_rel.branch DESC,
+                    r_node.from DESC,
+                    r_root.from DESC
+                LIMIT 1
+                // get base branch version of the diff path, if it exists
+                WITH diff_rel_path, diff_rel, r_root, n, r_node, p
+                OPTIONAL MATCH latest_base_path = (:Root)<-[r_root2]-(n2)-[r_node2]-(inner_p2)-[base_diff_rel]->(base_prop)
+                WHERE ID(r_root2) = ID(r_root) AND ID(n2) = ID(n) AND ID(r_node2) = ID(r_node)  AND ID(inner_p2) = ID(p)
+                AND any(r in relationships(diff_rel_path) WHERE r.branch = $branch_name)
+                AND ID(n2) <> ID(base_prop)
+                AND type(base_diff_rel) = type(diff_rel)
+                AND all(
+                    r in relationships(latest_base_path)
+                    WHERE r.branch = $base_branch_name
+                    AND r.from <= $from_time AND (r.to IS NULL or r.to <= $from_time)
+                )
+                WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
+                ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
+                LIMIT 1
+                // get peer node for updated relationship properties
+                WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
+                OPTIONAL MATCH base_peer_path = (
+                   (:Root)<-[r_root3]-(n3)-[r_node3]-(inner_p3:Relationship)-[base_r_peer:IS_RELATED]-(base_peer:Node)
+                )
+                WHERE ID(r_root3) = ID(r_root) AND ID(n3) = ID(n) AND ID(r_node3) = ID(r_node) AND ID(inner_p3) = ID(p)
+                AND type(diff_rel) <> "IS_RELATED"
+                AND ID(n3) <> ID(base_peer)
+                AND base_r_peer.from <= $from_time
+                AND base_r_peer.branch IN $branch_names
+                WITH diff_rel_path, latest_base_path, base_peer_path, base_r_peer, diff_rel
+                ORDER BY base_r_peer.branch = diff_rel.branch DESC, base_r_peer.from DESC
+                LIMIT 1
+                RETURN reduce(
+                    diff_rel_paths = [], item IN [diff_rel_path, latest_base_path, base_peer_path] |
+                    CASE WHEN item IS NULL THEN diff_rel_paths ELSE diff_rel_paths + [item] END
+                ) AS diff_rel_paths
+            }
+            // -- MIDDLE EDGE SUBQUERY --
+            // get full paths for every HAS_ATTRIBUTE, IS_RELATED edge
+            // this includes at least one path for every property under the middle edge in question
+            WITH p, q, diff_rel, diff_rel_paths AS full_diff_paths
+            CALL {
+                WITH p, q, diff_rel
+                OPTIONAL MATCH path = (
+                    (:Root)<-[r_root:IS_PART_OF]-(inner_p)-[inner_diff_rel]-(inner_q)-[r_prop]-(prop)
+                )
+                WHERE ID(inner_p) = ID(p) AND ID(inner_diff_rel) = ID(diff_rel) AND ID(inner_q) = ID(q)
+                AND "Node" IN labels(inner_p)
+                AND type(inner_diff_rel) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+                AND any(l in labels(inner_q) WHERE l in ["Attribute", "Relationship"])
+                AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+                AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
+                AND ALL(
+                    r in [r_root, r_prop]
+                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
+                    AND r.branch IN $branch_names
+                )
+                AND ID(inner_p) <> ID(prop)
+                WITH path, prop, r_prop, r_root
+                ORDER BY
+                    ID(prop),
+                    r_prop.branch = diff_rel.branch DESC,
+                    r_root.branch = diff_rel.branch DESC,
+                    r_prop.from DESC,
+                    r_root.from DESC
+                WITH prop, head(collect(path)) AS latest_prop_path
+                RETURN collect(latest_prop_path) AS latest_paths
+            }
+            WITH p, q, diff_rel, full_diff_paths + latest_paths AS full_diff_paths
+            // -- TOP EDGE SUBQUERY --
+            // get full paths for every IS_PART_OF edge
+            // this edge indicates a whole node was added or deleted
+            // we need to get every attribute and relationship on the node to capture the new and previous values
+            CALL {
+                WITH p, q, diff_rel
+                OPTIONAL MATCH path = (
+                    (inner_q:Root)<-[inner_diff_rel:IS_PART_OF]-(inner_p:Node)-[r_node]-(node)-[r_prop]-(prop)
+                )
+                WHERE ID(inner_p) = ID(p) AND ID(inner_diff_rel) = ID(diff_rel) AND ID(inner_q) = ID(q)
+                AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+                AND any(l in labels(node) WHERE l in ["Attribute", "Relationship"])
+                AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+                AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
+                AND ALL(
+                    r in [r_node, r_prop]
+                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
+                    AND r.branch IN $branch_names
+                )
+                AND ID(inner_p) <> ID(prop)
+                WITH path, node, prop, r_prop, r_node
+                ORDER BY
+                    ID(node),
+                    ID(prop),
+                    r_prop.branch = diff_rel.branch DESC,
+                    r_node.branch = diff_rel.branch DESC,
+                    r_prop.from DESC,
+                    r_node.from DESC
+                WITH node, prop, head(collect(path)) AS latest_path
+                RETURN latest_path
+            }
+            WITH p, q, diff_rel, full_diff_paths, collect(latest_path) AS latest_paths
+            WITH p, q, diff_rel, full_diff_paths + latest_paths AS full_diff_paths
+        """ % {
+            "diff_rel_filter": diff_rel_filter,
+            "p_node_where": p_node_where,
+            "n_node_where": n_node_where,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["diff_rel", "full_diff_paths"]

@@ -4,7 +4,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipKind
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.model import DiffElementType
+from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.diff.payload_builder import DiffPayloadBuilder
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
