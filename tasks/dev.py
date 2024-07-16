@@ -250,10 +250,8 @@ def update_docker_compose_env_vars(
     infrahub_config_start = None
     infrahub_config_end = None
 
-    # Track which env vars are already present and their lines
     existing_vars = {}
 
-    # Find the start and end of the x-infrahub-config section
     for i, line in enumerate(docker_compose):
         if line.strip().startswith("x-infrahub-config: &infrahub_config"):
             in_infrahub_config_section = True
@@ -267,10 +265,10 @@ def update_docker_compose_env_vars(
             var_name = line.split(":", 1)[0].strip()
             existing_vars[var_name] = i
 
-    # Collect and sort all variables
     all_vars = sorted(existing_vars.keys() | set(env_vars))
 
-    # Prepare new content for the x-infrahub-config section
+    pattern = re.compile(r"\$\{(.+):-([^}]+)\}")
+
     new_config_lines = []
     for var in all_vars:
         default_value = env_defaults.get(var, "")
@@ -283,34 +281,18 @@ def update_docker_compose_env_vars(
         if var in existing_vars:
             line_idx = existing_vars[var]
             existing_value = docker_compose[line_idx].split(":", 1)[1].strip().strip('"')
-            if existing_value.startswith("&"):
-                existing_value = existing_value.split(" ", 1)[-1].strip('"')
 
-            # Always handle special vars with anchors
-            if var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
-                key_name = var.replace("INFRAHUB_", "").lower()
-                new_config_lines.append(f'  {var}: &{key_name} "{default_value_str}"')
-            elif var in ["INFRAHUB_INITIAL_ADMIN_TOKEN", "INFRAHUB_INITIAL_AGENT_TOKEN"]:
-                key_name = var.replace("INFRAHUB_INITIAL_", "").lower()
-                new_config_lines.append(f'  {var}: &{key_name} "{existing_value}"')
-            elif default_value_str == "localhost":
-                new_config_lines.append(f"  {var}:")
-            elif existing_value != default_value_str:
-                print(f"{var} value is different old: {existing_value} - new: {default_value_str}")
-                if not default_value_str:
-                    new_config_lines.append(f"  {var}:")
-                else:
-                    new_config_lines.append(f'  {var}: "{default_value_str}"')
-            elif not default_value_str:
-                new_config_lines.append(f"  {var}:")
+            match = pattern.match(existing_value)
+            if match and match.group(1) == var and match.group(2) == default_value_str:
+                new_config_lines.append(docker_compose[line_idx])
+            elif default_value_str:
+                new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
             else:
-                new_config_lines.append(f'  {var}: "{default_value_str}"')
-        elif var not in existing_vars and not default_value_str:
-            print(f"New variable {var} added")
-            new_config_lines.append(f"  {var}:")
+                new_config_lines.append(f"  {var}:")
+        elif default_value_str:
+            new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
         else:
-            print(f"New variable {var} added with {default_value_str}")
-            new_config_lines.append(f'  {var}: "{default_value_str}"')
+            new_config_lines.append(f"  {var}:")
 
     docker_compose = docker_compose[:infrahub_config_start] + new_config_lines + docker_compose[infrahub_config_end:]
 
