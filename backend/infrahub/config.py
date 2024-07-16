@@ -68,7 +68,7 @@ class MainSettings(BaseSettings):
         default="/opt/infrahub/docs/build/search-index.json",
         description="Full path of saved json containing pre-indexed documentation",
     )
-    internal_address: str = "http://infrahub-server:8000"
+    internal_address: Optional[str] = Field(default=None)
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
@@ -139,7 +139,7 @@ class DatabaseSettings(BaseSettings):
     protocol: str = "bolt"
     username: str = "neo4j"
     password: str = "admin"
-    address: str = "database"
+    address: str = "localhost"
     port: int = 7687
     database: Optional[str] = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
@@ -173,7 +173,7 @@ class BrokerSettings(BaseSettings):
     tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     username: str = "infrahub"
     password: str = "infrahub"
-    address: str = "message-queue"
+    address: str = "localhost"
     port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     namespace: str = "infrahub"
     maximum_message_retries: int = Field(
@@ -196,7 +196,7 @@ class BrokerSettings(BaseSettings):
 class CacheSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_")
     enable: bool = True
-    address: str = "cache"
+    address: str = "localhost"
     port: Optional[int] = Field(
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
     )

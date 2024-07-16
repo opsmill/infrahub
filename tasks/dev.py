@@ -219,12 +219,19 @@ def update_docker_compose(context: Context, docker_file: Optional[str] = "docker
 
 def get_enum_mappings():
     """Extracts enum mappings dynamically."""
-    from infrahub.config import StorageDriver, TraceExporterType, TraceTransportProtocol
+    from infrahub.config import BrokerDriver, CacheDriver, StorageDriver, TraceExporterType, TraceTransportProtocol
     from infrahub.database.constants import DatabaseType
 
     enum_mappings = {}
 
-    for enum_class in [DatabaseType, StorageDriver, TraceExporterType, TraceTransportProtocol]:
+    for enum_class in [
+        BrokerDriver,
+        CacheDriver,
+        DatabaseType,
+        StorageDriver,
+        TraceExporterType,
+        TraceTransportProtocol,
+    ]:
         for item in enum_class:
             enum_mappings[item] = item.value
 
@@ -242,39 +249,72 @@ def update_docker_compose_env_vars(
         docker_compose = file.readlines()
 
     in_infrahub_config_section = False
+    infrahub_config_start = None
+    infrahub_config_end = None
 
+    # Track which env vars are already present and their lines
+    existing_vars = {}
+
+    # Find the start and end of the x-infrahub-config section
     for i, line in enumerate(docker_compose):
         if line.strip().startswith("x-infrahub-config: &infrahub_config"):
             in_infrahub_config_section = True
+            infrahub_config_start = i + 1
             continue
-        if line.strip().startswith("services:"):
+        if in_infrahub_config_section and (not line.strip() or line.strip().startswith("services:")):
             in_infrahub_config_section = False
+            infrahub_config_end = i
+            break
+        if in_infrahub_config_section:
+            var_name = line.split(":", 1)[0].strip()
+            existing_vars[var_name] = i
 
-        if in_infrahub_config_section and line.strip().startswith("INFRAHUB_"):
-            var_name, existing_value = line.split(":", 1)
-            var_name = var_name.strip()
-            existing_value = existing_value.strip().strip('"')
-            if var_name in env_vars:
-                default_value = env_defaults.get(var_name, None)
-                if default_value is not None:
-                    # Convert bool to lowercase strings
-                    if isinstance(default_value, bool):
-                        default_value = str(default_value).lower()
-                    # Check if the default value is an enum-like value and replace it with its actual value
-                    elif isinstance(default_value, Enum):
-                        default_value = enum_mappings[default_value]
+    # Collect and sort all variables
+    all_vars = sorted(existing_vars.keys() | set(env_vars))
 
-                    # Update only if the default value is different from the existing value
-                    if existing_value != default_value:
-                        if var_name in [
-                            "INFRAHUB_BROKER_USERNAME",
-                            "INFRAHUB_BROKER_PASSWORD",
-                            "INFRAHUB_INITIAL_AGENT_TOKEN",
-                        ]:
-                            key_name = var_name.replace("INFRAHUB_", "").lower()
-                            docker_compose[i] = f'  {var_name}: &{key_name} "{default_value}"\n'
-                        else:
-                            docker_compose[i] = f'  {var_name}: "{default_value}"\n'
+    # Prepare new content for the x-infrahub-config section
+    new_config_lines = []
+    for var in all_vars:
+        default_value = env_defaults.get(var, "")
+        if isinstance(default_value, bool):
+            default_value = str(default_value).lower()
+        elif isinstance(default_value, Enum):
+            default_value = enum_mappings.get(default_value, str(default_value))
+        default_value_str = str(default_value) if default_value is not None else ""
+
+        if var in existing_vars:
+            line_idx = existing_vars[var]
+            existing_value = docker_compose[line_idx].split(":", 1)[1].strip().strip('"')
+            if existing_value.startswith("&"):
+                existing_value = existing_value.split(" ", 1)[-1].strip('"')
+
+            # Always handle special vars with anchors
+            if var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
+                key_name = var.replace("INFRAHUB_", "").lower()
+                new_config_lines.append(f'  {var}: &{key_name} "{default_value_str}"\n')
+            elif var in ["INFRAHUB_INITIAL_ADMIN_TOKEN", "INFRAHUB_INITIAL_AGENT_TOKEN"]:
+                key_name = var.replace("INFRAHUB_INITIAL_", "").lower()
+                new_config_lines.append(f'  {var}: &{key_name} "{existing_value}"\n')
+            elif default_value_str == "localhost":
+                new_config_lines.append(f"  {var}:\n")
+            elif existing_value != default_value_str:
+                print(f"{var} value is different old: {existing_value} - new: {default_value_str}")
+                if not default_value_str:
+                    new_config_lines.append(f"  {var}:\n")
+                else:
+                    new_config_lines.append(f'  {var}: "{default_value_str}"\n')
+            elif not default_value_str:
+                new_config_lines.append(f"  {var}:\n")
+            else:
+                new_config_lines.append(f'  {var}: "{default_value_str}"\n')
+        elif var not in existing_vars and not default_value_str:
+            print(f"New variable {var} added")
+            new_config_lines.append(f"  {var}:\n")
+        else:
+            print(f"New variable {var} added with {default_value_str}")
+            new_config_lines.append(f'  {var}: "{default_value_str}"\n')
+
+    docker_compose = docker_compose[:infrahub_config_start] + new_config_lines + docker_compose[infrahub_config_end:]
 
     with open(docker_file, "w", encoding="utf-8") as file:
         file.writelines(docker_compose)
