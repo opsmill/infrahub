@@ -47,7 +47,7 @@ export const getFormFieldsFromSchema = ({
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
-  const formFields = orderedFields.map((attribute) => {
+  const formFields: Array<DynamicFieldProps> = orderedFields.map((attribute) => {
     const basicFomFieldProps = {
       name: attribute.name,
       label: attribute.label ?? undefined,
@@ -137,12 +137,12 @@ export const getFormFieldsFromSchema = ({
         if (!relatedSchema) return null;
 
         return {
-          id: relatedSchema.kind,
+          id: relatedSchema.kind as string,
           name: relatedSchema.label ?? relatedSchema.name,
           badge: relatedSchema.namespace,
         };
       })
-      .filter(Boolean);
+      .filter((n) => n !== null);
 
     return [
       {
