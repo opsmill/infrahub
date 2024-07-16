@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { GetObjectDefaultValue, getObjectDefaultValue } from "@/components/form/utils";
+import {
+  GetObjectDefaultValue,
+  getObjectDefaultValue,
+} from "@/components/form/utils/getObjectDefaultValue";
 
 describe("getObjectDefaultValue", () => {
   it("returns null when no default value are found", () => {

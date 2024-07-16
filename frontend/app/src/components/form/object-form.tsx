@@ -6,7 +6,6 @@ import {
   schemaState,
 } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
-import { getFormFieldsFromSchema } from "./utils";
 import { useId, useState } from "react";
 import { Combobox, MultiCombobox, tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -30,6 +29,7 @@ import useFilters from "@/hooks/useFilters";
 import useQuery from "@/hooks/useQuery";
 import { getProfiles } from "@/graphql/queries/objects/getProfiles";
 import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
+import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
 
 export type ProfileData = Record<string, Pick<AttributeType, "value" | "__typename">>;
 
@@ -215,7 +215,7 @@ const ProfilesSelector = ({ schema, value, defaultValue, onChange }: ProfilesSel
   if (error) return <ErrorScreen message={error.message} />;
 
   // Get data for each profile in the query result
-  const profilesData: any[] = profilesNameList.reduce(
+  const profilesData = profilesNameList.reduce(
     (acc, profile) => [...acc, ...(data?.[profile!]?.edges ?? [])],
     []
   );

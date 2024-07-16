@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getFormFieldsFromSchema } from "../../../src/components/form/utils";
-import { IModelSchema } from "../../../src/state/atoms/schema.atom";
+import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import { AuthContextType } from "@/hooks/useAuth";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 
