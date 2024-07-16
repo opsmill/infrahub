@@ -301,7 +301,7 @@ def update_docker_compose_env_vars(
 
     docker_compose = docker_compose[:infrahub_config_start] + new_config_lines + docker_compose[infrahub_config_end:]
 
-    docker_path.write_text("\n".join(docker_compose), encoding="utf-8")
+    docker_path.write_text("\n".join(docker_compose) + "\n", encoding="utf-8")
     print(f"{docker_file} updated with environment variables")
 
 
