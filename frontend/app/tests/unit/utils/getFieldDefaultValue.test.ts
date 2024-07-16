@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { GetObjectDefaultValue, getObjectDefaultValue } from "@/components/form/utils";
+import {
+  GetFieldDefaultValue,
+  getFieldDefaultValue,
+} from "@/components/form/utils/getFieldDefaultValue";
 
 describe("getObjectDefaultValue", () => {
   it("returns null when no default value are found", () => {
@@ -24,10 +27,10 @@ describe("getObjectDefaultValue", () => {
       default_value: null,
       inherited: false,
       allow_override: "any",
-    } satisfies GetObjectDefaultValue["fieldSchema"];
+    } satisfies GetFieldDefaultValue["fieldSchema"];
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema });
+    const defaultValue = getFieldDefaultValue({ fieldSchema });
 
     // THEN
     expect(defaultValue).to.equal(null);
@@ -57,10 +60,10 @@ describe("getObjectDefaultValue", () => {
       on_delete: "no-action",
       allow_override: "any",
       read_only: false,
-    } satisfies GetObjectDefaultValue["fieldSchema"];
+    } satisfies GetFieldDefaultValue["fieldSchema"];
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema });
+    const defaultValue = getFieldDefaultValue({ fieldSchema });
 
     // THEN
     expect(defaultValue).to.equal(null);
@@ -88,10 +91,10 @@ describe("getObjectDefaultValue", () => {
       default_value: "test-value-form-schema",
       inherited: false,
       allow_override: "any",
-    } satisfies GetObjectDefaultValue["fieldSchema"];
+    } satisfies GetFieldDefaultValue["fieldSchema"];
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema });
+    const defaultValue = getFieldDefaultValue({ fieldSchema });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-schema");
@@ -119,7 +122,7 @@ describe("getObjectDefaultValue", () => {
       default_value: "test-value-form-schema",
       inherited: false,
       allow_override: "any",
-    } satisfies GetObjectDefaultValue["fieldSchema"];
+    } satisfies GetFieldDefaultValue["fieldSchema"];
 
     const profiles = [
       {
@@ -130,7 +133,7 @@ describe("getObjectDefaultValue", () => {
     ];
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, profiles });
+    const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-schema");
@@ -158,7 +161,7 @@ describe("getObjectDefaultValue", () => {
       default_value: "test-value-form-schema",
       inherited: false,
       allow_override: "any",
-    } satisfies GetObjectDefaultValue["fieldSchema"];
+    } satisfies GetFieldDefaultValue["fieldSchema"];
 
     const profiles = [
       {
@@ -175,7 +178,7 @@ describe("getObjectDefaultValue", () => {
     };
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profiles });
+    const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject, profiles });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-schema");
@@ -203,7 +206,7 @@ describe("getObjectDefaultValue", () => {
       default_value: null,
       inherited: false,
       allow_override: "any",
-    } satisfies GetObjectDefaultValue["fieldSchema"];
+    } satisfies GetFieldDefaultValue["fieldSchema"];
 
     const profiles = [
       {
@@ -220,7 +223,7 @@ describe("getObjectDefaultValue", () => {
     };
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profiles });
+    const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject, profiles });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-profile");
@@ -248,7 +251,7 @@ describe("getObjectDefaultValue", () => {
       default_value: "test-value-form-schema",
       inherited: false,
       allow_override: "any",
-    } satisfies GetObjectDefaultValue["fieldSchema"];
+    } satisfies GetFieldDefaultValue["fieldSchema"];
 
     const profiles = [
       {
@@ -265,10 +268,66 @@ describe("getObjectDefaultValue", () => {
     };
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profiles });
+    const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject, profiles });
 
     // THEN
     expect(defaultValue).to.equal("test-value-form-profile");
+  });
+
+  it("returns default value from the profile with the highest priority", () => {
+    // GIVEN
+    const fieldSchema = {
+      id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
+      state: "present",
+      name: "name",
+      kind: "Text",
+      enum: null,
+      choices: null,
+      regex: null,
+      max_length: null,
+      min_length: null,
+      label: "Name",
+      description: null,
+      read_only: false,
+      unique: true,
+      optional: false,
+      branch: "aware",
+      order_weight: 1000,
+      default_value: "test-value-form-schema",
+      inherited: false,
+      allow_override: "any",
+    } satisfies GetFieldDefaultValue["fieldSchema"];
+
+    const profiles = [
+      {
+        name: {
+          value: "second",
+        },
+        profile_priority: {
+          value: 2,
+        },
+      },
+      {
+        name: {
+          value: "first",
+        },
+        profile_priority: {
+          value: 1,
+        },
+      },
+    ];
+
+    const initialObject = {
+      name: {
+        value: null,
+      },
+    };
+
+    // WHEN
+    const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject, profiles });
+
+    // THEN
+    expect(defaultValue).to.equal("first");
   });
 
   it("returns current object field's value when it exists", () => {
@@ -293,7 +352,7 @@ describe("getObjectDefaultValue", () => {
       default_value: null,
       inherited: false,
       allow_override: "any",
-    } satisfies GetObjectDefaultValue["fieldSchema"];
+    } satisfies GetFieldDefaultValue["fieldSchema"];
 
     const profiles = [
       {
@@ -310,9 +369,40 @@ describe("getObjectDefaultValue", () => {
     };
 
     // WHEN
-    const defaultValue = getObjectDefaultValue({ fieldSchema, initialObject, profiles });
+    const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject, profiles });
 
     // THEN
     expect(defaultValue).to.equal("data-from-current-object");
+  });
+
+  it("returns null if no data is found", () => {
+    // GIVEN
+    const fieldSchema = {
+      id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
+      state: "present",
+      name: "name",
+      kind: "Text",
+      enum: null,
+      choices: null,
+      regex: null,
+      max_length: null,
+      min_length: null,
+      label: "Name",
+      description: null,
+      read_only: false,
+      unique: true,
+      optional: false,
+      branch: "aware",
+      order_weight: 1000,
+      default_value: null,
+      inherited: false,
+      allow_override: "any",
+    } satisfies GetFieldDefaultValue["fieldSchema"];
+
+    // WHEN
+    const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject: {} });
+
+    // THEN
+    expect(defaultValue).to.equal(null);
   });
 });
