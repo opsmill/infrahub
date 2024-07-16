@@ -4,7 +4,6 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 test.describe("/proposed-changes diff data", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-  test.setTimeout(60000);
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
