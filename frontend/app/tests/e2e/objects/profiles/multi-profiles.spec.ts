@@ -27,6 +27,8 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByLabel("Description").fill("Desc from generic profile");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("InfraInterface created")).toBeVisible();
+      await page.getByTestId("close-alert").click();
+      await expect(page.getByText("InfraInterface created")).not.toBeVisible();
 
       // L2 profile v1
       await page.getByTestId("create-object-button").click();
@@ -36,8 +38,8 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByLabel("Description").fill("Desc from L2 profile v1");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("InfraInterfaceL2 created")).toBeVisible();
-      // Close alert to avoid testing on this alert instead of the one for the profile v2
       await page.getByTestId("close-alert").click();
+      await expect(page.getByText("InfraInterfaceL2 created")).not.toBeVisible();
 
       // L2 profile v2
       await page.getByTestId("create-object-button").click();
