@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Generator, Optional, Union
 
 from infrahub import config
 from infrahub.core.constants import AttributeDBNodeType, RelationshipDirection, RelationshipHierarchyDirection
@@ -42,20 +42,20 @@ class NodeToProcess:
 
     branch: str
 
-    labels: List[str]
+    labels: list[str]
 
 
 @dataclass
 class AttributeNodePropertyFromDB:
     uuid: str
-    labels: List[str]
+    labels: list[str]
 
 
 @dataclass
 class AttributeFromDB:
     name: str
 
-    attr_labels: List[str]
+    attr_labels: list[str]
     attr_id: str
     attr_uuid: str
 
@@ -72,14 +72,14 @@ class AttributeFromDB:
     is_default: bool
     is_from_profile: bool = dataclass_field(default=False)
 
-    node_properties: Dict[str, AttributeNodePropertyFromDB] = dataclass_field(default_factory=dict)
-    flag_properties: Dict[str, bool] = dataclass_field(default_factory=dict)
+    node_properties: dict[str, AttributeNodePropertyFromDB] = dataclass_field(default_factory=dict)
+    flag_properties: dict[str, bool] = dataclass_field(default_factory=dict)
 
 
 @dataclass
 class NodeAttributesFromDB:
     node: Neo4jNode
-    attrs: Dict[str, AttributeFromDB] = dataclass_field(default_factory=dict)
+    attrs: dict[str, AttributeFromDB] = dataclass_field(default_factory=dict)
 
 
 class NodeQuery(Query):
@@ -90,7 +90,6 @@ class NodeQuery(Query):
         node_db_id: Optional[int] = None,
         id: Optional[str] = None,
         branch: Optional[Branch] = None,
-        *args,
         **kwargs,
     ) -> None:
         # TODO Validate that Node is a valid node
@@ -107,7 +106,7 @@ class NodeQuery(Query):
 
         self.branch = branch or self.node.get_branch_based_on_support_type()
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
 
 class NodeCreateAllQuery(NodeQuery):
@@ -117,7 +116,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         at = self.at or self.node._at
         self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
@@ -125,9 +124,9 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["kind"] = self.node.get_kind()
         self.params["branch_support"] = self.node._schema.branch
 
-        attributes: List[AttributeCreateData] = []
-        attributes_iphost: List[AttributeCreateData] = []
-        attributes_ipnetwork: List[AttributeCreateData] = []
+        attributes: list[AttributeCreateData] = []
+        attributes_iphost: list[AttributeCreateData] = []
+        attributes_ipnetwork: list[AttributeCreateData] = []
 
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
@@ -140,23 +139,23 @@ class NodeCreateAllQuery(NodeQuery):
             else:
                 attributes.append(attr_data)
 
-        relationships: List[RelationshipCreateData] = []
+        relationships: list[RelationshipCreateData] = []
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
             for rel in rel_manager._relationships:
                 relationships.append(await rel.get_create_data(db=db))
 
-        self.params["attrs"] = [attr.dict() for attr in attributes]
-        self.params["attrs_iphost"] = [attr.dict() for attr in attributes_iphost]
-        self.params["attrs_ipnetwork"] = [attr.dict() for attr in attributes_ipnetwork]
+        self.params["attrs"] = [attr.model_dump() for attr in attributes]
+        self.params["attrs_iphost"] = [attr.model_dump() for attr in attributes_iphost]
+        self.params["attrs_ipnetwork"] = [attr.model_dump() for attr in attributes_ipnetwork]
         self.params["rels_bidir"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.BIDIR.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.BIDIR.value
         ]
         self.params["rels_out"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.OUTBOUND.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.OUTBOUND.value
         ]
         self.params["rels_in"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.INBOUND.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.INBOUND.value
         ]
 
         self.params["node_prop"] = {
@@ -320,16 +319,16 @@ class NodeCreateAllQuery(NodeQuery):
         self.add_to_query(query)
         self.return_labels = ["n", "rn", "rv"]
 
-    def get_self_ids(self) -> Tuple[str, str]:
+    def get_self_ids(self) -> tuple[str, str]:
         result = self.get_result()
         node = result.get("n")
 
         if node is None:
-            raise QueryError(self.get_query(), self.params)
+            raise QueryError(query=self.get_query(), params=self.params)
 
         return node["uuid"], node.element_id
 
-    def get_ids(self) -> Dict[str, Tuple[str, str]]:
+    def get_ids(self) -> dict[str, tuple[str, str]]:
         data = {}
         for result in self.get_results():
             node = result.get("rn")
@@ -350,7 +349,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -375,13 +374,12 @@ class NodeCheckIDQuery(Query):
     def __init__(
         self,
         node_id: str,
-        *args,
         **kwargs,
     ):
         self.node_id = node_id
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["uuid"] = self.node_id
 
         query = """
@@ -405,12 +403,11 @@ class NodeListGetAttributeQuery(Query):
 
     def __init__(
         self,
-        ids: List[str],
+        ids: list[str],
         fields: Optional[dict] = None,
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
-        *args,
         **kwargs,
     ):
         self.account = account
@@ -419,9 +416,9 @@ class NodeListGetAttributeQuery(Query):
         self.include_source = include_source
         self.include_owner = include_owner
 
-        super().__init__(order_by=["n.uuid", "a.name"], *args, **kwargs)
+        super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["ids"] = self.ids
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -494,8 +491,8 @@ class NodeListGetAttributeQuery(Query):
             self.add_to_query(query)
             self.return_labels.extend(["owner", "rel_owner"])
 
-    def get_attributes_group_by_node(self) -> Dict[str, NodeAttributesFromDB]:
-        attrs_by_node: Dict[str, NodeAttributesFromDB] = {}
+    def get_attributes_group_by_node(self) -> dict[str, NodeAttributesFromDB]:
+        attrs_by_node: dict[str, NodeAttributesFromDB] = {}
 
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
             node_id: str = result.get_node("n").get("uuid")
@@ -510,7 +507,7 @@ class NodeListGetAttributeQuery(Query):
 
         return attrs_by_node
 
-    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> Tuple[AttributeFromDB, QueryResult]:
+    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> tuple[AttributeFromDB, QueryResult]:
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
             if result.get_node("n").get("uuid") == node_id and result.get_node("a").get("name") == attr_name:
                 return self._extract_attribute_data(result=result), result
@@ -555,17 +552,12 @@ class NodeListGetAttributeQuery(Query):
 class NodeListGetRelationshipsQuery(Query):
     name: str = "node_list_get_relationship"
 
-    def __init__(
-        self,
-        ids: List[str],
-        *args,
-        **kwargs,
-    ):
+    def __init__(self, ids: list[str], **kwargs):
         self.ids = ids
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
@@ -584,7 +576,7 @@ class NodeListGetRelationshipsQuery(Query):
 
         self.return_labels = ["n", "rel", "peer", "r1", "r2"]
 
-    def get_peers_group_by_node(self) -> Dict[str, Dict[str, List[str]]]:
+    def get_peers_group_by_node(self) -> dict[str, dict[str, list[str]]]:
         peers_by_node = defaultdict(lambda: defaultdict(list))
 
         for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
@@ -600,12 +592,12 @@ class NodeListGetRelationshipsQuery(Query):
 class NodeListGetInfoQuery(Query):
     name: str = "node_list_get_info"
 
-    def __init__(self, ids: List[str], account=None, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, ids: list[str], account=None, **kwargs: Any) -> None:
         self.account = account
         self.ids = ids
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -640,13 +632,16 @@ class NodeListGetInfoQuery(Query):
 
         for result in self.get_results_group_by(("n", "uuid")):
             schema = find_node_schema(db=db, node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
+            node_branch = self.branch
+            if self.branch_agnostic:
+                node_branch = result.get_rel("rb").get("branch")
             yield NodeToProcess(
                 schema=schema,
                 node_id=result.get_node("n").element_id,
                 node_uuid=result.get_node("n").get("uuid"),
                 profile_uuids=[str(puuid) for puuid in result.get("profile_uuids")],
                 updated_at=result.get_rel("rb").get("from"),
-                branch=self.branch.name,
+                branch=node_branch,
                 labels=list(result.get_node("n").labels),
             )
 
@@ -679,7 +674,7 @@ class FieldAttributeRequirement:
 
     @property
     def supports_profile(self) -> bool:
-        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values"))
+        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values", "isnull"))
 
     @property
     def is_filter(self) -> bool:
@@ -709,19 +704,47 @@ class FieldAttributeRequirement:
     def final_value_query_variable(self) -> str:
         return f"attr{self.index}_final_value"
 
+    @property
+    def comparison_operator(self) -> str:
+        if self.field_attr_name == "isnull":
+            return "=" if self.field_attr_value is True else "<>"
+        if self.field_attr_name == "values":
+            return "IN"
+        return "="
+
+    @property
+    def field_attr_comparison_value(self) -> Any:
+        if self.field_attr_name == "isnull":
+            return "NULL"
+        return self.field_attr_value
+
 
 class NodeGetListQuery(Query):
     name = "node_get_list"
 
     def __init__(
-        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, *args: Any, **kwargs: Any
+        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, **kwargs: Any
     ) -> None:
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
         self._variables_to_track = ["n", "rb"]
+        self._validate_filters()
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
+
+    def _validate_filters(self) -> None:
+        if not self.filters:
+            return
+        filter_errors = []
+        for filter_str in self.filters:
+            split_filter = filter_str.split("__")
+            if len(split_filter) > 2 and split_filter[-1] == "isnull":
+                filter_errors.append(
+                    f"{filter_str} is not allowed: 'isnull' is not supported for attributes of relationships"
+                )
+        if filter_errors:
+            raise RuntimeError(*filter_errors)
 
     def _track_variable(self, variable: str) -> None:
         if variable not in self._variables_to_track:
@@ -736,7 +759,7 @@ class NodeGetListQuery(Query):
     def _get_tracked_variables(self) -> list[str]:
         return self._variables_to_track
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.order_by = []
         self.params["node_kind"] = self.schema.kind
 
@@ -816,8 +839,8 @@ class NodeGetListQuery(Query):
         if not field_attribute_requirements:
             return
 
-        filter_query: List[str] = []
-        filter_params: Dict[str, Any] = {}
+        filter_query: list[str] = []
+        filter_params: dict[str, Any] = {}
 
         for far in field_attribute_requirements:
             extra_tail_properties = {far.node_value_query_variable: "value"}
@@ -867,8 +890,8 @@ class NodeGetListQuery(Query):
         if not field_attribute_requirements:
             return
 
-        sort_query: List[str] = []
-        sort_params: Dict[str, Any] = {}
+        sort_query: list[str] = []
+        sort_params: dict[str, Any] = {}
 
         for far in field_attribute_requirements:
             if far.field is None:
@@ -947,8 +970,8 @@ class NodeGetListQuery(Query):
     async def _add_profile_attributes(
         self, db: InfrahubDatabase, field_attribute_requirements: list[FieldAttributeRequirement], branch_filter: str
     ) -> None:
-        attributes_queries: List[str] = []
-        attributes_params: Dict[str, Any] = {}
+        attributes_queries: list[str] = []
+        attributes_params: dict[str, Any] = {}
         profile_attributes = [far for far in field_attribute_requirements if far.supports_profile]
 
         for profile_attr in profile_attributes:
@@ -1024,18 +1047,14 @@ class NodeGetListQuery(Query):
             if not far.is_filter or not far.supports_profile:
                 continue
             var_name = f"final_attr_value{far.index}"
-            self.params[var_name] = far.field_attr_value
+            self.params[var_name] = far.field_attr_comparison_value
             if self.partial_match:
                 where_parts.append(
                     f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
                 )
                 continue
-            if far.field_attr_name == "values":
-                operator = "IN"
-            else:
-                operator = "="
 
-            where_parts.append(f"{far.final_value_query_variable} {operator} ${var_name}")
+            where_parts.append(f"{far.final_value_query_variable} {far.comparison_operator} ${var_name}")
         if where_parts:
             where_str = "WHERE " + " AND ".join(where_parts)
         self.add_to_query(where_str)
@@ -1086,7 +1105,7 @@ class NodeGetListQuery(Query):
 
         return list(field_requirements_map.values())
 
-    def get_node_ids(self) -> List[str]:
+    def get_node_ids(self) -> list[str]:
         return [str(result.get("n.uuid")) for result in self.get_results()]
 
 
@@ -1101,7 +1120,6 @@ class NodeGetHierarchyQuery(Query):
         direction: RelationshipHierarchyDirection,
         node_schema: Union[NodeSchema, GenericSchema],
         filters: Optional[dict] = None,
-        *args: Any,
         **kwargs: Any,
     ) -> None:
         self.filters = filters or {}
@@ -1109,9 +1127,9 @@ class NodeGetHierarchyQuery(Query):
         self.node_id = node_id
         self.node_schema = node_schema
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)

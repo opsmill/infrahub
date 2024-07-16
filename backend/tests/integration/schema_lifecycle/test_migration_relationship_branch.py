@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Optional
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -10,23 +10,36 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import InitializationError
 
 from ..shared import load_schema
-from .shared import (
-    CAR_KIND,
-    MANUFACTURER_KIND_01,
-    PERSON_KIND,
-    TAG_KIND,
-    TestSchemaLifecycleBase,
-)
+from .shared import CAR_KIND, MANUFACTURER_KIND_01, PERSON_KIND, TAG_KIND, TestSchemaLifecycleBase
 
 # pylint: disable=unused-argument
+
+
+class BranchState:
+    def __init__(self) -> None:
+        self._branch: Optional[Branch] = None
+
+    @property
+    def branch(self) -> Branch:
+        if self._branch:
+            return self._branch
+        raise InitializationError
+
+    @branch.setter
+    def branch(self, value: Branch) -> None:
+        self._branch = value
+
+
+state = BranchState()
 
 
 class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
     @property
     def branch1(self) -> Branch:
-        return pytest.state["branch1"]  # type: ignore[index]
+        return state.branch
 
     @pytest.fixture(scope="class")
     async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
@@ -61,7 +74,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
 
         # Create Branch1
         branch1 = await create_branch(db=db, branch_name="branch1")
-        pytest.state = {"branch1": branch1}
+        state.branch = branch1
 
         # Load data in BRANCH1
         richard = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
@@ -127,7 +140,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_person_tag(self, schema_person_base) -> Dict[str, Any]:
+    def schema_person_tag(self, schema_person_base) -> dict[str, Any]:
         schema_person_base["relationships"] = [
             {
                 "name": "tags",
@@ -140,13 +153,13 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         return schema_person_base
 
     @pytest.fixture(scope="class")
-    def schema_car_main_driver(self, schema_car_base) -> Dict[str, Any]:
+    def schema_car_main_driver(self, schema_car_base) -> dict[str, Any]:
         assert schema_car_base["relationships"][0]["name"] == "owner"
         schema_car_base["relationships"][0]["name"] = "main_driver"
         return schema_car_base
 
     @pytest.fixture(scope="class")
-    def schema_tag_no_persons(self, schema_tag_base) -> Dict[str, Any]:
+    def schema_tag_no_persons(self, schema_tag_base) -> dict[str, Any]:
         assert schema_tag_base["relationships"][1]["name"] == "persons"
         schema_tag_base["relationships"][1]["state"] = "absent"
         return schema_tag_base
@@ -154,7 +167,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step02(
         self, schema_car_main_driver, schema_person_tag, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_tag, schema_car_main_driver, schema_manufacturer_base, schema_tag_base],
@@ -163,7 +176,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step03(
         self, schema_car_main_driver, schema_person_tag, schema_manufacturer_base, schema_tag_no_persons
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_tag, schema_car_main_driver, schema_manufacturer_base, schema_tag_no_persons],

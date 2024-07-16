@@ -5,7 +5,7 @@ ignore: |
   /.venv
   /examples
   /repositories
-  /frontend/playwright-report
+  /frontend/**/playwright-report
   **/node_modules
   # https://github.com/sbaudoin/yamllint/issues/16
   /helm/templates

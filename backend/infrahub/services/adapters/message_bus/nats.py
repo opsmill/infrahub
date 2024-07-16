@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import ssl
-from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, Optional, TypeVar
 
 import nats
 import ujson
@@ -41,7 +41,7 @@ class NATSMessageBus(InfrahubMessageBus):
         self.jetstream: nats.js.JetStreamContext
         self.callback_queue: nats.js.api.StreamInfo
         self.events_queue: nats.js.api.StreamInfo
-        self.message_enrichers: List[MessageFunction] = []
+        self.message_enrichers: list[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
         self.futures: MutableMapping[str, asyncio.Future] = {}
@@ -125,7 +125,7 @@ class NATSMessageBus(InfrahubMessageBus):
             if is_instrumentation_enabled() and message.headers:
                 context.detach(token)
 
-    async def _subscribe_events(self, events: List[str], identity: str) -> None:
+    async def _subscribe_events(self, events: list[str], identity: str) -> None:
         for subject in events:
             await self.jetstream.subscribe(
                 subject=subject,
@@ -269,7 +269,7 @@ class NATSMessageBus(InfrahubMessageBus):
             headers=headers,
         )
 
-    async def rpc(self, message: InfrahubMessage, response_class: Type[ResponseClass]) -> ResponseClass:
+    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()

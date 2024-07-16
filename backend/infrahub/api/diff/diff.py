@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Depends, Request
 from infrahub_sdk.utils import compare_lists
@@ -91,8 +91,8 @@ async def get_diff_files(
     time_to: Optional[str] = None,
     branch_only: bool = True,
     _: str = Depends(get_current_user),
-) -> Dict[str, Dict[str, BranchDiffRepository]]:
-    response: Dict[str, Dict[str, BranchDiffRepository]] = defaultdict(dict)
+) -> dict[str, dict[str, BranchDiffRepository]]:
+    response: dict[str, dict[str, BranchDiffRepository]] = defaultdict(dict)
     service: InfrahubServices = request.app.state.service
 
     # Query the Diff for all files and repository from the database
@@ -126,7 +126,7 @@ async def get_diff_artifacts(
     time_to: Optional[str] = None,
     branch_only: bool = False,
     _: str = Depends(get_current_user),
-) -> Dict[str, BranchDiffArtifact]:
+) -> dict[str, BranchDiffArtifact]:
     response = {}
 
     default_branch_name = registry.default_branch
@@ -167,7 +167,7 @@ async def get_diff_artifacts(
         targets += targets_in_main
 
     target_per_kinds = defaultdict(list)
-    target_per_artifact: Dict[str, ArtifactTarget] = {}
+    target_per_artifact: dict[str, ArtifactTarget] = {}
     for target in targets:
         for artifact_id in await target.artifacts.get_peers(db=db):
             target_per_artifact[artifact_id] = ArtifactTarget(id=target.id, kind=target.get_kind())
@@ -179,7 +179,7 @@ async def get_diff_artifacts(
 
     # If an artifact has been already created in main, it will appear as CREATED insted of UPDATED
     # To fix that situation, we extract all unique identifier for an artifact (target_id, definition_id) in order to make it easier to search later
-    artifacts_in_main: Dict[Tuple[str, str], BranchDiffNode] = {}
+    artifacts_in_main: dict[tuple[str, str], BranchDiffNode] = {}
     for node in payload[default_branch_name]:
         if (
             node.action != DiffAction.ADDED

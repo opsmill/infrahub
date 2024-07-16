@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import AllowOverrideType, InfrahubKind
 
@@ -26,16 +26,28 @@ class NodeSchema(GeneratedNodeSchema):
         return False
 
     def validate_inheritance(self, interface: GenericSchema) -> None:
-        """Check that protected attributes and relationships are not overriden before inheriting them from interface."""
+        """Perform checks specific to inheritance from Generics.
+
+        Checks:
+            - Check that protected attributes and relationships are not overridden before inheriting them from interface.
+            - Check that the attribute types to be inherited are same kind.
+        """
         for attribute in self.attributes:
-            if (
-                attribute.name in interface.attribute_names
-                and not attribute.inherited
-                and interface.get_attribute(attribute.name).allow_override == AllowOverrideType.NONE
-            ):
-                raise ValueError(
-                    f"{self.kind}'s attribute {attribute.name} inherited from {interface.kind} cannot be overriden"
-                )
+            if attribute.name in interface.attribute_names:
+                if (
+                    not attribute.inherited
+                    and interface.get_attribute(attribute.name).allow_override == AllowOverrideType.NONE
+                ):
+                    raise ValueError(
+                        f"{self.kind}'s attribute {attribute.name} inherited from {interface.kind} cannot be overriden"
+                    )
+                # Check existing inherited attribute kind is the same as the incoming inherited attribute
+                interface_attr_kind = interface.get_attribute(attribute.name).kind
+                if attribute.kind != interface_attr_kind:
+                    raise ValueError(
+                        f"{self.kind}.{attribute.name} inherited from {interface.namespace}{interface.name} must be the same kind "
+                        f'["{interface_attr_kind}", "{attribute.kind}"]'
+                    )
 
         for relationship in self.relationships:
             if (
@@ -103,11 +115,11 @@ class NodeSchema(GeneratedNodeSchema):
             raise TypeError
         return schema
 
-    def get_labels(self) -> List[str]:
+    def get_labels(self) -> list[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""
 
-        labels: List[str] = [self.kind] + self.inherit_from
+        labels: list[str] = [self.kind] + self.inherit_from
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
             labels.append(InfrahubKind.NODE)
         return labels

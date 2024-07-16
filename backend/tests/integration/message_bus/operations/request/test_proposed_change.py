@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, AsyncGenerator
 
 import pytest
@@ -22,6 +21,9 @@ from tests.helpers.test_client import InfrahubTestClient
 from tests.integration.conftest import IntegrationHelper
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub.core.protocols import CoreProposedChange
     from infrahub.database import InfrahubDatabase
 
 BRANCH_CREATE = """
@@ -70,12 +72,12 @@ async def test_client(init_db_base) -> AsyncGenerator[InfrahubTestClient, None]:
 async def prepare_proposed_change(
     db: InfrahubDatabase,
     tmp_path_module_scope,
-    git_repos_dir_module_scope: str,
+    git_repos_dir_module_scope: Path,
     init_db_base,
     test_client: InfrahubTestClient,
 ) -> str:
-    source_dir = os.path.join(str(tmp_path_module_scope), "sources")
-    os.mkdir(source_dir)
+    source_dir = tmp_path_module_scope / "sources"
+    source_dir.mkdir()
     file_repo = FileRepo(name="conflict-01", sources_directory=source_dir)
 
     obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
@@ -183,7 +185,7 @@ async def test_cancel(
     services.prepare(service=services.service)
     await cancel(message=message, service=services.service)
     assert fake_log.info_logs == ["Canceling proposed change as the source branch was deleted"]
-    proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+    proposed_change: CoreProposedChange = await NodeManager.get_one_by_id_or_default_filter(
         db=db, id=prepare_proposed_change, kind=InfrahubKind.PROPOSEDCHANGE
     )
-    assert proposed_change.state.value.value == ProposedChangeState.CANCELED.value  # type: ignore[attr-defined]
+    assert proposed_change.state.value.value == ProposedChangeState.CANCELED.value

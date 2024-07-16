@@ -8,6 +8,7 @@ from infrahub.core.schema import SchemaRoot
 from .car import CAR
 from .manufacturer import MANUFACTURER
 from .person import PERSON
+from .ticket import TICKET
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -26,4 +27,4 @@ async def load_schema(db: InfrahubDatabase, schema: SchemaRoot) -> None:
     await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
-__all__ = ["CAR", "MANUFACTURER", "PERSON", "CAR_SCHEMA"]
+__all__ = ["CAR", "MANUFACTURER", "PERSON", "CAR_SCHEMA", "TICKET"]

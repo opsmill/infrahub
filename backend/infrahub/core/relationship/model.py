@@ -3,11 +3,11 @@ from __future__ import annotations
 import copy
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Optional, Sequence, Union
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection, is_valid_uuid
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind
@@ -50,16 +50,16 @@ class RelationshipCreateData(BaseModel):
     uuid: str
     name: str
     destination_id: str
-    branch: Optional[str]
+    branch: Optional[str] = None
     branch_level: int
-    branch_support: Optional[str]
+    branch_support: Optional[str] = None
     direction: str
     status: str
     is_protected: bool
     is_visible: bool
     hierarchical: Optional[str] = None
-    source_prop: List[NodePropertyData] = Field(default_factory=list)
-    owner_prop: List[NodePropertyData] = Field(default_factory=list)
+    source_prop: list[NodePropertyData] = Field(default_factory=list)
+    owner_prop: list[NodePropertyData] = Field(default_factory=list)
 
 
 @dataclass
@@ -145,7 +145,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             return registry.get_global_branch()
         return self.branch
 
-    async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]) -> None:  # pylint: disable=too-many-branches
+    async def _process_data(self, data: Union[dict, RelationshipPeerData, str]) -> None:  # pylint: disable=too-many-branches
         self.data = data
 
         if isinstance(data, RelationshipPeerData):
@@ -215,7 +215,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         if self._node:
             return self._node
 
-        node = await registry.manager.get_one_by_id_or_default_filter(
+        node: Node = await registry.manager.get_one_by_id_or_default_filter(
             db=db,
             id=self.node_id,
             kind=self.schema.kind,
@@ -252,7 +252,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
     async def _get_peer(self, db: InfrahubDatabase) -> None:
         try:
-            peer = await registry.manager.get_one_by_id_or_default_filter(
+            peer: Node = await registry.manager.get_one_by_id_or_default_filter(
                 db=db,
                 id=self.get_peer_id(),
                 kind=self.schema.peer,
@@ -272,7 +272,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     def get_peer_schema(self, db: InfrahubDatabase) -> MainSchemaTypes:
         return db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
 
-    def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
+    def compare_properties_with_data(self, data: RelationshipPeerData) -> list[str]:
         different_properties = []
 
         for prop_name, prop in data.properties.items():
@@ -311,7 +311,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def update(
         self,
         db: InfrahubDatabase,
-        properties_to_update: List[str],
+        properties_to_update: list[str],
         data: RelationshipPeerData,
         at: Optional[Timestamp] = None,
     ) -> None:
@@ -522,7 +522,7 @@ class RelationshipValidatorList:
         self.max_count: int = max_count
         self.name = name
 
-        self._relationships: List[Relationship] = [rel for rel in relationships if isinstance(rel, Relationship)]
+        self._relationships: list[Relationship] = [rel for rel in relationships if isinstance(rel, Relationship)]
         self._relationships_count: int = len(self._relationships)
 
         # Validate the initial relationships count is within the min and max count if relationships were provided
@@ -625,7 +625,7 @@ class RelationshipValidatorList:
         self._relationships.remove(value)
         self._relationships_count -= 1
 
-    def as_list(self) -> List[Relationship]:
+    def as_list(self) -> list[Relationship]:
         return self._relationships
 
     def _raise_too_few(self) -> None:
@@ -678,7 +678,7 @@ class RelationshipManager:
         branch: Branch,
         at: Timestamp,
         node: Node,
-        data: Optional[Union[Dict, List, str]] = None,
+        data: Optional[Union[dict, list, str]] = None,
     ) -> RelationshipManager:
         rm = cls(schema=schema, branch=branch, at=at, node=node)
 
@@ -689,7 +689,7 @@ class RelationshipManager:
 
         # Data can be
         #  - A String, pass it to one relationsip object
-        #  - A Dict, pass it to one relationship object
+        #  - A dict, pass it to one relationship object
         #  - A list of str or dict, pass it to multiple objects
         if not isinstance(data, list):
             data = [data]
@@ -735,7 +735,7 @@ class RelationshipManager:
 
         return await rels[0].get_peer(db=db)
 
-    async def get_peers(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> Dict[str, Node]:
+    async def get_peers(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> dict[str, Node]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
         nodes = await registry.manager.get_many(
@@ -824,7 +824,7 @@ class RelationshipManager:
         for peer_id in details.peer_ids_present_local_only:
             await self.remove(peer_id=peer_id, db=db)
 
-    async def get(self, db: InfrahubDatabase) -> Union[Relationship, List[Relationship]]:
+    async def get(self, db: InfrahubDatabase) -> Union[Relationship, list[Relationship]]:
         rels = await self.get_relationships(db=db)
 
         if self.schema.cardinality == "one":
@@ -834,18 +834,18 @@ class RelationshipManager:
 
     async def get_relationships(
         self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
-    ) -> List[Relationship]:
+    ) -> list[Relationship]:
         if force_refresh or not self.has_fetched_relationships:
             await self._fetch_relationships(db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh)
 
         return self._relationships.as_list()
 
     async def update(  # pylint: disable=too-many-branches
-        self, data: Union[List[Union[str, Node]], Dict[str, Any], str, Node, None], db: InfrahubDatabase
+        self, data: Union[list[Union[str, Node]], dict[str, Any], str, Node, None], db: InfrahubDatabase
     ) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):
-            list_data: Sequence[Union[str, Node, Dict[str, Any], None]] = [data]
+            list_data: Sequence[Union[str, Node, dict[str, Any], None]] = [data]
         else:
             list_data = data
 
@@ -901,7 +901,7 @@ class RelationshipManager:
 
         return changed
 
-    async def add(self, data: Union[Dict[str, Any], Node], db: InfrahubDatabase) -> bool:
+    async def add(self, data: Union[dict[str, Any], Node], db: InfrahubDatabase) -> bool:
         """Add a new relationship to the list of existing ones, avoid duplication."""
         if not isinstance(data, (self.rel_class, dict)) and not hasattr(data, "_schema"):
             raise ValidationError({self.name: f"Invalid data provided to form a relationship {data}"})

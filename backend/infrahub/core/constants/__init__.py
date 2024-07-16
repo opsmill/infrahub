@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import enum
-from typing import List
 
 from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.exceptions import ValidationError
@@ -273,11 +272,11 @@ class AttributeDBNodeType(InfrahubStringEnum):
     IPNETWORK = "ipnetwork"
 
 
-RESTRICTED_NAMESPACES: List[str] = [
+RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
     # "Builtin",
-    # "Core",
+    "Core",
     "Deprecated",
     "Diff",
     "Infrahub",
@@ -293,6 +292,7 @@ NAME_REGEX = r"^[a-z0-9\_]+$"
 DEFAULT_DESCRIPTION_LENGTH = 128
 
 DEFAULT_NAME_MAX_LENGTH = 32
+DEFAULT_LABEL_MAX_LENGTH = 64
 DEFAULT_KIND_MIN_LENGTH = 3
 DEFAULT_KIND_MAX_LENGTH = 32
 NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"

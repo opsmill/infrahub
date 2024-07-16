@@ -1,0 +1,519 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+generics:
+  - name: Interface
+    namespace: Infra
+    description: "Generic Network Interface"
+    label: "Interface"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    display_labels:
+      - name__value
+    order_by:
+      - device__hostname__value
+      - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+      - name: description
+        kind: Text
+        optional: true
+      - name: speed
+        kind: Number
+        optional: true
+      - name: mtu
+        label: MTU
+        default_value: 1500
+        kind: Number
+      - name: enabled
+        kind: Boolean
+        default_value: true
+      - name: mac_address
+        label: Mac Address
+        kind: Text
+        optional: true
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__interface"
+        optional: false
+        cardinality: one
+        kind: Parent
+  - name: Choice
+    namespace: Template
+    description: "Generic Choice"
+    include_in_menu: false
+    label: "Choice"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: color
+        kind: Text
+        optional: true
+  - name: Endpoint
+    namespace: Infra
+    description: "Generic Endpoint to connect two objects together."
+    include_in_menu: false
+    label: "Endpoint"
+    relationships:
+      - name: connected_endpoint
+        peer: InfraEndpoint
+        optional: true
+        cardinality: one
+        kind: Attribute
+        identifier: connected__endpoint
+nodes:
+  - name: Generic  # Organization
+    namespace: Organization
+    label: Organization
+    description: An organization represent a legal entity, a company.
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:domain
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+      - name: type
+        kind: Text
+        optional: true
+    relationships:
+      - name: group
+        identifier: "organization__group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Generic
+  - name: Generic  # Location
+    namespace: Location
+    label: Location
+    description: 'A location represent a physical element: a building, a site, a city'
+    default_filter: name__value
+    display_labels: [name__value]
+    order_by: [name__value]
+    icon: mdi:map-marker-radius-outline
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: description
+        optional: true
+      - kind: Text
+        name: type
+    relationships:
+      - name: organization
+        peer: OrganizationGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: group
+        identifier: "location__group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Generic
+  - name: Platform
+    namespace: Infra
+    description: "A Platform represent the type of software running on a device"
+    label: "Platform"
+    icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
+    menu_placement: "InfraDevice"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: nornir_platform
+        kind: Text
+        optional: true
+      - name: napalm_driver
+        kind: Text
+        optional: true
+      - name: netmiko_device_type
+        kind: Text
+        optional: true
+      - name: ansible_network_os
+        kind: Text
+        optional: true
+    relationships:
+      - name: devices
+        peer: InfraDevice
+        optional: true
+        cardinality: many
+  - name: DeviceType
+    namespace: Template
+    description: "Device Type"
+    label: "Device Type"
+    icon: "mdi:poll"
+    menu_placement: "InfraDevice"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    attributes:
+      - name: part_number
+        label: Part Number
+        optional: true
+        kind: Text
+      - name: height
+        label: "Height (U)"
+        optional: true
+        kind: Number
+      - name: full_depth
+        label: "Full Depth"
+        optional: true
+        kind: Boolean
+    relationships:
+      - cardinality: many
+        identifier: device__type
+        name: device
+        optional: true
+        peer: InfraDevice
+      - name: manufacturer
+        peer: OrganizationGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: Device
+    namespace: Infra
+    description: IP Fabric Device
+    icon: "mdi:router-network"
+    uniqueness_constraints:
+      - ["location", "hostname__value"]
+    inherit_from:
+      - "CoreArtifactTarget"
+    order_by:
+      - hostname__value
+    display_labels:
+      - hostname__value
+    attributes:
+      - name: hostname
+        kind: Text
+        unique: true
+      - name: serial_number
+        label: Unique Serial Number
+        kind: Text
+      - name: hardware_serial_number
+        label: Hardware Serial Number
+        kind: Text
+      - name: fqdn
+        label: FQDN
+        kind: Text
+        optional: true
+    relationships:
+      - name: organization
+        peer: OrganizationGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: location
+        peer: LocationGeneric
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: platform
+        peer: InfraPlatform
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: model
+        label: Model
+        peer: TemplateDeviceType
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: version
+        peer: InfraNOSVersion
+        kind: Attribute
+        cardinality: one
+      - name: interfaces
+        peer: InfraInterface
+        optional: true
+        identifier: "device__interface"
+        cardinality: many
+        kind: Component
+      - name: part_number
+        peer: InfraPartNumber
+        kind: Component
+        optional: true
+        cardinality: many
+        identifier: "device__part"
+  - name: PartNumber
+    namespace: Infra
+    label: Part Number
+    description: Modules and part numbers from inventory of network infrastructure devices.
+    icon: "mdi:format-list-bulleted"
+    uniqueness_constraints:
+      - ["device", "name__value"]
+    display_labels:
+      - name__value
+    order_by:
+      - device__hostname__value
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+      - name: description
+        kind: Text
+        optional: true
+      - name: part_id
+        label: Part ID
+        kind: Text
+        optional: true
+      - name: part_sn
+        label: Part Serial Number
+        kind: Text
+        optional: true
+      - name: part_vid
+        label: Part Version ID
+        kind: Text
+        optional: true
+    relationships:
+      - name: manufacturer
+        peer: OrganizationGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: model
+        label: Model
+        peer: TemplateDeviceType
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: device
+        peer: InfraDevice
+        kind: Parent
+        optional: false
+        cardinality: one
+        identifier: "device__part"
+  - name: NOSVersion
+    namespace: Infra
+    description: NOS Version
+    icon: "mdi:content-copy"
+    # uniqueness_constraints:
+    #   - ["manufacturer", "model", "version__value"]
+    order_by:
+      - version__value
+    display_labels:
+      - version__value
+    attributes:
+      - name: version
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: manufacturer
+        peer: OrganizationGeneric
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: platform
+        peer: InfraPlatform
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: model
+        label: Model
+        peer: TemplateDeviceType
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: VLAN
+    namespace: Infra
+    description: "A VLAN is isolated layer two domain"
+    label: "VLAN"
+    icon: "mdi:lan-pending"   # mdi:lan
+    menu_placement: "InfraIPAddress"
+    order_by:
+      - vlan_id__value
+    display_labels:
+      - name__value
+      - vlan_id__value
+    uniqueness_constraints:
+      - ["location", "vlan_id"]
+    attributes:
+      - name: name
+        kind: Text
+        optional: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: location
+        peer: LocationGeneric
+        optional: false
+        cardinality: one
+        kind: Attribute
+  - name: VRF
+    namespace: Infra
+    description: "A VRF is isolated layer three domain"
+    label: "VRF"
+    icon: "mdi:router"
+    default_filter: name__value
+    menu_placement: "InfraIPAddress"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: vrf_rd
+        label: Route Distinguisher
+        kind: Text
+        optional: true
+    relationships:
+      - name: prefix
+        label: Prefix
+        peer: InfraPrefix
+        optional: true
+        cardinality: many
+        kind: Generic
+  - name: InterfaceL3
+    namespace: Infra
+    description: "Network Layer 3 Interface"
+    label: "Interface L3"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    include_in_menu: true
+    display_labels:
+      - name__value
+    order_by:
+      - device__hostname__value
+      - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
+    inherit_from:
+      - "InfraInterface"
+      - "InfraEndpoint"
+      - "CoreArtifactTarget"
+    relationships:
+      - name: ip_address
+        label: IP Address
+        peer: InfraIPAddress
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: IPAddress
+    namespace: Infra
+    description: "IP Address"
+    label: "IP Address"
+    icon: "mdi:ip"
+    default_filter: address__value
+    order_by:
+      - "address__value"
+    display_labels:
+      - address__value
+    attributes:
+      - name: address
+        kind: IPHost
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: interface
+        peer: InfraInterfaceL3
+        optional: true
+        cardinality: one
+      - name: prefix
+        peer: InfraPrefix
+        optional: true
+        cardinality: one
+  - name: Prefix
+    namespace: Infra
+    description: "IPv4 or IPv6 network (with mask)"
+    icon: "mdi:ip-network"
+    label: "Prefix"
+    default_filter: prefix__value
+    menu_placement: "InfraIPAddress"
+    order_by:
+      - vrf__name__value
+      - prefix__value
+    display_labels:
+      - prefix__value
+    attributes:
+      - name: prefix
+        kind: IPNetwork
+        order_weight: 1000
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 1100
+    relationships:
+      - name: organization
+        peer: OrganizationGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 1200
+      - name: location
+        peer: LocationGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 1300
+      - name: gateway
+        label: L3 Gateway
+        identifier: "prefix__gateway"
+        peer: InfraIPAddress
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 1500
+      - name: vrf
+        peer: InfraVRF
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 1450
+      - name: vlan
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 1400
+      - name: ip_addresses
+        peer: InfraIPAddress
+        cardinality: many
+        kind: Component
+        order_weight: 1600

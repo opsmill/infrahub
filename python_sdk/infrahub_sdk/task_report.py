@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Final, List, Optional, Protocol, Type, TypedDict, Union, runtime_checkable
+from typing import TYPE_CHECKING, Any, Final, Optional, Protocol, TypedDict, Union, runtime_checkable
 
 from typing_extensions import Self
 
@@ -17,7 +17,7 @@ class Log(TypedDict):
     severity: str
 
 
-TaskLogs = Union[List[Log], Log]
+TaskLogs = Union[list[Log], Log]
 
 
 class TaskReport:
@@ -49,7 +49,7 @@ class TaskReport:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:
@@ -66,7 +66,7 @@ class TaskReport:
     async def create(
         self, title: Optional[str] = None, conclusion: str = "UNKNOWN", logs: Optional[TaskLogs] = None
     ) -> None:
-        variables: Dict[str, Any] = {
+        variables: dict[str, Any] = {
             "related_node": self.related_node,
             "task_id": self.task_id,
             "title": title or self.title,
@@ -117,7 +117,7 @@ class TaskReport:
     ) -> None:
         if not self.created:
             await self.create()
-        variables: Dict[str, Any] = {"task_id": self.task_id}
+        variables: dict[str, Any] = {"task_id": self.task_id}
         if conclusion:
             variables["conclusion"] = conclusion
         if title:

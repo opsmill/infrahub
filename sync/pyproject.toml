@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.4.1"
+version = "0.4.2"
 description = "Infrahub-Sync is a versatile Python package that synchronizes data between a source and a destination system"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -23,7 +23,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9, < 3.13"
-infrahub-sdk = {version = "^0,>=0.9.1", extras = ["all"]}
+infrahub-sdk = {version = "^0,>=0.11", extras = ["all"]}
 structlog = "^22.3.0"
 diffsync = { version = ">=1.10,<2.0 || >=2.0", extras = ["redis"] }
 
@@ -43,7 +43,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.3"
+ruff = "0.4.6"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -173,9 +173,11 @@ select = [
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
+    "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
     "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
+    "UP",    # pyupgrade
     "W",     # pycodestyle warnings
     "YTT",   # flake8-2020
 ]
@@ -196,6 +198,7 @@ ignore = [
     "PLR1702", # Too many nested blocks
     "PLR6301", # Method could be a function, class method, or static method
     "RET504",  # Unnecessary assignment to `ptd` before `return` statement
+    "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/

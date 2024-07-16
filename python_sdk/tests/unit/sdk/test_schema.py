@@ -1,8 +1,12 @@
 import inspect
+from io import StringIO
+from unittest import mock
 
 import pytest
+from rich.console import Console
 
 from infrahub_sdk import Config, InfrahubClient, InfrahubClientSync, ValidationError
+from infrahub_sdk.ctl.schema import display_schema_load_errors
 from infrahub_sdk.exceptions import SchemaNotFoundError
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
@@ -40,10 +44,10 @@ async def test_validate_method_signature(method):
 @pytest.mark.parametrize("client_type", client_types)
 async def test_fetch_schema(mock_schema_query_01, client_type):  # pylint: disable=unused-argument
     if client_type == "standard":
-        client = await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True))
+        client = InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
         nodes = await client.schema.fetch(branch="main")
     else:
-        client = InfrahubClientSync.init(config=Config(address="http://mock", insert_tracker=True))
+        client = InfrahubClientSync(config=Config(address="http://mock", insert_tracker=True))
         nodes = client.schema.fetch(branch="main")
 
     assert len(nodes) == 4
@@ -59,9 +63,9 @@ async def test_fetch_schema(mock_schema_query_01, client_type):  # pylint: disab
 @pytest.mark.parametrize("client_type", client_types)
 async def test_schema_data_validation(rfile_schema, client_type):
     if client_type == "standard":
-        client = await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True))
+        client = InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
     else:
-        client = InfrahubClientSync.init(config=Config(address="http://mock", insert_tracker=True))
+        client = InfrahubClientSync(config=Config(address="http://mock", insert_tracker=True))
 
     client.schema.validate_data_against_schema(
         schema=rfile_schema,
@@ -242,3 +246,33 @@ async def test_infrahub_repository_config_dups():
         )
 
     assert "Found multiples element with the same names: ['check01', 'check02']" in str(exc.value)
+
+
+@mock.patch(
+    "infrahub_sdk.ctl.schema.get_node",
+    return_value={
+        "name": "Instance",
+        "namespace": "Cloud",
+        "attributes": [{"name": "name", "kind": "Text"}, {"name": "status", "kind": "Dropdown"}],
+    },
+)
+async def test_display_schema_load_errors_details(mock_get_node):
+    """Validate error message with details when loading schema."""
+    error = {
+        "detail": [
+            {
+                "loc": ["body", "schemas", 0, "nodes", 0, "attributes", 1],
+                "msg": "Value error, The property 'choices' is required for kind=Dropdown",
+                "type": "value_error",
+                "input": {"name": "status", "kind": "Dropdown"},
+            }
+        ]
+    }
+    with mock.patch("infrahub_sdk.ctl.schema.console", Console(file=StringIO(), width=1000)) as console:
+        display_schema_load_errors(response=error, schemas_data=[])
+        mock_get_node.assert_called_once()
+        output = console.file.getvalue()
+        expected_console = """Unable to load the schema:
+  Node: CloudInstance | Attribute: status ({'name': 'status', 'kind': 'Dropdown'}) | Value error, The property 'choices' is required for kind=Dropdown (value_error)
+"""  # noqa: E501
+        assert output == expected_console

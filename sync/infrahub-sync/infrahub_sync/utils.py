@@ -91,7 +91,7 @@ def get_instance(
     if Path(config_file).is_absolute() or directory is None:
         config_file_path = Path(config_file)
     elif directory:
-        config_file_path = Path(directory) / Path(config_file)
+        config_file_path = Path(directory, config_file)
 
     if config_file_path:
         directory_path = config_file_path.parent

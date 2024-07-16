@@ -2,12 +2,7 @@ from pathlib import Path
 
 import typer
 import yaml
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
-
+from pydantic import ValidationError
 from rich.console import Console
 
 from infrahub_sdk.ctl.exceptions import FileNotValidError
@@ -19,15 +14,15 @@ def get_repository_config(repo_config_file: Path) -> InfrahubRepositoryConfig:
     try:
         config_file_data = load_repository_config_file(repo_config_file)
     except FileNotFoundError as exc:
-        console.print(f"[red]{exc}")
+        console.print(f"[red]File not found {exc}")
         raise typer.Exit(1) from exc
     except FileNotValidError as exc:
-        console.print(f"[red]{exc}")
+        console.print(f"[red]{exc.message}")
         raise typer.Exit(1) from exc
 
     try:
         data = InfrahubRepositoryConfig(**config_file_data)
-    except pydantic.ValidationError as exc:
+    except ValidationError as exc:
         console.print(f"[red]Repository config file not valid, found {len(exc.errors())} error(s)")
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]

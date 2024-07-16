@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, List, Optional, TypeAlias, Union
+from typing import Any, Optional, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -29,8 +29,8 @@ MainSchemaTypes: TypeAlias = Union[NodeSchema, GenericSchema, ProfileSchema]
 #  And we'll look into adding support for Generic as well
 class BaseNodeExtensionSchema(HashableModel):
     kind: str
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
+    attributes: list[AttributeSchema] = Field(default_factory=list)
+    relationships: list[RelationshipSchema] = Field(default_factory=list)
 
 
 class NodeExtensionSchema(BaseNodeExtensionSchema):
@@ -38,14 +38,14 @@ class NodeExtensionSchema(BaseNodeExtensionSchema):
 
 
 class SchemaExtension(HashableModel):
-    nodes: List[NodeExtensionSchema] = Field(default_factory=list)
+    nodes: list[NodeExtensionSchema] = Field(default_factory=list)
 
 
 class SchemaRoot(BaseModel):
     model_config = ConfigDict(extra="forbid")
     version: Optional[str] = Field(default=None)
-    generics: List[GenericSchema] = Field(default_factory=list)
-    nodes: List[NodeSchema] = Field(default_factory=list)
+    generics: list[GenericSchema] = Field(default_factory=list)
+    nodes: list[NodeSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()
 
     @classmethod
@@ -58,9 +58,9 @@ class SchemaRoot(BaseModel):
 
         return True
 
-    def validate_namespaces(self) -> List[str]:
+    def validate_namespaces(self) -> list[str]:
         models = self.nodes + self.generics
-        errors: List[str] = []
+        errors: list[str] = []
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")

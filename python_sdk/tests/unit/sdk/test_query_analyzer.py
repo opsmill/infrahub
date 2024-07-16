@@ -61,12 +61,7 @@ async def test_get_fields(query_01: str, query_03: str):
     }
 
 
-async def test_calculate_depth(
-    query_01: str,
-    query_02: str,
-    query_03: str,
-    query_04: str,
-):
+async def test_calculate_depth(query_01: str, query_02: str, query_03: str, query_04: str):
     gqa = GraphQLQueryAnalyzer(query=query_01)
     assert await gqa.calculate_depth() == 9
 
@@ -80,12 +75,7 @@ async def test_calculate_depth(
     assert await gqa.calculate_depth() == 6
 
 
-async def test_calculate_height(
-    query_01: str,
-    query_02: str,
-    query_03: str,
-    query_04: str,
-):
+async def test_calculate_height(query_01: str, query_02: str, query_03: str, query_04: str):
     gqa = GraphQLQueryAnalyzer(query=query_01)
     assert await gqa.calculate_height() == 10
 
@@ -99,27 +89,22 @@ async def test_calculate_height(
     assert await gqa.calculate_height() == 5
 
 
-async def test_get_variables(
-    query_01: str,
-    query_04: str,
-    query_05: str,
-    query_06: str,
-):
+async def test_get_variables(query_01: str, query_04: str, query_05: str, query_06: str):
     gqa = GraphQLQueryAnalyzer(query=query_01)
     assert gqa.variables == []
 
     gqa = GraphQLQueryAnalyzer(query=query_04)
-    assert [var.dict() for var in gqa.variables] == [
+    assert [var.model_dump() for var in gqa.variables] == [
         {"default_value": None, "name": "person", "required": True, "type": "String"}
     ]
 
     gqa = GraphQLQueryAnalyzer(query=query_05)
-    assert [var.dict() for var in gqa.variables] == [
+    assert [var.model_dump() for var in gqa.variables] == [
         {"default_value": None, "name": "myvar", "required": False, "type": "String"}
     ]
 
     gqa = GraphQLQueryAnalyzer(query=query_06)
-    assert [var.dict() for var in gqa.variables] == [
+    assert [var.model_dump() for var in gqa.variables] == [
         {
             "default_value": None,
             "name": "str1",
@@ -159,4 +144,32 @@ async def test_get_variables(
             "required": True,
             "type": "Boolean",
         },
+    ]
+
+
+@pytest.mark.parametrize(
+    "var_type,var_required",
+    [("[ID]", False), ("[ID]!", True), ("[ID!]", False), ("[ID!]!", True)],
+)
+async def test_get_nested_variables(var_type, var_required):
+    query = (
+        """
+        query ($ids: %s){
+            TestPerson(ids: $ids) {
+                edges {
+                    node {
+                        name {
+                            value
+                        }
+                    }
+                }
+            }
+        }
+        """
+        % var_type
+    )
+
+    gqa = GraphQLQueryAnalyzer(query=query)
+    assert [var.model_dump() for var in gqa.variables] == [
+        {"default_value": None, "name": "ids", "required": var_required, "type": "ID"}
     ]

@@ -1,10 +1,10 @@
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 
 class FakeLogger:
     def __init__(self) -> None:
-        self.info_logs: List[Optional[str]] = []
-        self.error_logs: List[Optional[str]] = []
+        self.info_logs: list[Optional[str]] = []
+        self.error_logs: list[Optional[str]] = []
 
     def debug(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send a debug event"""
@@ -28,8 +28,8 @@ class FakeLogger:
 
 class FakeTaskReportLogger:
     def __init__(self) -> None:
-        self.info_logs: List[Optional[str]] = []
-        self.error_logs: List[Optional[str]] = []
+        self.info_logs: list[Optional[str]] = []
+        self.error_logs: list[Optional[str]] = []
 
     async def info(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
         """Send an info event."""

@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+generics:
+  - name: Service
+    namespace: Infra
+    description: "Services"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+nodes:
+  - name: BackBoneService
+    namespace: Infra
+    description: "Backbone Service"
+    label: "Backbone Service"
+    icon: "carbon:container-services"
+    menu_placement: "InfraService"
+    inherit_from:
+      - InfraService
+    uniqueness_constraints:
+      - ["circuit_id__value", "internal_circuit_id__value"]
+    attributes:
+      - name: circuit_id
+        kind: Text
+        label: Circuit ID
+        optional: false
+      - name: internal_circuit_id
+        kind: Text
+        label: Internal Circuit ID
+        optional: false
+    relationships:
+      - name: provider
+        cardinality: one
+        peer: OrganizationProvider
+        optional: false
+      - name: site_a
+        label: Site A
+        cardinality: one
+        peer: LocationSite
+        optional: false
+        identifier: infrabackboneservice__location_site_a
+      - name: site_b
+        label: Site B
+        cardinality: one
+        peer: LocationSite
+        optional: false
+        identifier: infrabackboneservice__location_site_b

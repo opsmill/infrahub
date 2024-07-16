@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Mapping, Optional
 
 
 class Error(Exception):
@@ -37,12 +37,7 @@ class ServerNotResponsiveError(Error):
 
 
 class GraphQLError(Error):
-    def __init__(
-        self,
-        errors: List[Dict[str, Any]],
-        query: Optional[str] = None,
-        variables: Optional[dict] = None,
-    ):
+    def __init__(self, errors: list[dict[str, Any]], query: Optional[str] = None, variables: Optional[dict] = None):
         self.query = query
         self.variables = variables
         self.errors = errors
@@ -74,7 +69,7 @@ class NodeNotFoundError(Error):
     def __init__(
         self,
         node_type: str,
-        identifier: Mapping[str, List[str]],
+        identifier: Mapping[str, list[str]],
         message: str = "Unable to find the node in the database.",
         branch_name: Optional[str] = None,
     ):
@@ -93,13 +88,7 @@ class NodeNotFoundError(Error):
 
 
 class FilterNotFoundError(Error):
-    def __init__(
-        self,
-        identifier: str,
-        kind: str,
-        message: Optional[str] = None,
-        filters: Optional[List[str]] = None,
-    ):
+    def __init__(self, identifier: str, kind: str, message: Optional[str] = None, filters: Optional[list[str]] = None):
         self.identifier = identifier
         self.kind = kind
         self.filters = filters or []

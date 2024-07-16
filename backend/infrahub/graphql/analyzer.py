@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Set
+from typing import Any, Optional
 
 from graphql import (
     GraphQLSchema,
@@ -16,7 +16,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         self.branch: Optional[Branch] = branch
         super().__init__(query=query, schema=schema)
 
-    async def get_models_in_use(self, types: Dict[str, Any]) -> Set[str]:
+    async def get_models_in_use(self, types: dict[str, Any]) -> set[str]:
         """List of Infrahub models that are referenced in the query."""
         graphql_types = set()
         models = set()

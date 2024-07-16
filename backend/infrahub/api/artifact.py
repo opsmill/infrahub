@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Body, Depends, Request, Response
 from pydantic import BaseModel, Field
@@ -21,11 +21,11 @@ router = APIRouter(prefix="/artifact")
 
 
 class ArtifactGeneratePayload(BaseModel):
-    nodes: List[str] = Field(default_factory=list)
+    nodes: list[str] = Field(default_factory=list)
 
 
 class ArtifactGenerateResponse(BaseModel):
-    nodes: List[str]
+    nodes: list[str]
 
 
 @router.get("/{artifact_id:str}")

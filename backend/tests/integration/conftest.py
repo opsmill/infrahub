@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Optional
 
 import pytest
 import yaml
@@ -42,7 +42,7 @@ async def db() -> AsyncGenerator[InfrahubDatabase, None]:
 
 
 async def load_infrastructure_schema(db: InfrahubDatabase):
-    base_dir = get_models_dir() + "/base"
+    base_dir = get_models_dir() / "base"
 
     default_branch_name = registry.default_branch
     branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
@@ -52,7 +52,7 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
         file_path = os.path.join(base_dir, file_name)
 
         if file_path.endswith((".yml", ".yaml")):
-            schema_txt = Path(file_path).read_text()
+            schema_txt = Path(file_path).read_text(encoding="utf-8")
             loaded_schema = yaml.safe_load(schema_txt)
             tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
     tmp_schema.process()
@@ -80,7 +80,7 @@ class IntegrationHelper:
         self.db = db
         self._admin_headers: dict[str, Any] = {}
 
-    async def admin_headers(self) -> Dict[str, Any]:
+    async def admin_headers(self) -> dict[str, Any]:
         if not self._admin_headers:
             self._admin_headers = {"X-INFRAHUB-KEY": await self.create_token()}
         return self._admin_headers

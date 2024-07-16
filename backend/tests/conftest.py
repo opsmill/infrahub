@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncGenerator, Generator, List, Optional, TypeVar
+from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
 
 import pytest
 import ujson
@@ -21,11 +21,7 @@ from infrahub.core.initialization import (
     create_root_node,
 )
 from infrahub.core.node import Node
-from infrahub.core.schema import (
-    SchemaRoot,
-    core_models,
-    internal_schema,
-)
+from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
@@ -298,6 +294,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text"},
+                    {"name": "weight", "kind": "Number", "optional": True},
                 ],
                 "relationships": [
                     {
@@ -413,7 +410,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
 
 
 @pytest.fixture(scope="module")
-def tmp_path_module_scope() -> Generator[str, None, None]:
+def tmp_path_module_scope() -> Generator[Path, None, None]:
     """Fixture similar to tmp_path but with scope=module"""
     with TemporaryDirectory() as tmpdir:
         directory = tmpdir
@@ -423,16 +420,16 @@ def tmp_path_module_scope() -> Generator[str, None, None]:
             # /prefix/var and InfrahubRepository fails to initialize the repository as the
             # relative path of the repository isn't handled correctly
             directory = f"/private{tmpdir}"
-        yield directory
+        yield Path(directory)
 
 
 @pytest.fixture(scope="module")
-def git_repos_dir_module_scope(tmp_path_module_scope: str) -> Generator[str, None, None]:
-    repos_dir = os.path.join(str(tmp_path_module_scope), "repositories")
+def git_repos_dir_module_scope(tmp_path_module_scope: Path) -> Generator[Path, None, None]:
+    repos_dir = tmp_path_module_scope / "repositories"
+    repos_dir.mkdir()
 
-    os.mkdir(repos_dir)
     old_repos_dir = config.SETTINGS.git.repositories_directory
-    config.SETTINGS.git.repositories_directory = repos_dir
+    config.SETTINGS.git.repositories_directory = str(repos_dir)
 
     yield repos_dir
 
@@ -440,16 +437,16 @@ def git_repos_dir_module_scope(tmp_path_module_scope: str) -> Generator[str, Non
 
 
 @pytest.fixture(scope="module")
-def git_repos_source_dir_module_scope(tmp_path_module_scope: str) -> str:
-    repos_dir = os.path.join(str(tmp_path_module_scope), "source")
-    os.mkdir(repos_dir)
+def git_repos_source_dir_module_scope(tmp_path_module_scope: Path) -> Path:
+    repos_dir = tmp_path_module_scope / "source"
+    repos_dir.mkdir()
     return repos_dir
 
 
 class BusRPCMock(InfrahubMessageBus):
     def __init__(self) -> None:
-        self.response: List[InfrahubResponse] = []
-        self.messages: List[InfrahubMessage] = []
+        self.response: list[InfrahubResponse] = []
+        self.messages: list[InfrahubMessage] = []
 
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
@@ -472,23 +469,23 @@ class TestHelper:
     @staticmethod
     def schema_file(file_name: str) -> dict:
         """Return the contents of a schema file as a dictionary"""
-        file_content = Path(os.path.join(TestHelper.get_fixtures_dir(), f"schemas/{file_name}")).read_text()
+        file_content = Path(os.path.join(TestHelper.get_fixtures_dir(), f"schemas/{file_name}")).read_text(
+            encoding="utf-8"
+        )
 
         return ujson.loads(file_content)
 
     @staticmethod
-    def get_fixtures_dir():
+    def get_fixtures_dir() -> Path:
         """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
-        here = os.path.abspath(os.path.dirname(__file__))
-        fixtures_dir = os.path.join(here, "fixtures")
-
-        return os.path.abspath(fixtures_dir)
+        here = Path(__file__).parent.resolve()
+        return here / "fixtures"
 
     @staticmethod
     def import_module_in_fixtures(module: str) -> Any:
         """Import a python module from the fixtures directory."""
 
-        sys.path.append(TestHelper.get_fixtures_dir())
+        sys.path.append(str(TestHelper.get_fixtures_dir()))
         module_name = module.replace("/", ".")
         return importlib.import_module(module_name)
 

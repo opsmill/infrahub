@@ -42,7 +42,7 @@ class GeneratedBaseNodeSchema(HashableModel):
     label: Optional[str] = Field(
         default=None,
         description="Human friendly representation of the name/kind",
-        max_length=32,
+        max_length=64,
         json_schema_extra={"update": "allowed"},
     )
     branch: BranchSupportType = Field(

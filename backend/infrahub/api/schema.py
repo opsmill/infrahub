@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import (
@@ -75,10 +75,10 @@ class APIProfileSchema(ProfileSchema, APISchemaMixin):
 
 class SchemaReadAPI(BaseModel):
     main: str = Field(description="Main hash for the entire schema")
-    nodes: List[APINodeSchema] = Field(default_factory=list)
-    generics: List[APIGenericSchema] = Field(default_factory=list)
-    profiles: List[APIProfileSchema] = Field(default_factory=list)
-    namespaces: List[SchemaNamespace] = Field(default_factory=list)
+    nodes: list[APINodeSchema] = Field(default_factory=list)
+    generics: list[APIGenericSchema] = Field(default_factory=list)
+    profiles: list[APIProfileSchema] = Field(default_factory=list)
+    namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
 class SchemaLoadAPI(SchemaRoot):
@@ -86,20 +86,20 @@ class SchemaLoadAPI(SchemaRoot):
 
 
 class SchemasLoadAPI(SchemaRoot):
-    schemas: List[SchemaLoadAPI]
+    schemas: list[SchemaLoadAPI]
 
 
 class JSONSchema(BaseModel):
     title: Optional[str] = Field(None, description="Title of the schema")
     description: Optional[str] = Field(None, description="Description of the schema")
     type: str = Field(..., description="Type of the schema element (e.g., 'object', 'array', 'string')")
-    properties: Optional[Dict[str, Any]] = Field(None, description="Properties of the object if type is 'object'")
-    items: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = Field(
+    properties: Optional[dict[str, Any]] = Field(None, description="Properties of the object if type is 'object'")
+    items: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = Field(
         None, description="Items of the array if type is 'array'"
     )
-    required: Optional[List[str]] = Field(None, description="List of required properties if type is 'object'")
+    required: Optional[list[str]] = Field(None, description="List of required properties if type is 'object'")
     schema_spec: Optional[str] = Field(None, alias="$schema", description="Schema version identifier")
-    additional_properties: Optional[Union[bool, Dict[str, Any]]] = Field(
+    additional_properties: Optional[Union[bool, dict[str, Any]]] = Field(
         None, description="Specifies whether additional properties are allowed", alias="additionalProperties"
     )
 
@@ -117,7 +117,7 @@ class SchemaUpdate(BaseModel):
 
 def evaluate_candidate_schemas(
     branch_schema: SchemaBranch, schemas_to_evaluate: SchemasLoadAPI
-) -> Tuple[SchemaBranch, SchemaUpdateValidationResult]:
+) -> tuple[SchemaBranch, SchemaUpdateValidationResult]:
     candidate_schema = branch_schema.duplicate()
     try:
         for schema in schemas_to_evaluate.schemas:
@@ -137,8 +137,7 @@ def evaluate_candidate_schemas(
 @router.get("")
 @router.get("/")
 async def get_schema(
-    branch: Branch = Depends(get_branch_dep),
-    namespaces: Union[List[str], None] = Query(default=None),
+    branch: Branch = Depends(get_branch_dep), namespaces: Union[list[str], None] = Query(default=None)
 ) -> SchemaReadAPI:
     log.debug("schema_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
@@ -166,9 +165,7 @@ async def get_schema(
 
 
 @router.get("/summary")
-async def get_schema_summary(
-    branch: Branch = Depends(get_branch_dep),
-) -> SchemaBranchHash:
+async def get_schema_summary(branch: Branch = Depends(get_branch_dep)) -> SchemaBranchHash:
     log.debug("schema_summary_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     return schema_branch.get_hash_full()
@@ -176,8 +173,7 @@ async def get_schema_summary(
 
 @router.get("/{schema_kind}")
 async def get_schema_by_kind(
-    schema_kind: str,
-    branch: Branch = Depends(get_branch_dep),
+    schema_kind: str, branch: Branch = Depends(get_branch_dep)
 ) -> Union[APIProfileSchema, APINodeSchema, APIGenericSchema]:
     log.debug("schema_kind_request", branch=branch.name)
 
@@ -201,10 +197,7 @@ async def get_schema_by_kind(
 
 
 @router.get("/json_schema/{schema_kind}")
-async def get_json_schema_by_kind(
-    schema_kind: str,
-    branch: Branch = Depends(get_branch_dep),
-) -> JSONSchema:
+async def get_json_schema_by_kind(schema_kind: str, branch: Branch = Depends(get_branch_dep)) -> JSONSchema:
     log.debug("json_schema_kind_request", branch=branch.name)
 
     fields: dict[str, Any] = {}
@@ -216,10 +209,13 @@ async def get_json_schema_by_kind(
 
         default_value = attr.default_value if attr.optional else ...
         field_info = Field(default=default_value, description=attr.description)
-        if attr.enum:
-            extras: dict[str, Any] = {"enum": attr.enum}
-            # ignore types because mypy hates generic kwargs
-            field_info = Field(default=default_value, description=attr.description, **extras)
+        if attr.enum or attr.kind == "Dropdown":
+            extras: dict[str, Any]
+            if attr.kind == "Dropdown" and attr.choices:
+                extras = {"enum": [choice.name for choice in attr.choices]}
+            else:
+                extras = {"enum": attr.enum}
+            field_info = Field(default=default_value, description=attr.description, json_schema_extra=extras)
         fields[attr.name] = (field_type, field_info)
 
     # Use Pydantic's create_model to dynamically create the class, ignore types because fields are Any, and mypy hates that
@@ -243,7 +239,7 @@ async def load_schema(
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
 
-    errors: List[str] = []
+    errors: list[str] = []
     for schema in schemas.schemas:
         errors += schema.validate_namespaces()
 
@@ -329,7 +325,7 @@ async def check_schema(
     service: InfrahubServices = request.app.state.service
     log.info("schema_check_request", branch=branch.name)
 
-    errors: List[str] = []
+    errors: list[str] = []
     for schema in schemas.schemas:
         errors += schema.validate_namespaces()
 

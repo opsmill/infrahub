@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.query.relationship import RelationshipCountPerNodeQuery
+from infrahub.core.schema import MainSchemaTypes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
@@ -25,14 +26,14 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         self.db = db
         self.branch = branch
 
-    async def check(self, relm: RelationshipManager) -> None:
+    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
 
         # NOTE adding resolve here because we need to retrieve the real ID
         # but if the validation fails we'll end up with some allocated resources that are not being used
         await relm.resolve(db=self.db)
 
-        nodes_to_validate: List[NodeToValidate] = []
+        nodes_to_validate: list[NodeToValidate] = []
 
         # peer_ids_present_local_only:
         #    new relationship, need to check if the schema on the other side has a max_count defined

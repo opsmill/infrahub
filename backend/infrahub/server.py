@@ -107,7 +107,7 @@ def server_request_hook(span: Span, scope: dict) -> None:  # pylint: disable=unu
 
 FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
 
-FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
+FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend/app"))
 FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
 FRONTEND_FAVICONS_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/favicons"
 

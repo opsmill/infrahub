@@ -120,7 +120,7 @@ class Neo4jBackupRestoreBase:
         self.keep_helper_container = keep_helper_container
         self.docker_client = docker.from_env()
         self.use_host_network = use_host_network
-        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j/neo4j-admin:5.18.1-enterprise")
+        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
 
     def _print_message(self, message: str, force_print: bool = False, with_timestamp: bool = True) -> None:
         if self.be_quiet and not force_print:
@@ -201,7 +201,7 @@ class Neo4jBackupRestoreBase:
             pass
 
         volumes = {
-            local_backup_directory.absolute(): {"bind": self.container_backup_dir, "mode": "rw"},
+            local_backup_directory.resolve(): {"bind": self.container_backup_dir, "mode": "rw"},
         }
         if volumes_from_container_names:
             for c in self.docker_client.containers.list(filters={"status": "running"}):
@@ -298,7 +298,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
         self._run_backup(
             backup_helper_container, database_url, database_backup_port, do_aggregate_backup=do_aggregate_backups
         )
-        self._print_message(f"Updated backup files are in {local_backup_directory.absolute()}")
+        self._print_message(f"Updated backup files are in {local_backup_directory.resolve()}")
         if not self.keep_helper_container:
             with self._print_task_status("Removing helper container...", "done"):
                 backup_helper_container.stop()

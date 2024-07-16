@@ -38,12 +38,12 @@ class TestInfrahubClientSync:
             password="infrahub",
             sync_requester=test_client.sync_request,
         )
-        return InfrahubClientSync.init(config=config)
+        return InfrahubClientSync(config=config)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", sync_requester=test_client.sync_request)
-        client = InfrahubClientSync.init(config=config)
+        client = InfrahubClientSync(config=config)
         response = client.schema.load(schemas=[builtin_org_schema])
         assert not response.errors
 
@@ -193,7 +193,7 @@ class TestInfrahubClientSync:
                 obj.save(allow_upsert=True)
                 tags.append(obj)
 
-            org = clt.create(kind="CoreOrganization", name=orgname, tags=tags)
+            org = clt.create(kind="TestOrganization", name=orgname, tags=tags)
             org.save(allow_upsert=True)
 
         # First execution, we create one org with 3 tags

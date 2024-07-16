@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, AsyncGenerator, Awaitable, Callable, Optional
 
 from infrahub_sdk.node import InfrahubNode
 
@@ -8,16 +8,14 @@ from infrahub_sdk.node import InfrahubNode
 @dataclass
 class BatchTask:
     task: Callable[[Any], Awaitable[Any]]
-    args: Tuple[Any, ...]
-    kwargs: Dict[str, Any]
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
     node: Optional[InfrahubNode] = None
 
 
 async def execute_batch_task_in_pool(
-    task: BatchTask,
-    semaphore: asyncio.Semaphore,
-    return_exceptions: bool = False,
-) -> Tuple[Optional[InfrahubNode], Any]:
+    task: BatchTask, semaphore: asyncio.Semaphore, return_exceptions: bool = False
+) -> tuple[Optional[InfrahubNode], Any]:
     async with semaphore:
         try:
             result = await task.task(*task.args, **task.kwargs)
@@ -37,7 +35,7 @@ class InfrahubBatch:
         max_concurrent_execution: int = 5,
         return_exceptions: bool = False,
     ):
-        self._tasks: List[BatchTask] = []
+        self._tasks: list[BatchTask] = []
         self.semaphore = semaphore or asyncio.Semaphore(value=max_concurrent_execution)
         self.return_exceptions = return_exceptions
 

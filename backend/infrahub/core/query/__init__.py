@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Generator, Iterator, Optional, Union
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -17,13 +17,14 @@ from infrahub.database.constants import DatabaseType, Neo4jRuntime
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from neo4j import Record
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
-def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[QueryResult]:
+def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[QueryResult]:
     """Sort a list of QueryResult based on the to and from fields on given relationship.
 
     To sort the results, we are generating an ID per item
@@ -64,10 +65,10 @@ class QueryRelDirection(Enum):
 class QueryElement:
     type: QueryElementType
     name: Optional[str] = None
-    labels: Optional[List[str]] = None
+    labels: Optional[list[str]] = None
     params: Optional[dict] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         main_str = "%s%s%s" % (self.name or "", self.labels_as_str, self.params_as_str)
         if self.type == QueryElementType.NODE:
             return "(%s)" % main_str
@@ -109,7 +110,7 @@ class QueryRel(QueryElement):
     length_min: int = 1
     length_max: Optional[int] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         length_str = ""
         if self.length_max:
             length_str = "*%s..%s" % (
@@ -137,7 +138,7 @@ class QueryType(Enum):
     WRITE = "write"
 
 
-def cleanup_return_labels(labels):
+def cleanup_return_labels(labels: list[str]) -> list[str]:
     """Cleanup a list of return labels by checking if there is an alias defined.
     if an alias is defined with `value AS alias` we extract just the alias from the label
     """
@@ -155,7 +156,7 @@ def cleanup_return_labels(labels):
 
 
 class QueryResult:
-    def __init__(self, data: List[Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]], labels: List[str]):
+    def __init__(self, data: list[Union[Neo4jNode, Neo4jRelationship, list[Neo4jNode]]], labels: list[str]):
         self.data = data
         self.labels = cleanup_return_labels(labels)
         self.branch_score: int = 0
@@ -167,7 +168,7 @@ class QueryResult:
         self.calculate_time_score()
         self.check_rels_status()
 
-    def calculate_branch_score(self):
+    def calculate_branch_score(self) -> None:
         """The branch score is a simple way to order and classify multiple responses for the same branch.
         If the branch name is not the default branch it will get a higher score
         """
@@ -181,7 +182,7 @@ class QueryResult:
 
             self.branch_score += branch_level
 
-    def calculate_time_score(self):
+    def calculate_time_score(self) -> None:
         """The time score look into the to and from time all relationships
         if the 'to' field is not defined
         """
@@ -200,14 +201,14 @@ class QueryResult:
             else:
                 self.time_score += 2
 
-    def check_rels_status(self):
+    def check_rels_status(self) -> None:
         """Check if some relationships have the status deleted and update the flag `has_deleted_rels`"""
         for rel in self.get_rels():
             if rel.get("status", None) == "deleted":
                 self.has_deleted_rels = True
                 return
 
-    def _get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]:
+    def _get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship, list[Neo4jNode]]:
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
@@ -223,7 +224,7 @@ class QueryResult:
             return str(item)
         return None
 
-    def get_node_collection(self, label: str) -> List[Neo4jNode]:
+    def get_node_collection(self, label: str) -> list[Neo4jNode]:
         entry = self._get(label=label)
         if isinstance(entry, list):
             return entry
@@ -254,15 +255,15 @@ class QueryResult:
             if isinstance(item, Neo4jNode):
                 yield item
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
         yield from self.data
 
 
 @dataclass
 class QueryStats:
-    stats: List[QueryStat] = field(default_factory=list)
+    stats: list[QueryStat] = field(default_factory=list)
 
-    def add(self, data: Optional[Dict[str, Any]]) -> None:
+    def add(self, data: Optional[dict[str, Any]]) -> None:
         if data:
             self.stats.append(QueryStat.from_metadata(data))
 
@@ -288,7 +289,7 @@ class QueryStat:
     relationships_deleted: Optional[int] = None
 
     @classmethod
-    def from_metadata(cls, data: Dict[str, Any]) -> Self:
+    def from_metadata(cls, data: dict[str, Any]) -> Self:
         data = {key.replace("-", "_"): value for key, value in data.items()}
         return cls(**data)
 
@@ -306,7 +307,7 @@ class Query(ABC):
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        order_by: Optional[List[str]] = None,
+        order_by: Optional[list[str]] = None,
         branch_agnostic: bool = False,
     ):
         if branch:
@@ -326,16 +327,16 @@ class Query(ABC):
 
         # Initialize internal variables
         self.params: dict = {}
-        self.query_lines: List[str] = []
-        self.return_labels: List[str] = []
-        self.results: List[QueryResult] = []
+        self.query_lines: list[str] = []
+        self.return_labels: list[str] = []
+        self.results: list[QueryResult] = []
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
 
         self.stats: QueryStats = QueryStats()
 
-    def update_return_labels(self, value: Union[str, List[str]]) -> None:
+    def update_return_labels(self, value: Union[str, list[str]]) -> None:
         if isinstance(value, str) and value not in self.return_labels:
             self.return_labels.append(value)
             return
@@ -351,20 +352,19 @@ class Query(ABC):
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        *args,
-        **kwargs,
+        **kwargs: Any,
     ) -> Self:
-        query = cls(branch=branch, at=at, limit=limit, offset=offset, *args, **kwargs)
+        query = cls(branch=branch, at=at, limit=limit, offset=offset, **kwargs)
 
         await query.query_init(db=db, **kwargs)
 
         return query
 
     @abstractmethod
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         raise NotImplementedError
 
-    def add_to_query(self, query: Union[str, List[str]]) -> None:
+    def add_to_query(self, query: Union[str, list[str]]) -> None:
         """Add a new section at the end of the query.
 
         A string with multiple lines will be broken down into multiple entries in self.query_lines
@@ -430,7 +430,7 @@ class Query(ABC):
     def insert_variables_in_query(query: str, variables: dict) -> str:
         """Search for all the variables in a Query string and replace each variable with its value."""
 
-        def prep_value(v):
+        def prep_value(v: Any) -> str:
             if isinstance(v, (int, list)):
                 return str(v)
             return f'"{v}"'
@@ -445,13 +445,13 @@ class Query(ABC):
 
         return query
 
-    def get_params_for_shell(self):
+    def get_params_for_shell(self) -> str:
         if config.SETTINGS.database.db_type.value == "memgraph":
             return ujson.dumps(self.params)
 
         return self._get_params_for_neo4j_shell()
 
-    def _get_params_for_neo4j_shell(self):
+    def _get_params_for_neo4j_shell(self) -> str:
         """Generate string to define some parameters in Neo4j browser interface.
         It's especially useful to later execute a query that includes some variables.
 
@@ -501,17 +501,17 @@ class Query(ABC):
             raise ValueError(f"unknown value for {self.type}")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(query_str, self.params)
+            raise QueryError(query=query_str, params=self.params)
 
         self.results = [QueryResult(data=result, labels=self.return_labels) for result in results]
         self.has_been_executed = True
 
         return self
 
-    async def query_with_size_limit(self, db: InfrahubDatabase):
+    async def query_with_size_limit(self, db: InfrahubDatabase) -> list[Record]:
         query_limit = config.SETTINGS.database.query_size_limit
         offset = 0
-        results = []
+        results: list[Record] = []
         remaining = True
         while remaining:
             offset_results, metadata = await db.execute_query_with_metadata(
@@ -542,15 +542,9 @@ class Query(ABC):
         results = await db.execute_query(query=self.get_count_query(), params=self.params, name=f"{self.name}_count")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(self.get_count_query(), self.params)
+            raise QueryError(query=self.get_count_query(), params=self.params)
 
         return results[0][0]
-
-    def process_results(self, results) -> List[QueryResult]:
-        return results
-
-    def get_raw_results(self) -> List[QueryResult]:
-        return self.results
 
     def get_result(self) -> Optional[QueryResult]:
         """Return a single Result."""
@@ -576,7 +570,7 @@ class Query(ABC):
         for idx, _ in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
             yield self.results[idx]
 
-    def get_results_group_by(self, *args) -> Generator[QueryResult, None, None]:
+    def get_results_group_by(self, *args: Any) -> Generator[QueryResult, None, None]:
         """Return results group by the labels and attributes provided and filtered by scored.
 
         Examples:
@@ -619,7 +613,7 @@ class Query(ABC):
 
         return len([result for result in self.results if not result.has_deleted_rels])
 
-    def print_table(self):
+    def print_table(self) -> None:
         # pylint: disable=import-outside-toplevel
 
         from rich.console import Console
@@ -638,7 +632,7 @@ class Query(ABC):
 
         console.print(table)
 
-    def print(self, include_var=False):
+    def print(self, include_var: bool = False) -> None:
         # pylint: disable=import-outside-toplevel
         from rich import print as rprint
 

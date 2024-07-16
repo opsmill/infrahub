@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 
@@ -17,11 +17,11 @@ async def schema_migrations_runner(
     branch: Branch,
     new_schema: SchemaBranch,
     previous_schema: SchemaBranch,
-    migrations: List[SchemaUpdateMigrationInfo],
+    migrations: list[SchemaUpdateMigrationInfo],
     service: InfrahubServices,
-) -> List[str]:
+) -> list[str]:
     tasks = []
-    error_messages: List[str] = []
+    error_messages: list[str] = []
 
     if not migrations:
         return error_messages

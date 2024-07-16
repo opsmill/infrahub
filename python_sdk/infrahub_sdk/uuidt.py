@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import os
 import random
 import socket
 import time
+from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
@@ -39,7 +39,7 @@ class UUIDT:
         hostname: Optional[str] = None,
         random_chars: Optional[str] = None,
     ):
-        self.namespace = namespace or os.path.abspath(os.path.dirname(__file__))
+        self.namespace = namespace or str(Path(__file__).parent.resolve())
         self.timestamp = timestamp or time.time_ns()
         self.hostname = hostname or socket.gethostname()
         self.random_chars = random_chars or "".join(random.choices(CHARACTERS, k=8))

@@ -3,7 +3,7 @@ import sys
 from dataclasses import dataclass
 from inspect import Parameter
 from io import StringIO
-from typing import AsyncGenerator, Dict, Mapping, Optional, Tuple
+from typing import AsyncGenerator, Mapping, Optional
 
 import pytest
 import ujson
@@ -25,16 +25,14 @@ class BothClients:
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True, pagination_size=3))
+    return InfrahubClient(config=Config(address="http://mock", insert_tracker=True, pagination_size=3))
 
 
 @pytest.fixture
 async def clients() -> BothClients:
     both = BothClients(
-        standard=await InfrahubClient.init(
-            config=Config(address="http://mock", insert_tracker=True, pagination_size=3)
-        ),
-        sync=InfrahubClientSync.init(config=Config(address="http://mock", insert_tracker=True, pagination_size=3)),
+        standard=InfrahubClient(config=Config(address="http://mock", insert_tracker=True, pagination_size=3)),
+        sync=InfrahubClientSync(config=Config(address="http://mock", insert_tracker=True, pagination_size=3)),
     )
     return both
 
@@ -63,7 +61,7 @@ def replace_async_return_annotation():
         replacements = {
             "InfrahubClient": "InfrahubClientSync",
             "InfrahubNode": "InfrahubNodeSync",
-            "List[InfrahubNode]": "List[InfrahubNodeSync]",
+            "list[InfrahubNode]": "list[InfrahubNodeSync]",
             "Optional[InfrahubNode]": "Optional[InfrahubNodeSync]",
         }
         return replacements.get(annotation) or annotation
@@ -75,7 +73,7 @@ def replace_async_return_annotation():
 def replace_async_parameter_annotations(replace_async_return_annotation):
     """Allows for comparison between sync and async parameter annotations."""
 
-    def replace_annotations(parameters: Mapping[str, Parameter]) -> Tuple[str, str]:
+    def replace_annotations(parameters: Mapping[str, Parameter]) -> tuple[str, str]:
         parameter_tuples = []
         for name, parameter in parameters.items():
             parameter_tuples.append((name, replace_async_return_annotation(parameter.annotation)))
@@ -93,7 +91,7 @@ def replace_sync_return_annotation() -> str:
         replacements = {
             "InfrahubClientSync": "InfrahubClient",
             "InfrahubNodeSync": "InfrahubNode",
-            "List[InfrahubNodeSync]": "List[InfrahubNode]",
+            "list[InfrahubNodeSync]": "list[InfrahubNode]",
             "Optional[InfrahubNodeSync]": "Optional[InfrahubNode]",
         }
         return replacements.get(annotation) or annotation
@@ -105,7 +103,7 @@ def replace_sync_return_annotation() -> str:
 def replace_sync_parameter_annotations(replace_sync_return_annotation):
     """Allows for comparison between sync and async parameter annotations."""
 
-    def replace_annotations(parameters: Mapping[str, Parameter]) -> Tuple[str, str]:
+    def replace_annotations(parameters: Mapping[str, Parameter]) -> tuple[str, str]:
         parameter_tuples = []
         for name, parameter in parameters.items():
             parameter_tuples.append((name, replace_sync_return_annotation(parameter.annotation)))
@@ -152,7 +150,7 @@ async def location_schema() -> NodeSchema:
 
 
 @pytest.fixture
-async def schema_with_hfid() -> Dict[str, NodeSchema]:
+async def schema_with_hfid() -> dict[str, NodeSchema]:
     data = {
         "location": {
             "name": "Location",
@@ -923,6 +921,65 @@ async def ipaddress_pool_schema() -> NodeSchema:
                 "cardinality": "one",
                 "optional": False,
                 "order_weight": 5000,
+            },
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
+async def ipprefix_pool_schema() -> NodeSchema:
+    data = {
+        "name": "IPPrefixPool",
+        "namespace": "Core",
+        "description": "A pool of IP prefix resources",
+        "label": "IP Prefix Pool",
+        "include_in_menu": False,
+        "branch": BranchSupportType.AGNOSTIC.value,
+        "inherit_from": ["CoreResourcePool"],
+        "attributes": [
+            {
+                "name": "default_prefix_length",
+                "kind": "Number",
+                "description": "The default prefix length as an integer for prefixes allocated from this pool.",
+                "optional": True,
+                "order_weight": 5000,
+            },
+            {
+                "name": "default_member_type",
+                "kind": "Text",
+                "enum": ["prefix", "address"],
+                "default_value": "prefix",
+                "optional": True,
+                "order_weight": 3000,
+            },
+            {
+                "name": "default_prefix_type",
+                "kind": "Text",
+                "optional": True,
+                "order_weight": 4000,
+            },
+        ],
+        "relationships": [
+            {
+                "name": "resources",
+                "peer": "BuiltinIPPrefix",
+                "kind": "Attribute",
+                "identifier": "prefixpool__resource",
+                "cardinality": "many",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "optional": False,
+                "order_weight": 6000,
+            },
+            {
+                "name": "ip_namespace",
+                "peer": "BuiltinIPNamespace",
+                "kind": "Attribute",
+                "identifier": "prefixpool__ipnamespace",
+                "cardinality": "one",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "optional": False,
+                "order_weight": 7000,
             },
         ],
     }
@@ -2267,3 +2324,11 @@ def query_introspection() -> str:
         }
     """
     return query
+
+
+@pytest.fixture
+async def mock_schema_query_ipam(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response_text = (get_fixtures_dir() / "schema_ipam.json").read_text(encoding="UTF-8")
+
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    return httpx_mock

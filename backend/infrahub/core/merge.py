@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
-from infrahub.core.constants import (
-    DiffAction,
-    InfrahubKind,
-    RelationshipStatus,
-)
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaBranchDiff
 from infrahub.core.query.branch import (
@@ -18,9 +14,7 @@ from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.schema_manager import SchemaUpdateValidationResult
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
-from infrahub.exceptions import (
-    ValidationError,
-)
+from infrahub.exceptions import ValidationError
 from infrahub.message_bus import messages
 
 from .diff.branch_differ import BranchDiffer
@@ -46,7 +40,7 @@ class BranchMerger:
         self.source_branch = source_branch
         self.destination_branch = destination_branch or registry.get_branch_from_registry()
         self.db = db
-        self.migrations: List[SchemaUpdateMigrationInfo] = []
+        self.migrations: list[SchemaUpdateMigrationInfo] = []
         self._graph_diff: Optional[BranchDiffer] = None
 
         self._source_schema: Optional[SchemaBranch] = None
@@ -200,18 +194,18 @@ class BranchMerger:
 
         return diff_both
 
-    async def calculate_migrations(self, target_schema: SchemaBranch) -> List[SchemaUpdateMigrationInfo]:
+    async def calculate_migrations(self, target_schema: SchemaBranch) -> list[SchemaUpdateMigrationInfo]:
         diff_3way = await self.get_3ways_diff_schema()
         validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)
         self.migrations = validation.migrations
         return self.migrations
 
-    async def calculate_validations(self, target_schema: SchemaBranch) -> List[SchemaUpdateConstraintInfo]:
+    async def calculate_validations(self, target_schema: SchemaBranch) -> list[SchemaUpdateConstraintInfo]:
         diff_3way = await self.get_3ways_diff_schema()
         validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)
         return validation.constraints
 
-    async def validate_branch(self) -> List[DataConflict]:
+    async def validate_branch(self) -> list[DataConflict]:
         """
         Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
@@ -225,7 +219,7 @@ class BranchMerger:
 
         return await self.validate_graph()
 
-    async def validate_graph(self) -> List[DataConflict]:
+    async def validate_graph(self) -> list[DataConflict]:
         # Check the diff and ensure the branch doesn't have some conflict
         diff = await self.get_graph_diff()
         return await diff.get_conflicts()
@@ -233,14 +227,14 @@ class BranchMerger:
     async def merge(
         self,
         at: Optional[Union[str, Timestamp]] = None,
-        conflict_resolution: Optional[Dict[str, bool]] = None,
+        conflict_resolution: Optional[dict[str, bool]] = None,
     ) -> None:
         """Merge the current branch into main."""
         conflict_resolution = conflict_resolution or {}
         conflicts = await self.validate_branch()
 
         if conflict_resolution:
-            errors: List[str] = []
+            errors: list[str] = []
             for conflict in conflicts:
                 if conflict.conflict_path not in conflict_resolution:
                     errors.append(str(conflict))
@@ -268,9 +262,9 @@ class BranchMerger:
     async def merge_graph(  # pylint: disable=too-many-branches,too-many-statements
         self,
         at: Optional[Union[str, Timestamp]] = None,
-        conflict_resolution: Optional[Dict[str, bool]] = None,
+        conflict_resolution: Optional[dict[str, bool]] = None,
     ) -> None:
-        rel_ids_to_update: List[str] = []
+        rel_ids_to_update: list[str] = []
         conflict_resolution = conflict_resolution or {}
 
         default_branch: Branch = registry.branch[registry.default_branch]

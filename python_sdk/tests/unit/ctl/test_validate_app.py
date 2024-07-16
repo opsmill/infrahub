@@ -26,7 +26,7 @@ def test_validate_schema_non_valid():
     fixture_file = get_fixtures_dir() / "models" / "non_valid_model_01.json"
 
     result = runner.invoke(app=app, args=["schema", str(fixture_file)])
-    assert result.exit_code == 2
+    assert result.exit_code == 1
     assert "Schema not valid" in result.stdout
 
 
@@ -35,5 +35,5 @@ def test_validate_schema_json_non_valid():
     fixture_file = get_fixtures_dir() / "models" / "non_valid_json_01.json"
 
     result = runner.invoke(app=app, args=["schema", str(fixture_file)])
-    assert result.exit_code == 2
+    assert result.exit_code == 1
     assert "Invalid JSON file" in result.stdout

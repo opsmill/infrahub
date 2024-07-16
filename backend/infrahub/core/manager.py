@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Type, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 # pylint: disable=redefined-builtin
 
 
-def identify_node_class(node: NodeToProcess) -> Type[Node]:
+def identify_node_class(node: NodeToProcess) -> type[Node]:
     """Identify the proper class to use to create the NodeObject.
 
     If there is a class in the registry matching the name Kind, use it
@@ -125,7 +125,7 @@ class NodeManager:
         account=None,
         partial_match: bool = False,
         branch_agnostic: bool = False,
-    ) -> List[Node]:  # pylint: disable=unused-argument
+    ) -> list[Any]:
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
@@ -137,7 +137,7 @@ class NodeManager:
             branch (Branch or Str, optional): Branch to query. Defaults to None.
 
         Returns:
-            List[Node]: List of Node object
+            list[Node]: List of Node object
         """
 
         branch = await registry.get_branch(branch=branch, db=db)
@@ -200,6 +200,7 @@ class NodeManager:
         branch: Optional[Union[Branch, str]] = None,
         account=None,  # pylint: disable=unused-argument
         partial_match: bool = False,
+        branch_agnostic: bool = False,
     ) -> int:
         """Return the total number of nodes using a given filter
 
@@ -222,14 +223,20 @@ class NodeManager:
             raise ValueError(f"Invalid schema provided {schema}")
 
         query = await NodeGetListQuery.init(
-            db=db, schema=schema, branch=branch, filters=filters, at=at, partial_match=partial_match
+            db=db,
+            schema=schema,
+            branch=branch,
+            filters=filters,
+            at=at,
+            partial_match=partial_match,
+            branch_agnostic=branch_agnostic,
         )
         return await query.count(db=db)
 
     @classmethod
     async def count_peers(
         cls,
-        ids: List[str],
+        ids: list[str],
         source_kind: str,
         schema: RelationshipSchema,
         filters: dict,
@@ -259,7 +266,7 @@ class NodeManager:
     async def query_peers(
         cls,
         db: InfrahubDatabase,
-        ids: List[str],
+        ids: list[str],
         source_kind: str,
         schema: RelationshipSchema,
         filters: dict,
@@ -269,7 +276,7 @@ class NodeManager:
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
         branch_agnostic: bool = False,
-    ) -> List[Relationship]:
+    ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -351,7 +358,7 @@ class NodeManager:
         limit: Optional[int] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
-    ) -> Dict[str, Node]:
+    ) -> dict[str, Any]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -395,7 +402,7 @@ class NodeManager:
         branch: Optional[Union[Branch, str]] = None,
         id: Optional[str] = None,  # pylint: disable=redefined-builtin
         hfid: Optional[list[str]] = None,
-    ) -> Node:
+    ) -> Any:
         if not id and not hfid:
             raise ProcessingError(message="either id or hfid must be provided.")
 
@@ -450,7 +457,7 @@ class NodeManager:
         account=None,
         raise_on_error: Literal[False] = False,
         branch_agnostic: bool = False,
-    ) -> Optional[Node]: ...
+    ) -> Optional[Any]: ...
 
     @overload
     @classmethod
@@ -468,7 +475,7 @@ class NodeManager:
         account=None,
         raise_on_error: Literal[True] = True,
         branch_agnostic: bool = False,
-    ) -> Node: ...
+    ) -> Any: ...
 
     @classmethod
     async def get_one_by_default_filter(
@@ -485,7 +492,7 @@ class NodeManager:
         account=None,
         raise_on_error: bool = False,
         branch_agnostic: bool = False,
-    ) -> Optional[Node]:
+    ) -> Optional[Any]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -542,7 +549,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: Literal[False] = False,
-    ) -> Optional[Node]: ...
+    ) -> Optional[Any]: ...
 
     @overload
     @classmethod
@@ -559,7 +566,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: Literal[True] = True,
-    ) -> Node: ...
+    ) -> Any: ...
 
     @classmethod
     async def get_one_by_hfid(
@@ -575,7 +582,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: bool = False,
-    ) -> Optional[Node]:
+    ) -> Optional[Any]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -630,7 +637,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Node:
+    ) -> Any:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -682,7 +689,7 @@ class NodeManager:
         kind: Optional[str] = None,
         raise_on_error: Literal[False] = False,
         branch_agnostic: bool = False,
-    ) -> Optional[Node]: ...
+    ) -> Optional[Any]: ...
 
     @overload
     @classmethod
@@ -700,7 +707,7 @@ class NodeManager:
         kind: Optional[str] = None,
         raise_on_error: Literal[True] = True,
         branch_agnostic: bool = False,
-    ) -> Node: ...
+    ) -> Any: ...
 
     @classmethod
     async def get_one(
@@ -717,7 +724,7 @@ class NodeManager:
         kind: Optional[str] = None,
         raise_on_error: bool = False,
         branch_agnostic: bool = False,
-    ) -> Optional[Node]:
+    ) -> Optional[Any]:
         """Return one node based on its ID."""
         branch = await registry.get_branch(branch=branch, db=db)
 
@@ -765,7 +772,7 @@ class NodeManager:
     async def get_many(  # pylint: disable=too-many-branches,too-many-statements
         cls,
         db: InfrahubDatabase,
-        ids: List[str],
+        ids: list[str],
         fields: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
@@ -774,7 +781,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Dict[str, Node]:
+    ) -> dict[str, Any]:
         """Return a list of nodes based on their IDs."""
 
         branch = await registry.get_branch(branch=branch, db=db)
@@ -785,7 +792,7 @@ class NodeManager:
             db=db, ids=ids, branch=branch, account=account, at=at, branch_agnostic=branch_agnostic
         )
         await query.execute(db=db)
-        nodes_info_by_id: Dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
+        nodes_info_by_id: dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
         profile_ids_by_node_id = query.get_profile_ids_by_node_id()
         all_profile_ids = reduce(
             lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()
@@ -811,8 +818,8 @@ class NodeManager:
         )
         await query.execute(db=db)
         all_node_attributes = query.get_attributes_group_by_node()
-        profile_attributes: Dict[str, Dict[str, AttributeFromDB]] = {}
-        node_attributes: Dict[str, Dict[str, AttributeFromDB]] = {}
+        profile_attributes: dict[str, dict[str, AttributeFromDB]] = {}
+        node_attributes: dict[str, dict[str, AttributeFromDB]] = {}
         for node_id, attribute_dict in all_node_attributes.items():
             if node_id in all_profile_ids:
                 profile_attributes[node_id] = attribute_dict
@@ -855,7 +862,7 @@ class NodeManager:
                 continue
 
             node = nodes_info_by_id[node_id]
-            new_node_data: Dict[str, Union[str, AttributeFromDB]] = {
+            new_node_data: dict[str, Union[str, AttributeFromDB]] = {
                 "db_id": node.node_id,
                 "id": node_id,
                 "updated_at": node.updated_at,
@@ -890,7 +897,8 @@ class NodeManager:
 
             new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
-            item = await node_class.init(schema=node.schema, branch=branch, at=at, db=db)
+            node_branch = await registry.get_branch(db=db, branch=node.branch)
+            item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
             await item.load(**new_node_data_with_profile_overrides, db=db)
 
             nodes[node_id] = item
@@ -901,10 +909,10 @@ class NodeManager:
     async def delete(
         cls,
         db: InfrahubDatabase,
-        nodes: List[Node],
+        nodes: list[Node],
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> list[Node]:
+    ) -> list[Any]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
         component_registry = get_component_registry()

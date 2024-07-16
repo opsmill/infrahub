@@ -21,19 +21,19 @@ class TestInfrahubNode:
     @pytest.fixture
     async def client(self, test_client):
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
-        return await InfrahubClient.init(config=config)
+        return InfrahubClient(config=config)
 
     @pytest.fixture(scope="class")
     async def load_builtin_schema(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
-        client = await InfrahubClient.init(config=config)
+        client = InfrahubClient(config=config)
         response = await client.schema.load(schemas=[builtin_org_schema])
         assert not response.errors
 
     @pytest.fixture(scope="class")
     async def load_ipam_schema(self, db: InfrahubDatabase, test_client: InfrahubTestClient, ipam_schema) -> None:
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
-        client = await InfrahubClient.init(config=config)
+        client = InfrahubClient(config=config)
         response = await client.schema.load(schemas=[ipam_schema])
         assert not response.errors
 
@@ -292,7 +292,7 @@ class TestInfrahubNode:
         assert node.name.value == "cdg01"  # type: ignore[attr-defined]
 
     async def test_relationship_manager_errors_without_fetch(self, client: InfrahubClient, load_builtin_schema):
-        organization = await client.create("CoreOrganization", name="organization-1")
+        organization = await client.create("TestOrganization", name="organization-1")
         await organization.save()
         tag = await client.create("BuiltinTag", name="blurple")
         await tag.save()
@@ -304,7 +304,7 @@ class TestInfrahubNode:
         organization.tags.add(tag)
         await organization.save()
 
-        organization = await client.get("CoreOrganization", name__value="organization-1")
+        organization = await client.get("TestOrganization", name__value="organization-1")
         assert [t.id for t in organization.tags.peers] == [tag.id]
 
     async def test_relationships_not_overwritten(

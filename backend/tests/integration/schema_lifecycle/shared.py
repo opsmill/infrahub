@@ -84,6 +84,11 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         return schema_car_base
 
     @pytest.fixture(scope="class")
+    def schema_car_05_no_profile(self, schema_car_base) -> Dict[str, Any]:
+        schema_car_base["generate_profile"] = False
+        return schema_car_base
+
+    @pytest.fixture(scope="class")
     def schema_manufacturer_base(self) -> Dict[str, Any]:
         return {
             "name": "Manufacturer",
@@ -185,5 +190,19 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
                 schema_car_02_carmaker,
                 schema_manufacturer_02_car_maker,
                 schema_tag_04_absent,
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step05(
+        self, schema_car_05_no_profile, schema_person_03_no_height, schema_manufacturer_02_car_maker
+    ) -> Dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [
+                schema_person_03_no_height,
+                schema_car_05_no_profile,
+                schema_manufacturer_02_car_maker,
+                # TestingTag is removed in previous step
             ],
         }

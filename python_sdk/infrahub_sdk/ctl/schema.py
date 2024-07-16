@@ -1,23 +1,18 @@
 import asyncio
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import typer
 import yaml
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
-
+from pydantic import ValidationError
 from rich.console import Console
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import FileNotValidError
-from infrahub_sdk.ctl.utils import init_logging
+from infrahub_sdk.ctl.utils import catch_exception, init_logging
 from infrahub_sdk.queries import SCHEMA_HASH_SYNC_STATUS
 from infrahub_sdk.utils import find_files
 from infrahub_sdk.yaml import SchemaFile
@@ -25,6 +20,7 @@ from infrahub_sdk.yaml import SchemaFile
 from .parameters import CONFIG_PARAM
 
 app = AsyncTyper()
+console = Console()
 
 
 @app.callback()
@@ -34,15 +30,15 @@ def callback() -> None:
     """
 
 
-def load_schemas_from_disk(schemas: List[Path]) -> List[SchemaFile]:
-    schemas_data: List[SchemaFile] = []
+def load_schemas_from_disk(schemas: list[Path]) -> list[SchemaFile]:
+    schemas_data: list[SchemaFile] = []
     for schema in schemas:
         if schema.is_file():
             schema_file = SchemaFile(location=schema)
             schema_file.load_content()
             schemas_data.append(schema_file)
         elif schema.is_dir():
-            files = find_files(extension=["yaml", "yml", "json"], directory=schema, recursive=True)
+            files = find_files(extension=["yaml", "yml", "json"], directory=schema)
             for item in files:
                 schema_file = SchemaFile(location=item)
                 schema_file.load_content()
@@ -53,7 +49,7 @@ def load_schemas_from_disk(schemas: List[Path]) -> List[SchemaFile]:
     return schemas_data
 
 
-def load_schemas_from_disk_and_exit(schemas: List[Path], console: Console):
+def load_schemas_from_disk_and_exit(schemas: list[Path]):
     has_error = False
     try:
         schemas_data = load_schemas_from_disk(schemas=schemas)
@@ -73,12 +69,12 @@ def load_schemas_from_disk_and_exit(schemas: List[Path], console: Console):
     return schemas_data
 
 
-def validate_schema_content_and_exit(client: InfrahubClient, console: Console, schemas: List[SchemaFile]) -> None:
+def validate_schema_content_and_exit(client: InfrahubClient, schemas: list[SchemaFile]) -> None:
     has_error: bool = False
     for schema_file in schemas:
         try:
             client.schema.validate(data=schema_file.content)
-        except pydantic.ValidationError as exc:
+        except ValidationError as exc:
             console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.location}")
             has_error = True
             for error in exc.errors():
@@ -89,10 +85,10 @@ def validate_schema_content_and_exit(client: InfrahubClient, console: Console, s
         raise typer.Exit(2)
 
 
-def display_schema_load_errors(console: Console, response: Dict[str, Any], schemas_data: List[Dict]) -> None:
+def display_schema_load_errors(response: dict[str, Any], schemas_data: list[dict]) -> None:
     console.print("[red]Unable to load the schema:")
     if "detail" not in response:
-        handle_non_detail_errors(console=console, response=response)
+        handle_non_detail_errors(response=response)
         return
 
     for error in response["detail"]:
@@ -100,6 +96,7 @@ def display_schema_load_errors(console: Console, response: Dict[str, Any], schem
         if not valid_error_path(loc_path=loc_path):
             continue
 
+        loc_type = loc_path[-2]
         schema_index = int(loc_path[2])
         node_index = int(loc_path[4])
         node = get_node(schemas_data=schemas_data, schema_index=schema_index, node_index=node_index)
@@ -108,16 +105,14 @@ def display_schema_load_errors(console: Console, response: Dict[str, Any], schem
             console.print("Node data not found.")
             continue
 
-        input_label = loc_path[-1]
-        element_label = loc_path[-3][0:-1].title()
-
+        input_label = node[loc_type][loc_path[-1]].get("name", None)
         input_str = error.get("input", None)
-        error_message = f"{element_label} {input_label}: {input_str} | {error['msg']} ({error['type']})"
+        error_message = f"{loc_type[:-1].title()}: {input_label} ({input_str}) | {error['msg']} ({error['type']})"
 
-        console.print(f"  Node: {node.get('namespace', None)}.{node.get('name', None)} | {error_message}")
+        console.print(f"  Node: {node.get('namespace', None)}{node.get('name', None)} | {error_message}")
 
 
-def handle_non_detail_errors(console: Console, response: Dict[str, Any]) -> None:
+def handle_non_detail_errors(response: dict[str, Any]) -> None:
     if "error" in response:
         console.print(f"  {response.get('error')}")
     elif "errors" in response:
@@ -127,19 +122,20 @@ def handle_non_detail_errors(console: Console, response: Dict[str, Any]) -> None
         console.print(f"  '{response}'")
 
 
-def valid_error_path(loc_path: List[Any]) -> bool:
+def valid_error_path(loc_path: list[Any]) -> bool:
     return len(loc_path) >= 6 and loc_path[0] == "body" and loc_path[1] == "schemas"
 
 
-def get_node(schemas_data: List[Dict], schema_index: int, node_index: int) -> Optional[Dict]:
+def get_node(schemas_data: list[dict], schema_index: int, node_index: int) -> Optional[dict]:
     if schema_index < len(schemas_data) and node_index < len(schemas_data[schema_index].content["nodes"]):
         return schemas_data[schema_index].content["nodes"][node_index]
     return None
 
 
 @app.command()
+@catch_exception(console=console)
 async def load(
-    schemas: List[Path],
+    schemas: list[Path],
     debug: bool = False,
     branch: str = typer.Option("main", help="Branch on which to load the schema."),
     wait: int = typer.Option(0, help="Time in seconds to wait until the schema has converged across all workers"),
@@ -149,19 +145,17 @@ async def load(
 
     init_logging(debug=debug)
 
-    console = Console()
-
-    schemas_data = load_schemas_from_disk_and_exit(console=console, schemas=schemas)
+    schemas_data = load_schemas_from_disk_and_exit(schemas=schemas)
     schema_definition = "schema" if len(schemas_data) == 1 else "schemas"
     client = await initialize_client()
-    validate_schema_content_and_exit(console=console, client=client, schemas=schemas_data)
+    validate_schema_content_and_exit(client=client, schemas=schemas_data)
 
     start_time = time.time()
     response = await client.schema.load(schemas=[item.content for item in schemas_data], branch=branch)
     loading_time = time.time() - start_time
 
     if response.errors:
-        display_schema_load_errors(console=console, response=response.errors, schemas_data=schemas_data)
+        display_schema_load_errors(response=response.errors, schemas_data=schemas_data)
         raise typer.Exit(1)
 
     if response.schema_updated:
@@ -190,8 +184,9 @@ async def load(
 
 
 @app.command()
+@catch_exception(console=console)
 async def check(
-    schemas: List[Path],
+    schemas: list[Path],
     debug: bool = False,
     branch: str = typer.Option("main", help="Branch on which to check the schema."),
     _: str = CONFIG_PARAM,
@@ -200,16 +195,14 @@ async def check(
 
     init_logging(debug=debug)
 
-    console = Console()
-
-    schemas_data = load_schemas_from_disk_and_exit(console=console, schemas=schemas)
+    schemas_data = load_schemas_from_disk_and_exit(schemas=schemas)
     client = await initialize_client()
-    validate_schema_content_and_exit(console=console, client=client, schemas=schemas_data)
+    validate_schema_content_and_exit(client=client, schemas=schemas_data)
 
     success, response = await client.schema.check(schemas=[item.content for item in schemas_data], branch=branch)
 
     if not success:
-        display_schema_load_errors(console=console, response=response, schemas_data=schemas_data)
+        display_schema_load_errors(response=response, schemas_data=schemas_data)
     else:
         for schema_file in schemas_data:
             console.print(f"[green] schema '{schema_file.location}' is Valid!")

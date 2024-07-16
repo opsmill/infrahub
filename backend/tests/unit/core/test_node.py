@@ -144,13 +144,13 @@ async def test_node_init_invalid_value(db: InfrahubDatabase, default_branch: Bra
     with pytest.raises(ValidationError) as exc:
         await obj.new(db=db, name="low", level="notanint")
 
-    assert "not of type Number" in str(exc.value)
+    assert "notanint is not a valid Number at level" in str(exc.value)
 
     obj = await Node.init(db=db, schema=criticality_schema)
     with pytest.raises(ValidationError) as exc:
         await obj.new(db=db, name=False, level=3)
 
-    assert "not of type Text" in str(exc.value)
+    assert "False is not a valid Text at name" in str(exc.value)
 
 
 async def test_node_default_value(db: InfrahubDatabase, default_branch: Branch):

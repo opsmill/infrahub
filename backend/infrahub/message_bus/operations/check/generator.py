@@ -7,7 +7,8 @@ from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
-from infrahub.git.repository import extract_repo_file_information, get_initialized_repo
+from infrahub.git.base import extract_repo_file_information
+from infrahub.git.repository import get_initialized_repo
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status

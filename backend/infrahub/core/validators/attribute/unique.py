@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_unique_validator"
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -102,7 +102,7 @@ class AttributeUniquenessChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")

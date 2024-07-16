@@ -1,13 +1,13 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional, Union
 
 
 class Error(Exception):
     HTTP_CODE: int = 500
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
-    errors: Optional[List] = None
+    errors: Optional[list] = None
 
-    def api_response(self) -> Dict[str, Any]:
+    def api_response(self) -> dict[str, Any]:
         """Return error response."""
         if isinstance(self.errors, list):
             return {"data": None, "errors": self.errors}
@@ -49,7 +49,7 @@ class GraphQLQueryError(Error):
 
 
 class RepositoryError(Error):
-    def __init__(self, identifier, message=None):
+    def __init__(self, identifier: str, message: Optional[str] = None):
         self.identifier = identifier
         self.message = message or f"An error occurred with GitRepository '{identifier}'."
         super().__init__(self.message)
@@ -58,7 +58,7 @@ class RepositoryError(Error):
 class CommitNotFoundError(Error):
     HTTP_CODE: int = 400
 
-    def __init__(self, identifier: str, commit: str, message=None):
+    def __init__(self, identifier: str, commit: str, message: Optional[str] = None):
         self.identifier = identifier
         self.commit = commit
         self.message = message or f"Commit {commit} not found with GitRepository '{identifier}'."
@@ -68,7 +68,7 @@ class CommitNotFoundError(Error):
 class DataTypeNotFoundError(Error):
     HTTP_CODE: int = 400
 
-    def __init__(self, name, message=None):
+    def __init__(self, name: str, message: Optional[str] = None):
         self.name = name
         self.message = message or f"Unable to find the DataType '{name}'."
         super().__init__(self.message)
@@ -77,7 +77,7 @@ class DataTypeNotFoundError(Error):
 class RepositoryFileNotFoundError(Error):
     HTTP_CODE: int = 404
 
-    def __init__(self, repository_name: str, location: str, commit: str, message=None):
+    def __init__(self, repository_name: str, location: str, commit: str, message: Optional[str] = None):
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
@@ -88,7 +88,7 @@ class RepositoryFileNotFoundError(Error):
 class FileOutOfRepositoryError(Error):
     HTTP_CODE: int = 403
 
-    def __init__(self, repository_name: str, location: str, commit: str, message=None):
+    def __init__(self, repository_name: str, location: str, commit: str, message: Optional[str] = None):
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
@@ -97,7 +97,7 @@ class FileOutOfRepositoryError(Error):
 
 
 class TransformError(Error):
-    def __init__(self, repository_name, location, commit, message=None):
+    def __init__(self, repository_name: str, location: str, commit: str, message: Optional[str] = None):
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
@@ -108,7 +108,9 @@ class TransformError(Error):
 
 
 class CheckError(Error):
-    def __init__(self, repository_name, location, class_name, commit, message=None):
+    def __init__(
+        self, repository_name: str, location: str, class_name: str, commit: str, message: Optional[str] = None
+    ):
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
@@ -121,7 +123,7 @@ class CheckError(Error):
 
 
 class TransformNotFoundError(TransformError):
-    def __init__(self, repository_name, location, commit, message=None):
+    def __init__(self, repository_name: str, location: str, commit: str, message: Optional[str] = None):
         self.message = (
             message or f"Unable to locate the transform function at '{repository_name}::{commit}::{location}'."
         )
@@ -131,7 +133,7 @@ class TransformNotFoundError(TransformError):
 class BranchNotFoundError(Error):
     HTTP_CODE: int = 400
 
-    def __init__(self, identifier, message=None):
+    def __init__(self, identifier: str, message: Optional[str] = None):
         self.identifier = identifier
         self.message = message or f"Branch: {identifier} not found."
         super().__init__(self.message)
@@ -149,7 +151,7 @@ class NodeNotFoundError(Error):
         self.message = message or f"Unable to find the node {identifier} / {node_type} in the database."
         super().__init__(self.message)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"""
         {self.message}
         {self.branch_name} | {self.node_type} | {self.identifier}
@@ -203,13 +205,13 @@ class PoolExhaustedError(Error):
 class SchemaNotFoundError(Error):
     HTTP_CODE: int = 422
 
-    def __init__(self, branch_name, identifier, message=None):
+    def __init__(self, branch_name: str, identifier: str, message: Optional[str] = None):
         self.branch_name = branch_name
         self.identifier = identifier
         self.message = message or f"Unable to find the schema {identifier} in the database."
         super().__init__(self.message)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"""
         {self.message}
         {self.branch_name} | {self.identifier}
@@ -217,14 +219,14 @@ class SchemaNotFoundError(Error):
 
 
 class QueryError(Error):
-    def __init__(self, query, params, message="Unable to execute the CYPHER query."):
+    def __init__(self, query: str, params: dict, message: str = "Unable to execute the CYPHER query."):
         self.query = query
         self.params = params
 
         self.message = message
         super().__init__(self.message)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"""
         {self.message}
         {self.query}
@@ -249,8 +251,8 @@ class MigrationError(Error):
 class ValidationError(Error):
     HTTP_CODE = 422
 
-    def __init__(self, input_value):
-        self.message: Optional[str] = None
+    def __init__(self, input_value: Union[str, dict, list]):
+        self.message = ""
         self.location = None
         self.messages = {}
 
@@ -273,7 +275,7 @@ class ValidationError(Error):
 
         super().__init__(self.message)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.messages:
             return ", ".join([f"{message} at {location}" for location, message in self.messages.items()])
 

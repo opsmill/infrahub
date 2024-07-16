@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import glob
 import hashlib
 import json
 from itertools import groupby
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import UUID, uuid4
 
 import httpx
@@ -82,11 +81,11 @@ def is_valid_uuid(value: Any) -> bool:
         return False
 
 
-def decode_json(response: httpx.Response, url: Optional[str] = None) -> dict:
+def decode_json(response: httpx.Response) -> dict:
     try:
         return response.json()
     except json.decoder.JSONDecodeError as exc:
-        raise JsonDecodeError(content=response.text, url=url) from exc
+        raise JsonDecodeError(content=response.text, url=response.url) from exc
 
 
 def generate_uuid() -> str:
@@ -107,12 +106,12 @@ def duplicates(input_list: list) -> list:
     return dups
 
 
-def intersection(list1: List[Any], list2: List[Any]) -> list:
+def intersection(list1: list[Any], list2: list[Any]) -> list:
     """Calculate the intersection between 2 lists."""
     return list(set(list1) & set(list2))
 
 
-def compare_lists(list1: List[Any], list2: List[Any]) -> Tuple[List[Any], List[Any], List[Any]]:
+def compare_lists(list1: list[Any], list2: list[Any]) -> tuple[list[Any], list[Any], list[Any]]:
     """Compare 2 lists and return :
     - the intersection of both
     - the item present only in list1
@@ -126,7 +125,7 @@ def compare_lists(list1: List[Any], list2: List[Any]) -> Tuple[List[Any], List[A
     return sorted(in_both), sorted(in_list_1), sorted(in_list_2)
 
 
-def deep_merge_dict(dicta: dict, dictb: dict, path: Optional[List] = None) -> dict:
+def deep_merge_dict(dicta: dict, dictb: dict, path: Optional[list] = None) -> dict:
     """Deep Merge Dictionary B into Dictionary A.
     Code is inspired by https://stackoverflow.com/a/7205107
     """
@@ -227,21 +226,19 @@ def is_valid_url(url: str) -> bool:
         return False
 
 
-def find_files(
-    extension: Union[str, List[str]],
-    directory: Union[str, Path] = ".",
-    recursive: bool = True,
-) -> List[Path]:
-    files = []
+def find_files(extension: Union[str, list[str]], directory: Union[str, Path] = ".") -> list[Path]:
+    files: list[Path] = []
 
     if isinstance(extension, str):
         extension = [extension]
+    if isinstance(directory, str):
+        directory = Path(directory)
 
     for ext in extension:
-        files.extend(glob.glob(f"{directory}/**/*.{ext}", recursive=recursive))
-        files.extend(glob.glob(f"{directory}/**/.*.{ext}", recursive=recursive))
+        files.extend(list(directory.glob(f"**/*.{ext}")))
+        files.extend(list(directory.glob(f"**/.*.{ext}")))
 
-    return [Path(item) for item in files]
+    return files
 
 
 def get_branch(branch: Optional[str] = None, directory: Union[str, Path] = ".") -> str:
@@ -253,12 +250,12 @@ def get_branch(branch: Optional[str] = None, directory: Union[str, Path] = ".") 
     return str(repo.active_branch)
 
 
-def dict_hash(dictionary: Dict[str, Any]) -> str:
+def dict_hash(dictionary: dict[str, Any]) -> str:
     """MD5 hash of a dictionary."""
     # We need to sort arguments so {'a': 1, 'b': 2} is
     # the same as {'b': 2, 'a': 1}
     encoded = ujson.dumps(dictionary, sort_keys=True).encode()
-    dhash = hashlib.md5(encoded)
+    dhash = hashlib.md5(encoded, usedforsecurity=False)
     return dhash.hexdigest()
 
 
@@ -279,7 +276,7 @@ def calculate_dict_height(data: dict, cnt: int = 0) -> int:
     return cnt
 
 
-async def extract_fields(selection_set: Optional[SelectionSetNode]) -> Optional[Dict[str, Dict]]:
+async def extract_fields(selection_set: Optional[SelectionSetNode]) -> Optional[dict[str, dict]]:
     """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
 
     The goal of this function is to limit the fields that we need to query from the backend.
@@ -316,7 +313,7 @@ async def extract_fields(selection_set: Optional[SelectionSetNode]) -> Optional[
     return fields
 
 
-async def extract_fields_first_node(info: GraphQLResolveInfo) -> Dict[str, Dict]:
+async def extract_fields_first_node(info: GraphQLResolveInfo) -> dict[str, dict]:
     fields = None
     if info.field_nodes:
         fields = await extract_fields(info.field_nodes[0].selection_set)

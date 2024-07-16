@@ -1,0 +1,4733 @@
+{
+    "nodes": [
+        {
+            "id": "17d9bd6f-64d1-2310-2786-179fb702390c",
+            "state": "present",
+            "name": "IPPrefix",
+            "namespace": "Ipam",
+            "description": "IPv4 or IPv6 network",
+            "label": "IP Prefix",
+            "branch": "aware",
+            "default_filter": "prefix__value",
+            "human_friendly_id": null,
+            "display_labels": [
+                "prefix__value"
+            ],
+            "include_in_menu": false,
+            "menu_placement": null,
+            "icon": "mdi:ip-network",
+            "order_by": [
+                "prefix__version",
+                "prefix__binary_address",
+                "prefix__prefixlen"
+            ],
+            "uniqueness_constraints": null,
+            "documentation": null,
+            "filters": [
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "ids",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "prefix__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "member_type__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "member_type__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "member_type__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "member_type__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "member_type__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "member_type__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_pool__value",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_pool__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_pool__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_pool__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_pool__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_pool__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_top_level__value",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_top_level__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_top_level__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_top_level__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_top_level__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "is_top_level__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "utilization__value",
+                    "kind": "Number",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "utilization__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "utilization__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "utilization__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "utilization__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "utilization__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "netmask__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "netmask__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "netmask__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "netmask__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "netmask__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "netmask__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "hostmask__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "hostmask__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "hostmask__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "hostmask__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "hostmask__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "hostmask__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "network_address__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "network_address__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "network_address__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "network_address__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "network_address__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "network_address__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "broadcast_address__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "broadcast_address__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "broadcast_address__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "broadcast_address__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "broadcast_address__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "broadcast_address__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                }
+            ],
+            "attributes": [
+                {
+                    "id": "17d9bd6f-6523-88d0-2788-179f06f96513",
+                    "state": "present",
+                    "name": "prefix",
+                    "kind": "IPNetwork",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Prefix",
+                    "description": null,
+                    "read_only": false,
+                    "unique": false,
+                    "optional": false,
+                    "branch": "aware",
+                    "order_weight": 1000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "any"
+                },
+                {
+                    "id": "17d9bd6f-656d-9da8-2781-179fb3e12549",
+                    "state": "present",
+                    "name": "description",
+                    "kind": "Text",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Description",
+                    "description": null,
+                    "read_only": false,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 2000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "any"
+                },
+                {
+                    "id": "17d9bd6f-65bc-5dd0-278f-179f9ae80795",
+                    "state": "present",
+                    "name": "member_type",
+                    "kind": "Dropdown",
+                    "enum": null,
+                    "choices": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "prefix",
+                            "description": "Prefix serves as container for other prefixes",
+                            "color": "#ed6a5a",
+                            "label": "Prefix"
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "address",
+                            "description": "Prefix serves as subnet for IP addresses",
+                            "color": "#f4f1bb",
+                            "label": "Address"
+                        }
+                    ],
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Member Type",
+                    "description": null,
+                    "read_only": false,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 3000,
+                    "default_value": "address",
+                    "inherited": true,
+                    "allow_override": "any"
+                },
+                {
+                    "id": "17d9bd6f-6609-5108-2787-179fc10e797a",
+                    "state": "present",
+                    "name": "is_pool",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Is Pool",
+                    "description": "All IP addresses within this prefix are considered usable",
+                    "read_only": false,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 4000,
+                    "default_value": false,
+                    "inherited": true,
+                    "allow_override": "any"
+                },
+                {
+                    "id": "17d9bd6f-6657-9fe8-278b-179f7fcff935",
+                    "state": "present",
+                    "name": "is_top_level",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Is Top Level",
+                    "description": null,
+                    "read_only": true,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 5000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "none"
+                },
+                {
+                    "id": "17d9bd6f-66a4-54a0-2782-179fd2a0a7a2",
+                    "state": "present",
+                    "name": "utilization",
+                    "kind": "Number",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Utilization",
+                    "description": null,
+                    "read_only": true,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 6000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "none"
+                },
+                {
+                    "id": "17d9bd6f-6700-b8f8-278c-179f3b309048",
+                    "state": "present",
+                    "name": "netmask",
+                    "kind": "Text",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Netmask",
+                    "description": null,
+                    "read_only": true,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 7000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "none"
+                },
+                {
+                    "id": "17d9bd6f-675c-5a00-278e-179fdb740ee3",
+                    "state": "present",
+                    "name": "hostmask",
+                    "kind": "Text",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Hostmask",
+                    "description": null,
+                    "read_only": true,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 8000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "none"
+                },
+                {
+                    "id": "17d9bd6f-67ae-7d58-2780-179f5690fd6e",
+                    "state": "present",
+                    "name": "network_address",
+                    "kind": "Text",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Network Address",
+                    "description": null,
+                    "read_only": true,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 9000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "none"
+                },
+                {
+                    "id": "17d9bd6f-67fd-1e40-2782-179f3743d578",
+                    "state": "present",
+                    "name": "broadcast_address",
+                    "kind": "Text",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Broadcast Address",
+                    "description": null,
+                    "read_only": true,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 10000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "none"
+                }
+            ],
+            "relationships": [
+                {
+                    "id": "17d9bd6f-6848-d510-278d-179fdede0e92",
+                    "state": "present",
+                    "name": "ip_namespace",
+                    "peer": "BuiltinIPNamespace",
+                    "kind": "Generic",
+                    "label": "IP Namespace",
+                    "description": null,
+                    "identifier": "ip_namespace__ip_prefix",
+                    "cardinality": "one",
+                    "min_count": 0,
+                    "max_count": 1,
+                    "order_weight": 11000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "none",
+                    "read_only": false
+                },
+                {
+                    "id": "17d9bd6f-6897-5aa0-2783-179ffc129ffd",
+                    "state": "present",
+                    "name": "ip_addresses",
+                    "peer": "BuiltinIPAddress",
+                    "kind": "Generic",
+                    "label": "IP Addresses",
+                    "description": null,
+                    "identifier": "ip_prefix__ip_address",
+                    "cardinality": "many",
+                    "min_count": 0,
+                    "max_count": 0,
+                    "order_weight": 12000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "none",
+                    "read_only": true
+                },
+                {
+                    "id": "17d9bd6f-68e6-5560-278f-179fe7a245e5",
+                    "state": "present",
+                    "name": "member_of_groups",
+                    "peer": "CoreGroup",
+                    "kind": "Group",
+                    "label": "Member Of Groups",
+                    "description": null,
+                    "identifier": "group_member",
+                    "cardinality": "many",
+                    "min_count": 0,
+                    "max_count": 0,
+                    "order_weight": 13000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": false
+                },
+                {
+                    "id": "17d9bd6f-6936-26f8-278a-179fc817723d",
+                    "state": "present",
+                    "name": "subscriber_of_groups",
+                    "peer": "CoreGroup",
+                    "kind": "Group",
+                    "label": "Subscriber Of Groups",
+                    "description": null,
+                    "identifier": "group_subscriber",
+                    "cardinality": "many",
+                    "min_count": 0,
+                    "max_count": 0,
+                    "order_weight": 14000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": false
+                },
+                {
+                    "id": "17d9bd6f-6989-2128-278c-179f2b57e70f",
+                    "state": "present",
+                    "name": "parent",
+                    "peer": "BuiltinIPPrefix",
+                    "kind": "Hierarchy",
+                    "label": "Parent",
+                    "description": null,
+                    "identifier": "parent__child",
+                    "cardinality": "one",
+                    "min_count": 0,
+                    "max_count": 1,
+                    "order_weight": 15000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "outbound",
+                    "hierarchical": "BuiltinIPPrefix",
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__value",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__value",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__value",
+                            "kind": "Number",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": true
+                },
+                {
+                    "id": "17d9bd6f-69e3-c060-278c-179fdbe91d53",
+                    "state": "present",
+                    "name": "children",
+                    "peer": "BuiltinIPPrefix",
+                    "kind": "Hierarchy",
+                    "label": "Children",
+                    "description": null,
+                    "identifier": "parent__child",
+                    "cardinality": "many",
+                    "min_count": 0,
+                    "max_count": 0,
+                    "order_weight": 16000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "inbound",
+                    "hierarchical": "BuiltinIPPrefix",
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__value",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__value",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__value",
+                            "kind": "Number",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": true
+                },
+                {
+                    "id": "17d9bd6f-6a36-35c0-278b-179f6cb47e47",
+                    "state": "present",
+                    "name": "profiles",
+                    "peer": "ProfileIpamIPPrefix",
+                    "kind": "Profile",
+                    "label": "Profiles",
+                    "description": null,
+                    "identifier": "node__profile",
+                    "cardinality": "many",
+                    "min_count": 0,
+                    "max_count": 0,
+                    "order_weight": 17000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": false,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__value",
+                            "kind": "Number",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__value",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": false
+                }
+            ],
+            "inherit_from": [
+                "BuiltinIPPrefix"
+            ],
+            "generate_profile": true,
+            "hierarchy": "BuiltinIPPrefix",
+            "parent": "BuiltinIPPrefix",
+            "children": "BuiltinIPPrefix",
+            "kind": "IpamIPPrefix",
+            "hash": "e32f68b67633af054d23e35b4dd1a5e6"
+        },
+        {
+            "id": "17d9bd6f-6185-cc88-278c-179fd6360c8d",
+            "state": "present",
+            "name": "IPAddress",
+            "namespace": "Ipam",
+            "description": "IP Address",
+            "label": "IP Address",
+            "branch": "aware",
+            "default_filter": "address__value",
+            "human_friendly_id": null,
+            "display_labels": [
+                "address__value"
+            ],
+            "include_in_menu": false,
+            "menu_placement": null,
+            "icon": "mdi:ip-outline",
+            "order_by": [
+                "address__version",
+                "address__binary_address"
+            ],
+            "uniqueness_constraints": null,
+            "documentation": null,
+            "filters": [
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "ids",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__values",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "description__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__is_visible",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__is_protected",
+                    "kind": "Boolean",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__source__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
+                    "name": "any__owner__id",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                }
+            ],
+            "attributes": [
+                {
+                    "id": "17d9bd6f-61e5-1710-2785-179f38d20caf",
+                    "state": "present",
+                    "name": "address",
+                    "kind": "IPHost",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Address",
+                    "description": null,
+                    "read_only": false,
+                    "unique": false,
+                    "optional": false,
+                    "branch": "aware",
+                    "order_weight": 1000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "any"
+                },
+                {
+                    "id": "17d9bd6f-6240-9cc0-2783-179f8eb17542",
+                    "state": "present",
+                    "name": "description",
+                    "kind": "Text",
+                    "enum": null,
+                    "choices": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "label": "Description",
+                    "description": null,
+                    "read_only": false,
+                    "unique": false,
+                    "optional": true,
+                    "branch": "aware",
+                    "order_weight": 2000,
+                    "default_value": null,
+                    "inherited": true,
+                    "allow_override": "any"
+                }
+            ],
+            "relationships": [
+                {
+                    "id": "17d9bd6f-6295-2178-2783-179f5df1a9f6",
+                    "state": "present",
+                    "name": "interface",
+                    "peer": "InfraInterfaceL3",
+                    "kind": "Generic",
+                    "label": "Interface",
+                    "description": null,
+                    "identifier": "infrainterfacel3__ipamipaddress",
+                    "cardinality": "one",
+                    "min_count": 0,
+                    "max_count": 1,
+                    "order_weight": 3000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": false,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_rate__value",
+                            "kind": "Text",
+                            "enum": [
+                                "Fast",
+                                "Normal"
+                            ],
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_rate__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_rate__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_rate__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_rate__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_rate__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_priority__value",
+                            "kind": "Number",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_priority__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_priority__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_priority__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_priority__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "lacp_priority__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "speed__value",
+                            "kind": "Number",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "speed__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "speed__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "speed__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "speed__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "speed__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "mtu__value",
+                            "kind": "Number",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "mtu__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "mtu__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "mtu__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "mtu__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "mtu__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "enabled__value",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "enabled__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "enabled__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "enabled__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "enabled__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "enabled__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "status__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "status__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "status__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "status__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "status__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "status__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "role__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "role__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "role__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "role__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "role__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "role__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": false
+                },
+                {
+                    "id": "17d9bd6f-62f4-25b0-278b-179faf71de7c",
+                    "state": "present",
+                    "name": "ip_namespace",
+                    "peer": "BuiltinIPNamespace",
+                    "kind": "Generic",
+                    "label": "IP Namespace",
+                    "description": null,
+                    "identifier": "ip_namespace__ip_address",
+                    "cardinality": "one",
+                    "min_count": 0,
+                    "max_count": 1,
+                    "order_weight": 3000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "none",
+                    "read_only": false
+                },
+                {
+                    "id": "17d9bd6f-634e-5f58-2782-179fcb00ad84",
+                    "state": "present",
+                    "name": "ip_prefix",
+                    "peer": "BuiltinIPPrefix",
+                    "kind": "Generic",
+                    "label": "IP Prefix",
+                    "description": null,
+                    "identifier": "ip_prefix__ip_address",
+                    "cardinality": "one",
+                    "min_count": 0,
+                    "max_count": 1,
+                    "order_weight": 4000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "member_type__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__value",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_pool__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__value",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "is_top_level__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__value",
+                            "kind": "Number",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "utilization__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "netmask__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "hostmask__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "network_address__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "broadcast_address__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "none",
+                    "read_only": true
+                },
+                {
+                    "id": "17d9bd6f-63ae-78e8-2780-179f0999b0c2",
+                    "state": "present",
+                    "name": "member_of_groups",
+                    "peer": "CoreGroup",
+                    "kind": "Group",
+                    "label": "Member Of Groups",
+                    "description": null,
+                    "identifier": "group_member",
+                    "cardinality": "many",
+                    "min_count": 0,
+                    "max_count": 0,
+                    "order_weight": 5000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": false
+                },
+                {
+                    "id": "17d9bd6f-6407-faf8-278b-179f4ed42503",
+                    "state": "present",
+                    "name": "subscriber_of_groups",
+                    "peer": "CoreGroup",
+                    "kind": "Group",
+                    "label": "Subscriber Of Groups",
+                    "description": null,
+                    "identifier": "group_subscriber",
+                    "cardinality": "many",
+                    "min_count": 0,
+                    "max_count": 0,
+                    "order_weight": 6000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": true,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "label__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": false
+                },
+                {
+                    "id": "17d9bd6f-6455-1928-278c-179f27ce0bb0",
+                    "state": "present",
+                    "name": "profiles",
+                    "peer": "ProfileIpamIPAddress",
+                    "kind": "Profile",
+                    "label": "Profiles",
+                    "description": null,
+                    "identifier": "node__profile",
+                    "cardinality": "many",
+                    "min_count": 0,
+                    "max_count": 0,
+                    "order_weight": 8000,
+                    "optional": true,
+                    "branch": "aware",
+                    "inherited": false,
+                    "direction": "bidirectional",
+                    "hierarchical": null,
+                    "filters": [
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "ids",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_name__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__value",
+                            "kind": "Number",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "profile_priority__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__value",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__values",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_visible",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__is_protected",
+                            "kind": "Boolean",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__source__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        },
+                        {
+                            "id": null,
+                            "state": "present",
+                            "name": "description__owner__id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "on_delete": "no-action",
+                    "allow_override": "any",
+                    "read_only": false
+                }
+            ],
+            "inherit_from": [
+                "BuiltinIPAddress"
+            ],
+            "generate_profile": true,
+            "hierarchy": null,
+            "parent": null,
+            "children": null,
+            "kind": "IpamIPAddress",
+            "hash": "146b308b5998170e248732d4c8bb582f"
+        }
+    ]
+}

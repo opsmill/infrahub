@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
@@ -26,11 +26,11 @@ VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
 
 
-def default_cors_allow_methods() -> List[str]:
+def default_cors_allow_methods() -> list[str]:
     return ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 
 
-def default_cors_allow_headers() -> List[str]:
+def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
 
 
@@ -187,7 +187,7 @@ class BrokerSettings(BaseSettings):
 
     @property
     def service_port(self) -> int:
-        default_ports: Dict[bool, int] = {True: 5671, False: 5672}
+        default_ports: dict[bool, int] = {True: 5671, False: 5672}
         if self.driver == BrokerDriver.NATS:
             return self.port or 4222
         return self.port or default_ports[self.tls_enabled]
@@ -218,14 +218,14 @@ class CacheSettings(BaseSettings):
 
 class ApiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_API_")
-    cors_allow_origins: List[str] = Field(
+    cors_allow_origins: list[str] = Field(
         default_factory=list, description="A list of origins that are authorized to make cross-site HTTP requests"
     )
-    cors_allow_methods: List[str] = Field(
+    cors_allow_methods: list[str] = Field(
         default_factory=default_cors_allow_methods,
         description="A list of HTTP verbs that are allowed for the actual request",
     )
-    cors_allow_headers: List[str] = Field(
+    cors_allow_headers: list[str] = Field(
         default_factory=default_cors_allow_headers,
         description="The list of non-standard HTTP headers allowed in requests from the browser",
     )
@@ -443,7 +443,7 @@ class Settings(BaseSettings):
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
-def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
+def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -464,7 +464,7 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str
     SETTINGS.settings = Settings()
 
 
-def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
+def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
     """Calls load, but wraps it in a try except block.
 
     This is done to handle a ValidationError which is raised when settings are specified but invalid.

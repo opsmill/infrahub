@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -26,8 +26,8 @@ class MyModel(BaseModel):
 class PadanticStdNode(StandardNode):
     name: str
     mymodel: MyModel
-    mydict: Dict[str, Any]
-    mylistofmodel: List[MyModel]
+    mydict: dict[str, Any]
+    mylistofmodel: list[MyModel]
 
 
 async def test_node_standard_create(db: InfrahubDatabase, empty_database):

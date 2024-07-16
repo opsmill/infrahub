@@ -3,9 +3,10 @@ from typing import Dict
 from unittest.mock import AsyncMock
 
 from infrahub_sdk import UUIDT
-from infrahub_sdk.client import InfrahubClient
+from infrahub_sdk.client import Config, InfrahubClient
 
 from infrahub.git.repository import InfrahubReadOnlyRepository
+from tests.helpers.test_client import dummy_async_request
 
 
 async def test_new_empty_dir(git_upstream_repo_01: Dict[str, str], git_repos_dir: str):
@@ -15,6 +16,7 @@ async def test_new_empty_dir(git_upstream_repo_01: Dict[str, str], git_repos_dir
         location=git_upstream_repo_01["path"],
         ref="branch01",
         infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     assert os.path.isdir(repo.directory_root)

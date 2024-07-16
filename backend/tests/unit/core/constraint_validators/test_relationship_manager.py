@@ -15,7 +15,7 @@ async def test_node_validate_constraint_relationship_count_failure(
     await person.new(db=db, name="Alfred", height=160, cars=[car_accord_main.id])
 
     with pytest.raises(ValidationError) as exc:
-        await constraint.check(person.cars)
+        await constraint.check(relm=person.cars, node_schema=person.get_schema())
 
     assert "has 2 peers for testcar__testperson, maximum of 1 allowed" in exc.value.message
 
@@ -25,4 +25,4 @@ async def test_node_validate_constraint_relationship_count_success(
 ):
     constraint = RelationshipCountConstraint(db=db, branch=default_branch)
 
-    await constraint.check(person_john_main.cars)
+    await constraint.check(relm=person_john_main.cars, node_schema=person_john_main.get_schema())

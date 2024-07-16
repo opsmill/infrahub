@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Optional, TypeVar
 
 import ujson
 from infrahub_sdk import UUIDT
@@ -22,10 +22,10 @@ ResponseClass = TypeVar("ResponseClass")
 
 class BusSimulator(InfrahubMessageBus):
     def __init__(self, database: Optional[InfrahubDatabase] = None):
-        self.messages: List[InfrahubMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
+        self.messages: list[InfrahubMessage] = []
+        self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)
-        self.replies: Dict[str, List[InfrahubMessage]] = defaultdict(list)
+        self.replies: dict[str, list[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
 
     async def publish(
@@ -41,7 +41,7 @@ class BusSimulator(InfrahubMessageBus):
         correlation_id = message.meta.correlation_id or "default"
         self.replies[correlation_id].append(message)
 
-    async def rpc(self, message: InfrahubMessage, response_class: Type[ResponseClass]) -> ResponseClass:
+    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         routing_key = ROUTING_KEY_MAP.get(type(message), "")
 
         correlation_id = str(UUIDT())
@@ -55,5 +55,5 @@ class BusSimulator(InfrahubMessageBus):
         return response_class(**data)
 
     @property
-    def seen_routing_keys(self) -> List[str]:
+    def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from infrahub_sdk import UUIDT
 
@@ -22,7 +22,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
             artifact_definition=message.artifact_definition.definition_id,
             source_branch=message.source_branch,
         )
-        events: List[InfrahubMessage] = []
+        events: list[InfrahubMessage] = []
 
         artifact_definition = await service.client.get(
             kind=InfrahubKind.ARTIFACTDEFINITION,
@@ -33,7 +33,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
 
         validator_name = f"Artifact Validator: {message.artifact_definition.definition_name}"
         validator_execution_id = str(UUIDT())
-        check_execution_ids: List[str] = []
+        check_execution_ids: list[str] = []
 
         await proposed_change.validations.fetch()
 

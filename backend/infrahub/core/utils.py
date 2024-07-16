@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from inspect import isclass
-from typing import TYPE_CHECKING, Any, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
@@ -60,11 +60,7 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     await db.execute_query(query=query, params=params, name="delete_all_relationships_for_branch")
 
 
-async def update_relationships_to(
-    ids: List[str],
-    db: InfrahubDatabase,
-    to: Timestamp = None,
-):
+async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Timestamp = None):
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
@@ -89,7 +85,7 @@ async def get_paths_between_nodes(
     db: InfrahubDatabase,
     source_id: str,
     destination_id: str,
-    relationships: Optional[List[str]] = None,
+    relationships: Optional[list[str]] = None,
     max_length: Optional[int] = None,
     print_query=False,
 ):
@@ -137,7 +133,7 @@ async def count_relationships(db: InfrahubDatabase, label: Optional[str] = None)
     return result[0][0]
 
 
-async def get_nodes(db: InfrahubDatabase, label: str) -> List[Neo4jNode]:
+async def get_nodes(db: InfrahubDatabase, label: str) -> list[Neo4jNode]:
     """Return theall nodes of a given label in the database."""
     query = """
     MATCH (node)

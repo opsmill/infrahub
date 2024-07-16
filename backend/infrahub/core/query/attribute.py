@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
@@ -22,7 +22,6 @@ class AttributeQuery(Query):
         attr_id: Optional[str] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Branch] = None,
-        *args,
         **kwargs,
     ):
         if not attr and not attr_id:
@@ -38,7 +37,7 @@ class AttributeQuery(Query):
 
         self.branch = branch or self.attr.get_branch_based_on_support_type()
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
 
 class AttributeUpdateValueQuery(AttributeQuery):
@@ -47,7 +46,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -85,7 +84,6 @@ class AttributeUpdateFlagQuery(AttributeQuery):
     def __init__(
         self,
         flag_name: str,
-        *args,
         **kwargs,
     ):
         SUPPORTED_FLAGS = ["is_visible", "is_protected"]
@@ -95,9 +93,9 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         self.flag_name = flag_name
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -127,15 +125,14 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         self,
         prop_name: str,
         prop_id: str,
-        *args,
         **kwargs,
     ):
         self.prop_name = prop_name
         self.prop_id = prop_id
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -164,7 +161,7 @@ class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 
@@ -198,12 +195,12 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
     db: Optional[InfrahubDatabase] = None,
     partial_match: bool = False,
     support_profiles: bool = False,
-) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
+) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
     """Generate Query String Snippet to filter the right node."""
 
-    query_filter: List[QueryElement] = []
-    query_params: Dict[str, Any] = {}
-    query_where: List[str] = []
+    query_filter: list[QueryElement] = []
+    query_params: dict[str, Any] = {}
+    query_where: list[str] = []
 
     if filter_value and not isinstance(filter_value, (str, bool, int, list)):
         raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
@@ -224,7 +221,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
         query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
         query_params[f"{param_prefix}_name"] = name
 
-    if filter_name in ("value", "binary_address", "prefixlen"):
+    if filter_name in ("value", "binary_address", "prefixlen", "isnull"):
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
@@ -235,6 +232,8 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
                 query_where.append(
                     f"toLower(toString(av.{filter_name})) CONTAINS toLower(toString(${param_prefix}_{filter_name}))"
                 )
+            elif filter_name == "isnull":
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
             elif support_profiles:
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
                 query_where.append(f"(av.{filter_name} = ${param_prefix}_{filter_name} OR av.is_default)")

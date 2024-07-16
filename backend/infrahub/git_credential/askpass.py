@@ -1,6 +1,6 @@
 import re
 import sys
-from typing import List, Optional
+from typing import Optional
 
 import typer
 from infrahub_sdk import Config, InfrahubClientSync
@@ -16,7 +16,7 @@ REGEX_PASSWORD = r"^Password.*\'(.*\:\/\/)(.*)@(.*)\'"
 
 @app.command()
 def askpass(
-    text: Optional[List[str]] = typer.Argument(None),
+    text: Optional[list[str]] = typer.Argument(None),
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
     config.SETTINGS.initialize_and_exit(config_file=config_file)
@@ -37,7 +37,7 @@ def askpass(
     if not request_type:
         raise typer.Exit(f"Unable to identify the request type in '{text}'")
 
-    client = InfrahubClientSync.init(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
+    client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
     attr = getattr(repo, request_type)

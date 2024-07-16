@@ -1,6 +1,6 @@
 import enum
 from logging import Logger
-from typing import Any, Dict, Optional, Protocol, Union, runtime_checkable
+from typing import Any, Optional, Protocol, Union, runtime_checkable
 
 import httpx
 
@@ -21,9 +21,9 @@ class SyncRequester(Protocol):
         self,
         url: str,
         method: HTTPMethod,
-        headers: Dict[str, Any],
+        headers: dict[str, Any],
         timeout: int,
-        payload: Optional[Dict] = None,
+        payload: Optional[dict] = None,
     ) -> httpx.Response: ...
 
 
@@ -33,9 +33,9 @@ class AsyncRequester(Protocol):
         self,
         url: str,
         method: HTTPMethod,
-        headers: Dict[str, Any],
+        headers: dict[str, Any],
         timeout: int,
-        payload: Optional[Dict] = None,
+        payload: Optional[dict] = None,
     ) -> httpx.Response: ...
 
 

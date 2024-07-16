@@ -2,6 +2,7 @@ import logging
 import os
 from csv import DictWriter
 from functools import wraps
+from pathlib import Path
 
 import gevent
 from locust import events
@@ -101,6 +102,6 @@ def request_event_handler(
         "rels_amount": config.rels_amount,
     }
 
-    with open("metrics.csv", "a", encoding="utf-8") as file:
+    with Path("metrics.csv").open(mode="a", encoding="utf-8") as file:
         writer = DictWriter(file, fieldnames=METRICS_FIELD_NAMES)
         writer.writerow(result_metric)

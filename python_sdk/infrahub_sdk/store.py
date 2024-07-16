@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, overload
 
 from infrahub_sdk.exceptions import NodeNotFoundError
 
@@ -17,8 +17,8 @@ class NodeStoreBase:
     """
 
     def __init__(self) -> None:
-        self._store: Dict[str, Dict] = defaultdict(dict)
-        self._store_by_hfid: Dict[str, Any] = defaultdict(dict)
+        self._store: dict[str, dict] = defaultdict(dict)
+        self._store_by_hfid: dict[str, Any] = defaultdict(dict)
 
     def _set(self, node: Union[InfrahubNode, InfrahubNodeSync], key: Optional[str] = None) -> None:
         hfid = node.get_human_friendly_id_as_string(include_kind=True)

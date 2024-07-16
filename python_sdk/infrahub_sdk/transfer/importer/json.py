@@ -1,7 +1,7 @@
 from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Generator, Mapping, Optional, Sequence
 
 import pyarrow.json as pa_json
 import ujson
@@ -33,12 +33,12 @@ class LineDelimitedJSONImporter(ImporterInterface):
         self.topological_sorter = topological_sorter
         self.continue_on_error = continue_on_error
         self.console = console
-        self.all_nodes: Dict[str, InfrahubNode] = {}
+        self.all_nodes: dict[str, InfrahubNode] = {}
         self.schemas_by_kind: Mapping[str, NodeSchema] = {}
         # Map relationship schema by attribute of a node kind e.g. {"MyNodeKind": {"MyRelationship": RelationshipSchema}}
         # This is used to resolve which relationships are many to many to prevent them from being re-imported like others as they'll get duplicated
-        self.optional_relationships_schemas_by_node_kind: Dict[str, Dict[str, RelationshipSchema]] = defaultdict(dict)
-        self.optional_relationships_by_node: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        self.optional_relationships_schemas_by_node_kind: dict[str, dict[str, RelationshipSchema]] = defaultdict(dict)
+        self.optional_relationships_by_node: dict[str, dict[str, Any]] = defaultdict(dict)
 
     @contextmanager
     def wrapped_task_output(self, start: str, end: str = "[green]done") -> Generator:
@@ -53,9 +53,9 @@ class LineDelimitedJSONImporter(ImporterInterface):
         relationship_file = import_directory / "relationships.json"
         for f in (node_file, relationship_file):
             if not f.exists():
-                raise TransferFileNotFoundError(f"{f.absolute()} does not exist")
+                raise TransferFileNotFoundError(f"{f.resolve()} does not exist")
         with self.wrapped_task_output("Reading import directory"):
-            table = pa_json.read_json(node_file.absolute())
+            table = pa_json.read_json(node_file.resolve())
 
         with self.wrapped_task_output("Analyzing import"):
             import_nodes_by_kind = defaultdict(list)
@@ -159,7 +159,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
         await self.execute_batches([update_batch], "Adding many-to-many relationships to nodes")
 
     async def execute_batches(
-        self, batches: List[InfrahubBatch], progress_bar_message: str = "Executing batches"
+        self, batches: list[InfrahubBatch], progress_bar_message: str = "Executing batches"
     ) -> Sequence[Any]:
         if self.console:
             task_count = sum((batch.num_tasks for batch in batches))

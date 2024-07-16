@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from infrahub import config
 from infrahub.components import ComponentType
@@ -26,7 +26,7 @@ class InfrahubScheduler:
     def __init__(self) -> None:
         self.service: InfrahubServices
         self.running: bool = False
-        self.schedules: List[Schedule] = []
+        self.schedules: list[Schedule] = []
 
     async def initialize(self, service: InfrahubServices) -> None:
         self.service = service

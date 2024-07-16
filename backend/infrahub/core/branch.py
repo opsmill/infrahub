@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import Field, field_validator
 
@@ -45,7 +45,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
 
-    _exclude_attrs: List[str] = ["id", "uuid", "owner"]
+    _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
     @field_validator("name", mode="before")
     @classmethod
@@ -147,7 +147,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
         return registry.get_branch_from_registry(branch=self.origin_branch)
 
-    def get_branches_in_scope(self) -> List[str]:
+    def get_branches_in_scope(self) -> list[str]:
         """Return the list of all the branches that are constituing this branch.
 
         For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best
@@ -159,7 +159,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
         return [default_branch, self.name]
 
-    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> Dict[frozenset, str]:
+    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
 
         at = Timestamp(at)
@@ -182,7 +182,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         self,
         at: Optional[Union[Timestamp, str]] = None,
         is_isolated: bool = True,
-    ) -> Dict[frozenset, str]:
+    ) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituting this branch with the associated times."""
 
         at = Timestamp(at)
@@ -203,7 +203,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
     def get_branches_and_times_for_range(
         self, start_time: Timestamp, end_time: Timestamp
-    ) -> Tuple[Dict[str, str], Dict[str, str]]:
+    ) -> tuple[dict[str, str], dict[str, str]]:
         """Return the names of the branches that are constituing this branch with the start and end times."""
 
         start = {}
@@ -243,7 +243,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
-    ) -> Tuple[List, Dict]:
+    ) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
         """
@@ -280,7 +280,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
     def get_query_filter_path(
         self, at: Optional[Union[Timestamp, str]] = None, is_isolated: bool = True, branch_agnostic: bool = False
-    ) -> Tuple[str, Dict]:
+    ) -> tuple[str, dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
 
@@ -322,7 +322,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         end_time: Union[Timestamp, str],
         include_outside_parentheses: bool = False,
         include_global: bool = False,
-    ) -> Tuple[List, Dict]:
+    ) -> tuple[list, dict]:
         """Generate a CYPHER Query filter based on a list of relationships to query a range of values in the graph.
         The goal is to return all the values that are valid during this timerange.
         """
@@ -359,11 +359,8 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         return filters, params
 
     def get_query_filter_relationships_diff(
-        self,
-        rel_labels: list,
-        diff_from: Timestamp,
-        diff_to: Timestamp,
-    ) -> Tuple[List, Dict]:
+        self, rel_labels: list, diff_from: Timestamp, diff_to: Timestamp
+    ) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter to query all events that are applicable to a given branch based
         - The time when the branch as created
@@ -403,11 +400,8 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         return filters, params
 
     def get_query_filter_range(
-        self,
-        rel_label: list,
-        start_time: Union[Timestamp, str],
-        end_time: Union[Timestamp, str],
-    ) -> Tuple[List, Dict]:
+        self, rel_label: list, start_time: Union[Timestamp, str], end_time: Union[Timestamp, str]
+    ) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
 

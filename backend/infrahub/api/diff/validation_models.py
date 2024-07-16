@@ -1,21 +1,19 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
-from pydantic.v1 import BaseModel, root_validator, validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 
 
 class DiffQueryValidated(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     branch: Branch
     time_from: Optional[str] = None
     time_to: Optional[str] = None
     branch_only: bool
 
-    class Config:
-        arbitrary_types_allowed = True
-
-    @validator("time_from", "time_to", pre=True)
+    @field_validator("time_from", "time_to", mode="before")
     @classmethod
     def validate_time(cls, value: Optional[str]) -> Optional[str]:
         if not value:
@@ -23,9 +21,9 @@ class DiffQueryValidated(BaseModel):
         Timestamp(value)
         return value
 
-    @root_validator(skip_on_failure=True)
+    @model_validator(mode="before")
     @classmethod
-    def validate_time_from_if_required(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_time_from_if_required(cls, values: dict[str, Any]) -> dict[str, Any]:
         branch: Optional[Branch] = values.get("branch")
         time_from: Optional[Timestamp] = values.get("time_from")
         if getattr(branch, "is_default", False) and not time_from:

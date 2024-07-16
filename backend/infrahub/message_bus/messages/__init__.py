@@ -1,5 +1,3 @@
-from typing import Dict, Type
-
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
 from .check_artifact_create import CheckArtifactCreate
@@ -57,7 +55,7 @@ from .trigger_ipam_reconciliation import TriggerIpamReconciliation
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
 
-MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
+MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
     "check.generator.run": CheckGeneratorRun,
     "check.repository.check_definition": CheckRepositoryCheckDefinition,
@@ -114,7 +112,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "trigger.webhook.actions": TriggerWebhookActions,
 }
 
-RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
+RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
     "transform.jinja.template": TransformJinjaTemplateResponse,
     "transform.python.data": TransformPythonDataResponse,
     "git.diff.names_only": GitDiffNamesOnlyResponse,
@@ -147,6 +145,6 @@ def message_priority(routing_key: str) -> int:
     return PRIORITY_MAP.get(routing_key, 3)
 
 
-ROUTING_KEY_MAP: Dict[Type[InfrahubMessage], str] = {
+ROUTING_KEY_MAP: dict[type[InfrahubMessage], str] = {
     message: routing_key for routing_key, message in MESSAGE_MAP.items()
 }
