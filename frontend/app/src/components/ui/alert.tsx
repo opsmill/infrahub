@@ -27,7 +27,7 @@ type AlertProps = {
 };
 
 export const Alert = (props: AlertProps) => {
-  const { closeToast, message, details, onDismiss, type, ...otherProps } = props;
+  const { closeToast, message, details, onDismiss, type } = props;
 
   const getIcon = () => {
     switch (type) {
@@ -113,7 +113,7 @@ export const Alert = (props: AlertProps) => {
   const alertDetails = <p className={classNames("text-sm", alertClasses.text)}>{details}</p>;
 
   return (
-    <div className={classNames("rounded-m p-4", alertClasses.container)} {...otherProps}>
+    <div className={classNames("rounded-m p-4", alertClasses.container)}>
       <div className="flex items-center">
         <div className="flex-shrink-0 flex items-start">{getIcon()}</div>
         <div className="ml-3">
