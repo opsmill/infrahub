@@ -5,7 +5,7 @@ import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails"
 import { useAuth } from "@/hooks/useAuth";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { userNavigation } from "@/screens/layout/navigation-list";
-import { schemaState } from "@/state/atoms/schema.atom";
+import { genericsState } from "@/state/atoms/schema.atom";
 import { classNames, parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
@@ -19,7 +19,7 @@ const customId = "profile-alert";
 export const AccountMenu = () => {
   const { isAuthenticated, signOut } = useAuth();
   const location = useLocation();
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(genericsState);
   const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -41,7 +41,7 @@ export const AccountMenu = () => {
     if (schema && accountId) {
       fetchProfile();
     }
-  }, [schema, accountId]);
+  }, [schema?.kind, accountId]);
 
   if (loading || !schema) {
     return <Avatar isLoading />;

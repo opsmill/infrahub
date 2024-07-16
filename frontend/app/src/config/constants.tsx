@@ -12,7 +12,7 @@ export const TASK_TARGET = "CoreTaskTarget";
 
 export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
-export const ACCOUNT_OBJECT = "CoreAccount";
+export const ACCOUNT_OBJECT = "CoreGenericAccount";
 
 export const ACCOUNT_TOKEN_OBJECT = "CoreAccountToken";
 
