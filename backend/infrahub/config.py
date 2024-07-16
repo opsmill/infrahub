@@ -68,7 +68,7 @@ class MainSettings(BaseSettings):
         default="/opt/infrahub/docs/build/search-index.json",
         description="Full path of saved json containing pre-indexed documentation",
     )
-    internal_address: str = "http://localhost:8000"
+    internal_address: Optional[str] = Field(default=None)
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
@@ -134,7 +134,7 @@ class StorageSettings(BaseSettings):
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DB_")
     db_type: DatabaseType = Field(
-        default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("INFRAHUB_DB_TYPE", "db_type")
+        default=DatabaseType.NEO4J, validation_alias=AliasChoices("INFRAHUB_DB_TYPE", "db_type")
     )
     protocol: str = "bolt"
     username: str = "neo4j"
