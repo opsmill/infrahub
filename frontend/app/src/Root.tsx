@@ -21,9 +21,9 @@ export const Root = ({ children }: { children?: ReactNode }) => {
     try {
       return fetchUrl(CONFIG.CONFIG_URL);
     } catch (err) {
-      toast(() => (
+      toast(
         <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the config" />
-      ));
+      );
       console.error("Error while fetching the config: ", err);
       return undefined;
     }
@@ -42,9 +42,9 @@ export const Root = ({ children }: { children?: ReactNode }) => {
         return;
       }
 
-      toast(() => (
+      toast(
         <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the config" />
-      ));
+      );
       console.error("Error while fetching the config: ", error);
     }
   };

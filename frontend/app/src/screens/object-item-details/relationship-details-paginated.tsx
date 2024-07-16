@@ -156,12 +156,12 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       refetch();
     }
 
-    toast(() => (
+    toast(
       <Alert
         type={ALERT_TYPES.SUCCESS}
         message={`Association with ${relationshipSchema.peer} removed`}
       />
-    ));
+    );
   };
 
   const handleSubmit = async (data: any) => {
@@ -180,12 +180,12 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         refetch();
       }
 
-      toast(() => (
+      toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
           message={`Association with ${relationshipSchema.peer} added`}
         />
-      ));
+      );
 
       setShowAddDrawer(false);
     }

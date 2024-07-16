@@ -60,7 +60,7 @@ export default function ObjectItemMetaEdit(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
 
         onUpdateComplete();
 
