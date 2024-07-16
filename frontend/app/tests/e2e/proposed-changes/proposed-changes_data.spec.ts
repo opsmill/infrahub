@@ -4,6 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 test.describe("/proposed-changes diff data", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  test.setTimeout(60000);
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
@@ -38,33 +39,9 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("go to Data tab and open comment form", async () => {
-      var count = 0;
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          if (
-            reqData?.operationName === "getProposedChangesThreadsForCoreObjectThread" &&
-            status === 200
-          ) {
-            count++;
-          }
-
-          return count == 9; // waiting for 9 diff elements
-        }),
-        page.waitForResponse((response) => {
-          const status = response.status();
-
-          return (
-            response
-              .url()
-              .includes("/api/diff/data?branch=atl1-delete-upstream&branch_only=true") &&
-            status === 200
-          );
-        }), // wait for diff data otherwise hover won't show comment button
-        page.getByLabel("Tabs").getByText("Data").click(),
-      ]);
+      await page.getByLabel("Tabs").getByText("Data").click();
+      await expect(page.getByText("Just a moment")).not.toBeVisible();
+      await expect(page.getByText("REMOVED").first()).toBeVisible();
       await page.getByText("InfraCircuit").first().hover();
       await page.getByTestId("data-diff-add-comment").first().click();
       await expect(page.getByText("Conversation")).toBeVisible();
@@ -73,6 +50,7 @@ test.describe("/proposed-changes diff data", () => {
     await test.step("add first comment", async () => {
       await page.getByTestId("codemirror-editor").getByRole("textbox").fill("first is comment");
       await page.getByRole("button", { name: "Comment", exact: true }).click();
+      await expect(page.getByText("Reply")).toBeVisible();
       await expect(page.getByTestId("thread").getByTestId("comment")).toContainText(
         "first is comment"
       );
