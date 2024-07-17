@@ -128,6 +128,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const previousKind = usePrevious(kind);
   const previousParent = usePrevious(parent?.value);
 
+  console.log("value: ", value);
   const findSelectedOption = () => {
     return multiple
       ? localOptions.filter(
@@ -873,8 +874,13 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   // If kind or parent has changed, remove the current value
   useEffect(() => {
-    if (peer && peer !== previousKind) handleChange(undefined);
-    if (parent?.value && parent?.value !== previousParent) handleChange(undefined);
+    if (peer && previousKind && peer !== previousKind) {
+      handleChange(undefined);
+    }
+
+    if (parent?.value && previousParent && parent?.value !== previousParent) {
+      handleChange(undefined);
+    }
   }, [peer, parent?.value]);
 
   return (
