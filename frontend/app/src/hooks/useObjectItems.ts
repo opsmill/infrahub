@@ -1,12 +1,20 @@
 import useQuery from "@/hooks/useQuery";
 import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { gql } from "@apollo/client";
 import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import { getObjectAttributes, getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { Filter } from "@/hooks/useFilters";
 import { useAtomValue } from "jotai";
+import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
+import { getTokens } from "@/graphql/queries/accounts/getTokens";
+import { gql } from "@apollo/client";
 
-export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) => {
+const getQuery = (schema?: IModelSchema, filters?: Array<Filter>) => {
+  if (!schema) return "query {ok}";
+
+  if (schema.kind === ACCOUNT_TOKEN_OBJECT) {
+    return getTokens;
+  }
+
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
@@ -39,17 +47,21 @@ export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) =
     : "";
 
   const attributes = getObjectAttributes({ schema, forListView: true });
+
   const relationships = getObjectRelationships({ schema, forListView: true });
 
-  const query = gql(
-    schema
-      ? getObjectItemsPaginated({
-          kind: kindFilterSchema?.kind || schema.kind,
-          attributes,
-          relationships,
-          filters: filtersString,
-        })
-      : "query {ok}"
-  );
+  return getObjectItemsPaginated({
+    kind: kindFilterSchema?.kind || schema.kind,
+    attributes,
+    relationships,
+    filters: filtersString,
+  });
+};
+
+export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) => {
+  const query = gql`
+    ${getQuery(schema, filters)}
+  `;
+
   return useQuery(query, { notifyOnNetworkStatusChange: true, skip: !schema });
 };
