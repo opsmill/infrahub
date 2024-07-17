@@ -553,11 +553,9 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
             old_out = sys.stdout
             old_err = sys.stderr
 
-            with Path(os.devnull).open(mode="w", encoding="utf-8") as stdout, Path(os.devnull).open(
-                mode="w", encoding="utf-8"
-            ) as stderr:
-                sys.stdout = stdout
-                sys.stderr = stderr
+            with Path(os.devnull).open(mode="w", encoding="utf-8") as devnull:
+                sys.stdout = devnull
+                sys.stderr = devnull
 
                 exit_code = pytest.main(
                     [
