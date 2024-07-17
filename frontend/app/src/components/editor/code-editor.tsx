@@ -22,7 +22,7 @@ export const CodeEditor = (props: any) => {
 
     await navigator.clipboard.writeText(value);
 
-    toast(() => <Alert message="Content copied" type={ALERT_TYPES.INFO} />);
+    toast(<Alert message="Content copied" type={ALERT_TYPES.INFO} />);
 
     setTimeout(() => {
       setIsCopied(false);
