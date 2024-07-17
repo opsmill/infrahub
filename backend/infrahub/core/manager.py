@@ -276,6 +276,7 @@ class NodeManager:
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
         branch_agnostic: bool = False,
+        fetch_peers: bool = False,
     ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -308,16 +309,26 @@ class NodeManager:
             if display_label_fields:
                 fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
-        return [
-            await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
+        if fetch_peers:
+            peer_ids = [peer.peer_id for peer in peers_info]
+            peer_nodes = await cls.get_many(
+                db=db, ids=peer_ids, fields=fields, at=at, branch=branch, branch_agnostic=branch_agnostic
+            )
+
+        results = []
+        for peer in peers_info:
+            result = await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
                 db=db,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
                 updated_at=peer.updated_at,
                 data=peer,
             )
-            for peer in peers_info
-        ]
+            if fetch_peers:
+                result.set_peer(value=peer_nodes[peer.peer_id])
+                results.append(result)
+
+        return results
 
     @classmethod
     async def count_hierarchy(
