@@ -30,6 +30,8 @@ import useFilters from "@/hooks/useFilters";
 import useQuery from "@/hooks/useQuery";
 import { getProfiles } from "@/graphql/queries/objects/getProfiles";
 import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
+import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
+import { createToken } from "@/graphql/mutations/accounts/createToken";
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
@@ -270,6 +272,33 @@ const NodeForm = ({
 
   async function onSubmit(data: any) {
     try {
+      if (schema.kind === ACCOUNT_TOKEN_OBJECT) {
+        const mutationString = createToken({
+          data: stringifyWithoutQuotes({
+            ...data,
+          }),
+        });
+
+        const mutation = gql`
+          ${mutationString}
+        `;
+
+        const result = await graphqlClient.mutate({
+          mutation,
+          context: {
+            branch: branch?.name,
+            date,
+          },
+        });
+
+        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+          toastId: `alert-success-${schema?.name}-created`,
+        });
+
+        if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
+        return;
+      }
+
       const newObject = getMutationDetailsFromFormData(schema, data, "create", null, profile);
 
       if (!Object.keys(newObject).length) {
