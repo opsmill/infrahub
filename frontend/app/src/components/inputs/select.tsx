@@ -128,7 +128,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const previousKind = usePrevious(kind);
   const previousParent = usePrevious(parent?.value);
 
-  console.log("value: ", value);
   const findSelectedOption = () => {
     return multiple
       ? localOptions.filter(
