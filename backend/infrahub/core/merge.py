@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
-    from .diff.model import DataConflict
+    from .diff.model.diff import DataConflict
 
 
 class BranchMerger:

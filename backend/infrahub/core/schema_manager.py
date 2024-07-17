@@ -1507,7 +1507,7 @@ class SchemaBranch:
         profile = ProfileSchema(
             name=node.kind,
             namespace="Profile",
-            label=f"Profile{node.kind}",
+            label=f"Profile {node.label}",
             description=f"Profile for {node.kind}",
             branch=node.branch,
             include_in_menu=False,
