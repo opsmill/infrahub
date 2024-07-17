@@ -43,7 +43,7 @@ export function DesktopMenu({ className = "" }: MenuProps) {
       setIsLoading(false);
     } catch (error) {
       console.error("error: ", error);
-      toast(() => <Alert type={ALERT_TYPES.ERROR} message="Error while fetching the menu" />);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while fetching the menu" />);
       setIsLoading(false);
     }
   };

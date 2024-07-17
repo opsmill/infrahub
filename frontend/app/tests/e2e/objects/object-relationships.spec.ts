@@ -2,6 +2,9 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
+  // Avoid checking as non-admin + updating as admin at the same time
+  test.describe.configure({ mode: "serial" });
+
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -14,8 +17,8 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
     test("should not be able to edit relationship", async ({ page }) => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
-        await page.getByRole("link", { name: "Juniper JunOS" }).click();
-        await page.getByText(/Devices9|Devices10/).click(); // since this test can run in parallel with the "should delete the relationship" test
+        await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
+        await page.getByText("Devices5").click();
       });
 
       await test.step("all buttons are disabled", async () => {
@@ -33,47 +36,47 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
     test("should delete the relationship", async ({ page }) => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
-        await page.getByRole("link", { name: "Juniper JunOS" }).click();
-        await page.getByText("Devices10").click();
+        await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
+        await page.getByText("Devices5").click();
       });
 
       await test.step("Delete the relationship", async () => {
         await page
-          .getByRole("row", { name: "dfw1-core1" })
+          .getByRole("row", { name: "ord1-edge2" })
           .getByTestId("relationship-delete-button")
           .click();
         await expect(page.getByRole("paragraph")).toContainText(
-          "Are you sure you want to remove the association between `Juniper JunOS` and `dfw1-core1`? The `InfraDevice` `dfw1-core1` won't be deleted in the process."
+          "Are you sure you want to remove the association between `Cisco IOS` and `ord1-edge2`? The `InfraDevice` `ord1-edge2` won't be deleted in the process."
         );
         await page.getByTestId("modal-delete-confirm").click();
       });
 
       await test.step("Verify deletion of relationship", async () => {
         await expect(page.getByRole("alert")).toContainText("Item removed from the group");
-        await expect(page.getByRole("main")).toContainText("Showing 1 to 9 of 9 results");
-        await expect(page.getByLabel("Tabs")).toContainText("Devices9");
+        await expect(page.getByRole("main")).toContainText("Showing 1 to 4 of 4 results");
+        await expect(page.getByLabel("Tabs")).toContainText("Devices4");
       });
     });
 
     test("should add a new relationship", async ({ page }) => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
-        await page.getByRole("link", { name: "Juniper JunOS" }).click();
-        await page.getByText("Devices9").click();
+        await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
+        await page.getByText("Devices4").click();
       });
 
       await test.step("Add a new relationship", async () => {
         await page.getByTestId("open-relationship-form-button").click();
         await page.getByTestId("side-panel-container").getByLabel("Devices").click();
-        await page.getByRole("option", { name: "dfw1-core1" }).click();
+        await page.getByRole("option", { name: "ord1-edge2" }).click();
         await page.getByRole("button", { name: "Save" }).click();
       });
 
       await test.step("Verify new relationship addition", async () => {
         await expect(page.getByRole("alert")).toContainText("Association with InfraDevice added");
-        await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 10 results");
-        await expect(page.getByLabel("Tabs")).toContainText("Devices10");
-        await expect(page.getByRole("cell", { name: "dfw1-core1" })).toBeVisible();
+        await expect(page.getByRole("main")).toContainText("Showing 1 to 5 of 5 results");
+        await expect(page.getByLabel("Tabs")).toContainText("Devices5");
+        await expect(page.getByRole("cell", { name: "ord1-edge2" })).toBeVisible();
       });
     });
 

@@ -35,12 +35,12 @@ export default function AddGroupForm({
     try {
       await addObjectToGroups({ variables: { objectId, relationshipIds: groupIds } });
 
-      toast(() => (
+      toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
           message={`${pluralize(groupIds.length, "group")} added`}
         />
-      ));
+      );
 
       if (onUpdateCompleted) onUpdateCompleted();
     } catch (e) {

@@ -28,7 +28,7 @@ export const File = (props: tFile) => {
       setFileContent(fileResult);
     } catch (err) {
       console.error("err: ", err);
-      toast(() => <Alert type={ALERT_TYPES.ERROR} message="Error while loading file content" />);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading file content" />);
     }
 
     setIsLoading(false);
