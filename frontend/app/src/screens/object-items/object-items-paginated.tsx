@@ -300,9 +300,20 @@ export default function ObjectItems({
       <ModalDelete
         title="Delete"
         description={
-          <>
-            Are you sure you want to remove the object <br /> <b>`{rowToDelete?.display_label}`</b>?
-          </>
+          rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name ? (
+            <>
+              Are you sure you want to remove the <i>{schema.label}</i>
+              <b className="ml-2">
+                &quot;{rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name}
+                &quot;
+              </b>
+              ?
+            </>
+          ) : (
+            <>
+              Are you sure you want to remove this <i>{schema.label}</i>?
+            </>
+          )
         }
         onCancel={() => setDeleteModal(false)}
         onDelete={handleDeleteObject}
