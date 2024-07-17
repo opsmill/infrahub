@@ -130,7 +130,7 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
 
   return (
     <>
-      {nodeSchema.generate_profile && (
+      {"generate_profile" in nodeSchema && nodeSchema.generate_profile && (
         <ProfilesSelector
           schema={nodeSchema}
           value={profileSelected?.display_label}
