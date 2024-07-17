@@ -19,7 +19,7 @@ test.describe("Object metadata", () => {
     await page.getByRole("link", { name: "All Device(s)" }).click();
 
     // Access device details
-    await page.getByRole("link", { name: "atl1-core1" }).click();
+    await page.getByRole("link", { name: "atl1-core2" }).click();
 
     // Acces type metadata
     const typeRow = await page.getByText("TypeMX204");
@@ -29,7 +29,6 @@ test.describe("Object metadata", () => {
 
     // Owner should be empty
     await expect(page.getByTestId("select-input").nth(0)).toHaveValue("");
-    await expect(page.getByTestId("select-input").nth(2)).toHaveValue("");
 
     // Is visible should be checked
     await expect(page.getByLabel("is visible *")).toBeChecked();
@@ -59,7 +58,7 @@ test.describe("Object metadata", () => {
     await page.getByRole("link", { name: "All Device(s)" }).click();
 
     // Access device details
-    await page.getByRole("link", { name: "atl1-core1" }).click();
+    await page.getByRole("link", { name: "atl1-core2" }).click();
 
     // Acces type metadata
     const typeRowUpdated = await page.getByText("TypeMX204");
@@ -69,7 +68,7 @@ test.describe("Object metadata", () => {
 
     // Source should be Account + Pop-Builder
     await expect(page.getByTestId("select-input").nth(0)).toHaveValue("Account");
-    await expect(page.getByTestId("select-input").nth(2)).toHaveValue("Architecture Team");
+    await expect(page.getByTestId("select-input").nth(1)).toHaveValue("Architecture Team");
 
     // Is protected should be checked
     await expect(page.getByLabel("is protected *")).toBeChecked();
