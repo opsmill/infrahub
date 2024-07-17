@@ -91,7 +91,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Select profile and enter details", async () => {
-      await page.getByLabel("Select a Profile").click();
+      await page.getByLabel("Select profiles").click();
       await page.getByRole("option", { name: "profile test tag" }).click();
 
       // Verify initial input fields for profile
@@ -220,7 +220,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .filter({ hasText: /^Clear$/ })
         .getByRole("combobox")
         .fill("l2");
-      await page.getByText("ProfileInfraInterfaceL2").click();
+      await page.getByRole("option", { name: "ProfileInfraInterfaceL2" }).click();
     });
 
     await test.step("verify Interface L2 optional attributes are all visible", async () => {
@@ -257,7 +257,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByText("ProfileInfraInterfaceL2").click();
+      await page.getByRole("option", { name: "ProfileInfraInterfaceL2" }).click();
     });
 
     await test.step("fill and submit form", async () => {
@@ -294,7 +294,9 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "ProfileInfraInterface", exact: true }).click();
+      await page
+        .getByRole("option", { name: "ProfileInfraInterface Profile", exact: true })
+        .click();
     });
 
     await test.step("fill and submit form", async () => {
@@ -333,8 +335,8 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     await page.goto("/objects/InfraInterface");
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Select an object type").click();
-    await page.getByRole("option", { name: "InfraInterfaceL2" }).locator("div").click();
-    await page.getByLabel("Select a Profile optional").click();
+    await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
+    await page.getByLabel("Select profiles optional").click();
     await expect(page.getByText(PROFILE_NAME)).toBeVisible();
     await expect(page.getByText(GENERIC_PROFILE_NAME)).toBeVisible();
   });
