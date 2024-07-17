@@ -1,0 +1,28 @@
+---
+title: Infrahub integrations
+---
+import ReferenceLink from "../../src/components/Card";
+
+# Infrahub integrations
+
+Infrahub offers robust integrations with both Ansible and Nornir, which facilitate the automation and management of infrastructure tasks.
+
+These integrations enhance the capabilities of Infrahub by enabling it to serve as a central source of truth for infrastructure data while leveraging the powerful automation frameworks of Ansible and Nornir. This makes it easier to manage and automate infrastructure tasks efficiently and accurately.
+
+## Ansible integration
+
+The Ansible integration with Infrahub is provided through the `opsmill.infrahub` Ansible Collection. This integration allows Infrahub to be used as an inventory source for Ansible, enabling dynamic and automated management of infrastructure based on data stored in Infrahub.
+
+## Nornir integration
+
+Nornir is a Python-based automation framework primarily used for network automation. The Nornir plugin for Infrahub allows it to be used as an inventory source for Nornir, offering a seamless way to manage network devices and configurations.
+
+## Key features
+
+- **Inventory Management**: Infrahub can dynamically generate and update inventories for Ansible playbooks and Nornir, ensuring that the latest state of infrastructure is always used.
+- **Automation**: By leveraging each framework's automation capabilities, users can execute complex infrastructure management tasks directly from Infrahub data.
+- **Configuration Deployment**: This integration ensures that configurations managed by Infrahub are consistent across the infrastructure by applying them through Ansible playbooks or Nornir.
+
+## More information
+
+For more details, you can refer to the [integrations](../integrations/) documentation.
