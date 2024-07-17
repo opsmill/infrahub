@@ -8,7 +8,6 @@ import {
 } from "@/config/constants";
 import { store } from "@/state";
 import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
-import { isValid, parseISO } from "date-fns";
 import * as R from "ramda";
 import { isGeneric, sortByOrderWeight } from "./common";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
@@ -137,33 +136,6 @@ export const getSchemaObjectColumns = ({
   return isGeneric(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
 };
 
-export const getGroupColumns = (schema?: iNodeSchema | iGenericSchema) => {
-  if (!schema) {
-    return [];
-  }
-
-  const defaultColumns = [{ label: "Type", name: "__typename" }];
-
-  const columns = getSchemaObjectColumns({ schema });
-
-  return [...defaultColumns, ...columns];
-};
-
-export const getAttributeColumnsFromNodeOrGenericSchema = (
-  schema: iNodeSchema | undefined,
-  generic: iGenericSchema | undefined
-) => {
-  if (generic) {
-    return getSchemaObjectColumns({ schema: generic });
-  }
-
-  if (schema) {
-    return getSchemaObjectColumns({ schema });
-  }
-
-  return [];
-};
-
 export const getObjectTabs = (tabs: any[], data: any) => {
   return tabs.map((tab: any) => ({
     ...tab,
@@ -188,72 +160,6 @@ export const getObjectRelationshipsForForm = (
     .filter(Boolean);
 
   return relationships;
-};
-
-// Used by the query to retrieve the data for the form
-export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
-  const peers = getObjectRelationshipsForForm(schema)
-    .map((relationship) => relationship.peer)
-    .filter(Boolean);
-
-  return peers;
-};
-
-const getValue = (row: any, attribute: any, profile: any) => {
-  // If the value defined was from the profile, then override it from the new profile value
-  if (row && row[attribute.name]?.is_from_profile && profile) {
-    return profile[attribute.name]?.value;
-  }
-
-  // What comes from the object is priority
-  if (row && row[attribute.name]?.value) {
-    return row[attribute.name]?.value;
-  }
-
-  if (profile && profile[attribute.name]?.value) {
-    return profile[attribute.name]?.value;
-  }
-
-  if (attribute.kind === "Boolean") {
-    return attribute.default_value ?? false;
-  }
-
-  return attribute.default_value;
-};
-
-type tgetFieldValue = {
-  row: any;
-  field: any;
-  profile: any;
-  isFilters?: boolean;
-};
-
-export const getFieldValue = ({ row, field, profile, isFilters }: tgetFieldValue) => {
-  // No default value for filters
-  if (isFilters) return "";
-
-  const value = getValue(row, field, profile);
-
-  if (value === null || value === undefined) return null;
-
-  if (field.kind === "DateTime") {
-    if (isValid(value)) {
-      return value;
-    }
-
-    if (isValid(parseISO(value))) {
-      return parseISO(value);
-    }
-
-    return null;
-  }
-
-  if (field.kind === "JSON") {
-    // Ensure we use objects as values
-    return typeof value === "string" ? JSON.parse(value) : value;
-  }
-
-  return value ?? null;
 };
 
 type tgetRelationshipValue = {

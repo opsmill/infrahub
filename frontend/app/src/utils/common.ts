@@ -1,4 +1,4 @@
-import { IModelSchema } from "@/state/atoms/schema.atom";
+import { iGenericSchema, IModelSchema } from "@/state/atoms/schema.atom";
 import { clsx, type ClassValue } from "clsx";
 import * as R from "ramda";
 import { twMerge } from "tailwind-merge";
@@ -85,6 +85,6 @@ export function warnUnexpectedType(x: never) {
   console.warn(`unexpected type ${x}`);
 }
 
-export function isGeneric(schema: IModelSchema): boolean {
+export function isGeneric(schema: IModelSchema): schema is iGenericSchema {
   return "used_by" in schema;
 }

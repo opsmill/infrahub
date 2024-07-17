@@ -1,8 +1,13 @@
-import { DynamicFieldProps } from "./type";
-import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { sortByOrderWeight } from "@/utils/common";
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import {
+  genericsState,
+  iGenericSchema,
+  iNodeSchema,
+  profilesAtom,
+  schemaState,
+} from "@/state/atoms/schema.atom";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { AuthContextType } from "@/hooks/useAuth";
+import { DynamicFieldProps } from "@/components/form/type";
 import {
   getObjectRelationshipsForForm,
   getOptionsFromAttribute,
@@ -10,28 +15,29 @@ import {
   getRelationshipValue,
   getSelectParent,
 } from "@/utils/getSchemaObjectColumns";
-import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { isGeneric, sortByOrderWeight } from "@/utils/common";
+import { getFieldDefaultValue } from "@/components/form/utils/getFieldDefaultValue";
+import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { store } from "@/state";
-import { getIsDisabled } from "@/utils/formStructureForCreateEdit";
-import { components } from "@/infraops";
-import { AuthContextType } from "@/hooks/useAuth";
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { ProfileData } from "@/components/form/object-form";
+import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
+import { useAtomValue } from "jotai/index";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
-  schemas?: iNodeSchema[] | iGenericSchema[];
-  profiles?: Object[];
+  profiles?: Array<ProfileData>;
   initialObject?: Record<string, AttributeType>;
-  user?: AuthContextType;
+  auth?: AuthContextType;
   isFilterForm?: boolean;
   filters?: Array<any>;
 };
 
 export const getFormFieldsFromSchema = ({
   schema,
-  schemas,
   profiles,
   initialObject,
-  user,
+  auth,
   isFilterForm,
   filters,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
@@ -41,28 +47,26 @@ export const getFormFieldsFromSchema = ({
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
-  const formFields = orderedFields.map((attribute) => {
-    const disabled = getIsDisabled({
-      owner: initialObject && initialObject[attribute.name]?.owner,
-      user,
-      isProtected:
-        initialObject &&
-        initialObject[attribute.name] &&
-        initialObject[attribute.name].is_protected,
-      isReadOnly: attribute.read_only,
-    });
-
+  const formFields: Array<DynamicFieldProps> = orderedFields.map((attribute) => {
     const basicFomFieldProps = {
       name: attribute.name,
       label: attribute.label ?? undefined,
-      defaultValue: getObjectDefaultValue({
+      defaultValue: getFieldDefaultValue({
         fieldSchema: attribute,
         initialObject,
         profiles,
         isFilterForm,
       }),
       description: attribute.description ?? undefined,
-      disabled,
+      disabled: isFieldDisabled({
+        owner: initialObject && initialObject[attribute.name]?.owner,
+        auth,
+        isProtected:
+          initialObject &&
+          initialObject[attribute.name] &&
+          !!initialObject[attribute.name].is_protected,
+        isReadOnly: attribute.read_only,
+      }),
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
       rules: {
         required: !isFilterForm && !attribute.optional,
@@ -118,25 +122,27 @@ export const getFormFieldsFromSchema = ({
   });
 
   // Allow kind filter for generic
-  if (isFilterForm && schema.used_by?.length) {
+  if (isFilterForm && isGeneric(schema) && schema.used_by?.length) {
     const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+    const nodes = useAtomValue(schemaState);
+    const profiles = useAtomValue(profilesAtom);
+    const schemas = [...nodes, ...profiles];
 
     const items = schema.used_by
       .map((kind) => {
         if (!schemas) return null;
 
         const relatedSchema = schemas.find((schema) => schema.kind === kind);
-        console.log("relatedSchema: ", relatedSchema);
 
         if (!relatedSchema) return null;
 
         return {
-          id: relatedSchema.kind,
+          id: relatedSchema.kind as string,
           name: relatedSchema.label ?? relatedSchema.name,
           badge: relatedSchema.namespace,
         };
       })
-      .filter(Boolean);
+      .filter((n) => n !== null);
 
     return [
       {
@@ -152,55 +158,4 @@ export const getFormFieldsFromSchema = ({
   }
 
   return formFields;
-};
-
-export type GetObjectDefaultValue = {
-  fieldSchema: GetObjectDefaultValueFromSchema;
-  initialObject?: Record<string, AttributeType>;
-  profiles?: Record<string, AttributeType>[];
-  isFilterForm?: boolean;
-};
-
-export const getObjectDefaultValue = ({
-  fieldSchema,
-  initialObject,
-  profiles = [],
-  isFilterForm,
-}: GetObjectDefaultValue) => {
-  // Sort profiles from profile_priority value
-  const orderedProfiles = profiles.sort((optionA, optionB) => {
-    if (optionA.profile_priority.value < optionB.profile_priority.value) return -1;
-    return 1;
-  });
-
-  // Get current object value
-  const currentField = initialObject?.[fieldSchema.name];
-  const currentFieldValue = currentField?.is_from_profile ? null : currentField?.value;
-
-  // Get value from profiles depending on the priority
-  const defaultValueFromProfile = orderedProfiles.find(
-    (profile) => profile?.[fieldSchema.name]?.value
-  )?.[fieldSchema.name]?.value;
-
-  // Get default value from schema
-  const defaultValueFromSchema = getDefaultValueFromSchema(fieldSchema);
-
-  // Do not use profiles nor default values in filters
-  if (isFilterForm) {
-    return currentFieldValue ?? null;
-  }
-
-  return currentFieldValue ?? defaultValueFromProfile ?? defaultValueFromSchema ?? null;
-};
-
-export type GetObjectDefaultValueFromSchema =
-  | components["schemas"]["AttributeSchema-Output"]
-  | components["schemas"]["RelationshipSchema-Output"];
-
-const getDefaultValueFromSchema = (fieldSchema: GetObjectDefaultValueFromSchema) => {
-  if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
-    return !!fieldSchema.default_value;
-  }
-
-  return "default_value" in fieldSchema ? fieldSchema.default_value : null;
 };

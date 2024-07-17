@@ -8,7 +8,7 @@ from graphene import Interface as GrapheneInterface
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.model import BranchDiffRelationshipMany, DiffElementType
+from infrahub.core.diff.model.diff import BranchDiffRelationshipMany, DiffElementType
 from infrahub.core.diff.payload_builder import DiffPayloadBuilder
 
 if TYPE_CHECKING:

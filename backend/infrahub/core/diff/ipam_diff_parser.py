@@ -4,10 +4,11 @@ from typing import Optional
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.model import NodeDiffElement, RelationshipDiffElement
 from infrahub.core.ipam.model import IpamNodeDetails
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
+
+from .model.diff import NodeDiffElement, RelationshipDiffElement
 
 
 @dataclass

@@ -1,13 +1,65 @@
 import { describe, expect, it } from "vitest";
-import { getFormFieldsFromSchema } from "../../../src/components/form/utils";
-import { IModelSchema } from "../../../src/state/atoms/schema.atom";
+import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import { AuthContextType } from "@/hooks/useAuth";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { components } from "@/infraops";
+
+const buildAttribute = (
+  override?: Partial<components["schemas"]["AttributeSchema-Output"]>
+): components["schemas"]["AttributeSchema-Output"] => ({
+  id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
+  state: "present",
+  name: "name",
+  kind: "Text",
+  enum: null,
+  choices: null,
+  regex: null,
+  max_length: null,
+  min_length: null,
+  label: "Name",
+  description: null,
+  read_only: false,
+  unique: false,
+  optional: true,
+  branch: "aware",
+  order_weight: 1000,
+  default_value: null,
+  inherited: false,
+  allow_override: "any",
+  ...override,
+});
+
+const buildRelationship = (
+  override?: Partial<components["schemas"]["RelationshipSchema-Output"]>
+): components["schemas"]["RelationshipSchema-Output"] => ({
+  id: "17e2718c-73ed-3ffe-3402-c515757ff94f",
+  state: "present",
+  name: "tagone",
+  peer: "BuiltinTag",
+  kind: "Attribute",
+  label: "Tagone",
+  description: "relationship many input for testing and development",
+  identifier: "builtintag__testallinone",
+  cardinality: "many",
+  min_count: 0,
+  max_count: 0,
+  order_weight: 24000,
+  optional: true,
+  branch: "aware",
+  inherited: false,
+  direction: "bidirectional",
+  hierarchical: null,
+  on_delete: "no-action",
+  allow_override: "any",
+  read_only: false,
+  ...override,
+});
 
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {
     // GIVEN
-    const schema = {};
+    const schema = {} as IModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -16,33 +68,45 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(0);
   });
 
+  it("returns no fields that are read only", () => {
+    // GIVEN
+    const schema = {
+      attributes: [buildAttribute({ read_only: true })],
+      relationships: [buildRelationship({ read_only: true })],
+    } as IModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema });
+
+    // THEN
+    expect(fields.length).to.equal(0);
+  });
+
+  it("returns fields ordered by order_weight", () => {
+    // GIVEN
+    const schema = {
+      attributes: [
+        buildAttribute({ name: "third", order_weight: 3 }),
+        buildAttribute({ name: "first", order_weight: 1 }),
+      ],
+      relationships: [buildRelationship({ name: "second", order_weight: 2 })],
+    } as IModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema });
+
+    // THEN
+    expect(fields.length).to.equal(3);
+    expect(fields[0].name).to.equal("first");
+    expect(fields[1].name).to.equal("second");
+    expect(fields[2].name).to.equal("third");
+  });
+
   it("should map a text attribute correctly", () => {
     // GIVEN
-    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
-      attributes: [
-        {
-          id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
-          state: "present",
-          name: "name",
-          kind: "Text",
-          enum: null,
-          choices: null,
-          regex: null,
-          max_length: null,
-          min_length: null,
-          label: "Name",
-          description: null,
-          read_only: false,
-          unique: true,
-          optional: false,
-          branch: "aware",
-          order_weight: 1000,
-          default_value: null,
-          inherited: false,
-          allow_override: "any",
-        },
-      ],
-    };
+    const schema = {
+      attributes: [buildAttribute({ kind: "Text" })],
+    } as IModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -56,40 +120,18 @@ describe("getFormFieldsFromSchema", () => {
       name: "name",
       label: "Name",
       type: "Text",
-      unique: true,
+      unique: false,
       rules: {
-        required: true,
+        required: false,
       },
     });
   });
 
   it("should map a HashedPassword attribute correctly", () => {
     // GIVEN
-    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
-      attributes: [
-        {
-          id: "17d67b92-f48c-d385-300d-c518c0f3f7f2",
-          state: "present",
-          name: "password",
-          kind: "HashedPassword",
-          enum: null,
-          choices: null,
-          regex: null,
-          max_length: null,
-          min_length: null,
-          label: "Password",
-          description: null,
-          read_only: false,
-          unique: false,
-          optional: false,
-          branch: "agnostic",
-          order_weight: 2000,
-          default_value: null,
-          inherited: false,
-          allow_override: "any",
-        },
-      ],
-    };
+    const schema = {
+      attributes: [buildAttribute({ label: "Password", name: "password", kind: "HashedPassword" })],
+    } as IModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -105,38 +147,16 @@ describe("getFormFieldsFromSchema", () => {
       type: "HashedPassword",
       unique: false,
       rules: {
-        required: true,
+        required: false,
       },
     });
   });
 
   it("should map a URL attribute correctly", () => {
     // GIVEN
-    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
-      attributes: [
-        {
-          id: "17d67b93-db48-7360-3002-c514e72d4910",
-          state: "present",
-          name: "url",
-          kind: "URL",
-          enum: null,
-          choices: null,
-          regex: null,
-          max_length: null,
-          min_length: null,
-          label: "Url",
-          description: null,
-          read_only: false,
-          unique: false,
-          optional: true,
-          branch: "agnostic",
-          order_weight: 3000,
-          default_value: null,
-          inherited: true,
-          allow_override: "any",
-        },
-      ],
-    };
+    const schema = {
+      attributes: [buildAttribute({ label: "Url", name: "url", kind: "URL" })],
+    } as IModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -159,31 +179,9 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a JSON attribute correctly", () => {
     // GIVEN
-    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
-      attributes: [
-        {
-          id: "17d67b93-cdfa-3f6b-3000-c510e05c9186",
-          state: "present",
-          name: "parameters",
-          kind: "JSON",
-          enum: null,
-          choices: null,
-          regex: null,
-          max_length: null,
-          min_length: null,
-          label: "Parameters",
-          description: null,
-          read_only: false,
-          unique: false,
-          optional: false,
-          branch: "aware",
-          order_weight: 3000,
-          default_value: null,
-          inherited: false,
-          allow_override: "any",
-        },
-      ],
-    };
+    const schema = {
+      attributes: [buildAttribute({ label: "Parameters", name: "parameters", kind: "JSON" })],
+    } as IModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -199,21 +197,20 @@ describe("getFormFieldsFromSchema", () => {
       type: "JSON",
       unique: false,
       rules: {
-        required: true,
+        required: false,
       },
     });
   });
 
   it("should map a Dropdown attribute correctly", () => {
     // GIVEN
-    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
+    const schema = {
       attributes: [
-        {
-          id: "17d67be6-24a2-4da6-3003-c5130e3a579e",
-          state: "present",
+        buildAttribute({
+          default_value: "address",
+          label: "Member Type",
           name: "member_type",
           kind: "Dropdown",
-          enum: null,
           choices: [
             {
               id: null,
@@ -232,22 +229,9 @@ describe("getFormFieldsFromSchema", () => {
               label: "Address",
             },
           ],
-          regex: null,
-          max_length: null,
-          min_length: null,
-          label: "Member Type",
-          description: null,
-          read_only: false,
-          unique: false,
-          optional: true,
-          branch: "aware",
-          order_weight: 3000,
-          default_value: "address",
-          inherited: true,
-          allow_override: "any",
-        },
+        }),
       ],
-    };
+    } as IModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -286,31 +270,9 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should disable a protected field if the owner is not the current user", () => {
     // GIVEN
-    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
-      attributes: [
-        {
-          id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
-          state: "present",
-          name: "name",
-          kind: "Text",
-          enum: null,
-          choices: null,
-          regex: null,
-          max_length: null,
-          min_length: null,
-          label: "Name",
-          description: null,
-          read_only: false,
-          unique: true,
-          optional: false,
-          branch: "aware",
-          order_weight: 1000,
-          default_value: null,
-          inherited: false,
-          allow_override: "any",
-        },
-      ],
-    };
+    const schema = {
+      attributes: [buildAttribute()],
+    } as IModelSchema;
 
     const initialObject: { name: AttributeType } = {
       name: {
@@ -320,7 +282,6 @@ describe("getFormFieldsFromSchema", () => {
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
-          __typename: "CoreAccount",
         },
         source: null,
         updated_at: "2024-07-15T09:32:01.363787+00:00",
@@ -329,7 +290,7 @@ describe("getFormFieldsFromSchema", () => {
       },
     };
 
-    const user: AuthContextType = {
+    const auth: AuthContextType = {
       accessToken: "abc",
       isAuthenticated: true,
       isLoading: false,
@@ -344,7 +305,7 @@ describe("getFormFieldsFromSchema", () => {
     };
 
     // WHEN
-    const fields = getFormFieldsFromSchema({ schema, initialObject, user });
+    const fields = getFormFieldsFromSchema({ schema, initialObject, auth });
 
     // THEN
     expect(fields.length).to.equal(1);
@@ -355,40 +316,18 @@ describe("getFormFieldsFromSchema", () => {
       name: "name",
       label: "Name",
       type: "Text",
-      unique: true,
+      unique: false,
       rules: {
-        required: true,
+        required: false,
       },
     });
   });
 
   it("should enable a protected field if the owner is the current user", () => {
     // GIVEN
-    const schema: Pick<IModelSchema, "attributes" | "relationships"> = {
-      attributes: [
-        {
-          id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
-          state: "present",
-          name: "name",
-          kind: "Text",
-          enum: null,
-          choices: null,
-          regex: null,
-          max_length: null,
-          min_length: null,
-          label: "Name",
-          description: null,
-          read_only: false,
-          unique: true,
-          optional: false,
-          branch: "aware",
-          order_weight: 1000,
-          default_value: null,
-          inherited: false,
-          allow_override: "any",
-        },
-      ],
-    };
+    const schema = {
+      attributes: [buildAttribute()],
+    } as IModelSchema;
 
     const initialObject: { name: AttributeType } = {
       name: {
@@ -398,7 +337,6 @@ describe("getFormFieldsFromSchema", () => {
         owner: {
           id: "1",
           display_label: "Architecture Team",
-          __typename: "CoreAccount",
         },
         source: null,
         updated_at: "2024-07-15T09:32:01.363787+00:00",
@@ -407,7 +345,7 @@ describe("getFormFieldsFromSchema", () => {
       },
     };
 
-    const user: AuthContextType = {
+    const auth: AuthContextType = {
       accessToken: "abc",
       isAuthenticated: true,
       isLoading: false,
@@ -422,7 +360,7 @@ describe("getFormFieldsFromSchema", () => {
     };
 
     // WHEN
-    const fields = getFormFieldsFromSchema({ schema, initialObject, user });
+    const fields = getFormFieldsFromSchema({ schema, initialObject, auth });
 
     // THEN
     expect(fields.length).to.equal(1);
@@ -433,9 +371,9 @@ describe("getFormFieldsFromSchema", () => {
       name: "name",
       label: "Name",
       type: "Text",
-      unique: true,
+      unique: false,
       rules: {
-        required: true,
+        required: false,
       },
     });
   });
