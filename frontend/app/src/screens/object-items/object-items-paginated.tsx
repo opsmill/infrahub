@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
+  ACCOUNT_TOKEN_OBJECT,
   ARTIFACT_OBJECT,
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
@@ -84,7 +85,6 @@ export default function ObjectItems({
 
   const rows = edges?.map((edge: any) => edge.node);
 
-  console.log("rowToDelete: ", rowToDelete);
   const handleDeleteObject = async () => {
     if (!rowToDelete?.id) {
       return;
@@ -94,7 +94,10 @@ export default function ObjectItems({
 
     try {
       const mutationString = deleteObject({
-        kind: rowToDelete.__typename,
+        kind:
+          rowToDelete.__typename === "AccountTokenNode"
+            ? ACCOUNT_TOKEN_OBJECT
+            : rowToDelete.__typename,
         data: stringifyWithoutQuotes({
           id: rowToDelete?.id,
         }),
