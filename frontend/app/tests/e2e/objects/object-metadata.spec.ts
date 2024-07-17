@@ -29,7 +29,7 @@ test.describe("Object metadata", () => {
 
     // Owner should be empty
     await expect(page.getByTestId("select-input").nth(0)).toHaveValue("");
-    await expect(page.getByTestId("select-input").nth(2)).toHaveValue("");
+    await expect(page.getByTestId("select-input").nth(1)).toHaveValue("");
 
     // Is visible should be checked
     await expect(page.getByLabel("is visible *")).toBeChecked();
@@ -69,7 +69,7 @@ test.describe("Object metadata", () => {
 
     // Source should be Account + Pop-Builder
     await expect(page.getByTestId("select-input").nth(0)).toHaveValue("Account");
-    await expect(page.getByTestId("select-input").nth(2)).toHaveValue("Architecture Team");
+    await expect(page.getByTestId("select-input").nth(1)).toHaveValue("Architecture Team");
 
     // Is protected should be checked
     await expect(page.getByLabel("is protected *")).toBeChecked();
