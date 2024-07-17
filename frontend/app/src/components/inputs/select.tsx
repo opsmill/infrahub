@@ -37,6 +37,7 @@ import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 import DynamicForm from "@/components/form/dynamic-form";
 import { Badge } from "../ui/badge";
+import usePrevious from "@/hooks/usePrevious";
 
 export type Parent = {
   name?: string;
@@ -124,6 +125,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
+  const previousKind = usePrevious(kind);
+  const previousParent = usePrevious(parent?.value);
 
   const findSelectedOption = () => {
     return multiple
@@ -870,7 +873,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   // If kind or parent has changed, remove the current value
   useEffect(() => {
-    if (peer || parent?.value) handleChange(undefined);
+    if (peer && peer !== previousKind) handleChange(undefined);
+    if (parent?.value && parent?.value !== previousParent) handleChange(undefined);
   }, [peer, parent?.value]);
 
   return (
