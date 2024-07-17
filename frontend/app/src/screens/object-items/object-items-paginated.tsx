@@ -44,12 +44,14 @@ type ObjectItemsProps = {
   schema: IModelSchema;
   preventBlock?: boolean;
   overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
+  onSuccess?: (newObject: any) => void;
 };
 
 export default function ObjectItems({
   schema,
   overrideDetailsViewUrl,
   preventBlock,
+  onSuccess,
 }: ObjectItemsProps) {
   const permission = usePermission();
   const [filters, setFilters] = useFilters();
@@ -284,9 +286,10 @@ export default function ObjectItems({
         open={showCreateDrawer}
         setOpen={setShowCreateDrawer}>
         <ObjectForm
-          onSuccess={async () => {
+          onSuccess={async (result: any) => {
             setShowCreateDrawer(false);
             await graphqlClient.refetchQueries({ include: [schema.kind!] });
+            if (onSuccess) onSuccess(result);
           }}
           onCancel={() => setShowCreateDrawer(false)}
           kind={schema.kind!}
