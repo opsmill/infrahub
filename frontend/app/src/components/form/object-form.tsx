@@ -296,7 +296,7 @@ const NodeForm = ({
         },
       });
 
-      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
         toastId: `alert-success-${schema?.name}-created`,
       });
 
