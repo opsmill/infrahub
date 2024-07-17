@@ -81,15 +81,12 @@ async def account_resolver(root, info: GraphQLResolveInfo):
             account_profile = await results[0].to_graphql(db=db, fields=fields)
             return account_profile
 
-        raise NodeNotFoundError(
-            node_type=InfrahubKind.GENERICACCOUNT,
-            identifier=context.account_session.account_id,
-        )
+        raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
 
 
 class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
-    CoreAccountToken = AccountToken
+    InfrahubAccountToken = AccountToken
 
     DiffTree = DiffTreeQuery
     DiffSummary = DiffSummary
