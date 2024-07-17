@@ -1,7 +1,7 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import { Dialog, Transition } from "@headlessui/react";
-import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import React, { Fragment, useRef } from "react";
+import { Icon } from "@iconify-icon/react";
+import React, { Fragment, ReactNode, useRef } from "react";
 
 interface iProps {
   open: boolean;
@@ -11,10 +11,19 @@ interface iProps {
   description: string | React.ReactNode;
   onDelete: Function;
   onCancel: Function;
+  children?: ReactNode;
 }
 
-export default function ModalDelete(props: iProps) {
-  const { title, description, onCancel, onDelete, open, setOpen, isLoading } = props;
+export default function ModalConfirm({
+  title,
+  description,
+  onCancel,
+  onDelete,
+  open,
+  setOpen,
+  isLoading,
+  children,
+}: iProps) {
   const cancelButtonRef = useRef(null);
 
   return (
@@ -32,35 +41,34 @@ export default function ModalDelete(props: iProps) {
         </Transition.Child>
 
         <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+          <div className="flex min-h-full justify-center text-center items-center p-0">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-              enterTo="opacity-100 translate-y-0 sm:scale-100"
+              enterFrom="opacity-0 translate-y-4 translate-y-0 scale-95"
+              enterTo="opacity-100 translate-y-0 scale-100"
               leave="ease-in duration-200"
-              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-              leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-              <Dialog.Panel
-                className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-                data-cy="modal-delete"
-                data-testid="modal-delete">
-                <div className="bg-custom-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                  <div className="sm:flex sm:items-start">
-                    <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                      <ExclamationTriangleIcon
-                        className="h-6 w-6 text-red-600"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+              leaveFrom="opacity-100 translate-y-0 scale-100"
+              leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95">
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all my-8 w-full max-w-lg">
+                <div className="bg-custom-white px-4 pt-5 p-6 pb-4">
+                  <div className="">
+                    <div className="ml-4 mt-0 text-left">
                       <Dialog.Title
                         as="h3"
-                        className="text-base font-semibold leading-6 text-gray-900">
+                        className="flex items-center font-semibold leading-6 text-gray-900">
+                        <div className="bg-red-100 rounded-full w-8 h-8 flex items-center justify-center mr-2">
+                          <Icon
+                            icon={"mdi:warning-outline"}
+                            className="text-red-600"
+                            aria-hidden="true"
+                          />
+                        </div>
                         {title}
                       </Dialog.Title>
                       <div className="mt-2">
                         <p className="text-sm text-gray-500">{description}</p>
+                        {children}
                       </div>
                     </div>
                   </div>
