@@ -25,10 +25,7 @@ query DiffTree
         depth: Number
         limit: Number
         offset: Number
-"""
 
-
-"""
 - query to get all diffs for a list of branches that returns summary counts
 - some way to track conflicts that have been addressed
 - some way (a new mutation?) to allow discarding ANY change for an UPDATE
@@ -317,9 +314,9 @@ class DiffTreeResolver:
             return response_list
         return response_list[0]
 
-    async def resolve(
+    async def resolve(  # pylint: disable=unused-argument
         self,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         **kwargs: Any,
     ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
