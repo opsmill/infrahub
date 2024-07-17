@@ -16,6 +16,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
 import TabTokens from "./tab-tokens";
+import { useNavigate } from "react-router-dom";
 
 const PROFILE_TABS = {
   PROFILE: "profile",
@@ -51,6 +52,7 @@ const renderContent = (tab: string | null | undefined) => {
 
 export function UserProfilePage() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const navigate = useNavigate();
   const schemaList = useAtomValue(schemaState);
   useTitle("Profile");
 
@@ -86,6 +88,10 @@ export function UserProfilePage() {
   }
 
   const profile = data?.AccountProfile;
+
+  if (!profile) {
+    navigate("/");
+  }
 
   return (
     <Content>
