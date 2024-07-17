@@ -21,7 +21,7 @@ query DiffTree
         branches: [Text]!
         from_time: Timestamp
         to_time: Timestamp
-        root_node_uuid: Text
+        root_node_uuids: [Text!]
         depth: Number
         limit: Number
         offset: Number
