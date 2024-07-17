@@ -141,7 +141,7 @@ export const ArtifactContentDiff = (props: any) => {
       setState(fileResult || "");
     } catch (err) {
       console.error("Error while loading files diff: ", err);
-      toast(() => <Alert type={ALERT_TYPES.ERROR} message="Error while loading files diff" />);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading files diff" />);
     }
 
     setIsLoading(false);
@@ -244,7 +244,7 @@ export const ArtifactContentDiff = (props: any) => {
         },
       });
 
-      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
       if (refetch) {
         refetch();
@@ -275,13 +275,13 @@ export const ArtifactContentDiff = (props: any) => {
 
       console.error("An error occurred while creating the comment: ", error);
 
-      toast(() => (
+      toast(
         <Alert
           type={ALERT_TYPES.ERROR}
           message={"An error occurred while creating the comment"}
           details={error.message}
         />
-      ));
+      );
 
       setIsLoading(false);
     }

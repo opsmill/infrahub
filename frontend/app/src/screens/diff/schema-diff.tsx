@@ -45,7 +45,7 @@ export const SchemaDiff = forwardRef((props, ref) => {
       setDiff(diffDetails?.diffs ?? []);
     } catch (err) {
       console.error("Error when loading branch diff: ", err);
-      toast(() => <Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
     }
 
     setIsLoading(false);
