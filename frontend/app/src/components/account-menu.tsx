@@ -51,7 +51,7 @@ export const AccountMenu = () => {
   const profile = data?.AccountProfile;
 
   if (error) {
-    toast(() => <Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
+    toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
       toastId: customId,
     });
 

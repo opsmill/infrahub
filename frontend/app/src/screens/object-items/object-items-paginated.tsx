@@ -111,12 +111,12 @@ export default function ObjectItems({
 
       setRowToDelete(undefined);
 
-      toast(() => (
+      toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
           message={`Object ${rowToDelete?.display_label} deleted`}
         />
-      ));
+      );
     } catch (error) {
       console.error("Error while deleting object: ", error);
     }
