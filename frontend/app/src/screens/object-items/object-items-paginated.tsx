@@ -84,6 +84,7 @@ export default function ObjectItems({
 
   const rows = edges?.map((edge: any) => edge.node);
 
+  console.log("rowToDelete: ", rowToDelete);
   const handleDeleteObject = async () => {
     if (!rowToDelete?.id) {
       return;

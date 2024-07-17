@@ -10,11 +10,10 @@ import { useState } from "react";
 import { TokenInput } from "@/components/ui/token-input";
 
 export default function TabTokens() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [result, setResult] = useState();
   const schemaList = useAtomValue(schemaState);
   const schema = schemaList.find((schema) => schema.kind === ACCOUNT_TOKEN_OBJECT);
-  console.log("result: ", result);
 
   if (!schema) return <LoadingScreen />;
 
