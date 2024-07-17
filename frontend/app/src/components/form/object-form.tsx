@@ -256,14 +256,14 @@ const NodeForm = ({
   const date = useAtomValue(datetimeAtom);
   const schemas = useAtomValue(schemaState);
   const [filters] = useFilters();
-  const { data, permissions } = useAuth();
+  const auth = useAuth();
 
   const fields = getFormFieldsFromSchema({
     schema,
     schemas,
     profile,
     initialObject: currentObject,
-    user: { ...data, permissions },
+    user: auth,
     isFilterForm,
     filters,
   });

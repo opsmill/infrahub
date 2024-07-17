@@ -21,6 +21,10 @@ const sidebars: SidebarsConfig = {
         'overview/interfaces',
         'overview/schema',
         'overview/data',
+        'overview/transformations',
+        'overview/versioning',
+        'overview/generators',
+        'overview/integrations',
       ],
     },
     {
