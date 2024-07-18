@@ -51,7 +51,7 @@ export const tokenSchema = {
       description: "Expiration date.",
       read_only: false,
       unique: false,
-      optional: false,
+      optional: true,
       branch: "aware",
       order_weight: 4000,
       default_value: null,
