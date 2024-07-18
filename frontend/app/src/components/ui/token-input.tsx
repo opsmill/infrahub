@@ -1,15 +1,21 @@
-import { forwardRef, InputHTMLAttributes } from "react";
-import { PasswordInput } from "./password-input";
 import { CopyToClipboard } from "../buttons/copy-to-clipboard";
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {}
+type TokenInputProps = {
+  value: string;
+};
 
-export const TokenInput = forwardRef<HTMLInputElement, InputProps>((props, ref) => {
+export const TokenInput = (props: TokenInputProps) => {
   return (
     <div className="flex items-center">
-      <PasswordInput {...props} ref={ref} disabled />
+      <div className="p-2 bg-gray-100 rounded-md">{props.value}</div>
 
-      <CopyToClipboard text={props.value as string} className="ml-2" />
+      <CopyToClipboard
+        text={props.value as string}
+        size={"default"}
+        variant={"primary"}
+        className="ml-2">
+        Copy
+      </CopyToClipboard>
     </div>
   );
-});
+};

@@ -5,9 +5,9 @@ import { useAtomValue } from "jotai";
 import { schemaState } from "@/state/atoms/schema.atom";
 import ObjectItems from "../object-items/object-items-paginated";
 import LoadingScreen from "../loading-screen/loading-screen";
-import ModalConfirm from "@/components/modals/modal-confirm";
 import { useState } from "react";
 import { TokenInput } from "@/components/ui/token-input";
+import ModalSuccess from "@/components/modals/modal-success";
 
 export default function TabTokens() {
   const [open, setOpen] = useState(false);
@@ -31,18 +31,23 @@ export default function TabTokens() {
         </Card>
       </Content>
 
-      <ModalConfirm
+      <ModalSuccess
         open={open}
-        hideCancel
-        title="Token created succesfuly"
+        title="Your API key"
         setOpen={setOpen}
         onConfirm={() => setOpen(false)}
-        onCancel={() => setOpen(false)}
-        description={"Token created succesfuly, you can copy it now"}>
+        icon="mdi:information-slab-circle-outline"
+        description={
+          <>
+            Make sure to copy your API key token now.
+            <br />
+            <b>You won&apos;t be able to see it agian!</b>
+          </>
+        }>
         <div className="mt-2">
           <TokenInput value={result?.object?.token?.value} />
         </div>
-      </ModalConfirm>
+      </ModalSuccess>
     </>
   );
 }

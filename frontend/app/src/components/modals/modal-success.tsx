@@ -5,27 +5,23 @@ import React, { Fragment, ReactNode, useRef } from "react";
 
 interface iProps {
   open: boolean;
-  hideCancel?: boolean;
   isLoading?: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
   description: string | React.ReactNode;
   onConfirm: Function;
-  onCancel: Function;
   children: ReactNode;
   icon?: string;
 }
 
-export default function ModalConfirm({
+export default function ModalSuccess({
   title,
   description,
-  onCancel,
   onConfirm,
   open,
   setOpen,
   isLoading,
   children,
-  hideCancel,
   icon = "mdi:warning-outline",
 }: iProps) {
   const cancelButtonRef = useRef(null);
@@ -61,8 +57,8 @@ export default function ModalConfirm({
                       <Dialog.Title
                         as="h3"
                         className="flex items-center font-semibold leading-6 text-gray-900">
-                        <div className="bg-red-100 rounded-full w-8 h-8 flex items-center justify-center mr-2">
-                          <Icon icon={icon} className="text-red-600" aria-hidden="true" />
+                        <div className="bg-custom-blue-1 rounded-full w-8 h-8 flex items-center justify-center mr-2">
+                          <Icon icon={icon} className="text-custom-blue-700" aria-hidden="true" />
                         </div>
                         {title}
                       </Dialog.Title>
@@ -83,11 +79,6 @@ export default function ModalConfirm({
                     isLoading={isLoading}>
                     Confirm
                   </Button>
-                  {!hideCancel && (
-                    <Button onClick={onCancel} ref={cancelButtonRef}>
-                      Cancel
-                    </Button>
-                  )}
                 </div>
               </Dialog.Panel>
             </Transition.Child>
