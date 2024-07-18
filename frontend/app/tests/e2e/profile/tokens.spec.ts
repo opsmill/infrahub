@@ -36,11 +36,8 @@ test.describe("/profile?tab=tokens", () => {
         await page.getByTestId("create-object-button").click();
         await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
         await page.getByLabel("Name *").fill("test token");
-        await page.getByLabel("Expiration *").click();
-        await page.getByLabel("Expiration *").click();
-        await page.getByLabel("Choose Sunday, July 21st,").click();
         await page.getByRole("button", { name: "Save" }).click();
-        await expect(page.getByRole("heading", { name: "Token created succesfuly" })).toBeVisible();
+        await expect(page.getByText("Make sure to copy your API")).toBeVisible();
         await expect(page.getByRole("button", { name: "Confirm" })).toBeVisible();
         await page.getByRole("button", { name: "Confirm" }).click();
         await expect(page.getByRole("button", { name: "Confirm" })).not.toBeVisible();
@@ -48,12 +45,11 @@ test.describe("/profile?tab=tokens", () => {
 
       await test.step("verify the new token", async () => {
         await expect(page.getByText("test token")).toBeVisible();
-        await page.getByText("-07-21T00:00:00+02:00").click();
       });
 
       await test.step("delete the new token", async () => {
         await page
-          .getByRole("row", { name: "test token 2024-07-21T00:00:00+02:00" })
+          .getByRole("row", { name: "test token" })
           .getByTestId("delete-row-button")
           .click();
         await expect(page.getByText("Are you sure you want to")).toBeVisible();
