@@ -307,7 +307,6 @@ export default function ObjectItems({
           }}
           onCancel={() => setShowCreateDrawer(false)}
           kind={schema.kind!}
-          schema={schema}
         />
       </SlideOver>
 
