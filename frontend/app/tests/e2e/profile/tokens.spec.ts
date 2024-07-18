@@ -10,7 +10,7 @@ test.describe("/profile?tab=tokens", () => {
     });
   });
 
-  test.describe("when logged in as admin account", () => {
+  test.describe("when not logged in as admin account", () => {
     test("should not access profile tokens", async ({ page }) => {
       await page.goto("/");
       await expect(page.getByText("Just a moment")).not.toBeVisible();
