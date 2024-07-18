@@ -231,7 +231,7 @@ async def many_relationship_resolver(
             at=context.at,
             branch=context.branch,
             branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
-            fetch_peers=False,
+            fetch_peers=True,
         )
 
         if not objs:
