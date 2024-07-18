@@ -34,7 +34,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Create a new profile", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "ProfileBuiltinTag" }).click();
+      await page.getByRole("option", { name: "Profile Tag" }).click();
       await page.getByLabel("Profile Name *").fill("profile test tag");
       await page.getByLabel("Description").fill("A profile for E2E test");
       await page.getByRole("button", { name: "Save" }).click();
@@ -91,7 +91,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Select profile and enter details", async () => {
-      await page.getByLabel("Select a Profile").click();
+      await page.getByLabel("Select profiles").click();
       await page.getByRole("option", { name: "profile test tag" }).click();
 
       // Verify initial input fields for profile
@@ -174,7 +174,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
     await test.step("Delete the profile", async () => {
       await page
-        .getByRole("row", { name: "ProfileBuiltinTag profile" })
+        .getByRole("row", { name: "Profile Tag profile" })
         .getByTestId("delete-row-button")
         .click();
       await expect(page.getByTestId("modal-delete")).toContainText(
@@ -220,7 +220,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .filter({ hasText: /^Clear$/ })
         .getByRole("combobox")
         .fill("l2");
-      await page.getByText("ProfileInfraInterfaceL2").click();
+      await page.getByRole("option", { name: "Profile Interface L2" }).click();
     });
 
     await test.step("verify Interface L2 optional attributes are all visible", async () => {
@@ -257,7 +257,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByText("ProfileInfraInterfaceL2").click();
+      await page.getByRole("option", { name: "Profile Interface L2" }).click();
     });
 
     await test.step("fill and submit form", async () => {
@@ -294,7 +294,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "ProfileInfraInterface", exact: true }).click();
+      await page.getByRole("option", { name: "Profile Interface Profile", exact: true }).click();
     });
 
     await test.step("fill and submit form", async () => {
@@ -333,8 +333,8 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     await page.goto("/objects/InfraInterface");
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Select an object type").click();
-    await page.getByRole("option", { name: "InfraInterfaceL2" }).locator("div").click();
-    await page.getByLabel("Select a Profile optional").click();
+    await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
+    await page.getByLabel("Select profiles optional").click();
     await expect(page.getByText(PROFILE_NAME)).toBeVisible();
     await expect(page.getByText(GENERIC_PROFILE_NAME)).toBeVisible();
   });

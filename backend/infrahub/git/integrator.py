@@ -404,7 +404,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         schemas_data: list[SchemaFile] = []
 
         for schema in config_file.schemas:
-            full_schema = Path(os.path.join(branch_wt.directory, schema))
+            full_schema = Path(branch_wt.directory, schema)
             if not full_schema.exists():
                 await self.log.warning(
                     f"Unable to find the schema {schema}", repository=self.name, branch=branch_name, commit=commit
@@ -420,7 +420,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     extension=["yaml", "yml", "json"], branch_name=branch_name, commit=commit, directory=full_schema
                 )
                 for item in files:
-                    identifier = item.replace(branch_wt.directory, "")
+                    identifier = str(item).replace(branch_wt.directory, "")
                     schema_file = SchemaFile(identifier=identifier, location=item)
                     schema_file.load_content()
                     schemas_data.append(schema_file)

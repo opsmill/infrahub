@@ -17,15 +17,9 @@ export const getObjectDetailsUrl = (nodeId: string, nodeType: string): string =>
   return `/objects/${peerKind}/${nodeId}`;
 };
 
-export const resolve = (path: string, object: any, separator: string = ".") => {
-  const properties: Array<any> = Array.isArray(path) ? path : path.split(separator);
-
-  return properties.reduce((prev: any, curr: any) => prev?.[curr], object);
-};
-
 export const getObjectDetailsUrl2 = (
   objectKind: string,
-  objectId: string,
+  objectId?: string,
   overrideParams?: overrideQueryParams[]
 ) => {
   const nodes = store.get(schemaState);
@@ -45,5 +39,6 @@ export const getObjectDetailsUrl2 = (
     ]);
   }
 
-  return constructPath(`/objects/${objectKind}/${objectId}`, overrideParams);
+  const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
+  return constructPath(path, overrideParams);
 };

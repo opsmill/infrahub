@@ -57,23 +57,21 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
 
       await test.step("add artifact to a group", async () => {
         await page.getByRole("button", { name: "Manage groups" }).click();
+        await page.getByTestId("open-group-form-button").click();
 
         await page.getByTestId("select-open-option-button").click();
         await page.getByRole("option", { name: "arista_devices" }).click();
         await page.getByTestId("select-open-option-button").click();
         await page.getByRole("button", { name: "Save" }).click();
 
-        await expect(page.getByText("Group updated")).toBeVisible();
+        await expect(page.getByText("1 group added")).toBeVisible();
       });
 
       await test.step("remove artifact from a group", async () => {
-        await page.getByRole("button", { name: "Manage groups" }).click();
+        await page.getByTestId("leave-group-button").first().click();
+        await page.getByTestId("modal-delete-confirm").click();
 
-        await page.getByTestId("badge-delete").click();
-        await page.getByTestId("select-open-option-button").click();
-        await page.getByRole("button", { name: "Save" }).click();
-
-        await expect(page.getByText("Group updated")).toBeVisible();
+        await expect(page.getByRole("link", { name: "arista_devices" })).not.toBeVisible();
       });
     });
   });

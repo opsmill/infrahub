@@ -99,9 +99,9 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
       setProfiles(profiles);
       setState({ isReady: true });
     } catch (error) {
-      toast(() => (
+      toast(
         <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
-      ));
+      );
 
       console.error("Error while fetching the schema: ", error);
     }

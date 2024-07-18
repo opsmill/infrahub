@@ -136,13 +136,13 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
 
       setRelatedRowToDelete(undefined);
 
-      toast(() => (
+      toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
           data-testid="alert-prefix-deleted"
           message={`Prefix ${relatedRowToDelete?.values?.prefix} deleted`}
         />
-      ));
+      );
     } catch (error) {
       console.error("Error while deleting address: ", error);
     }

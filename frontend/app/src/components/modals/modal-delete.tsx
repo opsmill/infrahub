@@ -8,9 +8,9 @@ interface iProps {
   isLoading?: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
-  description: string | React.ReactNode;
-  onDelete: Function;
-  onCancel: Function;
+  description: string | ReactNode;
+  onDelete: () => void;
+  onCancel: () => void;
   children?: ReactNode;
 }
 

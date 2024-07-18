@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getGroups = Handlebars.compile(`
-query Group {
+query GET_GROUPS {
   {{#if objectid}}
   {{kind}}(ids:["{{objectid}}"]) {
     edges {
@@ -12,6 +12,12 @@ query Group {
             node {
               id
               display_label
+              description {
+                value
+              }
+              members {
+                count
+              }
             }
           }
         }

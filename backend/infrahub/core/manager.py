@@ -781,7 +781,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
         branch = await registry.get_branch(branch=branch, db=db)

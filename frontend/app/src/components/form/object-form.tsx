@@ -6,14 +6,11 @@ import {
   schemaState,
 } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
-import { getFormFieldsFromSchema } from "./utils";
 import { useId, useState } from "react";
 import { Combobox, tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Label from "@/components/ui/label";
 import { gql } from "@apollo/client";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import ErrorScreen from "@/screens/errors/error-screen";
 import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -27,17 +24,18 @@ import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { useAuth } from "@/hooks/useAuth";
 import useFilters from "@/hooks/useFilters";
-import useQuery from "@/hooks/useQuery";
-import { getProfiles } from "@/graphql/queries/objects/getProfiles";
-import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { createToken } from "@/graphql/mutations/accounts/createToken";
+import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
+import { ProfilesSelector } from "@/components/form/profiles-selector";
+
+export type ProfileData = Record<string, Pick<AttributeType, "value" | "__typename">>;
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
-  currentProfile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
+  currentProfiles?: ProfileData[];
   isFilterForm?: boolean;
   onSubmit?: (data: any) => Promise<void>;
 }
@@ -117,13 +115,13 @@ const GenericSelector = (props: GenericSelectorProps) => {
   );
 };
 
-const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps) => {
+const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
-  const [profileSelected, setProfileSelected] = useState<
-    Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
-  >(currentProfile);
+
+  const [selectedProfiles, setSelectedProfiles] = useState<ProfileData[] | undefined>();
+
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
@@ -135,120 +133,32 @@ const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps
       {"generate_profile" in nodeSchema && nodeSchema.generate_profile && (
         <ProfilesSelector
           schema={nodeSchema}
-          value={profileSelected?.display_label}
-          onChange={setProfileSelected}
+          defaultValue={currentProfiles}
+          value={selectedProfiles}
+          onChange={setSelectedProfiles}
+          currentProfiles={currentProfiles}
         />
       )}
-      <NodeForm schema={nodeSchema} profile={profileSelected} {...props} />
+      <NodeForm schema={nodeSchema} profiles={selectedProfiles} {...props} />
     </>
-  );
-};
-
-type ProfilesSelectorProps = {
-  schema: iNodeSchema;
-  value?: Record<string, Pick<AttributeType, "value" | "__typename">>;
-  onChange: (item: Record<string, Pick<AttributeType, "value" | "__typename">>) => void;
-};
-
-const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
-  const id = useId();
-
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
-
-  const nodeGenerics = schema?.inherit_from ?? [];
-
-  // Get all available generic profiles
-  const nodeGenericsProfiles = nodeGenerics
-    // Find all generic schema
-    .map((nodeGeneric) => generics.find((generic) => generic.kind === nodeGeneric))
-    // Filter for generate_profile ones
-    .filter((generic) => generic.generate_profile)
-    // Get only the kind
-    .map((generic) => generic.kind)
-    .filter(Boolean);
-
-  // The profiles should include the current object profile + all generic profiles
-  const kindList = [schema.kind, ...nodeGenericsProfiles];
-
-  // Add attributes for each profiles to get the values in the form
-  const profilesList = kindList
-    .map((profile) => {
-      // Get the profile schema for the current kind
-      const profileSchema = profiles.find((profileSchema) => profileSchema.name === profile);
-
-      // Get attributes for query + form data
-      const attributes = getObjectAttributes({ schema: profileSchema, forListView: true });
-
-      if (!attributes.length) return null;
-
-      return {
-        name: profileSchema.kind,
-        attributes,
-      };
-    })
-    .filter(Boolean);
-
-  // Get all profiles kind to retrieve the informations from the result
-  const profilesKindList = profilesList.map((profile) => profile.name);
-
-  if (!profilesList.length)
-    return <ErrorScreen message="Something went wrong while fetching profiles" />;
-
-  const queryString = getProfiles({ profiles: profilesList });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { data, error, loading } = useQuery(query);
-
-  if (loading) return <LoadingScreen size={30} hideText className="p-4 pb-0" />;
-
-  if (error) return <ErrorScreen message={error.message} />;
-
-  // Get data for each profile in the query result
-  const profilesData = profilesKindList.reduce(
-    (acc, profile) => [...acc, ...(data?.[profile!]?.edges ?? [])],
-    []
-  );
-
-  if (!profilesData || profilesData.length === 0) return null;
-
-  return (
-    <div className="p-4 bg-gray-100">
-      <Label htmlFor={id}>
-        Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
-      </Label>
-
-      <Combobox
-        id={id}
-        items={profilesData.map((edge: any) => ({
-          value: edge.node,
-          label: edge.node.display_label,
-        }))}
-        onChange={onChange}
-        value={value}
-      />
-    </div>
   );
 };
 
 type NodeFormProps = {
   className?: string;
   schema: iNodeSchema | IProfileSchema;
-  profile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
+  profiles?: ProfileData[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   isFilterForm?: boolean;
-  onSubmit?: (data: any) => void;
+  onSubmit?: (data: any, profiles?: IProfileSchema[]) => void;
 };
 
 const NodeForm = ({
   className,
   currentObject,
   schema,
-  profile,
+  profiles,
   onSuccess,
   isFilterForm,
   onSubmit: onSubmitOverride,
@@ -256,16 +166,14 @@ const NodeForm = ({
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const schemas = useAtomValue(schemaState);
   const [filters] = useFilters();
-  const { data, permissions } = useAuth();
+  const auth = useAuth();
 
   const fields = getFormFieldsFromSchema({
     schema,
-    schemas,
-    profile,
+    profiles,
     initialObject: currentObject,
-    user: { ...data, permissions },
+    auth,
     isFilterForm,
     filters,
   });
@@ -299,17 +207,19 @@ const NodeForm = ({
         return;
       }
 
-      const newObject = getMutationDetailsFromFormData(schema, data, "create", null, profile);
+      const newObject = getMutationDetailsFromFormData(schema, data, "create", null, profiles);
 
       if (!Object.keys(newObject).length) {
         return;
       }
 
+      const profileIds = profiles?.map((profile) => ({ id: profile.id })) ?? [];
+
       const mutationString = createObject({
         kind: schema?.kind,
         data: stringifyWithoutQuotes({
           ...newObject,
-          ...(profile ? { profiles: [{ id: profile.id }] } : {}),
+          ...(profileIds.length ? { profiles: profileIds } : {}),
         }),
       });
 
@@ -325,7 +235,7 @@ const NodeForm = ({
         },
       });
 
-      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
         toastId: `alert-success-${schema?.name}-created`,
       });
 
@@ -335,10 +245,18 @@ const NodeForm = ({
     }
   }
 
+  const handleSubmit = (data: any) => {
+    if (onSubmitOverride) {
+      return onSubmitOverride(data, profiles);
+    }
+
+    return onSubmit(data);
+  };
+
   return (
     <DynamicForm
       fields={fields}
-      onSubmit={onSubmitOverride || onSubmit}
+      onSubmit={handleSubmit}
       className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
       {...props}
     />

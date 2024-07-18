@@ -104,7 +104,7 @@ const RelationshipField = ({
           }}
         />
 
-        {selectedKind && (
+        {selectedKind && parentRelationship && (
           <FormField
             key={`${name}_parent`}
             name={name}
@@ -126,7 +126,7 @@ const RelationshipField = ({
                       {...field}
                       {...props}
                       peer={parentRelationship?.peer}
-                      disabled={props.disabled || !parentRelationship || !selectedKind?.id}
+                      disabled={props.disabled || !selectedKind?.id}
                       onChange={setSelectedParent}
                       className="mt-2"
                     />

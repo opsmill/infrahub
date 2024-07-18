@@ -148,7 +148,7 @@ export const getObjectItemDisplayValue = (
   );
 };
 
-export type AttributeSchema =
+export type FieldSchema =
   | components["schemas"]["AttributeSchema-Output"]
   | components["schemas"]["RelationshipSchema-Output"];
 
@@ -167,7 +167,7 @@ export const ObjectAttributeValue = ({
   attributeSchema,
   attributeValue,
 }: {
-  attributeSchema: AttributeSchema;
+  attributeSchema: FieldSchema;
   attributeValue: AttributeType;
 }) => {
   if (!attributeValue.value && attributeValue.value !== 0) return "-";

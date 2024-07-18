@@ -41,7 +41,7 @@ export default function TabPreferences() {
     try {
       await updateAccountPassword({ variables: { password: newPassword } });
 
-      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message="Password updated" />);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Password updated" />);
     } catch (error) {
       console.error("Error while updating the password: ", error);
     }

@@ -2408,7 +2408,11 @@ async def test_load_schema_from_db(
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    crit_schema = schema1.get(name="TestCriticality", duplicate=False)
+
     await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    start_crit_schema = schema1.get(name="TestCriticality", duplicate=False)
+    start_crit_hash = start_crit_schema.get_hash()
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
@@ -2420,7 +2424,11 @@ async def test_load_schema_from_db(
         "ProfileTestGenericInterface",
     }
 
-    assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
+    crit_schema = schema2.get(name="TestCriticality", duplicate=False)
+    profiles_rel_schema = crit_schema.get_relationship("profiles")
+    assert profiles_rel_schema.peer == InfrahubKind.PROFILE
+    assert start_crit_hash == crit_schema.get_hash()
+    assert schema11.get(name="TestCriticality").get_hash() == crit_schema.get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
 

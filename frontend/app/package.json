@@ -94,7 +94,7 @@
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",
-    "@graphql-codegen/typescript": "^4.0.6",
+    "@graphql-codegen/typescript": "^4.0.9",
     "@playwright/test": "^1.42.1",
     "@testing-library/react": "^14.2.2",
     "@types/loadable__component": "^5.13.9",
@@ -106,7 +106,7 @@
     "@types/react-dom": "^18.2.23",
     "@types/react-test-renderer": "^18.0.7",
     "@types/sha1": "^1.1.5",
-    "@typescript-eslint/eslint-plugin": "^7.5.0",
+    "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@vitest/coverage-v8": "^1.4.0",
     "cypress": "^13.7.2",
     "eslint": "^8.57.0",
@@ -120,7 +120,7 @@
     "husky": "^8.0.3",
     "jsdom": "^24.0.0",
     "lint-staged": "^13.2.0",
-    "openapi-typescript": "^6.7.3",
+    "openapi-typescript": "^7.0.2",
     "postcss": "^8.4.23",
     "prettier": "2.8.8",
     "prettier-eslint": "^16.3.0",
@@ -128,8 +128,8 @@
     "react-test-renderer": "^18.2.0",
     "tailwindcss": "^3.4.3",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.3",
-    "typescript-eslint": "^7.5.0",
+    "typescript": "^5.5.3",
+    "typescript-eslint": "^7.16.0",
     "vitest": "^1.4.0"
   },
   "overrides": {

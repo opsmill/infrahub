@@ -9,14 +9,18 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import {
+  IProfileSchema,
+  genericsState,
+  profilesAtom,
+  schemaState,
+} from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { getObjectAttributes, getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import { useState } from "react";
 import { toast } from "react-toastify";
 import ObjectForm from "@/components/form/object-form";
 
@@ -37,7 +41,6 @@ export default function ObjectItemEditComponent(props: Props) {
   const profileGeneric = genericsList.find((s) => s.kind === PROFILE_KIND);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [profile] = useState("");
 
   const nodeSchema = schemaList.find((s) => s.kind === objectname);
   const profileSchema = allProfiles.find((s) => s.kind === objectname);
@@ -50,6 +53,7 @@ export default function ObjectItemEditComponent(props: Props) {
     schema?.generate_profile &&
     !profileGeneric?.used_by?.includes(schema?.kind) &&
     schema.kind !== PROFILE_KIND;
+
   const profileName = profileSchema ? objectname : `Profile${objectname}`;
 
   const queryString = schema
@@ -85,44 +89,27 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const objectDetailsData = data[schema.kind]?.edges[0]?.node;
 
-  const profiles = data[profileName]?.edges?.map((edge) => edge.node);
-
-  const profilesOptions =
-    profiles &&
-    profiles.map((p) => ({
-      id: p.id,
-      name: p.display_label,
-      values: p,
-    }));
-
   const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge) => edge?.node) ?? [];
 
-  // Get profile from object or from the locally selected one
-  const currentProfile =
-    objectProfiles &&
-    objectProfiles[0]?.id &&
-    // If the profile is not selected, or it is selected but the same as the one from the object
-    (!profile || (profile && objectProfiles[0]?.id === profile))
-      ? profilesOptions?.find((p) => p.id === objectProfiles[0].id)?.values
-      : profilesOptions?.find((p) => p.id === profile)?.values;
-
-  async function onSubmit(data: any) {
+  async function onSubmit(data: any, profiles?: IProfileSchema[]) {
     const updatedObject = getMutationDetailsFromFormData(
       schema,
       data,
       "update",
       objectDetailsData,
-      currentProfile
+      objectProfiles
     );
 
-    if (Object.keys(updatedObject).length || objectProfiles[0]?.id !== profile) {
+    if (Object.keys(updatedObject).length) {
+      const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];
+
       try {
         const mutationString = updateObjectWithId({
           kind: schema?.kind,
           data: stringifyWithoutQuotes({
             id: objectid,
             ...updatedObject,
-            ...(profile ? { profiles: [{ id: profile }] } : {}),
+            ...(profilesId.length ? { profiles: profilesId } : {}),
           }),
         });
 
@@ -135,7 +122,7 @@ export default function ObjectItemEditComponent(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
           toastId: "alert-success-updated",
         });
 
@@ -154,7 +141,7 @@ export default function ObjectItemEditComponent(props: Props) {
       onSubmit={onSubmit}
       kind={objectname}
       currentObject={objectDetailsData}
-      currentProfile={currentProfile}
+      currentProfiles={objectProfiles}
       data-cy="object-item-edit"
     />
   );

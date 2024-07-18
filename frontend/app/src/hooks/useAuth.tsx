@@ -19,7 +19,7 @@ type User = {
   id: string;
 };
 
-type AuthContextType = {
+export type AuthContextType = {
   accessToken: string | null;
   data?: any;
   isAuthenticated: boolean;
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
 
     if (!result?.access_token) {
-      toast(() => <Alert type={ALERT_TYPES.ERROR} message="Invalid username and password" />, {
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Invalid username and password" />, {
         toastId: "alert-error-sign-in",
       });
 
