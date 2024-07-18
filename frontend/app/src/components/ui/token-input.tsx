@@ -11,11 +11,10 @@ export const TokenInput = (props: TokenInputProps) => {
 
       <CopyToClipboard
         text={props.value as string}
-        size={"default"}
+        size={"square"}
         variant={"primary"}
-        className="ml-2">
-        Copy
-      </CopyToClipboard>
+        className="ml-2"
+      />
     </div>
   );
 };
