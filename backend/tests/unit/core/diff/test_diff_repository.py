@@ -9,6 +9,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.diff.model.path import (
     EnrichedDiffAttribute,
     EnrichedDiffNode,
+    EnrichedDiffProperty,
     EnrichedDiffRoot,
 )
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -51,12 +52,25 @@ class TestDiffRepository:
             changed_at=Timestamp(self.updated_node_change_time),
             action=DiffAction.UPDATED,
         )
+
+        self.removed_attr_prop_1_change_time = DateTime(2024, 6, 15, 18, 35, 50, tzinfo=UTC)
+        self.removed_attr_prop_1_property_type = "HAS_VALUE"
+        self.removed_attr_prop_1_previous_value = "some stuff"
+        self.removed_attr_prop_1 = EnrichedDiffProperty(
+            property_type=self.removed_attr_prop_1_property_type,
+            changed_at=Timestamp(self.removed_attr_prop_1_change_time),
+            previous_value=self.removed_attr_prop_1_previous_value,
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
+        )
         self.removed_attr_name = "all_gone"
-        self.removed_attr_change_time = DateTime(2024, 6, 15, 18, 35, 50, tzinfo=UTC)
+        self.removed_attr_change_time = self.removed_attr_prop_1_change_time
         self.removed_attribute = EnrichedDiffAttribute(
             name=self.removed_attr_name,
             changed_at=Timestamp(self.removed_attr_change_time),
             action=DiffAction.REMOVED,
+            properties=[self.removed_attr_prop_1],
         )
         self.updated_attr_name = "something_new"
         self.updated_attr_change_time = DateTime(2024, 6, 15, 18, 35, 55, tzinfo=UTC)
@@ -108,8 +122,17 @@ class TestDiffRepository:
         assert removed_attr.name == self.removed_attr_name
         assert removed_attr.changed_at.obj == self.removed_attr_change_time
         assert removed_attr.action is DiffAction.REMOVED
+        assert len(removed_attr.properties) == 1
+        removed_attr_prop_1 = removed_attr.properties[0]
+        assert removed_attr_prop_1.property_type == self.removed_attr_prop_1_property_type
+        assert removed_attr_prop_1.previous_value == self.removed_attr_prop_1_previous_value
+        assert removed_attr_prop_1.new_value is None
+        assert removed_attr_prop_1.changed_at.obj == self.removed_attr_prop_1_change_time
+        assert removed_attr_prop_1.action is DiffAction.REMOVED
+        assert removed_attr_prop_1.conflict is None
         updated_attr = attrs_by_name[self.updated_attr_name]
         assert updated_attr.name == self.updated_attr_name
         assert updated_attr.changed_at.obj == self.updated_attr_change_time
         assert updated_attr.action is DiffAction.UPDATED
+        assert len(updated_attr.properties) == 0
         assert len(diff_node.relationships) == 0

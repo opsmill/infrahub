@@ -40,6 +40,10 @@ class EnrichedDiffSaveQuery(Query):
         UNWIND node_map.attributes AS node_attribute
         CREATE (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
         SET diff_attribute = node_attribute.node_properties
+        WITH diff_root, diff_node, diff_attribute, node_map, node_attribute
+        UNWIND node_attribute.properties AS attr_property
+        CREATE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty)
+        SET diff_attr_prop = attr_property.node_properties
         """
         self.add_to_query(query=query)
         self.return_labels = ["diff_root.uuid"]
@@ -69,7 +73,7 @@ class EnrichedDiffSaveQuery(Query):
         return {
             "node_properties": {
                 "property_type": enriched_property.property_type,
-                "changed_at": enriched_property.changed_at,
+                "changed_at": enriched_property.changed_at.to_string(),
                 "previous_value": enriched_property.previous_value,
                 "new_value": enriched_property.new_value,
                 "action": enriched_property.action,
@@ -101,7 +105,7 @@ class EnrichedDiffSaveQuery(Query):
             conflict_props = self._build_diff_conflict_params(enriched_conflict=enriched_single_relationship.conflict)
         return {
             "node_properties": {
-                "changed_at": enriched_single_relationship.changed_at,
+                "changed_at": enriched_single_relationship.changed_at.to_string(),
                 "action": enriched_single_relationship.action,
                 "peer_id": enriched_single_relationship.peer_id,
             },
@@ -117,7 +121,7 @@ class EnrichedDiffSaveQuery(Query):
         return {
             "node_properties": {
                 "name": enriched_relationship.name,
-                "changed_at": enriched_relationship.changed_at,
+                "changed_at": enriched_relationship.changed_at.to_string(),
                 "action": enriched_relationship.action,
             },
             "relationships": single_relationship_props,

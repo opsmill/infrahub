@@ -5,7 +5,7 @@ from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
-from ..model.path import EnrichedDiffAttribute, EnrichedDiffNode, EnrichedDiffRoot
+from ..model.path import EnrichedDiffAttribute, EnrichedDiffNode, EnrichedDiffProperty, EnrichedDiffRoot
 
 
 class EnrichedDiffGetQuery(Query):
@@ -113,12 +113,14 @@ class EnrichedDiffDeserializer:
         self._diff_root_map: dict[str, EnrichedDiffRoot] = {}
         self._diff_node_map: dict[str, EnrichedDiffNode] = {}
         self._diff_node_attr_map: dict[tuple[str, str], EnrichedDiffAttribute] = {}
+        self._diff_prop_map: dict[tuple[str, str, str], EnrichedDiffProperty] = {}
 
     async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
         for result in database_results:
             self._deserialize_diff_root(result=result)
             self._deserialize_diff_node(result=result)
             self._deserialize_diff_attr(result=result)
+            self._deserialize_diff_attr_property(result=result)
 
         return list(self._diff_root_map.values())
 
@@ -145,6 +147,21 @@ class EnrichedDiffDeserializer:
         diff_attr_name = str(diff_attr_node.get("name"))
         enriched_node = self._get_enriched_node(result=result)
         return (enriched_node.uuid, diff_attr_name)
+
+    def _get_enriched_attr(self, result: QueryResult) -> EnrichedDiffAttribute:
+        attr_key = self._get_attribute_key(result=result)
+        if not attr_key:
+            raise IndexError(f"No attribute for {attr_key}")
+        return self._diff_node_attr_map[attr_key]
+
+    def _get_attribute_property_key(self, result: QueryResult) -> tuple[str, str, str] | None:
+        diff_attr_prop_node = result.get("diff_attr_property")
+        if not diff_attr_prop_node:
+            return None
+        diff_prop_type = str(diff_attr_prop_node.get("property_type"))
+        enriched_node = self._get_enriched_node(result=result)
+        enriched_attr = self._get_enriched_attr(result=result)
+        return (enriched_node.uuid, enriched_attr.name, diff_prop_type)
 
     def _deserialize_diff_root(self, result: QueryResult) -> None:
         root_key = self._get_root_key(result=result)
@@ -191,7 +208,7 @@ class EnrichedDiffDeserializer:
         if attr_key in self._diff_node_attr_map:
             return
 
-        diff_attr_node = result.get("diff_attribute")
+        diff_attr_node = result.get_node("diff_attribute")
         diff_attribute = EnrichedDiffAttribute(
             name=str(diff_attr_node.get("name")),
             changed_at=Timestamp(str(diff_attr_node.get("changed_at"))),
@@ -201,3 +218,28 @@ class EnrichedDiffDeserializer:
         enriched_node = self._get_enriched_node(result=result)
         enriched_node.attributes.append(diff_attribute)
         return
+
+    def _deserialize_diff_attr_property(self, result: QueryResult) -> None:
+        attr_property_key = self._get_attribute_property_key(result=result)
+        if attr_property_key is None:
+            return
+        if attr_property_key in self._diff_prop_map:
+            return
+
+        diff_attr_prop_node = result.get_node("diff_attr_property")
+
+        previous_value_raw = diff_attr_prop_node.get("previous_value")
+        previous_value = str(previous_value_raw) if previous_value_raw is not None else None
+        new_value_raw = diff_attr_prop_node.get("new_value")
+        new_value = str(new_value_raw) if new_value_raw is not None else None
+        enriched_property = EnrichedDiffProperty(
+            property_type=str(diff_attr_prop_node.get("property_type")),
+            changed_at=Timestamp(str(diff_attr_prop_node.get("changed_at"))),
+            previous_value=previous_value,
+            new_value=new_value,
+            action=DiffAction(str(diff_attr_prop_node.get("action"))),
+            conflict=None,
+        )
+        enriched_attr = self._get_enriched_attr(result=result)
+        enriched_attr.properties.append(enriched_property)
+        self._diff_prop_map[attr_property_key] = enriched_property
