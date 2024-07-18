@@ -307,6 +307,7 @@ class Query(ABC):
 
     raise_error_if_empty: bool = False
     insert_return: bool = True
+    insert_limit: bool = True
 
     def __init__(
         self,
@@ -408,10 +409,10 @@ class Query(ABC):
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if offset:
+        if offset and self.insert_limit:
             tmp_query_lines.append(f"SKIP {offset}")
 
-        if limit:
+        if limit and self.insert_limit:
             tmp_query_lines.append(f"LIMIT {limit}")
 
         query_str = "\n".join(tmp_query_lines)

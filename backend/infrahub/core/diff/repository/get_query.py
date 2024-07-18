@@ -2,11 +2,12 @@ from typing import Any, Iterable
 
 from neo4j.graph import Node as Neo4jNode
 
+from infrahub.core.constants import DiffAction
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
-from ..model.path import EnrichedDiffRoot
+from ..model.path import EnrichedDiffNode, EnrichedDiffRoot
 
 
 class EnrichedDiffGetQuery(Query):
@@ -14,6 +15,7 @@ class EnrichedDiffGetQuery(Query):
 
     name = "enriched_diff_get"
     type = QueryType.READ
+    insert_limit = False
 
     def __init__(
         self,
@@ -103,11 +105,21 @@ class EnrichedDiffGetQuery(Query):
 
     async def _deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
         diff_root_map: dict[str, EnrichedDiffRoot] = {}
+        diff_node_map: dict[str, EnrichedDiffNode] = {}
         for result in database_results:
             diff_root_node = result.get_node("diff_root")
             diff_root_uuid = str(diff_root_node.get("uuid"))
             if diff_root_uuid not in diff_root_map:
                 diff_root_map[diff_root_uuid] = self._deserialize_diff_root(diff_root_node=diff_root_node)
+            enriched_root = diff_root_map[diff_root_uuid]
+
+            diff_node_node = result.get_node("diff_node")
+            diff_node_uuid = str(diff_node_node.get("uuid"))
+            if diff_node_uuid not in diff_node_map:
+                diff_node_map[diff_node_uuid] = self._deserialize_diff_node(diff_node_node=diff_node_node)
+                enriched_root.nodes.append(diff_node_map[diff_node_uuid])
+            enriched_node = diff_node_map[diff_node_uuid]
+
         return list(diff_root_map.values())
 
     def _deserialize_diff_root(self, diff_root_node: Neo4jNode) -> EnrichedDiffRoot:
@@ -119,4 +131,13 @@ class EnrichedDiffGetQuery(Query):
             from_time=from_time,
             to_time=to_time,
             uuid=str(diff_root_node.get("uuid")),
+        )
+
+    def _deserialize_diff_node(self, diff_node_node: Neo4jNode) -> EnrichedDiffNode:
+        return EnrichedDiffNode(
+            uuid=str(diff_node_node.get("uuid")),
+            kind=str(diff_node_node.get("kind")),
+            label=str(diff_node_node.get("label")),
+            changed_at=Timestamp(diff_node_node.get("changed_at")),
+            action=DiffAction(str(diff_node_node.get("action"))),
         )

@@ -29,7 +29,8 @@ class EnrichedDiffSaveQuery(Query):
             base_branch: $diff_root_props.base_branch,
             diff_branch: $diff_root_props.diff_branch,
             from_time: $diff_root_props.from_time,
-            to_time: $diff_root_props.to_time
+            to_time: $diff_root_props.to_time,
+            uuid: $diff_root_props.uuid
         })
         WITH diff_root
         UNWIND $node_maps AS node_map
@@ -166,6 +167,7 @@ class EnrichedDiffSaveQuery(Query):
             "diff_branch": enriched_diff.diff_branch_name,
             "from_time": enriched_diff.from_time.to_string(),
             "to_time": enriched_diff.to_time.to_string(),
+            "uuid": enriched_diff.uuid,
         }
         node_maps = []
         node_parent_links = []
