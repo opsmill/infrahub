@@ -7,7 +7,7 @@ from .calculator import DiffCalculator
 from .combiner import DiffCombiner
 from .enricher import DiffEnricher
 from .model.path import EnrichedDiffRoot
-from .repository import DiffRepository
+from .repository.repository import DiffRepository
 
 
 class DiffCoordinator:
@@ -27,7 +27,10 @@ class DiffCoordinator:
         self, base_branch: Branch, diff_branch: Branch, from_time: Timestamp, to_time: Timestamp
     ) -> EnrichedDiffRoot:
         calculated_timeframe_diffs = await self.diff_repo.get(
-            base_branch=base_branch, diff_branch=diff_branch, from_time=from_time, to_time=to_time
+            base_branch_name=base_branch.name,
+            diff_branch_names=[diff_branch.name],
+            from_time=from_time,
+            to_time=to_time,
         )
         missing_time_ranges = self._get_missing_time_ranges(
             diffs=calculated_timeframe_diffs, from_time=from_time, to_time=to_time
