@@ -325,7 +325,7 @@ class NodeManager:
                 data=peer,
             )
             if fetch_peers:
-                result.set_peer(value=peer_nodes[peer.peer_id])
+                await result.set_peer(value=peer_nodes[peer.peer_id])
             results.append(result)
 
         return results
