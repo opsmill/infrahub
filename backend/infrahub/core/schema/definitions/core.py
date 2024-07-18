@@ -91,7 +91,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -131,7 +131,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -843,7 +843,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": False,
                     "cardinality": "one",
                 },
@@ -864,7 +864,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": False,
                     "cardinality": "one",
                 },
@@ -899,7 +899,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "approved_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Attribute",
@@ -908,7 +908,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "reviewers",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "kind": "Attribute",
                     "cardinality": "many",
@@ -917,7 +917,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "cardinality": "one",
                     "branch": BranchSupportType.AGNOSTIC.value,
