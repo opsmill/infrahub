@@ -50,7 +50,10 @@ export default function ModalConfirm({
               leave="ease-in duration-200"
               leaveFrom="opacity-100 translate-y-0 scale-100"
               leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95">
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all my-8 w-full max-w-lg">
+              <Dialog.Panel
+                className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all my-8 w-full max-w-lg"
+                data-cy="modal-delete"
+                data-testid="modal-delete">
                 <div className="bg-custom-white px-4 pt-5 p-6 pb-4">
                   <div className="">
                     <div className="ml-4 mt-0 text-left">
