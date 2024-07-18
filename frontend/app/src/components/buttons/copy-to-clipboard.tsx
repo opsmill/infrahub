@@ -7,7 +7,13 @@ interface CopyToClipboardProps extends ButtonProps {
   text: string;
 }
 
-export const CopyToClipboard = ({ text, ...props }: CopyToClipboardProps) => {
+export const CopyToClipboard = ({
+  text,
+  size = "icon",
+  variant = "ghost",
+  children,
+  ...props
+}: CopyToClipboardProps) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -21,13 +27,14 @@ export const CopyToClipboard = ({ text, ...props }: CopyToClipboardProps) => {
   };
 
   return (
-    <Button size="icon" variant="ghost" onClick={handleCopy} {...props}>
+    <Button size={size} variant={variant} onClick={handleCopy} {...props}>
       <Icon
         icon={
           copied ? "mdi:checkbox-multiple-marked-outline" : "mdi:checkbox-multiple-blank-outline"
         }
-        className={classNames("text-base", copied && "text-green-700")}
+        className={classNames("text-base", children && "mr-2")}
       />
+      {children}
     </Button>
   );
 };
