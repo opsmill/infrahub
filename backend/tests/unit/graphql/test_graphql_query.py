@@ -18,7 +18,7 @@ from infrahub.graphql import prepare_graphql_params
 async def test_diff_tree(db: InfrahubDatabase, default_branch: Branch, data_schema):
     query = """
     query {
-        DiffTree {
+        DiffTree (branches: ["diff"]) {
             base_branch
             diff_branch
             from_time

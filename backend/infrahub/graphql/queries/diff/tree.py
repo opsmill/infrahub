@@ -15,27 +15,6 @@ if TYPE_CHECKING:
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
 
 
-"""
-query DiffTree
-    filters:
-        branches: [Text]!
-        from_time: Timestamp
-        to_time: Timestamp
-        root_node_uuids: [Text!]
-        depth: Number
-        limit: Number
-        offset: Number
-
-- query to get all diffs for a list of branches that returns summary counts
-- some way to track conflicts that have been addressed
-- some way (a new mutation?) to allow discarding ANY change for an UPDATE
-  - add a comment on the proposed change automatically
-- track number of changes on main as part of cached diff for a given branch
-- rebasing will require recalculating the diff and invalidating the cached diffs for this branch
-- when merging, we need to lock main, calculate the small interval of the diff to make it current, then merge if no conflicts
-"""
-
-
 class ConflictSelection(GrapheneEnum):
     BASE_BRANCH = "base"
     DIFF_BRANCH = "diff"
@@ -328,4 +307,11 @@ DiffTreeQuery = Field(
     DiffTree,
     name=String(),
     resolver=DiffTreeResolver().resolve,
+    branches=List(String),
+    from_time=DateTime(),
+    to_time=DateTime(),
+    root_node_uuids=List(String),
+    max_depth=Int(),
+    limit=Int(),
+    offset=Int(),
 )
