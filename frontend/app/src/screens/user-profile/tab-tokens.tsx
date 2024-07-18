@@ -39,7 +39,7 @@ export default function TabTokens() {
         icon="mdi:information-slab-circle-outline"
         description={
           <>
-            Make sure to copy your API key token now.
+            Make sure to copy your API key now.
             <br />
             <b>You won&apos;t be able to see it again!</b>
           </>
