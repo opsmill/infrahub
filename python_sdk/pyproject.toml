@@ -43,7 +43,7 @@ numpy = [
 pyarrow = { version = "^14", optional = true }
 rich = { version = "^13", optional = true }
 toml = { version = "^0.10", optional = true }
-typer = { version = "^0", optional = true }
+typer = { version = "^0.12.3", optional = true }
 pytest = { version = "*", optional = true }
 pyyaml = { version = "^6", optional = true }
 
@@ -62,7 +62,6 @@ pre-commit = "^2.20.0"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
-typer-cli = "*"
 ruff = "0.5.0"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
