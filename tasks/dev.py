@@ -21,7 +21,6 @@ from .container_ops import (
 from .infra_ops import load_infrastructure_data, load_infrastructure_schema
 from .shared import (
     BUILD_NAME,
-    INFRAHUB_ADDRESS,
     INFRAHUB_DATABASE,
     PYTHON_VER,
     build_compose_files_cmd,
@@ -92,31 +91,13 @@ def infra_git_create(
     location="/remote/infrahub-demo-edge",
 ):
     """Load some demo data."""
-
-    add_repo_query = """
-    mutation($name: String!, $location: String!){
-    CoreRepositoryCreate(
-        data: {
-        name: { value: $name }
-        location: { value: $location }
-        }
-    ) {
-        ok
-    }
-    }
-    """
-
-    clean_query = re.sub(r"\n\s*", "", add_repo_query)
-
-    exec_cmd = """
-    curl -g \
-    -X POST \
-    -H "Content-Type: application/json" \
-    -H "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" \
-    -d '{"query":"%s", "variables": {"name": "%s", "location": "%s"}}' \
-    %s/graphql
-    """ % (clean_query, name, location, INFRAHUB_ADDRESS)
-    execute_command(context=context, command=exec_cmd, print_cmd=True)
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
+        base_cmd = f"{get_env_vars(context, namespace=NAMESPACE)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+        execute_command(
+            context=context,
+            command=f"{base_cmd} run infrahub-git infrahubctl repository add {name} {location}",
+        )
 
 
 @task(optional=["database"])
