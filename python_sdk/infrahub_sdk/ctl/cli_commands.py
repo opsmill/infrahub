@@ -24,6 +24,7 @@ from infrahub_sdk.ctl.constants import PROTOCOLS_TEMPLATE
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.generator import run as run_generator
 from infrahub_sdk.ctl.render import list_jinja2_transforms
+from infrahub_sdk.ctl.repository import app as repository_app
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
 from infrahub_sdk.ctl.transform import list_transforms
@@ -44,6 +45,7 @@ app = AsyncTyper(pretty_exceptions_show_locals=False)
 app.add_typer(branch_app, name="branch")
 app.add_typer(schema, name="schema")
 app.add_typer(validate_app, name="validate")
+app.add_typer(repository_app, name="repository")
 app.command(name="dump")(dump)
 app.command(name="load")(load)
 
