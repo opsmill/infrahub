@@ -7,7 +7,7 @@ type TokenInputProps = {
 export const TokenInput = (props: TokenInputProps) => {
   return (
     <div className="flex items-center">
-      <div className="p-2 bg-gray-100 rounded-md">{props.value}</div>
+      <div className="p-2 bg-gray-100 rounded-md h-9">{props.value}</div>
 
       <CopyToClipboard
         text={props.value as string}
