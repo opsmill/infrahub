@@ -108,13 +108,13 @@ test.describe("Object update", () => {
       await page.getByTestId("edit-button").click();
 
       await page.getByTestId("side-panel-container").getByLabel("Status").click();
-      await page.getByText("Empty").click();
+      await page.getByRole("option", { name: "Empty", exact: true }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Role").click();
-      await page.getByText("Empty").click();
+      await page.getByRole("option", { name: "Empty", exact: true }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Asn").click();
-      await page.getByText("Empty").click();
+      await page.getByRole("option", { name: "Empty", exact: true }).click();
 
       await page.getByRole("button", { name: "Save" }).click();
     });
