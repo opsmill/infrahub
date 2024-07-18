@@ -24,24 +24,39 @@ title: Release 0.15
 
 # Release 0.15.1
 
-We are thrilled to announce the latest release of Infrahub (0.15).
-This release focuses on enhancing the user experience and laying the groundwork for future features.
+We are thrilled to announce the latest release of Infrahub (0.15.1).
 
 ## Main changes
 
-### Multi profiles
+### Unified storage
 
-#### Frontend update
+### Schema
+
+### Frontend
+
+#### Multi profiles
 
 We can now select multiple profiles when creating and editing an object.
 
 The `profile_priority` value from the profile schema is used to understand which value is used for the fields (the lower the number is, the higher the priority is).
 
-### Generic field for relationship
+#### Generic relationship select fixes
 
-In the form, if a node has a generic relationship, the parent select is now hidden if it's not available.
+The select for a generic relationship has been fixed to properly reset the value when changing the kind or the parent.
+
+The parent is also not showing "Unknown" after choosing an object.
+
+The parent select is also now hidden if it's not available.
 
 It's displayed and available only of the kind selected can point to an object which we can filter depending on its parent.
+
+### Helm Chart
+
+### Infrahub Sync
+
+### Other
+
+### Demo Environment
 
 ## Migration Guide
 
