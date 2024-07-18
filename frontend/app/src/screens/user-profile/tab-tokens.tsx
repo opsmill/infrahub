@@ -41,7 +41,7 @@ export default function TabTokens() {
           <>
             Make sure to copy your API key token now.
             <br />
-            <b>You won&apos;t be able to see it agian!</b>
+            <b>You won&apos;t be able to see it again!</b>
           </>
         }>
         <div className="mt-2">
