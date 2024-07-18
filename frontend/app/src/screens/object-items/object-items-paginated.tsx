@@ -27,7 +27,7 @@ import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { debounce } from "@/utils/common";
+import { classNames, debounce } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
@@ -43,16 +43,18 @@ import { useObjectItems } from "@/hooks/useObjectItems";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
-  preventBlock?: boolean;
   overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
   onSuccess?: (newObject: any) => void;
+  preventBlock?: boolean;
+  preventLinks?: boolean;
 };
 
 export default function ObjectItems({
   schema,
   overrideDetailsViewUrl,
-  preventBlock,
   onSuccess,
+  preventBlock,
+  preventLinks,
 }: ObjectItemsProps) {
   const permission = usePermission();
   const [filters, setFilters] = useFilters();
@@ -219,19 +221,27 @@ export default function ObjectItems({
                 {rows?.map((row: any, index: number) => (
                   <tr
                     key={index}
-                    className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
+                    className={classNames(
+                      "border-b border-gray-200 h-[36px]",
+                      !preventLinks && "hover:bg-gray-50 cursor-pointer"
+                    )}
                     data-cy="object-table-row">
-                    {columns?.map((attribute) => (
-                      <td key={row.id + "-" + attribute.name} className="p-0">
-                        <Link
-                          className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                          to={
-                            overrideDetailsViewUrl
-                              ? overrideDetailsViewUrl(row.id, row.__typename)
-                              : constructPath(getObjectDetailsUrl(row.id, row.__typename))
-                          }>
-                          <div>{getObjectItemDisplayValue(row, attribute)}</div>
-                        </Link>
+                    {columns?.map((attribute, index) => (
+                      <td key={index} className="p-0">
+                        <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
+                          {preventLinks ? (
+                            <div>{getObjectItemDisplayValue(row, attribute)}</div>
+                          ) : (
+                            <Link
+                              to={
+                                overrideDetailsViewUrl
+                                  ? overrideDetailsViewUrl(row.id, row.__typename)
+                                  : constructPath(getObjectDetailsUrl(row.id, row.__typename))
+                              }>
+                              <div>{getObjectItemDisplayValue(row, attribute)}</div>
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     ))}
 
