@@ -616,16 +616,25 @@ class NodeListGetInfoQuery(Query):
         }
         WITH n1 as n, r1 as rb
         WHERE rb.status = "active"
-        OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(profile:Node)-[:IS_PART_OF]->(:Root)
-        WHERE profile_r.name = "node__profile"
-        AND profile.namespace = "Profile"
-        AND all(r in relationships(profile_path) WHERE %(branch_filter)s and r.status = "active")
+        WITH n, rb, COLLECT {
+            OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(profile:Node)-[:IS_PART_OF]->(:Root)
+            WHERE profile_r.name = "node__profile"
+            AND profile.namespace = "Profile"
+            AND  all(r in relationships(profile_path) WHERE %(branch_filter)s and r.status = "active")
+            RETURN profile.uuid
+        } AS profile_uuids_with_nulls
+        WITH
+            n,
+            rb,
+            reduce(
+            non_null = [], uuid in profile_uuids_with_nulls | CASE WHEN uuid IS NOT NULL THEN non_null + [uuid] ELSE non_null END
+        ) as profile_uuids
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
         self.params["ids"] = self.ids
 
-        self.return_labels = ["collect(profile.uuid) as profile_uuids", "n", "rb"]
+        self.return_labels = ["profile_uuids", "n", "rb"]
 
     async def get_nodes(self, db: InfrahubDatabase, duplicate: bool = False) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""

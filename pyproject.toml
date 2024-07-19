@@ -26,8 +26,8 @@ optional = true
 
 [tool.poetry.dependencies]
 python = "^3.10, < 3.13"
-neo4j = "~5.20"
-neo4j-rust-ext = "^5.20.0.0"
+neo4j = "~5.21"
+neo4j-rust-ext = "^5.21.0.0"
 infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
 pydantic = "2.7.2"
 pydantic-settings = "~2.2"
