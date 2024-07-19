@@ -30,6 +30,7 @@ test.describe("/profile?tab=tokens", () => {
         await page.getByText("Tokens").click();
         await expect(page.getByRole("heading", { name: "Tokens" })).toBeVisible();
         await expect(page.getByTestId("create-object-button")).toBeVisible();
+        await expect(page.getByText("Just a moment")).not.toBeVisible();
       });
 
       await test.step("create a new token", async () => {
