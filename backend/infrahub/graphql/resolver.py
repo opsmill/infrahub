@@ -79,6 +79,7 @@ async def default_resolver(*args, **kwargs):
             at=context.at,
             branch=context.branch,
             branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
+            fetch_peers=True,
         )
 
         if node_rel.cardinality == "many":
@@ -134,6 +135,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
             at=context.at,
             branch=context.branch,
             branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
+            fetch_peers=True,
         )
 
         if not objs:
@@ -231,6 +233,7 @@ async def many_relationship_resolver(
             at=context.at,
             branch=context.branch,
             branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
+            fetch_peers=True,
         )
 
         if not objs:
