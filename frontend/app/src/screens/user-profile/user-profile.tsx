@@ -108,9 +108,7 @@ export function UserProfilePage() {
         }
       />
 
-      <div className="top-0 shadow-sm">
-        <Tabs tabs={tabs} />
-      </div>
+      <Tabs tabs={tabs} />
 
       <div>{renderContent(qspTab)}</div>
     </Content>
