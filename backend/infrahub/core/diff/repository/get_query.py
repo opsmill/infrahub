@@ -11,6 +11,7 @@ from ..model.path import (
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
+    EnrichedDiffSingleRelationship,
 )
 
 
@@ -119,7 +120,8 @@ class EnrichedDiffDeserializer:
         self._diff_root_map: dict[str, EnrichedDiffRoot] = {}
         self._diff_node_map: dict[str, EnrichedDiffNode] = {}
         self._diff_node_attr_map: dict[tuple[str, str], EnrichedDiffAttribute] = {}
-        self._diff_node_rel_map: dict[tuple[str, str], EnrichedDiffRelationship] = {}
+        self._diff_node_rel_group_map: dict[tuple[str, str], EnrichedDiffRelationship] = {}
+        self._diff_node_rel_element_map: dict[tuple[str, str, str], EnrichedDiffSingleRelationship] = {}
         self._diff_prop_map: dict[tuple[str, str, str], EnrichedDiffProperty] = {}
 
     async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
@@ -129,7 +131,8 @@ class EnrichedDiffDeserializer:
             self._deserialize_diff_attr(result=result)
             self._deserialize_diff_attr_property(result=result)
 
-            self._deserialize_diff_relationship(result=result)
+            self._deserialize_diff_relationship_group(result=result)
+            self._deserialize_diff_relationship_element(result=result)
 
         return list(self._diff_root_map.values())
 
@@ -172,13 +175,28 @@ class EnrichedDiffDeserializer:
         enriched_attr = self._get_enriched_attr(result=result)
         return (enriched_node.uuid, enriched_attr.name, diff_prop_type)
 
-    def _get_relationship_key(self, result: QueryResult) -> tuple[str, str] | None:
+    def _get_relationship_group_key(self, result: QueryResult) -> tuple[str, str] | None:
         diff_rel_node = result.get("diff_relationship")
         if not diff_rel_node:
             return None
         diff_rel_name = str(diff_rel_node.get("name"))
         enriched_node = self._get_enriched_node(result=result)
         return (enriched_node.uuid, diff_rel_name)
+
+    def _get_enriched_rel_group(self, result: QueryResult) -> EnrichedDiffRelationship:
+        rel_group_key = self._get_relationship_group_key(result=result)
+        if not rel_group_key:
+            raise IndexError(f"No relationship group for {rel_group_key}")
+        return self._diff_node_rel_group_map[rel_group_key]
+
+    def _get_rel_element_key(self, result: QueryResult) -> tuple[str, str, str] | None:
+        diff_rel_element_node = result.get("diff_rel_element")
+        if not diff_rel_element_node:
+            return None
+        diff_element_peer_id = str(diff_rel_element_node.get("peer_id"))
+        enriched_node = self._get_enriched_node(result=result)
+        enriched_rel_group = self._get_enriched_rel_group(result=result)
+        return (enriched_node.uuid, enriched_rel_group.name, diff_element_peer_id)
 
     def _deserialize_diff_root(self, result: QueryResult) -> None:
         root_key = self._get_root_key(result=result)
@@ -261,11 +279,11 @@ class EnrichedDiffDeserializer:
         enriched_attr.properties.append(enriched_property)
         self._diff_prop_map[attr_property_key] = enriched_property
 
-    def _deserialize_diff_relationship(self, result: QueryResult) -> None:
-        rel_key = self._get_relationship_key(result=result)
+    def _deserialize_diff_relationship_group(self, result: QueryResult) -> None:
+        rel_key = self._get_relationship_group_key(result=result)
         if rel_key is None:
             return
-        if rel_key in self._diff_node_rel_map:
+        if rel_key in self._diff_node_rel_group_map:
             return
 
         diff_rel_node = result.get_node("diff_relationship")
@@ -274,7 +292,26 @@ class EnrichedDiffDeserializer:
             changed_at=Timestamp(str(diff_rel_node.get("changed_at"))),
             action=DiffAction(str(diff_rel_node.get("action"))),
         )
-        self._diff_node_rel_map[rel_key] = diff_relationship
+        self._diff_node_rel_group_map[rel_key] = diff_relationship
         enriched_node = self._get_enriched_node(result=result)
         enriched_node.relationships.append(diff_relationship)
         return
+
+    def _deserialize_diff_relationship_element(self, result: QueryResult) -> None:
+        rel_element_key = self._get_rel_element_key(result=result)
+        if rel_element_key is None:
+            return
+        if rel_element_key in self._diff_node_rel_element_map:
+            return
+
+        diff_rel_element_node = result.get_node("diff_rel_element")
+
+        enriched_rel_element = EnrichedDiffSingleRelationship(
+            changed_at=Timestamp(str(diff_rel_element_node.get("changed_at"))),
+            action=DiffAction(str(diff_rel_element_node.get("action"))),
+            peer_id=str(diff_rel_element_node.get("peer_id")),
+            conflict=None,
+        )
+        enriched_rel_group = self._get_enriched_rel_group(result=result)
+        enriched_rel_group.relationships.append(enriched_rel_element)
+        self._diff_node_rel_element_map[rel_element_key] = enriched_rel_element

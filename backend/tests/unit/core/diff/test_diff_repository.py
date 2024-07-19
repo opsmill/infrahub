@@ -12,6 +12,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
+    EnrichedDiffSingleRelationship,
 )
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
@@ -80,12 +81,21 @@ class TestDiffRepository:
             changed_at=Timestamp(self.updated_attr_change_time),
             action=DiffAction.UPDATED,
         )
-        self.updated_relationship_change_time = DateTime(2024, 6, 15, 18, 36, 2, tzinfo=UTC)
-        self.updated_relationship_name = "first_relationship"
-        self.updated_relationship = EnrichedDiffRelationship(
-            name=self.updated_relationship_name,
-            changed_at=Timestamp(self.updated_relationship_change_time),
+        self.updated_rel_group_1_rel_change_time = DateTime(2024, 6, 15, 18, 36, 2, tzinfo=UTC)
+        self.updated_rel_group_1_rel_peer_id = str(uuid4())
+        self.updated_rel_group_1_rel = EnrichedDiffSingleRelationship(
+            changed_at=Timestamp(self.updated_rel_group_1_rel_change_time),
             action=DiffAction.UPDATED,
+            peer_id=self.updated_rel_group_1_rel_peer_id,
+            conflict=None,
+        )
+        self.updated_rel_group_change_time = self.updated_rel_group_1_rel_change_time
+        self.updated_rel_group_name = "first_relationship"
+        self.updated_rel_group = EnrichedDiffRelationship(
+            name=self.updated_rel_group_name,
+            changed_at=Timestamp(self.updated_rel_group_change_time),
+            action=DiffAction.UPDATED,
+            relationships=[self.updated_rel_group_1_rel],
         )
 
     async def test_get_non_existent_diff(self, diff_repository: DiffRepository):
@@ -101,7 +111,7 @@ class TestDiffRepository:
     async def test_save_and_retrieve(self, diff_repository: DiffRepository, reset_database):
         self.enriched_diff.nodes = [self.updated_node_diff]
         self.updated_node_diff.attributes = [self.removed_attribute, self.updated_attribute]
-        self.updated_node_diff.relationships = [self.updated_relationship]
+        self.updated_node_diff.relationships = [self.updated_rel_group]
         await diff_repository.save(enriched_diff=self.enriched_diff)
 
         retrieved = await diff_repository.get(
@@ -145,7 +155,14 @@ class TestDiffRepository:
         assert updated_attr.action is DiffAction.UPDATED
         assert len(updated_attr.properties) == 0
         assert len(diff_node.relationships) == 1
-        updated_relationship = diff_node.relationships[0]
-        assert updated_relationship.name == self.updated_relationship_name
-        assert updated_relationship.changed_at.obj == self.updated_relationship_change_time
-        assert updated_relationship.action is DiffAction.UPDATED
+        updated_rel_group = diff_node.relationships[0]
+        assert updated_rel_group.name == self.updated_rel_group_name
+        assert updated_rel_group.changed_at.obj == self.updated_rel_group_change_time
+        assert updated_rel_group.action is DiffAction.UPDATED
+        assert len(updated_rel_group.relationships) == 1
+        updated_rel_group_1_rel = updated_rel_group.relationships[0]
+        assert updated_rel_group_1_rel.changed_at.obj == self.updated_rel_group_1_rel_change_time
+        assert updated_rel_group_1_rel.peer_id == self.updated_rel_group_1_rel_peer_id
+        assert updated_rel_group_1_rel.conflict is None
+        assert len(updated_rel_group_1_rel.properties) == 0
+        assert len(updated_rel_group.nodes) == 0

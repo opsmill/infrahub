@@ -49,11 +49,17 @@ class EnrichedDiffSaveQuery(Query):
         CREATE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty)
         SET diff_attr_prop = attr_property.node_properties
 
-        // node relationships
+        // node relationship groups
         WITH diff_root, diff_node, node_map
         UNWIND node_map.relationships as node_relationship
         CREATE (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
         SET diff_relationship = node_relationship.node_properties
+
+        // node single relationships
+        WITH diff_root, diff_node, node_map, diff_relationship, node_relationship
+        UNWIND node_relationship.relationships as node_single_relationship
+        CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_relationship_element:DiffRelationshipElement)
+        SET diff_relationship_element = node_single_relationship.node_properties
         """
         self.add_to_query(query=query)
         self.return_labels = ["diff_root.uuid"]
