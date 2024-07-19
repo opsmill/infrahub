@@ -37,6 +37,7 @@ import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 import DynamicForm from "@/components/form/dynamic-form";
 import { Badge } from "../ui/badge";
+import usePrevious from "@/hooks/usePrevious";
 
 export type Parent = {
   name?: string;
@@ -124,6 +125,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
+  const previousKind = usePrevious(kind);
+  const previousParent = usePrevious(parent?.value);
 
   const findSelectedOption = () => {
     return multiple
@@ -217,6 +220,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       handleFocus();
     }
 
+    if (!newValue) {
+      setSelectedOption(undefined);
+      if (onChange) onChange(null);
+      return;
+    }
+
     if (newValue.id === addOption.id) {
       setOpen(true);
       return;
@@ -224,7 +233,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
     if (newValue.id === emptyOption.id) {
       setSelectedOption(emptyOption);
-      onChange(null);
+      if (onChange) onChange(null);
       return;
     }
 
@@ -240,11 +249,11 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       setSelectedOption(newValue);
 
       if (hasPoolsBeenOpened) {
-        onChange(newValue.map((item) => ({ from_pool: { id: item.id } })));
+        if (onChange) onChange(newValue.map((item) => ({ from_pool: { id: item.id } })));
         return;
       }
 
-      onChange(newValue.map((item) => ({ id: item.id })));
+      if (onChange) onChange(newValue.map((item) => ({ id: item.id })));
       return;
     }
 
@@ -253,16 +262,17 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     setOpen(false);
 
     if (hasPoolsBeenOpened) {
-      onChange(hasPoolsBeenOpened ? { from_pool: { id: newValue.id } } : { id: newValue.id });
+      if (onChange)
+        onChange(hasPoolsBeenOpened ? { from_pool: { id: newValue.id } } : { id: newValue.id });
       return;
     }
 
     if (dropdown || enumBoolean) {
-      onChange(newValue.id);
+      if (onChange) onChange(newValue.id);
       return;
     }
 
-    onChange({ id: newValue.id });
+    if (onChange) onChange({ id: newValue.id });
   };
 
   const handleCreate = (response: any) => {
@@ -860,6 +870,17 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   useEffect(() => {
     setLocalOptions(options);
   }, [options?.length]);
+
+  // If kind or parent has changed, remove the current value
+  useEffect(() => {
+    if (peer && previousKind && peer !== previousKind) {
+      handleChange(undefined);
+    }
+
+    if (parent?.value && previousParent && parent?.value !== previousParent) {
+      handleChange(undefined);
+    }
+  }, [peer, parent?.value]);
 
   return (
     <div

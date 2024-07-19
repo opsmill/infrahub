@@ -68,7 +68,7 @@ class MainSettings(BaseSettings):
         default="/opt/infrahub/docs/build/search-index.json",
         description="Full path of saved json containing pre-indexed documentation",
     )
-    internal_address: str = "http://localhost:8000"
+    internal_address: Optional[str] = Field(default=None)
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )

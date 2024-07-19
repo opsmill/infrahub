@@ -125,6 +125,7 @@ const RelationshipField = ({
                     <RelationshipInput
                       {...field}
                       {...props}
+                      value={undefined}
                       peer={parentRelationship?.peer}
                       disabled={props.disabled || !selectedKind?.id}
                       onChange={setSelectedParent}
@@ -281,15 +282,13 @@ interface RelationshipInputProps extends FormFieldProps, RelationshipFieldProps 
 
 // Select parent if needed
 const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInputProps>(
-  ({ schema, value, options, relationship, ...props }, ref) => {
+  ({ options, relationship, ...props }, ref) => {
     return (
       <Select
         ref={ref}
         {...props}
-        value={value}
         options={options ?? []}
         field={relationship}
-        schema={schema}
         className="w-full"
       />
     );
