@@ -1,6 +1,6 @@
 import { Button } from "@/components/buttons/button-primitive";
 import { Form, FormProps, FormSubmit } from "@/components/ui/form";
-import { DynamicFieldProps } from "@/components/form/type";
+import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import ColorField from "@/components/form/fields/color.field";
 import CheckboxField from "@/components/form/fields/checkbox.field";
@@ -15,10 +15,11 @@ import RelationshipField from "@/components/form/fields/relationship.field";
 import { warnUnexpectedType } from "@/utils/common";
 import EnumField from "@/components/form/fields/enum.field";
 
-export interface DynamicFormProps extends FormProps {
+export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;
   onCancel?: () => void;
   submitLabel?: string;
+  onSubmit?: (data: Record<string, FormFieldValue>) => void;
 }
 
 const DynamicForm = ({ fields, onCancel, submitLabel, ...props }: DynamicFormProps) => {
