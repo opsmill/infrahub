@@ -10,6 +10,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffAttribute,
     EnrichedDiffNode,
     EnrichedDiffProperty,
+    EnrichedDiffRelationship,
     EnrichedDiffRoot,
 )
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -79,6 +80,13 @@ class TestDiffRepository:
             changed_at=Timestamp(self.updated_attr_change_time),
             action=DiffAction.UPDATED,
         )
+        self.updated_relationship_change_time = DateTime(2024, 6, 15, 18, 36, 2, tzinfo=UTC)
+        self.updated_relationship_name = "first_relationship"
+        self.updated_relationship = EnrichedDiffRelationship(
+            name=self.updated_relationship_name,
+            changed_at=Timestamp(self.updated_relationship_change_time),
+            action=DiffAction.UPDATED,
+        )
 
     async def test_get_non_existent_diff(self, diff_repository: DiffRepository):
         right_now = Timestamp()
@@ -93,6 +101,7 @@ class TestDiffRepository:
     async def test_save_and_retrieve(self, diff_repository: DiffRepository, reset_database):
         self.enriched_diff.nodes = [self.updated_node_diff]
         self.updated_node_diff.attributes = [self.removed_attribute, self.updated_attribute]
+        self.updated_node_diff.relationships = [self.updated_relationship]
         await diff_repository.save(enriched_diff=self.enriched_diff)
 
         retrieved = await diff_repository.get(
@@ -135,4 +144,8 @@ class TestDiffRepository:
         assert updated_attr.changed_at.obj == self.updated_attr_change_time
         assert updated_attr.action is DiffAction.UPDATED
         assert len(updated_attr.properties) == 0
-        assert len(diff_node.relationships) == 0
+        assert len(diff_node.relationships) == 1
+        updated_relationship = diff_node.relationships[0]
+        assert updated_relationship.name == self.updated_relationship_name
+        assert updated_relationship.changed_at.obj == self.updated_relationship_change_time
+        assert updated_relationship.action is DiffAction.UPDATED

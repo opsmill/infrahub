@@ -5,7 +5,13 @@ from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
-from ..model.path import EnrichedDiffAttribute, EnrichedDiffNode, EnrichedDiffProperty, EnrichedDiffRoot
+from ..model.path import (
+    EnrichedDiffAttribute,
+    EnrichedDiffNode,
+    EnrichedDiffProperty,
+    EnrichedDiffRelationship,
+    EnrichedDiffRoot,
+)
 
 
 class EnrichedDiffGetQuery(Query):
@@ -113,6 +119,7 @@ class EnrichedDiffDeserializer:
         self._diff_root_map: dict[str, EnrichedDiffRoot] = {}
         self._diff_node_map: dict[str, EnrichedDiffNode] = {}
         self._diff_node_attr_map: dict[tuple[str, str], EnrichedDiffAttribute] = {}
+        self._diff_node_rel_map: dict[tuple[str, str], EnrichedDiffRelationship] = {}
         self._diff_prop_map: dict[tuple[str, str, str], EnrichedDiffProperty] = {}
 
     async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
@@ -121,6 +128,8 @@ class EnrichedDiffDeserializer:
             self._deserialize_diff_node(result=result)
             self._deserialize_diff_attr(result=result)
             self._deserialize_diff_attr_property(result=result)
+
+            self._deserialize_diff_relationship(result=result)
 
         return list(self._diff_root_map.values())
 
@@ -162,6 +171,14 @@ class EnrichedDiffDeserializer:
         enriched_node = self._get_enriched_node(result=result)
         enriched_attr = self._get_enriched_attr(result=result)
         return (enriched_node.uuid, enriched_attr.name, diff_prop_type)
+
+    def _get_relationship_key(self, result: QueryResult) -> tuple[str, str] | None:
+        diff_rel_node = result.get("diff_relationship")
+        if not diff_rel_node:
+            return None
+        diff_rel_name = str(diff_rel_node.get("name"))
+        enriched_node = self._get_enriched_node(result=result)
+        return (enriched_node.uuid, diff_rel_name)
 
     def _deserialize_diff_root(self, result: QueryResult) -> None:
         root_key = self._get_root_key(result=result)
@@ -243,3 +260,21 @@ class EnrichedDiffDeserializer:
         enriched_attr = self._get_enriched_attr(result=result)
         enriched_attr.properties.append(enriched_property)
         self._diff_prop_map[attr_property_key] = enriched_property
+
+    def _deserialize_diff_relationship(self, result: QueryResult) -> None:
+        rel_key = self._get_relationship_key(result=result)
+        if rel_key is None:
+            return
+        if rel_key in self._diff_node_rel_map:
+            return
+
+        diff_rel_node = result.get_node("diff_relationship")
+        diff_relationship = EnrichedDiffRelationship(
+            name=str(diff_rel_node.get("name")),
+            changed_at=Timestamp(str(diff_rel_node.get("changed_at"))),
+            action=DiffAction(str(diff_rel_node.get("action"))),
+        )
+        self._diff_node_rel_map[rel_key] = diff_relationship
+        enriched_node = self._get_enriched_node(result=result)
+        enriched_node.relationships.append(diff_relationship)
+        return
