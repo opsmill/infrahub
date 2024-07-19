@@ -1828,12 +1828,12 @@ pytest = {version = "*", optional = true}
 pyyaml = {version = "^6", optional = true}
 rich = {version = "^13", optional = true}
 toml = {version = "^0.10", optional = true}
-typer = {version = "^0", optional = true}
+typer = {version = "^0.12.3", optional = true}
 ujson = "^5"
 
 [package.extras]
-all = ["Jinja2 (>=3,<4)", "numpy (>=1.24.2,<2.0.0)", "numpy (>=1.26.2,<2.0.0)", "pyarrow (>=14,<15)", "pytest", "pyyaml (>=6,<7)", "rich (>=13,<14)", "toml (>=0.10,<0.11)", "typer (>=0,<1)"]
-ctl = ["Jinja2 (>=3,<4)", "numpy (>=1.24.2,<2.0.0)", "numpy (>=1.26.2,<2.0.0)", "pyarrow (>=14,<15)", "pyyaml (>=6,<7)", "rich (>=13,<14)", "toml (>=0.10,<0.11)", "typer (>=0,<1)"]
+all = ["Jinja2 (>=3,<4)", "numpy (>=1.24.2,<2.0.0)", "numpy (>=1.26.2,<2.0.0)", "pyarrow (>=14,<15)", "pytest", "pyyaml (>=6,<7)", "rich (>=13,<14)", "toml (>=0.10,<0.11)", "typer (>=0.12.3,<0.13.0)"]
+ctl = ["Jinja2 (>=3,<4)", "numpy (>=1.24.2,<2.0.0)", "numpy (>=1.26.2,<2.0.0)", "pyarrow (>=14,<15)", "pyyaml (>=6,<7)", "rich (>=13,<14)", "toml (>=0.10,<0.11)", "typer (>=0.12.3,<0.13.0)"]
 tests = ["Jinja2 (>=3,<4)", "pytest", "pyyaml (>=6,<7)", "rich (>=13,<14)"]
 
 [package.source]
@@ -4383,20 +4383,6 @@ shellingham = ">=1.3.0"
 typing-extensions = ">=3.7.4.3"
 
 [[package]]
-name = "typer-cli"
-version = "0.12.3"
-description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "typer_cli-0.12.3-py3-none-any.whl", hash = "sha256:33ee23585e3013804354e0db21b06880960056c6a52012bdaba62dbf6e9e46ed"},
-    {file = "typer_cli-0.12.3.tar.gz", hash = "sha256:1f66684489ea15b08f613d76948c4f99d6b69c69de47010bbc0032d9de4d45b5"},
-]
-
-[package.dependencies]
-typer = "0.12.3"
-
-[[package]]
 name = "types-python-slugify"
 version = "8.0.2.20240310"
 description = "Typing stubs for python-slugify"
@@ -5128,4 +5114,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "7076dbde36634bbaaf935219f945ecddab717ba4326c0e39353bc66a6819fb13"
+content-hash = "935c5560e88059897ddb9d4a1fefb4ee2a67745524c0543b8a5f791b0adbc634"
