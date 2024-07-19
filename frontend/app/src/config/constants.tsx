@@ -1,4 +1,3 @@
-
 export const DEFAULT_BRANCH_NAME = "main";
 
 export const ACCESS_TOKEN_KEY = "access_token";

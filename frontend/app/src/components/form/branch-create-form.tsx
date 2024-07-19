@@ -46,7 +46,12 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
       className="p-2"
       onCancel={onCancel}
       onSubmit={async (data) => {
-        await handleSubmit(data as BranchFormData);
+        const branchData: BranchFormData = {
+          name: data.name.value as string,
+          description: data.description.value as string | undefined,
+          sync_with_git: !!data.sync_with_git.value,
+        };
+        await handleSubmit(branchData);
       }}
       submitLabel="Create a new branch"
       fields={[
@@ -68,7 +73,7 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
           name: "sync_with_git",
           label: "Sync with Git",
           type: "Checkbox",
-          defaultValue: false,
+          defaultValue: { source: null, value: false },
         },
       ]}
     />

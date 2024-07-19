@@ -461,8 +461,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               options,
             },
           ]}
-          onSubmit={async (data) => {
-            await handleSubmit(data);
+          onSubmit={async ({ relation }) => {
+            await handleSubmit({ relation: relation.value });
           }}
           onCancel={() => {
             setShowAddDrawer(false);

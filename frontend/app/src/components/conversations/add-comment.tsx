@@ -38,8 +38,11 @@ export const AddComment = ({ onSubmit, onCancel }: tAddComment) => {
       <DynamicForm
         fields={fields}
         onCancel={onCancel}
-        onSubmit={async (data) => {
-          await onSubmit(data as CommentFormData);
+        onSubmit={async ({ comment }) => {
+          const commentFormData: CommentFormData = {
+            comment: comment.value as string,
+          };
+          await onSubmit(commentFormData);
         }}
         submitLabel="Comment"
       />

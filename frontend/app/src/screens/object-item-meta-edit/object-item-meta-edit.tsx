@@ -10,6 +10,8 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 import DynamicForm from "@/components/form/dynamic-form";
+import { mapValues } from "remeda";
+
 interface Props {
   row: any;
   schema: iNodeSchema;
@@ -114,8 +116,8 @@ export default function ObjectItemMetaEdit(props: Props) {
           },
         ]}
         onCancel={closeDrawer}
-        onSubmit={async (data: any) => {
-          await onSubmit(data);
+        onSubmit={async (data) => {
+          await onSubmit(mapValues(data, (fieldData) => fieldData?.value));
         }}
         className="w-full p-4"
       />
