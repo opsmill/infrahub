@@ -2,6 +2,7 @@ import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Input, InputProps } from "@/components/ui/input";
 import { FormFieldProps } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface InputFieldProps
   extends FormFieldProps,
@@ -23,9 +24,8 @@ const InputField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        // Not passing "value" is needed to prevent error on uncontrolled component
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
-        const { value, onChange, ...fieldMethodsWithoutValue } = field;
+        const fieldData = field.value;
+
         return (
           <div className="relative mb-2 flex flex-col">
             <LabelFormField
@@ -37,14 +37,18 @@ const InputField = ({
 
             <FormInput>
               <Input
-                {...fieldMethodsWithoutValue}
-                {...props}
+                {...field}
+                {...field}
+                value={fieldData?.value ?? ""}
                 onChange={(event) => {
-                  onChange(
-                    props.type === "number" ? event.target.valueAsNumber : event.target.value
+                  field.onChange(
+                    updateFormFieldValue(
+                      props.type === "number" ? event.target.valueAsNumber : event.target.value,
+                      defaultValue
+                    )
                   );
                 }}
-                value={value ?? ""}
+                {...props}
               />
             </FormInput>
             <FormMessage />

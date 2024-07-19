@@ -1,5 +1,7 @@
 import { FieldSchema, AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { ProfileData } from "@/components/form/object-form";
+import { FormAttributeValue } from "@/components/form/type";
+import { prop, sortBy } from "remeda";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
@@ -13,43 +15,64 @@ export const getFieldDefaultValue = ({
   initialObject,
   profiles = [],
   isFilterForm,
-}: GetFieldDefaultValue) => {
+}: GetFieldDefaultValue): FormAttributeValue => {
   // Do not use profiles nor default values in filters
   if (isFilterForm) {
-    return getCurrentFieldValue(fieldSchema.name, initialObject);
+    return getCurrentFieldValue(fieldSchema.name, initialObject) ?? { source: null, value: null };
   }
 
   return (
     getCurrentFieldValue(fieldSchema.name, initialObject) ??
-    getDefaultValueFromProfile(fieldSchema.name, profiles) ??
-    getDefaultValueFromSchema(fieldSchema) ??
-    null
+    getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
+    getDefaultValueFromSchema(fieldSchema) ?? { source: null, value: null }
   );
 };
 
-const getCurrentFieldValue = (fieldName: string, objectData?: Record<string, AttributeType>) => {
+const getCurrentFieldValue = (
+  fieldName: string,
+  objectData?: Record<string, AttributeType>
+): FormAttributeValue | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
   if (!currentField) return null;
 
-  return currentField.is_from_profile ? null : currentField.value;
+  return currentField.is_from_profile
+    ? null
+    : { source: { type: "user" }, value: currentField.value };
 };
 
-const getDefaultValueFromProfile = (fieldName: string, profiles: Array<ProfileData>) => {
+const getDefaultValueFromProfiles = (
+  fieldName: string,
+  profiles: Array<ProfileData>
+): FormAttributeValue | null => {
   // Get value from profiles depending on the priority
-  const orderedProfiles = profiles.sort((optionA, optionB) => {
-    if (optionA.profile_priority.value < optionB.profile_priority.value) return -1;
-    return 1;
-  });
+  const orderedProfiles = sortBy(profiles, prop("profile_priority.value"), prop("id"));
 
-  return orderedProfiles.find((profile) => profile?.[fieldName]?.value)?.[fieldName]?.value;
+  const profileWithDefaultValueForField = orderedProfiles.find((profile) => profile?.[fieldName]);
+  if (!profileWithDefaultValueForField) return null;
+
+  return {
+    source: {
+      type: "profile",
+      label: profileWithDefaultValueForField.display_label,
+    },
+    value: profileWithDefaultValueForField[fieldName].value,
+  };
 };
 
-const getDefaultValueFromSchema = (fieldSchema: FieldSchema) => {
+const getDefaultValueFromSchema = (fieldSchema: FieldSchema): FormAttributeValue | null => {
   if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
-    return !!fieldSchema.default_value;
+    return {
+      source: typeof fieldSchema.default_value === "boolean" ? { type: "schema" } : null,
+      value: !!fieldSchema.default_value,
+    };
   }
 
-  return "default_value" in fieldSchema ? fieldSchema.default_value : null;
+  return "default_value" in fieldSchema
+    ? {
+        source: { type: "schema" },
+        value: fieldSchema.default_value as FormAttributeValue["value"],
+      }
+    : null;
 };

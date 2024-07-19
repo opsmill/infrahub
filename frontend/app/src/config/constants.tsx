@@ -1,4 +1,3 @@
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 
 export const DEFAULT_BRANCH_NAME = "main";
 
@@ -164,7 +163,7 @@ export const SCHEMA_ATTRIBUTE_KIND = {
   JSON: "JSON",
   ANY: "Any",
   BOOLEAN: "Boolean",
-} satisfies Record<string, SchemaAttributeType>;
+} as const;
 
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 

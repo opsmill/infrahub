@@ -1,13 +1,8 @@
 import { focusStyle } from "@/components/ui/style";
 import { classNames } from "@/utils/common";
-import { ChangeEventHandler, forwardRef } from "react";
+import { forwardRef, InputHTMLAttributes } from "react";
 
-type CheckboxProps = {
-  checked?: boolean;
-  onChange?: ChangeEventHandler;
-  disabled?: boolean;
-  id?: string;
-};
+interface CheckboxProps extends InputHTMLAttributes<HTMLInputElement> {}
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref) => {
   const { onChange, disabled, ...propsToPass } = props;

@@ -47,27 +47,42 @@ const DynamicForm = ({ fields, onCancel, submitLabel, ...props }: DynamicFormPro
 };
 
 const DynamicInput = (props: DynamicFieldProps) => {
-  const { type, ...otherProps } = props;
-  switch (type) {
-    case SCHEMA_ATTRIBUTE_KIND.DATETIME:
+  switch (props.type) {
+    case SCHEMA_ATTRIBUTE_KIND.DATETIME: {
+      const { type, ...otherProps } = props;
       return <DatetimeField {...otherProps} />;
-    case SCHEMA_ATTRIBUTE_KIND.COLOR:
+    }
+    case SCHEMA_ATTRIBUTE_KIND.COLOR: {
+      const { type, ...otherProps } = props;
       return <ColorField {...otherProps} />;
+    }
     case SCHEMA_ATTRIBUTE_KIND.BOOLEAN:
-    case SCHEMA_ATTRIBUTE_KIND.CHECKBOX:
+    case SCHEMA_ATTRIBUTE_KIND.CHECKBOX: {
+      const { type, ...otherProps } = props;
       return <CheckboxField {...otherProps} />;
-    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN:
-      return <DropdownField {...(otherProps as Omit<typeof props, "type">)} />;
-    case SCHEMA_ATTRIBUTE_KIND.JSON:
+    }
+    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
+      const { type, ...otherProps } = props;
+      return <DropdownField {...otherProps} />;
+    }
+    case SCHEMA_ATTRIBUTE_KIND.JSON: {
+      const { type, ...otherProps } = props;
       return <JsonField {...otherProps} />;
-    case SCHEMA_ATTRIBUTE_KIND.LIST:
+    }
+    case SCHEMA_ATTRIBUTE_KIND.LIST: {
+      const { type, ...otherProps } = props;
       return <ListField {...otherProps} />;
+    }
     case SCHEMA_ATTRIBUTE_KIND.BANDWIDTH:
-    case SCHEMA_ATTRIBUTE_KIND.NUMBER:
+    case SCHEMA_ATTRIBUTE_KIND.NUMBER: {
+      const { type, ...otherProps } = props;
       return <InputField {...otherProps} type="number" />;
+    }
     case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
-    case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD:
+    case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD: {
+      const { type, ...otherProps } = props;
       return <PasswordInputField {...otherProps} />;
+    }
     case SCHEMA_ATTRIBUTE_KIND.ANY:
     case SCHEMA_ATTRIBUTE_KIND.EMAIL:
     case SCHEMA_ATTRIBUTE_KIND.FILE:
@@ -76,17 +91,25 @@ const DynamicInput = (props: DynamicFieldProps) => {
     case SCHEMA_ATTRIBUTE_KIND.IP_NETWORK:
     case SCHEMA_ATTRIBUTE_KIND.MAC_ADDRESS:
     case SCHEMA_ATTRIBUTE_KIND.TEXT:
-    case SCHEMA_ATTRIBUTE_KIND.URL:
+    case SCHEMA_ATTRIBUTE_KIND.URL: {
+      const { type, ...otherProps } = props;
       return <InputField {...otherProps} />;
-    case SCHEMA_ATTRIBUTE_KIND.TEXTAREA:
+    }
+    case SCHEMA_ATTRIBUTE_KIND.TEXTAREA: {
+      const { type, ...otherProps } = props;
       return <TextareaField {...otherProps} />;
-    case "enum":
-      return <EnumField {...(otherProps as Omit<typeof props, "type">)} />;
-    case "relationship":
+    }
+    case "enum": {
+      const { type, ...otherProps } = props;
+      return <EnumField {...otherProps} />;
+    }
+    case "relationship": {
       return <RelationshipField {...props} />;
-    default:
-      warnUnexpectedType(type);
+    }
+    default: {
+      warnUnexpectedType(props);
       return null;
+    }
   }
 };
 

@@ -11,7 +11,6 @@ import { Combobox, tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Label from "@/components/ui/label";
 import { gql } from "@apollo/client";
-import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -26,8 +25,13 @@ import { useAuth } from "@/hooks/useAuth";
 import useFilters from "@/hooks/useFilters";
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
 import { ProfilesSelector } from "@/components/form/profiles-selector";
+import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
+import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 
-export type ProfileData = Record<string, Pick<AttributeType, "value" | "__typename">>;
+export type ProfileData = Record<string, Pick<AttributeType, "value" | "__typename">> & {
+  display_label: string;
+  id: string;
+};
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
@@ -142,24 +146,31 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
   );
 };
 
+export type NodeFormSubmitParams = {
+  fields: Array<DynamicFieldProps>;
+  formData: Record<string, FormFieldValue>;
+  profiles: Array<ProfileData>;
+};
+
 type NodeFormProps = {
+  operation?: "create" | "update";
   className?: string;
   schema: iNodeSchema | IProfileSchema;
   profiles?: ProfileData[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   isFilterForm?: boolean;
-  onSubmit?: (data: any, profiles?: IProfileSchema[]) => void;
+  onSubmit?: (data: NodeFormSubmitParams) => void;
 };
 
 const NodeForm = ({
   className,
   currentObject,
   schema,
-  profiles,
+  profiles = [],
   onSuccess,
   isFilterForm,
-  onSubmit: onSubmitOverride,
+  onSubmit,
   ...props
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
@@ -176,9 +187,9 @@ const NodeForm = ({
     filters,
   });
 
-  async function onSubmit(data: any) {
+  async function onSubmitCreate(data: Record<string, FormFieldValue>) {
     try {
-      const newObject = getMutationDetailsFromFormData(schema, data, "create", null, profiles);
+      const newObject = getCreateMutationFromFormData(fields, data);
 
       if (!Object.keys(newObject).length) {
         return;
@@ -211,23 +222,17 @@ const NodeForm = ({
       });
 
       if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
     }
   }
 
-  const handleSubmit = (data: any) => {
-    if (onSubmitOverride) {
-      return onSubmitOverride(data, profiles);
-    }
-
-    return onSubmit(data);
-  };
-
   return (
     <DynamicForm
       fields={fields}
-      onSubmit={handleSubmit}
+      onSubmit={(formData: Record<string, FormFieldValue>) =>
+        onSubmit ? onSubmit({ formData, fields, profiles }) : onSubmitCreate(formData)
+      }
       className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
       {...props}
     />

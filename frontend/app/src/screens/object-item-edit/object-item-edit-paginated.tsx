@@ -9,20 +9,15 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import {
-  IProfileSchema,
-  genericsState,
-  profilesAtom,
-  schemaState,
-} from "@/state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { getObjectAttributes, getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
-import ObjectForm from "@/components/form/object-form";
+import ObjectForm, { NodeFormSubmitParams } from "@/components/form/object-form";
+import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 
 interface Props {
   objectname: string;
@@ -91,14 +86,8 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge) => edge?.node) ?? [];
 
-  async function onSubmit(data: any, profiles?: IProfileSchema[]) {
-    const updatedObject = getMutationDetailsFromFormData(
-      schema,
-      data,
-      "update",
-      objectDetailsData,
-      objectProfiles
-    );
+  async function onSubmit({ fields, formData, profiles }: NodeFormSubmitParams) {
+    const updatedObject = getUpdateMutationFromFormData({ formData, fields });
 
     if (Object.keys(updatedObject).length) {
       const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];

@@ -2,6 +2,7 @@ import { SelectOption } from "@/components/inputs/select";
 import { components } from "@/infraops";
 import { RegisterOptions } from "react-hook-form";
 import { FormFieldError } from "./form";
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 
 // Interface for every field in a create/edit form
 export interface DynamicFieldData {
@@ -29,27 +30,7 @@ export interface DynamicFieldData {
 
 // Different values for "kind" property of each attribute in the schema
 export type SchemaAttributeType =
-  | "ID"
-  | "Text"
-  | "Number"
-  | "TextArea"
-  | "DateTime"
-  | "Email"
-  | "Password"
-  | "HashedPassword"
-  | "URL"
-  | "File"
-  | "MacAddress"
-  | "Color"
-  | "Bandwidth"
-  | "IPHost"
-  | "IPNetwork"
-  | "Checkbox"
-  | "List"
-  | "Any"
-  | "Boolean"
-  | "JSON"
-  | "Dropdown";
+  (typeof SCHEMA_ATTRIBUTE_KIND)[keyof typeof SCHEMA_ATTRIBUTE_KIND];
 
 // Different kind of form inputs
 export type ControlType =

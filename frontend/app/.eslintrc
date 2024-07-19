@@ -55,17 +55,20 @@
       0
     ],
     "react/react-in-jsx-scope": "off",
-    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
+    ],
     "unused-imports/no-unused-imports-ts": 2,
     "semi": "error",
     "no-trailing-spaces": "error"
-    // "indent": [
-    //   "error",
-    //   2,
-    //   {
-    //     "SwitchCase": 1,
-    //     "MemberExpression": 2
-    //   }
-    // ]
   }
 }

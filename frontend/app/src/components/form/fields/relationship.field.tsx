@@ -5,8 +5,13 @@ import { store } from "@/state";
 import { genericsState, IModelSchema, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Select, SelectOption } from "@/components/inputs/select";
-import { DynamicRelationshipFieldProps, FormFieldProps } from "@/components/form/type";
+import {
+  DynamicRelationshipFieldProps,
+  FormFieldProps,
+  FormRelationshipValue,
+} from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}
 
@@ -38,9 +43,9 @@ const RelationshipField = ({
     const schemaData = schemaList.find((schema) => schema.kind === selectedKind?.id);
     const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
 
-    const genericOptions = (generic.used_by || [])
+    const genericOptions: SelectOption[] = (generic.used_by || [])
       .map((name: string) => {
-        const relatedSchema = [...nodes, ...profiles].find((s: any) => s.kind === name);
+        const relatedSchema = [...nodes, ...profiles].find((s) => s.kind === name);
 
         if (relatedSchema) {
           return {
@@ -50,7 +55,7 @@ const RelationshipField = ({
           };
         }
       })
-      .filter(Boolean) as SelectOption[];
+      .filter((n) => !!n);
 
     const selectedKindOption = genericOptions?.find((option) => option.id === selectedKind?.id);
 
@@ -72,7 +77,6 @@ const RelationshipField = ({
           required={!!rules?.required}
           description={description}
         />
-
         <FormField
           key={`${name}_1`}
           name={name}
@@ -146,6 +150,8 @@ const RelationshipField = ({
             rules={rules}
             defaultValue={defaultValue}
             render={({ field }) => {
+              const fieldData: FormRelationshipValue = field.value;
+
               return (
                 <div className="relative flex flex-col mt-1">
                   <LabelFormField
@@ -159,9 +165,13 @@ const RelationshipField = ({
                   <FormInput>
                     <RelationshipInput
                       {...field}
+                      value={fieldData?.value}
+                      onChange={(newValue) => {
+                        field.onChange(updateFormFieldValue(newValue, defaultValue));
+                      }}
                       {...props}
                       options={[]}
-                      peer={selectedKind?.id}
+                      peer={selectedKind?.id?.toString()}
                       parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                       disabled={props.disabled || !selectedKind?.id}
                       multiple={relationship.cardinality === "many"}
@@ -191,7 +201,6 @@ const RelationshipField = ({
           description={description}
         />
       )}
-
       {parentRelationship && (
         <FormField
           key={`${name}_parent`}
@@ -208,7 +217,6 @@ const RelationshipField = ({
                   required={!!rules?.required}
                   variant="small"
                 />
-
                 <FormInput>
                   <RelationshipInput
                     {...field}
@@ -232,30 +240,25 @@ const RelationshipField = ({
         rules={rules}
         defaultValue={defaultValue}
         render={({ field }) => {
+          const fieldData = field.value;
+
           return (
             <div className="relative flex flex-col mt-1">
-              {parentRelationship && (
-                <LabelFormField
-                  label={label}
-                  unique={unique}
-                  required={!!rules?.required}
-                  description={description}
-                  variant="small"
-                />
-              )}
-
-              {!parentRelationship && (
-                <LabelFormField
-                  label={label}
-                  unique={unique}
-                  required={!!rules?.required}
-                  description={description}
-                />
-              )}
+              <LabelFormField
+                label={label}
+                unique={unique}
+                required={!!rules?.required}
+                description={description}
+                variant={parentRelationship && "small"}
+              />
 
               <FormInput>
                 <RelationshipInput
                   {...field}
+                  value={fieldData?.value}
+                  onChange={(newValue) => {
+                    field.onChange(updateFormFieldValue(newValue, defaultValue));
+                  }}
                   {...props}
                   peer={relationship?.peer}
                   parent={{ name: parentRelationship?.name, value: selectedParent?.id }}

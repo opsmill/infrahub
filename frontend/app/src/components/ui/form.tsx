@@ -20,7 +20,7 @@ import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
 
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: Record<string, unknown>) => Promise<void>;
+  onSubmit?: (v: Record<string, unknown>) => void;
   defaultValues?: Partial<Record<string, unknown>>;
 }
 
