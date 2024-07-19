@@ -15,6 +15,9 @@ export const GET_PREFIXES_ONLY = gql`
           children {
             count
           }
+          descendants {
+            count
+          }
         }
       }
     }
