@@ -9,6 +9,7 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ObjectForm from "@/components/form/object-form";
 import usePagination from "@/hooks/usePagination";
+import { mapValues } from "remeda";
 
 type tFilters = {
   schema: any;
@@ -158,7 +159,9 @@ export const Filters = (props: tFilters) => {
         open={showFilters}
         setOpen={setShowFilters}>
         <ObjectForm
-          onSubmit={handleSubmit}
+          onSubmit={({ formData }) =>
+            handleSubmit(mapValues(formData, (fieldData) => fieldData?.value))
+          }
           kind={schema?.kind}
           isFilterForm
           submitLabel="Apply filters"

@@ -33,13 +33,13 @@ export type ProfileData = Record<string, Pick<AttributeType, "value" | "__typena
   id: string;
 };
 
-interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
+interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   currentProfiles?: ProfileData[];
   isFilterForm?: boolean;
-  onSubmit?: (data: any) => Promise<void>;
+  onSubmit?: (data: NodeFormSubmitParams) => void;
 }
 
 const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
