@@ -698,11 +698,11 @@ jobs:
       - name: Load Data
         run: invoke dev.load-infra-data
 
-      - name: Set infrahub address
-        run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
-
       - name: Git Repository
         run: invoke dev.infra-git-import dev.infra-git-create
+
+      - name: Set infrahub address
+        run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
         run: npm install
