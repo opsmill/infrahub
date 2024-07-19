@@ -129,3 +129,10 @@ Define default env variables if required.
   value: "{{ .Values.redis.master.service.ports.redis }}"
 {{- end }}
 {{- end }}
+
+{{- define "infrahub-helm.emma.defaultEnv" -}}
+{{- if not .Values.emma.env.INFRAHUB_ADDRESS }}
+- name: INFRAHUB_ADDRESS
+  value: http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000
+{{- end }}
+{{- end }}

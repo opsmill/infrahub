@@ -159,3 +159,12 @@ nats:
   config:
     jetstream:
       enabled: true
+
+# -------------- Emma ---------------
+emma:
+  env:
+    STREAMLIT_SERVER_BASE_URL_PATH: /emma
+  ports:
+    - name: "interface"
+      port: 8501
+      targetPort: 8501

@@ -27,6 +27,15 @@ spec:
                 name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
                 port:
                   number: {{ (index .Values.infrahubServer.ports 0).port }}
+          {{- if .Values.emma.enabled }}
+          - path: {{ .Values.emma.env.STREAMLIT_SERVER_BASE_URL_PATH }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "infrahub-helm.fullname" . }}-emma
+                port:
+                  number: {{ (index .Values.emma.ports 0).port }}
+          {{- end }}
   {{- if or .Values.infrahubServer.ingress.tls .Values.infrahubServer.ingress.extraTls }}
   tls:
     {{- if .Values.infrahubServer.ingress.tls }}
