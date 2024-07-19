@@ -1,6 +1,6 @@
 import { Avatar } from "@/components/display/avatar";
 import { Tabs } from "@/components/tabs";
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCOUNT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
 import useQuery from "@/hooks/useQuery";
@@ -9,7 +9,6 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { schemaState } from "@/state/atoms/schema.atom";
-import { parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -17,6 +16,7 @@ import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
 import TabTokens from "./tab-tokens";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const PROFILE_TABS = {
   PROFILE: "profile",
@@ -56,13 +56,9 @@ export function UserProfilePage() {
   const schemaList = useAtomValue(schemaState);
   useTitle("Profile");
 
+  const auth = useAuth();
+
   const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
-
-  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-
-  const tokenData = parseJwt(localToken);
-
-  const accountId = tokenData?.sub;
 
   const queryString = schema
     ? getProfileDetails({
@@ -77,7 +73,11 @@ export function UserProfilePage() {
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
-  const { loading, data, error } = useQuery(query, { skip: !schema || !accountId });
+  const { loading, data, error } = useQuery(query, {
+    skip: !schema || !auth.isAuthenticated,
+  });
+
+  const profile = data?.AccountProfile;
 
   if (error) {
     return <ErrorScreen />;
@@ -87,10 +87,9 @@ export function UserProfilePage() {
     return <LoadingScreen />;
   }
 
-  const profile = data?.AccountProfile;
-
-  if (!profile) {
+  if (!profile || !auth.isAuthenticated) {
     navigate("/");
+    return;
   }
 
   return (
@@ -109,7 +108,7 @@ export function UserProfilePage() {
         }
       />
 
-      <div className="sticky top-0 shadow-sm">
+      <div className="top-0 shadow-sm">
         <Tabs tabs={tabs} />
       </div>
 

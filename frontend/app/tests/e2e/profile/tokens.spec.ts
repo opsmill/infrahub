@@ -15,7 +15,7 @@ test.describe("/profile?tab=tokens", () => {
       await page.goto("/");
       await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.goto("/profile?tab=tokens");
-      await expect(page.getByText("This operation requires")).toBeVisible();
+      await expect(page.getByText("Welcome to Infrahub")).toBeVisible();
     });
   });
 
