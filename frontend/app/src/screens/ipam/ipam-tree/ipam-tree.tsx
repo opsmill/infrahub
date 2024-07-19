@@ -20,16 +20,20 @@ import {
   updateTreeData,
 } from "./utils";
 import { Badge } from "@/components/ui/badge";
+import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
+import { debounce } from "@/utils/common";
 
 export default function IpamTree({ className }: { className?: string }) {
   const { prefix } = useParams();
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
-  const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
-  const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useAtom(ipamTreeAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
-  const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
+  const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
+  const [isLoading, setLoading] = useState(true);
+  const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds?: string[]; search?: string }>(
+    GET_PREFIXES_ONLY
+  );
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,6 +49,14 @@ export default function IpamTree({ className }: { className?: string }) {
     });
   }, [namespace, defaultIpNamespace]);
 
+  const handleNodeSelect = ({ element, isSelected }) => {
+    if (!isSelected) return;
+
+    const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+
+    navigate(url);
+  };
+
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
 
@@ -57,6 +69,21 @@ export default function IpamTree({ className }: { className?: string }) {
     const treeNodes = formatIPPrefixResponseForTreeView(data);
     setTreeData((tree) => updateTreeData(tree, element.id.toString(), treeNodes));
   };
+
+  const handleSearch: SearchInputProps["onChange"] = async (e) => {
+    const value = e.target.value as string;
+
+    const { data } = await fetchPrefixes({
+      variables: { search: value },
+    });
+
+    if (!data) return;
+
+    const treeNodes = formatIPPrefixResponseForTreeView(data);
+    console.log("treeNodes: ", treeNodes);
+  };
+
+  const debouncedHandleSearch = debounce(handleSearch, 500);
 
   return (
     <Tree
