@@ -19,6 +19,7 @@ import {
   getTreeItemAncestors,
   updateTreeData,
 } from "./utils";
+import { Badge } from "@/components/ui/badge";
 
 export default function IpamTree() {
   const { prefix } = useParams();
@@ -93,6 +94,7 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
       data-testid="ipam-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span className="truncate">{element.name}</span>
+      <Badge>{element.metadata?.descendants}</Badge>
     </Link>
   );
 };
