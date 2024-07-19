@@ -60,6 +60,12 @@ class EnrichedDiffSaveQuery(Query):
         UNWIND node_relationship.relationships as node_single_relationship
         CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_relationship_element:DiffRelationshipElement)
         SET diff_relationship_element = node_single_relationship.node_properties
+
+        // node relationship properties
+        WITH diff_root, diff_node, node_map, diff_relationship, node_relationship, diff_relationship_element, node_single_relationship
+        UNWIND node_single_relationship.properties as node_relationship_property
+        CREATE (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(diff_relationship_property:DiffProperty)
+        SET diff_relationship_property = node_relationship_property.node_properties
         """
         self.add_to_query(query=query)
         self.return_labels = ["diff_root.uuid"]

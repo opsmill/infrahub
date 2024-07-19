@@ -81,21 +81,35 @@ class TestDiffRepository:
             changed_at=Timestamp(self.updated_attr_change_time),
             action=DiffAction.UPDATED,
         )
-        self.updated_rel_group_1_rel_change_time = DateTime(2024, 6, 15, 18, 36, 2, tzinfo=UTC)
-        self.updated_rel_group_1_rel_peer_id = str(uuid4())
-        self.updated_rel_group_1_rel = EnrichedDiffSingleRelationship(
-            changed_at=Timestamp(self.updated_rel_group_1_rel_change_time),
+
+        self.updated_rel_group_1_elem_property_type = "HAS_OWNER"
+        self.updated_rel_group_1_elem_property_change_time = DateTime(2024, 6, 15, 18, 36, 2, tzinfo=UTC)
+        self.updated_rel_group_1_elem_property_previous_value = str(uuid4())
+        self.updated_rel_group_1_elem_property_new_value = str(uuid4())
+        self.updated_rel_group_1_elem_owner_property = EnrichedDiffProperty(
+            property_type=self.updated_rel_group_1_elem_property_type,
+            changed_at=Timestamp(self.updated_rel_group_1_elem_property_change_time),
+            previous_value=self.updated_rel_group_1_elem_property_previous_value,
+            new_value=self.updated_rel_group_1_elem_property_new_value,
             action=DiffAction.UPDATED,
-            peer_id=self.updated_rel_group_1_rel_peer_id,
             conflict=None,
         )
-        self.updated_rel_group_change_time = self.updated_rel_group_1_rel_change_time
+        self.updated_rel_group_1_elem_change_time = self.updated_rel_group_1_elem_property_change_time
+        self.updated_rel_group_1_elem_peer_id = str(uuid4())
+        self.updated_rel_group_1_elem = EnrichedDiffSingleRelationship(
+            changed_at=Timestamp(self.updated_rel_group_1_elem_change_time),
+            action=DiffAction.UPDATED,
+            peer_id=self.updated_rel_group_1_elem_peer_id,
+            properties=[self.updated_rel_group_1_elem_owner_property],
+            conflict=None,
+        )
+        self.updated_rel_group_change_time = self.updated_rel_group_1_elem_change_time
         self.updated_rel_group_name = "first_relationship"
         self.updated_rel_group = EnrichedDiffRelationship(
             name=self.updated_rel_group_name,
             changed_at=Timestamp(self.updated_rel_group_change_time),
             action=DiffAction.UPDATED,
-            relationships=[self.updated_rel_group_1_rel],
+            relationships=[self.updated_rel_group_1_elem],
         )
 
     async def test_get_non_existent_diff(self, diff_repository: DiffRepository):
@@ -160,9 +174,20 @@ class TestDiffRepository:
         assert updated_rel_group.changed_at.obj == self.updated_rel_group_change_time
         assert updated_rel_group.action is DiffAction.UPDATED
         assert len(updated_rel_group.relationships) == 1
-        updated_rel_group_1_rel = updated_rel_group.relationships[0]
-        assert updated_rel_group_1_rel.changed_at.obj == self.updated_rel_group_1_rel_change_time
-        assert updated_rel_group_1_rel.peer_id == self.updated_rel_group_1_rel_peer_id
-        assert updated_rel_group_1_rel.conflict is None
-        assert len(updated_rel_group_1_rel.properties) == 0
+        updated_rel_group_1_elem = updated_rel_group.relationships[0]
+        assert updated_rel_group_1_elem.changed_at.obj == self.updated_rel_group_1_elem_change_time
+        assert updated_rel_group_1_elem.peer_id == self.updated_rel_group_1_elem_peer_id
+        assert updated_rel_group_1_elem.conflict is None
+        assert len(updated_rel_group_1_elem.properties) == 1
+        updated_rel_group_1_elem_property = updated_rel_group_1_elem.properties[0]
+        assert updated_rel_group_1_elem_property.property_type == self.updated_rel_group_1_elem_property_type
+        assert updated_rel_group_1_elem_property.changed_at.obj == self.updated_rel_group_1_elem_property_change_time
+        assert updated_rel_group_1_elem_property.previous_value == self.updated_rel_group_1_elem_property_previous_value
+        assert updated_rel_group_1_elem_property.new_value == self.updated_rel_group_1_elem_property_new_value
+        assert updated_rel_group_1_elem_property.action == DiffAction.UPDATED
+        assert updated_rel_group_1_elem_property.conflict is None
         assert len(updated_rel_group.nodes) == 0
+
+        # relationship element property
+        # conflict
+        # node parents

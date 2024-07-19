@@ -1,5 +1,7 @@
 from typing import Any, Iterable
 
+from neo4j.graph import Node as Neo4jNode
+
 from infrahub.core.constants import DiffAction
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
@@ -122,7 +124,7 @@ class EnrichedDiffDeserializer:
         self._diff_node_attr_map: dict[tuple[str, str], EnrichedDiffAttribute] = {}
         self._diff_node_rel_group_map: dict[tuple[str, str], EnrichedDiffRelationship] = {}
         self._diff_node_rel_element_map: dict[tuple[str, str, str], EnrichedDiffSingleRelationship] = {}
-        self._diff_prop_map: dict[tuple[str, str, str], EnrichedDiffProperty] = {}
+        self._diff_prop_map: dict[tuple[str, str, str] | tuple[str, str, str, str], EnrichedDiffProperty] = {}
 
     async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
         for result in database_results:
@@ -133,6 +135,7 @@ class EnrichedDiffDeserializer:
 
             self._deserialize_diff_relationship_group(result=result)
             self._deserialize_diff_relationship_element(result=result)
+            self._deserialize_diff_relationship_element_property(result=result)
 
         return list(self._diff_root_map.values())
 
@@ -198,6 +201,22 @@ class EnrichedDiffDeserializer:
         enriched_rel_group = self._get_enriched_rel_group(result=result)
         return (enriched_node.uuid, enriched_rel_group.name, diff_element_peer_id)
 
+    def _get_enriched_rel_element(self, result: QueryResult) -> EnrichedDiffSingleRelationship:
+        rel_element_key = self._get_rel_element_key(result=result)
+        if not rel_element_key:
+            raise IndexError(f"No relationship element for {rel_element_key}")
+        return self._diff_node_rel_element_map[rel_element_key]
+
+    def _get_relationship_property_key(self, result: QueryResult) -> tuple[str, str, str, str] | None:
+        diff_rel_prop_node = result.get("diff_rel_property")
+        if not diff_rel_prop_node:
+            return None
+        diff_prop_type = str(diff_rel_prop_node.get("property_type"))
+        enriched_node = self._get_enriched_node(result=result)
+        enriched_rel_group = self._get_enriched_rel_group(result=result)
+        enriched_rel_element = self._get_enriched_rel_element(result=result)
+        return (enriched_node.uuid, enriched_rel_group.name, enriched_rel_element.peer_id, diff_prop_type)
+
     def _deserialize_diff_root(self, result: QueryResult) -> None:
         root_key = self._get_root_key(result=result)
         if root_key in self._diff_root_map:
@@ -254,31 +273,6 @@ class EnrichedDiffDeserializer:
         enriched_node.attributes.append(diff_attribute)
         return
 
-    def _deserialize_diff_attr_property(self, result: QueryResult) -> None:
-        attr_property_key = self._get_attribute_property_key(result=result)
-        if attr_property_key is None:
-            return
-        if attr_property_key in self._diff_prop_map:
-            return
-
-        diff_attr_prop_node = result.get_node("diff_attr_property")
-
-        previous_value_raw = diff_attr_prop_node.get("previous_value")
-        previous_value = str(previous_value_raw) if previous_value_raw is not None else None
-        new_value_raw = diff_attr_prop_node.get("new_value")
-        new_value = str(new_value_raw) if new_value_raw is not None else None
-        enriched_property = EnrichedDiffProperty(
-            property_type=str(diff_attr_prop_node.get("property_type")),
-            changed_at=Timestamp(str(diff_attr_prop_node.get("changed_at"))),
-            previous_value=previous_value,
-            new_value=new_value,
-            action=DiffAction(str(diff_attr_prop_node.get("action"))),
-            conflict=None,
-        )
-        enriched_attr = self._get_enriched_attr(result=result)
-        enriched_attr.properties.append(enriched_property)
-        self._diff_prop_map[attr_property_key] = enriched_property
-
     def _deserialize_diff_relationship_group(self, result: QueryResult) -> None:
         rel_key = self._get_relationship_group_key(result=result)
         if rel_key is None:
@@ -315,3 +309,45 @@ class EnrichedDiffDeserializer:
         enriched_rel_group = self._get_enriched_rel_group(result=result)
         enriched_rel_group.relationships.append(enriched_rel_element)
         self._diff_node_rel_element_map[rel_element_key] = enriched_rel_element
+
+    def _property_node_to_enriched_property(self, property_node: Neo4jNode) -> EnrichedDiffProperty:
+        previous_value_raw = property_node.get("previous_value")
+        previous_value = str(previous_value_raw) if previous_value_raw is not None else None
+        new_value_raw = property_node.get("new_value")
+        new_value = str(new_value_raw) if new_value_raw is not None else None
+        return EnrichedDiffProperty(
+            property_type=str(property_node.get("property_type")),
+            changed_at=Timestamp(str(property_node.get("changed_at"))),
+            previous_value=previous_value,
+            new_value=new_value,
+            action=DiffAction(str(property_node.get("action"))),
+            conflict=None,
+        )
+
+    def _deserialize_diff_attr_property(self, result: QueryResult) -> None:
+        attr_property_key = self._get_attribute_property_key(result=result)
+        if attr_property_key is None:
+            return
+        if attr_property_key in self._diff_prop_map:
+            return
+
+        diff_attr_prop_node = result.get_node("diff_attr_property")
+
+        enriched_property = self._property_node_to_enriched_property(property_node=diff_attr_prop_node)
+        enriched_attr = self._get_enriched_attr(result=result)
+        enriched_attr.properties.append(enriched_property)
+        self._diff_prop_map[attr_property_key] = enriched_property
+
+    def _deserialize_diff_relationship_element_property(self, result: QueryResult) -> None:
+        rel_property_key = self._get_relationship_property_key(result=result)
+        if rel_property_key is None:
+            return
+        if rel_property_key in self._diff_prop_map:
+            return
+
+        diff_rel_elem_prop_node = result.get_node("diff_rel_property")
+
+        enriched_property = self._property_node_to_enriched_property(property_node=diff_rel_elem_prop_node)
+        enriched_rel_element = self._get_enriched_rel_element(result=result)
+        enriched_rel_element.properties.append(enriched_property)
+        self._diff_prop_map[rel_property_key] = enriched_property
