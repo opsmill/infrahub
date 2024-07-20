@@ -2562,7 +2562,7 @@ async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_sch
 @pytest.fixture
 async def mock_core_schema_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = helper.schema_file(file_name="core_schema_01.json")
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response_text)
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=response_text)
     return httpx_mock
 
 
