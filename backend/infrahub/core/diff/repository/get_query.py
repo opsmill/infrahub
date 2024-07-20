@@ -164,21 +164,24 @@ class EnrichedDiffDeserializer:
 
     def _deserialize_relationships(self, result: QueryResult, enriched_node: EnrichedDiffNode) -> None:
         for relationship_result in result.get_nested_node_collection("diff_relationships"):
-            relationship_group_node, relationship_element_node, property_node, _ = relationship_result
+            group_node, element_node, property_node, conflict_node = relationship_result
             enriched_relationship_group = self._deserialize_diff_relationship_group(
-                relationship_group_node=relationship_group_node, enriched_node=enriched_node
+                relationship_group_node=group_node, enriched_node=enriched_node
             )
             enriched_relationship_element = self._deserialize_diff_relationship_element(
-                relationship_element_node=relationship_element_node,
+                relationship_element_node=element_node,
                 enriched_relationship_group=enriched_relationship_group,
                 enriched_node=enriched_node,
             )
-            self._deserialize_diff_relationship_element_property(
+            enriched_property = self._deserialize_diff_relationship_element_property(
                 relationship_element_property_node=property_node,
                 enriched_relationship_element=enriched_relationship_element,
                 enriched_relationship_group=enriched_relationship_group,
                 enriched_node=enriched_node,
             )
+            if conflict_node:
+                enriched_conflict = self._conflict_node_to_enriched_conflict(conflict_node=conflict_node)
+                enriched_property.conflict = enriched_conflict
 
     def _get_str_or_none_property_value(self, node: Neo4jNode, property_name: str) -> str | None:
         value_raw = node.get(property_name)

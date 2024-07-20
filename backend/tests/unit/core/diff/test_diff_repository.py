@@ -115,18 +115,37 @@ class TestDiffRepository:
             action=DiffAction.UPDATED,
             properties=[self.updated_attr_prop_1],
         )
-
+        self.updated_rel_group_1_owner_conflict_uuid = str(uuid4())
+        self.updated_rel_group_1_owner_conflict_base_branch_action = DiffAction.UPDATED
+        self.updated_rel_group_1_owner_conflict_base_branch_value = str(uuid4())
+        self.updated_rel_group_1_owner_conflict_base_branch_changed_at = DateTime(2024, 6, 15, 17, 23, 5, tzinfo=UTC)
+        self.updated_rel_group_1_owner_conflict_diff_branch_action = DiffAction.UPDATED
+        self.updated_rel_group_1_owner_conflict_diff_branch_value = str(uuid4())
+        self.updated_rel_group_1_owner_conflict_diff_branch_changed_at = DateTime(2024, 6, 15, 18, 36, 2, tzinfo=UTC)
+        self.updated_rel_group_1_owner_conflict_selected_branch = ConflictBranchChoice.BASE
+        self.updated_rel_group_1_owner_conflict = EnrichedDiffPropertyConflict(
+            uuid=self.updated_rel_group_1_owner_conflict_uuid,
+            base_branch_action=DiffAction(self.updated_rel_group_1_owner_conflict_base_branch_action),
+            base_branch_value=self.updated_rel_group_1_owner_conflict_base_branch_value,
+            base_branch_changed_at=Timestamp(self.updated_rel_group_1_owner_conflict_base_branch_changed_at),
+            diff_branch_action=DiffAction(self.updated_rel_group_1_owner_conflict_diff_branch_action),
+            diff_branch_value=self.updated_rel_group_1_owner_conflict_diff_branch_value,
+            diff_branch_changed_at=Timestamp(self.updated_rel_group_1_owner_conflict_diff_branch_changed_at),
+            selected_branch=self.updated_rel_group_1_owner_conflict_selected_branch,
+        )
         self.updated_rel_group_1_elem_property_type = "HAS_OWNER"
-        self.updated_rel_group_1_elem_property_change_time = DateTime(2024, 6, 15, 18, 36, 2, tzinfo=UTC)
+        self.updated_rel_group_1_elem_property_change_time = (
+            self.updated_rel_group_1_owner_conflict_diff_branch_changed_at
+        )
         self.updated_rel_group_1_elem_property_previous_value = str(uuid4())
-        self.updated_rel_group_1_elem_property_new_value = str(uuid4())
+        self.updated_rel_group_1_elem_property_new_value = self.updated_rel_group_1_owner_conflict_diff_branch_value
         self.updated_rel_group_1_elem_owner_property = EnrichedDiffProperty(
             property_type=self.updated_rel_group_1_elem_property_type,
             changed_at=Timestamp(self.updated_rel_group_1_elem_property_change_time),
             previous_value=self.updated_rel_group_1_elem_property_previous_value,
             new_value=self.updated_rel_group_1_elem_property_new_value,
             action=DiffAction.UPDATED,
-            conflict=None,
+            conflict=self.updated_rel_group_1_owner_conflict,
         )
         self.updated_rel_group_1_elem_change_time = self.updated_rel_group_1_elem_property_change_time
         self.updated_rel_group_1_elem_peer_id = str(uuid4())
@@ -242,10 +261,39 @@ class TestDiffRepository:
         assert updated_rel_group_1_elem_property.previous_value == self.updated_rel_group_1_elem_property_previous_value
         assert updated_rel_group_1_elem_property.new_value == self.updated_rel_group_1_elem_property_new_value
         assert updated_rel_group_1_elem_property.action == DiffAction.UPDATED
-        assert updated_rel_group_1_elem_property.conflict is None
+        assert updated_rel_group_1_elem_property.conflict is not None
+        updated_rel_group_1_elem_property_conflict = updated_rel_group_1_elem_property.conflict
+        assert updated_rel_group_1_elem_property_conflict.uuid == self.updated_rel_group_1_owner_conflict_uuid
+        assert (
+            updated_rel_group_1_elem_property_conflict.base_branch_action
+            == self.updated_rel_group_1_owner_conflict_base_branch_action
+        )
+        assert (
+            updated_rel_group_1_elem_property_conflict.base_branch_value
+            == self.updated_rel_group_1_owner_conflict_base_branch_value
+        )
+        assert (
+            updated_rel_group_1_elem_property_conflict.base_branch_changed_at.obj
+            == self.updated_rel_group_1_owner_conflict_base_branch_changed_at
+        )
+        assert (
+            updated_rel_group_1_elem_property_conflict.diff_branch_action
+            == self.updated_rel_group_1_owner_conflict_diff_branch_action
+        )
+        assert (
+            updated_rel_group_1_elem_property_conflict.diff_branch_value
+            == self.updated_rel_group_1_owner_conflict_diff_branch_value
+        )
+        assert (
+            updated_rel_group_1_elem_property_conflict.diff_branch_changed_at.obj
+            == self.updated_rel_group_1_owner_conflict_diff_branch_changed_at
+        )
+        assert (
+            updated_rel_group_1_elem_property_conflict.selected_branch
+            == self.updated_rel_group_1_owner_conflict_selected_branch
+        )
         assert len(updated_rel_group.nodes) == 0
 
-        # relationship conflict
         # node parents
         # multiples of everything
         # filtering
