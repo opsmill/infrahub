@@ -37,41 +37,47 @@ class EnrichedDiffSaveQuery(Query):
         CREATE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
         SET diff_node = node_map.node_properties
 
-        // node attributes
+        // attributes
         WITH diff_root, diff_node, node_map
-        UNWIND node_map.attributes AS node_attribute
-        CREATE (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
-        SET diff_attribute = node_attribute.node_properties
+        CALL {
+            WITH diff_node, node_map
+            UNWIND node_map.attributes AS node_attribute
+            CREATE (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
+            SET diff_attribute = node_attribute.node_properties
 
-        // node attribute properties
-        WITH diff_root, diff_node, diff_attribute, node_map, node_attribute
-        UNWIND node_attribute.properties AS attr_property
-        CREATE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty)
-        SET diff_attr_prop = attr_property.node_properties
-        // node attribute property conflicts
-        WITH diff_root, diff_node, diff_attribute, node_map, node_attribute, attr_property, diff_attr_prop
-        FOREACH (i in CASE WHEN attr_property.conflict IS NOT NULL THEN [1] ELSE [] END |
-            CREATE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attr_conflict:DiffConflict)
-            SET diff_attr_conflict = attr_property.conflict.node_properties
-        )
+            // node attribute properties
+            WITH diff_attribute, node_attribute
+            UNWIND node_attribute.properties AS attr_property
+            CREATE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty)
+            SET diff_attr_prop = attr_property.node_properties
+            // node attribute property conflicts
+            WITH node_attribute, attr_property, diff_attr_prop
+            FOREACH (i in CASE WHEN attr_property.conflict IS NOT NULL THEN [1] ELSE [] END |
+                CREATE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attr_conflict:DiffConflict)
+                SET diff_attr_conflict = attr_property.conflict.node_properties
+            )
+        }
 
-        // node relationship groups
+        // relationships
         WITH diff_root, diff_node, node_map
-        UNWIND node_map.relationships as node_relationship
-        CREATE (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
-        SET diff_relationship = node_relationship.node_properties
+        CALL {
+            WITH diff_node, node_map
+            UNWIND node_map.relationships as node_relationship
+            CREATE (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
+            SET diff_relationship = node_relationship.node_properties
 
-        // node single relationships
-        WITH diff_root, diff_node, node_map, diff_relationship, node_relationship
-        UNWIND node_relationship.relationships as node_single_relationship
-        CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_relationship_element:DiffRelationshipElement)
-        SET diff_relationship_element = node_single_relationship.node_properties
+            // node single relationships
+            WITH diff_relationship, node_relationship
+            UNWIND node_relationship.relationships as node_single_relationship
+            CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_relationship_element:DiffRelationshipElement)
+            SET diff_relationship_element = node_single_relationship.node_properties
 
-        // node relationship properties
-        WITH diff_root, diff_node, node_map, diff_relationship, node_relationship, diff_relationship_element, node_single_relationship
-        UNWIND node_single_relationship.properties as node_relationship_property
-        CREATE (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(diff_relationship_property:DiffProperty)
-        SET diff_relationship_property = node_relationship_property.node_properties
+            // node relationship properties
+            WITH diff_relationship_element, node_single_relationship
+            UNWIND node_single_relationship.properties as node_relationship_property
+            CREATE (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(diff_relationship_property:DiffProperty)
+            SET diff_relationship_property = node_relationship_property.node_properties
+        }
         """
         self.add_to_query(query=query)
         self.return_labels = ["diff_root.uuid"]

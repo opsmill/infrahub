@@ -245,7 +245,7 @@ class TestDiffRepository:
         assert updated_rel_group_1_elem_property.conflict is None
         assert len(updated_rel_group.nodes) == 0
 
-        # conflict
+        # relationship conflict
         # node parents
         # multiples of everything
         # filtering

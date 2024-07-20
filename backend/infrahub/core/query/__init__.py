@@ -231,6 +231,12 @@ class QueryResult:
             return entry
         raise ValueError(f"{label} is not a collection use .get_node() or .get()")
 
+    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode]]:
+        entry = self._get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+
     def get_node(self, label: str) -> Neo4jNode:
         node = self.get(label=label)
         if isinstance(node, Neo4jNode):
