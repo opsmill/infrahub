@@ -381,6 +381,7 @@ core_models: dict[str, Any] = {
                     "unique": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 1000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "description",
@@ -388,6 +389,7 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 2000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "location",
@@ -395,6 +397,7 @@ core_models: dict[str, Any] = {
                     "unique": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 3000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "username",
@@ -409,6 +412,33 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 5000,
+                },
+                {
+                    "name": "admin_status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": "staging",
+                            "label": "Staging",
+                            "description": "Repository was recently added to this branch.",
+                        },
+                        {
+                            "name": "active",
+                            "label": "Active",
+                            "description": "Repository is actively being synced for this branch",
+                        },
+                        {
+                            "name": "inactive",
+                            "label": "Inactive",
+                            "description": "Repository is not active on this branch.",
+                        },
+                    ],
+                    "default_value": "inactive",
+                    "optional": True,
+                    "branch": BranchSupportType.LOCAL.value,
+                    "order_weight": 6000,
+                    "read_only": True,
+                    "allow_override": AllowOverrideType.NONE,
                 },
             ],
             "relationships": [
