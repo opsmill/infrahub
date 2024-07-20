@@ -8,9 +8,11 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 from ..model.path import (
+    ConflictBranchChoice,
     EnrichedDiffAttribute,
     EnrichedDiffNode,
     EnrichedDiffProperty,
+    EnrichedDiffPropertyConflict,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
@@ -53,6 +55,9 @@ class EnrichedDiffGetQuery(Query):
             "offset": self.offset,
         }
         # ruff: noqa: E501
+
+        # TODO: break up the get query into subqueries for attributes and relationships... any maybe more
+
         query = """
         // get the roots of all diffs in the query
         MATCH (diff_root:DiffRoot)
@@ -132,12 +137,17 @@ class EnrichedDiffDeserializer:
             self._deserialize_diff_node(result=result)
             self._deserialize_diff_attr(result=result)
             self._deserialize_diff_attr_property(result=result)
+            self._deserialize_diff_attr_conflict(result=result)
 
             self._deserialize_diff_relationship_group(result=result)
             self._deserialize_diff_relationship_element(result=result)
             self._deserialize_diff_relationship_element_property(result=result)
 
         return list(self._diff_root_map.values())
+
+    def _get_str_or_none_property_value(self, node: Neo4jNode, property_name: str) -> str | None:
+        value_raw = node.get(property_name)
+        return str(value_raw) if value_raw is not None else None
 
     def _get_root_key(self, result: QueryResult) -> str:
         diff_root_node = result.get_node("diff_root")
@@ -177,6 +187,12 @@ class EnrichedDiffDeserializer:
         enriched_node = self._get_enriched_node(result=result)
         enriched_attr = self._get_enriched_attr(result=result)
         return (enriched_node.uuid, enriched_attr.name, diff_prop_type)
+
+    def _get_enriched_attr_property(self, result: QueryResult) -> EnrichedDiffProperty:
+        attr_property_key = self._get_attribute_property_key(result=result)
+        if not attr_property_key:
+            raise IndexError(f"No attribute property for {attr_property_key}")
+        return self._diff_prop_map[attr_property_key]
 
     def _get_relationship_group_key(self, result: QueryResult) -> tuple[str, str] | None:
         diff_rel_node = result.get("diff_relationship")
@@ -311,10 +327,8 @@ class EnrichedDiffDeserializer:
         self._diff_node_rel_element_map[rel_element_key] = enriched_rel_element
 
     def _property_node_to_enriched_property(self, property_node: Neo4jNode) -> EnrichedDiffProperty:
-        previous_value_raw = property_node.get("previous_value")
-        previous_value = str(previous_value_raw) if previous_value_raw is not None else None
-        new_value_raw = property_node.get("new_value")
-        new_value = str(new_value_raw) if new_value_raw is not None else None
+        previous_value = self._get_str_or_none_property_value(node=property_node, property_name="previous_value")
+        new_value = self._get_str_or_none_property_value(node=property_node, property_name="new_value")
         return EnrichedDiffProperty(
             property_type=str(property_node.get("property_type")),
             changed_at=Timestamp(str(property_node.get("changed_at"))),
@@ -351,3 +365,28 @@ class EnrichedDiffDeserializer:
         enriched_rel_element = self._get_enriched_rel_element(result=result)
         enriched_rel_element.properties.append(enriched_property)
         self._diff_prop_map[rel_property_key] = enriched_property
+
+    def _conflict_node_to_enriched_conflict(self, conflict_node: Neo4jNode) -> EnrichedDiffPropertyConflict:
+        base_value = self._get_str_or_none_property_value(node=conflict_node, property_name="base_branch_value")
+        branch_value = self._get_str_or_none_property_value(node=conflict_node, property_name="diff_branch_value")
+        selected_branch_value = self._get_str_or_none_property_value(
+            node=conflict_node, property_name="selected_branch"
+        )
+        return EnrichedDiffPropertyConflict(
+            uuid=str(conflict_node.get("uuid")),
+            base_branch_action=DiffAction(str(conflict_node.get("base_branch_action"))),
+            base_branch_value=base_value,
+            base_branch_changed_at=Timestamp(str(conflict_node.get("base_branch_changed_at"))),
+            diff_branch_action=DiffAction(str(conflict_node.get("diff_branch_action"))),
+            diff_branch_value=branch_value,
+            diff_branch_changed_at=Timestamp(str(conflict_node.get("diff_branch_changed_at"))),
+            selected_branch=ConflictBranchChoice(selected_branch_value) if selected_branch_value else None,
+        )
+
+    def _deserialize_diff_attr_conflict(self, result: QueryResult) -> None:
+        diff_attr_conflict_node = result.get("diff_attr_conflict")
+        if not isinstance(diff_attr_conflict_node, Neo4jNode):
+            return
+        enriched_conflict = self._conflict_node_to_enriched_conflict(conflict_node=diff_attr_conflict_node)
+        enriched_attr_property = self._get_enriched_attr_property(result=result)
+        enriched_attr_property.conflict = enriched_conflict

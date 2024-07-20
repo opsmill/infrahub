@@ -48,6 +48,12 @@ class EnrichedDiffSaveQuery(Query):
         UNWIND node_attribute.properties AS attr_property
         CREATE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty)
         SET diff_attr_prop = attr_property.node_properties
+        // node attribute property conflicts
+        WITH diff_root, diff_node, diff_attribute, node_map, node_attribute, attr_property, diff_attr_prop
+        FOREACH (i in CASE WHEN attr_property.conflict IS NOT NULL THEN [1] ELSE [] END |
+            CREATE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attr_conflict:DiffConflict)
+            SET diff_attr_conflict = attr_property.conflict.node_properties
+        )
 
         // node relationship groups
         WITH diff_root, diff_node, node_map

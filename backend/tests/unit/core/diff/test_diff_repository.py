@@ -7,9 +7,11 @@ from pendulum.datetime import DateTime
 from infrahub import config
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.model.path import (
+    ConflictBranchChoice,
     EnrichedDiffAttribute,
     EnrichedDiffNode,
     EnrichedDiffProperty,
+    EnrichedDiffPropertyConflict,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
@@ -74,12 +76,44 @@ class TestDiffRepository:
             action=DiffAction.REMOVED,
             properties=[self.removed_attr_prop_1],
         )
+
+        self.updated_attr_prop_1_change_time = DateTime(2024, 6, 15, 18, 35, 50, tzinfo=UTC)
+        self.updated_attr_prop_1_property_type = "HAS_VALUE"
+        self.updated_attr_prop_1_previous_value = "start stuff"
+        self.updated_attr_prop_1_new_value = "branch stuff"
+        self.updated_attr_prop_1_conflict_uuid = str(uuid4())
+        self.updated_attr_prop_1_conflict_base_branch_action = DiffAction.REMOVED
+        self.updated_attr_prop_1_conflict_base_branch_value = None
+        self.updated_attr_prop_1_conflict_base_branch_changed_at = DateTime(2024, 6, 15, 18, 30, 50, tzinfo=UTC)
+        self.updated_attr_prop_1_conflict_diff_branch_action = DiffAction.UPDATED
+        self.updated_attr_prop_1_conflict_diff_branch_value = self.updated_attr_prop_1_new_value
+        self.updated_attr_prop_1_conflict_diff_branch_changed_at = self.updated_attr_prop_1_change_time
+        self.updated_attr_prop_1_conflict_selected_branch = ConflictBranchChoice.DIFF
+        self.updated_attr_prop_1_conflict = EnrichedDiffPropertyConflict(
+            uuid=self.updated_attr_prop_1_conflict_uuid,
+            base_branch_action=self.updated_attr_prop_1_conflict_base_branch_action,
+            base_branch_value=self.updated_attr_prop_1_conflict_base_branch_value,
+            base_branch_changed_at=Timestamp(self.updated_attr_prop_1_conflict_base_branch_changed_at),
+            diff_branch_action=self.updated_attr_prop_1_conflict_diff_branch_action,
+            diff_branch_value=self.updated_attr_prop_1_conflict_diff_branch_value,
+            diff_branch_changed_at=Timestamp(self.updated_attr_prop_1_conflict_diff_branch_changed_at),
+            selected_branch=self.updated_attr_prop_1_conflict_selected_branch,
+        )
+        self.updated_attr_prop_1 = EnrichedDiffProperty(
+            property_type=self.updated_attr_prop_1_property_type,
+            changed_at=Timestamp(self.updated_attr_prop_1_change_time),
+            previous_value=self.updated_attr_prop_1_previous_value,
+            new_value=self.updated_attr_prop_1_new_value,
+            action=DiffAction.UPDATED,
+            conflict=self.updated_attr_prop_1_conflict,
+        )
         self.updated_attr_name = "something_new"
         self.updated_attr_change_time = DateTime(2024, 6, 15, 18, 35, 55, tzinfo=UTC)
         self.updated_attribute = EnrichedDiffAttribute(
             name=self.updated_attr_name,
             changed_at=Timestamp(self.updated_attr_change_time),
             action=DiffAction.UPDATED,
+            properties=[self.updated_attr_prop_1],
         )
 
         self.updated_rel_group_1_elem_property_type = "HAS_OWNER"
@@ -167,7 +201,30 @@ class TestDiffRepository:
         assert updated_attr.name == self.updated_attr_name
         assert updated_attr.changed_at.obj == self.updated_attr_change_time
         assert updated_attr.action is DiffAction.UPDATED
-        assert len(updated_attr.properties) == 0
+        assert len(updated_attr.properties) == 1
+        updated_attr_property = updated_attr.properties[0]
+        assert updated_attr_property.property_type == self.updated_attr_prop_1_property_type
+        assert updated_attr_property.changed_at.obj == self.updated_attr_prop_1_change_time
+        assert updated_attr_property.previous_value == self.updated_attr_prop_1_previous_value
+        assert updated_attr_property.new_value == self.updated_attr_prop_1_new_value
+        assert updated_attr_property.action == DiffAction.UPDATED
+        assert updated_attr_property.conflict is not None
+        updated_attr_property_conflict = updated_attr_property.conflict
+        assert updated_attr_property_conflict.uuid == self.updated_attr_prop_1_conflict_uuid
+        assert updated_attr_property_conflict.base_branch_action == self.updated_attr_prop_1_conflict_base_branch_action
+        assert updated_attr_property_conflict.base_branch_value == self.updated_attr_prop_1_conflict_base_branch_value
+        assert (
+            updated_attr_property_conflict.base_branch_changed_at.obj
+            == self.updated_attr_prop_1_conflict_base_branch_changed_at
+        )
+        assert updated_attr_property_conflict.diff_branch_action == self.updated_attr_prop_1_conflict_diff_branch_action
+        assert updated_attr_property_conflict.diff_branch_value == self.updated_attr_prop_1_conflict_diff_branch_value
+        assert (
+            updated_attr_property_conflict.diff_branch_changed_at.obj
+            == self.updated_attr_prop_1_conflict_diff_branch_changed_at
+        )
+        assert updated_attr_property_conflict.selected_branch == self.updated_attr_prop_1_conflict_selected_branch
+
         assert len(diff_node.relationships) == 1
         updated_rel_group = diff_node.relationships[0]
         assert updated_rel_group.name == self.updated_rel_group_name
@@ -188,6 +245,7 @@ class TestDiffRepository:
         assert updated_rel_group_1_elem_property.conflict is None
         assert len(updated_rel_group.nodes) == 0
 
-        # relationship element property
         # conflict
         # node parents
+        # multiples of everything
+        # filtering
