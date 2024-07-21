@@ -39,7 +39,7 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
                             client=service.client,
                             task_report=task_report,
                         )
-                        await repo.import_objects_from_files(branch_name=repo.default_branch)
+                        await repo.import_objects_from_files(infrahub_branch_name=repo.default_branch)
                     except RepositoryError as exc:
                         await task_report.error(str(exc))
                         continue

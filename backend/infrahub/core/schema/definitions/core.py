@@ -434,7 +434,7 @@ core_models: dict[str, Any] = {
                         },
                     ],
                     "default_value": "inactive",
-                    "optional": True,
+                    "optional": False,
                     "branch": BranchSupportType.LOCAL.value,
                     "order_weight": 6000,
                     "read_only": True,

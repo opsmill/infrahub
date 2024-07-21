@@ -13,10 +13,15 @@ log = get_logger()
 
 
 async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> None:
-    log.info("Cloning and importing repository", repository=message.repository_name, location=message.location)
+    log.info(
+        "Cloning and importing repository",
+        repository=message.repository_name,
+        location=message.location,
+        admin_status=message.admin_status,
+    )
     async with service.task_report(
         related_node=message.repository_id,
-        title="Adding Repository",
+        title=f"Initial import of the repository in branch: {message.infrahub_branch_name}",
         created_by=message.created_by,
     ) as task_report:
         async with lock.registry.get(name=message.repository_name, namespace="repository"):
@@ -26,8 +31,12 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
                 location=message.location,
                 client=service.client,
                 task_report=task_report,
+                infrahub_branch_name=message.infrahub_branch_name,
+                admin_status=message.admin_status,
             )
-            await repo.import_objects_from_files(branch_name=repo.default_branch)
+            await repo.import_objects_from_files(
+                infrahub_branch_name=message.infrahub_branch_name, git_branch_name=message.default_branch_name
+            )
             await repo.sync()
 
 
@@ -50,20 +59,15 @@ async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: Inf
                 infrahub_branch_name=message.infrahub_branch_name,
                 task_report=task_report,
             )
-            await repo.import_objects_from_files(branch_name=message.infrahub_branch_name)
+            await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name)
             await repo.sync_from_remote()
 
 
 async def connectivity(message: messages.GitRepositoryConnectivity, service: InfrahubServices) -> None:
-    repo = await get_initialized_repo(
-        repository_id=message.repository_id,
-        name=message.repository_name,
-        service=service,
-        repository_kind=message.repository_kind,
-    )
     response_data = GitRepositoryConnectivityResponseData(message="Successfully accessed repository", success=True)
+
     try:
-        repo.check_connectivity(url=message.repository_location)
+        InfrahubRepository.check_connectivity(name=message.repository_name, url=message.repository_location)
     except RepositoryError as exc:
         response_data.success = False
         response_data.message = exc.message
@@ -87,7 +91,7 @@ async def import_objects(message: messages.GitRepositoryImportObjects, service: 
             repository_kind=message.repository_kind,
         )
         repo.task_report = task_report
-        await repo.import_objects_from_files(branch_name=message.infrahub_branch_name, commit=message.commit)
+        await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name, commit=message.commit)
 
 
 async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: InfrahubServices) -> None:
@@ -134,7 +138,9 @@ async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: I
                     task_report=task_report,
                 )
 
-            await repo.import_objects_from_files(branch_name=message.infrahub_branch_name, commit=message.commit)
+            await repo.import_objects_from_files(
+                infrahub_branch_name=message.infrahub_branch_name, commit=message.commit
+            )
             await repo.sync_from_remote(commit=message.commit)
 
 

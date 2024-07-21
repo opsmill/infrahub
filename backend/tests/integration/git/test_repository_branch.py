@@ -46,21 +46,31 @@ class TestCreateRepository(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
     ) -> None:
+        branch2 = await client.branch.create(branch_name="branch2")
+
         """Validate that we can create a repository, that it gets updated with the commit id and that objects are created."""
         client_repository = await client.create(
             kind=InfrahubKind.REPOSITORY,
+            branch=branch2.name,
             data={"name": "car-dealership", "location": f"{git_repos_source_dir_module_scope}/car-dealership"},
         )
         await client_repository.save()
 
-        repository: CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY
+        repository_branch: CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
+            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, branch=branch2.name
         )
 
         check_definition: CoreCheckDefinition = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION
+            db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION, branch=branch2.name
         )
 
-        assert repository.commit.value
-        assert repository.admin_status.value == "active"
+        assert repository_branch.commit.value
+        assert repository_branch.admin_status.value == "staging"
         assert check_definition.file_path.value == "checks/car_overview.py"
+
+        repository_main: CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
+            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY
+        )
+
+        assert repository_main.commit.value is None
+        assert repository_main.admin_status.value == "inactive"
