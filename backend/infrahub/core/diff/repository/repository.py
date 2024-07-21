@@ -6,20 +6,6 @@ from ..model.path import EnrichedDiffRoot
 from .get_query import EnrichedDiffGetQuery
 from .save_query import EnrichedDiffSaveQuery
 
-"""
-Cached Diff Graph Format
-(DiffRoot)-[DIFF_HAS_NODE]->(DiffNode)
-    (DiffNode)-[DIFF_HAS_ATTRIBUTE]->(DiffAttribute)
-        (DiffAttribute)-[DIFF_HAS_PROPERTY]->(DiffProperty)
-            (DiffProperty)-[DIFF_HAS_CONFLICT]->(DiffConflict)
-
-    (DiffNode)-[DIFF_HAS_RELATIONSHIP]->(DiffRelationship)
-        (DiffRelationship)-[DIFF_HAS_NODE]->(DiffNode)
-        (DiffRelationship)-[DIFF_HAS_ELEMENT]->(DiffRelationshipElement)
-            (DiffRelationshipElement)-[DIFF_HAS_PROPERTY]->(DiffProperty)
-                (DiffProperty)-[DIFF_HAS_CONFLICT]->(DiffConflict)
-"""
-
 
 class DiffRepository:
     def __init__(self, db: InfrahubDatabase):

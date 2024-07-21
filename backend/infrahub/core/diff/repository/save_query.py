@@ -24,6 +24,7 @@ class EnrichedDiffSaveQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params = self._build_diff_root_params(enriched_diff=self.enriched_diff_root)
+        # ruff: noqa: E501
         query = """
         MERGE (diff_root:DiffRoot {
             base_branch: $diff_root_props.base_branch,
@@ -88,7 +89,14 @@ class EnrichedDiffSaveQuery(Query):
                 CREATE (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(diff_rel_conflict:DiffConflict)
                 SET diff_rel_conflict = node_relationship_property.conflict.node_properties
             )
-
+        }
+        WITH diff_root
+        UNWIND $node_parent_links AS node_parent_link
+        CALL {
+            WITH diff_root, node_parent_link
+            MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: node_parent_link.parent_uuid})-[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: node_parent_link.relationship_name})
+            MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode {uuid: node_parent_link.child_uuid})
+            MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(child_node)
         }
         """
         self.add_to_query(query=query)
@@ -192,21 +200,19 @@ class EnrichedDiffSaveQuery(Query):
             "relationships": relationship_props,
         }
 
-    def _build_child_diff_node_params(self, enriched_node: EnrichedDiffNode) -> list[dict[str, Any]]:
-        node_maps = []
-        for relationship in enriched_node.relationships:
-            for child_node in relationship.nodes:
-                node_maps.append(self._build_diff_node_params(enriched_node=child_node))
-                node_maps.extend(self._build_child_diff_node_params(enriched_node=child_node))
-        return node_maps
-
     def _build_node_parent_links(self, enriched_node: EnrichedDiffNode) -> list[dict[str, str]]:
         if not enriched_node.relationships:
             return []
         parent_links = []
         for relationship in enriched_node.relationships:
             for child_node in relationship.nodes:
-                parent_links.append({"parent_uuid": enriched_node.uuid, "child_uuid": child_node.uuid})
+                parent_links.append(
+                    {
+                        "parent_uuid": enriched_node.uuid,
+                        "relationship_name": relationship.name,
+                        "child_uuid": child_node.uuid,
+                    }
+                )
                 parent_links.extend(self._build_node_parent_links(enriched_node=child_node))
         return parent_links
 
@@ -223,8 +229,7 @@ class EnrichedDiffSaveQuery(Query):
         node_parent_links = []
         for node in enriched_diff.nodes:
             node_maps.append(self._build_diff_node_params(enriched_node=node))
-            # node_maps.extend(self._build_child_diff_node_params(enriched_node=node))
-            # node_parent_links.extend(self._build_node_parent_links(enriched_node=node))
+            node_parent_links.extend(self._build_node_parent_links(enriched_node=node))
         params["node_maps"] = node_maps
         params["node_parent_links"] = node_parent_links
         return params

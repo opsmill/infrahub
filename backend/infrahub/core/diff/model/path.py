@@ -77,7 +77,7 @@ class EnrichedDiffRelationship:
     changed_at: Timestamp
     action: DiffAction
     relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)
-    # nodes: set[EnrichedDiffNode] = field(default_factory=set)
+    nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -95,6 +95,12 @@ class EnrichedDiffNode:
 
     def __hash__(self) -> int:
         return hash(self.uuid)
+
+    def get_relationship(self, name: str) -> EnrichedDiffRelationship:
+        for rel in self.relationships:
+            if rel.name == name:
+                return rel
+        raise ValueError(f"No relationship {name} found")
 
 
 @dataclass

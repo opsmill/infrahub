@@ -52,7 +52,7 @@ class TestDiffRepositorySaveAndLoad:
         return DiffRepository(db=db)
 
     def build_diff_node(self, num_sub_fields=2) -> EnrichedDiffNode:
-        return NodeFactory.build(
+        enriched_node = NodeFactory.build(
             attributes={
                 AttributeFactory.build(properties={PropertyFactory.build() for _ in range(num_sub_fields)})
                 for _ in range(num_sub_fields)
@@ -65,23 +65,43 @@ class TestDiffRepositorySaveAndLoad:
                         )
                         for _ in range(num_sub_fields)
                     },
+                    nodes=set(),
                 )
                 for _ in range(num_sub_fields)
             },
         )
+        if num_sub_fields > 1 and len(enriched_node.relationships) > 0:
+            for relationship_group in enriched_node.relationships:
+                relationship_group.nodes = {
+                    self.build_diff_node(num_sub_fields=num_sub_fields - 1) for _ in range(num_sub_fields - 1)
+                }
+                break
+        return enriched_node
 
     def setup_method(self):
         self.base_branch_name = "main"
         self.diff_branch_name = "diff"
         self.diff_from_time = DateTime(2024, 6, 15, 18, 35, 20, tzinfo=UTC)
         self.diff_to_time = DateTime(2024, 6, 15, 18, 49, 40, tzinfo=UTC)
-        nodes = {self.build_diff_node(num_sub_fields=3) for _ in range(5)}
+        nodes = {self.build_diff_node(num_sub_fields=3) for _ in range(2)}
+
+        # need to associate the generated child nodes with the DiffRoot directly
+        # b/c that is how the data will actually be shaped
+        nodes_to_check = list(nodes)
+        all_nodes = set()
+        while len(nodes_to_check) > 0:
+            this_node = nodes_to_check.pop(0)
+            all_nodes.add(this_node)
+            for rel in this_node.relationships:
+                for child_node in rel.nodes:
+                    nodes_to_check.append(child_node)
+
         self.enriched_diff = RootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
             to_time=Timestamp(self.diff_to_time),
-            nodes=nodes,
+            nodes=all_nodes,
         )
 
     async def test_get_non_existent_diff(self, diff_repository: DiffRepository):
@@ -106,7 +126,3 @@ class TestDiffRepositorySaveAndLoad:
         assert len(retrieved) == 1
         diff_root = retrieved[0]
         assert diff_root == self.enriched_diff
-
-        # multiples of everything
-        # node parents
-        # filtering

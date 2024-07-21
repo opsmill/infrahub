@@ -113,7 +113,26 @@ class EnrichedDiffGetQuery(Query):
             RETURN diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict
             ORDER BY diff_relationship.name, diff_rel_element.peer_id, diff_rel_property.property_type
         }
-        WITH diff_root, parent_node, diff_node, diff_attributes, collect([diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict]) AS diff_relationships
+        WITH
+            diff_root,
+            parent_node,
+            diff_node,
+            diff_attributes,
+            collect([diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict]) AS diff_relationships
+
+        // child nodes
+        CALL {
+            WITH diff_node
+            OPTIONAL MATCH (diff_node:DiffNode)-[DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)-[DIFF_HAS_NODE]->(child_node:DiffNode)
+            RETURN collect([diff_relationship, child_node]) AS diff_child_nodes
+        }
+        WITH
+            diff_root,
+            parent_node,
+            diff_node,
+            diff_attributes,
+            diff_relationships,
+            diff_child_nodes
         """ % {"max_depth": self.max_depth}
         self.return_labels = [
             "diff_root",
@@ -121,6 +140,7 @@ class EnrichedDiffGetQuery(Query):
             "parent_node",
             "diff_attributes",
             "diff_relationships",
+            "diff_child_nodes",
         ]
         self.order_by = ["diff_root.diff_branch_name ASC", "diff_root.from_time ASC", "diff_node.label ASC"]
         self.add_to_query(query=query)
@@ -139,6 +159,7 @@ class EnrichedDiffDeserializer:
         self._diff_node_rel_group_map: dict[tuple[str, str], EnrichedDiffRelationship] = {}
         self._diff_node_rel_element_map: dict[tuple[str, str, str], EnrichedDiffSingleRelationship] = {}
         self._diff_prop_map: dict[tuple[str, str, str] | tuple[str, str, str, str], EnrichedDiffProperty] = {}
+        self._node_child_map: dict[EnrichedDiffNode, list[tuple[str, str]]] = {}
 
     async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
         for result in database_results:
@@ -148,6 +169,9 @@ class EnrichedDiffDeserializer:
             )
             self._deserialize_attributes(result=result, enriched_node=enriched_node)
             self._deserialize_relationships(result=result, enriched_node=enriched_node)
+            self._track_child_nodes(result=result, enriched_node=enriched_node)
+
+        self._apply_child_nodes()
 
         return list(self._diff_root_map.values())
 
@@ -189,6 +213,23 @@ class EnrichedDiffDeserializer:
             if conflict_node:
                 enriched_conflict = self._conflict_node_to_enriched_conflict(conflict_node=conflict_node)
                 enriched_property.conflict = enriched_conflict
+
+    def _track_child_nodes(self, result: QueryResult, enriched_node: EnrichedDiffNode) -> None:
+        self._node_child_map[enriched_node] = []
+        diff_child_nodes: list[list[Neo4jNode]] = result.get_nested_node_collection("diff_child_nodes")
+        for relationship_group_node, child_node_node in diff_child_nodes:
+            if relationship_group_node is None or child_node_node is None:
+                continue
+            relationship_name = str(relationship_group_node.get("name"))
+            child_node_uuid = str(child_node_node.get("uuid"))
+            self._node_child_map[enriched_node].append((relationship_name, child_node_uuid))
+
+    def _apply_child_nodes(self) -> None:
+        for enriched_node, child_node_list in self._node_child_map.items():
+            for relationship_name, child_node_uuid in child_node_list:
+                enriched_relationship = enriched_node.get_relationship(name=relationship_name)
+                node = self._diff_node_map[child_node_uuid]
+                enriched_relationship.nodes.add(node)
 
     def _get_str_or_none_property_value(self, node: Neo4jNode, property_name: str) -> str | None:
         value_raw = node.get(property_name)
