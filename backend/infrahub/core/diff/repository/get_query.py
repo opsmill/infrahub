@@ -105,13 +105,15 @@ class EnrichedDiffGetQuery(Query):
             WITH diff_relationship
             OPTIONAL MATCH (diff_relationship)-[DIFF_HAS_ELEMENT]->(diff_rel_element:DiffRelationshipElement)
             WITH diff_relationship, diff_rel_element
+            OPTIONAL MATCH (diff_rel_element)-[DIFF_HAS_CONFLICT]->(diff_rel_element_conflict:DiffConflict)
+            WITH diff_relationship, diff_rel_element, diff_rel_element_conflict
             OPTIONAL MATCH (diff_rel_element)-[DIFF_HAS_PROPERTY]->(diff_rel_property:DiffProperty)
-            WITH diff_relationship, diff_rel_element, diff_rel_property
+            WITH diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property
             OPTIONAL MATCH (diff_rel_property)-[DIFF_HAS_CONFLICT]->(diff_rel_conflict:DiffConflict)
-            RETURN diff_relationship, diff_rel_element, diff_rel_property, diff_rel_conflict
+            RETURN diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict
             ORDER BY diff_relationship.name, diff_rel_element.peer_id, diff_rel_property.property_type
         }
-        WITH diff_root, parent_node, diff_node, diff_attributes, collect([diff_relationship, diff_rel_element, diff_rel_property, diff_rel_conflict]) AS diff_relationships
+        WITH diff_root, parent_node, diff_node, diff_attributes, collect([diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict]) AS diff_relationships
         """ % {"max_depth": self.max_depth}
         self.return_labels = [
             "diff_root",
@@ -166,7 +168,7 @@ class EnrichedDiffDeserializer:
 
     def _deserialize_relationships(self, result: QueryResult, enriched_node: EnrichedDiffNode) -> None:
         for relationship_result in result.get_nested_node_collection("diff_relationships"):
-            group_node, element_node, property_node, conflict_node = relationship_result
+            group_node, element_node, element_conflict, property_node, conflict_node = relationship_result
             if group_node is None or element_node is None or property_node is None:
                 continue
             enriched_relationship_group = self._deserialize_diff_relationship_group(
@@ -174,6 +176,7 @@ class EnrichedDiffDeserializer:
             )
             enriched_relationship_element = self._deserialize_diff_relationship_element(
                 relationship_element_node=element_node,
+                relationship_element_conflict_node=element_conflict,
                 enriched_relationship_group=enriched_relationship_group,
                 enriched_node=enriched_node,
             )
@@ -261,6 +264,7 @@ class EnrichedDiffDeserializer:
     def _deserialize_diff_relationship_element(
         self,
         relationship_element_node: Neo4jNode,
+        relationship_element_conflict_node: Neo4jNode | None,
         enriched_relationship_group: EnrichedDiffRelationship,
         enriched_node: EnrichedDiffNode,
     ) -> EnrichedDiffSingleRelationship:
@@ -275,6 +279,10 @@ class EnrichedDiffDeserializer:
             peer_id=diff_element_peer_id,
             conflict=None,
         )
+        if relationship_element_conflict_node is not None:
+            enriched_rel_element.conflict = self._conflict_node_to_enriched_conflict(
+                conflict_node=relationship_element_conflict_node
+            )
         enriched_relationship_group.relationships.add(enriched_rel_element)
         self._diff_node_rel_element_map[rel_element_key] = enriched_rel_element
         return enriched_rel_element

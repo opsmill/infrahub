@@ -71,6 +71,11 @@ class EnrichedDiffSaveQuery(Query):
             UNWIND node_relationship.relationships as node_single_relationship
             CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_relationship_element:DiffRelationshipElement)
             SET diff_relationship_element = node_single_relationship.node_properties
+            WITH diff_relationship_element, node_single_relationship
+            FOREACH (i in CASE WHEN node_single_relationship.conflict IS NOT NULL THEN [1] ELSE [] END |
+                CREATE (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(diff_rel_elem_conflict:DiffConflict)
+                SET diff_rel_elem_conflict = node_single_relationship.conflict.node_properties
+            )
 
             // node relationship properties
             WITH diff_relationship_element, node_single_relationship
@@ -218,8 +223,8 @@ class EnrichedDiffSaveQuery(Query):
         node_parent_links = []
         for node in enriched_diff.nodes:
             node_maps.append(self._build_diff_node_params(enriched_node=node))
-            node_maps.extend(self._build_child_diff_node_params(enriched_node=node))
-            node_parent_links.extend(self._build_node_parent_links(enriched_node=node))
+            # node_maps.extend(self._build_child_diff_node_params(enriched_node=node))
+            # node_parent_links.extend(self._build_node_parent_links(enriched_node=node))
         params["node_maps"] = node_maps
         params["node_parent_links"] = node_parent_links
         return params

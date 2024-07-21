@@ -77,7 +77,7 @@ class EnrichedDiffRelationship:
     changed_at: Timestamp
     action: DiffAction
     relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)
-    nodes: set[EnrichedDiffNode] = field(default_factory=set)
+    # nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
     def __hash__(self) -> int:
         return hash(self.name)
