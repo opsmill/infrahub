@@ -221,7 +221,7 @@ class EnrichedDiffDeserializer:
             action=DiffAction(str(node_node.get("action"))),
         )
         self._diff_node_map[node_uuid] = enriched_node
-        enriched_root.nodes.append(enriched_node)
+        enriched_root.nodes.add(enriched_node)
         return enriched_node
 
     def _deserialize_diff_attr(
@@ -238,7 +238,7 @@ class EnrichedDiffDeserializer:
             action=DiffAction(str(diff_attr_node.get("action"))),
         )
         self._diff_node_attr_map[attr_key] = enriched_attr
-        enriched_node.attributes.append(enriched_attr)
+        enriched_node.attributes.add(enriched_attr)
         return enriched_attr
 
     def _deserialize_diff_relationship_group(
@@ -255,7 +255,7 @@ class EnrichedDiffDeserializer:
             action=DiffAction(str(relationship_group_node.get("action"))),
         )
         self._diff_node_rel_group_map[rel_key] = enriched_relationship
-        enriched_node.relationships.append(enriched_relationship)
+        enriched_node.relationships.add(enriched_relationship)
         return enriched_relationship
 
     def _deserialize_diff_relationship_element(
@@ -275,7 +275,7 @@ class EnrichedDiffDeserializer:
             peer_id=diff_element_peer_id,
             conflict=None,
         )
-        enriched_relationship_group.relationships.append(enriched_rel_element)
+        enriched_relationship_group.relationships.add(enriched_rel_element)
         self._diff_node_rel_element_map[rel_element_key] = enriched_rel_element
         return enriched_rel_element
 
@@ -300,7 +300,7 @@ class EnrichedDiffDeserializer:
             return self._diff_prop_map[attr_property_key]
 
         enriched_property = self._property_node_to_enriched_property(property_node=diff_attr_property_node)
-        enriched_attr.properties.append(enriched_property)
+        enriched_attr.properties.add(enriched_property)
         self._diff_prop_map[attr_property_key] = enriched_property
         return enriched_property
 
@@ -323,7 +323,7 @@ class EnrichedDiffDeserializer:
 
         enriched_property = self._property_node_to_enriched_property(property_node=relationship_element_property_node)
         self._diff_prop_map[rel_property_key] = enriched_property
-        enriched_relationship_element.properties.append(enriched_property)
+        enriched_relationship_element.properties.add(enriched_property)
         return enriched_property
 
     def _conflict_node_to_enriched_conflict(self, conflict_node: Neo4jNode) -> EnrichedDiffPropertyConflict:

@@ -62,17 +62,17 @@ class TestDiffRepository:
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
             to_time=Timestamp(self.diff_to_time),
-            nodes=[],
+            nodes=set(),
         )
-        self.updated_node_diff = NodeFactory.build(action=DiffAction.UPDATED, attributes=[], relationships=[])
+        self.updated_node_diff = NodeFactory.build(action=DiffAction.UPDATED, attributes=set(), relationships=set())
 
         self.removed_attr_prop_1 = PropertyFactory.build(new_value=None, action=DiffAction.REMOVED)
         self.removed_attribute = AttributeFactory.build(
-            action=DiffAction.REMOVED, properties=[self.removed_attr_prop_1]
+            action=DiffAction.REMOVED, properties={self.removed_attr_prop_1}
         )
         self.updated_attr_prop_1 = PropertyFactory.build(action=DiffAction.UPDATED)
         self.updated_attribute = AttributeFactory.build(
-            action=DiffAction.UPDATED, properties=[self.updated_attr_prop_1]
+            action=DiffAction.UPDATED, properties={self.updated_attr_prop_1}
         )
         self.updated_rel_group_1_owner_conflict = ConflictFactory.build()
 
@@ -80,10 +80,10 @@ class TestDiffRepository:
             action=DiffAction.UPDATED, conflict=ConflictFactory.build()
         )
         self.updated_rel_group_1_elem = RelationshipElementFactory.build(
-            action=DiffAction.UPDATED, properties=[self.updated_rel_group_1_elem_owner_property]
+            action=DiffAction.UPDATED, properties={self.updated_rel_group_1_elem_owner_property}, conflict=None
         )
         self.updated_rel_group = RelationshipGroupFactory.build(
-            action=DiffAction.UPDATED, relationships=[self.updated_rel_group_1_elem]
+            action=DiffAction.UPDATED, relationships={self.updated_rel_group_1_elem}, nodes=set()
         )
 
     async def test_get_non_existent_diff(self, diff_repository: DiffRepository):
@@ -97,9 +97,9 @@ class TestDiffRepository:
         assert len(enriched_diffs) == 0
 
     async def test_save_and_retrieve(self, diff_repository: DiffRepository, reset_database):
-        self.enriched_diff.nodes = [self.updated_node_diff]
-        self.updated_node_diff.attributes = [self.removed_attribute, self.updated_attribute]
-        self.updated_node_diff.relationships = [self.updated_rel_group]
+        self.enriched_diff.nodes = {self.updated_node_diff}
+        self.updated_node_diff.attributes = {self.removed_attribute, self.updated_attribute}
+        self.updated_node_diff.relationships = {self.updated_rel_group}
         await diff_repository.save(enriched_diff=self.enriched_diff)
 
         retrieved = await diff_repository.get(
@@ -112,7 +112,7 @@ class TestDiffRepository:
         diff_root = retrieved[0]
         assert diff_root == self.enriched_diff
 
-        # equality test ordering issue
+        # relationship conflict element
         # node parents
         # multiples of everything
         # filtering

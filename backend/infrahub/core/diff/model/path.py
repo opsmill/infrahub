@@ -31,6 +31,9 @@ class EnrichedDiffPropertyConflict:
     diff_branch_changed_at: Timestamp
     selected_branch: Optional[ConflictBranchChoice]
 
+    def __hash__(self) -> int:
+        return hash(self.uuid)
+
 
 @dataclass
 class EnrichedDiffProperty:
@@ -41,13 +44,19 @@ class EnrichedDiffProperty:
     action: DiffAction
     conflict: Optional[EnrichedDiffPropertyConflict]
 
+    def __hash__(self) -> int:
+        return hash(self.property_type)
+
 
 @dataclass
 class EnrichedDiffAttribute:
     name: str
     changed_at: Timestamp
     action: DiffAction
-    properties: list[EnrichedDiffProperty] = field(default_factory=list)
+    properties: set[EnrichedDiffProperty] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 @dataclass
@@ -56,7 +65,10 @@ class EnrichedDiffSingleRelationship:
     action: DiffAction
     peer_id: str
     conflict: Optional[EnrichedDiffPropertyConflict]
-    properties: list[EnrichedDiffProperty] = field(default_factory=list)
+    properties: set[EnrichedDiffProperty] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.peer_id)
 
 
 @dataclass
@@ -64,8 +76,11 @@ class EnrichedDiffRelationship:
     name: str
     changed_at: Timestamp
     action: DiffAction
-    relationships: list[EnrichedDiffSingleRelationship] = field(default_factory=list)
-    nodes: list[EnrichedDiffNode] = field(default_factory=list)
+    relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)
+    nodes: set[EnrichedDiffNode] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 @dataclass
@@ -75,8 +90,11 @@ class EnrichedDiffNode:
     label: str
     changed_at: Timestamp
     action: DiffAction
-    attributes: list[EnrichedDiffAttribute] = field(default_factory=list)
-    relationships: list[EnrichedDiffRelationship] = field(default_factory=list)
+    attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
+    relationships: set[EnrichedDiffRelationship] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.uuid)
 
 
 @dataclass
@@ -86,7 +104,10 @@ class EnrichedDiffRoot:
     from_time: Timestamp
     to_time: Timestamp
     uuid: str
-    nodes: list[EnrichedDiffNode] = field(default_factory=list)
+    nodes: set[EnrichedDiffNode] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.uuid)
 
 
 @dataclass
