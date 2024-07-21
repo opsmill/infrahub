@@ -2,21 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable, Optional, Any
+
+from .protocols_base import CoreNode
 
 if TYPE_CHECKING:
     from enum import Enum
-    from infrahub.core.attribute import Boolean, DateTime, Dropdown, HashedPassword, Integer, IPHost, IPNetwork, JSONAttribute, ListAttribute, String, URL
+    from infrahub.core.attribute import Boolean, DateTime, Dropdown, HashedPassword, Integer, IPHost, IPNetwork, JSONAttribute, ListAttribute, String, URL, BooleanOptional, DateTimeOptional, DropdownOptional, HashedPasswordOptional, IntegerOptional, IPHostOptional, IPNetworkOptional, JSONAttributeOptional, ListAttributeOptional, StringOptional, URLOptional
     from infrahub.core.relationship import RelationshipManager
 
-
-@runtime_checkable
-class CoreNode(Protocol):
-    id: str
-
-    def get_id(self) -> str: ...
-    def get_kind(self) -> str: ...
-    async def save(self) -> None: ...
 
 {% for generic in generics %}
 class {{ generic.namespace }}{{ generic.name }}(CoreNode):

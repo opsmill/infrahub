@@ -159,13 +159,13 @@ class InfrahubDatabase:
             self.manager = DatabaseManagerMemgraph(db=self)
 
     @property
-    def is_session(self):
+    def is_session(self) -> bool:
         if self._mode == InfrahubDatabaseMode.SESSION:
             return True
         return False
 
     @property
-    def is_transaction(self):
+    def is_transaction(self) -> bool:
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
             return True
         return False
@@ -265,7 +265,7 @@ class InfrahubDatabase:
             if self._is_session_local:
                 await self._session.close()
 
-    async def close(self):
+    async def close(self) -> None:
         await self._driver.close()
 
     async def execute_query(

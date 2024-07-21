@@ -286,13 +286,21 @@ def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive:
 
     attr_name: str = value["name"]
     attr_kind: str = value["kind"]
+    optional: bool = value.get("optional", False)
 
     if "enum" in value and not use_python_primitive:
         return f"{attr_name}: Enum"
 
     if use_python_primitive:
-        return f"{attr_name}: {PYTHON_PRIMITIVE_MAP[attr_kind.lower()]}"
-    return f"{attr_name}: {ATTRIBUTE_TYPES[attr_kind].infrahub}"
+        value = PYTHON_PRIMITIVE_MAP[attr_kind.lower()]
+        if optional:
+            value = f"Optional[{value}]"
+        return f"{attr_name}: {value}"
+
+    value = ATTRIBUTE_TYPES[attr_kind].infrahub
+    if optional:
+        value = f"{value}Optional"
+    return f"{attr_name}: {value}"
 
 
 def _sort_and_filter_models(

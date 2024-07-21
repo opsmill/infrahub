@@ -22,29 +22,29 @@ class CoreNode(Protocol):
 
 class BuiltinIPAddress(CoreNode):
     address: str
-    description: str
+    description: Optional[str]
     ip_namespace: Union[RelatedNode, RelatedNodeSync]
     ip_prefix: Union[RelatedNode, RelatedNodeSync]
 
 
 class BuiltinIPNamespace(CoreNode):
     name: str
-    description: str
+    description: Optional[str]
     ip_prefixes: Union[RelationshipManager, RelationshipManagerSync]
     ip_addresses: Union[RelationshipManager, RelationshipManagerSync]
 
 
 class BuiltinIPPrefix(CoreNode):
     prefix: str
-    description: str
+    description: Optional[str]
     member_type: str
     is_pool: bool
-    is_top_level: bool
-    utilization: int
-    netmask: str
-    hostmask: str
-    network_address: str
-    broadcast_address: str
+    is_top_level: Optional[bool]
+    utilization: Optional[int]
+    netmask: Optional[str]
+    hostmask: Optional[str]
+    network_address: Optional[str]
+    broadcast_address: Optional[str]
     ip_namespace: Union[RelatedNode, RelatedNodeSync]
     ip_addresses: Union[RelationshipManager, RelationshipManagerSync]
     resource_pool: Union[RelationshipManager, RelationshipManagerSync]
@@ -57,29 +57,29 @@ class CoreArtifactTarget(CoreNode):
 
 
 class CoreCheck(CoreNode):
-    name: str
-    label: str
+    name: Optional[str]
+    label: Optional[str]
     origin: str
     kind: str
-    message: str
-    conclusion: str
-    severity: str
-    created_at: datetime
+    message: Optional[str]
+    conclusion: Optional[str]
+    severity: Optional[str]
+    created_at: Optional[datetime]
     validator: Union[RelatedNode, RelatedNodeSync]
 
 
 class CoreComment(CoreNode):
     text: str
-    created_at: datetime
+    created_at: Optional[datetime]
     created_by: Union[RelatedNode, RelatedNodeSync]
 
 
 class CoreGenericRepository(CoreNode):
     name: str
-    description: str
+    description: Optional[str]
     location: str
-    username: str
-    password: str
+    username: Optional[str]
+    password: Optional[str]
     tags: Union[RelationshipManager, RelationshipManagerSync]
     transformations: Union[RelationshipManager, RelationshipManagerSync]
     queries: Union[RelationshipManager, RelationshipManagerSync]
@@ -89,8 +89,8 @@ class CoreGenericRepository(CoreNode):
 
 class CoreGroup(CoreNode):
     name: str
-    label: str
-    description: str
+    label: Optional[str]
+    description: Optional[str]
     members: Union[RelationshipManager, RelationshipManagerSync]
     subscribers: Union[RelationshipManager, RelationshipManagerSync]
     parent: Union[RelatedNode, RelatedNodeSync]
@@ -99,12 +99,12 @@ class CoreGroup(CoreNode):
 
 class CoreProfile(CoreNode):
     profile_name: str
-    profile_priority: int
+    profile_priority: Optional[int]
 
 
 class CoreResourcePool(CoreNode):
     name: str
-    description: str
+    description: Optional[str]
 
 
 class CoreTaskTarget(CoreNode):
@@ -112,9 +112,9 @@ class CoreTaskTarget(CoreNode):
 
 
 class CoreThread(CoreNode):
-    label: str
+    label: Optional[str]
     resolved: bool
-    created_at: datetime
+    created_at: Optional[datetime]
     change: Union[RelatedNode, RelatedNodeSync]
     comments: Union[RelationshipManager, RelationshipManagerSync]
     created_by: Union[RelatedNode, RelatedNodeSync]
@@ -122,8 +122,8 @@ class CoreThread(CoreNode):
 
 class CoreTransformation(CoreNode):
     name: str
-    label: str
-    description: str
+    label: Optional[str]
+    description: Optional[str]
     timeout: int
     query: Union[RelatedNode, RelatedNodeSync]
     repository: Union[RelatedNode, RelatedNodeSync]
@@ -131,20 +131,20 @@ class CoreTransformation(CoreNode):
 
 
 class CoreValidator(CoreNode):
-    label: str
+    label: Optional[str]
     state: str
     conclusion: str
-    completed_at: datetime
-    started_at: datetime
+    completed_at: Optional[datetime]
+    started_at: Optional[datetime]
     proposed_change: Union[RelatedNode, RelatedNodeSync]
     checks: Union[RelationshipManager, RelationshipManagerSync]
 
 
 class CoreWebhook(CoreNode):
     name: str
-    description: str
+    description: Optional[str]
     url: str
-    validate_certificates: bool
+    validate_certificates: Optional[bool]
 
 
 class LineageOwner(CoreNode):
@@ -157,14 +157,14 @@ class LineageSource(CoreNode):
 
 class BuiltinTag(CoreNode):
     name: str
-    description: str
+    description: Optional[str]
 
 
 class CoreAccount(LineageOwner, LineageSource):
     name: str
     password: str
-    label: str
-    description: str
+    label: Optional[str]
+    description: Optional[str]
     type: str
     role: str
     tokens: Union[RelationshipManager, RelationshipManagerSync]
@@ -174,25 +174,25 @@ class CoreArtifact(CoreTaskTarget):
     name: str
     status: str
     content_type: str
-    checksum: str
-    storage_id: str
-    parameters: dict
+    checksum: Optional[str]
+    storage_id: Optional[str]
+    parameters: Optional[dict]
     object: Union[RelatedNode, RelatedNodeSync]
     definition: Union[RelatedNode, RelatedNodeSync]
 
 
 class CoreArtifactCheck(CoreCheck):
-    changed: bool
-    checksum: str
-    artifact_id: str
-    storage_id: str
-    line_number: int
+    changed: Optional[bool]
+    checksum: Optional[str]
+    artifact_id: Optional[str]
+    storage_id: Optional[str]
+    line_number: Optional[int]
 
 
 class CoreArtifactDefinition(CoreTaskTarget):
     name: str
     artifact_name: str
-    description: str
+    description: Optional[str]
     parameters: dict
     content_type: str
     targets: Union[RelatedNode, RelatedNodeSync]
@@ -200,9 +200,9 @@ class CoreArtifactDefinition(CoreTaskTarget):
 
 
 class CoreArtifactThread(CoreThread):
-    artifact_id: str
-    storage_id: str
-    line_number: int
+    artifact_id: Optional[str]
+    storage_id: Optional[str]
+    line_number: Optional[int]
 
 
 class CoreArtifactValidator(CoreValidator):
@@ -219,11 +219,11 @@ class CoreChangeThread(CoreThread):
 
 class CoreCheckDefinition(CoreTaskTarget):
     name: str
-    description: str
+    description: Optional[str]
     file_path: str
     class_name: str
     timeout: int
-    parameters: dict
+    parameters: Optional[dict]
     repository: Union[RelatedNode, RelatedNodeSync]
     query: Union[RelatedNode, RelatedNodeSync]
     targets: Union[RelatedNode, RelatedNodeSync]
@@ -236,7 +236,7 @@ class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
 
 class CoreDataCheck(CoreCheck):
     conflicts: dict
-    keep_branch: str
+    keep_branch: Optional[str]
 
 
 class CoreDataValidator(CoreValidator):
@@ -244,14 +244,14 @@ class CoreDataValidator(CoreValidator):
 
 
 class CoreFileCheck(CoreCheck):
-    files: list
-    commit: str
+    files: Optional[list]
+    commit: Optional[str]
 
 
 class CoreFileThread(CoreThread):
-    file: str
-    commit: str
-    line_number: int
+    file: Optional[str]
+    commit: Optional[str]
+    line_number: Optional[int]
     repository: Union[RelatedNode, RelatedNodeSync]
 
 
@@ -261,11 +261,11 @@ class CoreGeneratorCheck(CoreCheck):
 
 class CoreGeneratorDefinition(CoreTaskTarget):
     name: str
-    description: str
+    description: Optional[str]
     parameters: dict
     file_path: str
     class_name: str
-    convert_query_response: bool
+    convert_query_response: Optional[bool]
     query: Union[RelatedNode, RelatedNodeSync]
     repository: Union[RelatedNode, RelatedNodeSync]
     targets: Union[RelatedNode, RelatedNodeSync]
@@ -288,33 +288,33 @@ class CoreGeneratorValidator(CoreValidator):
 
 class CoreGraphQLQuery(CoreNode):
     name: str
-    description: str
+    description: Optional[str]
     query: str
-    variables: dict
-    operations: list
-    models: list
-    depth: int
-    height: int
+    variables: Optional[dict]
+    operations: Optional[list]
+    models: Optional[list]
+    depth: Optional[int]
+    height: Optional[int]
     repository: Union[RelatedNode, RelatedNodeSync]
     tags: Union[RelationshipManager, RelationshipManagerSync]
 
 
 class CoreGraphQLQueryGroup(CoreGroup):
-    parameters: dict
+    parameters: Optional[dict]
     query: Union[RelatedNode, RelatedNodeSync]
 
 
 class CoreIPAddressPool(CoreResourcePool, LineageSource):
     default_address_type: str
-    default_prefix_length: int
+    default_prefix_length: Optional[int]
     resources: Union[RelationshipManager, RelationshipManagerSync]
     ip_namespace: Union[RelatedNode, RelatedNodeSync]
 
 
 class CoreIPPrefixPool(CoreResourcePool, LineageSource):
-    default_prefix_length: int
-    default_member_type: str
-    default_prefix_type: str
+    default_prefix_length: Optional[int]
+    default_member_type: Optional[str]
+    default_prefix_type: Optional[str]
     resources: Union[RelationshipManager, RelationshipManagerSync]
     ip_namespace: Union[RelatedNode, RelatedNodeSync]
 
@@ -332,10 +332,10 @@ class CoreObjectThread(CoreThread):
 
 class CoreProposedChange(CoreTaskTarget):
     name: str
-    description: str
+    description: Optional[str]
     source_branch: str
     destination_branch: str
-    state: str
+    state: Optional[str]
     approved_by: Union[RelationshipManager, RelationshipManagerSync]
     reviewers: Union[RelationshipManager, RelationshipManagerSync]
     created_by: Union[RelatedNode, RelatedNodeSync]
@@ -346,12 +346,12 @@ class CoreProposedChange(CoreTaskTarget):
 
 class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
     ref: str
-    commit: str
+    commit: Optional[str]
 
 
 class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
     default_branch: str
-    commit: str
+    commit: Optional[str]
 
 
 class CoreRepositoryValidator(CoreValidator):
@@ -397,9 +397,9 @@ class CoreUserValidator(CoreValidator):
 
 
 class InternalAccountToken(CoreNode):
-    name: str
+    name: Optional[str]
     token: str
-    expiration: datetime
+    expiration: Optional[datetime]
     account: Union[RelatedNode, RelatedNodeSync]
 
 
@@ -409,4 +409,4 @@ class InternalRefreshToken(CoreNode):
 
 
 class IpamNamespace(BuiltinIPNamespace):
-    default: bool
+    default: Optional[bool]
