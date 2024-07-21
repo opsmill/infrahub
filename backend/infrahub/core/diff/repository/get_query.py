@@ -152,6 +152,8 @@ class EnrichedDiffDeserializer:
     def _deserialize_attributes(self, result: QueryResult, enriched_node: EnrichedDiffNode) -> None:
         for attribute_result in result.get_nested_node_collection("diff_attributes"):
             diff_attr_node, diff_attr_property_node, diff_attr_conflict_node = attribute_result
+            if diff_attr_node is None or diff_attr_property_node is None:
+                continue
             enriched_attribute = self._deserialize_diff_attr(diff_attr_node=diff_attr_node, enriched_node=enriched_node)
             enriched_property = self._deserialize_diff_attr_property(
                 diff_attr_property_node=diff_attr_property_node,
@@ -165,6 +167,8 @@ class EnrichedDiffDeserializer:
     def _deserialize_relationships(self, result: QueryResult, enriched_node: EnrichedDiffNode) -> None:
         for relationship_result in result.get_nested_node_collection("diff_relationships"):
             group_node, element_node, property_node, conflict_node = relationship_result
+            if group_node is None or element_node is None or property_node is None:
+                continue
             enriched_relationship_group = self._deserialize_diff_relationship_group(
                 relationship_group_node=group_node, enriched_node=enriched_node
             )
