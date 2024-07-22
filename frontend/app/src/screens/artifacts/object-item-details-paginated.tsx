@@ -40,7 +40,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 
@@ -59,19 +59,19 @@ export default function ArtifactsDetails() {
   const [genericList] = useAtom(genericsState);
   const schema = schemaList.find((s) => s.kind === ARTIFACT_OBJECT);
   const generic = genericList.find((s) => s.kind === ARTIFACT_OBJECT);
-  const navigate = useNavigate();
   useTitle("Artifact details");
 
   const schemaData = generic || schema;
 
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
-    navigate("/");
+    return <Navigate to="/" />;
   }
 
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
-    navigate("/");
+    return <Navigate to="/" />;
   }
+
   const attributes = getObjectAttributes({ schema: schemaData });
   const relationships = getObjectRelationships({ schema: schemaData });
   const columns = getSchemaObjectColumns({ schema: schemaData });
