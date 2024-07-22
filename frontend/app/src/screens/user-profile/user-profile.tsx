@@ -15,8 +15,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
 import TabTokens from "./tab-tokens";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import NoDataFound from "../errors/no-data-found";
 
 const PROFILE_TABS = {
   PROFILE: "profile",
@@ -52,11 +51,8 @@ const renderContent = (tab: string | null | undefined) => {
 
 export function UserProfilePage() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const navigate = useNavigate();
   const schemaList = useAtomValue(schemaState);
   useTitle("Profile");
-
-  const auth = useAuth();
 
   const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
@@ -74,7 +70,7 @@ export function UserProfilePage() {
 
   // TODO: Find a way to avoid querying object details if we are on a tab
   const { loading, data, error } = useQuery(query, {
-    skip: !schema || !auth.isAuthenticated,
+    skip: !schema,
   });
 
   const profile = data?.AccountProfile;
@@ -87,9 +83,8 @@ export function UserProfilePage() {
     return <LoadingScreen />;
   }
 
-  if (!profile || !auth.isAuthenticated) {
-    navigate("/");
-    return;
+  if (!profile) {
+    return <NoDataFound message="No profile found" />;
   }
 
   return (
