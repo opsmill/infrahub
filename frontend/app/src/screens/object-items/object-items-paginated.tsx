@@ -37,7 +37,7 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useObjectItems } from "@/hooks/useObjectItems";
 
@@ -61,7 +61,6 @@ export default function ObjectItems({
 
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const navigate = useNavigate();
 
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<any>();
@@ -71,7 +70,7 @@ export default function ObjectItems({
   const kindFilter = filters?.find((filter) => filter.name == "kind__value");
 
   if (schema && MENU_EXCLUDELIST.includes(schema.kind as string) && !preventBlock) {
-    navigate("/");
+    return <Navigate to="/" />;
   }
 
   // Get all the needed columns (attributes + relationships)
