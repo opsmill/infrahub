@@ -72,6 +72,10 @@ class CoreArtifactTarget(CoreNode):
     artifacts: RelationshipManager
 
 
+class CoreBasePermission(CoreNode):
+    roles: Union[RelationshipManager, RelationshipManagerSync]
+
+
 class CoreCheck(CoreNode):
     name: StringOptional
     label: StringOptional
@@ -316,6 +320,11 @@ class CoreGeneratorValidator(CoreValidator):
     definition: RelatedNode
 
 
+class CoreGlobalPermission(CoreBasePermission):
+    name: str
+    action: str
+
+
 class CoreGraphQLQuery(CoreNode):
     name: String
     description: StringOptional
@@ -425,6 +434,23 @@ class CoreTransformJinja2(CoreTransformation):
 class CoreTransformPython(CoreTransformation):
     file_path: String
     class_name: String
+
+
+class CoreUserGroup(CoreNode):
+    name: str
+    users: Union[RelationshipManager, RelationshipManagerSync]
+    roles: Union[RelationshipManager, RelationshipManagerSync]
+
+
+class CoreUserPermission(CoreBasePermission):
+    kind: str
+    action: str
+
+
+class CoreUserRole(CoreNode):
+    name: str
+    groups: Union[RelationshipManager, RelationshipManagerSync]
+    permissions: Union[RelationshipManager, RelationshipManagerSync]
 
 
 class CoreUserValidator(CoreValidator):
