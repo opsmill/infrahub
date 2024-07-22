@@ -41,10 +41,11 @@ jobs:
       - name: "Install Package"
         run: "poetry install --all-extras"
 
-      - name: "Update Docker Env variable in docker-compose.yml file"
-        run: "invoke dev.gen-config-env -u"
-      - name: "Update Infrahub Image Version in docker-compose.yml file"
-        run: "invoke dev.update-docker-compose"
+      - name: "Update Docker Env & Infrahub Version in docker-compose.yml file"
+        run: |
+            source $(poetry env info --path)/bin/activate
+            invoke dev.gen-config-env -u
+            invoke dev.update-docker-compose
 
       - name: Commit docker-compose.yml
         uses: github-actions-x/commit@v2.9
