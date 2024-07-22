@@ -9,6 +9,7 @@ import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ErrorScreen from "@/screens/errors/error-screen";
 import { Card } from "@/components/ui/card";
+import Content from "../layout/content";
 
 export default function TabProfile() {
   const nodes = useAtomValue(schemaState);
@@ -39,8 +40,10 @@ export default function TabProfile() {
   }
 
   return (
-    <Card className="m-2">
-      <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} hideHeaders />
-    </Card>
+    <Content className="p-2">
+      <Card>
+        <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} hideHeaders />
+      </Card>
+    </Content>
   );
 }
