@@ -6,6 +6,7 @@ import { useMutation } from "@apollo/client";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 import DynamicForm from "./dynamic-form";
+import { FormAttributeValue } from "@/components/form/type";
 
 type BranchFormData = {
   name: string;
@@ -48,7 +49,7 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
       onSubmit={async (data) => {
         const branchData: BranchFormData = {
           name: data.name.value as string,
-          description: data.description.value as string | undefined,
+          description: (data?.description?.value ?? undefined) as string | undefined,
           sync_with_git: !!data.sync_with_git.value,
         };
         await handleSubmit(branchData);
@@ -59,15 +60,23 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
           name: "name",
           label: "New branch name",
           type: "Text",
+          defaultValue: { source: null, value: null },
           rules: {
             required: true,
-            minLength: { value: 3, message: "Name must be at least 3 characters long" },
+            validate: {
+              minLength: ({ value }: FormAttributeValue) => {
+                if (!value) return "Required";
+
+                return (value as string)?.length >= 3 || "Name must be at least 3 characters long";
+              },
+            },
           },
         },
         {
           name: "description",
           label: "New branch description",
           type: "Text",
+          defaultValue: { source: null, value: null },
         },
         {
           name: "sync_with_git",
