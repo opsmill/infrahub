@@ -55,7 +55,7 @@ export const formatIPPrefixResponseForTreeView = (data: PrefixData): TreeItemPro
     isBranch: node.children.count > 0,
     metadata: {
       kind: node.__typename,
-      descendants: node.descendants.count,
+      descendantsCount: node.descendants.count,
     },
   }));
 
