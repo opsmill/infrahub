@@ -265,7 +265,7 @@ async def create_global_permissions(db: InfrahubDatabase) -> list[CoreGlobalPerm
     actions = [("Edit default branch", "edit_default_branch")]
 
     for name, action in actions:
-        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        obj: CoreGlobalPermission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await obj.new(db=db, name=name, action=action)
         await obj.save(db=db)
         objs.append(obj)
