@@ -74,7 +74,7 @@ export const ProposedChangeCreateForm = () => {
             },
           }}
           render={({ field }) => (
-            <div className="w-full">
+            <div className="w-full relative mb-2 flex flex-col">
               <FormLabel>Source Branch *</FormLabel>
               <FormInput>
                 <Combobox
@@ -101,7 +101,7 @@ export const ProposedChangeCreateForm = () => {
           defaultValue={defaultBranch[0].name}
           rules={{ required: true }}
           render={({ field }) => (
-            <div className="w-full">
+            <div className="w-full relative mb-2 flex flex-col">
               <FormLabel>Destination Branch *</FormLabel>
               <FormInput>
                 <Combobox disabled {...field} />
@@ -118,7 +118,7 @@ export const ProposedChangeCreateForm = () => {
         rules={{ required: true }}
         render={({ field }) => {
           return (
-            <div>
+            <div className="relative mb-2 flex flex-col">
               <FormLabel>Name *</FormLabel>
               <FormInput>
                 <Input {...field} />
