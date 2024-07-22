@@ -11,6 +11,7 @@ import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 import DynamicForm from "@/components/form/dynamic-form";
 import { mapValues } from "remeda";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 
 interface Props {
   row: any;
@@ -84,7 +85,9 @@ export default function ObjectItemMetaEdit(props: Props) {
             type: "relationship",
             relationship: { cardinality: "one", inherited: true, peer: "LineageOwner" } as any,
             schema,
-            defaultValue: attributeOrRelationshipToEdit.owner?.id,
+            defaultValue: getRelationshipDefaultValue({
+              relationshipData: { node: attributeOrRelationshipToEdit.owner },
+            }),
             parent: attributeOrRelationshipToEdit.owner?.__typename,
           },
           {
@@ -93,14 +96,19 @@ export default function ObjectItemMetaEdit(props: Props) {
             type: "relationship",
             relationship: { cardinality: "one", inherited: true, peer: "LineageSource" } as any,
             schema,
-            defaultValue: attributeOrRelationshipToEdit.source?.id,
+            defaultValue: getRelationshipDefaultValue({
+              relationshipData: { node: attributeOrRelationshipToEdit.source },
+            }),
             parent: attributeOrRelationshipToEdit.source?.__typename,
           },
           {
             name: "is_visible",
             label: "is visible",
             type: "Checkbox",
-            defaultValue: attributeOrRelationshipToEdit.is_visible,
+            defaultValue: {
+              source: { type: "user" },
+              value: attributeOrRelationshipToEdit.is_visible,
+            },
             rules: {
               required: true,
             },
@@ -109,7 +117,10 @@ export default function ObjectItemMetaEdit(props: Props) {
             name: "is_protected",
             label: "is protected",
             type: "Checkbox",
-            defaultValue: attributeOrRelationshipToEdit.is_protected,
+            defaultValue: {
+              source: { type: "user" },
+              value: attributeOrRelationshipToEdit.is_protected,
+            },
             rules: {
               required: true,
             },
