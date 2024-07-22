@@ -20,7 +20,6 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
-    rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
 RUN poetry config virtualenvs.create false

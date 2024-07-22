@@ -1650,7 +1650,7 @@ async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(
         method="GET",
-        url="http://mock/api/schema/?branch=main",
+        url="http://mock/api/schema?branch=main",
         json=ujson.loads(response_text),
     )
     return httpx_mock
@@ -1662,7 +1662,7 @@ async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(
         method="GET",
-        url="http://mock/api/schema/?branch=main",
+        url="http://mock/api/schema?branch=main",
         json=ujson.loads(response_text),
     )
     return httpx_mock
@@ -1680,7 +1680,7 @@ async def mock_rest_api_artifact_fetch(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(
         method="GET",
-        url="http://mock/api/schema/?branch=main",
+        url="http://mock/api/schema?branch=main",
         json=ujson.loads(schema_response),
     )
 
@@ -1772,7 +1772,7 @@ async def mock_rest_api_artifact_generate(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(
         method="GET",
-        url="http://mock/api/schema/?branch=main",
+        url="http://mock/api/schema?branch=main",
         json=ujson.loads(schema_response),
     )
 
@@ -2330,5 +2330,5 @@ def query_introspection() -> str:
 async def mock_schema_query_ipam(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (get_fixtures_dir() / "schema_ipam.json").read_text(encoding="UTF-8")
 
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock

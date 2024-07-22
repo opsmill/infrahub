@@ -572,35 +572,61 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
 class AnyAttribute(BaseAttribute):
     type = Any
+    value: Any
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         pass
 
 
+class AnyAttributeOptional(AnyAttribute):
+    pass
+
+
 class String(BaseAttribute):
     type = str
+    value: str
+
+
+class StringOptional(String):
+    value: Optional[str]
 
 
 class HashedPassword(BaseAttribute):
     type = str
+    value: str
 
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
         return hash_password(str(self.value))
 
 
+class HashedPasswordOptional(HashedPassword):
+    value: Optional[str]
+
+
 class Integer(BaseAttribute):
     type = int
+    value: int
     from_pool: Optional[str] = None
+
+
+class IntegerOptional(Integer):
+    value: Optional[int]
 
 
 class Boolean(BaseAttribute):
     type = bool
+    value: bool
+
+
+class BooleanOptional(Boolean):
+    value: Optional[bool]
 
 
 class DateTime(BaseAttribute):
     type = str
+    value: str
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -615,8 +641,13 @@ class DateTime(BaseAttribute):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
 
+class DateTimeOptional(DateTime):
+    value: Optional[str]
+
+
 class Dropdown(BaseAttribute):
     type = str
+    value: str
 
     @property
     def color(self) -> str:
@@ -657,8 +688,13 @@ class Dropdown(BaseAttribute):
             raise ValidationError({name: f"{value} must be one of {', '.join(sorted(values))!r}"})
 
 
+class DropdownOptional(Dropdown):
+    value: Optional[str]
+
+
 class URL(BaseAttribute):
     type = str
+    value: str
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -668,8 +704,13 @@ class URL(BaseAttribute):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
 
+class URLOptional(URL):
+    value: Optional[str]
+
+
 class IPNetwork(BaseAttribute):
     type = str
+    value: str
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
@@ -796,8 +837,13 @@ class IPNetwork(BaseAttribute):
         return data
 
 
+class IPNetworkOptional(IPNetwork):
+    value: Optional[str]
+
+
 class IPHost(BaseAttribute):
     type = str
+    value: str
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
@@ -916,8 +962,13 @@ class IPHost(BaseAttribute):
         return data
 
 
+class IPHostOptional(IPHost):
+    value: Optional[str]
+
+
 class MacAddress(BaseAttribute):
     type = str
+    value: str
 
     @property
     def obj(self) -> netaddr.EUI:
@@ -1017,8 +1068,13 @@ class MacAddress(BaseAttribute):
         return str(netaddr.EUI(addr=str(self.value)))
 
 
+class MacAddressOptional(MacAddress):
+    value: Optional[str]
+
+
 class ListAttribute(BaseAttribute):
     type = list
+    value: list[Any]
 
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
@@ -1031,8 +1087,13 @@ class ListAttribute(BaseAttribute):
         return data.value
 
 
+class ListAttributeOptional(ListAttribute):
+    value: Optional[list[Any]]
+
+
 class JSONAttribute(BaseAttribute):
     type = (dict, list)
+    value: Union[dict, list]
 
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
@@ -1043,3 +1104,7 @@ class JSONAttribute(BaseAttribute):
         if data.value and isinstance(data.value, (str, bytes)):
             return ujson.loads(data.value)
         return data.value
+
+
+class JSONAttributeOptional(JSONAttribute):
+    value: Optional[Union[dict, list]]
