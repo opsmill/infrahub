@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/skeleton";
 
 export const TreeSkeleton = () => {
   return (
-    <div className="space-y-2 border rounded p-1.5">
+    <div className="flex-grow space-y-2 border rounded p-1.5">
       <Skeleton className="h-4 w-11/12" />
       <Skeleton className="h-4 w-8/12" />
       <Skeleton className="h-4 w-4/5" />
