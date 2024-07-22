@@ -6,8 +6,9 @@ import { schemaState } from "@/state/atoms/schema.atom";
 import ObjectItems from "../object-items/object-items-paginated";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { useState } from "react";
-import { TokenInput } from "@/components/ui/token-input";
+
 import ModalSuccess from "@/components/modals/modal-success";
+import { TokenInput } from "@/components/display/token-input";
 
 export default function TabTokens() {
   const [open, setOpen] = useState(false);
