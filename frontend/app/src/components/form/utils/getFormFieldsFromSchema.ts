@@ -13,6 +13,7 @@ import {
   DynamicFieldProps,
   DynamicInputFieldProps,
   DynamicRelationshipFieldProps,
+  FormFieldValue,
 } from "@/components/form/type";
 import {
   getObjectRelationshipsForForm,
@@ -59,7 +60,7 @@ export const getFormFieldsFromSchema = ({
       ? (initialObject[attribute.name] as AttributeType)
       : null;
 
-    const basicFomFieldProps = {
+    const basicFomFieldProps: DynamicInputFieldProps = {
       name: attribute.name,
       label: attribute.label ?? undefined,
       defaultValue: getFieldDefaultValue({
@@ -78,6 +79,13 @@ export const getFormFieldsFromSchema = ({
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
       rules: {
         required: !isFilterForm && !attribute.optional,
+        validate: {
+          required: ({ value }: FormFieldValue) => {
+            if (isFilterForm || attribute.optional) return true;
+
+            return (value !== null && value !== undefined) || "Required";
+          },
+        },
       },
     };
 

@@ -90,7 +90,7 @@ export const FormMessage = ({
 
   const { error } = getFieldState(name, formState);
 
-  const message = error?.type === "required" ? "Required" : error?.message?.toString() ?? children;
+  const message = error?.message?.toString() ?? children;
   if (!message) return null;
 
   return (
