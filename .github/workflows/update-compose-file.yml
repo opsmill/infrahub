@@ -29,27 +29,21 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Install Poetry
+          python-version: 3.12
+      - name: "Setup environment"
         run: |
-          curl -sSL https://install.python-poetry.org | python - -y
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+      - name: "Install Package"
+        run: "poetry install --all-extras"
 
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Update Poetry configuration
-        run: poetry config virtualenvs.create false
-
-      - name: Install dependencies
-        run: poetry install --no-ansi --no-interaction
-      - name: "Update Docker Env & Infrahub Version in docker-compose.yml file"
-        run: |
-            invoke dev.gen-config-env -u
-            invoke dev.update-docker-compose
+      - name: "Update Docker Env variable in docker-compose.yml file"
+        run: "poetry run invoke dev.gen-config-env -u"
+      - name: "Update Infrahub Image Version in docker-compose.yml file"
+        run: "poetry run invoke dev.update-docker-compose"
       - name: Commit docker-compose.yml
         uses: github-actions-x/commit@v2.9
         with:
