@@ -113,7 +113,7 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
+    expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
       description: undefined,
       disabled: false,
@@ -123,6 +123,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -140,7 +143,7 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
+    expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
       description: undefined,
       disabled: false,
@@ -150,6 +153,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -165,7 +171,7 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
+    expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
       description: undefined,
       disabled: false,
@@ -175,6 +181,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -190,7 +199,7 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
+    expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
       description: undefined,
       disabled: false,
@@ -200,6 +209,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -240,7 +252,7 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
+    expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: "address" },
       description: undefined,
       disabled: false,
@@ -249,6 +261,9 @@ describe("getFormFieldsFromSchema", () => {
       type: "Dropdown",
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
       items: [
         {
@@ -311,7 +326,7 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
+    expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
       description: undefined,
       disabled: true,
@@ -321,6 +336,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -366,7 +384,7 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
+    expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
       description: undefined,
       disabled: false,
@@ -376,6 +394,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
