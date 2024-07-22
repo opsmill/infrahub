@@ -164,9 +164,10 @@ class EnrichedDiffDeserializer:
     async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
         for result in database_results:
             enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
-            enriched_node = self._deserialize_diff_node(
-                node_node=result.get_node("diff_node"), enriched_root=enriched_root
-            )
+            node_node = result.get("diff_node")
+            if not isinstance(node_node, Neo4jNode):
+                continue
+            enriched_node = self._deserialize_diff_node(node_node=node_node, enriched_root=enriched_root)
             self._deserialize_attributes(result=result, enriched_node=enriched_node)
             self._deserialize_relationships(result=result, enriched_node=enriched_node)
             self._track_child_nodes(result=result, enriched_node=enriched_node)
