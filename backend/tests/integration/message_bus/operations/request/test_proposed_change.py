@@ -10,7 +10,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
-from infrahub.message_bus.operations.requests.proposed_change import cancel, pipeline
+from infrahub.message_bus.operations.requests.proposed_change import cancel, pipeline, run_generators
+from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.server import app, app_initialization
 from infrahub.services import InfrahubServices, services
 from tests.adapters.log import FakeLogger
@@ -156,11 +157,40 @@ async def test_run_pipeline_validate_requested_jobs(
 
     assert sorted(bus_post_data_changes.seen_routing_keys) == [
         "request.proposed_change.data_integrity",
-        "request.proposed_change.refresh_artifacts",
         "request.proposed_change.repository_checks",
         "request.proposed_change.run_generators",
         "request.proposed_change.run_tests",
         "request.proposed_change.schema_integrity",
+    ]
+
+
+async def test_run_generators_validate_requested_jobs(
+    prepare_proposed_change: str,
+    db: InfrahubDatabase,
+    test_client: InfrahubTestClient,
+):
+    message = messages.RequestProposedChangeRunGenerators(
+        source_branch="change1",
+        source_branch_sync_with_git=True,
+        destination_branch="main",
+        proposed_change=prepare_proposed_change,
+        branch_diff=ProposedChangeBranchDiff(diff_summary=[], repositories=[], subscribers=[]),
+        refresh_artifacts=True,
+    )
+    integration_helper = IntegrationHelper(db=db)
+    bus = BusRecorder()
+    admin_token = await integration_helper.create_token()
+    config = Config(api_token=admin_token, requester=test_client.async_request)
+    client = InfrahubClient(config=config)
+    fake_log = FakeLogger()
+    services.service._client = client
+    services.service.log = fake_log
+    services.service.message_bus = bus
+    services.prepare(service=services.service)
+    await run_generators(message=message, service=services.service)
+
+    assert sorted(bus.seen_routing_keys) == [
+        "request.proposed_change.refresh_artifacts",
     ]
 
 
