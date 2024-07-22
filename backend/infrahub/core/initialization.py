@@ -10,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.protocols import CoreAccount, CoreGlobalPermission, CoreUserGroup, CoreUserRole
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -259,14 +260,44 @@ async def create_ipam_namespace(
     return obj
 
 
-async def create_global_permissions(db: InfrahubDatabase):
+async def create_global_permissions(db: InfrahubDatabase) -> list[CoreGlobalPermission]:
+    objs: list[CoreGlobalPermission] = []
     actions = [("Edit default branch", "edit_default_branch")]
 
     for name, action in actions:
         obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await obj.new(db=db, name=name, action=action)
         await obj.save(db=db)
+        objs.append(obj)
         log.info(f"Created global permission: {name}")
+
+    return objs
+
+
+async def create_administrator_role(
+    db: InfrahubDatabase, global_permissions: Optional[list[CoreGlobalPermission]] = None
+) -> CoreUserRole:
+    obj: CoreUserRole = await Node.init(db=db, schema=InfrahubKind.USERROLE)
+    await obj.new(db=db, name="Administrator", permissions=global_permissions)
+    await obj.save(db=db)
+    log.info(f"Created User Role: {obj.name.value}")
+
+    return obj
+
+
+async def create_administrators_group(
+    db: InfrahubDatabase, role: CoreUserRole, admin_account: CoreAccount
+) -> CoreUserGroup:
+    obj: CoreUserGroup = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
+    await obj.new(db=db, name="Administrators", roles=[role])
+    await obj.save(db=db)
+    log.info(f"Created User Group: {obj.name.value}")
+
+    await admin_account.groups.add(db=db, data=obj)
+    await admin_account.save(db=db)
+    log.info(f"Assigned User Group: {obj.name.value} to {admin_account.name.value}")
+
+    return obj
 
 
 async def first_time_initialization(db: InfrahubDatabase) -> None:
@@ -294,7 +325,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    await create_account(
+    admin_account = await create_account(
         db=db,
         name="admin",
         password=config.SETTINGS.initial.admin_password,
@@ -313,9 +344,11 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
         )
 
     # --------------------------------------------------
-    # Create Global Permissions
+    # Create Global Permissions and assign them
     # --------------------------------------------------
-    await create_global_permissions(db=db)
+    global_permissions = await create_global_permissions(db=db)
+    administrator_role = await create_administrator_role(db=db, global_permissions=global_permissions)
+    await create_administrators_group(db=db, role=administrator_role, admin_account=admin_account)
 
     # --------------------------------------------------
     # Create Default IPAM Namespace
