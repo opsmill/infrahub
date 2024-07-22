@@ -39,7 +39,7 @@ export default function TabProfile() {
   }
 
   return (
-    <Card className="p-2 m-2">
+    <Card className="m-2">
       <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} hideHeaders />
     </Card>
   );
