@@ -90,11 +90,13 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
     <Link
       to={url}
       tabIndex={-1}
-      className="flex items-center gap-2 overflow-hidden"
+      className="flex flex-grow items-center gap-2 overflow-hidden"
       data-testid="ipam-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
-      <span className="truncate">{element.name}</span>
-      {!!element.metadata?.descendantsCount && <Badge>{element.metadata?.descendantsCount}</Badge>}
+      <span className="truncate flex-1">{element.name}</span>
+      {!!element.metadata?.descendantsCount && (
+        <Badge className="self-end">{element.metadata?.descendantsCount}</Badge>
+      )}
     </Link>
   );
 };
