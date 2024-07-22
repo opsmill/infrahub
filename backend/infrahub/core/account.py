@@ -12,6 +12,43 @@ if TYPE_CHECKING:
 # pylint: disable=redefined-builtin
 
 
+class AccountPermissionQuery(Query):
+    name: str = "account_permissions"
+
+    def __init__(self, account_id: str, **kwargs: Any):
+        self.account_id = account_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params["account_id"] = self.account_id
+
+        # ruff: noqa: E501
+        query = """
+        MATCH (account:CoreAccount { uuid: $account_id })-[]->(:Relationship {name: "usergroup__users"})<-[]-(group:CoreUserGroup)-[]->(:Relationship {name: "role__usergroups"})<-[]-(role:CoreUserRole)-[]->(:Relationship {name: "role__permissions"})<-[]-(permission:CoreBasePermission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(permission_action:AttributeValue)
+        """
+
+        self.add_to_query(query)
+
+        self.return_labels = ["account", "permission", "permission_action"]
+
+    def get_permissions(self) -> list[str]:
+        permissions = []
+
+        for result in self.get_results():
+            permissions.append(result.get("permission_action").get("value"))
+
+        return permissions
+
+
+async def fetch_permissions(
+    account_id: str, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None
+) -> list[str]:
+    branch = await registry.get_branch(db=db, branch=branch)
+    query = await AccountPermissionQuery.init(db=db, branch=branch, account_id=account_id)
+    await query.execute(db=db)
+    return query.get_permissions()
+
+
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
 
