@@ -197,16 +197,21 @@ class InfrahubGraphQLApp:
 
         operation = operations
         query = operation["query"]
+        variable_values = operation.get("variables")
+        operation_name = operation.get("operationName")
 
         at = request.query_params.get("at", None)
         graphql_params = prepare_graphql_params(
             db=db, branch=branch, at=at, account_session=account_session, request=request
         )
-        analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_params.schema, branch=branch)
-        await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
-
-        variable_values = operation.get("variables")
-        operation_name = operation.get("operationName")
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=query,
+            schema=graphql_params.schema,
+            branch=branch,
+            operation_name=operation_name,
+            variables=variable_values,
+        )
+        await self._evaluate_permissions(request=request, query=analyzed_query, account_session=account_session)
 
         # if the query contains some mutation, it's not currently supported to set AT manually
         if analyzed_query.contains_mutation:
@@ -221,13 +226,7 @@ class InfrahubGraphQLApp:
                 "Processing IntrospectionQuery .. ", branch=branch.name, nbr_object_in_schema=nbr_object_in_schema
             )
 
-        labels = {
-            "type": "mutation" if analyzed_query.contains_mutation else "query",
-            "branch": branch.name,
-            "operation": operation_name if operation_name is not None else "",
-            "name": analyzed_query.operations[0].name,
-            "query_id": "",
-        }
+        labels = self._set_labels(request=request, branch=branch, query=analyzed_query)
 
         with trace.get_tracer(__name__).start_as_current_span("execute_graphql") as span:
             span.set_attributes(labels)
@@ -271,6 +270,20 @@ class InfrahubGraphQLApp:
             GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
 
         return json_response
+
+    def _set_labels(self, request: Request, branch: Branch, query: InfrahubGraphQLQueryAnalyzer) -> dict[str, Any]:
+        return {
+            "type": "mutation" if query.contains_mutation else "query",
+            "branch": branch.name,
+            "operation": query.operation_name if query.operation_name is not None else "",
+            "name": query.operations[0].name,
+            "query_id": "",
+        }
+
+    async def _evaluate_permissions(
+        self, request: Request, query: InfrahubGraphQLQueryAnalyzer, account_session: AccountSession
+    ) -> None:
+        await self.permission_checker.check(account_session=account_session, analyzed_query=query)
 
     def _log_error(self, error: Exception) -> None:
         if isinstance(error, Error):

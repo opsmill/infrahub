@@ -12,8 +12,19 @@ from infrahub.graphql.utils import extract_schema_models
 
 
 class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
-    def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[Branch] = None):
+    def __init__(
+        self,
+        query: str,
+        variables: Optional[dict[str, Any]] = None,
+        schema: Optional[GraphQLSchema] = None,
+        operation_name: Optional[str] = None,
+        branch: Optional[Branch] = None,
+    ):
         self.branch: Optional[Branch] = branch
+        self.operation_name: Optional[str] = operation_name
+        # FIXME: base class as variables property
+        self.vars: dict[str, Any] = variables or {}
+
         super().__init__(query=query, schema=schema)
 
     async def get_models_in_use(self, types: dict[str, Any]) -> set[str]:
