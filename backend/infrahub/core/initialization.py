@@ -259,6 +259,16 @@ async def create_ipam_namespace(
     return obj
 
 
+async def create_global_permissions(db: InfrahubDatabase):
+    actions = [("Edit default branch", "edit_default_branch")]
+
+    for name, action in actions:
+        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        await obj.new(db=db, name=name, action=action)
+        await obj.save(db=db)
+        log.info(f"Created global permission: {name}")
+
+
 async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
@@ -301,6 +311,11 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
             role=AccountRole.READ_WRITE.value,
             token_value=config.SETTINGS.initial.agent_token,
         )
+
+    # --------------------------------------------------
+    # Create Global Permissions
+    # --------------------------------------------------
+    await create_global_permissions(db=db)
 
     # --------------------------------------------------
     # Create Default IPAM Namespace
