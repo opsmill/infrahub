@@ -63,11 +63,14 @@ class EnrichedDiffGetQuery(Query):
         AND diff_root.from_time >= $from_time
         AND diff_root.to_time <= $to_time
         // get all the nodes attached to the diffs
-        OPTIONAL MATCH (diff_root)-[DIFF_HAS_NODE]->(diff_node:DiffNode)
+        OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
         // if root_node_uuids, filter on uuids
-        WHERE ($root_node_uuids IS NULL OR diff_node.uuid in $root_node_uuids)
-        // otherwise, only get parent-less nodes for now
-        AND ($root_node_uuids IS NOT NULL OR NOT exists((:DiffRelationship)-[DIFF_HAS_NODE]->(diff_node)))
+        WHERE (
+            // only parent-less nodes if no root node uuids
+            ($root_node_uuids IS NULL AND NOT exists((:DiffRelationship)-[:DIFF_HAS_NODE]->(diff_node)))
+            // filter on uuids if included
+            OR diff_node.uuid in $root_node_uuids
+        )
         // do the pagination
         WITH diff_root, diff_node
         ORDER BY diff_root.diff_branch ASC, diff_root.from_time ASC, diff_node.kind ASC, diff_node.uuid ASC
@@ -90,11 +93,11 @@ class EnrichedDiffGetQuery(Query):
         // attributes
         CALL {
             WITH diff_node
-            OPTIONAL MATCH (diff_node)-[DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
+            OPTIONAL MATCH (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
             WITH diff_attribute
-            OPTIONAL MATCH (diff_attribute)-[DIFF_HAS_PROPERTY]->(diff_attr_property:DiffProperty)
+            OPTIONAL MATCH (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_property:DiffProperty)
             WITH diff_attribute, diff_attr_property
-            OPTIONAL MATCH (diff_attr_property)-[DIFF_HAS_CONFLICT]->(diff_attr_conflict:DiffConflict)
+            OPTIONAL MATCH (diff_attr_property)-[:DIFF_HAS_CONFLICT]->(diff_attr_conflict:DiffConflict)
             RETURN diff_attribute, diff_attr_property, diff_attr_conflict
             ORDER BY diff_attribute.name, diff_attr_property.property_type
         }
@@ -103,15 +106,15 @@ class EnrichedDiffGetQuery(Query):
         // relationships
         CALL {
             WITH diff_node
-            OPTIONAL MATCH (diff_node)-[DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
+            OPTIONAL MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
             WITH diff_relationship
-            OPTIONAL MATCH (diff_relationship)-[DIFF_HAS_ELEMENT]->(diff_rel_element:DiffRelationshipElement)
+            OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_rel_element:DiffRelationshipElement)
             WITH diff_relationship, diff_rel_element
-            OPTIONAL MATCH (diff_rel_element)-[DIFF_HAS_CONFLICT]->(diff_rel_element_conflict:DiffConflict)
+            OPTIONAL MATCH (diff_rel_element)-[:DIFF_HAS_CONFLICT]->(diff_rel_element_conflict:DiffConflict)
             WITH diff_relationship, diff_rel_element, diff_rel_element_conflict
-            OPTIONAL MATCH (diff_rel_element)-[DIFF_HAS_PROPERTY]->(diff_rel_property:DiffProperty)
+            OPTIONAL MATCH (diff_rel_element)-[:DIFF_HAS_PROPERTY]->(diff_rel_property:DiffProperty)
             WITH diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property
-            OPTIONAL MATCH (diff_rel_property)-[DIFF_HAS_CONFLICT]->(diff_rel_conflict:DiffConflict)
+            OPTIONAL MATCH (diff_rel_property)-[:DIFF_HAS_CONFLICT]->(diff_rel_conflict:DiffConflict)
             RETURN diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict
             ORDER BY diff_relationship.name, diff_rel_element.peer_id, diff_rel_property.property_type
         }

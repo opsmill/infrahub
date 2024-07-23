@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -95,6 +95,25 @@ class EnrichedDiffNode:
 
     def __hash__(self) -> int:
         return hash(self.uuid)
+
+    def get_all_child_nodes(self) -> set[EnrichedDiffNode]:
+        all_children = set()
+        for r in self.relationships:
+            for n in r.nodes:
+                all_children.add(n)
+                all_children |= n.get_all_child_nodes()
+        return all_children
+
+    def get_trimmed_node(self, max_depth: int) -> EnrichedDiffNode:
+        trimmed = replace(self, relationships=set())
+        for rel in self.relationships:
+            trimmed_rel = replace(rel, nodes=set())
+            trimmed.relationships.add(trimmed_rel)
+            if max_depth == 0:
+                continue
+            for child_node in rel.nodes:
+                trimmed_rel.nodes.add(child_node.get_trimmed_node(max_depth=max_depth - 1))
+        return trimmed
 
     def get_relationship(self, name: str) -> EnrichedDiffRelationship:
         for rel in self.relationships:
