@@ -120,7 +120,12 @@ const GenericSelector = (props: GenericSelectorProps) => {
   );
 };
 
-const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
+const NodeWithProfileForm = ({
+  isFilterForm,
+  kind,
+  currentProfiles,
+  ...props
+}: ObjectFormProps) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
@@ -135,7 +140,7 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
 
   return (
     <>
-      {"generate_profile" in nodeSchema && nodeSchema.generate_profile && (
+      {!isFilterForm && "generate_profile" in nodeSchema && nodeSchema.generate_profile && (
         <ProfilesSelector
           schema={nodeSchema}
           defaultValue={currentProfiles}
@@ -144,7 +149,12 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
           currentProfiles={currentProfiles}
         />
       )}
-      <NodeForm schema={nodeSchema} profiles={selectedProfiles} {...props} />
+      <NodeForm
+        schema={nodeSchema}
+        isFilterForm={isFilterForm}
+        profiles={selectedProfiles}
+        {...props}
+      />
     </>
   );
 };
