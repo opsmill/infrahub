@@ -130,16 +130,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     page,
   }) => {
     await test.step("Navigate to an used profile", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "CoreProfile" && status === 200;
-        }),
-
-        page.goto("/objects/CoreProfile"),
-      ]);
+      await page.goto("/objects/CoreProfile");
       await expect(page.getByRole("heading")).toContainText("Profile");
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
@@ -160,25 +151,16 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("delete the profile and reset object attribute value", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "CoreProfile" && status === 200;
-        }),
-
-        page.goto("/objects/CoreProfile"),
-      ]);
+      await page.goto("/objects/CoreProfile");
     });
 
     await test.step("Delete the profile", async () => {
       await page
-        .getByRole("row", { name: "Profile Tag profile" })
+        .getByRole("row", { name: "ProfileBuiltinTag profile" })
         .getByTestId("delete-row-button")
         .click();
       await expect(page.getByTestId("modal-delete")).toContainText(
-        "Are you sure you want to remove the object `profile test tag`?"
+        "Are you sure you want to remove the Profile\"profile test tag\"?"
       );
       await page.getByTestId("modal-delete-confirm").click();
     });
@@ -203,16 +185,8 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
   test("should verify the form fields for a new profile for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
+      await page.goto("/objects/CoreProfile");
 
-          return reqData?.operationName === "CoreProfile" && status === 200;
-        }),
-
-        page.goto("/objects/CoreProfile"),
-      ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page
@@ -245,16 +219,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
   test("should create a new profile successfully for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "CoreProfile" && status === 200;
-        }),
-
-        page.goto("/objects/CoreProfile"),
-      ]);
+      await page.goto("/objects/CoreProfile");
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "Profile Interface L2" }).click();
@@ -282,16 +247,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
   test("should create a new profile successfully for generic interface", async ({ page }) => {
     await test.step("access Interface form", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "CoreProfile" && status === 200;
-        }),
-
-        page.goto("/objects/CoreProfile"),
-      ]);
+      await page.goto("/objects/CoreProfile");
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "Profile Interface Profile", exact: true }).click();
