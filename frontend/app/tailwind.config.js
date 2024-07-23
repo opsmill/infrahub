@@ -41,6 +41,7 @@ export default {
       },
       colors: {
         "custom-blue": {
+          1: "#E4F3F7",
           10: "#a7d9e6",
           50: "#23a1c1",
           100: "#3babc8",

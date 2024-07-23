@@ -11,14 +11,13 @@ import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { useAtom } from "jotai/index";
 import { Fragment, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 
 const customId = "profile-alert";
 
 export const AccountMenu = () => {
   const { isAuthenticated, signOut } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
@@ -57,10 +56,22 @@ export const AccountMenu = () => {
 
     // Sign out because there is nothing from the API for that user id
     signOut();
-    navigate("/");
+
+    return <Navigate to="/" />;
   }
 
-  return isAuthenticated ? (
+  if (!isAuthenticated) {
+    return (
+      <Link
+        to="/signin"
+        state={{ from: location }}
+        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md whitespace-nowrap">
+        Sign in
+      </Link>
+    );
+  }
+
+  return (
     <Menu as="div">
       <Menu.Button
         className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
@@ -103,12 +114,5 @@ export const AccountMenu = () => {
         </Menu.Items>
       </Transition>
     </Menu>
-  ) : (
-    <Link
-      to="/signin"
-      state={{ from: location }}
-      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md whitespace-nowrap">
-      Sign in
-    </Link>
   );
 };

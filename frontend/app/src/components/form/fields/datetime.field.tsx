@@ -3,6 +3,7 @@ import { FormFieldProps, FormAttributeValue } from "@/components/form/type";
 import { DatePicker } from "@/components/inputs/date-picker";
 import { ComponentProps } from "react";
 import { LabelFormField } from "@/components/form/fields/common";
+import { formatISO } from "date-fns";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface DatetimeFieldProps
@@ -27,6 +28,11 @@ const DatetimeField = ({
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 
+        const handleChange = (newDate: Date) => {
+          const newDateValue = formatISO(newDate);
+          field.onChange(updateFormFieldValue(newDateValue, defaultValue));
+        };
+
         return (
           <div className="flex flex-col items-start">
             <LabelFormField
@@ -41,9 +47,7 @@ const DatetimeField = ({
                 {...field}
                 date={field.value?.value}
                 value={fieldData?.value ?? ""}
-                onChange={(newValue) => {
-                  field.onChange(updateFormFieldValue(newValue, defaultValue));
-                }}
+                onChange={handleChange}
                 {...props}
               />
             </FormInput>

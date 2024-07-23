@@ -23,6 +23,8 @@ import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { useAuth } from "@/hooks/useAuth";
 import useFilters from "@/hooks/useFilters";
+import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
+import { createToken } from "@/graphql/mutations/accounts/createToken";
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
 import { ProfilesSelector } from "@/components/form/profiles-selector";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
@@ -189,6 +191,33 @@ const NodeForm = ({
 
   async function onSubmitCreate(data: Record<string, FormFieldValue>) {
     try {
+      if (schema.kind === ACCOUNT_TOKEN_OBJECT) {
+        const mutationString = createToken({
+          data: stringifyWithoutQuotes({
+            ...data,
+          }),
+        });
+
+        const mutation = gql`
+          ${mutationString}
+        `;
+
+        const result = await graphqlClient.mutate({
+          mutation,
+          context: {
+            branch: branch?.name,
+            date,
+          },
+        });
+
+        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+          toastId: `alert-success-${schema?.name}-created`,
+        });
+
+        if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
+        return;
+      }
+
       const newObject = getCreateMutationFromFormData(fields, data);
 
       if (!Object.keys(newObject).length) {

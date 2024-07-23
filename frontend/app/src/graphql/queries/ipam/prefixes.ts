@@ -15,6 +15,9 @@ export const GET_PREFIXES_ONLY = gql`
           children {
             count
           }
+          descendants {
+            count
+          }
         }
       }
     }
@@ -184,6 +187,9 @@ export const GET_TOP_LEVEL_PREFIXES = gql`
             }
           }
           children {
+            count
+          }
+          descendants {
             count
           }
         }

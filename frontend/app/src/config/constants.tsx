@@ -14,7 +14,7 @@ export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
 export const ACCOUNT_OBJECT = "CoreAccount";
 
-export const ACCOUNT_TOKEN_OBJECT = "InternalAccountToken";
+export const ACCOUNT_TOKEN_OBJECT = "CoreAccountToken";
 
 export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
 
@@ -55,7 +55,6 @@ export const WRITE_ROLES = ["admin", "read-write"];
 export const ADMIN_ROLES = ["admin"];
 
 export const MENU_EXCLUDELIST = [
-  "InternalAccountToken",
   "CoreChangeComment",
   "CoreChangeThread",
   "CoreFileThread",
