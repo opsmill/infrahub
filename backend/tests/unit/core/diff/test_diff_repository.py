@@ -197,9 +197,96 @@ class TestDiffRepositorySaveAndLoad:
         retrieved_uuids = {root_diff.uuid for root_diff in retrieved}
         assert retrieved_uuids == expected_uuids
 
+    async def test_filter_time_ranges(self, diff_repository: DiffRepository, reset_database):
+        root_uuid = str(uuid4())
+        enriched_diff = RootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            uuid=root_uuid,
+            nodes=set(),
+        )
+        await diff_repository.save(enriched_diff=enriched_diff)
 
-# from_time
-# to_time
+        # both before
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time.subtract(minutes=100)),
+            to_time=Timestamp(self.diff_from_time.subtract(minutes=50)),
+        )
+        assert len(retrieved) == 0
+        # one before, one during
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time.subtract(minutes=100)),
+            to_time=Timestamp(self.diff_to_time.subtract(minutes=1)),
+        )
+        assert len(retrieved) == 0
+        # one before, one after
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time.subtract(minutes=100)),
+            to_time=Timestamp(self.diff_to_time.add(minutes=100)),
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0].uuid == root_uuid
+        # both during
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time.add(minutes=1)),
+            to_time=Timestamp(self.diff_to_time.subtract(minutes=1)),
+        )
+        assert len(retrieved) == 0
+        # one during, one after
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time.add(minutes=1)),
+            to_time=Timestamp(self.diff_to_time.add(minutes=1)),
+        )
+        assert len(retrieved) == 0
+        # both after
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_to_time.add(minutes=1)),
+            to_time=Timestamp(self.diff_to_time.add(minutes=10)),
+        )
+        assert len(retrieved) == 0
+
+    async def test_filter_root_node_uuids(self, diff_repository: DiffRepository, reset_database):
+        enriched_diffs: list[EnrichedDiffRoot] = []
+        for i in range(5):
+            nodes = self._build_nodes(num_nodes=4, num_sub_fields=3)
+            enriched_diff = RootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=f"branch{i}",
+                from_time=Timestamp(self.diff_from_time),
+                to_time=Timestamp(self.diff_to_time),
+                nodes=nodes,
+            )
+            enriched_diffs.append(enriched_diff)
+            await diff_repository.save(enriched_diff=enriched_diff)
+
+        one_diff = enriched_diffs[0]
+        nodes_without_parents = one_diff.get_nodes_without_parents()
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            root_node_uuids=[n.uuid for n in nodes_without_parents],
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0] == one_diff
+
+
 # root_node_uuids
 # max_depth
 # limit

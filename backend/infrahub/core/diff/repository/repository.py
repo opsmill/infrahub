@@ -36,7 +36,10 @@ class DiffRepository:
             offset=offset,
         )
         await query.execute(db=self.db)
-        return await query.get_enriched_diff_roots()
+        diff_roots = await query.get_enriched_diff_roots()
+        if root_node_uuids:
+            diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
+        return diff_roots
 
     async def save(self, enriched_diff: EnrichedDiffRoot) -> None:
         query = await EnrichedDiffSaveQuery.init(db=self.db, enriched_diff_root=enriched_diff)

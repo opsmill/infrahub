@@ -115,6 +115,13 @@ class EnrichedDiffRoot:
     def __hash__(self) -> int:
         return hash(self.uuid)
 
+    def get_nodes_without_parents(self) -> set[EnrichedDiffNode]:
+        nodes_with_parent_uuids = set()
+        for n in self.nodes:
+            for r in n.relationships:
+                nodes_with_parent_uuids |= {child_n.uuid for child_n in r.nodes}
+        return {node for node in self.nodes if node.uuid not in nodes_with_parent_uuids}
+
 
 @dataclass
 class CalculatedDiffs:
