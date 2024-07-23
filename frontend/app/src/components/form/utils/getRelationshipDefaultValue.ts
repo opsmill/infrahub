@@ -13,10 +13,6 @@ export const getRelationshipDefaultValue = ({
   isFilterForm,
   relationshipData,
 }: GetRelationshipDefaultValueParams): FormRelationshipValue => {
-  if (isFilterForm) {
-    return { source: null, value: null };
-  }
-
   if (!relationshipData) {
     return { source: null, value: null };
   }
@@ -39,6 +35,11 @@ export const getRelationshipDefaultValue = ({
       },
       value: relationshipData.node,
     };
+  }
+
+  // if filter form, we should only display user input
+  if (isFilterForm) {
+    return { source: null, value: null };
   }
 
   const source = relationshipData.properties.source;

@@ -20,7 +20,7 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
-import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
 import { useAuth } from "@/hooks/useAuth";
 import useFilters from "@/hooks/useFilters";
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
@@ -39,7 +39,7 @@ export type ProfileData = {
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
-  currentObject?: Record<string, AttributeType>;
+  currentObject?: Record<string, AttributeType | RelationshipType>;
   currentProfiles?: ProfileData[];
   isFilterForm?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
@@ -171,7 +171,7 @@ type NodeFormProps = {
   schema: iNodeSchema | IProfileSchema;
   profiles?: ProfileData[];
   onSuccess?: (newObject: any) => void;
-  currentObject?: Record<string, AttributeType>;
+  currentObject?: Record<string, AttributeType | RelationshipType>;
   isFilterForm?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
 };

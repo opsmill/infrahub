@@ -1,51 +1,22 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
-import SlideOver from "@/components/display/slide-over";
-import { DEFAULT_BRANCH_NAME, SEARCH_FILTERS } from "@/config/constants";
-import useFilters, { Filter } from "@/hooks/useFilters";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
+import { SEARCH_FILTERS } from "@/config/constants";
+import useFilters from "@/hooks/useFilters";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ObjectForm from "@/components/form/object-form";
 import usePagination from "@/hooks/usePagination";
-import { mapValues } from "remeda";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { getFiltersFromFormData } from "@/components/filters/utils/getFiltersFromFormData";
+import { FormFieldValue } from "@/components/form/type";
+import { getObjectFromFilters } from "@/components/filters/utils/getObjectFromFilters";
 
-type tFilters = {
-  schema: any;
+type FiltersProps = {
+  schema: IModelSchema;
 };
 
-const computeFilter = (data: [key: string, value: any]) => {
-  const [key, value] = data;
-
-  if (value?.id) {
-    return {
-      name: `${key}__ids`,
-      value: [value.id],
-    };
-  }
-
-  if (Array.isArray(value)) {
-    return {
-      name: `${key}__ids`,
-      value: value,
-    };
-  }
-
-  if (value) {
-    return {
-      name: `${key}__value`,
-      value,
-    };
-  }
-};
-
-const constructNewFilters = (data: any) => Object.entries(data).map(computeFilter).filter(Boolean);
-
-export const Filters = (props: tFilters) => {
-  const { schema } = props;
-
-  const branch = useAtomValue(currentBranchAtom);
+export const Filters = ({ schema }: FiltersProps) => {
   const [filters, setFilters] = useFilters();
   const [pagination, setPagination] = usePagination();
   const [showFilters, setShowFilters] = useState(false);
@@ -63,47 +34,20 @@ export const Filters = (props: tFilters) => {
 
   const handleShowFilters = () => setShowFilters(true);
 
-  const handleSubmit = (data: any) => {
-    const newFilters = constructNewFilters(data) as Filter[];
+  const handleSubmit = (formData: Record<string, FormFieldValue>) => {
+    const newFilters = getFiltersFromFormData(formData);
 
     setPagination({
       ...pagination,
       offset: 0,
     });
 
-    setFilters([...filters, ...newFilters]);
+    setFilters(newFilters);
 
     setShowFilters(false);
   };
 
   const currentFilters = filters.filter((filter) => !SEARCH_FILTERS.includes(filter.name));
-
-  const currentFiltersObject = filters
-    .map((filter) => {
-      // Get filer key name
-      const key = filter.name.split("__")[0];
-
-      if (Array.isArray(filter.value)) {
-        return {
-          [key]: {
-            edges: filter.value.map((value) => ({ node: value })),
-          },
-        };
-      }
-
-      return {
-        [key]: {
-          value: filter.value,
-        },
-      };
-    })
-    .reduce(
-      (acc, filter) => ({
-        ...acc,
-        ...filter,
-      }),
-      {}
-    );
 
   return (
     <div className="flex flex-1">
@@ -132,40 +76,15 @@ export const Filters = (props: tFilters) => {
       </div>
 
       <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Apply filters</span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-
-            <div className="text-sm">{schema?.description}</div>
-
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {schema?.kind}
-            </span>
-          </div>
-        }
+        title={<SlideOverTitle schema={schema} currentObjectLabel="All" title="Apply filters" />}
         open={showFilters}
         setOpen={setShowFilters}>
         <ObjectForm
-          onSubmit={({ formData }) =>
-            handleSubmit(mapValues(formData, (fieldData) => fieldData?.value))
-          }
+          onSubmit={({ formData }) => handleSubmit(formData)}
           kind={schema?.kind}
           isFilterForm
           submitLabel="Apply filters"
-          currentObject={currentFiltersObject}
+          currentObject={getObjectFromFilters(schema, currentFilters)}
         />
       </SlideOver>
     </div>
