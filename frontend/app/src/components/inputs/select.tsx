@@ -426,7 +426,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
           },
         ]}
         onSubmit={async (data) => {
-          await handleSubmit(data);
+          await handleSubmit({
+            value: data.value.value,
+            color: data.color.value,
+            label: data.label.value,
+            description: data.description.value,
+          });
         }}
         onCancel={handleCancel}
         className="p-4"
@@ -493,8 +498,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
             },
           },
         ]}
-        onSubmit={async (data) => {
-          await handleSubmit(data);
+        onSubmit={async ({ value }) => {
+          await handleSubmit({ value: value.value });
         }}
         onCancel={handleCancel}
         className="p-4"

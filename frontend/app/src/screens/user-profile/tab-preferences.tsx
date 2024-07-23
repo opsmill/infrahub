@@ -54,7 +54,13 @@ export default function TabPreferences() {
 
         <DynamicForm
           fields={fields}
-          onSubmit={async (data) => await onSubmit(data as UpdatePasswordFormData)}
+          onSubmit={async (formData) => {
+            const data: UpdatePasswordFormData = {
+              newPassword: formData.newPassword.value as string,
+              confirmPassword: formData.confirmPassword.value as string,
+            };
+            await onSubmit(data);
+          }}
           submitLabel="Update password"
         />
       </Card>

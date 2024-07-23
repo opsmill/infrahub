@@ -65,7 +65,7 @@ export const ProposedChangeCreateForm = () => {
           name="source_branch"
           defaultValue=""
           rules={{
-            required: true,
+            required: "Required",
             validate: {
               branchExists: (value: string) => {
                 const branchesName = sourceBranches.map(({ name }) => name);
@@ -74,7 +74,7 @@ export const ProposedChangeCreateForm = () => {
             },
           }}
           render={({ field }) => (
-            <div className="w-full">
+            <div className="w-full relative mb-2 flex flex-col">
               <FormLabel>Source Branch *</FormLabel>
               <FormInput>
                 <Combobox
@@ -99,9 +99,9 @@ export const ProposedChangeCreateForm = () => {
         <FormField
           name="destination_branch"
           defaultValue={defaultBranch[0].name}
-          rules={{ required: true }}
+          rules={{ required: "Required" }}
           render={({ field }) => (
-            <div className="w-full">
+            <div className="w-full relative mb-2 flex flex-col">
               <FormLabel>Destination Branch *</FormLabel>
               <FormInput>
                 <Combobox disabled {...field} />
@@ -115,10 +115,10 @@ export const ProposedChangeCreateForm = () => {
       <FormField
         name="name"
         defaultValue=""
-        rules={{ required: true }}
+        rules={{ required: "Required" }}
         render={({ field }) => {
           return (
-            <div>
+            <div className="relative mb-2 flex flex-col">
               <FormLabel>Name *</FormLabel>
               <FormInput>
                 <Input {...field} />

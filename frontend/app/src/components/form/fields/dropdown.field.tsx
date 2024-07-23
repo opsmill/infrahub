@@ -1,7 +1,8 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Select, SelectProps } from "@/components/inputs/select";
-import { DynamicDropdownFieldProps } from "@/components/form/type";
+import { DynamicDropdownFieldProps, FormAttributeValue } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface DropdownFieldProps
   extends Omit<DynamicDropdownFieldProps, "type">,
@@ -24,6 +25,8 @@ const DropdownField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
+        const fieldData: FormAttributeValue = field.value;
+
         return (
           <div className="relative flex flex-col">
             <LabelFormField
@@ -34,7 +37,17 @@ const DropdownField = ({
             />
 
             <FormInput>
-              <Select {...field} {...props} options={items} dropdown className="w-full" />
+              <Select
+                {...field}
+                value={fieldData?.value}
+                onChange={(newValue) => {
+                  field.onChange(updateFormFieldValue(newValue, defaultValue));
+                }}
+                {...props}
+                options={items}
+                dropdown
+                className="w-full"
+              />
             </FormInput>
             <FormMessage />
           </div>

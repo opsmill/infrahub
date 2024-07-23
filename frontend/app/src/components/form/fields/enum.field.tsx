@@ -1,8 +1,9 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { DynamicEnumFieldProps } from "@/components/form/type";
+import { DynamicEnumFieldProps, FormAttributeValue } from "@/components/form/type";
 import { ComboboxProps } from "@/components/ui/combobox";
 import { LabelFormField } from "@/components/form/fields/common";
 import { Select } from "@/components/inputs/select";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface EnumFieldProps
   extends Omit<DynamicEnumFieldProps, "type">,
@@ -25,6 +26,8 @@ const EnumField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
+        const fieldData: FormAttributeValue = field.value;
+
         return (
           <div className="relative flex flex-col">
             <LabelFormField
@@ -35,7 +38,17 @@ const EnumField = ({
             />
 
             <FormInput>
-              <Select {...field} {...props} options={items} enum className="w-full" />
+              <Select
+                {...field}
+                value={fieldData?.value}
+                onChange={(newValue) => {
+                  field.onChange(updateFormFieldValue(newValue, defaultValue));
+                }}
+                {...props}
+                options={items}
+                enum
+                className="w-full"
+              />
             </FormInput>
             <FormMessage />
           </div>

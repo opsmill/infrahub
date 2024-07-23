@@ -10,7 +10,6 @@ import { store } from "@/state";
 import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
 import * as R from "ramda";
 import { isGeneric, sortByOrderWeight } from "./common";
-import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;
@@ -162,38 +161,7 @@ export const getObjectRelationshipsForForm = (
   return relationships;
 };
 
-type tgetRelationshipValue = {
-  row: any;
-  field: any;
-  isFilters?: boolean;
-};
-
-export const getRelationshipValue = ({ row, field, isFilters }: tgetRelationshipValue) => {
-  // No default value for filters
-  if (isFilters) return "";
-
-  if (!row || !row[field.name]) {
-    return "";
-  }
-
-  const value = row[field.name].node ?? row[field.name];
-
-  if (!value) {
-    return "";
-  }
-
-  if (value.id) {
-    return value.id;
-  }
-
-  if (value.edges) {
-    return value.edges.map((edge: any) => ({ id: edge.node.id }));
-  }
-
-  return "";
-};
-
-// Inlcude current value in the options to make it available in the select component
+// Include current value in the options to make it available in the select component
 export const getRelationshipOptions = (row: any, field: any, schemas: any[], generics: any[]) => {
   const value = row && (row[field.name]?.node ?? row[field.name]);
 
@@ -234,15 +202,6 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
 
   // Initial option for relationships to make the current value available
   return [option];
-};
-
-export const getSelectParent = (
-  row: Record<string, AttributeType> | undefined,
-  field: { name: string }
-) => {
-  const parentKind = row?.[field.name]?.node?.__typename;
-
-  return parentKind;
 };
 
 export const getOptionsFromAttribute = (attribute: any, value: any) => {

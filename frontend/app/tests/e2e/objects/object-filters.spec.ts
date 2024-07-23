@@ -111,6 +111,11 @@ test.describe("Object filters", () => {
   test("should correctly filter from a kind", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
     await page.getByTestId("apply-filters").click();
+
+    await test.step("profiles selector should not be visible", async () => {
+      await expect(page.getByText("Select an object type")).not.toBeVisible();
+    });
+
     const kindSelector = page
       .getByTestId("side-panel-container")
       .getByText("Kind")

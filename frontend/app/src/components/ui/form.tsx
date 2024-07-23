@@ -20,7 +20,7 @@ import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
 
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: Record<string, unknown>) => Promise<void>;
+  onSubmit?: (v: Record<string, any>) => void;
   defaultValues?: Partial<Record<string, unknown>>;
 }
 
@@ -90,7 +90,7 @@ export const FormMessage = ({
 
   const { error } = getFieldState(name, formState);
 
-  const message = error?.type === "required" ? "Required" : error?.message?.toString() ?? children;
+  const message = error?.message?.toString() ?? children;
   if (!message) return null;
 
   return (

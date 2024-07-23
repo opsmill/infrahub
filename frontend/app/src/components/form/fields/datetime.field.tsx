@@ -1,9 +1,10 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { FormFieldProps } from "@/components/form/type";
+import { FormFieldProps, FormAttributeValue } from "@/components/form/type";
 import { DatePicker } from "@/components/inputs/date-picker";
 import { ComponentProps } from "react";
 import { LabelFormField } from "@/components/form/fields/common";
 import { formatISO } from "date-fns";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface DatetimeFieldProps
   extends FormFieldProps,
@@ -25,9 +26,11 @@ const DatetimeField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
+        const fieldData: FormAttributeValue = field.value;
+
         const handleChange = (newDate: Date) => {
           const newDateValue = formatISO(newDate);
-          field.onChange(newDateValue);
+          field.onChange(updateFormFieldValue(newDateValue, defaultValue));
         };
 
         return (
@@ -40,7 +43,12 @@ const DatetimeField = ({
             />
 
             <FormInput>
-              <DatePicker date={field.value} {...field} {...props} onChange={handleChange} />
+              <DatePicker
+                {...field}
+                date={fieldData?.value ? new Date(fieldData.value as string) : null}
+                onChange={handleChange}
+                {...props}
+              />
             </FormInput>
             <FormMessage />
           </div>
