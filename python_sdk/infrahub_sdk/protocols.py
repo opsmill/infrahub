@@ -91,6 +91,7 @@ class CoreGroup(CoreNode):
     name: str
     label: Optional[str]
     description: Optional[str]
+    group_type: str
     members: Union[RelationshipManager, RelationshipManagerSync]
     subscribers: Union[RelationshipManager, RelationshipManagerSync]
     parent: Union[RelatedNode, RelatedNodeSync]
