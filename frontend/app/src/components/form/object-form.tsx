@@ -30,7 +30,8 @@ import { ProfilesSelector } from "@/components/form/profiles-selector";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 
-export type ProfileData = Record<string, Pick<AttributeType, "value" | "__typename">> & {
+export type ProfileData = {
+  [key: string]: string | Pick<AttributeType, "value" | "__typename">;
   display_label: string;
   id: string;
 };

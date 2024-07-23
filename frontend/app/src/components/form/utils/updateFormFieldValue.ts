@@ -1,10 +1,11 @@
-import { FormAttributeValue } from "@/components/form/type";
+import { FormFieldValue } from "@/components/form/type";
+import { isDeepEqual } from "remeda";
 
 export const updateFormFieldValue = (
-  newValue: FormAttributeValue["value"],
-  defaultValue?: FormAttributeValue
-): FormAttributeValue => {
-  if (defaultValue && newValue === defaultValue.value) return defaultValue;
+  newValue: FormFieldValue["value"],
+  defaultValue?: FormFieldValue
+) => {
+  if (defaultValue && isDeepEqual(newValue, defaultValue.value)) return defaultValue;
 
   return {
     source: { type: "user" },

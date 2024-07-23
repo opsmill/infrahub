@@ -1,7 +1,7 @@
 import { FieldSchema, AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { ProfileData } from "@/components/form/object-form";
 import { FormAttributeValue } from "@/components/form/type";
-import { prop, sortBy } from "remeda";
+import * as R from "ramda";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
@@ -47,7 +47,10 @@ const getDefaultValueFromProfiles = (
   profiles: Array<ProfileData>
 ): FormAttributeValue | null => {
   // Get value from profiles depending on the priority
-  const orderedProfiles = sortBy(profiles, prop("profile_priority.value"), prop("id"));
+  const orderedProfiles = R.sortWith<ProfileData>([
+    R.ascend(R.path(["profile_priority", "value"])),
+    R.ascend(R.prop("id")),
+  ])(profiles);
 
   const profileWithDefaultValueForField = orderedProfiles.find((profile) => profile?.[fieldName]);
   if (!profileWithDefaultValueForField) return null;

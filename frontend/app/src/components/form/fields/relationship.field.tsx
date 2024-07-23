@@ -208,6 +208,8 @@ const RelationshipField = ({
           rules={rules}
           defaultValue={defaultValue}
           render={({ field }) => {
+            const fieldData = field.value;
+
             return (
               <div className="relative flex flex-col">
                 <LabelFormField
@@ -220,6 +222,7 @@ const RelationshipField = ({
                 <FormInput>
                   <RelationshipInput
                     {...field}
+                    value={fieldData?.value}
                     {...props}
                     peer={parentRelationship?.peer}
                     disabled={props.disabled}

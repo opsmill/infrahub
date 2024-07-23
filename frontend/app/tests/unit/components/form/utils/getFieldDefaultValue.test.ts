@@ -263,20 +263,20 @@ describe("getFieldDefaultValue", () => {
           },
         },
         {
-          id: "profile2",
-          display_label: "Profile 2",
+          id: "profile1",
+          display_label: "Profile 1",
           name: {
-            value: "second",
+            value: "first",
           },
           profile_priority: {
             value: 2,
           },
         },
         {
-          id: "profile1",
-          display_label: "Profile 1",
+          id: "profile2",
+          display_label: "Profile 2",
           name: {
-            value: "first",
+            value: "second",
           },
           profile_priority: {
             value: 1,
@@ -290,10 +290,10 @@ describe("getFieldDefaultValue", () => {
       // THEN
       expect(defaultValue).to.deep.equal({
         source: {
-          label: "Profile 1",
+          label: "Profile 2",
           type: "profile",
         },
-        value: "first",
+        value: "second",
       });
     });
   });
