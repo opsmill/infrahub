@@ -366,6 +366,11 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
     end_range: Integer
 
 
+class CoreObjectPermission(CoreBasePermission):
+    kind: str
+    action: str
+
+
 class CoreObjectThread(CoreThread):
     object_path: String
 
@@ -440,11 +445,6 @@ class CoreUserGroup(CoreNode):
     name: str
     users: Union[RelationshipManager, RelationshipManagerSync]
     roles: Union[RelationshipManager, RelationshipManagerSync]
-
-
-class CoreUserPermission(CoreBasePermission):
-    kind: str
-    action: str
 
 
 class CoreUserRole(CoreNode):

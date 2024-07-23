@@ -50,6 +50,16 @@ class PermissionLevel(enum.Flag):
     DEFAULT = 0
 
 
+class GlobalPermissions(InfrahubStringEnum):
+    EDIT_DEFAULT_BRANCH = "edit_default_branch"
+    MANAGE_USERS = "manage_users"
+    MANAGE_PERMISSIONS = "manage_permissions"
+    MANAGE_SCHEMA = "manage_schema"
+    MANAGE_REPOSITORIES = "manage_repositories"
+    MANAGE_ARTIFACTS = "manage_artifacts"
+    MERGE_PROPOSED_CHANGE = "merge_proposed_change"
+
+
 class AccountRole(InfrahubStringEnum):
     ADMIN = "admin"
     READ_ONLY = "read-only"

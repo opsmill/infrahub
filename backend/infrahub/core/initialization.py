@@ -4,7 +4,13 @@ from uuid import uuid4
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DEFAULT_IP_NAMESPACE, GLOBAL_BRANCH_NAME, AccountRole, InfrahubKind
+from infrahub.core.constants import (
+    DEFAULT_IP_NAMESPACE,
+    GLOBAL_BRANCH_NAME,
+    AccountRole,
+    GlobalPermissions,
+    InfrahubKind,
+)
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
@@ -18,6 +24,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.storage import InfrahubObjectStorage
+from infrahub.utils import format_label
 
 log = get_logger()
 
@@ -262,14 +269,13 @@ async def create_ipam_namespace(
 
 async def create_global_permissions(db: InfrahubDatabase) -> list[CoreGlobalPermission]:
     objs: list[CoreGlobalPermission] = []
-    actions = [("Edit default branch", "edit_default_branch")]
 
-    for name, action in actions:
+    for permission in GlobalPermissions:
         obj: CoreGlobalPermission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=name, action=action)
+        await obj.new(db=db, name=format_label(permission.value), action=permission.value)
         await obj.save(db=db)
         objs.append(obj)
-        log.info(f"Created global permission: {name}")
+        log.info(f"Created global permission: {permission}")
 
     return objs
 

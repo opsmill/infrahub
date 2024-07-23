@@ -316,7 +316,7 @@ class CoreGeneratorValidator(CoreValidator):
 
 class CoreGlobalPermission(CoreBasePermission):
     name: String
-    action: String
+    action: Dropdown
 
 
 class CoreGraphQLQuery(CoreNode):
@@ -358,6 +358,11 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
     unique_for: StringOptional
     start_range: Integer
     end_range: Integer
+
+
+class CoreObjectPermission(CoreBasePermission):
+    kind: String
+    action: Enum
 
 
 class CoreObjectThread(CoreThread):
@@ -434,11 +439,6 @@ class CoreUserGroup(CoreNode):
     name: String
     users: RelationshipManager
     roles: RelationshipManager
-
-
-class CoreUserPermission(CoreBasePermission):
-    kind: String
-    action: Enum
 
 
 class CoreUserRole(CoreNode):
