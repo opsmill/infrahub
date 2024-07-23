@@ -24,7 +24,7 @@ export const initials = (name?: string) =>
 const getAvatarSize = (size?: AVATAR_SIZE) => {
   switch (size) {
     case AVATAR_SIZE.SMALL: {
-      return "h-8 w-8 text-xs";
+      return "h-6 w-6 text-xs";
     }
     default: {
       return "h-12 w-12";
