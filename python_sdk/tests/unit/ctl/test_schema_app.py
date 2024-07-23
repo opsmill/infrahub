@@ -101,8 +101,12 @@ def test_schema_load_notvalid_namespace(httpx_mock: HTTPXMock):
 
     expected_result = (
         "\x1b[31mUnable to load the schema:\x1b[0m\n "
-        " Node: OuTDevice | namespace \x1b[1m(\x1b[0mOuT\x1b[1m)\x1b[0m | String should match pattern \x1b[32m'^\x1b[0m\x1b[32m[\x1b[0m\x1b[32mA-Z\x1b[0m\x1b[32m]\x1b[0m\x1b[32m+$'\x1b[0m \x1b[1m(\x1b[0mstring_pattern_mismatch\x1b[1m)\x1b[0m\n "
-        " Node: OuTDevice | Attribute: name \x1b[1m(\x1b[0mNotValid\x1b[1m)\x1b[0m | Value error, Only valid Attribute Kind are : \x1b[1m[\x1b[0m\x1b[32m'ID'\x1b[0m, \x1b[32m'Dropdown'\x1b[0m\x1b[1m]\x1b[0m  \x1b[1m(\x1b[0mvalue_error\x1b[1m)\x1b[0m\n\x1b[1;31m1\x1b[0m\n"
+        " Node: OuTDevice | namespace \x1b[1m(\x1b[0mOuT\x1b[1m)\x1b[0m | "
+        "String should match pattern \x1b[32m'^\x1b[0m\x1b[32m[\x1b[0m\x1b[32mA-Z\x1b[0m\x1b[32m]\x1b[0m\x1b[32m+$'\x1b[0m "
+        "\x1b[1m(\x1b[0mstring_pattern_mismatch\x1b[1m)\x1b[0m\n "
+        " Node: OuTDevice | Attribute: name \x1b[1m(\x1b[0mNotValid\x1b[1m)\x1b[0m | "
+        "Value error, Only valid Attribute Kind are : \x1b[1m[\x1b[0m\x1b[32m'ID'\x1b[0m, \x1b[32m'Dropdown'\x1b[0m\x1b[1m]\x1b[0m "
+        " \x1b[1m(\x1b[0mvalue_error\x1b[1m)\x1b[0m\n\x1b[1;31m1\x1b[0m\n"
     )
     assert expected_result == result.stdout
 
