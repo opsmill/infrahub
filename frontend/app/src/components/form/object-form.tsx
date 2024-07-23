@@ -24,7 +24,7 @@ import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayVal
 import { useAuth } from "@/hooks/useAuth";
 import useFilters from "@/hooks/useFilters";
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import { createToken } from "@/graphql/mutations/accounts/createToken";
+import { CREATE_ACCOUNT_TOKEN } from "@/graphql/mutations/accounts/createAccountToken";
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
 import { ProfilesSelector } from "@/components/form/profiles-selector";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
@@ -203,25 +203,18 @@ const NodeForm = ({
   async function onSubmitCreate(data: Record<string, FormFieldValue>) {
     try {
       if (schema.kind === ACCOUNT_TOKEN_OBJECT) {
-        const mutationString = createToken({
-          data: stringifyWithoutQuotes({
-            ...data,
-          }),
-        });
-
-        const mutation = gql`
-          ${mutationString}
-        `;
-
         const result = await graphqlClient.mutate({
-          mutation,
+          mutation: CREATE_ACCOUNT_TOKEN,
+          variables: {
+            name: data.name.value,
+          },
           context: {
             branch: branch?.name,
             date,
           },
         });
 
-        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.label} created`} />, {
           toastId: `alert-success-${schema?.name}-created`,
         });
 
