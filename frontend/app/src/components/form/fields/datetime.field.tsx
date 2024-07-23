@@ -45,8 +45,7 @@ const DatetimeField = ({
             <FormInput>
               <DatePicker
                 {...field}
-                date={field.value?.value}
-                value={fieldData?.value ?? ""}
+                date={fieldData?.value ? new Date(fieldData.value as string) : null}
                 onChange={handleChange}
                 {...props}
               />
