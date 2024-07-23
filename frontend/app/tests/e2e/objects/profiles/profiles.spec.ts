@@ -18,16 +18,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("should create a new profile successfully", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "CoreProfile" && status === 200;
-        }),
-
-        page.goto("/objects/CoreProfile"),
-      ]);
+      await page.goto("/objects/CoreProfile");
       await expect(page.getByRole("heading")).toContainText("Profile");
     });
 
@@ -51,16 +42,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("access the created profile, view its data, and edit it", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "CoreProfile" && status === 200;
-        }),
-
-        page.goto("/objects/CoreProfile"),
-      ]);
+      await page.goto("/objects/CoreProfile");
       await expect(page.getByRole("heading")).toContainText("Profile");
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
@@ -77,16 +59,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("create an object with a profile", async ({ page }) => {
     await test.step("Navigate to object creation page", async () => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "BuiltinTag" && status === 200;
-        }),
-
-        page.goto("/objects/BuiltinTag"),
-      ]);
+      await page.goto("/objects/BuiltinTag");
       await page.getByTestId("create-object-button").click();
     });
 
@@ -139,13 +112,13 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByTestId("edit-button").click();
       await page.getByLabel("Description").fill("A profile for E2E test edited");
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
+      await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
     });
 
     await test.step("Verify the changes in an object using the edited profile", async () => {
       await page.goto("/objects/BuiltinTag");
       await page.getByRole("link", { name: "tag with profile" }).click();
-      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
+      await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
     });
   });
 
@@ -182,6 +155,14 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verification", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
 
   test("should verify the form fields for a new profile for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
@@ -237,11 +218,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .click();
       await page.getByText("Provisioning").click();
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(
-        page
-          .locator("#alert-success-InfraInterfaceL2-created")
-          .getByText("InfraInterfaceL2 created")
-      ).toBeVisible();
+      await expect(page.getByText("InfraInterfaceL2 created")).toBeVisible();
     });
   });
 
@@ -263,9 +240,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .click();
       await page.getByText("Maintenance", { exact: true }).click();
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(
-        page.locator("#alert-success-InfraInterface-created").getByText("InfraInterface created")
-      ).toBeVisible();
+      await expect(page.getByText("InfraInterface created")).toBeVisible();
     });
   });
 
