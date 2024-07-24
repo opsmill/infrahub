@@ -85,8 +85,8 @@ class TestDiffRepositorySaveAndLoad:
     def setup_method(self):
         self.base_branch_name = "main"
         self.diff_branch_name = "diff"
-        self.diff_from_time = DateTime(2024, 6, 15, 18, 35, 20, tzinfo=UTC)
-        self.diff_to_time = DateTime(2024, 6, 15, 18, 49, 40, tzinfo=UTC)
+        self.diff_from_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
+        self.diff_to_time = DateTime.create(2024, 6, 15, 18, 49, 40, tz=UTC)
 
     def _build_nodes(self, num_nodes: int, num_sub_fields: int) -> set[EnrichedDiffNode]:
         nodes = {self.build_diff_node(num_sub_fields=num_sub_fields) for _ in range(num_nodes)}
@@ -103,7 +103,7 @@ class TestDiffRepositorySaveAndLoad:
                     nodes_to_check.append(child_node)
         return all_nodes
 
-    async def test_get_non_existent_diff(self, diff_repository: DiffRepository):
+    async def test_get_non_existent_diff(self, diff_repository: DiffRepository, reset_database):
         right_now = Timestamp()
         enriched_diffs = await diff_repository.get(
             base_branch_name=self.base_branch_name,
@@ -161,7 +161,7 @@ class TestDiffRepositorySaveAndLoad:
         diff_branch_1, diff_branch_2, diff_branch_3 = "diff1", "diff2", "diff3"
         diff_uuids_by_name = {diff_branch_1: set(), diff_branch_2: set(), diff_branch_3: set()}
         for diff_branch_name in (diff_branch_1, diff_branch_2, diff_branch_3):
-            start_time = DateTime(2024, 6, 15, 18, 35, 20, tzinfo=UTC)
+            start_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
             for _ in range(5):
                 start_time = start_time.add(seconds=randint(150_000, 300_000))
                 end_time = start_time.add(seconds=randint(25_000, 100_000))
@@ -177,7 +177,7 @@ class TestDiffRepositorySaveAndLoad:
                 )
                 await diff_repository.save(enriched_diff=enriched_diff)
 
-        start_time = DateTime(2024, 6, 15, 18, 35, 20, tzinfo=UTC)
+        start_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
         end_time = start_time.add(months=1)
         for diff_name, expected_uuids in diff_uuids_by_name.items():
             retrieved = await diff_repository.get(
@@ -561,3 +561,37 @@ class TestDiffRepositorySaveAndLoad:
             root_nodes = retrieved_root.get_nodes_without_parents()
             assert len(root_nodes) == 1
             assert root_nodes == {third_nodes[index]}
+
+    async def test_save_and_retrieve_many_diffs(self, diff_repository: DiffRepository, reset_database):
+        diffs_to_retrieve: list[EnrichedDiffRoot] = []
+        start_time = self.diff_from_time.add(seconds=1)
+        for i in range(5):
+            nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
+            enriched_diff = RootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=self.diff_branch_name,
+                from_time=Timestamp(start_time.add(minutes=i * 30)),
+                to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
+                nodes=nodes,
+            )
+            await diff_repository.save(enriched_diff=enriched_diff)
+            diffs_to_retrieve.append(enriched_diff)
+        for i in range(5):
+            nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
+            enriched_diff = RootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=self.diff_branch_name,
+                from_time=Timestamp(start_time.add(days=3, minutes=(i * 30))),
+                to_time=Timestamp(start_time.add(days=3, minutes=(i * 30) + 29)),
+                nodes=nodes,
+            )
+            await diff_repository.save(enriched_diff=enriched_diff)
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(start_time),
+            to_time=Timestamp(start_time.add(minutes=150)),
+        )
+        assert len(retrieved) == 5
+        assert set(retrieved) == set(diffs_to_retrieve)
