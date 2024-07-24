@@ -22,7 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { constructPath } from "@/utils/fetch";
 import { QSP } from "@/config/qsp";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ProposedChangesReviewers } from "./proposed-changes-reviewers";
+import { ProposedChangesReviewers } from "./reviewers";
 
 export const ProposedChangesPage = () => {
   const [schemaList] = useAtom(schemaState);
