@@ -54,6 +54,9 @@ query GET_PROPOSED_CHANGES($state: String) {
           }
           __typename
         }
+        validations {
+          count
+        }
       }
       __typename
     }

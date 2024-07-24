@@ -1,6 +1,6 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Badge } from "@/components/ui/badge";
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { ARTIFACT_OBJECT, PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { getProposedChanges } from "@/graphql/queries/proposed-changes/getProposedChanges";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
@@ -12,8 +12,7 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Table } from "@/components/table/table";
-import { ProposedChangesData } from "@/screens/proposed-changes/proposed-changes-data";
-import { ProposedChangesInfo } from "@/screens/proposed-changes/proposed-changes-info";
+
 import { Card } from "@/components/ui/card";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { debounce } from "@/utils/common";
@@ -23,6 +22,11 @@ import { constructPath } from "@/utils/fetch";
 import { QSP } from "@/config/qsp";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ProposedChangesReviewers } from "./reviewers";
+import { ProposedChangesInfo } from "./item-info";
+import { ProposedChangesData } from "./diff-summary";
+import { ProposedChangesCounter } from "./counter";
+import { getProposedChangesTasks } from "@/graphql/queries/proposed-changes/getProposedChangesTasks";
+import { getProposedChangesArtifacts } from "@/graphql/queries/proposed-changes/getProposedChangesArtifacts";
 
 export const ProposedChangesPage = () => {
   const [schemaList] = useAtom(schemaState);
@@ -96,6 +100,8 @@ export const ProposedChangesPage = () => {
     },
   ];
 
+  console.log("data[TASK_OBJECT]?.count: ", data[TASK_OBJECT]?.count);
+
   const rows = nodes.map((node: any) => {
     return {
       link: constructPath(`/proposed-changes/${node.id}`),
@@ -109,9 +115,17 @@ export const ProposedChangesPage = () => {
           />
         ),
         data: <ProposedChangesData branch={node.source_branch.value} />,
-        checks: <Badge className="rounded-full">0</Badge>,
-        tasks: <Badge className="rounded-full">0</Badge>,
-        artifacts: <Badge className="rounded-full">0</Badge>,
+        checks: <Badge className="rounded-full">{node.validations.count}</Badge>,
+        tasks: (
+          <ProposedChangesCounter id={node.id} query={getProposedChangesTasks} kind={TASK_OBJECT} />
+        ),
+        artifacts: (
+          <ProposedChangesCounter
+            id={node.id}
+            query={getProposedChangesArtifacts}
+            kind={ARTIFACT_OBJECT}
+          />
+        ),
         reviewers: (
           <ProposedChangesReviewers
             reviewers={node.reviewers.edges.map((edge: any) => edge.node)}
