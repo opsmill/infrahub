@@ -101,7 +101,7 @@ class EnrichedDiffGetQuery(Query):
                 WITH diff_node
                 OPTIONAL MATCH descendant_path = (diff_node) ((parents:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(rel_nodes:DiffRelationship)-[:DIFF_HAS_NODE]->(children:DiffNode)){0, %(max_depth)s}
                 // turn them into a nested list of the form [[parent node, relationship node, child node], ...]
-                RETURN collect([parents[i], rel_nodes[i], children[i]]) AS parent_child_tuples
+                RETURN reduce(acc = [], i IN range(0, size(parents)- 1) | acc + [[parents[i], rel_nodes[i], children[i]]]) AS parent_child_tuples
             }
             """ % {"max_depth": self.max_depth}
         elif db.db_type is DatabaseType.MEMGRAPH:
