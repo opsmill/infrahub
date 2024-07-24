@@ -30,6 +30,8 @@ export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
 
 export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
+export const ARTIFACT_OBJECT = "CoreArtifact";
+
 export const INFRAHUB_TASK = "InfrahubTask";
 
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
