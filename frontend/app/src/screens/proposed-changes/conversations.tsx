@@ -42,9 +42,9 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import DynamicForm from "@/components/form/dynamic-form";
-import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 
 type tConversations = {
   refetch?: Function;
@@ -574,12 +574,7 @@ const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChangeEditFo
   if (!proposedChangeSchema) return null;
 
   async function onSubmit(data: any) {
-    const updatedObject = getMutationDetailsFromFormData(
-      proposedChangeSchema,
-      data,
-      "update",
-      initialData
-    );
+    const updatedObject = getUpdateMutationFromFormData(data);
 
     if (Object.keys(updatedObject).length) {
       try {
@@ -650,7 +645,7 @@ const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChangeEditFo
           name: "destination_branch",
           type: "enum",
           label: "Destination Branch",
-          defaultValue: "main",
+          defaultValue: { source: null, value: "main" },
           items: [],
           disabled: true,
         },

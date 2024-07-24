@@ -1,7 +1,8 @@
 import { Checkbox } from "@/components/inputs/checkbox";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { FormFieldProps } from "@/components/form/type";
+import { FormFieldProps, FormAttributeValue } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface CheckboxFieldProps extends FormFieldProps {}
 
@@ -30,13 +31,20 @@ const CheckboxField = ({
       }}
       defaultValue={defaultValue}
       render={({ field }) => {
-        const { value, ...fieldMethodsWithoutValue } = field;
+        const fieldData: FormAttributeValue = field.value;
 
         return (
           <div className="relative flex flex-col">
             <div className="flex items-center">
               <FormInput>
-                <Checkbox {...fieldMethodsWithoutValue} {...props} checked={!!value} cl />
+                <Checkbox
+                  {...field}
+                  checked={!!fieldData?.value}
+                  onChange={(event) => {
+                    field.onChange(updateFormFieldValue(event.target.checked, defaultValue));
+                  }}
+                  {...props}
+                />
               </FormInput>
 
               <LabelFormField

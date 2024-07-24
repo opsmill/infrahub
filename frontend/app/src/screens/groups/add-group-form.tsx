@@ -60,7 +60,7 @@ export default function AddGroupForm({
           schema,
         },
       ]}
-      onSubmit={onSubmit}
+      onSubmit={({ groupIds }) => onSubmit({ groupIds: groupIds.value as Array<{ id: string }> })}
       {...props}
     />
   );

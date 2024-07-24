@@ -12,7 +12,7 @@ interface LabelFormFieldProps extends LabelProps {
   label?: string;
   required?: boolean;
   unique?: boolean;
-  description?: string;
+  description?: string | null;
 }
 
 export const LabelFormField = ({

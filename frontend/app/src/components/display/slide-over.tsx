@@ -77,8 +77,8 @@ export default function SlideOver(props: Props) {
 type SlideOverTitleProps = {
   schema: IModelSchema;
   currentObjectLabel?: string;
-  title: React.ReactNode;
-  subtitle: React.ReactNode;
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
 };
 
 export const SlideOverTitle = ({
@@ -119,8 +119,8 @@ export const SlideOverTitle = ({
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="text-sm">{subtitle}</p>
+        {title && <h3 className="text-lg font-semibold">{title}</h3>}
+        {subtitle && <p className="text-sm">{subtitle}</p>}
       </div>
     </div>
   );

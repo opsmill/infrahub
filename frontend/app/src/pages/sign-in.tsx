@@ -44,7 +44,11 @@ function SignInPage() {
           <DynamicForm
             className="w-full"
             fields={fields}
-            onSubmit={async (data) => {
+            onSubmit={async (formData) => {
+              const data = {
+                username: formData.username.value as string,
+                password: formData.password.value as string,
+              };
               await signIn(data, () => navigate(from));
             }}
             submitLabel="Sign in"

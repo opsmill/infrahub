@@ -3,7 +3,7 @@ import { uniqueItemsArray } from "@/utils/array";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export type Filter = {
-  name: string;
+  name: `${string}__${string}`;
   value: any;
   display_label?: string;
 };

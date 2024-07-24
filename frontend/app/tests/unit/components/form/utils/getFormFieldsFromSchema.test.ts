@@ -5,19 +5,19 @@ import { AuthContextType } from "@/hooks/useAuth";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { components } from "@/infraops";
 
-const buildAttribute = (
+export const buildAttributeSchema = (
   override?: Partial<components["schemas"]["AttributeSchema-Output"]>
 ): components["schemas"]["AttributeSchema-Output"] => ({
   id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
   state: "present",
-  name: "name",
+  name: "field1",
   kind: "Text",
   enum: null,
   choices: null,
   regex: null,
   max_length: null,
   min_length: null,
-  label: "Name",
+  label: "Field 1",
   description: null,
   read_only: false,
   unique: false,
@@ -30,7 +30,7 @@ const buildAttribute = (
   ...override,
 });
 
-const buildRelationship = (
+export const buildRelationshipSchema = (
   override?: Partial<components["schemas"]["RelationshipSchema-Output"]>
 ): components["schemas"]["RelationshipSchema-Output"] => ({
   id: "17e2718c-73ed-3ffe-3402-c515757ff94f",
@@ -71,8 +71,8 @@ describe("getFormFieldsFromSchema", () => {
   it("returns no fields that are read only", () => {
     // GIVEN
     const schema = {
-      attributes: [buildAttribute({ read_only: true })],
-      relationships: [buildRelationship({ read_only: true })],
+      attributes: [buildAttributeSchema({ read_only: true })],
+      relationships: [buildRelationshipSchema({ read_only: true })],
     } as IModelSchema;
 
     // WHEN
@@ -86,10 +86,10 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [
-        buildAttribute({ name: "third", order_weight: 3 }),
-        buildAttribute({ name: "first", order_weight: 1 }),
+        buildAttributeSchema({ name: "third", order_weight: 3 }),
+        buildAttributeSchema({ name: "first", order_weight: 1 }),
       ],
-      relationships: [buildRelationship({ name: "second", order_weight: 2 })],
+      relationships: [buildRelationshipSchema({ name: "second", order_weight: 2 })],
     } as IModelSchema;
 
     // WHEN
@@ -105,7 +105,7 @@ describe("getFormFieldsFromSchema", () => {
   it("should map a text attribute correctly", () => {
     // GIVEN
     const schema = {
-      attributes: [buildAttribute({ kind: "Text" })],
+      attributes: [buildAttributeSchema({ kind: "Text" })],
     } as IModelSchema;
 
     // WHEN
@@ -113,16 +113,19 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
-      defaultValue: null,
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "schema" }, value: null },
       description: undefined,
       disabled: false,
-      name: "name",
-      label: "Name",
+      name: "field1",
+      label: "Field 1",
       type: "Text",
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -130,7 +133,9 @@ describe("getFormFieldsFromSchema", () => {
   it("should map a HashedPassword attribute correctly", () => {
     // GIVEN
     const schema = {
-      attributes: [buildAttribute({ label: "Password", name: "password", kind: "HashedPassword" })],
+      attributes: [
+        buildAttributeSchema({ label: "Password", name: "password", kind: "HashedPassword" }),
+      ],
     } as IModelSchema;
 
     // WHEN
@@ -138,8 +143,8 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
-      defaultValue: null,
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "schema" }, value: null },
       description: undefined,
       disabled: false,
       name: "password",
@@ -148,6 +153,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -155,7 +163,7 @@ describe("getFormFieldsFromSchema", () => {
   it("should map a URL attribute correctly", () => {
     // GIVEN
     const schema = {
-      attributes: [buildAttribute({ label: "Url", name: "url", kind: "URL" })],
+      attributes: [buildAttributeSchema({ label: "Url", name: "url", kind: "URL" })],
     } as IModelSchema;
 
     // WHEN
@@ -163,8 +171,8 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
-      defaultValue: null,
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "schema" }, value: null },
       description: undefined,
       disabled: false,
       name: "url",
@@ -173,6 +181,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -180,7 +191,7 @@ describe("getFormFieldsFromSchema", () => {
   it("should map a JSON attribute correctly", () => {
     // GIVEN
     const schema = {
-      attributes: [buildAttribute({ label: "Parameters", name: "parameters", kind: "JSON" })],
+      attributes: [buildAttributeSchema({ label: "Parameters", name: "parameters", kind: "JSON" })],
     } as IModelSchema;
 
     // WHEN
@@ -188,8 +199,8 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
-      defaultValue: null,
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "schema" }, value: null },
       description: undefined,
       disabled: false,
       name: "parameters",
@@ -198,6 +209,9 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -206,7 +220,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [
-        buildAttribute({
+        buildAttributeSchema({
           default_value: "address",
           label: "Member Type",
           name: "member_type",
@@ -238,8 +252,8 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
-      defaultValue: "address",
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "schema" }, value: "address" },
       description: undefined,
       disabled: false,
       name: "member_type",
@@ -247,6 +261,9 @@ describe("getFormFieldsFromSchema", () => {
       type: "Dropdown",
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
       items: [
         {
@@ -271,11 +288,11 @@ describe("getFormFieldsFromSchema", () => {
   it("should disable a protected field if the owner is not the current user", () => {
     // GIVEN
     const schema = {
-      attributes: [buildAttribute()],
+      attributes: [buildAttributeSchema()],
     } as IModelSchema;
 
-    const initialObject: { name: AttributeType } = {
-      name: {
+    const initialObject: { field1: Partial<AttributeType> } = {
+      field1: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -309,16 +326,19 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
-      defaultValue: "test-value",
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "user" }, value: "test-value" },
       description: undefined,
       disabled: true,
-      name: "name",
-      label: "Name",
+      name: "field1",
+      label: "Field 1",
       type: "Text",
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });
@@ -326,11 +346,11 @@ describe("getFormFieldsFromSchema", () => {
   it("should enable a protected field if the owner is the current user", () => {
     // GIVEN
     const schema = {
-      attributes: [buildAttribute()],
+      attributes: [buildAttributeSchema()],
     } as IModelSchema;
 
-    const initialObject: { name: AttributeType } = {
-      name: {
+    const initialObject: { field1: AttributeType } = {
+      field1: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -364,16 +384,19 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(1);
-    expect(fields[0]).to.deep.equal({
-      defaultValue: "test-value",
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "user" }, value: "test-value" },
       description: undefined,
       disabled: false,
-      name: "name",
-      label: "Name",
+      name: "field1",
+      label: "Field 1",
       type: "Text",
       unique: false,
       rules: {
         required: false,
+        validate: {
+          required: expect.any(Function),
+        },
       },
     });
   });

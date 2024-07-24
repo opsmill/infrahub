@@ -154,6 +154,13 @@ core_models: dict[str, Any] = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
                 {"name": "description", "kind": "Text", "optional": True},
+                {
+                    "name": "group_type",
+                    "kind": "Text",
+                    "enum": ["default", "internal"],
+                    "default_value": "default",
+                    "optional": False,
+                },
             ],
             "relationships": [
                 {

@@ -1,12 +1,31 @@
 import { FormField } from "@/components/ui/form";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { ComponentProps } from "react";
-import { Parent, SelectOption } from "@/components/inputs/select";
+import { SelectOption } from "@/components/inputs/select";
 import { components } from "@/infraops";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 
+type FormSourceType = "pool" | "profile" | "schema" | "user";
+
+type SourceType = {
+  type: FormSourceType;
+  label?: string | null;
+};
+
+export type FormAttributeValue = {
+  source: SourceType | null;
+  value: string | number | boolean | null | undefined;
+};
+
+export type FormRelationshipValue = {
+  source: SourceType | null;
+  value: { id: string } | Array<{ id: string }> | { from_pool: { id: string } } | null | undefined;
+};
+
+export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
+
 export type FormFieldProps = {
-  defaultValue?: string | number | boolean;
+  defaultValue?: FormAttributeValue;
   description?: string;
   disabled?: boolean;
   label?: string;
@@ -23,17 +42,26 @@ export type DynamicInputFieldProps = FormFieldProps & {
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<SelectOption>;
+  field?:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
+  schema?: IModelSchema;
 };
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
   items: Array<string>;
+  field?:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
+  schema?: IModelSchema;
 };
 
-export type DynamicRelationshipFieldProps = FormFieldProps & {
+export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
   type: "relationship";
+  defaultValue?: FormRelationshipValue;
   peer?: string;
-  parent?: Parent;
+  parent?: string;
   options?: SelectOption[];
   relationship: components["schemas"]["RelationshipSchema-Output"];
   schema: IModelSchema;

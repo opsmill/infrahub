@@ -101,6 +101,7 @@ class CoreGroup(CoreNode):
     name: String
     label: StringOptional
     description: StringOptional
+    group_type: Enum
     members: RelationshipManager
     subscribers: RelationshipManager
     parent: RelationshipManager
