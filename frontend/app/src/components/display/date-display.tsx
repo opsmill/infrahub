@@ -2,7 +2,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { classNames } from "@/utils/common";
 import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
-export type DateDisplayProps = {
+type DateDisplayProps = {
   date?: number | string | Date;
   hideDefault?: boolean;
   className?: string;
