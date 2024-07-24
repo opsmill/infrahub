@@ -133,7 +133,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
         .getByTestId("delete-row-button")
         .click();
       await expect(page.getByTestId("modal-delete")).toContainText(
-        "Are you sure you want to remove the Profile\"profile test tag\"?"
+        'Are you sure you want to remove the Profile"profile test tag"?'
       );
       await page.getByTestId("modal-delete-confirm").click();
     });
