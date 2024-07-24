@@ -26,7 +26,7 @@ import { useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Conversations } from "@/screens/proposed-changes/conversations";
-import { ProposedChangesChecksTab } from "@/screens/proposed-changes/proposed-changes-checks-tab";
+import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
