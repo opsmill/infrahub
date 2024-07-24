@@ -142,7 +142,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
         branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
         await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
 
-        if message.check_type in [CheckType.ALL, CheckType.ARTIFACT]:
+        if message.check_type is CheckType.ARTIFACT:
             await task_report.info("Adding Refresh Artifact job", proposed_change=message.proposed_change)
             events.append(
                 messages.RequestProposedChangeRefreshArtifacts(
@@ -163,6 +163,8 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                     source_branch_sync_with_git=message.source_branch_sync_with_git,
                     destination_branch=message.destination_branch,
                     branch_diff=branch_diff,
+                    refresh_artifacts=message.check_type is CheckType.ALL,
+                    do_repository_checks=message.check_type is CheckType.ALL,
                 )
             )
 
@@ -180,7 +182,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                 )
             )
 
-        if message.check_type in [CheckType.ALL, CheckType.REPOSITORY, CheckType.USER]:
+        if message.check_type in [CheckType.REPOSITORY, CheckType.USER]:
             await task_report.info("Adding Repository Check job", proposed_change=message.proposed_change)
             events.append(
                 messages.RequestProposedChangeRepositoryChecks(
@@ -448,6 +450,33 @@ async def run_generators(message: messages.RequestProposedChangeRunGenerators, s
                 )
                 msg.assign_meta(parent=message)
                 await service.send(message=msg)
+
+    next_messages: list[InfrahubMessage] = []
+    if message.refresh_artifacts:
+        await task_report.info("Adding Refresh Artifact job", proposed_change=message.proposed_change)
+        msg = messages.RequestProposedChangeRefreshArtifacts(
+            proposed_change=message.proposed_change,
+            source_branch=message.source_branch,
+            source_branch_sync_with_git=message.source_branch_sync_with_git,
+            destination_branch=message.destination_branch,
+            branch_diff=message.branch_diff,
+        )
+        next_messages.append(msg)
+
+    if message.do_repository_checks:
+        await task_report.info("Adding Repository Check job", proposed_change=message.proposed_change)
+        msg = messages.RequestProposedChangeRepositoryChecks(
+            proposed_change=message.proposed_change,
+            source_branch=message.source_branch,
+            source_branch_sync_with_git=message.source_branch_sync_with_git,
+            destination_branch=message.destination_branch,
+            branch_diff=message.branch_diff,
+        )
+        next_messages.append(msg)
+
+    for next_msg in next_messages:
+        next_msg.assign_meta(parent=message)
+        await service.send(message=next_msg)
 
 
 GATHER_ARTIFACT_DEFINITIONS = """
