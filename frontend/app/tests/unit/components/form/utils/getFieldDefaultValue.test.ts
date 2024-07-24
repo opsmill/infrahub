@@ -118,6 +118,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile1",
           display_label: "Profile 1",
+          __typename: "FakeProfileKind",
           field1: {
             value: "test-value-form-profile",
           },
@@ -134,6 +135,8 @@ describe("getFieldDefaultValue", () => {
         source: {
           label: "Profile 1",
           type: "profile",
+          id: "profile1",
+          kind: "FakeProfileKind",
         },
         value: "test-value-form-profile",
       });
@@ -147,6 +150,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile1",
           display_label: "Profile 1",
+          __typename: "FakeProfileKind",
           field1: {
             value: "test-value-form-profile",
           },
@@ -168,6 +172,8 @@ describe("getFieldDefaultValue", () => {
         source: {
           label: "Profile 1",
           type: "profile",
+          id: "profile1",
+          kind: "FakeProfileKind",
         },
         value: "test-value-form-profile",
       });
@@ -181,6 +187,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile1",
           display_label: "Profile 1",
+          __typename: "FakeProfileKind",
           field1: {
             value: null,
           },
@@ -195,6 +202,8 @@ describe("getFieldDefaultValue", () => {
         source: {
           label: "Profile 1",
           type: "profile",
+          id: "profile1",
+          kind: "FakeProfileKind",
         },
         value: null,
       });
@@ -208,6 +217,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile1",
           display_label: "Profile 1",
+          __typename: "FakeProfileKind",
           field1: {
             value: 0,
           },
@@ -222,6 +232,8 @@ describe("getFieldDefaultValue", () => {
         source: {
           label: "Profile 1",
           type: "profile",
+          id: "profile1",
+          kind: "FakeProfileKind",
         },
         value: 0,
       });
@@ -255,6 +267,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile3",
           display_label: "Profile 3",
+          __typename: "FakeProfileKind",
           name: {
             value: "third",
           },
@@ -265,6 +278,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile1",
           display_label: "Profile 1",
+          __typename: "FakeProfileKind",
           name: {
             value: "first",
           },
@@ -275,6 +289,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile2",
           display_label: "Profile 2",
+          __typename: "FakeProfileKind",
           name: {
             value: "second",
           },
@@ -292,6 +307,8 @@ describe("getFieldDefaultValue", () => {
         source: {
           label: "Profile 2",
           type: "profile",
+          id: "profile2",
+          kind: "FakeProfileKind",
         },
         value: "second",
       });
