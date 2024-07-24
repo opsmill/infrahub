@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import DiffAction, RelationshipStatus
@@ -12,6 +13,88 @@ if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
     from neo4j.graph import Path as Neo4jPath
     from neo4j.graph import Relationship as Neo4jRelationship
+
+
+class ConflictBranchChoice(Enum):
+    BASE = "base"
+    DIFF = "diff"
+
+
+@dataclass
+class EnrichedDiffPropertyConflict:
+    uuid: str
+    base_branch_action: DiffAction
+    base_branch_value: Any
+    base_branch_changed_at: Timestamp
+    diff_branch_action: DiffAction
+    diff_branch_value: Any
+    diff_branch_changed_at: Timestamp
+    selected_branch: Optional[ConflictBranchChoice]
+
+
+@dataclass
+class EnrichedDiffProperty:
+    property_type: str
+    changed_at: Timestamp
+    previous_value: Any
+    new_value: Any
+    action: DiffAction
+    conflict: Optional[EnrichedDiffPropertyConflict]
+
+
+@dataclass
+class EnrichedDiffAttribute:
+    name: str
+    changed_at: Timestamp
+    action: DiffAction
+    properties: list[EnrichedDiffProperty] = field(default_factory=list)
+
+
+@dataclass
+class EnrichedDiffSingleRelationship:
+    changed_at: Timestamp
+    action: DiffAction
+    peer_id: str
+    conflict: Optional[EnrichedDiffPropertyConflict]
+    properties: list[EnrichedDiffProperty] = field(default_factory=list)
+
+
+@dataclass
+class EnrichedDiffRelationship:
+    name: str
+    changed_at: Timestamp
+    action: DiffAction
+    relationships: list[EnrichedDiffSingleRelationship] = field(default_factory=list)
+    nodes: list[EnrichedDiffNode] = field(default_factory=list)
+
+
+@dataclass
+class EnrichedDiffNode:
+    uuid: str
+    kind: str
+    label: str
+    changed_at: Timestamp
+    action: DiffAction
+    attributes: list[EnrichedDiffAttribute] = field(default_factory=list)
+    relationships: list[EnrichedDiffRelationship] = field(default_factory=list)
+
+
+@dataclass
+class EnrichedDiffRoot:
+    base_branch_name: str
+    diff_branch_name: str
+    from_time: Timestamp
+    to_time: Timestamp
+    uuid: str
+    nodes: list[EnrichedDiffNode] = field(default_factory=list)
+
+
+@dataclass
+class CalculatedDiffs:
+    base_branch_name: str
+    diff_branch_name: str
+    base_branch_diff: DiffRoot
+    diff_branch_diff: DiffRoot
 
 
 @dataclass

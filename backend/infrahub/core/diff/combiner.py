@@ -1,6 +1,6 @@
-from .model.path import DiffRoot
+from .model.path import EnrichedDiffRoot
 
 
 class DiffCombiner:
-    def combine(self, earlier_diff: DiffRoot, later_diff: DiffRoot) -> DiffRoot:  # pylint: disable=unused-argument
+    def combine(self, earlier_diff: EnrichedDiffRoot, later_diff: EnrichedDiffRoot) -> EnrichedDiffRoot:  # pylint: disable=unused-argument
         return earlier_diff
