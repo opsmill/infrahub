@@ -44,6 +44,7 @@ async def update(message: messages.RequestGraphQLQueryGroupUpdate, service: Infr
         branch=message.branch,
         name=group_name,
         label=group_label,
+        group_type="internal",
         query=message.query_id,
         parameters=message.params,
         members=message.related_node_ids,
