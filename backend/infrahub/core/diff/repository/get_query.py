@@ -6,6 +6,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.constants import DatabaseType
 
 from ..model.path import (
     ConflictBranchChoice,
@@ -55,7 +56,7 @@ class EnrichedDiffGetQuery(Query):
             "offset": self.offset,
         }
         # ruff: noqa: E501
-        query = """
+        query_1 = """
         // get the roots of all diffs in the query
         MATCH (diff_root:DiffRoot)
         WHERE diff_root.base_branch = $base_branch
@@ -88,19 +89,38 @@ class EnrichedDiffGetQuery(Query):
         LIMIT $limit
         UNWIND node_root_tuples AS nrt
         WITH nrt[0] AS diff_root, nrt[1] AS diff_node
-        // if depth limit, make sure not to exceed it when traversing linked nodes
         WITH diff_root, diff_node
-        CALL {
-            WITH diff_node
-            OPTIONAL MATCH descendant_path = (diff_node) ((parents:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(rel_nodes:DiffRelationship)-[:DIFF_HAS_NODE]->(children:DiffNode)){0, %(max_depth)s}
-            // turn them into a nested list of the form [[parent node, relationship node, child node], ...]
-            RETURN reduce(acc = [], i IN range(0, size(parents)- 1) | acc + [[parents[i], rel_nodes[i], children[i]]]) AS parent_child_tuples
-        }
-        WITH diff_root, diff_node, parent_child_tuples
-        WITH diff_root, [[NULL, NULL, diff_node]] + parent_child_tuples AS parent_child_tuples
-        UNWIND parent_child_tuples AS parent_child_tuple
-        WITH diff_root, parent_child_tuple[0].uuid AS parent_node_uuid, parent_child_tuple[1].name AS parent_rel_name, parent_child_tuple[2] AS diff_node
+        // if depth limit, make sure not to exceed it when traversing linked nodes
+        """
+        self.add_to_query(query=query_1)
 
+        if db.db_type is DatabaseType.NEO4J:
+            children_query = """
+            WITH diff_root, diff_node
+            CALL {
+                WITH diff_node
+                OPTIONAL MATCH descendant_path = (diff_node) ((parents:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(rel_nodes:DiffRelationship)-[:DIFF_HAS_NODE]->(children:DiffNode)){0, %(max_depth)s}
+                // turn them into a nested list of the form [[parent node, relationship node, child node], ...]
+                RETURN collect([parents[i], rel_nodes[i], children[i]]) AS parent_child_tuples
+            }
+            """ % {"max_depth": self.max_depth}
+        elif db.db_type is DatabaseType.MEMGRAPH:
+            children_query = """
+            CALL {
+                WITH diff_node
+                OPTIONAL MATCH descendant_path = (diff_node)-[:DIFF_HAS_RELATIONSHIP | :DIFF_HAS_NODE * ..%(max_depth)s]->(children:DiffNode)
+                WITH nodes(descendant_path)[-3] AS parent_node, nodes(descendant_path)[-2] AS rel_node, nodes(descendant_path)[-1] AS child_node
+                RETURN collect([parent_node, rel_node, child_node]) AS parent_child_tuples
+            }
+            """ % {"max_depth": self.max_depth * 2}
+
+        self.add_to_query(query=children_query)
+
+        query_2 = """
+        WITH diff_root, diff_node, parent_child_tuples
+        WITH diff_root, ([[NULL, NULL, diff_node]] + parent_child_tuples) AS parent_child_tuples
+        UNWIND parent_child_tuples AS parent_child_tuple
+        WITH diff_root, (parent_child_tuple[0]).uuid AS parent_node_uuid, (parent_child_tuple[1]).name AS parent_rel_name, parent_child_tuple[2] AS diff_node
         // attributes
         CALL {
             WITH diff_node
@@ -136,7 +156,9 @@ class EnrichedDiffGetQuery(Query):
             diff_node,
             diff_attributes,
             collect([diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict]) AS diff_relationships
-        """ % {"max_depth": self.max_depth}
+        """
+        self.add_to_query(query=query_2)
+
         self.return_labels = [
             "diff_root",
             "diff_node",
@@ -146,7 +168,6 @@ class EnrichedDiffGetQuery(Query):
             "diff_relationships",
         ]
         self.order_by = ["diff_root.diff_branch_name ASC", "diff_root.from_time ASC", "diff_node.label ASC"]
-        self.add_to_query(query=query)
 
     async def get_enriched_diff_roots(self) -> list[EnrichedDiffRoot]:
         deserializer = EnrichedDiffDeserializer()
