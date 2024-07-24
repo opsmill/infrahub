@@ -35,7 +35,7 @@ class AccountSession(BaseModel):
     account_id: str
     session_id: Optional[str] = None
     role: str = "read-only"
-    permissions: Optional[list[str]] = None
+    permissions: Optional[dict[str, list[str]]] = None
     auth_type: AuthType
 
     @property
@@ -87,7 +87,7 @@ async def authenticate_with_password(
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = await generate_access_token(
-        db=db, account_id=account.id, role=account.role.value.value, session_id=session_id
+        account_id=account.id, role=account.role.value.value, session_id=session_id
     )
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
@@ -120,14 +120,13 @@ async def create_fresh_access_token(
         )
 
     access_token = await generate_access_token(
-        db=db, account_id=account.id, role=account.role.value.value, session_id=refresh_data.session_id
+        account_id=account.id, role=account.role.value.value, session_id=refresh_data.session_id
     )
 
     return models.AccessTokenResponse(access_token=access_token)
 
 
-async def generate_access_token(db: InfrahubDatabase, account_id: str, role: str, session_id: uuid.UUID) -> str:
-    selected_branch = await registry.get_branch(db=db)
+async def generate_access_token(account_id: str, role: str, session_id: uuid.UUID) -> str:
     now = datetime.now(tz=timezone.utc)
 
     access_expires = now + timedelta(seconds=config.SETTINGS.security.access_token_lifetime)
@@ -140,7 +139,6 @@ async def generate_access_token(db: InfrahubDatabase, account_id: str, role: str
         "type": "access",
         "session_id": str(session_id),
         "user_claims": {"role": role},
-        "permissions": await fetch_permissions(db=db, branch=selected_branch, account_id=account_id),
     }
     access_token = jwt.encode(access_data, config.SETTINGS.security.secret_key, algorithm="HS256")
     return access_token
@@ -179,7 +177,7 @@ async def validate_jwt_access_token(db: InfrahubDatabase, token: str) -> Account
         account_id = payload["sub"]
         role = payload["user_claims"]["role"]
         session_id = payload["session_id"]
-        permissions = await fetch_permissions(db=db, account_id=account_id)
+        permissions = {"global_permissions": [p.action for p in await fetch_permissions(db=db, account_id=account_id)]}
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
     except Exception:

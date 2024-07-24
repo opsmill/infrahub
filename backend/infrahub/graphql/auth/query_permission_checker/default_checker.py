@@ -22,8 +22,10 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         self.can_edit_default_branch: bool = False
 
     async def supports(self, account_session: AccountSession) -> bool:
-        if account_session.permissions:
-            self.can_edit_default_branch = GlobalPermissions.EDIT_DEFAULT_BRANCH.value in account_session.permissions
+        if account_session.permissions is not None and (
+            global_permissions := account_session.permissions.get("global_permissions", [])
+        ):
+            self.can_edit_default_branch = GlobalPermissions.EDIT_DEFAULT_BRANCH.value in global_permissions
         return account_session.authenticated
 
     async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
