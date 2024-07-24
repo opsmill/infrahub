@@ -1,3 +1,5 @@
+import random
+import string
 from datetime import UTC
 from random import randint
 from uuid import uuid4
@@ -399,6 +401,163 @@ class TestDiffRepositorySaveAndLoad:
         }
         assert retrieved[0].nodes == expected_nodes
 
+    async def test_filter_limit_and_offset_flat(self, diff_repository: DiffRepository, reset_database):
+        ordered_nodes = []
+        for kind, label in (("A", "a"), ("A", "b"), ("B", "a"), ("B", "b")):
+            ordered_nodes.append(NodeFactory.build(kind=kind, label=label, relationships=set()))
+        enriched_diff = RootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=set(ordered_nodes),
+        )
+        await diff_repository.save(enriched_diff=enriched_diff)
 
-# limit
-# offset
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=2,
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0].nodes == set(ordered_nodes[:2])
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=2,
+            offset=2,
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0].nodes == set(ordered_nodes[2:])
+
+    async def test_filter_limit_and_offset_with_nested_nodes(self, diff_repository: DiffRepository, reset_database):
+        nodes = self._build_nodes(num_nodes=10, num_sub_fields=3)
+        enriched_diff = RootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=nodes,
+        )
+        root_nodes = enriched_diff.get_nodes_without_parents()
+        ordered_nodes = list(root_nodes)
+        kinds = sorted(random.choices(string.ascii_uppercase, k=5))
+        for i in range(5):
+            kind = kinds[i]
+            labels = sorted(random.choices(string.ascii_lowercase, k=2))
+            ordered_nodes[2 * i].kind = kind
+            ordered_nodes[2 * i + 1].kind = kind
+            ordered_nodes[2 * i].label = labels[0]
+            ordered_nodes[2 * i + 1].label = labels[1]
+        await diff_repository.save(enriched_diff=enriched_diff)
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=2,
+        )
+        expected_root_nodes = set(ordered_nodes[:2])
+        all_expected_nodes = set(expected_root_nodes)
+        for n in expected_root_nodes:
+            all_expected_nodes |= n.get_all_child_nodes()
+        assert len(retrieved) == 1
+        assert retrieved[0].get_nodes_without_parents() == expected_root_nodes
+        assert retrieved[0].nodes == all_expected_nodes
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=4,
+            offset=2,
+        )
+        expected_root_nodes = set(ordered_nodes[2:6])
+        all_expected_nodes = set(expected_root_nodes)
+        for n in expected_root_nodes:
+            all_expected_nodes |= n.get_all_child_nodes()
+        assert len(retrieved) == 1
+        assert retrieved[0].get_nodes_without_parents() == set(ordered_nodes[2:6])
+        assert retrieved[0].nodes == all_expected_nodes
+
+    async def test_filter_limit_and_offset_across_multiple_roots(self, diff_repository: DiffRepository, reset_database):
+        enriched_diffs = []
+        node_uuids = [str(uuid4()) for _ in range(3)]
+        first_nodes = []
+        second_nodes = []
+        third_nodes = []
+        start_time = self.diff_from_time.add(minutes=1)
+        for i in range(3):
+            nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
+            enriched_diff = RootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=self.diff_branch_name,
+                from_time=Timestamp(start_time.add(minutes=i * 30)),
+                to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
+                nodes=nodes,
+            )
+            enriched_diffs.append(enriched_diff)
+            root_nodes = enriched_diff.get_nodes_without_parents()
+            ordered_nodes = list(root_nodes)
+            first_node, second_node, third_node = ordered_nodes
+            first_node.kind = "A"
+            first_node.label = "a"
+            first_node.uuid = node_uuids[0]
+            first_nodes.append(first_node)
+            second_node.kind = "B"
+            second_node.label = "b"
+            second_node.uuid = node_uuids[1]
+            second_nodes.append(second_node)
+            third_node.kind = "C"
+            third_node.label = "c"
+            third_node.uuid = node_uuids[2]
+            third_nodes.append(third_node)
+            await diff_repository.save(enriched_diff=enriched_diff)
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(start_time),
+            to_time=Timestamp(start_time.add(minutes=100)),
+            limit=1,
+        )
+        assert len(retrieved) == 3
+        for index, retrieved_root in enumerate(retrieved):
+            root_nodes = retrieved_root.get_nodes_without_parents()
+            assert len(root_nodes) == 1
+            assert root_nodes == {first_nodes[index]}
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(start_time),
+            to_time=Timestamp(start_time.add(minutes=100)),
+            limit=1,
+            offset=1,
+        )
+        assert len(retrieved) == 3
+        for index, retrieved_root in enumerate(retrieved):
+            root_nodes = retrieved_root.get_nodes_without_parents()
+            assert len(root_nodes) == 1
+            assert root_nodes == {second_nodes[index]}
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(start_time),
+            to_time=Timestamp(start_time.add(minutes=100)),
+            limit=1,
+            offset=2,
+        )
+        assert len(retrieved) == 3
+        for index, retrieved_root in enumerate(retrieved):
+            root_nodes = retrieved_root.get_nodes_without_parents()
+            assert len(root_nodes) == 1
+            assert root_nodes == {third_nodes[index]}

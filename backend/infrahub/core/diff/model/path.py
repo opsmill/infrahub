@@ -141,6 +141,12 @@ class EnrichedDiffRoot:
                 nodes_with_parent_uuids |= {child_n.uuid for child_n in r.nodes}
         return {node for node in self.nodes if node.uuid not in nodes_with_parent_uuids}
 
+    def get_node(self, node_uuid: str) -> EnrichedDiffNode:
+        for n in self.nodes:
+            if n.uuid == node_uuid:
+                return n
+        raise ValueError(f"No node {node_uuid} in diff root")
+
 
 @dataclass
 class CalculatedDiffs:
