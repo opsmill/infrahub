@@ -6,6 +6,7 @@ import {
   OperationVariables,
   useLazyQuery as useApolloLazyQuery,
   useQuery as useApolloQuery,
+  useMutation as useApolloMutation,
   useSubscription as useApolloSubscription,
 } from "@apollo/client";
 import { useAtomValue } from "jotai";
@@ -41,6 +42,21 @@ export const useLazyQuery: typeof useApolloLazyQuery = (
       uri: CONFIG.GRAPHQL_URL(branch?.name, date),
     },
     ...options,
+  });
+};
+
+export const useMutation: typeof useApolloMutation<any, Record<string, any>, { uri: string }> = (
+  QUERY,
+  options
+) => {
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
+
+  return useApolloMutation(QUERY, {
+    ...options,
+    context: {
+      uri: CONFIG.GRAPHQL_URL(branch?.name, date),
+    },
   });
 };
 
