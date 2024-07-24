@@ -1,4 +1,4 @@
-import { Avatar, AVATAR_SIZE } from "@/components/display/avatar";
+import { Avatar } from "@/components/display/avatar";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 
@@ -19,13 +19,17 @@ export const ProposedChangesReviewers = ({
     <div className="flex gap-1">
       {reviewers.map((reviewer: any, index: number) => (
         <div className="relative" key={index}>
-          <Tooltip message={reviewer.display_label}>
+          <Tooltip content={reviewer.display_label}>
             <>
-              <Avatar size={AVATAR_SIZE.SMALL} name={reviewer.display_label} />
+              <Avatar
+                size="sm"
+                variant={approversId.includes(reviewer.id) ? "active" : "primary"}
+                name={reviewer.display_label}
+              />
               {approversId.includes(reviewer.id) && (
                 <Icon
                   icon={"mdi:check"}
-                  className="text-green-500 absolute -right-0.5 -bottom-0.5 bg-white rounded-full border border-green-500"
+                  className="text-green-700 absolute -right-[4px] -bottom-[4px] bg-green-300 rounded-full border border-white"
                 />
               )}
             </>

@@ -1,5 +1,5 @@
 import { RoundedButton } from "@/components/buttons/rounded-button";
-import { AVATAR_SIZE, Avatar } from "@/components/display/avatar";
+import { Avatar } from "@/components/display/avatar";
 import { Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
 import ModalDelete from "@/components/modals/modal-delete";
@@ -122,7 +122,7 @@ export const ProposedChange = (props: any) => {
 
                 <Tooltip enabled content={row?.created_by?.node?.display_label}>
                   <Avatar
-                    size={AVATAR_SIZE.SMALL}
+                    size={"sm"}
                     name={row?.created_by?.node?.display_label}
                     className="bg-custom-blue-green"
                   />
@@ -135,7 +135,7 @@ export const ProposedChange = (props: any) => {
 
               {reviewers.map((reviewer: any, index: number) => (
                 <Tooltip key={index} message={reviewer.display_label}>
-                  <Avatar size={AVATAR_SIZE.SMALL} name={reviewer.display_label} />
+                  <Avatar size={"sm"} name={reviewer.display_label} />
                 </Tooltip>
               ))}
             </div>
@@ -145,7 +145,7 @@ export const ProposedChange = (props: any) => {
 
               {approvers.map((approver: any, index: number) => (
                 <Tooltip key={index} message={approver.display_label}>
-                  <Avatar size={AVATAR_SIZE.SMALL} name={approver.display_label} />
+                  <Avatar size={"sm"} name={approver.display_label} />
                 </Tooltip>
               ))}
             </div>
