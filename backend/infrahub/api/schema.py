@@ -85,7 +85,7 @@ class SchemaLoadAPI(SchemaRoot):
     version: str
 
 
-class SchemasLoadAPI(SchemaRoot):
+class SchemasLoadAPI(BaseModel):
     schemas: list[SchemaLoadAPI]
 
 
