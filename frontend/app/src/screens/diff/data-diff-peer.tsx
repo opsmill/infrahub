@@ -48,7 +48,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     name,
   } = props;
 
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const navigate = useNavigate();
 

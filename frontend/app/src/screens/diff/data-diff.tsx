@@ -60,7 +60,7 @@ const constructChecksDictionnary = (checks: any[]) => {
 };
 
 export const DataDiff = forwardRef((props, ref) => {
-  const { branchName, proposedchange } = useParams();
+  const { "*": branchName, proposedchange } = useParams();
 
   const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);

@@ -18,7 +18,8 @@ export type tDataDiffNodePropertyProps = {
 export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
   const { property, path } = props;
 
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
+
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
 
   const { type, action, changed_at, branch } = property;
