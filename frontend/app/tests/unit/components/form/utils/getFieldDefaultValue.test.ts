@@ -17,6 +17,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile1",
           display_label: "Profile 1",
+          __typename: "FakeProfileKind",
           field1: {
             value: "test-value-form-profile",
           },
@@ -50,6 +51,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile1",
           display_label: "Profile 1",
+          __typename: "FakeProfileKind",
           field1: {
             value: "test-value-form-profile",
           },
@@ -83,6 +85,7 @@ describe("getFieldDefaultValue", () => {
         {
           id: "profile1",
           display_label: "Profile 1",
+          __typename: "FakeProfileKind",
           field1: {
             value: "test-value-form-profile",
           },
