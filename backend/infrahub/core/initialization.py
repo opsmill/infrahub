@@ -16,7 +16,6 @@ from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
-from infrahub.core.protocols import CoreAccount, CoreGlobalPermission, CoreUserGroup, CoreUserRole
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -267,11 +266,11 @@ async def create_ipam_namespace(
     return obj
 
 
-async def create_global_permissions(db: InfrahubDatabase) -> list[CoreGlobalPermission]:
-    objs: list[CoreGlobalPermission] = []
+async def create_global_permissions(db: InfrahubDatabase) -> list[Node]:
+    objs: list[Node] = []
 
     for permission in GlobalPermissions:
-        obj: CoreGlobalPermission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await obj.new(db=db, name=format_label(permission.value), action=permission.value)
         await obj.save(db=db)
         objs.append(obj)
@@ -280,28 +279,26 @@ async def create_global_permissions(db: InfrahubDatabase) -> list[CoreGlobalPerm
     return objs
 
 
-async def create_administrator_role(
-    db: InfrahubDatabase, global_permissions: Optional[list[CoreGlobalPermission]] = None
-) -> CoreUserRole:
-    obj: CoreUserRole = await Node.init(db=db, schema=InfrahubKind.USERROLE)
-    await obj.new(db=db, name="Administrator", permissions=global_permissions)
+async def create_administrator_role(db: InfrahubDatabase, global_permissions: Optional[list[Node]] = None) -> Node:
+    role_name = "Administrator"
+    obj = await Node.init(db=db, schema=InfrahubKind.USERROLE)
+    await obj.new(db=db, name=role_name, permissions=global_permissions)
     await obj.save(db=db)
-    log.info(f"Created User Role: {obj.name.value}")
+    log.info(f"Created User Role: {role_name}")
 
     return obj
 
 
-async def create_administrators_group(
-    db: InfrahubDatabase, role: CoreUserRole, admin_account: CoreAccount
-) -> CoreUserGroup:
-    obj: CoreUserGroup = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
-    await obj.new(db=db, name="Administrators", roles=[role])
+async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_account: Node) -> Node:
+    group_name = "Administrators"
+    obj = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
+    await obj.new(db=db, name=group_name, roles=[role])
     await obj.save(db=db)
-    log.info(f"Created User Group: {obj.name.value}")
+    log.info(f"Created User Group: {group_name}")
 
-    await admin_account.groups.add(db=db, data=obj)
+    await admin_account.groups.add(db=db, data=obj)  # type: ignore[attr-defined]
     await admin_account.save(db=db)
-    log.info(f"Assigned User Group: {obj.name.value} to {admin_account.name.value}")
+    log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")  # type: ignore[attr-defined]
 
     return obj
 

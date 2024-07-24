@@ -32,7 +32,10 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         for operation in analyzed_query.operations:
             if (
                 not self.can_edit_default_branch
-                and analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, config.SETTINGS.initial.default_branch)
+                and (
+                    analyzed_query.branch is None
+                    or analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, config.SETTINGS.initial.default_branch)
+                )
                 and operation.operation_type == OperationType.MUTATION
             ):
                 raise PermissionDeniedError(
