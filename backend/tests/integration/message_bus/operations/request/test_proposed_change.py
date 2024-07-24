@@ -150,14 +150,12 @@ async def test_run_pipeline_validate_requested_jobs(
     await pipeline(message=message, service=services.service)
 
     assert sorted(bus_pre_data_changes.seen_routing_keys) == [
-        "request.proposed_change.repository_checks",
         "request.proposed_change.run_generators",
         "request.proposed_change.run_tests",
     ]
 
     assert sorted(bus_post_data_changes.seen_routing_keys) == [
         "request.proposed_change.data_integrity",
-        "request.proposed_change.repository_checks",
         "request.proposed_change.run_generators",
         "request.proposed_change.run_tests",
         "request.proposed_change.schema_integrity",
@@ -176,6 +174,7 @@ async def test_run_generators_validate_requested_jobs(
         proposed_change=prepare_proposed_change,
         branch_diff=ProposedChangeBranchDiff(diff_summary=[], repositories=[], subscribers=[]),
         refresh_artifacts=True,
+        do_repository_checks=True,
     )
     integration_helper = IntegrationHelper(db=db)
     bus = BusRecorder()
@@ -191,6 +190,7 @@ async def test_run_generators_validate_requested_jobs(
 
     assert sorted(bus.seen_routing_keys) == [
         "request.proposed_change.refresh_artifacts",
+        "request.proposed_change.repository_checks",
     ]
 
 
