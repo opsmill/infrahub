@@ -1,8 +1,6 @@
-import Handlebars from "handlebars";
-
-export const getProposedChanges = Handlebars.compile(`
-query GET_PROPOSED_CHANGES($ids: [ID], $state: String) {
-  {{kind}}(ids: $ids, state__value: $state) {
+export const getProposedChanges = `
+query GET_PROPOSED_CHANGES($state: String) {
+  CoreProposedChange(state__value: $state) {
     count
     edges {
       node {
@@ -10,57 +8,56 @@ query GET_PROPOSED_CHANGES($ids: [ID], $state: String) {
         display_label
         __typename
         _updated_at
-
-        {{#each attributes}}
-          {{this.name}} {
-              value
+        name {
+          value
+          __typename
+        }
+        description {
+          value
+          __typename
+        }
+        source_branch {
+          value
+          __typename
+        }
+        approved_by {
+          edges {
+            node {
+              id
+              display_label
+              __typename
+            }
+            __typename
           }
-        {{/each}}
-
-        {{#each relationships}}
-          {{this.name}} {
-            {{#if this.paginated}}
-              edges {
-            {{/if}}
-              node {
-                id
-                display_label
-              }
-            {{#if this.paginated}}
-              }
-            {{/if}}
+          __typename
+        }
+        reviewers {
+          edges {
+            node {
+              id
+              display_label
+              __typename
+            }
+            __typename
           }
-        {{/each}}
-
+          __typename
+        }
+        comments {
+          count
+          __typename
+        }
         created_by {
           node {
             id
             display_label
+            __typename
           }
+          __typename
         }
       }
+      __typename
     }
+    __typename
   }
-
-  {{#if accountKind}}
-
-  {{accountKind}} {
-    edges {
-      node {
-        id
-        display_label
-      }
-    }
-  }
-
-  {{/if}}
-
-  {{#if taskKind}}
-
-  {{taskKind}}(related_node__ids: ["{{id}}"]) {
-    count
-  }
-
-  {{/if}}
 }
-`);
+`;

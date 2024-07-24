@@ -1,6 +1,6 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Badge } from "@/components/ui/badge";
-import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { getProposedChanges } from "@/graphql/queries/proposed-changes/getProposedChanges";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
@@ -8,7 +8,6 @@ import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import { schemaState } from "@/state/atoms/schema.atom";
-import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
@@ -33,22 +32,9 @@ export const ProposedChangesPage = () => {
   useTitle("Proposed changes list");
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
-  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
-  const relationships = getObjectRelationships({ schema: schemaData, forListView: true });
-
-  const queryString = schemaData
-    ? getProposedChanges({
-        kind: schemaData.kind,
-        accountKind: accountSchemaData?.kind,
-        attributes: schemaData.attributes,
-        relationships,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
 
   const query = gql`
-    ${queryString}
+    ${getProposedChanges}
   `;
 
   const {
@@ -119,9 +105,10 @@ export const ProposedChangesPage = () => {
             name={node.display_label}
             branch={node.source_branch.value}
             date={node._updated_at}
+            comments={node.comments.count}
           />
         ),
-        data: <ProposedChangesData />,
+        data: <ProposedChangesData id={node.id} />,
         checks: <Badge className="rounded-full">0</Badge>,
         tasks: <Badge className="rounded-full">0</Badge>,
         artifacts: <Badge className="rounded-full">0</Badge>,
