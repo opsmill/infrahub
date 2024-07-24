@@ -8,7 +8,7 @@ import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { genericsState } from "@/state/atoms/schema.atom";
+import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
@@ -18,12 +18,13 @@ import { Link } from "react-router-dom";
 import { ProposedChange } from "@/screens/proposed-changes/proposed-changes-item";
 
 const ProposedChangesPage = () => {
-  const [schemaList] = useAtom(genericsState);
+  const [schemaList] = useAtom(schemaState);
+  const [genericSchemaList] = useAtom(genericsState);
   const permission = usePermission();
   useTitle("Proposed changes list");
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
-  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
+  const accountSchemaData = genericSchemaList.find((s) => s.kind === ACCOUNT_OBJECT);
   const relationships = getObjectRelationships({ schema: schemaData, forListView: true });
 
   const queryString = schemaData
