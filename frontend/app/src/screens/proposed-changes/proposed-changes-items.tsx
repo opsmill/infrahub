@@ -108,7 +108,7 @@ export const ProposedChangesPage = () => {
             comments={node.comments.count}
           />
         ),
-        data: <ProposedChangesData id={node.id} />,
+        data: <ProposedChangesData branch={node.source_branch.value} />,
         checks: <Badge className="rounded-full">0</Badge>,
         tasks: <Badge className="rounded-full">0</Badge>,
         artifacts: <Badge className="rounded-full">0</Badge>,
