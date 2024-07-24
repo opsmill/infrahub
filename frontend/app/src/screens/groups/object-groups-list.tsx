@@ -8,7 +8,7 @@ import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { QSP } from "@/config/qsp";
 import ModalDelete from "@/components/modals/modal-delete";
 import { useState } from "react";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@/hooks/useQuery";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { pluralize } from "@/utils/string";
 import { useAtomValue } from "jotai";
