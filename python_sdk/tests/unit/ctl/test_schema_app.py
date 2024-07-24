@@ -48,7 +48,6 @@ def test_schema_load_one_valid(httpx_mock: HTTPXMock):
     assert content_json == {"schemas": [fixture_file_content]}
 
 
-# @pytest.mark.xfail(reason="FIXME: work locally but not in CI")
 def test_schema_load_multiple(httpx_mock: HTTPXMock):
     fixture_file1 = get_fixtures_dir() / "models" / "valid_schemas" / "contract.yml"
     fixture_file2 = get_fixtures_dir() / "models" / "valid_schemas" / "rack.yml"
