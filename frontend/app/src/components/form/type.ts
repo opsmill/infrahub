@@ -5,20 +5,22 @@ import { SelectOption } from "@/components/inputs/select";
 import { components } from "@/infraops";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 
-type FormSourceType = "pool" | "profile" | "schema" | "user";
+type SourceType = "pool" | "profile" | "schema" | "user";
 
-type SourceType = {
-  type: FormSourceType;
+export type Source = {
+  type: SourceType;
   label?: string | null;
+  kind?: string;
+  id?: string;
 };
 
 export type FormAttributeValue = {
-  source: SourceType | null;
+  source: Source | null;
   value: string | number | boolean | null | undefined;
 };
 
 export type FormRelationshipValue = {
-  source: SourceType | null;
+  source: Source | null;
   value: { id: string } | Array<{ id: string }> | { from_pool: { id: string } } | null | undefined;
 };
 

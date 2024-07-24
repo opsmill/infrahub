@@ -58,7 +58,9 @@ const getDefaultValueFromProfiles = (
   return {
     source: {
       type: "profile",
+      id: profileWithDefaultValueForField.id,
       label: profileWithDefaultValueForField.display_label,
+      kind: profileWithDefaultValueForField.__typename,
     },
     value: profileWithDefaultValueForField[fieldName].value,
   };

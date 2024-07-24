@@ -253,6 +253,7 @@ const RelationshipField = ({
                 required={!!rules?.required}
                 description={description}
                 variant={parentRelationship && "small"}
+                fieldData={fieldData}
               />
 
               <FormInput>
