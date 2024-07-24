@@ -105,7 +105,7 @@ export const SlideOverTitle = ({
       </div>
 
       <div className="flex justify-between">
-        <div className="text-sm flex items-center gap-2 whitespace-nowrap">
+        <div className="text-sm flex items-center gap-2 whitespace-nowrap w-full">
           {schema.label}
 
           {currentObjectLabel && (
