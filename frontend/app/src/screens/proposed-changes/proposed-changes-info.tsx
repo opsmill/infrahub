@@ -1,14 +1,15 @@
-import { DateDisplay, DateDisplayProps } from "@/components/display/date-display";
+import { DateDisplay } from "@/components/display/date-display";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 
 type ProposedChangesInfoProps = {
   name: string;
   branch: string;
-  date: Pick<DateDisplayProps, "date">;
+  date: string | number | Date | undefined;
+  comments: number;
 };
 
-export const ProposedChangesInfo = ({ name, branch, date }: ProposedChangesInfoProps) => {
+export const ProposedChangesInfo = ({ name, branch, date, comments }: ProposedChangesInfoProps) => {
   return (
     <div className="flex items-center gap-2">
       {/* <Icon icon={"mdi:file-check-outline"} /> */}
@@ -17,7 +18,8 @@ export const ProposedChangesInfo = ({ name, branch, date }: ProposedChangesInfoP
         <div className="flex items-center gap-2">
           <span className="text-base">{name}</span>
           <Badge className="rounded-full">
-            <Icon icon={"mdi:message-outline"} className="mr-1 " />1
+            <Icon icon={"mdi:message-outline"} className="mr-1 " />
+            {comments || "0"}
           </Badge>
         </div>
 
