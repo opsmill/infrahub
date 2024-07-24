@@ -1,16 +1,6 @@
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { classNames } from "@/utils/common";
-
-export enum AVATAR_SIZE {
-  SMALL,
-}
-interface tAvatar {
-  name?: string;
-  image?: string;
-  className?: string;
-  size?: AVATAR_SIZE;
-  isLoading?: boolean;
-}
+import { cva, type VariantProps } from "class-variance-authority";
 
 export const initials = (name?: string) =>
   name
@@ -21,52 +11,42 @@ export const initials = (name?: string) =>
         .toUpperCase()
     : "-";
 
-const getAvatarSize = (size?: AVATAR_SIZE) => {
-  switch (size) {
-    case AVATAR_SIZE.SMALL: {
-      return "h-6 w-6 text-xs";
-    }
-    default: {
-      return "h-12 w-12";
-    }
-  }
-};
+const avatarVariants = cva("rounded-full flex justify-center items-center", {
+  variants: {
+    variant: {
+      primary: "bg-custom-blue-200 text-custom-white",
+      active: "bg-green-300 text-green-700",
+    },
+    size: {
+      default: "h-12 w-12",
+      sm: "h-6 w-6 text-xs",
+    },
+  },
+  defaultVariants: {
+    variant: "primary",
+    size: "default",
+  },
+});
+
+interface tAvatar extends VariantProps<typeof avatarVariants> {
+  name?: string;
+  className?: string;
+  isLoading?: boolean;
+}
 
 export const Avatar = (props: tAvatar) => {
-  const { name, image, size, className, isLoading, ...otherProps } = props;
+  const { name, variant, size, className, isLoading, ...otherProps } = props;
 
   if (isLoading) {
     return (
-      <div
-        className={classNames(
-          getAvatarSize(size),
-          "rounded-full bg-custom-blue-200 text-custom-white flex justify-center items-center",
-          className ?? ""
-        )}>
+      <div className={classNames(avatarVariants({ variant, size, className }), className ?? "")}>
         <LoadingScreen colorClass={"custom-white"} size={16} hideText />
       </div>
     );
   }
 
-  if (image) {
-    return (
-      <img
-        className={`${getAvatarSize(size)} rounded-full object-cover`}
-        src={image}
-        alt="Avatar"
-        {...otherProps}
-      />
-    );
-  }
-
   return (
-    <div
-      className={classNames(
-        getAvatarSize(size),
-        "rounded-full bg-custom-blue-200 text-custom-white flex justify-center items-center",
-        className ?? ""
-      )}
-      {...otherProps}>
+    <div className={classNames(avatarVariants({ variant, size, className }))} {...otherProps}>
       {initials(name)}
     </div>
   );
