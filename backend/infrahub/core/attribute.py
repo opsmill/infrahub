@@ -548,9 +548,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         # pylint: disable=no-member
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
-        if self.schema.branch in [BranchSupportType.AGNOSTIC, BranchSupportType.LOCAL]:
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
             branch = registry.get_global_branch()
-        if self.schema.branch == BranchSupportType.LOCAL:
+        elif self.schema.branch == BranchSupportType.LOCAL and self.node._schema.branch == BranchSupportType.AGNOSTIC:
+            branch = registry.get_global_branch()
             hierarchy_level = 0
         data = AttributeCreateData(
             node_type=self.get_db_node_type(),
