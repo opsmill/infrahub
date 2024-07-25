@@ -56,7 +56,15 @@ const getDefaultValueFromProfiles = (
     R.ascend(R.prop("id")),
   ])(profiles);
 
-  const profileWithDefaultValueForField = orderedProfiles.find((profile) => profile?.[fieldName]);
+  const profileWithDefaultValueForField = orderedProfiles.find((profile) => {
+    const profileFieldData = profile[fieldName] as
+      | Pick<AttributeType, "value" | "__typename">
+      | undefined;
+
+    if (!profileFieldData) return false;
+    return profileFieldData.value !== null;
+  });
+
   if (!profileWithDefaultValueForField) return null;
 
   return {

@@ -182,7 +182,7 @@ describe("getFieldDefaultValue", () => {
       });
     });
 
-    it("returns profile's value when it exists and value is null", () => {
+    it("returns schema's value when profile value is null", () => {
       // GIVEN
       const fieldSchema = buildAttributeSchema({ name: "field1" });
 
@@ -203,10 +203,7 @@ describe("getFieldDefaultValue", () => {
       // THEN
       expect(defaultValue).to.deep.equal({
         source: {
-          label: "Profile 1",
-          type: "profile",
-          id: "profile1",
-          kind: "FakeProfileKind",
+          type: "schema",
         },
         value: null,
       });
@@ -314,6 +311,70 @@ describe("getFieldDefaultValue", () => {
           kind: "FakeProfileKind",
         },
         value: "second",
+      });
+    });
+
+    it("returns the 1st profile with content a non null value", () => {
+      // GIVEN
+      const fieldSchema = {
+        id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
+        state: "present",
+        name: "name",
+        kind: "Text",
+        enum: null,
+        choices: null,
+        regex: null,
+        max_length: null,
+        min_length: null,
+        label: "Name",
+        description: null,
+        read_only: false,
+        unique: true,
+        optional: false,
+        branch: "aware",
+        order_weight: 1000,
+        default_value: "test-value-form-schema",
+        inherited: false,
+        allow_override: "any",
+      } satisfies GetFieldDefaultValue["fieldSchema"];
+
+      const profiles = [
+        {
+          id: "profile1",
+          display_label: "Profile 1",
+          __typename: "FakeProfileKind",
+          name: {
+            value: "first",
+          },
+          profile_priority: {
+            value: 2,
+          },
+        },
+        {
+          id: "profile2",
+          display_label: "Profile 2",
+          __typename: "FakeProfileKind",
+          name: {
+            value: null,
+          },
+          profile_priority: {
+            value: 1,
+          },
+        },
+      ] as Array<ProfileData>;
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          label: "Profile 1",
+          type: "profile",
+          id: "profile1",
+          kind: "FakeProfileKind",
+        },
+        value: "first",
       });
     });
   });
