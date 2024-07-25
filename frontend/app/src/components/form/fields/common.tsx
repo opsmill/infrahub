@@ -63,6 +63,30 @@ export const LabelFormField = ({
           </button>
         </Tooltip>
       )}
+
+      {fieldData?.source?.type === "pool" && (
+        <Tooltip
+          enabled
+          content={
+            <div className="max-w-60">
+              <p>This value is allocated from the pool:</p>
+              <Link
+                to={getObjectDetailsUrl2(fieldData?.source.kind!, fieldData?.source.id)}
+                className="underline inline-flex items-center gap-1">
+                {fieldData?.source?.label} <Icon icon="mdi:open-in-new" />
+              </Link>
+              <p className="text-xs mt-2">
+                You can override it by entering another value manually.
+              </p>
+            </div>
+          }>
+          <button className="ml-auto">
+            <Badge variant="purple">
+              <Icon icon="mdi:view-grid-outline" className="mr-1" /> {fieldData?.source?.label}
+            </Badge>
+          </button>
+        </Tooltip>
+      )}
     </div>
   );
 };

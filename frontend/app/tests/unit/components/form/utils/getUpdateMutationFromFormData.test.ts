@@ -1,5 +1,9 @@
 import { describe, expect } from "vitest";
-import { DynamicFieldProps, FormAttributeValue } from "@/components/form/type";
+import {
+  DynamicFieldProps,
+  FormAttributeValue,
+  RelationshipValueFormPool,
+} from "@/components/form/type";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { buildField } from "./getCreateMutationFromFormData.test";
 
@@ -95,6 +99,40 @@ describe("getUpdateMutationFromFormData - test", () => {
     // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: "value1" },
+    });
+  });
+
+  it("keeps field if source change from user to pool", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildField({
+        name: "field1",
+        type: "relationship",
+        defaultValue: { source: { type: "user" }, value: { id: "value1" } },
+      }),
+    ];
+    const formData: Record<string, RelationshipValueFormPool> = {
+      field1: {
+        source: {
+          type: "pool",
+          label: "test name pool",
+          id: "pool-id",
+          kind: "FakeResourcePool",
+        },
+        value: {
+          from_pool: { id: "pool-id" },
+        },
+      },
+    };
+
+    // WHEN
+    const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      field1: {
+        from_pool: { id: "pool-id" },
+      },
     });
   });
 

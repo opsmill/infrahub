@@ -245,6 +245,7 @@ export const getOptionsFromRelationship = ({
     return options.map((option: any) => ({
       name: option.display_label,
       id: option.id,
+      kind: option.__typename,
     }));
   }
 
@@ -256,6 +257,7 @@ export const getOptionsFromRelationship = ({
         return {
           name: relatedSchema.name,
           id: name,
+          kind: relatedSchema.kind,
         };
       }
     });

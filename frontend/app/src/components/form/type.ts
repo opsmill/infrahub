@@ -113,3 +113,7 @@ export type DynamicFieldProps =
   | DynamicDropdownFieldProps
   | DynamicEnumFieldProps
   | DynamicRelationshipFieldProps;
+
+export const isFormFieldValueFromPool = (
+  fieldData: FormFieldValue
+): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";

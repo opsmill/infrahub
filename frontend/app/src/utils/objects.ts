@@ -8,6 +8,7 @@ import {
 import { store } from "@/state";
 import { profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath, overrideQueryParams } from "./fetch";
+import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
 
 const regex = /^Related/; // starts with Related
 
@@ -38,6 +39,10 @@ export const getObjectDetailsUrl2 = (
       { name: IPAM_QSP.TAB, value: "ip-details" },
       ...(overrideParams ?? []),
     ]);
+  }
+
+  if (inheritFrom?.includes(RESOURCE_GENERIC_KIND)) {
+    return constructPathForIpam(`/resource-manager/${objectId}`, overrideParams);
   }
 
   const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;

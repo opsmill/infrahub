@@ -1,7 +1,7 @@
 import {
   DynamicFieldProps,
   FormFieldValue,
-  RelationshipValueFormPool,
+  isFormFieldValueFromPool,
 } from "@/components/form/type";
 
 export const getCreateMutationFromFormData = (
@@ -30,7 +30,3 @@ export const getCreateMutationFromFormData = (
     return acc;
   }, {});
 };
-
-const isFormFieldValueFromPool = (
-  fieldData: FormFieldValue
-): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
