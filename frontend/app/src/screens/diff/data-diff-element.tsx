@@ -37,7 +37,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   };
 
   const renderTitleDisplay = (
-    diffValue: tDataDiffNodeValueChange,
+    diffValue?: tDataDiffNodeValueChange,
     branchDiffValue?: tDataDiffNodeValueChange
   ) => {
     return (
@@ -52,7 +52,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
           <div className="flex w-2/3 items-center">
             <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-green-100">
-              {renderDiffDisplay(diffValue)}
+              {diffValue && renderDiffDisplay(diffValue)}
             </span>
             <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-custom-blue-10">
               {branchDiffValue && renderDiffDisplay(branchDiffValue)}
@@ -109,12 +109,16 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   }
 
   if (peersChanges?.length) {
-    return <>{peersChanges}</>;
+    return peersChanges;
   }
 
   if (peer && peer?.changes?.length) {
     return (
-      <div className={classNames("mb-1", peer?.changes?.length > 1 && "rounded-md bg-red-400 p-1")}>
+      <div
+        className={classNames(
+          "mb-1",
+          peer?.changes?.length > 1 && "border-yellow-200 bg-yellow-50"
+        )}>
         {peer?.changes.map((peerChanges, index) => (
           <DataDiffPeer
             key={index}
