@@ -13,7 +13,6 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffAttribute,
     EnrichedDiffNode,
     EnrichedDiffProperty,
-    EnrichedDiffPropertyConflict,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
@@ -22,9 +21,6 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-
-
-class ConflictFactory(DataclassFactory[EnrichedDiffPropertyConflict]): ...
 
 
 class PropertyFactory(DataclassFactory[EnrichedDiffProperty]): ...

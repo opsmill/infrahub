@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import DiffAction, RelationshipStatus
@@ -15,26 +14,6 @@ if TYPE_CHECKING:
     from neo4j.graph import Relationship as Neo4jRelationship
 
 
-class ConflictBranchChoice(Enum):
-    BASE = "base"
-    DIFF = "diff"
-
-
-@dataclass
-class EnrichedDiffPropertyConflict:
-    uuid: str
-    base_branch_action: DiffAction
-    base_branch_value: Any
-    base_branch_changed_at: Timestamp
-    diff_branch_action: DiffAction
-    diff_branch_value: Any
-    diff_branch_changed_at: Timestamp
-    selected_branch: Optional[ConflictBranchChoice]
-
-    def __hash__(self) -> int:
-        return hash(self.uuid)
-
-
 @dataclass
 class EnrichedDiffProperty:
     property_type: str
@@ -42,7 +21,6 @@ class EnrichedDiffProperty:
     previous_value: Any
     new_value: Any
     action: DiffAction
-    conflict: Optional[EnrichedDiffPropertyConflict]
 
     def __hash__(self) -> int:
         return hash(self.property_type)
@@ -64,7 +42,6 @@ class EnrichedDiffSingleRelationship:
     changed_at: Timestamp
     action: DiffAction
     peer_id: str
-    conflict: Optional[EnrichedDiffPropertyConflict]
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
 
     def __hash__(self) -> int:

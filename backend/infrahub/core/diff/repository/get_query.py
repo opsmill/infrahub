@@ -9,11 +9,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.database.constants import DatabaseType
 
 from ..model.path import (
-    ConflictBranchChoice,
     EnrichedDiffAttribute,
     EnrichedDiffNode,
     EnrichedDiffProperty,
-    EnrichedDiffPropertyConflict,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
@@ -127,12 +125,10 @@ class EnrichedDiffGetQuery(Query):
             OPTIONAL MATCH (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
             WITH diff_attribute
             OPTIONAL MATCH (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_property:DiffProperty)
-            WITH diff_attribute, diff_attr_property
-            OPTIONAL MATCH (diff_attr_property)-[:DIFF_HAS_CONFLICT]->(diff_attr_conflict:DiffConflict)
-            RETURN diff_attribute, diff_attr_property, diff_attr_conflict
+            RETURN diff_attribute, diff_attr_property
             ORDER BY diff_attribute.name, diff_attr_property.property_type
         }
-        WITH diff_root, parent_node_uuid, parent_rel_name, diff_node, collect([diff_attribute, diff_attr_property, diff_attr_conflict]) as diff_attributes
+        WITH diff_root, parent_node_uuid, parent_rel_name, diff_node, collect([diff_attribute, diff_attr_property]) as diff_attributes
 
         // relationships
         CALL {
@@ -141,12 +137,9 @@ class EnrichedDiffGetQuery(Query):
             WITH diff_relationship
             OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_rel_element:DiffRelationshipElement)
             WITH diff_relationship, diff_rel_element
-            OPTIONAL MATCH (diff_rel_element)-[:DIFF_HAS_CONFLICT]->(diff_rel_element_conflict:DiffConflict)
-            WITH diff_relationship, diff_rel_element, diff_rel_element_conflict
             OPTIONAL MATCH (diff_rel_element)-[:DIFF_HAS_PROPERTY]->(diff_rel_property:DiffProperty)
-            WITH diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property
-            OPTIONAL MATCH (diff_rel_property)-[:DIFF_HAS_CONFLICT]->(diff_rel_conflict:DiffConflict)
-            RETURN diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict
+            WITH diff_relationship, diff_rel_element, diff_rel_property
+            RETURN diff_relationship, diff_rel_element, diff_rel_property
             ORDER BY diff_relationship.name, diff_rel_element.peer_id, diff_rel_property.property_type
         }
         WITH
@@ -155,7 +148,7 @@ class EnrichedDiffGetQuery(Query):
             parent_rel_name,
             diff_node,
             diff_attributes,
-            collect([diff_relationship, diff_rel_element, diff_rel_element_conflict, diff_rel_property, diff_rel_conflict]) AS diff_relationships
+            collect([diff_relationship, diff_rel_element, diff_rel_property]) AS diff_relationships
         """
         self.add_to_query(query=query_2)
 
@@ -205,27 +198,24 @@ class EnrichedDiffDeserializer:
         self, result: QueryResult, enriched_root: EnrichedDiffRoot, enriched_node: EnrichedDiffNode
     ) -> None:
         for attribute_result in result.get_nested_node_collection("diff_attributes"):
-            diff_attr_node, diff_attr_property_node, diff_attr_conflict_node = attribute_result
+            diff_attr_node, diff_attr_property_node = attribute_result
             if diff_attr_node is None or diff_attr_property_node is None:
                 continue
             enriched_attribute = self._deserialize_diff_attr(
                 diff_attr_node=diff_attr_node, enriched_root=enriched_root, enriched_node=enriched_node
             )
-            enriched_property = self._deserialize_diff_attr_property(
+            self._deserialize_diff_attr_property(
                 diff_attr_property_node=diff_attr_property_node,
                 enriched_attr=enriched_attribute,
                 enriched_node=enriched_node,
                 enriched_root=enriched_root,
             )
-            if diff_attr_conflict_node:
-                enriched_conflict = self._conflict_node_to_enriched_conflict(conflict_node=diff_attr_conflict_node)
-                enriched_property.conflict = enriched_conflict
 
     def _deserialize_relationships(
         self, result: QueryResult, enriched_root: EnrichedDiffRoot, enriched_node: EnrichedDiffNode
     ) -> None:
         for relationship_result in result.get_nested_node_collection("diff_relationships"):
-            group_node, element_node, element_conflict, property_node, conflict_node = relationship_result
+            group_node, element_node, property_node = relationship_result
             if group_node is None or element_node is None or property_node is None:
                 continue
             enriched_relationship_group = self._deserialize_diff_relationship_group(
@@ -233,21 +223,17 @@ class EnrichedDiffDeserializer:
             )
             enriched_relationship_element = self._deserialize_diff_relationship_element(
                 relationship_element_node=element_node,
-                relationship_element_conflict_node=element_conflict,
                 enriched_relationship_group=enriched_relationship_group,
                 enriched_node=enriched_node,
                 enriched_root=enriched_root,
             )
-            enriched_property = self._deserialize_diff_relationship_element_property(
+            self._deserialize_diff_relationship_element_property(
                 relationship_element_property_node=property_node,
                 enriched_relationship_element=enriched_relationship_element,
                 enriched_relationship_group=enriched_relationship_group,
                 enriched_node=enriched_node,
                 enriched_root=enriched_root,
             )
-            if conflict_node:
-                enriched_conflict = self._conflict_node_to_enriched_conflict(conflict_node=conflict_node)
-                enriched_property.conflict = enriched_conflict
 
     def _track_child_nodes(
         self, result: QueryResult, enriched_root: EnrichedDiffRoot, enriched_node: EnrichedDiffNode
@@ -341,7 +327,6 @@ class EnrichedDiffDeserializer:
     def _deserialize_diff_relationship_element(
         self,
         relationship_element_node: Neo4jNode,
-        relationship_element_conflict_node: Neo4jNode | None,
         enriched_relationship_group: EnrichedDiffRelationship,
         enriched_node: EnrichedDiffNode,
         enriched_root: EnrichedDiffRoot,
@@ -360,12 +345,7 @@ class EnrichedDiffDeserializer:
             changed_at=Timestamp(str(relationship_element_node.get("changed_at"))),
             action=DiffAction(str(relationship_element_node.get("action"))),
             peer_id=diff_element_peer_id,
-            conflict=None,
         )
-        if relationship_element_conflict_node is not None:
-            enriched_rel_element.conflict = self._conflict_node_to_enriched_conflict(
-                conflict_node=relationship_element_conflict_node
-            )
         enriched_relationship_group.relationships.add(enriched_rel_element)
         self._diff_node_rel_element_map[rel_element_key] = enriched_rel_element
         return enriched_rel_element
@@ -379,7 +359,6 @@ class EnrichedDiffDeserializer:
             previous_value=previous_value,
             new_value=new_value,
             action=DiffAction(str(property_node.get("action"))),
-            conflict=None,
         )
 
     def _deserialize_diff_attr_property(
@@ -422,20 +401,3 @@ class EnrichedDiffDeserializer:
         self._diff_prop_map[rel_property_key] = enriched_property
         enriched_relationship_element.properties.add(enriched_property)
         return enriched_property
-
-    def _conflict_node_to_enriched_conflict(self, conflict_node: Neo4jNode) -> EnrichedDiffPropertyConflict:
-        base_value = self._get_str_or_none_property_value(node=conflict_node, property_name="base_branch_value")
-        branch_value = self._get_str_or_none_property_value(node=conflict_node, property_name="diff_branch_value")
-        selected_branch_value = self._get_str_or_none_property_value(
-            node=conflict_node, property_name="selected_branch"
-        )
-        return EnrichedDiffPropertyConflict(
-            uuid=str(conflict_node.get("uuid")),
-            base_branch_action=DiffAction(str(conflict_node.get("base_branch_action"))),
-            base_branch_value=base_value,
-            base_branch_changed_at=Timestamp(str(conflict_node.get("base_branch_changed_at"))),
-            diff_branch_action=DiffAction(str(conflict_node.get("diff_branch_action"))),
-            diff_branch_value=branch_value,
-            diff_branch_changed_at=Timestamp(str(conflict_node.get("diff_branch_changed_at"))),
-            selected_branch=ConflictBranchChoice(selected_branch_value) if selected_branch_value else None,
-        )
