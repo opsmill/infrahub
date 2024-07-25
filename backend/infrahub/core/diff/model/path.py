@@ -51,6 +51,7 @@ class EnrichedDiffSingleRelationship:
 @dataclass
 class EnrichedDiffRelationship:
     name: str
+    label: str
     changed_at: Timestamp
     action: DiffAction
     relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)

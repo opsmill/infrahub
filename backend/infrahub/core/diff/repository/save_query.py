@@ -131,6 +131,7 @@ class EnrichedDiffSaveQuery(Query):
         return {
             "node_properties": {
                 "name": enriched_relationship.name,
+                "label": enriched_relationship.label,
                 "changed_at": enriched_relationship.changed_at.to_string(),
                 "action": enriched_relationship.action,
             },

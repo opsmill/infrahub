@@ -317,6 +317,7 @@ class EnrichedDiffDeserializer:
 
         enriched_relationship = EnrichedDiffRelationship(
             name=diff_rel_name,
+            label=str(relationship_group_node.get("label")),
             changed_at=Timestamp(str(relationship_group_node.get("changed_at"))),
             action=DiffAction(str(relationship_group_node.get("action"))),
         )
