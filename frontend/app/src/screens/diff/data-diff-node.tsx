@@ -121,26 +121,6 @@ export type tDataDiffNodeProps = {
   branch?: string;
 };
 
-// Branch from QSP = branchName
-// Multiple branches = branches array
-// Related branch for the node update = branch
-export const getNodeClassName = (
-  branches: string[],
-  branch: string | undefined,
-  branchOnly?: string | null | undefined
-) => {
-  // Do not display a color if the node is related to mulitple branches or if we are on the branch details diff
-  if (branches?.length > 1 || branchOnly === "true" || !branchOnly) {
-    return "bg-custom-white";
-  }
-
-  if (branches?.length === 1) {
-    return branches[0] === "main" ? "bg-custom-blue-10" : "bg-green-200";
-  }
-
-  return branch === "main" ? "bg-custom-blue-10" : "bg-green-200";
-};
-
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { branchName } = useParams();
   const [proposedChangesDetails] = useAtom(proposedChangedState);
@@ -150,9 +130,6 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
   const { display_label: nodeDisplayLabels, action: nodeActions, kind, elements, path } = node;
 
-  // Get all the related branches for this node
-  const branches = Object.keys(nodeActions);
-
   const currentBranch =
     branch ?? branchName ?? proposedChangesDetails?.source_branch?.value ?? "main";
 
@@ -161,7 +138,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const display_label = nodeDisplayLabels[currentBranch] ?? nodeDisplayLabels?.main;
 
   const renderTitle = () => (
-    <div className={"px-2 relative flex flex-col items-center lg:flex-row group"}>
+    <div className={"h-7 px-2 relative flex flex-col items-center lg:flex-row group"}>
       <div className="flex flex-1 items-center group">
         <Badge className="mr-2" variant={getBadgeType(action)}>
           <div className="mr-1 flex items-center">{getBadgeIcon(action)}</div>
@@ -198,11 +175,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   );
 
   return (
-    <div
-      className={classNames(
-        "rounded-lg shadow p-2 m-4",
-        getNodeClassName(branches, currentBranch)
-      )}>
+    <div className={classNames("bg-custom-white rounded-lg shadow p-2 m-4")}>
       <Accordion title={renderTitle()} className="bg-gray-100 rounded-md border">
         <div className="bg-custom-white">
           {Object.values(elements).map((element: tDataDiffNodeElement, index: number) => (

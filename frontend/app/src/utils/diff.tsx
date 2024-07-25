@@ -1,5 +1,5 @@
-import { BADGE_TYPES, Badge } from "@/components/display/badge";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NODE_PATH_EXCLUDELIST } from "@/config/constants";
 import {
@@ -48,10 +48,10 @@ export const diffContent: { [key: string]: any } = {
       <div className="flex">
         {newMesage ? (
           <Tooltip enabled content={newMesage}>
-            <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
+            <Badge variant="green-outline">{displayValue(newValue)}</Badge>
           </Tooltip>
         ) : (
-          <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
+          <Badge variant="green-outline">{displayValue(newValue)}</Badge>
         )}
       </div>
     );
@@ -67,10 +67,10 @@ export const diffContent: { [key: string]: any } = {
       <div className="flex">
         {previousMesage ? (
           <Tooltip enabled content={previousMesage}>
-            <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
+            <Badge variant="red-outline">{displayValue(previousValue)}</Badge>
           </Tooltip>
         ) : (
-          <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
+          <Badge variant="red-outline">{displayValue(previousValue)}</Badge>
         )}
       </div>
     );
@@ -86,27 +86,64 @@ export const diffContent: { [key: string]: any } = {
 
     return (
       <div className="flex items-center">
-        <div className="flex">
+        <div className="flex items-center">
           {previousMesage ? (
             <Tooltip enabled content={previousMesage}>
-              <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
+              <Badge variant="blue-outline">{displayValue(previousValue)}</Badge>
             </Tooltip>
           ) : (
-            <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
+            <Badge variant="blue-outline">{displayValue(previousValue)}</Badge>
           )}
         </div>
 
-        <div>
-          <ChevronRightIcon className="w-4 h-4 mx-2" aria-hidden="true" />
+        <div className="flex items-center">
+          <Icon icon={"mdi:chevron-right"} className="mx-2" aria-hidden="true" />
         </div>
 
         <div className="flex">
           {newMesage ? (
             <Tooltip enabled content={newMesage}>
-              <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
+              <Badge variant="blue-outline">{displayValue(newValue)}</Badge>
             </Tooltip>
           ) : (
-            <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
+            <Badge variant="blue-outline">{displayValue(newValue)}</Badge>
+          )}
+        </div>
+      </div>
+    );
+  },
+  conflict: (property: tDataDiffNodePropertyChange) => {
+    const { value } = property;
+
+    const { new: newValue, previous: previousValue } = value;
+
+    const previousMesage = getValueTooltip(previousValue);
+
+    const newMesage = getValueTooltip(newValue);
+
+    return (
+      <div className="flex items-center">
+        <div className="flex items-center">
+          {previousMesage ? (
+            <Tooltip enabled content={previousMesage}>
+              <Badge variant="blue-outline">{displayValue(previousValue)}</Badge>
+            </Tooltip>
+          ) : (
+            <Badge variant="blue-outline">{displayValue(previousValue)}</Badge>
+          )}
+        </div>
+
+        <div className="flex items-center">
+          <Icon icon={"mdi:chevron-right"} className="mx-2" aria-hidden="true" />
+        </div>
+
+        <div className="flex">
+          {newMesage ? (
+            <Tooltip enabled content={newMesage}>
+              <Badge variant="blue-outline">{displayValue(newValue)}</Badge>
+            </Tooltip>
+          ) : (
+            <Badge variant="blue-outline">{displayValue(newValue)}</Badge>
           )}
         </div>
       </div>
@@ -128,7 +165,7 @@ export const diffPeerContent = (
   if (newPeer && !previousPeer) {
     return (
       <div className="flex">
-        <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newPeer?.display_label)}</Badge>
+        <Badge>{displayValue(newPeer?.display_label)}</Badge>
       </div>
     );
   }
@@ -137,7 +174,7 @@ export const diffPeerContent = (
   if (!newPeer && previousPeer) {
     return (
       <div className="flex">
-        <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousPeer?.display_label)}</Badge>
+        <Badge>{displayValue(previousPeer?.display_label)}</Badge>
       </div>
     );
   }
@@ -148,7 +185,7 @@ export const diffPeerContent = (
       <div className="flex items-center">
         <div className="flex">
           <Tooltip enabled content="Previous value">
-            <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousPeer?.display_label)}</Badge>
+            <Badge>{displayValue(previousPeer?.display_label)}</Badge>
           </Tooltip>
         </div>
 
@@ -158,7 +195,7 @@ export const diffPeerContent = (
 
         <div className="flex">
           <Tooltip enabled content="New value">
-            <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newPeer?.display_label)}</Badge>
+            <Badge>{displayValue(newPeer?.display_label)}</Badge>
           </Tooltip>
         </div>
       </div>
@@ -170,9 +207,7 @@ export const diffPeerContent = (
     return (
       <div className="flex">
         <Tooltip enabled content={`Link to ${display_label} ${branch && `(${branch})`}`}>
-          <Badge
-            type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL}
-            onClick={onClick}>
+          <Badge variant={action === "added" ? "green" : "red"} onClick={onClick}>
             {displayValue(display_label)}
           </Badge>
         </Tooltip>

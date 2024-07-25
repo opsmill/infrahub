@@ -1,6 +1,5 @@
 import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/display/badge";
-import { QSP } from "@/config/qsp";
 import { classNames } from "@/utils/common";
 import { diffPeerContent } from "@/utils/diff";
 import { constructPath } from "@/utils/fetch";
@@ -8,9 +7,7 @@ import { getObjectDetailsUrl } from "@/utils/objects";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { StringParam, useQueryParam } from "use-query-params";
 import {
-  getNodeClassName,
   tDataDiffNodePeerChange,
   tDataDiffNodePeerValue,
   tDataDiffNodeProperty,
@@ -47,7 +44,6 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   } = props;
 
   const { branchName } = useParams();
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const navigate = useNavigate();
 
   // Relationship mayny: action, changed_at, branches, branches, peer, properties, summary
@@ -77,7 +73,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     if (branches?.length) {
       return branches.map((branch: string, index: number) => {
         return (
-          <div className="group relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0" key={index}>
+          <div className="h-7 group relative flex flex-col lg:flex-row last:mr-0" key={index}>
             <div className="flex flex-1 items-center">
               {peerChange?.kind && <Badge>{peerChange?.kind}</Badge>}
 
@@ -137,22 +133,14 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   // If there are some properties, then display the accordion
   if (propertiesChanges?.length) {
     return (
-      <div
-        className={classNames(
-          "mb-1 rounded-md last:mb-0",
-          getNodeClassName([], peerChanges.branch, branchOnly)
-        )}>
+      <div className={classNames("mb-1 rounded-md last:mb-0")}>
         <Accordion title={renderTitleDisplay()}>{propertiesChanges}</Accordion>
       </div>
     );
   }
 
   return (
-    <div
-      className={classNames(
-        "flex flex-col rounded-md mb-1 last:mb-0",
-        getNodeClassName(branches, peerBranch, branchOnly)
-      )}>
+    <div className={classNames("flex flex-col rounded-md")}>
       <div className="flex">
         {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
         <ChevronDownIcon className="w-4 h-4 mr-2 text-transparent" aria-hidden="true" />
