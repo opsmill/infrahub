@@ -5,7 +5,7 @@ import { SelectOption } from "@/components/inputs/select";
 import { components } from "@/infraops";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 
-type SourceType = "pool" | "profile" | "schema" | "user";
+type SourceType = "schema" | "user";
 
 export type Source = {
   type: SourceType;
@@ -14,15 +14,39 @@ export type Source = {
   id?: string;
 };
 
-export type FormAttributeValue = {
-  source: Source | null;
-  value: string | number | boolean | null | undefined;
+export type ProfileFieldValue = {
+  source: {
+    type: "profile";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: string | number | boolean | null;
 };
 
-export type FormRelationshipValue = {
-  source: Source | null;
-  value: { id: string } | Array<{ id: string }> | { from_pool: { id: string } } | null | undefined;
+export type FormAttributeValue =
+  | {
+      source: Source | null;
+      value: string | number | boolean | null | undefined;
+    }
+  | ProfileFieldValue;
+
+export type PoolFieldValue = {
+  source: {
+    type: "pool";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: { id: string } | { from_pool: { id: string } };
 };
+
+export type FormRelationshipValue =
+  | {
+      source: Source | null;
+      value: { id: string } | Array<{ id: string }> | null | undefined;
+    }
+  | PoolFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
