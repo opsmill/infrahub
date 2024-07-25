@@ -1,6 +1,5 @@
 import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/display/badge";
-import { DateDisplay } from "@/components/display/date-display";
 import { QSP } from "@/config/qsp";
 import { classNames } from "@/utils/common";
 import { diffPeerContent } from "@/utils/diff";
@@ -18,7 +17,6 @@ import {
 } from "./data-diff-node";
 import { DataDiffProperty } from "./data-diff-property";
 import { DataDiffConflictInfo } from "./diff-conflict-info";
-import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePeerProps = {
@@ -57,11 +55,9 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   const {
     path,
     action,
-    changed_at,
     branches,
     peer: peerChange,
     properties, // For relationship many
-    summary,
     branch: peerBranch,
     new: newPeer,
     previous: previousPeer,
@@ -95,14 +91,6 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
             </div>
 
-            <div className="flex flex-1 items-center lg:justify-end mt-2 lg:mt-0">
-              <DiffPill {...summary} />
-
-              <div className="flex w-[200px] justify-end">
-                {changed_at && <DateDisplay date={changed_at} hideDefault />}
-              </div>
-            </div>
-
             {!branchName && <DataDiffConflictInfo path={path} />}
           </div>
         );
@@ -128,14 +116,6 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               <span className="font-semibold">
                 {renderDiffDisplay({ new: newPeer, previous: previousPeer }, peerBranch)}
               </span>
-            </div>
-          </div>
-
-          <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
-            <DiffPill {...summary} />
-
-            <div className="flex w-[200px] justify-end">
-              {changed_at && <DateDisplay date={changed_at} hideDefault />}
             </div>
           </div>
 

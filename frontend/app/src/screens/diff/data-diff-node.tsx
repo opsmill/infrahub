@@ -30,7 +30,6 @@ export type tDataDiffNodePropertyValue = {
 export type tDataDiffNodePropertyChange = {
   path: string;
   type?: string;
-  changed_at?: number;
   action: string;
   value: tDataDiffNodePropertyValue;
   branch: string;
@@ -52,7 +51,6 @@ export type tDataDiffNodePeerValue = {
 };
 
 export type tDataDiffNodePeerChange = {
-  changed_at?: number;
   action: string;
   branches: string[];
   path: string;
@@ -72,7 +70,6 @@ export type tDataDiffNodePeer = {
 export type tDataDiffNodeValueChange = {
   action: string;
   branch: string;
-  changed_at: string;
   type: string;
   value: tDataDiffNodePropertyValue;
 };
@@ -85,13 +82,11 @@ export type tDataDiffNodeValue = {
 export type tDataDiffNodeChange = {
   value: tDataDiffNodeValue;
   branch?: string;
-  changed_at?: number;
   identifier?: string;
   action: string;
   properties: { [key: string]: tDataDiffNodeProperty };
   peer?: tDataDiffNodePeerChange;
   peers?: tDataDiffNodePeerChange[];
-  summary?: tDataDiffNodeSummary;
 };
 
 export type tDataDiffNodeElement = {
@@ -99,12 +94,6 @@ export type tDataDiffNodeElement = {
   name: string;
   path: string;
   change: tDataDiffNodeChange;
-};
-
-export type tDataDiffNodeSummary = {
-  added: number;
-  updated: number;
-  removed: number;
 };
 
 export type tDataDiffNodeDisplayLabel = {
@@ -122,8 +111,6 @@ export type tDataDiffNode = {
   action: { [key: string]: any };
   id: string;
   kind: string;
-  changed_at?: number;
-  summary: tDataDiffNodeSummary;
   elements: Map<string, tDataDiffNodeElement>;
   path: string;
 };
