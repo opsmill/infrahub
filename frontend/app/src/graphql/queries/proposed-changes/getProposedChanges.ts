@@ -1,6 +1,6 @@
 export const getProposedChanges = `
-query GET_PROPOSED_CHANGES($state: String) {
-  CoreProposedChange(state__value: $state) {
+query GET_PROPOSED_CHANGES($state: String, $search: String) {
+  CoreProposedChange(state__value: $state, any__value: $search, partial_match: true) {
     count
     edges {
       node {

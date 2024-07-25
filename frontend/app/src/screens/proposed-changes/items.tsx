@@ -34,6 +34,7 @@ export const ProposedChangesPage = () => {
   const navigate = useNavigate();
   const [qspState] = useQueryParam(QSP.PROPOSED_CHANGES_STATE, StringParam);
   useTitle("Proposed changes list");
+  const [search, setSearch] = useQueryParam(QSP.LIST_SEARCH, StringParam);
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
 
@@ -47,7 +48,7 @@ export const ProposedChangesPage = () => {
     data = {},
     refetch,
   } = useQuery(query, {
-    variables: { state: qspState },
+    variables: { state: qspState, search },
     skip: !schemaData,
     notifyOnNetworkStatusChange: true,
   });
@@ -64,7 +65,7 @@ export const ProposedChangesPage = () => {
 
   const handleSearch: SearchInputProps["onChange"] = (e) => {
     const value = e.target.value as string;
-    console.log("value: ", value);
+    setSearch(value);
   };
 
   const debouncedHandleSearch = debounce(handleSearch, 500);
@@ -99,8 +100,6 @@ export const ProposedChangesPage = () => {
       label: "Reviewers",
     },
   ];
-
-  console.log("data[TASK_OBJECT]?.count: ", data[TASK_OBJECT]?.count);
 
   const rows = nodes.map((node: any) => {
     return {
