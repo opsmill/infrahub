@@ -3,6 +3,7 @@ import {
   DynamicFieldProps,
   FormAttributeValue,
   FormRelationshipValue,
+  ProfileFieldValue,
 } from "@/components/form/type";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 
@@ -89,20 +90,25 @@ describe("getCreateMutationFromFormData - test", () => {
 
   it("removes items if value is from profile", () => {
     // GIVEN
+    const profileFieldValue: ProfileFieldValue = {
+      source: {
+        type: "profile",
+        kind: "FakeProfileKind",
+        id: "profile-id",
+        label: "Profile 1",
+      },
+      value: "value1",
+    };
+
     const fields: Array<DynamicFieldProps> = [
       buildField({
         name: "field1",
-        defaultValue: {
-          source: { type: "profile" },
-          value: "value1",
-        },
+        type: "Text",
+        defaultValue: profileFieldValue,
       }),
     ];
     const formData: Record<string, FormAttributeValue> = {
-      field1: {
-        source: { type: "profile" },
-        value: "value1",
-      },
+      field1: profileFieldValue,
     };
 
     // WHEN
@@ -117,8 +123,14 @@ describe("getCreateMutationFromFormData - test", () => {
     const fields: Array<DynamicFieldProps> = [
       buildField({
         name: "field1",
+        type: "Text",
         defaultValue: {
-          source: { type: "profile" },
+          source: {
+            type: "profile",
+            kind: "FakeProfileKind",
+            id: "profile-id",
+            label: "Profile 1",
+          },
           value: "value1",
         },
       }),
