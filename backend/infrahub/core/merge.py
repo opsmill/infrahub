@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
-from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipStatus
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipStatus, RepositoryAdminStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaBranchDiff
 from infrahub.core.query.branch import (
@@ -22,6 +22,7 @@ from .diff.branch_differ import BranchDiffer
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
+    from infrahub.core.protocols import CoreGenericRepository
     from infrahub.core.schema_manager import SchemaBranch, SchemaDiff
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
@@ -256,8 +257,7 @@ class BranchMerger:
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
         await self.merge_graph(at=at, conflict_resolution=conflict_resolution)
-        if self.source_branch.sync_with_git:
-            await self.merge_repositories()
+        await self.merge_repositories()
 
     async def merge_graph(  # pylint: disable=too-many-branches,too-many-statements
         self,
@@ -434,10 +434,12 @@ class BranchMerger:
 
     async def merge_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        repos_in_main_list = await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=self.db)
+        repos_in_main_list: list[CoreGenericRepository] = await NodeManager.query(
+            schema=InfrahubKind.REPOSITORY, db=self.db
+        )
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
 
-        repos_in_branch_list = await NodeManager.query(
+        repos_in_branch_list: list[CoreGenericRepository] = await NodeManager.query(
             schema=InfrahubKind.REPOSITORY, db=self.db, branch=self.source_branch
         )
         events = []
@@ -446,19 +448,19 @@ class BranchMerger:
             if repo.id not in repos_in_main:
                 continue
 
-            # repos_in_main[repo.id]
-            # changed_files = repo.calculate_diff_with_commit(repo_in_main.commit.value)
+            if repo.admin_status.value == RepositoryAdminStatus.INACTIVE.value:
+                continue
 
-            # if not changed_files:
-            #     continue
-            events.append(
-                messages.GitRepositoryMerge(
-                    repository_id=repo.id,
-                    repository_name=repo.name.value,  # type: ignore[attr-defined]
-                    source_branch=self.source_branch.name,
-                    destination_branch=registry.default_branch,
+            if self.source_branch.sync_with_git or repo.admin_status.value == RepositoryAdminStatus.STAGING.value:
+                events.append(
+                    messages.GitRepositoryMerge(
+                        repository_id=repo.id,
+                        repository_name=repo.name.value,  # type: ignore[attr-defined]
+                        admin_status=repo.admin_status.value,
+                        source_branch=self.source_branch.name,
+                        destination_branch=registry.default_branch,
+                    )
                 )
-            )
 
         for event in events:
             await self.service.send(message=event)

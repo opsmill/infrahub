@@ -53,12 +53,12 @@ class TestCreateRepository(TestInfrahubApp):
         )
         await client_repository.save()
 
-        repository: CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
         )
 
-        check_definition: CoreCheckDefinition = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION
+        check_definition: CoreCheckDefinition = await NodeManager.get_one_by_default_filter(
+            db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION, raise_on_error=True
         )
 
         assert repository.commit.value

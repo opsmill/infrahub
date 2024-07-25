@@ -1,4 +1,5 @@
 from infrahub import lock
+from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
@@ -152,6 +153,18 @@ async def merge(message: messages.GitRepositoryMerge, service: InfrahubServices)
         source_branch=message.source_branch,
         destination_branch=message.destination_branch,
     )
+
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        await repo.merge(source_branch=message.source_branch, dest_branch=message.destination_branch)
+
+    if message.admin_status == RepositoryAdminStatus.STAGING.value:
+        repo_main = await service.client.get(kind=InfrahubKind.GENERICREPOSITORY, id=message.repository_id)
+        repo_main.admin_status.value = RepositoryAdminStatus.ACTIVE.value
+
+        commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
+        repo_main.commit.value = commit
+
+        await repo_main.save()
+
+    else:
+        async with lock.registry.get(name=message.repository_name, namespace="repository"):
+            await repo.merge(source_branch=message.source_branch, dest_branch=message.destination_branch)
