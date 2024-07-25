@@ -784,7 +784,7 @@ async def _get_proposed_change_repositories(
 async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
     conflicts = False
     for repo in repositories:
-        if repo.has_diff:
+        if repo.has_diff and not repo.is_staging:
             git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
@@ -798,7 +798,8 @@ async def _validate_repository_merge_conflicts(repositories: list[ProposedChange
 
 async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
     for repo in repositories:
-        if repo.has_diff:
+        if repo.has_diff and repo.source_commit and repo.destination_commit:
+            # TODO we need to find a way to return all files in the repo if the repo is new
             git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
 
             files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(

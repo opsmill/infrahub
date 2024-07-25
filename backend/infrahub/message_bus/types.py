@@ -60,6 +60,13 @@ class ProposedChangeRepository(BaseModel):
         return False
 
     @property
+    def is_staging(self) -> bool:
+        """Indicates if the repository is in staging mode."""
+        if not self.destination_commit:
+            return True
+        return False
+
+    @property
     def kind(self) -> str:
         if self.read_only:
             return InfrahubKind.READONLYREPOSITORY
