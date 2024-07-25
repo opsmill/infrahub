@@ -113,8 +113,8 @@ def display_schema_load_errors(response: dict[str, Any], schemas_data: list[dict
             console.print(f"  Node: {node.get('namespace', None)}{node.get('name', None)} | {error_message}")
 
         elif len(loc_path) > 6:
-            loc_type = loc_path[-3]
-            input_label = node[loc_type][loc_path[-2]].get("name", None)
+            loc_type = loc_path[5]
+            input_label = node[loc_type][loc_path[6]].get("name", None)
             input_str = error.get("input", None)
             error_message = f"{loc_type[:-1].title()}: {input_label} ({input_str}) | {error['msg']} ({error['type']})"
             console.print(f"  Node: {node.get('namespace', None)}{node.get('name', None)} | {error_message}")
