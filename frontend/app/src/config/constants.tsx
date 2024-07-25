@@ -14,7 +14,7 @@ export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
 export const ACCOUNT_OBJECT = "CoreGenericAccount";
 
-export const ACCOUNT_TOKEN_OBJECT = "CoreAccountToken";
+export const ACCOUNT_TOKEN_OBJECT = "InfrahubAccountToken";
 
 export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
 

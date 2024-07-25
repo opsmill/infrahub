@@ -2,7 +2,7 @@ export const tokenSchema = {
   id: "17e2a71e-2ac0-bf55-3105-c516dbe1b504",
   state: "present",
   name: "AccountToken",
-  namespace: "Core",
+  namespace: "Infrahub",
   description: "A User Token used for API access.",
   label: "Account Token",
   branch: "aware",
@@ -597,7 +597,7 @@ export const tokenSchema = {
   hierarchy: null,
   parent: null,
   children: null,
-  kind: "CoreAccountToken",
+  kind: "InfrahubAccountToken",
   hash: "2cfd9af9d6fcac49527fca295de251b8",
 };
 
