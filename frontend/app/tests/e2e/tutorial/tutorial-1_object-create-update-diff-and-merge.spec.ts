@@ -63,7 +63,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
       await page.getByRole("link", { name: "Tenant" }).click();
-      const myFirstOrgLink = page.getByRole("cell", { name: "my-first-tenant", exact: true });
+      const myFirstOrgLink = page.getByRole("link", { name: "my-first-tenant" });
       await expect(myFirstOrgLink).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_organizations");
       await myFirstOrgLink.click();
@@ -81,7 +81,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Update confirmation and update UI", async () => {
-      await expect(page.locator("#alert-success-updated")).toContainText("Tenant updated");
+      await expect(page.getByText("Tenant updated")).toBeVisible();
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 
@@ -134,7 +134,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await page.goto("/objects/OrganizationTenant");
 
     await test.step("Row my-first-tenant is visible at current time", async () => {
-      await expect(page.locator("tbody")).toContainText("my-first-tenant");
+      await expect(page.getByRole("link", { name: "my-first-tenant" })).toBeVisible();
     });
 
     await test.step("Row my-first-tenant is not visible when date prior to its creation is selected", async () => {
@@ -143,12 +143,12 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page
         .getByRole("option", { name: format(dateBeforeTest, "h:mm aa"), exact: true })
         .click();
-      await expect(page.locator("tbody")).not.toContainText("my-first-tenant");
+      await expect(page.getByRole("link", { name: "my-first-tenant" })).not.toBeVisible();
     });
 
     await test.step("Row my-first-tenant is visible again when we reset date input", async () => {
       await page.getByTestId("reset-timeframe-selector").click();
-      await expect(page.locator("tbody")).toContainText("my-first-tenant");
+      await expect(page.getByRole("link", { name: "my-first-tenant" })).toBeVisible();
     });
   });
 });
