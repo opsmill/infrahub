@@ -61,6 +61,19 @@ class EnrichedDiffGetQuery(Query):
         AND diff_root.diff_branch IN $diff_branches
         AND diff_root.from_time >= $from_time
         AND diff_root.to_time <= $to_time
+        WITH diff_root
+        ORDER BY diff_root.base_branch, diff_root.diff_branch, diff_root.from_time, diff_root.to_time
+        WITH diff_root.base_branch AS bb, diff_root.diff_branch AS db, collect(diff_root) AS same_branch_diff_roots
+        WITH reduce(
+            non_overlapping = [], dr in same_branch_diff_roots |
+            CASE
+                WHEN size(non_overlapping) = 0 THEN [dr]
+                WHEN dr.from_time >= (non_overlapping[-1]).from_time AND dr.to_time <= (non_overlapping[-1]).to_time THEN non_overlapping
+                WHEN (non_overlapping[-1]).from_time >= dr.from_time AND (non_overlapping[-1]).to_time <= dr.to_time THEN non_overlapping[..-1] + [dr]
+                ELSE non_overlapping + [dr]
+            END
+        ) AS non_overlapping_diff_roots
+        UNWIND non_overlapping_diff_roots AS diff_root
         // get all the nodes attached to the diffs
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
         // if root_node_uuids, filter on uuids

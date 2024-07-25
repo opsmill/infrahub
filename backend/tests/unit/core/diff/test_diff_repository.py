@@ -591,3 +591,35 @@ class TestDiffRepositorySaveAndLoad:
         )
         assert len(retrieved) == 5
         assert set(retrieved) == set(diffs_to_retrieve)
+
+    async def test_retrieve_overlapping_diffs_excludes_duplicates(
+        self, diff_repository: DiffRepository, reset_database
+    ):
+        for i in range(5):
+            nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
+            incremental_enriched_diff = RootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=self.diff_branch_name,
+                from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
+                to_time=Timestamp(self.diff_from_time.add(minutes=(i * 30) + 29)),
+                nodes=nodes,
+            )
+            await diff_repository.save(enriched_diff=incremental_enriched_diff)
+        nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
+        super_enriched_diff = RootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_from_time.add(minutes=(4 * 30) + 29)),
+            nodes=nodes,
+        )
+        await diff_repository.save(enriched_diff=super_enriched_diff)
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_from_time.add(minutes=(4 * 30) + 29)),
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0] == super_enriched_diff
