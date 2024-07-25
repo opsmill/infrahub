@@ -24,7 +24,7 @@ export default function Accordion({
         <div
           className="flex flex-1 w-full items-center cursor-pointer"
           onClick={() => setIsOpen(!isOpen)}>
-          <span className="flex h-7 items-center mr-2 relative">
+          <span className="flex h-7 items-center mx-2 relative">
             {isOpen ? (
               <ChevronDownIcon className="w-4 h-4" aria-hidden="true" />
             ) : (

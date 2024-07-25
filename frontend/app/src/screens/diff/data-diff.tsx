@@ -1,5 +1,3 @@
-import { Button } from "@/components/buttons/button";
-import { Checkbox } from "@/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
@@ -24,6 +22,8 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
+import { ProposedChangesData } from "../proposed-changes/diff-summary";
+import { Button } from "@/components/buttons/button-primitive";
 
 type tDiffContext = {
   refetch?: Function;
@@ -61,8 +61,6 @@ const constructChecksDictionnary = (checks: any[]) => {
 
 export const DataDiff = forwardRef((props, ref) => {
   const { branchName, proposedchange } = useParams();
-
-  const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
@@ -78,7 +76,6 @@ export const DataDiff = forwardRef((props, ref) => {
     ? getThreadsAndChecks({
         id: proposedchange,
         kind: schemaData.kind,
-        conflicts: branchOnly === "false",
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData
@@ -121,7 +118,7 @@ export const DataDiff = forwardRef((props, ref) => {
     const url = CONFIG.DATA_DIFF_URL(branch);
 
     const options: string[][] = [
-      ["branch_only", branchOnly ?? "true"], // default will be branch only
+      ["branch_only", "false"], // default will be branch only
       ["time_from", timeFrom ?? ""],
       ["time_to", timeTo ?? ""],
     ].filter(([, v]) => v !== undefined && v !== "");
@@ -139,7 +136,7 @@ export const DataDiff = forwardRef((props, ref) => {
     }
 
     setIsLoading(false);
-  }, [branch, branchOnly, timeFrom, timeTo]);
+  }, [branch, timeFrom, timeTo]);
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
@@ -174,22 +171,14 @@ export const DataDiff = forwardRef((props, ref) => {
 
   return (
     <>
-      <div className="flex items-center p-4 bg-custom-white">
-        <div className="mr-2">
-          <Button onClick={() => setBranchOnly(branchOnly !== "false" ? "false" : "true")}>
-            <span className="mr-2">Display main</span>
+      <div className="flex items-center justify-between p-2 bg-custom-white">
+        <ProposedChangesData branch={branch} />
 
-            <Checkbox enabled={branchOnly === "false"} readOnly />
-          </Button>
+        <div className="flex gap-2">
+          <Button>Approve</Button>
+          <Button>Merge</Button>
+          <Button>Close</Button>
         </div>
-
-        {branchOnly === "false" && (
-          <div className="flex items-center">
-            <span className="mr-2">Branches colours:</span>
-            <div className={"rounded-lg shadow px-2 mr-2 bg-custom-blue-10"}>main</div>
-            <div className={"rounded-lg shadow px-2 bg-green-200"}>{branch}</div>
-          </div>
-        )}
       </div>
 
       {isLoading ? (

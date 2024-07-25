@@ -1,20 +1,20 @@
 import Accordion from "@/components/display/accordion";
-import { Badge } from "@/components/display/badge";
-import { DateDisplay } from "@/components/display/date-display";
+
 import { Pill } from "@/components/display/pill";
 import { Tooltip } from "@/components/ui/tooltip";
-import { QSP } from "@/config/qsp";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { classNames } from "@/utils/common";
-import { getBadgeType } from "@/utils/diff";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
-import { StringParam, useQueryParam } from "use-query-params";
 import { DataDiffElement } from "./data-diff-element";
 import { DataDiffConflictInfo } from "./diff-conflict-info";
-import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
+import { capitalizeFirstLetter } from "@/utils/string";
+import { Badge } from "@/components/ui/badge";
+import { getBadgeIcon, getBadgeType } from "@/utils/diff";
+import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
+import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
 
 export type tConflictChange = {
   id?: string;
@@ -60,7 +60,6 @@ export type tDataDiffNodePeerChange = {
   properties: { [key: string]: tDataDiffNodeProperty };
   new?: tDataDiffNodePeerValue;
   previous?: tDataDiffNodePeerValue;
-  summary?: tDataDiffNodeSummary;
   branch?: string;
   changes: tDataDiffNodePeerChange[];
 };
@@ -157,21 +156,12 @@ export const getNodeClassName = (
 
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { branchName } = useParams();
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
   // Branch from props is used to filter the changes to a specific branch
   const { node, branch, commentsCount } = props;
 
-  const {
-    display_label: nodeDisplayLabels,
-    action: nodeActions,
-    kind,
-    changed_at,
-    summary,
-    elements,
-    path,
-  } = node;
+  const { display_label: nodeDisplayLabels, action: nodeActions, kind, elements, path } = node;
 
   // Get all the related branches for this node
   const branches = Object.keys(nodeActions);
@@ -184,15 +174,22 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const display_label = nodeDisplayLabels[currentBranch] ?? nodeDisplayLabels?.main;
 
   const renderTitle = () => (
-    <div className={"p-1 pr-0 relative flex flex-col items-center lg:flex-row group"}>
+    <div className={"px-2 relative flex flex-col items-center lg:flex-row group"}>
       <div className="flex flex-1 items-center group">
-        <Badge className="mr-2" type={getBadgeType(action)}>
-          {action?.toUpperCase()}
+        <Badge className="mr-2" variant={getBadgeType(action)}>
+          <div className="mr-1 flex items-center">{getBadgeIcon(action)}</div>
+
+          {capitalizeFirstLetter(action)}
         </Badge>
 
-        <Badge className="mr-2">{kind}</Badge>
+        <Badge className="mr-2" variant={"white"}>
+          {kind}
+        </Badge>
 
-        <span className="mr-2">{display_label}</span>
+        <BadgeCircle type={CIRCLE_BADGE_TYPES.GHOST}>
+          <span className="mr-2">{display_label}</span>
+          <CopyToClipboard text={display_label} />
+        </BadgeCircle>
 
         {/* Do not display comment button if we are on the branch details view */}
         {!branchName && <DataDiffThread path={path} />}
@@ -209,14 +206,6 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         </div>
       )}
 
-      <div className="flex items-center mt-2 lg:mt-0">
-        <DiffPill {...summary} />
-
-        <div className="flex lg:w-[200px]">
-          {changed_at && <DateDisplay date={changed_at} hideDefault />}
-        </div>
-      </div>
-
       {!branchName && <DataDiffConflictInfo path={path} />}
     </div>
   );
@@ -225,10 +214,10 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     <div
       className={classNames(
         "rounded-lg shadow p-2 m-4",
-        getNodeClassName(branches, currentBranch, branchOnly)
+        getNodeClassName(branches, currentBranch)
       )}>
-      <Accordion title={renderTitle()}>
-        <div className="">
+      <Accordion title={renderTitle()} className="bg-gray-100 rounded-md border">
+        <div className="bg-custom-white">
           {Object.values(elements).map((element: tDataDiffNodeElement, index: number) => (
             <DataDiffElement key={index} element={element} />
           ))}

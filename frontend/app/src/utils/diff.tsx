@@ -8,6 +8,7 @@ import {
   tDataDiffNodePropertyChange,
 } from "@/screens/diff/data-diff-node";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 
 export const displayValue = (value: any) => {
   if (typeof value === "boolean") {
@@ -220,14 +221,26 @@ export const getThreadTitle = (thread?: any, label?: string) => {
   );
 };
 
-const badgeTypes: { [key: string]: BADGE_TYPES } = {
-  added: BADGE_TYPES.VALIDATE,
-  updated: BADGE_TYPES.WARNING,
-  removed: BADGE_TYPES.CANCEL,
+const badgeTypes: { [key: string]: string } = {
+  added: "green",
+  updated: "blue",
+  removed: "red",
 };
 
 export const getBadgeType = (action?: string) => {
   if (!action) return undefined;
 
   return badgeTypes[action];
+};
+
+const badgeIcons: { [key: string]: string } = {
+  added: "mdi:plus-circle-outline",
+  updated: "mdi:circle-arrows",
+  removed: "mdi:minus-circle-outline",
+};
+
+export const getBadgeIcon = (action?: string) => {
+  if (!action) return undefined;
+
+  return <Icon icon={badgeIcons[action]} />;
 };

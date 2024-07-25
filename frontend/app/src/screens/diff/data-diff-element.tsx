@@ -16,7 +16,6 @@ import {
 import { DataDiffPeer } from "./data-diff-peer";
 import { DataDiffProperty } from "./data-diff-property";
 import { DataDiffConflictInfo } from "./diff-conflict-info";
-import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodeElementProps = {
@@ -32,7 +31,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const { name, change, path } = element;
 
   // value AND properties || peer || peers
-  const { value, changed_at, properties, summary, peer, peers } = change ?? {};
+  const { value, changed_at, properties, peer, peers } = change ?? {};
 
   const renderDiffDisplay = (diffValue: tDataDiffNodeValueChange) => {
     if (diffValue && diffValue?.action && diffContent[diffValue?.action]) {
@@ -59,8 +58,6 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
         </div>
 
         <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
-          <DiffPill {...summary} />
-
           <div className="flex lg:w-[200px]">
             {changed_at && <DateDisplay date={changed_at} hideDefault />}
           </div>
@@ -86,7 +83,11 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   if (value?.changes?.length) {
     return (
-      <div className={value?.changes?.length > 1 ? "rounded-md bg-red-400 p-1 mb-1" : "mb-1"}>
+      <div
+        className={classNames(
+          "overflow-hidden rounded-md mb-1 last:mb-0",
+          value?.changes?.length > 1 && "rounded-md bg-red-400 p-1"
+        )}>
         {value?.changes?.map((change, index) => {
           return (
             <div
