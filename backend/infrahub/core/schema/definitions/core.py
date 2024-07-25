@@ -438,7 +438,6 @@ core_models: dict[str, Any] = {
                     "optional": False,
                     "branch": BranchSupportType.LOCAL.value,
                     "order_weight": 6000,
-                    "read_only": True,
                     "allow_override": AllowOverrideType.NONE,
                 },
             ],
