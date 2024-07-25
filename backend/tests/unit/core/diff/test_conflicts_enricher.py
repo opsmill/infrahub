@@ -22,7 +22,7 @@ class TestConflictsEnricher:
 
     async def test_attribute_conflicts_both_changed_to_same_value(self, conflicts_enricher: DiffConflictsEnricher):
         new_value = "NEW"
-        enriched_property = EnrichedPropertyFactory.build(new_value=new_value)
+        enriched_property = EnrichedPropertyFactory.build(new_value=new_value, conflict=None)
         base_property = DiffPropertyFactory.build(
             property_type=enriched_property.property_type, previous_value="SOMETHING", new_value=new_value
         )
