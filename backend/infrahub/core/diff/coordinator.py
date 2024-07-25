@@ -5,7 +5,7 @@ from infrahub.core.timestamp import Timestamp
 
 from .calculator import DiffCalculator
 from .combiner import DiffCombiner
-from .enricher import DiffEnricher
+from .enricher.aggregated import AggregatedDiffEnricher
 from .model.path import EnrichedDiffRoot
 from .repository.repository import DiffRepository
 
@@ -15,7 +15,7 @@ class DiffCoordinator:
         self,
         diff_repo: DiffRepository,
         diff_calculator: DiffCalculator,
-        diff_enricher: DiffEnricher,
+        diff_enricher: AggregatedDiffEnricher,
         diff_combiner: DiffCombiner,
     ) -> None:
         self.diff_repo = diff_repo
