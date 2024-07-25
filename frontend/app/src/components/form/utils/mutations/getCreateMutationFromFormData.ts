@@ -1,12 +1,12 @@
 import {
   DynamicFieldProps,
-  FormAttributeValue,
-  FormRelationshipValue,
+  FormFieldValue,
+  RelationshipValueFormPool,
 } from "@/components/form/type";
 
 export const getCreateMutationFromFormData = (
   fields: Array<DynamicFieldProps>,
-  formData: Record<string, FormAttributeValue | FormRelationshipValue>
+  formData: Record<string, FormFieldValue>
 ) => {
   return fields.reduce((acc, field) => {
     const fieldData = formData[field.name];
@@ -23,6 +23,14 @@ export const getCreateMutationFromFormData = (
       };
     }
 
+    if (isFormFieldValueFromPool(fieldData)) {
+      return { ...acc, [field.name]: fieldData.value };
+    }
+
     return acc;
   }, {});
 };
+
+const isFormFieldValueFromPool = (
+  fieldData: FormFieldValue
+): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";

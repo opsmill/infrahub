@@ -107,7 +107,15 @@ describe("getUpdateMutationFromFormData - test", () => {
       }),
     ];
     const formData: Record<string, FormAttributeValue> = {
-      field1: { source: { type: "profile" }, value: "profile1" },
+      field1: {
+        source: {
+          type: "profile",
+          kind: "FakeProfileKind",
+          id: "profile-id",
+          label: "Profile 1",
+        },
+        value: "profile1",
+      },
     };
 
     // WHEN

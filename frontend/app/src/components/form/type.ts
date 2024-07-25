@@ -7,14 +7,12 @@ import { IModelSchema } from "@/state/atoms/schema.atom";
 
 type SourceType = "schema" | "user";
 
-export type Source = {
-  type: SourceType;
-  label?: string | null;
-  kind?: string;
-  id?: string;
+export type EmptyFieldValue = {
+  source: null;
+  value: null;
 };
 
-export type ProfileFieldValue = {
+export type AttributeValueFromProfile = {
   source: {
     type: "profile";
     label: string | null;
@@ -24,14 +22,26 @@ export type ProfileFieldValue = {
   value: string | number | boolean | null;
 };
 
-export type FormAttributeValue =
-  | {
-      source: Source | null;
-      value: string | number | boolean | null | undefined;
-    }
-  | ProfileFieldValue;
+export type AttributeValueForCheckbox = {
+  source: null;
+  value: boolean;
+};
 
-export type PoolFieldValue = {
+export type AttributeValueFromUser =
+  | {
+      source: {
+        type: SourceType;
+      };
+      value: string | number | boolean | null;
+    }
+  | AttributeValueForCheckbox;
+
+export type FormAttributeValue =
+  | AttributeValueFromUser
+  | AttributeValueFromProfile
+  | EmptyFieldValue;
+
+export type RelationshipValueFormPool = {
   source: {
     type: "pool";
     label: string | null;
@@ -41,12 +51,17 @@ export type PoolFieldValue = {
   value: { id: string } | { from_pool: { id: string } };
 };
 
+export type RelationshipValueFormUser = {
+  source: {
+    type: SourceType;
+  };
+  value: { id: string } | Array<{ id: string }> | null;
+};
+
 export type FormRelationshipValue =
-  | {
-      source: Source | null;
-      value: { id: string } | Array<{ id: string }> | null | undefined;
-    }
-  | PoolFieldValue;
+  | RelationshipValueFormUser
+  | RelationshipValueFormPool
+  | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
