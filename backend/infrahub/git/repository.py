@@ -6,7 +6,7 @@ from git.exc import BadName, GitCommandError
 from infrahub_sdk import GraphQLError
 from pydantic import Field
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
@@ -107,7 +107,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
 
         # TODO need to handle properly the situation when a branch is not valid.
-        if self.admin_status == "active":
+        if self.admin_status == RepositoryAdminStatus.ACTIVE.value:
             for branch_name in new_branches:
                 is_valid = await self.validate_remote_branch(branch_name=branch_name)
                 if not is_valid:
@@ -129,7 +129,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 await self.import_objects_from_files(infrahub_branch_name=branch_name, commit=commit)
 
         for branch_name in updated_branches:
-            if self.admin_status == "staging" and branch_name != self.default_branch_name:
+            if self.admin_status == RepositoryAdminStatus.STAGING.value and branch_name != self.default_branch_name:
                 continue
 
             is_valid = await self.validate_remote_branch(branch_name=branch_name)

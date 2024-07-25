@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from graphene import Boolean, InputObjectType, Mutation, String
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
 from infrahub.core.schema import NodeSchema
@@ -75,9 +75,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         # If we are in the default branch, we set the sync status to Active
         # If we are in another branch, we set the sync status to Staging
         if branch.is_default:
-            obj.admin_status.value = "active"
+            obj.admin_status.value = RepositoryAdminStatus.ACTIVE.value
         else:
-            obj.admin_status.value = "staging"
+            obj.admin_status.value = RepositoryAdminStatus.STAGING.value
         await obj.save(db=context.db)
 
         # Create the new repository in the filesystem.

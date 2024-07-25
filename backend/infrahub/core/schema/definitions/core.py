@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     ProposedChangeState,
     RelationshipDeleteBehavior,
+    RepositoryAdminStatus,
     Severity,
     ValidatorConclusion,
     ValidatorState,
@@ -418,17 +419,17 @@ core_models: dict[str, Any] = {
                     "kind": "Dropdown",
                     "choices": [
                         {
-                            "name": "staging",
+                            "name": RepositoryAdminStatus.STAGING.value,
                             "label": "Staging",
                             "description": "Repository was recently added to this branch.",
                         },
                         {
-                            "name": "active",
+                            "name": RepositoryAdminStatus.ACTIVE.value,
                             "label": "Active",
                             "description": "Repository is actively being synced for this branch",
                         },
                         {
-                            "name": "inactive",
+                            "name": RepositoryAdminStatus.INACTIVE.value,
                             "label": "Inactive",
                             "description": "Repository is not active on this branch.",
                         },
