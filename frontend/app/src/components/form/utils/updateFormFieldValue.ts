@@ -23,10 +23,11 @@ export const updateRelationshipFieldValue = (
   newValue:
     | { id: string }
     | { id: string }[]
-    | { from_pool: { id: string; kind: string; name: string } },
+    | { from_pool: { id: string; kind: string; name: string } }
+    | null,
   defaultValue?: FormRelationshipValue
 ): FormRelationshipValue => {
-  if ("from_pool" in newValue) {
+  if (newValue && "from_pool" in newValue) {
     return {
       source: {
         type: "pool",

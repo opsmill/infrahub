@@ -314,7 +314,7 @@ describe("getFieldDefaultValue", () => {
       });
     });
 
-    it("returns the 1st profile with content a non null value", () => {
+    it("returns the 1st profile that contains any not null value", () => {
       // GIVEN
       const fieldSchema = {
         id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
