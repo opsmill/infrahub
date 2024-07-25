@@ -44,7 +44,7 @@ export const LabelFormField = ({
         <Tooltip
           enabled
           content={
-            <div className="max-w-60">
+            <div className="max-w-60" data-testid="source-profile-tooltip">
               <p>This value is set by a profile:</p>
               <Link
                 to={getObjectDetailsUrl2(fieldData?.source.kind!, fieldData?.source.id)}
@@ -56,7 +56,7 @@ export const LabelFormField = ({
               </p>
             </div>
           }>
-          <button className="ml-auto">
+          <button className="ml-auto" data-testid="source-profile-badge">
             <Badge variant="green">
               <Icon icon="mdi:shape-plus-outline" className="mr-1" /> {fieldData?.source?.label}
             </Badge>
@@ -80,7 +80,7 @@ export const LabelFormField = ({
               </p>
             </div>
           }>
-          <button className="ml-auto">
+          <button className="ml-auto" data-testid="source-pool-badge">
             <Badge variant="purple">
               <Icon icon="mdi:view-grid-outline" className="mr-1" /> {fieldData?.source?.label}
             </Badge>
