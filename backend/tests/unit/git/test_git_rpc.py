@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from infrahub_sdk import UUIDT, Config, InfrahubClient
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
@@ -111,7 +111,7 @@ async def test_git_rpc_merge(
     commit_main_before = repo.get_commit_value(branch_name="main")
 
     message = messages.GitRepositoryMerge(
-        repository_id=str(UUIDT()), repository_name=repo.name, source_branch="branch01", destination_branch="main"
+        repository_id=str(UUIDT()), repository_name=repo.name, source_branch="branch01", destination_branch="main", admin_status=RepositoryAdminStatus.ACTIVE.value
     )
 
     client_config = Config(requester=dummy_async_request)
