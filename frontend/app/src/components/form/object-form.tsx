@@ -218,7 +218,7 @@ const NodeForm = ({
           toastId: `alert-success-${schema?.name}-created`,
         });
 
-        if (onSuccess) await onSuccess(result?.data?.["InfrahubAccountTokenCreate"]);
+        if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
         return;
       }
 
