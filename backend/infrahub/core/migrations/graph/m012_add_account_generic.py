@@ -39,7 +39,13 @@ class Migration012Query02(Query):
         WHERE v.value = "Account"
         CALL {
             WITH n
-            MATCH (n)-[]->(:Attribute {name: "inherit_from"})-[]->(inherit_from_value:AttributeValue)
+            MATCH (n)-[]->(:Attribute {name: "namespace"})-[]->(nv:AttributeValue)
+            WHERE nv.value = "Core"
+            RETURN n AS core_account
+        }
+        CALL {
+            WITH core_account
+            MATCH (core_account)-[]->(:Attribute {name: "inherit_from"})-[]->(inherit_from_value:AttributeValue)
             SET inherit_from_value.value = '["LineageOwner","LineageSource", "CoreGenericAccount"]'
         }
         """
