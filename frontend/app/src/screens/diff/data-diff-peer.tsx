@@ -5,7 +5,7 @@ import { diffPeerContent } from "@/utils/diff";
 import { constructPath } from "@/utils/fetch";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   tDataDiffNodePeerChange,
@@ -61,7 +61,11 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
   const renderDiffDisplay = (peer: tDataDiffNodePeerValue, branch: any) => {
     if (peer?.kind && peer?.id) {
-      const onClick = getPeerRedirection(peer, branch, navigate);
+      const onClick = (event: React.MouseEvent) => {
+        event.stopPropagation();
+
+        getPeerRedirection(peer, branch, navigate);
+      };
 
       return diffPeerContent(peer, action[branch], onClick, branch);
     }
@@ -73,18 +77,29 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     if (branches?.length) {
       return branches.map((branch: string, index: number) => {
         return (
-          <div className="h-7 group relative flex flex-col lg:flex-row last:mr-0" key={index}>
+          <div className="h-7 relative flex flex-col lg:flex-row " key={index}>
             <div className="flex flex-1 items-center">
-              {peerChange?.kind && <Badge>{peerChange?.kind}</Badge>}
+              <div className="flex w-1/3 items-center group">
+                {peerChange?.kind && <Badge>{peerChange?.kind}</Badge>}
 
-              <span className="mr-2 font-semibold">{peerChange?.display_label}</span>
-            </div>
+                <span className="mr-2 font-semibold">{peerChange?.display_label}</span>
 
-            {/* Do not display comment button if we are on the branch details view */}
-            {!branchName && <DataDiffThread path={path} />}
+                {/* Do not display comment button if we are on the branch details view */}
+                {!branchName && <DataDiffThread path={path} />}
+              </div>
 
-            <div className="flex flex-1 items-center">
-              <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
+              <div className="flex w-2/3 items-center">
+                <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-green-100">
+                  {branch === "main" && (
+                    <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
+                  )}
+                </span>
+                <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-custom-blue-10">
+                  {branch !== "main" && (
+                    <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
+                  )}
+                </span>
+              </div>
             </div>
 
             {!branchName && <DataDiffConflictInfo path={path} />}
@@ -133,7 +148,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   // If there are some properties, then display the accordion
   if (propertiesChanges?.length) {
     return (
-      <div className={classNames("mb-1 rounded-md last:mb-0")}>
+      <div className="border-l-4 border-transparent">
         <Accordion title={renderTitleDisplay()}>{propertiesChanges}</Accordion>
       </div>
     );

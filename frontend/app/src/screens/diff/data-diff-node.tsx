@@ -1,10 +1,8 @@
 import Accordion from "@/components/display/accordion";
 
-import { Pill } from "@/components/display/pill";
 import { Tooltip } from "@/components/ui/tooltip";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { classNames } from "@/utils/common";
-import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { DataDiffElement } from "./data-diff-element";
@@ -15,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { getBadgeIcon, getBadgeType } from "@/utils/diff";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
 import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
+import { Icon } from "@iconify-icon/react";
 
 export type tConflictChange = {
   id?: string;
@@ -162,9 +161,11 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
       {commentsCount && (
         <div className="flex items-center" data-cy="comments-count" data-testid="comments-count">
           <Tooltip enabled content={"Total number of comments"}>
-            <div className="flex">
-              <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
-              <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+            <div>
+              <Badge variant={"dark-gray"} className="rounded-full mr-2">
+                <Icon icon="mdi:message-fast-outline" className="mr-1" />
+                {commentsCount}
+              </Badge>
             </div>
           </Tooltip>
         </div>
