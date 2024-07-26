@@ -37,7 +37,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         bus_simulator.service.cache = RedisCache()
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
-        await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
+        await john.new(db=db, name="John", height=175, age=25, description="The famous Joe Doe")
         await john.save(db=db)
         koenigsegg = await Node.init(schema=TestKind.MANUFACTURER, db=db)
         await koenigsegg.new(db=db, name="Koenigsegg")
@@ -85,29 +85,26 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         )
         peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
         assert peers
-        data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
-        assert data_integrity.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
-        # ownership_artifacts = [
-        #     validator for validator in peers.values() if validator.label.value == "Artifact Validator: Ownership report"
-        # ][0]
-        # assert ownership_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        # description_check = [
-        #     validator for validator in peers.values() if validator.label.value == "Check: car_description_check"
-        # ][0]
-        # assert description_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        # age_check = [validator for validator in peers.values() if validator.label.value == "Check: owner_age_check"][0]
-        # assert age_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+        validators_per_label = {peer.label.value: peer for peer in peers.values()}
 
-        # repository_merge_conflict = [
-        #     validator for validator in peers.values() if validator.label.value == "Repository Validator: car-dealership"
-        # ][0]
-        # assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+        expected_validators = [
+            "Generator Validator: cartags",
+            "Artifact Validator: Ownership report",
+            "Generator Validator: cartags_convert_response",
+            "Data Integrity",
+            "Check: car_description_check",
+            "Check: owner_age_check",
+        ]
+        assert set(expected_validators) == set(validators_per_label.keys())
 
-        # tags = await client.all(kind="BuiltinTag", branch="branch1")
+        for _, validator in validators_per_label.items():
+            assert validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+
+        tags = await client.all(kind="BuiltinTag", branch="branch1")
         # # The Generator defined in the repository is expected to have created this tag during the pipeline
-        # assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
-        # assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+        assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+        assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
 
-        # proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
-        # await proposed_change_create.save()
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        await proposed_change_create.save()

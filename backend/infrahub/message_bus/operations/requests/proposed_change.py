@@ -11,11 +11,7 @@ import pytest
 from pydantic import BaseModel
 
 from infrahub import config, lock
-from infrahub.core.constants import (
-    CheckType,
-    InfrahubKind,
-    ProposedChangeState,
-)
+from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, RepositoryAdminStatus
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.model.diff import SchemaConflict
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
@@ -123,7 +119,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             repositories=repositories
         ):
             for repo in repositories:
-                if not repo.read_only:
+                if not repo.read_only and repo.admin_status == RepositoryAdminStatus.ACTIVE.value:
                     events.append(
                         messages.RequestRepositoryChecks(
                             proposed_change=message.proposed_change,
@@ -301,7 +297,11 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
         events: list[InfrahubMessage] = []
         for repository in message.branch_diff.repositories:
             log_line = "Skipping merge conflict checks for data only branch"
-            if message.source_branch_sync_with_git and not repository.read_only:
+            if (
+                message.source_branch_sync_with_git
+                and not repository.read_only
+                and repository.admin_status == RepositoryAdminStatus.ACTIVE.value
+            ):
                 events.append(
                     messages.RequestRepositoryChecks(
                         proposed_change=message.proposed_change,
@@ -397,9 +397,11 @@ async def run_generators(message: messages.RequestProposedChangeRunGenerators, s
         title="Evaluating Generators",
     ) as task_report:
         generators = await service.client.filters(
-            kind="CoreGeneratorDefinition", prefetch_relationships=True, populate_store=True
+            kind="CoreGeneratorDefinition",
+            prefetch_relationships=True,
+            populate_store=True,
+            branch=message.source_branch,
         )
-
         generator_definitions = [
             ProposedChangeGeneratorDefinition(
                 definition_id=generator.id,
@@ -609,6 +611,9 @@ query DestinationBranchRepositories {
         name {
           value
         }
+        admin_status {
+          value
+        }
         ... on CoreRepository {
           commit {
             value
@@ -635,6 +640,9 @@ query MyQuery {
         name {
           value
         }
+        admin_status {
+          value
+        }
         commit {
           value
         }
@@ -653,6 +661,9 @@ query MyQuery {
         name {
           value
         }
+        admin_status {
+          value
+        }
         commit {
           value
         }
@@ -668,6 +679,7 @@ class Repository(BaseModel):
     repository_name: str
     read_only: bool
     commit: str
+    admin_status: str
 
 
 def _parse_proposed_change_repositories(
@@ -689,24 +701,28 @@ def _parse_proposed_change_repositories(
                 repository_id=repo.repository_id,
                 repository_name=repo.repository_name,
                 read_only=repo.read_only,
+                admin_status=repo.admin_status,
                 destination_commit=repo.commit,
                 source_branch=message.source_branch,
                 destination_branch=message.destination_branch,
             )
         else:
             pc_repos[repo.repository_id].destination_commit = repo.commit
+
     for repo in source_repos:
         if repo.repository_id not in pc_repos:
             pc_repos[repo.repository_id] = ProposedChangeRepository(
                 repository_id=repo.repository_id,
                 repository_name=repo.repository_name,
                 read_only=repo.read_only,
+                admin_status=repo.admin_status,
                 source_commit=repo.commit,
                 source_branch=message.source_branch,
                 destination_branch=message.destination_branch,
             )
         else:
             pc_repos[repo.repository_id].source_commit = repo.commit
+            pc_repos[repo.repository_id].admin_status = repo.admin_status
 
     return list(pc_repos.values())
 
@@ -727,6 +743,7 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
                 repository_name=repo["node"]["name"]["value"],
                 read_only=repo["node"]["__typename"] == InfrahubKind.READONLYREPOSITORY,
                 commit=repo["node"]["commit"]["value"] or "",
+                admin_status=repo["node"]["admin_status"]["value"],
             )
         )
     return parsed
@@ -802,9 +819,17 @@ async def _gather_repository_repository_diffs(repositories: list[ProposedChangeR
             # TODO we need to find a way to return all files in the repo if the repo is new
             git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
 
-            files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
-                first_commit=repo.source_commit, second_commit=repo.destination_commit
-            )
+            files_changed: list[str] = []
+            files_added: list[str] = []
+            files_removed: list[str] = []
+
+            if repo.destination_branch:
+                files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
+                    first_commit=repo.source_commit, second_commit=repo.destination_commit
+                )
+            else:
+                files_added = await git_repo.list_all_files(commit=repo.source_commit)
+
             repo.files_removed = files_removed
             repo.files_added = files_added
             repo.files_changed = files_changed

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, NoReturn, Optional, Union
 from uuid import UUID  # noqa: TCH003
 
 import git
-from git import Repo
+from git import Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TCH002
@@ -551,6 +551,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 removed_files.append(x.b_blob.path)
 
         return changed_files, added_files, removed_files
+
+    async def list_all_files(self, commit: str) -> list[str]:
+        git_repo = self.get_git_repo_main()
+        return [str(entry.path) for entry in git_repo.commit(commit).tree.traverse() if isinstance(entry, Blob)]
 
     async def fetch(self) -> bool:
         """Fetch the latest update from the remote repository and bring a copy locally."""
