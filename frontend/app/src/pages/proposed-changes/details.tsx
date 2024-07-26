@@ -34,6 +34,7 @@ export const PROPOSED_CHANGES_TABS = {
 
 const ProposedChangesDetailsPage = () => {
   const { proposedchange } = useParams();
+  console.log("proposedchange: ", proposedchange);
   const location = useLocation();
   const { pathname } = location;
   const [qspTab, setQspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
