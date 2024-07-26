@@ -850,7 +850,14 @@ core_models: dict[str, Any] = {
                 },
             ],
             "relationships": [
-                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"}
+                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
+                {
+                    "name": "groups",
+                    "peer": InfrahubKind.USERGROUP,
+                    "optional": True,
+                    "identifier": "usergroup__users",
+                    "cardinality": "many",
+                },
             ],
         },
         {

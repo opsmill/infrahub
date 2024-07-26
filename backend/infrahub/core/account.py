@@ -32,7 +32,7 @@ class AccountPermissionQuery(Query):
 
         # ruff: noqa: E501
         query = """
-        MATCH (account:CoreAccount { uuid: $account_id })-[]->(:Relationship {name: "usergroup__users"})<-[]-(group:CoreUserGroup)-[]->(:Relationship {name: "role__usergroups"})<-[]-(role:CoreUserRole)-[]->(:Relationship {name: "role__permissions"})<-[]-(permission:CoreBasePermission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(permission_action:AttributeValue)
+        MATCH (account:CoreGenericAccount { uuid: $account_id })-[]->(:Relationship {name: "usergroup__users"})<-[]-(group:CoreUserGroup)-[]->(:Relationship {name: "role__usergroups"})<-[]-(role:CoreUserRole)-[]->(:Relationship {name: "role__permissions"})<-[]-(permission:CoreBasePermission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(permission_action:AttributeValue)
         """
 
         self.add_to_query(query)
