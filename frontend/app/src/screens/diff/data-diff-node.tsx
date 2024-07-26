@@ -156,7 +156,7 @@ export const getNodeClassName = (
 };
 
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
