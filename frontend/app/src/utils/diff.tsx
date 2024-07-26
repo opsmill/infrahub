@@ -207,7 +207,7 @@ export const diffPeerContent = (
     return (
       <div className="flex">
         <Tooltip enabled content={`Link to ${display_label} ${branch && `(${branch})`}`}>
-          <Badge variant={action === "added" ? "green" : "red"} onClick={onClick}>
+          <Badge variant={action === "added" ? "green-outline" : "red-outline"} onClick={onClick}>
             {displayValue(display_label)}
           </Badge>
         </Tooltip>
