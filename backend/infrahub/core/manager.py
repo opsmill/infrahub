@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, Optional, TypeVar, Union, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from infrahub.core.constants import RelationshipHierarchyDirection
     from infrahub.database import InfrahubDatabase
 
+SchemaProtocol = TypeVar("SchemaProtocol")
 
 # pylint: disable=redefined-builtin
 
@@ -107,11 +108,51 @@ class ProfileAttributeIndex:
 
 
 class NodeManager:
+    @overload
     @classmethod
     async def query(
         cls,
         db: InfrahubDatabase,
         schema: Union[NodeSchema, GenericSchema, ProfileSchema, str],
+        filters: Optional[dict] = None,
+        fields: Optional[dict] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        partial_match: bool = False,
+        branch_agnostic: bool = False,
+    ) -> list[Any]: ...
+
+    @overload
+    @classmethod
+    async def query(
+        cls,
+        db: InfrahubDatabase,
+        schema: SchemaProtocol,
+        filters: Optional[dict] = None,
+        fields: Optional[dict] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        partial_match: bool = False,
+        branch_agnostic: bool = False,
+    ) -> list[SchemaProtocol]: ...
+
+    @classmethod
+    async def query(
+        cls,
+        db: InfrahubDatabase,
+        schema: Union[SchemaProtocol, NodeSchema, GenericSchema, ProfileSchema, str],
         filters: Optional[dict] = None,
         fields: Optional[dict] = None,
         offset: Optional[int] = None,
@@ -144,6 +185,8 @@ class NodeManager:
 
         if isinstance(schema, str):
             schema = db.schema.get(name=schema, branch=branch.name)
+        elif hasattr(schema, "_is_runtime_protocol") and getattr(schema, "_is_runtime_protocol"):
+            schema = db.schema.get(name=schema.__name__, branch=branch.name)
         elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
@@ -193,7 +236,7 @@ class NodeManager:
     async def count(
         cls,
         db: InfrahubDatabase,
-        schema: Union[NodeSchema, GenericSchema, ProfileSchema, str],
+        schema: Union[SchemaProtocol, NodeSchema, GenericSchema, ProfileSchema, str],
         filters: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
@@ -218,6 +261,8 @@ class NodeManager:
 
         if isinstance(schema, str):
             schema = db.schema.get(name=schema, branch=branch.name)
+        elif hasattr(schema, "_is_runtime_protocol") and getattr(schema, "_is_runtime_protocol"):
+            schema = db.schema.get(name=schema.__name__, branch=branch.name)
         elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
@@ -403,11 +448,35 @@ class NodeManager:
             db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
         )
 
+    @overload
     @classmethod
     async def find_object(
         cls,
         db: InfrahubDatabase,
         kind: str,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        id: Optional[str] = None,  # pylint: disable=redefined-builtin
+        hfid: Optional[list[str]] = None,
+    ) -> Any: ...
+
+    @overload
+    @classmethod
+    async def find_object(
+        cls,
+        db: InfrahubDatabase,
+        kind: SchemaProtocol,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        id: Optional[str] = None,  # pylint: disable=redefined-builtin
+        hfid: Optional[list[str]] = None,
+    ) -> SchemaProtocol: ...
+
+    @classmethod
+    async def find_object(
+        cls,
+        db: InfrahubDatabase,
+        kind: Union[SchemaProtocol, str],
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
         id: Optional[str] = None,  # pylint: disable=redefined-builtin
@@ -487,12 +556,48 @@ class NodeManager:
         branch_agnostic: bool = False,
     ) -> Any: ...
 
+    @overload
     @classmethod
     async def get_one_by_default_filter(
         cls,
         db: InfrahubDatabase,
         id: str,
-        kind: str,
+        kind: SchemaProtocol,
+        fields: Optional[dict] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        raise_on_error: Literal[False] = False,
+        branch_agnostic: bool = False,
+    ) -> Optional[SchemaProtocol]: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: SchemaProtocol,
+        fields: Optional[dict] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        raise_on_error: Literal[True] = True,
+        branch_agnostic: bool = False,
+    ) -> SchemaProtocol: ...
+
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: Union[SchemaProtocol, str],
         fields: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
@@ -505,6 +610,9 @@ class NodeManager:
     ) -> Optional[Any]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
+
+        if hasattr(kind, "_is_runtime_protocol") and getattr(kind, "_is_runtime_protocol"):
+            kind = kind.__name__
 
         node_schema = db.schema.get(name=kind, branch=branch)
         if not node_schema.default_filter:
@@ -580,12 +688,46 @@ class NodeManager:
         raise_on_error: Literal[True] = True,
     ) -> Any: ...
 
+    @overload
     @classmethod
     async def get_one_by_hfid(
         cls,
         db: InfrahubDatabase,
         hfid: list[str],
-        kind: str,
+        kind: SchemaProtocol,
+        fields: Optional[dict] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        raise_on_error: Literal[False] = False,
+    ) -> Optional[SchemaProtocol]: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_hfid(
+        cls,
+        db: InfrahubDatabase,
+        hfid: list[str],
+        kind: SchemaProtocol,
+        fields: Optional[dict] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        raise_on_error: Literal[True] = True,
+    ) -> SchemaProtocol: ...
+
+    @classmethod
+    async def get_one_by_hfid(
+        cls,
+        db: InfrahubDatabase,
+        hfid: list[str],
+        kind: Union[SchemaProtocol, str],
         fields: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
@@ -599,11 +741,16 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
+        if hasattr(kind, "_is_runtime_protocol") and getattr(kind, "_is_runtime_protocol"):
+            kind_str = kind.__name__
+        else:
+            kind_str = kind
+
         hfid_str = " :: ".join(hfid)
-        node_schema = db.schema.get(name=kind, branch=branch)
+        node_schema = db.schema.get(name=kind_str, branch=branch)
 
         if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
-            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
 
         filters = {}
         for key, item in zip(node_schema.human_friendly_id, hfid):
@@ -635,25 +782,59 @@ class NodeManager:
 
         if len(items) < 1:
             if raise_on_error:
-                raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
+                raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
             return None
 
         if len(items) > 1:
             raise NodeNotFoundError(
                 branch_name=branch.name,
-                node_type=kind,
+                node_type=kind_str,
                 identifier=hfid_str,
                 message=f"Unable to find node {hfid_str!r}, {len(items)} nodes returned, expected 1",
             )
 
         return items[0]
 
+    @overload
     @classmethod
     async def get_one_by_id_or_default_filter(
         cls,
         db: InfrahubDatabase,
         id: str,
         kind: str,
+        fields: Optional[dict] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        branch_agnostic: bool = False,
+    ) -> Any: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_id_or_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: SchemaProtocol,
+        fields: Optional[dict] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        branch_agnostic: bool = False,
+    ) -> SchemaProtocol: ...
+
+    @classmethod
+    async def get_one_by_id_or_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: Any,
         fields: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Union[Branch, str] = None,

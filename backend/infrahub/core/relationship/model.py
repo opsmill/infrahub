@@ -3,7 +3,18 @@ from __future__ import annotations
 import copy
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterable, Iterator, Optional, Sequence, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    Iterator,
+    Literal,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+    overload,
+)
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection, is_valid_uuid
@@ -41,6 +52,7 @@ if TYPE_CHECKING:
 
 # pylint: disable=redefined-builtin,too-many-lines
 
+PeerType = TypeVar("PeerType")
 
 PREFIX_PROPERTY = "_relation__"
 INDEX_DEFAULT_STOP = sys.maxsize
@@ -218,7 +230,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         node: Node = await registry.manager.get_one_by_id_or_default_filter(
             db=db,
             id=self.node_id,
-            kind=self.schema.kind,
+            kind=str(self.schema.kind.value),
             branch=self.branch,
             at=self.at,
             include_owner=True,
@@ -235,7 +247,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             self._peer = value
             self.peer_id = value.get_id()
 
-    async def get_peer(self, db: InfrahubDatabase) -> Node:
+    @overload
+    async def get_peer(self, db: InfrahubDatabase) -> Node: ...
+
+    @overload
+    async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType]) -> PeerType: ...
+
+    async def get_peer(self, db: InfrahubDatabase, peer_type: Optional[type[PeerType]] = None) -> Any:
         """Return the peer of the relationship."""
         if self._peer is None:
             await self._get_peer(db=db)
@@ -247,7 +265,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             raise NodeNotFoundError(
                 branch_name=self.branch.name, node_type=self.schema.peer, identifier=self.get_peer_id()
             )
-
+        # if peer_type:
+        #     return cast(peer_type, self._peer)
         return self._peer
 
     async def _get_peer(self, db: InfrahubDatabase) -> None:
@@ -746,17 +765,68 @@ class RelationshipManager:
 
         return len(self._relationships)
 
-    async def get_peer(self, db: InfrahubDatabase) -> Optional[Node]:
+    @overload
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        raise_on_error: Literal[False] = False,
+    ) -> Node | None: ...
+
+    @overload
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        raise_on_error: Literal[True] = True,
+    ) -> Node: ...
+
+    @overload
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        peer_type: PeerType,
+        raise_on_error: Literal[False] = False,
+    ) -> PeerType | None: ...
+
+    @overload
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        peer_type: PeerType,
+        raise_on_error: Literal[True] = True,
+    ) -> PeerType: ...
+
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        peer_type: Optional[type[PeerType]] = None,
+        raise_on_error: bool = False,
+    ) -> Node | PeerType | None:
         if self.schema.cardinality == "many":
             raise TypeError("peer is not available for relationship with multiple cardinality")
 
         rels = await self.get_relationships(db=db)
-        if not rels:
+        if not rels and not raise_on_error:
             return None
+        if not rels and raise_on_error:
+            raise LookupError("Unable to find the peer")
 
-        return await rels[0].get_peer(db=db)
+        peer = await rels[0].get_peer(db=db)
+        return peer
 
-    async def get_peers(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> dict[str, Node]:
+    @overload
+    async def get_peers(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> dict[str, Node]: ...
+
+    @overload
+    async def get_peers(
+        self,
+        db: InfrahubDatabase,
+        peer_type: PeerType,
+        branch_agnostic: bool = False,
+    ) -> dict[str, PeerType]: ...
+
+    async def get_peers(  # type: ignore[misc]
+        self, db: InfrahubDatabase, branch_agnostic: bool = False, peer_type: Optional[PeerType] = None
+    ) -> dict[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
         nodes = await registry.manager.get_many(
