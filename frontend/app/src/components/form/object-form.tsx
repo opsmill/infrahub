@@ -34,6 +34,7 @@ export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
   display_label: string;
   id: string;
+  __typename: string;
 };
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {

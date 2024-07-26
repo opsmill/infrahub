@@ -34,6 +34,7 @@ const DropdownField = ({
               unique={unique}
               required={!!rules?.required}
               description={description}
+              fieldData={fieldData}
             />
 
             <FormInput>

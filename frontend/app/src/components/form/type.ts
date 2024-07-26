@@ -5,22 +5,63 @@ import { SelectOption } from "@/components/inputs/select";
 import { components } from "@/infraops";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 
-type FormSourceType = "pool" | "profile" | "schema" | "user";
+type SourceType = "schema" | "user";
 
-type SourceType = {
-  type: FormSourceType;
-  label?: string | null;
+export type EmptyFieldValue = {
+  source: null;
+  value: null;
 };
 
-export type FormAttributeValue = {
-  source: SourceType | null;
-  value: string | number | boolean | null | undefined;
+export type AttributeValueFromProfile = {
+  source: {
+    type: "profile";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: string | number | boolean | null;
 };
 
-export type FormRelationshipValue = {
-  source: SourceType | null;
-  value: { id: string } | Array<{ id: string }> | { from_pool: { id: string } } | null | undefined;
+export type AttributeValueForCheckbox = {
+  source: null;
+  value: boolean;
 };
+
+export type AttributeValueFromUser =
+  | {
+      source: {
+        type: SourceType;
+      };
+      value: string | number | boolean | null;
+    }
+  | AttributeValueForCheckbox;
+
+export type FormAttributeValue =
+  | AttributeValueFromUser
+  | AttributeValueFromProfile
+  | EmptyFieldValue;
+
+export type RelationshipValueFormPool = {
+  source: {
+    type: "pool";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: { id: string } | { from_pool: { id: string } };
+};
+
+export type RelationshipValueFormUser = {
+  source: {
+    type: SourceType;
+  };
+  value: { id: string } | Array<{ id: string }> | null;
+};
+
+export type FormRelationshipValue =
+  | RelationshipValueFormUser
+  | RelationshipValueFormPool
+  | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
@@ -72,3 +113,7 @@ export type DynamicFieldProps =
   | DynamicDropdownFieldProps
   | DynamicEnumFieldProps
   | DynamicRelationshipFieldProps;
+
+export const isFormFieldValueFromPool = (
+  fieldData: FormFieldValue
+): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";

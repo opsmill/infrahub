@@ -71,6 +71,13 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await expect(page.getByLabel("Name *")).toBeEmpty();
       await expect(page.getByLabel("Description")).toHaveValue("A profile for E2E test");
 
+      await expect(page.getByTestId("source-profile-badge")).toBeVisible();
+      await expect(page.getByTestId("source-profile-badge")).toContainText("profile test tag");
+      await page.getByTestId("source-profile-badge").hover();
+      await expect(page.getByTestId("source-profile-tooltip").first()).toBeVisible();
+      await expect(page.getByRole("link", { name: "profile test tag" }).first()).toBeVisible();
+      await page.locator("body").press("Escape"); // hide tooltip
+
       await page.getByLabel("Name *").fill("tag with profile");
       await page.getByRole("button", { name: "Save" }).click();
     });
