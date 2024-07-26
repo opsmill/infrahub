@@ -124,9 +124,11 @@ class Registry:
             raise DataTypeNotFoundError(name=name)
         return self.data_type[name]
 
-    def get_full_schema(self, branch: Optional[Union[Branch, str]] = None) -> dict[str, MainSchemaTypes]:
+    def get_full_schema(
+        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> dict[str, MainSchemaTypes]:
         """Return all the nodes in the schema for a given branch."""
-        return self.schema.get_full(branch=branch)
+        return self.schema.get_full(branch=branch, duplicate=duplicate)
 
     def delete_all(self) -> None:
         self.branch = {}

@@ -84,7 +84,7 @@ class TestInfrahubNode:
         location_schema,
     ):
         obj = await Node.init(db=db, schema="CoreAccount")
-        await obj.new(db=db, name="delete-my-account", type="Git", password="delete-my-password")
+        await obj.new(db=db, name="delete-my-account", account_type="Git", password="delete-my-password")
         await obj.save(db=db)
         node_pre_delete = await client.get(kind="CoreAccount", name__value="delete-my-account")
         assert node_pre_delete

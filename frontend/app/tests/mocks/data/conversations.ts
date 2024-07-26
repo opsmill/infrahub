@@ -255,7 +255,7 @@ export const conversationMocksQuery = `query {
       }
     }
   }
-  CoreAccount {
+  CoreGenericAccount {
     edges {
       node {
         id

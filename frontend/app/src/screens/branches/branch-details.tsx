@@ -18,7 +18,7 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectForm from "@/components/form/object-form";
 import { branchesState } from "@/state/atoms/branches.atom";
-import { schemaState } from "@/state/atoms/schema.atom";
+import { genericsState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { objectToString } from "@/utils/common";
 import { constructPath, getCurrentQsp } from "@/utils/fetch";
@@ -37,7 +37,7 @@ export const BranchDetails = () => {
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(genericsState);
 
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
   const [displayModal, setDisplayModal] = useState(false);

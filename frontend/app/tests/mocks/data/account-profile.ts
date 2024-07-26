@@ -69,7 +69,7 @@ query {
             __typename
           }
       }
-      type {
+      account_type {
           value
           updated_at
           is_protected
@@ -174,7 +174,7 @@ query($offset: Int, $limit: Int) {
             __typename
           }
       }
-      type {
+      account_type {
           value
           updated_at
           is_protected
@@ -250,7 +250,7 @@ export const profileDetailsMocksData = {
       owner: null,
       __typename: "TextAttribute",
     },
-    type: {
+    account_type: {
       value: "User",
       updated_at: "2023-07-10T15:01:26.568139+00:00",
       is_protected: false,

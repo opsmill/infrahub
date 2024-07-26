@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class Account(BaseModel):
     name: str
     password: str
-    type: str
+    account_type: str
     role: str
 
 
@@ -436,14 +436,14 @@ ASNS = (
 INTERFACE_OBJS: dict[str, list[InfrahubNode]] = defaultdict(list)
 
 ACCOUNTS = (
-    Account(name="pop-builder", type="Script", password="Password123", role="read-write"),
-    Account(name="CRM Synchronization", type="Script", password="Password123", role="read-write"),
-    Account(name="Jack Bauer", type="User", password="Password123", role="read-only"),
-    Account(name="Chloe O'Brian", type="User", password="Password123", role="read-write"),
-    Account(name="David Palmer", type="User", password="Password123", role="read-write"),
-    Account(name="Operation Team", type="User", password="Password123", role="read-only"),
-    Account(name="Engineering Team", type="User", password="Password123", role="read-write"),
-    Account(name="Architecture Team", type="User", password="Password123", role="read-only"),
+    Account(name="pop-builder", account_type="Script", password="Password123", role="read-write"),
+    Account(name="CRM Synchronization", account_type="Script", password="Password123", role="read-write"),
+    Account(name="Jack Bauer", account_type="User", password="Password123", role="read-only"),
+    Account(name="Chloe O'Brian", account_type="User", password="Password123", role="read-write"),
+    Account(name="David Palmer", account_type="User", password="Password123", role="read-write"),
+    Account(name="Operation Team", account_type="User", password="Password123", role="read-only"),
+    Account(name="Engineering Team", account_type="User", password="Password123", role="read-write"),
+    Account(name="Architecture Team", account_type="User", password="Password123", role="read-only"),
 )
 
 
