@@ -40,6 +40,8 @@ class ConflictsIdentifier:
 
     def _build_node_conflicts(self, base_node: EnrichedDiffNode, branch_node: EnrichedDiffNode) -> list[DataConflict]:
         conflicts: list[DataConflict] = []
+        if base_node.action != branch_node.action:
+            conflicts.append(self._add_node_conflict(base_node=base_node, branch_node=branch_node))
         base_attribute_map = {a.name: a for a in base_node.attributes}
         branch_attribute_map = {a.name: a for a in branch_node.attributes}
         common_attribute_names = set(base_attribute_map.keys()) & set(branch_attribute_map.keys())
@@ -54,6 +56,31 @@ class ConflictsIdentifier:
                 )
             )
         return conflicts
+
+    def _add_node_conflict(self, base_node: EnrichedDiffNode, branch_node: EnrichedDiffNode) -> DataConflict:
+        path = f"{ModifiedPathType.DATA.value}/{branch_node.uuid}"
+        branch_changes = [
+            BranchChanges(
+                branch=self.base_branch.name,
+                action=base_node.action,
+            ),
+            BranchChanges(
+                branch=self.diff_branch.name,
+                action=branch_node.action,
+            ),
+        ]
+        return DataConflict(
+            name="",
+            type=ModifiedPathType.DATA,
+            kind=branch_node.kind,
+            id=branch_node.uuid,
+            change_type=PathType.NODE.value,
+            path=path,
+            conflict_path=path,
+            path_type=PathType.NODE,
+            property_name=None,
+            changes=branch_changes,
+        )
 
     def _build_attribute_conflicts(
         self,

@@ -1,8 +1,8 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, call
 from uuid import uuid4
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PathType
+from infrahub.core.constants import DiffAction, PathType
 from infrahub.core.diff.conflicts_identifier import ConflictsIdentifier
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import BranchChanges, DataConflict, ModifiedPathType
@@ -36,13 +36,81 @@ class TestConflictsIdentifier:
 
         diff_conflicts = await self.__call_system_under_test()
 
-        assert self.diff_coordinator.get_diff.awaited_once_with(
-            base_branch=self.base_branch, diff_branch=self.base_branch, from_time=self.from_time, to_time=self.to_time
-        )
-        assert self.diff_coordinator.get_diff.awaited_once_with(
-            base_branch=self.base_branch, diff_branch=self.diff_branch, from_time=self.from_time, to_time=self.to_time
+        self.diff_coordinator.get_diff.assert_has_awaits(
+            calls=[
+                call(
+                    base_branch=self.base_branch,
+                    diff_branch=self.base_branch,
+                    from_time=self.from_time,
+                    to_time=self.to_time,
+                ),
+                call(
+                    base_branch=self.base_branch,
+                    diff_branch=self.diff_branch,
+                    from_time=self.from_time,
+                    to_time=self.to_time,
+                ),
+            ],
+            any_order=True,
         )
         assert diff_conflicts == []
+
+    async def test_one_node_conflict(self):
+        node_uuid = str(uuid4())
+        node_kind = "SomethingSmelly"
+        base_nodes = {
+            EnrichedNodeFactory.build(uuid=node_uuid, kind=node_kind, action=DiffAction.UPDATED, relationships=set()),
+            EnrichedNodeFactory.build(relationships=set()),
+        }
+        branch_nodes = {
+            EnrichedNodeFactory.build(uuid=node_uuid, kind=node_kind, action=DiffAction.REMOVED, relationships=set()),
+            EnrichedNodeFactory.build(relationships=set()),
+        }
+        self.base_root = EnrichedRootFactory.build(nodes=base_nodes)
+        self.branch_root = EnrichedRootFactory.build(nodes=branch_nodes)
+        self.diff_coordinator.get_diff.side_effect = [self.base_root, self.branch_root]
+        diff_conflicts = await self.__call_system_under_test()
+
+        self.diff_coordinator.get_diff.assert_has_awaits(
+            calls=[
+                call(
+                    base_branch=self.base_branch,
+                    diff_branch=self.base_branch,
+                    from_time=self.from_time,
+                    to_time=self.to_time,
+                ),
+                call(
+                    base_branch=self.base_branch,
+                    diff_branch=self.diff_branch,
+                    from_time=self.from_time,
+                    to_time=self.to_time,
+                ),
+            ],
+            any_order=True,
+        )
+        assert diff_conflicts == [
+            DataConflict(
+                name="",
+                type=ModifiedPathType.DATA,
+                id=node_uuid,
+                kind=node_kind,
+                change_type="node",
+                path=f"data/{node_uuid}",
+                conflict_path=f"data/{node_uuid}",
+                path_type=PathType.NODE,
+                property_name=None,
+                changes=[
+                    BranchChanges(
+                        branch=self.base_branch.name,
+                        action=DiffAction.UPDATED,
+                    ),
+                    BranchChanges(
+                        branch=self.diff_branch.name,
+                        action=DiffAction.REMOVED,
+                    ),
+                ],
+            )
+        ]
 
     async def test_one_attribute_conflict(self):
         property_type = "HAS_OWNER"
@@ -57,7 +125,13 @@ class TestConflictsIdentifier:
             EnrichedAttributeFactory.build(properties=base_properties, name=attribute_name),
         }
         base_nodes = {
-            EnrichedNodeFactory.build(uuid=node_uuid, kind=node_kind, attributes=base_attributes, relationships=set()),
+            EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                attributes=base_attributes,
+                relationships=set(),
+            ),
             EnrichedNodeFactory.build(relationships=set()),
         }
         self.base_root = EnrichedRootFactory.build(nodes=base_nodes)
@@ -70,7 +144,11 @@ class TestConflictsIdentifier:
         }
         branch_nodes = {
             EnrichedNodeFactory.build(
-                uuid=node_uuid, kind=node_kind, attributes=branch_attributes, relationships=set()
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                attributes=branch_attributes,
+                relationships=set(),
             ),
             EnrichedNodeFactory.build(relationships=set()),
         }
@@ -79,11 +157,22 @@ class TestConflictsIdentifier:
 
         diff_conflicts = await self.__call_system_under_test()
 
-        assert self.diff_coordinator.get_diff.awaited_once_with(
-            base_branch=self.base_branch, diff_branch=self.base_branch, from_time=self.from_time, to_time=self.to_time
-        )
-        assert self.diff_coordinator.get_diff.awaited_once_with(
-            base_branch=self.base_branch, diff_branch=self.diff_branch, from_time=self.from_time, to_time=self.to_time
+        self.diff_coordinator.get_diff.assert_has_awaits(
+            calls=[
+                call(
+                    base_branch=self.base_branch,
+                    diff_branch=self.base_branch,
+                    from_time=self.from_time,
+                    to_time=self.to_time,
+                ),
+                call(
+                    base_branch=self.base_branch,
+                    diff_branch=self.diff_branch,
+                    from_time=self.from_time,
+                    to_time=self.to_time,
+                ),
+            ],
+            any_order=True,
         )
         assert diff_conflicts == [
             DataConflict(
