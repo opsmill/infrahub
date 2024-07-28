@@ -1,7 +1,6 @@
 import random
 import string
 from datetime import UTC
-from random import randint
 from uuid import uuid4
 
 import pytest
@@ -159,8 +158,8 @@ class TestDiffRepositorySaveAndLoad:
         for diff_branch_name in (diff_branch_1, diff_branch_2, diff_branch_3):
             start_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
             for _ in range(5):
-                start_time = start_time.add(seconds=randint(150_000, 300_000))
-                end_time = start_time.add(seconds=randint(25_000, 100_000))
+                start_time = start_time.add(seconds=random.randint(150_000, 300_000))
+                end_time = start_time.add(seconds=random.randint(25_000, 100_000))
                 root_uuid = str(uuid4())
                 diff_uuids_by_name[diff_branch_name].add(root_uuid)
                 enriched_diff = RootFactory.build(
@@ -442,10 +441,10 @@ class TestDiffRepositorySaveAndLoad:
         )
         root_nodes = enriched_diff.get_nodes_without_parents()
         ordered_nodes = list(root_nodes)
-        kinds = sorted(random.choices(string.ascii_uppercase, k=5))
+        kinds = sorted(random.sample(string.ascii_uppercase, k=5))
         for i in range(5):
             kind = kinds[i]
-            labels = sorted(random.choices(string.ascii_lowercase, k=2))
+            labels = sorted(random.sample(string.ascii_lowercase, k=2))
             ordered_nodes[2 * i].kind = kind
             ordered_nodes[2 * i + 1].kind = kind
             ordered_nodes[2 * i].label = labels[0]
