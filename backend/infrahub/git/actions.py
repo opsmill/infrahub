@@ -11,9 +11,9 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
     repositories = await service.client.get_list_repositories(branches=branches, kind=InfrahubKind.REPOSITORY)
 
     for repo_name, repository_data in repositories.items():
-        async with service.task_report(
+        async with service.git_report(
             title="Syncing repository", related_node=repository_data.repository.id, create_with_context=False
-        ) as task_report:
+        ) as git_report:
             async with lock.registry.get(name=repo_name, namespace="repository"):
                 init_failed = False
                 try:
@@ -23,7 +23,7 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
                         name=repository_data.repository.name.value,
                         location=repository_data.repository.location.value,
                         client=service.client,
-                        task_report=task_report,
+                        task_report=git_report,
                     )
                 except RepositoryError as exc:
                     service.log.error(str(exc))
@@ -37,11 +37,11 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
                             name=repository_data.repository.name.value,
                             location=repository_data.repository.location.value,
                             client=service.client,
-                            task_report=task_report,
+                            task_report=git_report,
                         )
                         await repo.import_objects_from_files(infrahub_branch_name=repo.default_branch)
                     except RepositoryError as exc:
-                        await task_report.error(str(exc))
+                        await git_report.error(str(exc))
                         continue
 
                 await repo.sync()

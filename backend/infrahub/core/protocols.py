@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         DateTime,
         DateTimeOptional,
         Dropdown,
+        DropdownOptional,
         HashedPassword,
         Integer,
         IntegerOptional,
@@ -106,6 +107,7 @@ class CoreGenericRepository(CoreNode):
     location: String
     admin_status: Dropdown
     credential: RelationshipManager
+    status: DropdownOptional
     tags: RelationshipManager
     transformations: RelationshipManager
     queries: RelationshipManager

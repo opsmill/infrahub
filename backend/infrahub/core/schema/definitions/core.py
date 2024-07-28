@@ -426,6 +426,46 @@ core_models: dict[str, Any] = {
                     "order_weight": 6000,
                     "allow_override": AllowOverrideType.NONE,
                 },
+                {
+                    "name": "status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": "unknown",
+                            "label": "Unknown",
+                            "description": "Status of the repository is unknow, mostlikely because it hasn't been synced yet",
+                        },
+                        {
+                            "name": "in-sync",
+                            "label": "In Sync",
+                            "description": "Repository synced as completed successfully",
+                        },
+                        {
+                            "name": "syncing",
+                            "label": "Syncing",
+                            "description": "Synchronization is in progress",
+                        },
+                        {
+                            "name": "error-cred",
+                            "label": "Credential Error",
+                            "description": "Repository can't be synced due to some credential error(s)",
+                        },
+                        {
+                            "name": "error-import",
+                            "label": "Import Error",
+                            "description": "Repository can't be synced due to some import error(s)",
+                        },
+                        {
+                            "name": "error",
+                            "label": "Error",
+                            "description": "Repository can't be synced due to an unknown error",
+                        },
+                    ],
+                    "branch": BranchSupportType.LOCAL.value,
+                    "default_value": "unknown",
+                    "optional": True,
+                    "order_weight": 7000,
+                },
             ],
             "relationships": [
                 {

@@ -20,18 +20,18 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
         location=message.location,
         admin_status=message.admin_status,
     )
-    async with service.task_report(
+    async with service.git_report(
         related_node=message.repository_id,
         title=f"Initial import of the repository in branch: {message.infrahub_branch_name}",
         created_by=message.created_by,
-    ) as task_report:
+    ) as git_report:
         async with lock.registry.get(name=message.repository_name, namespace="repository"):
             repo = await InfrahubRepository.new(
                 id=message.repository_id,
                 name=message.repository_name,
                 location=message.location,
                 client=service.client,
-                task_report=task_report,
+                task_report=git_report,
                 infrahub_branch_name=message.infrahub_branch_name,
                 admin_status=message.admin_status,
             )
@@ -45,11 +45,11 @@ async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: Inf
     log.info(
         "Cloning and importing read-only repository", repository=message.repository_name, location=message.location
     )
-    async with service.task_report(
+    async with service.git_report(
         related_node=message.repository_id,
         title="Adding Repository",
         created_by=message.created_by,
-    ) as task_report:
+    ) as git_report:
         async with lock.registry.get(name=message.repository_name, namespace="repository"):
             repo = await InfrahubReadOnlyRepository.new(
                 id=message.repository_id,
@@ -58,7 +58,7 @@ async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: Inf
                 client=service.client,
                 ref=message.ref,
                 infrahub_branch_name=message.infrahub_branch_name,
-                task_report=task_report,
+                task_report=git_report,
             )
             await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name)
             await repo.sync_from_remote()
@@ -81,17 +81,17 @@ async def connectivity(message: messages.GitRepositoryConnectivity, service: Inf
 
 
 async def import_objects(message: messages.GitRepositoryImportObjects, service: InfrahubServices) -> None:
-    async with service.task_report(
+    async with service.git_report(
         related_node=message.repository_id,
         title=f"Processing repository ({message.repository_name})",
-    ) as task_report:
+    ) as git_report:
         repo = await get_initialized_repo(
             repository_id=message.repository_id,
             name=message.repository_name,
             service=service,
             repository_kind=message.repository_kind,
         )
-        repo.task_report = task_report
+        repo.task_report = git_report
         await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name, commit=message.commit)
 
 
@@ -110,9 +110,9 @@ async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: I
         ref=message.ref,
         commit=message.commit,
     )
-    async with service.task_report(
+    async with service.git_report(
         related_node=message.repository_id, title="Pulling read-only repository"
-    ) as task_report:
+    ) as git_report:
         async with lock.registry.get(name=message.repository_name, namespace="repository"):
             init_failed = False
             try:
@@ -123,7 +123,7 @@ async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: I
                     client=service.client,
                     ref=message.ref,
                     infrahub_branch_name=message.infrahub_branch_name,
-                    task_report=task_report,
+                    task_report=git_report,
                 )
             except RepositoryError:
                 init_failed = True
@@ -136,7 +136,7 @@ async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: I
                     client=service.client,
                     ref=message.ref,
                     infrahub_branch_name=message.infrahub_branch_name,
-                    task_report=task_report,
+                    task_report=git_report,
                 )
 
             await repo.import_objects_from_files(
