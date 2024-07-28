@@ -48,8 +48,6 @@ def get(
         print(str(exc))
         raise typer.Exit(1) from exc
 
-    # FIXME currently we are only querying the repo in the main branch,
-    # this will not work if a new repository is added in a branch first.
     client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 

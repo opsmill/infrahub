@@ -32,6 +32,15 @@
                     "optional": false
                 }
             ],
+            "relationships": [
+                {
+                    "name": "credential",
+                    "kind": "Attribute",
+                    "peer": "CoreCredential",
+                    "optional": true,
+                    "cardinality": "one"
+                }
+            ],
             "filters": [
                 {
                     "name": "name__value",
@@ -42,6 +51,27 @@
                     "name": "location__value",
                     "kind": "String",
                     "description": null
+                }
+            ]
+        },
+        {
+            "name": "Credential",
+            "namespace": "Core",
+            "description": null,
+            "label": null,
+            "branch": "aware",
+            "default_filter": "name__value",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": true,
+                    "branch": "aware",
+                    "optional": false
                 }
             ]
         }
@@ -149,17 +179,6 @@
             "description": null,
             "attributes": [
                 {
-                    "name": "username",
-                    "kind": "String",
-                    "label": null,
-                    "description": null,
-                    "default_value": null,
-                    "inherited": false,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": true
-                },
-                {
                     "name": "type",
                     "kind": "String",
                     "label": null,
@@ -213,17 +232,6 @@
                     "unique": false,
                     "branch": "aware",
                     "optional": false
-                },
-                {
-                    "name": "password",
-                    "kind": "String",
-                    "label": null,
-                    "description": null,
-                    "default_value": null,
-                    "inherited": false,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": true
                 },
                 {
                     "name": "default_branch",
@@ -298,6 +306,14 @@
                             "description": null
                         }
                     ]
+                },
+                {
+                    "name": "credential",
+                    "kind": "Attribute",
+                    "peer": "CoreCredential",
+                    "optional": true,
+                    "cardinality": "one",
+                    "inherited": true
                 }
             ],
             "label": null,
@@ -352,6 +368,43 @@
                 {
                     "name": "default_branch__value",
                     "kind": "String",
+                    "description": null
+                }
+            ]
+        },
+        {
+            "name": "PasswordCredential",
+            "namespace": "Core",
+            "description": null,
+            "inherit_from": ["CoreCredential"],
+            "attributes": [
+                {
+                    "name": "username",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": false
+                },
+                {
+                    "name": "password",
+                    "kind": "Password",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": false
+                }
+            ],
+            "filters": [
+                {
+                    "name": "ids",
+                    "kind": "List",
                     "description": null
                 }
             ]
