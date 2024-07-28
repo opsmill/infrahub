@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from tests.adapters.message_bus import BusSimulator
 
 
-class TestProposedChangePipelineConflict(TestInfrahubApp):
+class TestProposedChangePipelineRepository(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def initial_dataset(
         self,

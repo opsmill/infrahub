@@ -129,7 +129,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
         await proposed_change_create.save()
 
-    @pytest.mark.xfail(reason="FIXME Works locally but it's failling in Github Actions")
+    # @pytest.mark.xfail(reason="FIXME Works locally but it's failling in Github Actions")
     async def test_conflict_pipeline(
         self, db: InfrahubDatabase, conflict_dataset: None, client: InfrahubClient
     ) -> None:
