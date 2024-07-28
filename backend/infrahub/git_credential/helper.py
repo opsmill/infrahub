@@ -57,8 +57,14 @@ def get(
         print("Repository not found in the database.")
         raise typer.Exit(1)
 
-    print(f"username={repo.username.value}")
-    print(f"password={repo.password.value}")
+    if not repo.credential._id:
+        print("Repository doesn't have credentials defined.")
+        raise typer.Exit(1)
+
+    repo.credential.fetch()
+
+    print(f"username={repo.credential.peer.username.value}")
+    print(f"password={repo.credential.peer.password.value}")
 
 
 # pylint: disable=unused-argument
