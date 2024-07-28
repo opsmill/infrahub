@@ -584,7 +584,7 @@ class TestDiffRepositorySaveAndLoad:
     ):
         for i in range(5):
             nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-            incremental_enriched_diff = RootFactory.build(
+            incremental_enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
                 from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
@@ -593,7 +593,7 @@ class TestDiffRepositorySaveAndLoad:
             )
             await diff_repository.save(enriched_diff=incremental_enriched_diff)
         nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-        super_enriched_diff = RootFactory.build(
+        super_enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),

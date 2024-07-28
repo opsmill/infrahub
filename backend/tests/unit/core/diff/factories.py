@@ -11,14 +11,10 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffAttribute,
     EnrichedDiffNode,
     EnrichedDiffProperty,
-    EnrichedDiffPropertyConflict,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
 )
-
-
-class EnrichedConflictFactory(DataclassFactory[EnrichedDiffPropertyConflict]): ...
 
 
 class EnrichedPropertyFactory(DataclassFactory[EnrichedDiffProperty]): ...
