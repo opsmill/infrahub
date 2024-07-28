@@ -74,6 +74,12 @@ class CoreComment(CoreNode):
     created_by: Union[RelatedNode, RelatedNodeSync]
 
 
+class CoreCredential(CoreNode):
+    name: str
+    label: Optional[str]
+    description: Optional[str]
+
+
 class CoreGenericAccount(CoreNode):
     name: str
     password: str
@@ -88,9 +94,8 @@ class CoreGenericRepository(CoreNode):
     name: str
     description: Optional[str]
     location: str
-    username: Optional[str]
-    password: Optional[str]
     admin_status: str
+    credential: Union[RelatedNode, RelatedNodeSync]
     tags: Union[RelationshipManager, RelationshipManagerSync]
     transformations: Union[RelationshipManager, RelationshipManagerSync]
     queries: Union[RelationshipManager, RelationshipManagerSync]
@@ -334,6 +339,11 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
 
 class CoreObjectThread(CoreThread):
     object_path: str
+
+
+class CorePasswordCredential(CoreCredential):
+    username: Optional[str]
+    password: Optional[str]
 
 
 class CoreProposedChange(CoreTaskTarget):
