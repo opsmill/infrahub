@@ -1,4 +1,3 @@
-import { Button, BUTTON_TYPES } from "@/components/buttons/button";
 import { AddComment } from "@/components/conversations/add-comment";
 import { Thread } from "@/components/conversations/thread";
 import { Avatar } from "@/components/display/avatar";
@@ -45,6 +44,7 @@ import DynamicForm from "@/components/form/dynamic-form";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
+import { Button } from "@/components/buttons/button-primitive";
 
 type tConversations = {
   refetch?: Function;
@@ -436,6 +436,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       actions: (
         <>
           <Button
+            variant={"outline"}
             onClick={handleApprove}
             isLoading={isLoadingApprove}
             disabled={!auth?.permissions?.write || !approverId || !canApprove}
@@ -444,8 +445,8 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
           </Button>
 
           <Button
+            variant={"active"}
             onClick={handleMerge}
-            buttonType={BUTTON_TYPES.VALIDATE}
             isLoading={isLoadingMerge}
             disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}
             className="mr-2">
@@ -453,8 +454,8 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
           </Button>
 
           <Button
+            variant={"danger"}
             onClick={handleClose}
-            buttonType={BUTTON_TYPES.CANCEL}
             isLoading={isLoadingClose}
             disabled={!auth?.permissions?.write || state === "merged"}>
             {state === "closed" ? "Re-open" : "Close"}
