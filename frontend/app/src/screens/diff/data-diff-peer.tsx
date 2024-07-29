@@ -13,7 +13,6 @@ import {
   tDataDiffNodeProperty,
 } from "./data-diff-node";
 import { DataDiffProperty } from "./data-diff-property";
-import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePeerProps = {
@@ -101,8 +100,6 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
                 </span>
               </div>
             </div>
-
-            {!branchName && <DataDiffConflictInfo path={path} />}
           </div>
         );
       });
@@ -138,8 +135,6 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               </span>
             </div>
           </div>
-
-          {!branchName && <DataDiffConflictInfo path={path} />}
         </div>
       );
     }
