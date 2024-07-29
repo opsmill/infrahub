@@ -7,8 +7,6 @@ from .interface import DiffEnricherInterface
 class AggregatedDiffEnricher:
     def __init__(self, enrichers: list[DiffEnricherInterface]) -> None:
         self.enrichers = enrichers
-        self.conflicts_enricher = None
-        self.parent_nodes_enricher = None
 
     async def enrich(self, calculated_diffs: CalculatedDiffs) -> EnrichedDiffRoot:
         enriched_root = EnrichedDiffRoot(
