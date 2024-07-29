@@ -1,8 +1,10 @@
+import random
 from unittest.mock import AsyncMock, MagicMock, call
 from uuid import uuid4
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, PathType
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_identifier import ConflictsIdentifier
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import BranchChanges, DataConflict, ModifiedPathType
@@ -43,7 +45,10 @@ class TestConflictsIdentifier:
         self.base_root = EnrichedRootFactory.build(nodes=[])
         self.branch_root = EnrichedRootFactory.build(nodes=[])
         for diff_root in (self.base_root, self.branch_root):
-            properties = [EnrichedPropertyFactory.build() for _ in range(3)]
+            properties = {
+                EnrichedPropertyFactory.build(property_type=property_type)
+                for property_type in random.sample(list(DatabaseEdgeType), 3)
+            }
             attribute = EnrichedAttributeFactory.build(properties=properties)
             diff_root.nodes = [EnrichedNodeFactory.build(attributes=[attribute], relationships=[])]
         self.diff_coordinator.get_diff.side_effect = [self.base_root, self.branch_root]
@@ -127,13 +132,15 @@ class TestConflictsIdentifier:
         ]
 
     async def test_one_attribute_conflict(self):
-        property_type = "HAS_OWNER"
+        property_type = DatabaseEdgeType.HAS_OWNER
         attribute_name = "smell"
         node_uuid = str(uuid4())
         node_kind = "SomethingSmelly"
-        base_properties = {EnrichedPropertyFactory.build() for _ in range(3)}
         base_conflict_property = EnrichedPropertyFactory.build(property_type=property_type)
-        base_properties.add(base_conflict_property)
+        base_properties = {
+            base_conflict_property,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_SOURCE),
+        }
         base_attributes = {
             EnrichedAttributeFactory.build(),
             EnrichedAttributeFactory.build(properties=base_properties, name=attribute_name),
@@ -149,9 +156,11 @@ class TestConflictsIdentifier:
             EnrichedNodeFactory.build(relationships=set()),
         }
         self.base_root = EnrichedRootFactory.build(nodes=base_nodes)
-        branch_properties = {EnrichedPropertyFactory.build() for _ in range(3)}
         branch_conflict_property = EnrichedPropertyFactory.build(property_type=property_type)
-        branch_properties.add(branch_conflict_property)
+        branch_properties = {
+            branch_conflict_property,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
+        }
         branch_attributes = {
             EnrichedAttributeFactory.build(),
             EnrichedAttributeFactory.build(properties=branch_properties, name=attribute_name),
@@ -195,10 +204,10 @@ class TestConflictsIdentifier:
                 id=node_uuid,
                 kind=node_kind,
                 change_type="attribute_property",
-                path=f"data/{node_uuid}/{attribute_name}/property/{property_type}",
-                conflict_path=f"data/{node_uuid}/{attribute_name}/property/{property_type}",
+                path=f"data/{node_uuid}/{attribute_name}/property/{property_type.value}",
+                conflict_path=f"data/{node_uuid}/{attribute_name}/property/{property_type.value}",
                 path_type=PathType.ATTRIBUTE,
-                property_name=property_type,
+                property_name=property_type.value,
                 changes=[
                     BranchChanges(
                         branch=self.base_branch.name,
@@ -217,7 +226,7 @@ class TestConflictsIdentifier:
         ]
 
     async def test_cardinality_one_peer_id_conflict(self, car_person_schema_unregistered: SchemaRoot):
-        property_type = "IS_RELATED"
+        property_type = DatabaseEdgeType.IS_RELATED
         relationship_name = "owner"
         node_uuid = str(uuid4())
         node_kind = "TestCar"
@@ -229,7 +238,10 @@ class TestConflictsIdentifier:
             new_value=new_base_peer_id,
             action=DiffAction.UPDATED,
         )
-        base_properties = {base_conflict_property, EnrichedPropertyFactory.build()}
+        base_properties = {
+            base_conflict_property,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
+        }
         base_relationships = {
             EnrichedRelationshipGroupFactory.build(
                 name=relationship_name,
@@ -251,7 +263,10 @@ class TestConflictsIdentifier:
         branch_conflict_property = EnrichedPropertyFactory.build(
             property_type=property_type, previous_value=previous_peer_id, new_value=None, action=DiffAction.REMOVED
         )
-        branch_properties = {branch_conflict_property, EnrichedPropertyFactory.build()}
+        branch_properties = {
+            branch_conflict_property,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_OWNER),
+        }
         branch_relationships = {
             EnrichedRelationshipGroupFactory.build(
                 name=relationship_name,

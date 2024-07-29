@@ -3,6 +3,7 @@ from typing import Any, Iterable
 from neo4j.graph import Node as Neo4jNode
 
 from infrahub.core.constants import DiffAction
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -368,7 +369,7 @@ class EnrichedDiffDeserializer:
         previous_value = self._get_str_or_none_property_value(node=property_node, property_name="previous_value")
         new_value = self._get_str_or_none_property_value(node=property_node, property_name="new_value")
         return EnrichedDiffProperty(
-            property_type=str(property_node.get("property_type")),
+            property_type=DatabaseEdgeType(str(property_node.get("property_type"))),
             changed_at=Timestamp(str(property_node.get("changed_at"))),
             previous_value=previous_value,
             new_value=new_value,

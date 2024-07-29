@@ -1,5 +1,6 @@
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, RelationshipCardinality
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.schema_manager import SchemaManager
 from infrahub.core.timestamp import Timestamp
 
@@ -163,8 +164,8 @@ class ConflictsIdentifier:
         base_element: EnrichedDiffSingleRelationship,
         branch_element: EnrichedDiffSingleRelationship,
     ) -> list[DataConflict]:
-        base_peer_property = base_element.get_property(property_type="IS_RELATED")
-        branch_peer_property = branch_element.get_property(property_type="IS_RELATED")
+        base_peer_property = base_element.get_property(property_type=DatabaseEdgeType.IS_RELATED)
+        branch_peer_property = branch_element.get_property(property_type=DatabaseEdgeType.IS_RELATED)
         if base_peer_property.new_value == branch_peer_property.new_value:
             return []
 
@@ -210,7 +211,7 @@ class ConflictsIdentifier:
         branch_property: EnrichedDiffProperty,
     ) -> DataConflict:
         change_type = PathType.ATTRIBUTE.value
-        is_value_diff = branch_property.property_type == "HAS_VALUE"
+        is_value_diff = branch_property.property_type == DatabaseEdgeType.HAS_VALUE
         if is_value_diff:
             change_type += "_value"
         else:
@@ -233,7 +234,7 @@ class ConflictsIdentifier:
         if is_value_diff:
             path += "value"
         else:
-            path += f"property/{branch_property.property_type}"
+            path += f"property/{branch_property.property_type.value}"
         return DataConflict(
             name=branch_attribute.name,
             type=ModifiedPathType.DATA.value,
@@ -243,6 +244,6 @@ class ConflictsIdentifier:
             path=path,
             conflict_path=path,
             path_type=PathType.ATTRIBUTE,
-            property_name=branch_property.property_type,
+            property_name=branch_property.property_type.value,
             changes=branch_changes,
         )
