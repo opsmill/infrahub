@@ -8,7 +8,7 @@ import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { schemaState } from "@/state/atoms/schema.atom";
+import { genericsState } from "@/state/atoms/schema.atom";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -51,7 +51,7 @@ const renderContent = (tab: string | null | undefined) => {
 
 export function UserProfilePage() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const schemaList = useAtomValue(schemaState);
+  const schemaList = useAtomValue(genericsState);
   useTitle("Profile");
 
   const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);

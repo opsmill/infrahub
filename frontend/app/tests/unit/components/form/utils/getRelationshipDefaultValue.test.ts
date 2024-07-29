@@ -63,7 +63,7 @@ describe("getRelationshipDefaultValue", () => {
       const relationshipData = buildRelationshipOneData({
         properties: {
           source: {
-            id: "random-id",
+            id: "pool-random-id",
             display_label: "test name pool",
             __typename: "FakeResourcePool",
           },
@@ -78,6 +78,8 @@ describe("getRelationshipDefaultValue", () => {
         source: {
           type: "pool",
           label: "test name pool",
+          id: "pool-random-id",
+          kind: "FakeResourcePool",
         },
         value: {
           id: "relationship-one-id",

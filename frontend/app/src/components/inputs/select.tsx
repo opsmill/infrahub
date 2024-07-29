@@ -249,7 +249,16 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       setSelectedOption(newValue);
 
       if (hasPoolsBeenOpened) {
-        if (onChange) onChange(newValue.map((item) => ({ from_pool: { id: item.id } })));
+        if (onChange)
+          onChange(
+            newValue.map((item) => ({
+              from_pool: {
+                id: item.id,
+                name: item.name,
+                kind: item.kind,
+              },
+            }))
+          );
         return;
       }
 
@@ -262,8 +271,15 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     setOpen(false);
 
     if (hasPoolsBeenOpened) {
-      if (onChange)
-        onChange(hasPoolsBeenOpened ? { from_pool: { id: newValue.id } } : { id: newValue.id });
+      if (onChange) {
+        onChange({
+          from_pool: {
+            id: newValue.id,
+            name: newValue.name,
+            kind: newValue.kind,
+          },
+        });
+      }
       return;
     }
 

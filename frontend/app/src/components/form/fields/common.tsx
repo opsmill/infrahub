@@ -2,6 +2,17 @@ import { FormLabel } from "@/components/ui/form";
 import { QuestionMark } from "@/components/display/question-mark";
 import { classNames } from "@/utils/common";
 import { LabelProps } from "@/components/ui/label";
+import { Icon } from "@iconify-icon/react";
+import { Badge } from "@/components/ui/badge";
+import React from "react";
+import {
+  AttributeValueFromProfile,
+  FormFieldValue,
+  RelationshipValueFormPool,
+} from "@/components/form/type";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Link } from "react-router-dom";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
 
 export const InputUniqueTips = () => (
   <span className="text-xs text-gray-600 italic self-end mb-px">must be unique</span>
@@ -13,6 +24,7 @@ interface LabelFormFieldProps extends LabelProps {
   required?: boolean;
   unique?: boolean;
   description?: string | null;
+  fieldData?: FormFieldValue;
 }
 
 export const LabelFormField = ({
@@ -22,14 +34,71 @@ export const LabelFormField = ({
   unique,
   description,
   variant,
+  fieldData,
 }: LabelFormFieldProps) => {
   return (
-    <div className={classNames("mb-1 flex items-center gap-1", className)}>
+    <div className={classNames("h-5 mb-1 flex items-center gap-1", className)}>
       <FormLabel variant={variant}>
         {label} {required && "*"}
       </FormLabel>
       {unique && <InputUniqueTips />}
       {description && <QuestionMark message={description} />}
+
+      {fieldData?.source?.type === "profile" && (
+        <ProfileSourceBadge fieldData={fieldData as AttributeValueFromProfile} />
+      )}
+
+      {fieldData?.source?.type === "pool" && (
+        <PoolSourceBadge fieldData={fieldData as RelationshipValueFormPool} />
+      )}
     </div>
+  );
+};
+
+const ProfileSourceBadge = ({ fieldData }: { fieldData: AttributeValueFromProfile }) => {
+  return (
+    <Tooltip
+      enabled
+      content={
+        <div className="max-w-60" data-testid="source-profile-tooltip">
+          <p>This value is set by a profile:</p>
+          <Link
+            to={getObjectDetailsUrl2(fieldData?.source.kind!, fieldData?.source.id)}
+            className="underline inline-flex items-center gap-1">
+            {fieldData?.source?.label} <Icon icon="mdi:open-in-new" />
+          </Link>
+          <p className="text-xs mt-2">You can override it by typing another value in the input.</p>
+        </div>
+      }>
+      <button className="ml-auto" data-testid="source-profile-badge">
+        <Badge variant="green">
+          <Icon icon="mdi:shape-plus-outline" className="mr-1" /> {fieldData?.source?.label}
+        </Badge>
+      </button>
+    </Tooltip>
+  );
+};
+
+const PoolSourceBadge = ({ fieldData }: { fieldData: RelationshipValueFormPool }) => {
+  return (
+    <Tooltip
+      enabled
+      content={
+        <div className="max-w-60">
+          <p>This value is allocated from the pool:</p>
+          <Link
+            to={getObjectDetailsUrl2(fieldData?.source.kind!, fieldData?.source.id)}
+            className="underline inline-flex items-center gap-1">
+            {fieldData?.source?.label} <Icon icon="mdi:open-in-new" />
+          </Link>
+          <p className="text-xs mt-2">You can override it by entering another value manually.</p>
+        </div>
+      }>
+      <button className="ml-auto" data-testid="source-pool-badge">
+        <Badge variant="purple">
+          <Icon icon="mdi:view-grid-outline" className="mr-1" /> {fieldData?.source?.label}
+        </Badge>
+      </button>
+    </Tooltip>
   );
 };

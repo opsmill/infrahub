@@ -91,7 +91,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -131,7 +131,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -703,6 +703,41 @@ core_models: dict[str, Any] = {
                 },
             ],
         },
+        {
+            "name": "GenericAccount",
+            "namespace": "Core",
+            "description": "User Account for Infrahub",
+            "include_in_menu": False,
+            "label": "Account",
+            "icon": "mdi:account",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["label__value"],
+            "human_friendly_id": ["name__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "documentation": "/topics/auth",
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "password", "kind": "HashedPassword", "unique": False},
+                {"name": "label", "kind": "Text", "optional": True},
+                {"name": "description", "kind": "Text", "optional": True},
+                {
+                    "name": "account_type",
+                    "kind": "Text",
+                    "default_value": AccountType.USER.value,
+                    "enum": AccountType.available_types(),
+                },
+                {
+                    "name": "role",
+                    "kind": "Text",
+                    "default_value": AccountRole.READ_ONLY.value,
+                    "enum": AccountRole.available_types(),
+                },
+            ],
+            "relationships": [
+                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
+            ],
+        },
     ],
     "nodes": [
         {
@@ -787,29 +822,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["label__value"],
             "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
-            "documentation": "/topics/auth",
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "password", "kind": "HashedPassword", "unique": False},
-                {"name": "label", "kind": "Text", "optional": True},
-                {"name": "description", "kind": "Text", "optional": True},
-                {
-                    "name": "type",
-                    "kind": "Text",
-                    "default_value": AccountType.USER.value,
-                    "enum": AccountType.available_types(),
-                },
-                {
-                    "name": "role",
-                    "kind": "Text",
-                    "default_value": AccountRole.READ_ONLY.value,
-                    "enum": AccountRole.available_types(),
-                },
-            ],
-            "relationships": [
-                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
-            ],
+            "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICACCOUNT],
         },
         {
             "name": "AccountToken",
@@ -830,7 +843,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": False,
                     "cardinality": "one",
                 },
@@ -851,7 +864,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": False,
                     "cardinality": "one",
                 },
@@ -886,7 +899,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "approved_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Attribute",
@@ -895,7 +908,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "reviewers",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "kind": "Attribute",
                     "cardinality": "many",
@@ -904,7 +917,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "cardinality": "one",
                     "branch": BranchSupportType.AGNOSTIC.value,

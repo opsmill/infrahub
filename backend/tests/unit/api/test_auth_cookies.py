@@ -76,8 +76,8 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
     access_token = login_response.cookies["access_token"]
 
     token_mutation = """
-    mutation CoreAccountTokenCreate {
-        CoreAccountTokenCreate(data: { name: "my-first-token" }) {
+    mutation InfrahubAccountTokenCreate {
+        InfrahubAccountTokenCreate(data: { name: "my-first-token" }) {
             ok
             object {
             token {
@@ -95,4 +95,4 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
         )
 
     assert jwt_response.status_code == 200
-    assert jwt_response.json()["data"]["CoreAccountTokenCreate"]["object"]["token"]["value"]
+    assert jwt_response.json()["data"]["InfrahubAccountTokenCreate"]["object"]["token"]["value"]
