@@ -190,7 +190,7 @@ export const diffPeerContent = (
         </div>
 
         <div>
-          <ChevronRightIcon className="w-4 h-4 mr-2" aria-hidden="true" />
+          <ChevronRightIcon className="w-4 h-4 mx-2" aria-hidden="true" />
         </div>
 
         <div className="flex">

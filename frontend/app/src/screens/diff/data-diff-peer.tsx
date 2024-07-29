@@ -155,12 +155,10 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   }
 
   return (
-    <div className={classNames("flex flex-col rounded-md")}>
-      <div className="flex">
-        {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
-        <ChevronDownIcon className="w-4 h-4 mr-2 text-transparent" aria-hidden="true" />
-        <div className="flex-1">{renderTitleDisplay()}</div>
-      </div>
+    <div className={classNames("flex flex-col border-l-4 border-transparent ")}>
+      {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
+      <ChevronDownIcon className="w-4 h-4 mx-2 text-transparent" aria-hidden="true" />
+      <div className="flex-1">{renderTitleDisplay()}</div>
     </div>
   );
 };

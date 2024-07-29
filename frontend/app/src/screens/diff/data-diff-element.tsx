@@ -20,6 +20,7 @@ export type tDataDiffNodeElementProps = {
 
 export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const { element } = props;
+  console.log("element: ", element);
 
   const { branchName } = useParams();
 
@@ -99,7 +100,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
           {!propertiesChanges?.length && !peersChanges?.length && (
             <div className="flex">
               {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
-              <ChevronDownIcon className="w-4 h-4 mr-2 text-transparent" aria-hidden="true" />
+              <ChevronDownIcon className="w-4 h-4 mx-2 text-transparent" aria-hidden="true" />
               <div className="flex-1">{renderTitleDisplay(mainDiff, branchDiff)}</div>
             </div>
           )}
@@ -116,7 +117,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
     return (
       <div
         className={classNames(
-          "mb-1",
+          "border-l-4 border-transparent",
           peer?.changes?.length > 1 && "border-yellow-200 bg-yellow-50"
         )}>
         {peer?.changes.map((peerChanges, index) => (
