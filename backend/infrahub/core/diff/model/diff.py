@@ -6,7 +6,6 @@ from typing import Any, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from infrahub.core.constants import DiffAction, PathType
-from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 
@@ -207,7 +206,7 @@ class ModifiedPath(BaseModel):
         if with_peer and self.peer_id:
             identifier += f"/{self.peer_id}"
 
-        if self.property_name and self.property_name == DatabaseEdgeType.HAS_VALUE:
+        if self.property_name and self.property_name == "HAS_VALUE":
             identifier += "/value"
         elif self.property_name:
             identifier += f"/property/{self.property_name}"
@@ -220,7 +219,7 @@ class ModifiedPath(BaseModel):
     @property
     def change_type(self) -> str:
         if self.path_type in [PathType.ATTRIBUTE, PathType.RELATIONSHIP_MANY, PathType.RELATIONSHIP_ONE]:
-            if self.property_name and self.property_name != DatabaseEdgeType.HAS_VALUE:
+            if self.property_name and self.property_name != "HAS_VALUE":
                 return f"{self.path_type.value}_property"
             return f"{self.path_type.value}_value"
         return self.path_type.value

@@ -14,7 +14,6 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipStatus,
 )
-from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
@@ -630,7 +629,7 @@ class BranchDiffer:
                 continue
 
             path = f"data/{node_id}/{attr_name}/property/{prop_type}"
-            if prop_type == DatabaseEdgeType.HAS_VALUE:
+            if prop_type == "HAS_VALUE":
                 path = f"data/{node_id}/{attr_name}/value"
 
             item = {
