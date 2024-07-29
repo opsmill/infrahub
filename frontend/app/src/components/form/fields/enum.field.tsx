@@ -35,6 +35,7 @@ const EnumField = ({
               unique={unique}
               required={!!rules?.required}
               description={description}
+              fieldData={fieldData}
             />
 
             <FormInput>

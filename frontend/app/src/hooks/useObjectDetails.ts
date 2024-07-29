@@ -5,6 +5,7 @@ import { genericsState, IModelSchema } from "@/state/atoms/schema.atom";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
 import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";
+import { isGeneric } from "@/utils/common";
 
 export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
   const generics = useAtomValue(genericsState);
@@ -25,6 +26,7 @@ export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
           queryProfiles:
             !profileGenericSchema?.used_by?.includes(schema?.kind!) &&
             schema?.kind !== PROFILE_KIND &&
+            !isGeneric(schema) &&
             schema?.generate_profile,
         })
       : // Empty query to make the gql parsing work

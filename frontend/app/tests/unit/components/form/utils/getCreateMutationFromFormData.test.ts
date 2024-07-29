@@ -3,6 +3,7 @@ import {
   DynamicFieldProps,
   FormAttributeValue,
   FormRelationshipValue,
+  AttributeValueFromProfile,
 } from "@/components/form/type";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 
@@ -89,20 +90,25 @@ describe("getCreateMutationFromFormData - test", () => {
 
   it("removes items if value is from profile", () => {
     // GIVEN
+    const profileFieldValue: AttributeValueFromProfile = {
+      source: {
+        type: "profile",
+        kind: "FakeProfileKind",
+        id: "profile-id",
+        label: "Profile 1",
+      },
+      value: "value1",
+    };
+
     const fields: Array<DynamicFieldProps> = [
       buildField({
         name: "field1",
-        defaultValue: {
-          source: { type: "profile" },
-          value: "value1",
-        },
+        type: "Text",
+        defaultValue: profileFieldValue,
       }),
     ];
     const formData: Record<string, FormAttributeValue> = {
-      field1: {
-        source: { type: "profile" },
-        value: "value1",
-      },
+      field1: profileFieldValue,
     };
 
     // WHEN
@@ -117,8 +123,14 @@ describe("getCreateMutationFromFormData - test", () => {
     const fields: Array<DynamicFieldProps> = [
       buildField({
         name: "field1",
+        type: "Text",
         defaultValue: {
-          source: { type: "profile" },
+          source: {
+            type: "profile",
+            kind: "FakeProfileKind",
+            id: "profile-id",
+            label: "Profile 1",
+          },
           value: "value1",
         },
       }),
@@ -164,6 +176,41 @@ describe("getCreateMutationFromFormData - test", () => {
     // THEN
     expect(mutationData).to.deep.equal({
       relationship1: { id: "relationship-id" },
+    });
+  });
+
+  it("keeps relationship with cardinality one's value if it's from pool", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildField({
+        name: "relationship1",
+        type: "relationship",
+        defaultValue: {
+          source: { type: "schema" },
+          value: null,
+        },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      relationship1: {
+        source: {
+          type: "pool",
+          label: "test name pool",
+          id: "pool-id",
+          kind: "FakeResourcePool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      relationship1: {
+        from_pool: { id: "pool-id" },
+      },
     });
   });
 

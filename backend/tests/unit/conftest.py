@@ -2386,6 +2386,7 @@ async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, 
 @pytest.fixture
 async def register_account_schema(db: InfrahubDatabase) -> None:
     SCHEMAS_TO_REGISTER = [
+        InfrahubKind.GENERICACCOUNT,
         InfrahubKind.ACCOUNT,
         InfrahubKind.ACCOUNTTOKEN,
         InfrahubKind.GENERICGROUP,
@@ -2455,19 +2456,11 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(
-        db=db,
-        name="test-admin",
-        type="User",
-        password=config.SETTINGS.initial.admin_password,
-        role="admin",
+        db=db, name="test-admin", account_type="User", password=config.SETTINGS.initial.admin_password, role="admin"
     )
     await account.save(db=db)
     token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
-    await token.new(
-        db=db,
-        token="admin-security",
-        account=account,
-    )
+    await token.new(db=db, token="admin-security", account=account)
     await token.save(db=db)
 
     return account
@@ -2494,7 +2487,7 @@ async def authentication_base(
 @pytest.fixture
 async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(db=db, name="First Account", type="Git", password="FirstPassword123", role="read-write")
+    await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123", role="read-write")
     await obj.save(db=db)
     return obj
 
@@ -2502,7 +2495,7 @@ async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, re
 @pytest.fixture
 async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(db=db, name="Second Account", type="Git", password="SecondPassword123")
+    await obj.new(db=db, name="Second Account", account_type="Git", password="SecondPassword123")
     await obj.save(db=db)
     return obj
 

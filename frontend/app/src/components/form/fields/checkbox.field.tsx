@@ -53,6 +53,7 @@ const CheckboxField = ({
                 unique={unique}
                 required={!!rules?.required}
                 description={description}
+                fieldData={fieldData}
               />
             </div>
             <FormMessage />

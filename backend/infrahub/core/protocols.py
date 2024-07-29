@@ -84,6 +84,16 @@ class CoreComment(CoreNode):
     created_by: RelationshipManager
 
 
+class CoreGenericAccount(CoreNode):
+    name: String
+    password: HashedPassword
+    label: StringOptional
+    description: StringOptional
+    account_type: Enum
+    role: Enum
+    tokens: RelationshipManager
+
+
 class CoreGenericRepository(CoreNode):
     name: String
     description: StringOptional
@@ -171,14 +181,8 @@ class BuiltinTag(CoreNode):
     description: StringOptional
 
 
-class CoreAccount(LineageOwner, LineageSource):
-    name: String
-    password: HashedPassword
-    label: StringOptional
-    description: StringOptional
-    type: Enum
-    role: Enum
-    tokens: RelationshipManager
+class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
+    pass
 
 
 class CoreArtifact(CoreTaskTarget):

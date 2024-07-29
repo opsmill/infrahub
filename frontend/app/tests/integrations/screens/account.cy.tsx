@@ -7,7 +7,7 @@ import { initials } from "../../../src/components/display/avatar";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { AuthProvider } from "../../../src/hooks/useAuth";
 import Header from "../../../src/screens/layout/header";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { genericsState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
@@ -52,7 +52,7 @@ describe("List screen", () => {
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <TestProvider initialValues={[[schemaState, accountDetailsMocksSchema]]}>
+        <TestProvider initialValues={[[genericsState, accountDetailsMocksSchema]]}>
           <AuthHeader setSidebarOpen={() => null} />
         </TestProvider>
       </MockedProvider>
