@@ -90,6 +90,7 @@ class CoreGenericRepository(CoreNode):
     location: str
     username: Optional[str]
     password: Optional[str]
+    admin_status: str
     tags: Union[RelationshipManager, RelationshipManagerSync]
     transformations: Union[RelationshipManager, RelationshipManagerSync]
     queries: Union[RelationshipManager, RelationshipManagerSync]

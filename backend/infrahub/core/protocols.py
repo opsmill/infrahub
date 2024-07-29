@@ -100,6 +100,7 @@ class CoreGenericRepository(CoreNode):
     location: String
     username: StringOptional
     password: StringOptional
+    admin_status: Dropdown
     tags: RelationshipManager
     transformations: RelationshipManager
     queries: RelationshipManager

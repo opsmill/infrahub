@@ -131,7 +131,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
 
         return response["BranchValidate"]["ok"]
 
-    async def merge(self, branch_name: str) -> BranchData:
+    async def merge(self, branch_name: str) -> bool:
         input_data = {
             "data": {
                 "name": branch_name,
@@ -254,7 +254,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         response = self.client._get(url=url, headers=self.client.headers)
         return decode_json(response=response)
 
-    def merge(self, branch_name: str) -> BranchData:
+    def merge(self, branch_name: str) -> bool:
         input_data = {
             "data": {
                 "name": branch_name,

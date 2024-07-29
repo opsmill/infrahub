@@ -13,3 +13,5 @@ class GitRepositoryAdd(InfrahubMessage):
     repository_name: str = Field(..., description="The name of the repository")
     created_by: Optional[str] = Field(default=None, description="The user ID of the user that created the repository")
     default_branch_name: Optional[str] = Field(None, description="Default branch for this repository")
+    infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    admin_status: str = Field(..., description="Administrative status of the repository")

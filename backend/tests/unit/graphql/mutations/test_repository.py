@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
@@ -49,3 +51,47 @@ async def test_trigger_repository_import(
     assert isinstance(message, messages.GitRepositoryImportObjects)
     assert message.repository_id == repo.id
     assert message.commit == commit_id
+
+
+async def test_repository_update(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
+    branch2 = await create_branch(branch_name="branch2", db=db)
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    recorder = BusRecorder()
+    service = InfrahubServices(database=db, message_bus=recorder)
+
+    UPDATE_COMMIT = """
+    mutation CoreRepositoryUpdate($id: String!, $commit_id: String!, $admin_status: String!) {
+        CoreRepositoryUpdate(
+            data: {
+                id: $id
+                commit: { value: $commit_id }
+                admin_status: { value: $admin_status }
+            }) {
+            ok
+        }
+    }
+    """
+    commit_id = "d85571671cf51f561fb0695d8657747f9ce84057"
+
+    # Create the repo in main
+    repo = await Node.init(schema=repository_model, db=db, branch=branch2)
+    await repo.new(db=db, name="test-edge-demo", location="/tmp/edge")
+    await repo.save(db=db)
+
+    repo.admin_status.value = RepositoryAdminStatus.STAGING.value
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=UPDATE_COMMIT,
+        db=db,
+        variables={"id": repo.id, "commit_id": commit_id, "admin_status": RepositoryAdminStatus.ACTIVE.value},
+        service=service,
+    )
+
+    assert not result.errors
+    assert result.data
+
+    repo_main = await NodeManager.get_one(db=db, id=repo.id, raise_on_error=True)
+
+    assert repo_main.admin_status.value == RepositoryAdminStatus.ACTIVE.value
+    assert repo_main.commit.value == commit_id

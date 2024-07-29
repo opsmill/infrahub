@@ -546,7 +546,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     def get_create_data(self) -> AttributeCreateData:
         # pylint: disable=no-member
-        branch = self.get_branch_based_on_support_type()
+        branch = self.branch
+        hierarchy_level = branch.hierarchy_level
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
+            branch = registry.get_global_branch()
+        elif self.schema.branch == BranchSupportType.LOCAL and self.node._schema.branch == BranchSupportType.AGNOSTIC:
+            branch = registry.get_global_branch()
+            hierarchy_level = 0
         data = AttributeCreateData(
             node_type=self.get_db_node_type(),
             uuid=str(UUIDT()),
@@ -554,7 +560,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             type=self.get_kind(),
             branch=branch.name,
             status="active",
-            branch_level=self.branch.hierarchy_level,
+            branch_level=hierarchy_level,
             branch_support=self.schema.branch.value,
             content=self.to_db(),
             is_default=self.is_default,

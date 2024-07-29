@@ -23,10 +23,16 @@ async def names_only(message: messages.GitDiffNamesOnly, service: InfrahubServic
         service=service,
         repository_kind=message.repository_kind,
     )
+    files_changed: list[str] = []
+    files_added: list[str] = []
+    files_removed: list[str] = []
 
-    files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
-        first_commit=message.first_commit, second_commit=message.second_commit
-    )
+    if message.second_commit:
+        files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
+            first_commit=message.first_commit, second_commit=message.second_commit
+        )
+    else:
+        files_added = await repo.list_all_files(commit=message.first_commit)
 
     if message.reply_requested:
         response = GitDiffNamesOnlyResponse(

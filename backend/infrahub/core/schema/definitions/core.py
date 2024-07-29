@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     ProposedChangeState,
     RelationshipDeleteBehavior,
+    RepositoryAdminStatus,
     Severity,
     ValidatorConclusion,
     ValidatorState,
@@ -381,6 +382,7 @@ core_models: dict[str, Any] = {
                     "unique": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 1000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "description",
@@ -388,6 +390,7 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 2000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "location",
@@ -395,6 +398,7 @@ core_models: dict[str, Any] = {
                     "unique": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 3000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "username",
@@ -409,6 +413,32 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 5000,
+                },
+                {
+                    "name": "admin_status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": RepositoryAdminStatus.STAGING.value,
+                            "label": "Staging",
+                            "description": "Repository was recently added to this branch.",
+                        },
+                        {
+                            "name": RepositoryAdminStatus.ACTIVE.value,
+                            "label": "Active",
+                            "description": "Repository is actively being synced for this branch",
+                        },
+                        {
+                            "name": RepositoryAdminStatus.INACTIVE.value,
+                            "label": "Inactive",
+                            "description": "Repository is not active on this branch.",
+                        },
+                    ],
+                    "default_value": "inactive",
+                    "optional": False,
+                    "branch": BranchSupportType.LOCAL.value,
+                    "order_weight": 6000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
             ],
             "relationships": [
