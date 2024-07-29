@@ -1,6 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
+import { PROPOSED_CHANGES_OBJECT, PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getThreadsAndChecks } from "@/graphql/queries/proposed-changes/getThreadsAndChecks";
 import useQuery from "@/hooks/useQuery";
@@ -9,7 +9,7 @@ import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { gql } from "@apollo/client";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import {
   createContext,
   forwardRef,
@@ -24,6 +24,11 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
 import { ProposedChangesData } from "../proposed-changes/diff-summary";
 import { Button } from "@/components/buttons/button-primitive";
+import { useAuth } from "@/hooks/useAuth";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { stringifyWithoutQuotes } from "@/utils/string";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 
 type tDiffContext = {
   refetch?: Function;
@@ -63,14 +68,24 @@ export const DataDiff = forwardRef((props, ref) => {
   const { branchName, proposedchange } = useParams();
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
-  const [proposedChangesDetails] = useAtom(proposedChangedState);
-  const [schemaList] = useAtom(schemaState);
+  const date = useAtomValue(datetimeAtom);
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const schemaList = useAtomValue(schemaState);
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingApprove, setIsLoadingApprove] = useState(false);
+  const [isLoadingMerge, setIsLoadingMerge] = useState(false);
+  const [isLoadingClose, setIsLoadingClose] = useState(false);
+  const auth = useAuth();
 
   const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
+
+  const state = proposedChangesDetails?.state?.value;
+  const approverId = auth?.data?.sub;
+  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
+  const oldApproversId = approvers.map((a: any) => a.id);
 
   const queryString = schemaData
     ? getThreadsAndChecks({
@@ -138,6 +153,143 @@ export const DataDiff = forwardRef((props, ref) => {
     setIsLoading(false);
   }, [branch, timeFrom, timeTo]);
 
+  const handleApprove = async () => {
+    if (!approverId) {
+      return;
+    }
+
+    setIsLoadingApprove(true);
+
+    const newApproverId = approverId;
+    const newApproversId = Array.from(new Set([...oldApproversId, newApproverId]));
+    const newApprovers = newApproversId.map((id: string) => ({ id }));
+
+    const data = {
+      approved_by: newApprovers,
+    };
+
+    try {
+      const mutationString = updateObjectWithId({
+        kind: PROPOSED_CHANGES_OBJECT,
+        data: stringifyWithoutQuotes({
+          id: proposedchange,
+          ...data,
+        }),
+      });
+
+      const mutation = gql`
+        ${mutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation,
+        context: { branch: branch?.name, date },
+      });
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change approved" />);
+
+      setIsLoadingApprove(false);
+
+      return;
+    } catch (e) {
+      console.error("Something went wrong while updating the object:", e);
+
+      return;
+    }
+  };
+
+  const handleMerge = async () => {
+    if (!proposedChangesDetails?.source_branch?.value) return;
+
+    try {
+      setIsLoadingMerge(true);
+
+      const stateData = {
+        state: {
+          value: "merged",
+        },
+      };
+
+      const stateMutationString = updateObjectWithId({
+        kind: PROPOSED_CHANGES_OBJECT,
+        data: stringifyWithoutQuotes({
+          id: proposedchange,
+          ...stateData,
+        }),
+      });
+
+      const stateMutation = gql`
+        ${stateMutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation: stateMutation,
+        context: { branch: branch?.name, date },
+      });
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
+    } catch (error: any) {
+      console.log("error: ", error);
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={"An error occurred while merging the proposed changes"}
+        />
+      );
+    }
+
+    setIsLoadingMerge(false);
+  };
+
+  const handleClose = async () => {
+    setIsLoadingClose(true);
+
+    const newState = state === "closed" ? "open" : "closed";
+
+    const data = {
+      state: {
+        value: newState,
+      },
+    };
+
+    try {
+      const mutationString = updateObjectWithId({
+        kind: PROPOSED_CHANGES_OBJECT,
+        data: stringifyWithoutQuotes({
+          id: proposedchange,
+          ...data,
+        }),
+      });
+
+      const mutation = gql`
+        ${mutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation,
+        context: { branch: branch?.name, date },
+      });
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`Proposed change ${state === "closed" ? "opened" : "closed"}`}
+        />
+      );
+
+      setIsLoadingClose(false);
+
+      return;
+    } catch (e) {
+      console.error("Something went wrong while updating the object:", e);
+
+      setIsLoadingClose(false);
+
+      return;
+    }
+  };
+
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
 
@@ -175,9 +327,27 @@ export const DataDiff = forwardRef((props, ref) => {
         <ProposedChangesData branch={branch} />
 
         <div className="flex gap-2">
-          <Button>Approve</Button>
-          <Button>Merge</Button>
-          <Button>Close</Button>
+          <Button
+            variant={"outline"}
+            onClick={handleApprove}
+            isLoading={isLoadingApprove}
+            disabled={oldApproversId.includes(approverId)}>
+            Approve
+          </Button>
+          <Button
+            variant={"active"}
+            onClick={handleMerge}
+            isLoading={isLoadingMerge}
+            disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}>
+            Merge
+          </Button>
+          <Button
+            variant={"danger"}
+            onClick={handleClose}
+            isLoading={isLoadingClose}
+            disabled={!auth?.permissions?.write || state === "merged"}>
+            {state === "closed" ? "Re-open" : "Close"}
+          </Button>
         </div>
       </div>
 
