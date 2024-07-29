@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 import toml
 import typer
-from pydantic import Field, ValidationError, field_validator
+from pydantic import AliasChoices, Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_CONFIG_FILE = "infrahubctl.toml"
@@ -16,10 +16,12 @@ INFRAHUB_REPO_CONFIG_FILE = ".infrahub.yml"
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
-    model_config = SettingsConfigDict()
-    server_address: str = Field(default="http://localhost:8000", alias="INFRAHUB_ADDRESS")
-    api_token: Optional[str] = Field(default=None, alias="INFRAHUB_API_TOKEN")
-    default_branch: str = Field(default="main", alias="INFRAHUB_DEFAULT_BRANCH")
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
+    server_address: str = Field(
+        default="http://localhost:8000", validation_alias=AliasChoices("server_address", "infrahub_address")
+    )
+    api_token: Optional[str] = Field(default=None)
+    default_branch: str = Field(default="main")
 
     @field_validator("server_address")
     @classmethod
@@ -39,11 +41,7 @@ class ConfiguredSettings:
         print("Configuration not properly loaded")
         raise typer.Abort()
 
-    def load(
-        self,
-        config_file: Union[str, Path] = "infrahubctl.toml",
-        config_data: Optional[dict] = None,
-    ) -> None:
+    def load(self, config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None) -> None:
         """Load configuration.
 
         Configuration is loaded from a config file in toml format that contains the settings,
@@ -70,9 +68,7 @@ class ConfiguredSettings:
         self._settings = Settings()
 
     def load_and_exit(
-        self,
-        config_file: Union[str, Path] = "infrahubctl.toml",
-        config_data: Optional[dict] = None,
+        self, config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None
     ) -> None:
         """Calls load, but wraps it in a try except block.
 
