@@ -15,7 +15,7 @@ export const Tree = ({ itemContent, className, loading, ...props }: TreeProps) =
   const NodeComp = itemContent || DefaultTreeItem;
 
   if (loading) {
-    return <TreeSkeleton />;
+    return <TreeSkeleton className={className} />;
   }
 
   return (
@@ -28,7 +28,7 @@ export const Tree = ({ itemContent, className, loading, ...props }: TreeProps) =
         </TreeItemWrapper>
       )}
       className={classNames(
-        "border rounded text-sm flex-grow",
+        "text-sm w-fit min-w-0",
         "[&_li:focus-visible]:rounded [&_li:focus-visible]:outline-none [&_li:focus-visible]:ring-2 [&_li:focus-visible]:ring-custom-blue-500 [&_li:focus-visible]:ring-offset-2",
         className
       )}
@@ -44,9 +44,9 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
       style={{ paddingLeft: (level - 1) * 20 }}
       className={classNames(
         "flex items-center",
-        "text-gray-600 mix-blend-multiply",
+        "text-gray-600 rounded whitespace-nowrap mix-blend-multiply",
         "h-8 px-1.5 cursor-pointer",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-500 focus-visible:rounded",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-500",
         isSelected ? "bg-gray-200" : "hover:bg-gray-100",
         isHalfSelected && "bg-gray-50"
       )}>
@@ -57,7 +57,7 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
           data-testid="tree-item-toggle"
         />
       ) : (
-        <DotIcon />
+        <DotIcon className="shrink-0" />
       )}
       {children}
     </div>
@@ -68,8 +68,9 @@ const DefaultTreeItem: React.FC<TreeItemProps> = ({ element }) => {
   return <span className="truncate">{element.name}</span>;
 };
 
-const DotIcon = () => (
+const DotIcon = ({ className }: { className?: string }) => (
   <svg
+    className={className}
     width="26"
     height="6"
     viewBox="0 0 6 6"

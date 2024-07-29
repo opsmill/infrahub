@@ -20,7 +20,7 @@ import {
   updateTreeData,
 } from "./utils";
 
-export default function IpamTree() {
+export default function IpamTree({ className }: { className?: string }) {
   const { prefix } = useParams();
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
@@ -58,23 +58,22 @@ export default function IpamTree() {
   };
 
   return (
-    <nav className="flex min-w-64">
-      <Tree
-        loading={isLoading}
-        data={treeData}
-        itemContent={IpamTreeItem}
-        onLoadData={onLoadData}
-        selectedIds={prefix ? [prefix] : []}
-        defaultExpandedIds={expandedIds}
-        onNodeSelect={({ element, isSelected }) => {
-          if (!isSelected) return;
+    <Tree
+      loading={isLoading}
+      data={treeData}
+      itemContent={IpamTreeItem}
+      onLoadData={onLoadData}
+      selectedIds={prefix ? [prefix] : []}
+      defaultExpandedIds={expandedIds}
+      onNodeSelect={({ element, isSelected }) => {
+        if (!isSelected) return;
 
-          const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
-          navigate(url);
-        }}
-        data-testid="ipam-tree"
-      />
-    </nav>
+        const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+        navigate(url);
+      }}
+      className={className}
+      data-testid="ipam-tree"
+    />
   );
 }
 
@@ -86,13 +85,9 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
 
   return (
-    <Link
-      to={url}
-      tabIndex={-1}
-      className="flex items-center gap-2 overflow-hidden"
-      data-testid="ipam-tree-item">
+    <Link to={url} tabIndex={-1} className="flex items-center gap-2" data-testid="ipam-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
-      <span className="truncate">{element.name}</span>
+      <span>{element.name}</span>
     </Link>
   );
 };
