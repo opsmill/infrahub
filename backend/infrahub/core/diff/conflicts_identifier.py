@@ -142,66 +142,82 @@ class ConflictsIdentifier:
         if is_cardinality_one:
             base_element = next(iter(base_relationship.relationships))
             branch_element = next(iter(branch_relationship.relationships))
+            element_tuples = [(base_element, branch_element)]
+        else:
+            base_peer_id_map = {element.peer_id: element for element in base_relationship.relationships}
+            branch_peer_id_map = {element.peer_id: element for element in branch_relationship.relationships}
+            common_peer_ids = set(base_peer_id_map.keys()) & set(branch_peer_id_map.keys())
+            element_tuples = [(base_peer_id_map[peer_id], branch_peer_id_map[peer_id]) for peer_id in common_peer_ids]
+        for base_element, branch_element in element_tuples:
             conflicts.extend(
-                self._add_relationship_peer_conflicts(
+                self._add_relationship_conflicts_for_one_peer(
                     branch_node=branch_node,
                     branch_relationship=branch_relationship,
                     base_element=base_element,
                     branch_element=branch_element,
+                    is_cardinality_one=is_cardinality_one,
                 )
             )
-
-        # base_peer_id_map = {element.peer_id: element for element in base_relationship.relationships}
-        # branch_peer_id_map = {element.peer_id: element for element in branch_relationship.relationships}
-        # common_peer_ids = set(base_peer_id_map.keys()) & set(branch_peer_id_map.keys())
-
         return conflicts
 
-    def _add_relationship_peer_conflicts(
+    def _add_relationship_conflicts_for_one_peer(
         self,
         branch_node: EnrichedDiffNode,
         branch_relationship: EnrichedDiffRelationship,
         base_element: EnrichedDiffSingleRelationship,
         branch_element: EnrichedDiffSingleRelationship,
+        is_cardinality_one: bool,
     ) -> list[DataConflict]:
-        base_peer_property = base_element.get_property(property_type=DatabaseEdgeType.IS_RELATED)
-        branch_peer_property = branch_element.get_property(property_type=DatabaseEdgeType.IS_RELATED)
-        if base_peer_property.new_value == branch_peer_property.new_value:
+        base_properties_by_type = {p.property_type: p for p in base_element.properties}
+        branch_properties_by_type = {p.property_type: p for p in branch_element.properties}
+        common_property_types = set(base_properties_by_type.keys()) & set(branch_properties_by_type.keys())
+        if not common_property_types:
             return []
+        if is_cardinality_one:
+            path_type = PathType.RELATIONSHIP_ONE
+        else:
+            path_type = PathType.RELATIONSHIP_MANY
+        conflicts: list[DataConflict] = []
+        for property_type in common_property_types:
+            base_property = base_properties_by_type[property_type]
+            branch_property = branch_properties_by_type[property_type]
+            base_path = f"{ModifiedPathType.DATA.value}/{branch_node.uuid}/{branch_relationship.name}/peer"
+            if property_type in (DatabaseEdgeType.HAS_VALUE, DatabaseEdgeType.IS_RELATED):
+                change_type = f"{path_type.value}_value"
+            else:
+                change_type = f"{path_type.value}_property"
 
-        base_path = f"{ModifiedPathType.DATA.value}/{branch_node.uuid}/{branch_relationship.name}/peer"
-        branch_changes = [
-            BranchChanges(
-                branch=self.base_branch.name,
-                action=base_peer_property.action,
-                previous=base_peer_property.previous_value,
-                new=base_peer_property.new_value,
-            ),
-            BranchChanges(
-                branch=self.diff_branch.name,
-                action=branch_peer_property.action,
-                previous=branch_peer_property.previous_value,
-                new=branch_peer_property.new_value,
-            ),
-        ]
+            branch_changes = [
+                BranchChanges(
+                    branch=self.base_branch.name,
+                    action=base_property.action,
+                    previous=base_property.previous_value,
+                    new=base_property.new_value,
+                ),
+                BranchChanges(
+                    branch=self.diff_branch.name,
+                    action=branch_property.action,
+                    previous=branch_property.previous_value,
+                    new=branch_property.new_value,
+                ),
+            ]
 
-        data_conflicts = []
-        for element in (base_element, branch_element):
-            data_conflicts.append(
-                DataConflict(
-                    name=branch_relationship.name,
-                    type=ModifiedPathType.DATA.value,
-                    id=branch_node.uuid,
-                    kind=branch_node.kind,
-                    change_type=f"{PathType.RELATIONSHIP_ONE.value}_value",
-                    path=base_path,
-                    conflict_path=f"{base_path}/{element.peer_id}",
-                    path_type=PathType.RELATIONSHIP_ONE,
-                    property_name=None,
-                    changes=branch_changes,
+            for peer_id in (base_element.peer_id, branch_element.peer_id):
+                conflicts.append(
+                    DataConflict(
+                        name=branch_relationship.name,
+                        type=ModifiedPathType.DATA.value,
+                        id=branch_node.uuid,
+                        kind=branch_node.kind,
+                        change_type=change_type,
+                        path=base_path,
+                        conflict_path=f"{base_path}/{peer_id}",
+                        path_type=path_type,
+                        property_name=None if property_type is DatabaseEdgeType.IS_RELATED else property_type.value,
+                        changes=branch_changes,
+                    )
                 )
-            )
-        return data_conflicts
+        return conflicts
 
     def _add_property_conflict(
         self,
