@@ -10,7 +10,7 @@ import Content from "@/screens/layout/content";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Table } from "@/components/table/table";
 
 import { Card } from "@/components/ui/card";
@@ -27,6 +27,15 @@ import { ProposedChangesData } from "./diff-summary";
 import { ProposedChangesCounter } from "./counter";
 import { getProposedChangesTasks } from "@/graphql/queries/proposed-changes/getProposedChangesTasks";
 import { getProposedChangesArtifacts } from "@/graphql/queries/proposed-changes/getProposedChangesArtifacts";
+import { useState } from "react";
+import ModalDelete from "@/components/modals/modal-delete";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { stringifyWithoutQuotes } from "@/utils/string";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { toast } from "react-toastify";
+import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 
 export const ProposedChangesPage = () => {
   const [schemaList] = useAtom(schemaState);
@@ -34,7 +43,11 @@ export const ProposedChangesPage = () => {
   const navigate = useNavigate();
   const [qspState] = useQueryParam(QSP.PROPOSED_CHANGES_STATE, StringParam);
   useTitle("Proposed changes list");
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useQueryParam(QSP.LIST_SEARCH, StringParam);
+  const [relatedRowToDelete, setRelatedRowToDelete] = useState();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
 
@@ -61,7 +74,50 @@ export const ProposedChangesPage = () => {
 
   const nodes = edges?.map((edge: any) => edge.node).reverse();
 
-  const handleDelete = () => {};
+  const handleDeleteObject = async () => {
+    if (!relatedRowToDelete?.values?.id) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const mutationString = deleteObject({
+        kind: PROPOSED_CHANGES_OBJECT,
+        data: stringifyWithoutQuotes({
+          id: relatedRowToDelete?.values?.id,
+        }),
+      });
+
+      const mutation = gql`
+        ${mutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation,
+        context: { branch: branch?.name, date },
+      });
+
+      refetch();
+
+      setRelatedRowToDelete(undefined);
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`Proposed changes '${relatedRowToDelete?.values?.display_label}' deleted`}
+        />
+      );
+    } catch (error) {
+      console.error("Error while deleting address: ", error);
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleDelete = (data: any) => {
+    setRelatedRowToDelete(data);
+  };
 
   const handleSearch: SearchInputProps["onChange"] = (e) => {
     const value = e.target.value as string;
@@ -105,6 +161,8 @@ export const ProposedChangesPage = () => {
     return {
       link: constructPath(`/proposed-changes/${node.id}`),
       values: {
+        id: node.id, // Used for delete modal
+        display_label: node.display_label, // Used for delete modal
         name: (
           <ProposedChangesInfo
             name={node.display_label}
@@ -155,8 +213,8 @@ export const ProposedChangesPage = () => {
           </>
         }
         reload={handleRefetch}
-        isReloadLoading={loading}></Content.Title>
-
+        isReloadLoading={loading}
+      />
       <Card className="m-2">
         <div className="flex items-center mb-2 gap-2">
           <SearchInput
@@ -183,6 +241,23 @@ export const ProposedChangesPage = () => {
 
         <Table columns={columns} rows={rows} onDelete={handleDelete} />
       </Card>
+
+      {relatedRowToDelete && (
+        <ModalDelete
+          title="Delete"
+          description={
+            <>
+              Are you sure you want to delete the Proposed Change:{" "}
+              <b>{relatedRowToDelete?.values?.display_label}</b>
+            </>
+          }
+          onCancel={() => setRelatedRowToDelete(undefined)}
+          onDelete={handleDeleteObject}
+          open={!!relatedRowToDelete}
+          setOpen={() => setRelatedRowToDelete(undefined)}
+          isLoading={isLoading}
+        />
+      )}
     </Content>
   );
 };
