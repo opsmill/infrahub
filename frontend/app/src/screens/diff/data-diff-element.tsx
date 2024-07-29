@@ -110,10 +110,12 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   }
 
   if (peersChanges?.length) {
+    console.log("peersChanges?.length: ", peersChanges?.length);
     return peersChanges;
   }
 
   if (peer && peer?.changes?.length) {
+    console.log("peer && peer?.changes?.length: ", peer && peer?.changes?.length);
     return (
       <div
         className={classNames(

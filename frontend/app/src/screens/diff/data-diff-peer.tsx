@@ -110,22 +110,31 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
     if (peerBranch) {
       return (
-        <div className="group p-1 pr-0 flex flex-col lg:flex-row last:mr-0">
-          <div className="flex flex-1 items-center relative">
-            <div className="flex flex-1 items-center">
-              <div className="flex items-center">
-                {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
+        <div className="h-7 relative flex flex-col lg:flex-row ">
+          <div className="flex flex-1 items-center">
+            <div className="flex w-1/3 items-center group">
+              {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
 
-                <span className="mr-2 font-semibold">{name}</span>
-              </div>
+              <span className="mr-2 font-semibold">{name}</span>
 
               {/* Do not display comment button if we are on the branch details view */}
               {!branchName && <DataDiffThread path={path} />}
             </div>
 
-            <div className="flex flex-1 items-center">
-              <span className="font-semibold">
-                {renderDiffDisplay({ new: newPeer, previous: previousPeer }, peerBranch)}
+            <div className="flex w-2/3 items-center">
+              <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-green-100">
+                {peerBranch === "main" && (
+                  <span className="font-semibold">
+                    {renderDiffDisplay({ new: newPeer, previous: previousPeer }, null)}
+                  </span>
+                )}
+              </span>
+              <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-custom-blue-10">
+                {peerBranch !== "main" && (
+                  <span className="font-semibold">
+                    {renderDiffDisplay(null, { new: newPeer, previous: previousPeer })}
+                  </span>
+                )}
               </span>
             </div>
           </div>
