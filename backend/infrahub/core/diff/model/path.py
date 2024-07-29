@@ -47,6 +47,12 @@ class EnrichedDiffSingleRelationship:
     def __hash__(self) -> int:
         return hash(self.peer_id)
 
+    def get_property(self, property_type: str) -> EnrichedDiffProperty:
+        for prop in self.properties:
+            if prop.property_type == property_type:
+                return prop
+        raise ValueError(f"Relationship element diff does not have property of type {property_type}")
+
 
 @dataclass
 class EnrichedDiffRelationship:

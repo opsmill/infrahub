@@ -378,6 +378,7 @@ async def test_relationship_one_property_branch_update(
     assert property_diff.property_type == "IS_RELATED"
     assert property_diff.previous_value == person_john_main.id
     assert property_diff.new_value == person_john_main.id
+    assert property_diff.action is DiffAction.UNCHANGED
     assert property_diff.changed_at < before_branch_change
     root_main_path = diff_parser.get_diff_root_for_branch(branch=default_branch.name)
     assert root_main_path.branch == default_branch.name
