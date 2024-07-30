@@ -1279,6 +1279,59 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     assert cars_element["peers"][0]["action"] == "ADDED"
 
 
+async def test_diffsummary_on_default_branch(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+    person = registry.schema.get(name="TestPerson")
+
+    before_create = Timestamp()
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+    p2 = await Node.init(db=db, schema=person)
+    await p2.new(db=db, name="Jane", height=170)
+    await p2.save(db=db)
+
+    query = """
+        query DiffSummaries($time_from: String) {
+            DiffSummary(time_from: $time_from) {
+                branch
+                id
+                kind
+                action
+            }
+        }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "time_from is required on default branch"
+
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"time_from": before_create.to_string()},
+    )
+    assert result.errors is None
+    assert result.data
+    summaries = result.data["DiffSummary"]
+    assert len(summaries) == 2
+    assert {"branch": default_branch.name, "kind": "TestPerson", "id": p1.get_id(), "action": "ADDED"} in summaries
+    assert {"branch": default_branch.name, "kind": "TestPerson", "id": p2.get_id(), "action": "ADDED"} in summaries
+
+
 async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
