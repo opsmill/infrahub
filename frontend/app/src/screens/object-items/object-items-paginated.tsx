@@ -28,22 +28,20 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames, debounce } from "@/utils/common";
-import { constructPath } from "@/utils/fetch";
 import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
-import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useObjectItems } from "@/hooks/useObjectItems";
+import ObjectItemsCell from "@/screens/object-items/object-items-cell";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
-  overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
   onSuccess?: (newObject: any) => void;
   preventBlock?: boolean;
   preventLinks?: boolean;
@@ -51,7 +49,6 @@ type ObjectItemsProps = {
 
 export default function ObjectItems({
   schema,
-  overrideDetailsViewUrl,
   onSuccess,
   preventBlock,
   preventLinks,
@@ -201,7 +198,7 @@ export default function ObjectItems({
         {/* TODO: use new Table component for list */}
         {rows && (
           <div className="overflow-auto">
-            <table className="table-auto border-spacing-0 w-full">
+            <table className="table-auto border-spacing-0 w-full" cellPadding="0">
               <thead className="bg-gray-50 text-left border-y border-gray-300">
                 <tr>
                   {columns?.map((attribute) => (
@@ -222,27 +219,22 @@ export default function ObjectItems({
                     key={index}
                     className={classNames(
                       "border-b border-gray-200 h-[36px]",
-                      !preventLinks && "hover:bg-gray-50 cursor-pointer"
+                      !preventLinks && "hover:bg-gray-50"
                     )}
                     data-cy="object-table-row">
-                    {columns?.map((attribute, index) => (
-                      <td key={index} className="p-0">
-                        <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
-                          {preventLinks ? (
-                            <div>{getObjectItemDisplayValue(row, attribute)}</div>
-                          ) : (
-                            <Link
-                              to={
-                                overrideDetailsViewUrl
-                                  ? overrideDetailsViewUrl(row.id, row.__typename)
-                                  : constructPath(getObjectDetailsUrl(row.id, row.__typename))
-                              }>
-                              <div>{getObjectItemDisplayValue(row, attribute)}</div>
-                            </Link>
-                          )}
-                        </div>
-                      </td>
-                    ))}
+                    {columns?.map((attribute, index) => {
+                      if (preventLinks) {
+                        return (
+                          <td key={index}>
+                            <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
+                              {getObjectItemDisplayValue(row, attribute)}
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      return <ObjectItemsCell key={index} row={row} attribute={attribute} />;
+                    })}
 
                     <td className="text-right w-8">
                       <ButtonWithTooltip
