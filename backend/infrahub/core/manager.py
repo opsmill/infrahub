@@ -559,6 +559,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
         raise_on_error: Literal[False] = False,
     ) -> Optional[Any]: ...
 
@@ -576,6 +577,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
         raise_on_error: Literal[True] = True,
     ) -> Any: ...
 
@@ -592,6 +594,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
         raise_on_error: bool = False,
     ) -> Optional[Any]:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -603,7 +606,15 @@ class NodeManager:
         if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
 
-        filters = {node_schema.human_friendly_id[idx]: item for idx, item in enumerate(hfid)}
+        filters = {}
+        for idx, item in enumerate(hfid):
+            # FIXME: this needs to be rewritten to handle all types as well as HFID that use relationships
+            key = node_schema.human_friendly_id[idx]
+            mapped_attr = node_schema.get_attribute(key.removesuffix("__value"))
+            try:
+                filters[key] = mapped_attr.get_class().type(item)
+            except ValueError:
+                raise ValueError(f"Unable to handle HFID for key/value: {key}/{item}")
 
         items = await NodeManager.query(
             db=db,
@@ -617,6 +628,7 @@ class NodeManager:
             include_source=include_source,
             prefetch_relationships=prefetch_relationships,
             account=account,
+            branch_agnostic=branch_agnostic,
         )
 
         if len(items) < 1:
