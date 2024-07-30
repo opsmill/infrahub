@@ -5,7 +5,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
-from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.log import get_logger
@@ -311,7 +310,7 @@ class DiffPayloadBuilder:
             self._add_node_summary(branch_diff_node=branch_diff_node, action=element.action)
 
             for prop in element.properties:
-                if prop.type == DatabaseEdgeType.HAS_VALUE:
+                if prop.type == "HAS_VALUE":
                     element.value = prop
                 else:
                     element.summary.inc(prop.action.value)

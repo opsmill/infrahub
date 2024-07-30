@@ -202,7 +202,8 @@ class ConflictsIdentifier:
                 ),
             ]
 
-            for peer_id in (base_element.peer_id, branch_element.peer_id):
+            peer_ids = {base_element.peer_id, branch_element.peer_id}
+            for peer_id in peer_ids:
                 conflicts.append(
                     DataConflict(
                         name=branch_relationship.name,
