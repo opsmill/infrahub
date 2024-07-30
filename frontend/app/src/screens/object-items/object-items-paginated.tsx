@@ -28,7 +28,6 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames, debounce } from "@/utils/common";
-import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
@@ -38,7 +37,8 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useObjectItems } from "@/hooks/useObjectItems";
-import ObjectItemsCell from "@/screens/object-items/object-items-cell";
+import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
+import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
@@ -202,11 +202,8 @@ export default function ObjectItems({
               <thead className="bg-gray-50 text-left border-y border-gray-300">
                 <tr>
                   {columns?.map((attribute) => (
-                    <th
-                      key={attribute.name}
-                      scope="col"
-                      className="px-2 py-3 text-xs font-semibold text-gray-900">
-                      {attribute.label}
+                    <th key={attribute.name} scope="col" className="h-9 font-semibold">
+                      <TextCell>{attribute.label}</TextCell>
                     </th>
                   ))}
                   <th scope="col"></th>
@@ -218,25 +215,23 @@ export default function ObjectItems({
                   <tr
                     key={index}
                     className={classNames(
-                      "border-b border-gray-200 h-[36px]",
+                      "border-b border-gray-200",
                       !preventLinks && "hover:bg-gray-50"
                     )}
                     data-cy="object-table-row">
                     {columns?.map((attribute, index) => {
-                      if (preventLinks) {
-                        return (
-                          <td key={index}>
-                            <div className="px-2 py-3 whitespace-wrap text-xs text-gray-900 flex items-center">
-                              {getDisplayValue(row, attribute)}
-                            </div>
-                          </td>
-                        );
-                      }
-
-                      return <ObjectItemsCell key={index} row={row} attribute={attribute} />;
+                      return (
+                        <td key={index} className="h-9">
+                          {preventLinks ? (
+                            <TextCell key={index}>{getDisplayValue(row, attribute)}</TextCell>
+                          ) : (
+                            <ObjectItemsCell row={row} attribute={attribute} />
+                          )}
+                        </td>
+                      );
                     })}
 
-                    <td className="text-right w-8">
+                    <td className="h-9 text-right">
                       <ButtonWithTooltip
                         data-cy="delete"
                         data-testid="delete-row-button"

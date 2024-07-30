@@ -32,7 +32,7 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import DynamicForm from "@/components/form/dynamic-form";
-import ObjectItemsCell from "@/screens/object-items/object-items-cell";
+import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -272,11 +272,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 <thead className="bg-gray-50 text-left border-b border-gray-300">
                   <tr>
                     {newColumns?.map((column) => (
-                      <th
-                        key={column.name}
-                        scope="col"
-                        className="px-2 py-3 text-xs font-semibold text-gray-900">
-                        {column.label}
+                      <th key={column.name} scope="col" className="h-9 font-semibold">
+                        <TextCell>{column.label}</TextCell>
                       </th>
                     ))}
 
@@ -288,18 +285,15 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData?.map(({ node, properties }: any, index: number) => (
                     <tr
                       key={index}
-                      className="border-b border-gray-200 h-[36px] hover:bg-gray-50"
-                      data-cy="relationship-row"
+                      className="border-b border-gray-200 hover:bg-gray-50"
                       data-testid="relationship-row">
                       {newColumns?.map((column) => (
-                        <ObjectItemsCell
-                          key={node.id + column.name}
-                          row={node}
-                          attribute={column}
-                        />
+                        <td key={node.id + column.name} className="h-9">
+                          <ObjectItemsCell row={node} attribute={column} />
+                        </td>
                       ))}
 
-                      <td className="text-right">
+                      <td className="h-9 text-right">
                         {properties && (
                           <MetaDetailsTooltip
                             updatedAt={properties.updated_at}

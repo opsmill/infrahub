@@ -1,5 +1,5 @@
 import { getObjectDetailsUrl2 } from "@/utils/objects";
-import { Link } from "react-router-dom";
+import { Link, LinkProps } from "react-router-dom";
 import {
   getDisplayValue,
   RelationshipManyType,
@@ -7,6 +7,8 @@ import {
 } from "@/utils/getObjectItemDisplayValue";
 import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
 import { Badge } from "@/components/ui/badge";
+import { classNames } from "@/utils/common";
+import { HTMLAttributes } from "react";
 
 type ObjectItemsCellProps = {
   row: any;
@@ -15,9 +17,7 @@ type ObjectItemsCellProps = {
     | (AttributeSchema & { isAttribute: boolean });
 };
 
-export default function ObjectItemsCell({ row, attribute }: ObjectItemsCellProps) {
-  const url = getObjectDetailsUrl2(row.__typename, row.id);
-
+export const ObjectItemsCell = ({ row, attribute }: ObjectItemsCellProps) => {
   if ("isRelationship" in attribute && attribute.isRelationship) {
     if (attribute.cardinality === "one") {
       return <RelationshipOneCell data={row[attribute.name]} />;
@@ -28,32 +28,40 @@ export default function ObjectItemsCell({ row, attribute }: ObjectItemsCellProps
     }
   }
 
-  return (
-    <td>
-      <Link to={url} className="px-2 py-3 whitespace-wrap text-xs text-gray-900 flex items-center">
-        {getDisplayValue(row, attribute)}
-      </Link>
-    </td>
-  );
-}
+  const url = getObjectDetailsUrl2(row.__typename, row.id);
 
-const RelationshipOneCell = ({ data }: { data: RelationshipOneType }) => {
-  if (!data.node) return <td>-</td>;
+  return <LinkCell to={url}>{getDisplayValue(row, attribute)}</LinkCell>;
+};
 
+export const TextCell = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => {
   return (
-    <td>
-      <Link
-        to={getObjectDetailsUrl2(data.node.__typename, data.node.id)}
-        className="hover:underline text-xs">
-        {data.node.display_label}
-      </Link>
-    </td>
+    <span className={classNames("px-1 py-2 text-xs whitespace-nowrap", className)} {...props} />
   );
 };
 
-const RelationshipManyCell = ({ data }: { data: RelationshipManyType }) => {
+export const LinkCell = ({ className, children, ...props }: LinkProps) => {
   return (
-    <td className="space-x-1">
+    <Link className={classNames("h-full flex items-center", className)} {...props}>
+      <TextCell>{children}</TextCell>
+    </Link>
+  );
+};
+
+export const RelationshipOneCell = ({ data }: { data: RelationshipOneType }) => {
+  if (!data.node) return <td>-</td>;
+
+  return (
+    <LinkCell
+      to={getObjectDetailsUrl2(data.node.__typename, data.node.id)}
+      className="hover:underline">
+      {data.node.display_label}
+    </LinkCell>
+  );
+};
+
+export const RelationshipManyCell = ({ data }: { data: RelationshipManyType }) => {
+  return (
+    <div className="flex flex-wrap gap-1 px-1 py-2">
       {data.edges.map(({ node }) => {
         if (!node) return null;
 
@@ -65,6 +73,6 @@ const RelationshipManyCell = ({ data }: { data: RelationshipManyType }) => {
           </Link>
         );
       })}
-    </td>
+    </div>
   );
 };
