@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 import toml
 import typer
-from pydantic import AliasChoices, Field, ValidationError, field_validator
+from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_CONFIG_FILE = "infrahubctl.toml"
@@ -16,10 +16,8 @@ INFRAHUB_REPO_CONFIG_FILE = ".infrahub.yml"
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
-    server_address: str = Field(
-        default="http://localhost:8000", validation_alias=AliasChoices("server_address", "infrahub_address")
-    )
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_", populate_by_name=True, extra="allow")
+    server_address: str = Field(default="http://localhost:8000", validation_alias="infrahub_address")
     api_token: Optional[str] = Field(default=None)
     default_branch: str = Field(default="main")
 
