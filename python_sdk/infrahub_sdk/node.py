@@ -154,6 +154,7 @@ class RelatedNodeBase:
 
         self._peer = None
         self._id: Optional[str] = None
+        self._hfid: Optional[list[str]] = None
         self._display_label: Optional[str] = None
         self._typename: Optional[str] = None
 
