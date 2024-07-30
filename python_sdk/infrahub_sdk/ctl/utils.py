@@ -59,7 +59,9 @@ def catch_exception(  # noqa: C901
                     console.print(f"[red]{str(exc)}")
                     raise typer.Exit(code=3)
                 except HTTPError as exc:
-                    console.print(f"[red]{str(exc)}")
+                    console.print(
+                        f"[red]HTTP communication failure: {str(exc)} on {exc.request.method} to {exc.request.url}"
+                    )
                     raise typer.Exit(code=4)
                 except GraphQLError as exc:
                     print_graphql_errors(console, exc.errors)
@@ -84,7 +86,9 @@ def catch_exception(  # noqa: C901
                 console.print(f"[red]{str(exc)}")
                 raise typer.Exit(code=3)
             except HTTPError as exc:
-                console.print(f"[red]{str(exc)}")
+                console.print(
+                    f"[red]HTTP communication failure: {str(exc)} on {exc.request.method} to {exc.request.url}"
+                )
                 raise typer.Exit(code=4)
             except GraphQLError as exc:
                 print_graphql_errors(console, exc.errors)
