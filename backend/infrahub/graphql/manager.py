@@ -571,7 +571,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 slug = InputField(StringAttributeCreate, required=True)
                 description = InputField(StringAttributeCreate, required=False)
         """
-        attrs: dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
+        attrs: dict[str, Union[graphene.String, graphene.InputField]] = {
+            "id": graphene.String(required=False),
+            "hfid": graphene.List(of_type=graphene.String, required=False),
+        }
 
         for attr in schema.attributes:
             if attr.read_only:
