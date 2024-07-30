@@ -427,7 +427,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 class_attrs[f"{node_schema.kind}Upsert"] = mutations.upsert.Field()
                 class_attrs[f"{node_schema.kind}Delete"] = mutations.delete.Field()
 
-            elif isinstance(node_schema, GenericSchema):
+            elif (
+                isinstance(node_schema, GenericSchema)
+                and (len(node_schema.attributes) + len(node_schema.relationships)) > 0
+            ):
                 graphql_mutation_update_input = self.generate_graphql_mutation_update_input(node_schema)
                 update = self.generate_graphql_mutation_update(
                     schema=node_schema, base_class=base_class, input_type=graphql_mutation_update_input
