@@ -233,7 +233,7 @@ export const ProposedChangesPage = () => {
             tooltipEnabled={!permission.write.allow}
             tooltipContent={permission.write.message ?? undefined}
             onClick={() => navigate(constructPath("/proposed-changes/new"))}
-            data-testid="create-object-button">
+            data-testid="add-proposed-changes-button">
             <Icon icon="mdi:plus" className="text-sm" />
             Add {schemaData?.label}
           </ButtonWithTooltip>
