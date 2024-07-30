@@ -273,12 +273,14 @@ def _generate_schemas(context: Context):
     execute_command(context=context, command=f"ruff check --fix {generated}")
 
 
-def _jinja2_filter_inheritance(value: dict[str, Any]) -> str:
+def _jinja2_filter_inheritance(value: dict[str, Any], sync: bool = False) -> str:
     inherit_from: list[str] = value.get("inherit_from", [])
 
+    suffix = "Sync" if sync else ""
+
     if not inherit_from:
-        return "CoreNode"
-    return ", ".join(inherit_from)
+        return f"CoreNode{suffix}"
+    return ", ".join([f"{item}{suffix}" for item in inherit_from])
 
 
 def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive: bool = False) -> str:
