@@ -38,7 +38,6 @@ from .queries import (
     AccountToken,
     BranchQueryList,
     DiffSummary,
-    DiffSummaryOld,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -90,7 +89,6 @@ class InfrahubBaseQuery(ObjectType):
 
     DiffTree = DiffTreeQuery
     DiffSummary = DiffSummary
-    DiffSummaryOld = DiffSummaryOld
 
     Relationship = Relationship
 
