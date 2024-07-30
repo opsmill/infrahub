@@ -234,7 +234,7 @@ class RelatedNodeBase:
         return self._typename
 
     def _generate_input_data(self) -> dict[str, Any]:
-        data = {}
+        data: dict[str, Any] = {}
 
         if self.is_resource_pool:
             return {"from_pool": {"id": self.id}}
