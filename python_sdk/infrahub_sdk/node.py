@@ -268,13 +268,13 @@ class RelatedNodeBase:
             Dict: A dictionary representing the basic structure of a GraphQL query, including the node's ID, display label,
                 and typename. The method also includes additional properties and any peer_data provided.
         """
-        data: dict[str, Any] = {"node": {"id": None, "hfid": None, "display_label": None, "__typename": None}}
+        data: dict[str, Any] = {"node": {"id": None, "display_label": None, "__typename": None}}
 
         properties: dict[str, Any] = {}
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
-            properties[prop_name] = {"id": None, "hfid": None, "display_label": None, "__typename": None}
+            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         if properties:
             data["properties"] = properties
@@ -434,14 +434,14 @@ class RelationshipManagerBase:
         """
         data: dict[str, Any] = {
             "count": None,
-            "edges": {"node": {"id": None, "hfid": None, "display_label": None, "__typename": None}},
+            "edges": {"node": {"id": None, "display_label": None, "__typename": None}},
         }
 
         properties: dict[str, Any] = {}
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
-            properties[prop_name] = {"id": None, "hfid": None, "display_label": None, "__typename": None}
+            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         if properties:
             data["edges"]["properties"] = properties
@@ -1294,7 +1294,7 @@ class InfrahubNode(InfrahubNodeBase):
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     def _generate_mutation_query(self) -> dict[str, Any]:
-        query_result = {"ok": None, "object": {"id": None, "hfid": None}}
+        query_result = {"ok": None, "object": {"id": None}}
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
