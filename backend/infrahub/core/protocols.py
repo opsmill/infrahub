@@ -16,7 +16,6 @@ if TYPE_CHECKING:
         DateTime,
         DateTimeOptional,
         Dropdown,
-        DropdownOptional,
         HashedPassword,
         Integer,
         IntegerOptional,
