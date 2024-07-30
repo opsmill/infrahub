@@ -93,8 +93,11 @@ test.describe("/proposed-changes diff data", () => {
 
   test("should delete proposed changes", async ({ page }) => {
     await page.goto("/proposed-changes");
-    await page.getByText("pc-data-diff").first().hover();
-    await page.getByTestId("delete-row-button").click();
+    await page
+      .getByRole("link", { name: "pc-data-diff 0 atl1-delete-" })
+      .locator("../..")
+      .getByTestId("delete-row-button")
+      .click();
     await expect(page.getByTestId("modal-delete")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
     await expect(page.getByText("Proposed changes 'pc-data-diff' deleted")).toBeVisible();

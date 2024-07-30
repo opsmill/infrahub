@@ -107,8 +107,11 @@ test.describe("/proposed-changes", () => {
 
       test("delete proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
-        await page.getByText(pcName).first().hover();
-        await page.getByTestId("delete-row-button").click();
+        await page
+          .getByRole("link", { name: `${pcName} 0 ${pcBranchName}` })
+          .locator("../..")
+          .getByTestId("delete-row-button")
+          .click();
         await expect(page.getByTestId("modal-delete")).toBeVisible();
         await page.getByTestId("modal-delete-confirm").click();
         await expect(page.getByText(`Proposed changes '${pcName}' deleted`)).toBeVisible();
