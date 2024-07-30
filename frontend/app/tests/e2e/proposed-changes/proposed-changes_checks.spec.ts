@@ -42,8 +42,11 @@ test.describe("/proposed-changes checks", () => {
 
   test("should delete proposed changes", async ({ page }) => {
     await page.goto("/proposed-changes");
-    await page.getByText("pc-checks").first().hover();
-    await page.getByTestId("delete-row-button").click();
+    await page
+      .getByRole("link", { name: "pc-checks 0 atl1-delete-" })
+      .locator("../..")
+      .getByTestId("delete-row-button")
+      .click();
     await expect(page.getByTestId("modal-delete")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
     await expect(page.getByText("Proposed changes 'pc-checks' deleted")).toBeVisible();
