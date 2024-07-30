@@ -839,7 +839,7 @@ jobs:
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"
       - name: Run benchmarks
-        uses: CodSpeedHQ/action@v2
+        uses: CodSpeedHQ/action@v3
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
