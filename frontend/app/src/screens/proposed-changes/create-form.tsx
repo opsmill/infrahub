@@ -33,6 +33,7 @@ export const ProposedChangeCreateForm = () => {
   const navigate = useNavigate();
 
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
+  console.log("getAllAccountsData: ", getAllAccountsData);
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
@@ -149,7 +150,7 @@ export const ProposedChangeCreateForm = () => {
               <Select
                 multiple
                 options={
-                  getAllAccountsData?.CoreAccount?.edges.map((edge: any) => ({
+                  getAllAccountsData?.CoreGenericAccount?.edges.map((edge: any) => ({
                     id: edge?.node.id,
                     name: edge?.node?.display_label,
                   })) ?? []
