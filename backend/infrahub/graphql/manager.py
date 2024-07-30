@@ -399,9 +399,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         full_schema = self.schema.get_all(duplicate=False)
 
         for node_schema in full_schema.values():
-            if not isinstance(node_schema, (NodeSchema, ProfileSchema)):
-                continue
-
             if node_schema.namespace == "Internal":
                 continue
 
@@ -422,28 +419,38 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
-            mutations = self.generate_graphql_mutations(schema=node_schema, base_class=base_class)
+            if isinstance(node_schema, (NodeSchema, ProfileSchema)):
+                mutations = self.generate_graphql_mutations(schema=node_schema, base_class=base_class)
 
-            class_attrs[f"{node_schema.kind}Create"] = mutations.create.Field()
-            class_attrs[f"{node_schema.kind}Update"] = mutations.update.Field()
-            class_attrs[f"{node_schema.kind}Upsert"] = mutations.upsert.Field()
-            class_attrs[f"{node_schema.kind}Delete"] = mutations.delete.Field()
+                class_attrs[f"{node_schema.kind}Create"] = mutations.create.Field()
+                class_attrs[f"{node_schema.kind}Update"] = mutations.update.Field()
+                class_attrs[f"{node_schema.kind}Upsert"] = mutations.upsert.Field()
+                class_attrs[f"{node_schema.kind}Delete"] = mutations.delete.Field()
+
+            elif (
+                isinstance(node_schema, GenericSchema)
+                and (len(node_schema.attributes) + len(node_schema.relationships)) > 0
+            ):
+                graphql_mutation_update_input = self.generate_graphql_mutation_update_input(node_schema)
+                update = self.generate_graphql_mutation_update(
+                    schema=node_schema, base_class=base_class, input_type=graphql_mutation_update_input
+                )
+                self.set_type(name=update._meta.name, graphql_type=update)
+                class_attrs[f"{node_schema.kind}Update"] = update.Field()
 
         return type("MutationMixin", (object,), class_attrs)
 
-    def generate_graphql_object(
-        self, schema: Union[NodeSchema, ProfileSchema], populate_cache: bool = False
-    ) -> type[InfrahubObject]:
+    def generate_graphql_object(self, schema: MainSchemaTypes, populate_cache: bool = False) -> type[InfrahubObject]:
         """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
         interfaces: set[type[InfrahubObject]] = set()
 
-        if schema.inherit_from:
+        if isinstance(schema, (NodeSchema, ProfileSchema)) and schema.inherit_from:
             for generic_name in schema.inherit_from:
                 generic = self.get_type(name=generic_name)
                 interfaces.add(generic)
 
-        if not isinstance(schema, ProfileSchema):
+        if isinstance(schema, NodeSchema):
             if not schema.inherit_from or InfrahubKind.GENERICGROUP not in schema.inherit_from:
                 node_interface = self.get_type(name=InfrahubKind.NODE)
                 interfaces.add(node_interface)
@@ -601,7 +608,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def generate_graphql_mutation_update_input(
         self,
-        schema: Union[NodeSchema, ProfileSchema],
+        schema: MainSchemaTypes,
     ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
@@ -715,7 +722,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def generate_graphql_mutation_update(
         self,
-        schema: Union[NodeSchema, ProfileSchema],
+        schema: MainSchemaTypes,
         input_type: type[graphene.InputObjectType],
         base_class: type[InfrahubMutation] = InfrahubMutation,
     ) -> type[InfrahubMutation]:

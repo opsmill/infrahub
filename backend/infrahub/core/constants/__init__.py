@@ -102,6 +102,12 @@ class CheckType(InfrahubStringEnum):
     ALL = "all"
 
 
+class RepositoryAdminStatus(InfrahubStringEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    STAGING = "staging"
+
+
 class DiffAction(InfrahubStringEnum):
     ADDED = "added"
     REMOVED = "removed"
