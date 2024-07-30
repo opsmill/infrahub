@@ -32,6 +32,7 @@ from infrahub.pytest_plugin import InfrahubBackendPlugin
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
+    from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema_manager import SchemaBranch
@@ -47,7 +48,7 @@ class DefinitionSelect(IntFlag):
     FILE_CHANGES = 2
 
     @staticmethod
-    def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool):
+    def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool) -> DefinitionSelect:
         if condition:
             return current | flag
         return current
@@ -74,7 +75,9 @@ async def cancel(message: messages.RequestProposedChangeCancel, service: Infrahu
         title="Canceling proposed change",
     ) as task_report:
         await task_report.info("Canceling proposed change as the source branch was deleted", id=message.proposed_change)
-        proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
+        proposed_change: CoreProposedChange = await service.client.get(
+            kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change
+        )
         proposed_change.state.value = ProposedChangeState.CANCELED.value
         await proposed_change.save()
 
@@ -98,7 +101,9 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 validator_label="Data Integrity",
                 check_schema_kind=InfrahubKind.DATACHECK,
             )
-            await object_conflict_validator_recorder.record_conflicts(message.proposed_change, conflicts)
+            await object_conflict_validator_recorder.record_conflicts(
+                proposed_change_id=message.proposed_change, conflicts=conflicts
+            )
 
 
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
@@ -254,7 +259,7 @@ async def schema_integrity(
         # ----------------------------------------------------------
         source_branch = registry.get_branch_from_registry(branch=message.source_branch)
         _, responses = await schema_validators_checker(
-            branch=source_branch, schema=candidate_schema, constraints=constraints, service=service
+            branch=source_branch, schema=candidate_schema, constraints=list(constraints), service=service
         )
 
         # TODO we need to report a failure if an error happened during the execution of a validator
@@ -396,8 +401,8 @@ async def run_generators(message: messages.RequestProposedChangeRunGenerators, s
         related_node=message.proposed_change,
         title="Evaluating Generators",
     ) as task_report:
-        generators = await service.client.filters(
-            kind="CoreGeneratorDefinition",
+        generators: list[CoreGeneratorDefinition] = await service.client.filters(
+            kind=InfrahubKind.GENERATORDEFINITION,
             prefetch_relationships=True,
             populate_store=True,
             branch=message.source_branch,
