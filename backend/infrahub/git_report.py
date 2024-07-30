@@ -12,7 +12,6 @@ class GitReport(TaskReport):
         self, title: Optional[str] = None, conclusion: str = "UNKNOWN", logs: Optional[TaskLogs] = None
     ) -> None:
         await super().create(title=title, conclusion=conclusion, logs=logs)
-
         await self.client.execute_graphql(
             query=UPDATE_STATUS, variables={"repo_id": self.related_node, "status": RepositoryStatus.SYNCING.value}
         )
@@ -29,7 +28,7 @@ class GitReport(TaskReport):
 
 UPDATE_STATUS = """
 mutation UpdateRepositoryStatus(
-    $repo_id: UUID,
+    $repo_id: String!,
     $status: String!,
     ) {
     CoreGenericRepositoryUpdate(
