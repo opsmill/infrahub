@@ -6,6 +6,7 @@ from typing import Any, Callable, Iterable, Optional, Union
 
 import pendulum
 import typer
+from click.exceptions import Exit
 from httpx import HTTPError
 from pendulum.datetime import DateTime
 from rich.console import Console
@@ -36,7 +37,7 @@ def init_logging(debug: bool = False) -> None:
     logging.getLogger("infrahubctl")
 
 
-def catch_exception(  # noqa: C901
+def catch_exception(  # noqa: C901, PLR0915
     which_exception: Union[type[Exception], Iterable[type[Exception]]] = Exception,
     console: Optional[Console] = None,
     exit_code: int = 1,
@@ -45,13 +46,16 @@ def catch_exception(  # noqa: C901
     if not console:
         console = Console()
 
-    def decorator(func: Callable):
+    def decorator(func: Callable):  # noqa: C901
         if asyncio.iscoroutinefunction(func):
 
             @wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any):
                 try:
                     return await func(*args, **kwargs)
+                except Exit:
+                    # Ignore click exit error, the original error has been handled already
+                    pass
                 except AuthenticationError as exc:
                     console.print(f"[red]Authentication failure: {str(exc)}")
                     raise typer.Exit(code=2)
@@ -79,6 +83,9 @@ def catch_exception(  # noqa: C901
         def wrapper(*args: Any, **kwargs: Any):
             try:
                 return func(*args, **kwargs)
+            except Exit:
+                # Ignore click exit error, the original error has been handled already
+                pass
             except AuthenticationError as exc:
                 console.print(f"[red]Authentication failure: {str(exc)}")
                 raise typer.Exit(code=2)
