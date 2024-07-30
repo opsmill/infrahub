@@ -251,9 +251,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return self._peer
 
     async def _get_peer(self, db: InfrahubDatabase) -> None:
+        peer: Node
         try:
             if self.peer_hfid:
-                peer: Node = await registry.manager.get_one_by_hfid(
+                peer = await registry.manager.get_one_by_hfid(
                     db=db,
                     hfid=self.peer_hfid,
                     kind=self.schema.peer,
@@ -262,9 +263,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     include_owner=True,
                     include_source=True,
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
+                    raise_on_error=True,
                 )
             else:
-                peer: Node = await registry.manager.get_one_by_id_or_default_filter(
+                peer = await registry.manager.get_one_by_id_or_default_filter(
                     db=db,
                     id=self.get_peer_id(),
                     kind=self.schema.peer,
