@@ -16,13 +16,9 @@ import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
-import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { classNames } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
-import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -36,6 +32,7 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import DynamicForm from "@/components/form/dynamic-form";
+import ObjectItemsCell from "@/screens/object-items/object-items-cell";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -66,8 +63,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const generics = useAtomValue(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const schemaKindName = useAtomValue(schemaKindNameState);
-  const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
 
@@ -273,23 +268,19 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
           {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
             <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-              <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                <thead className="bg-gray-50">
+              <table className="table-auto border-spacing-0 w-full" cellPadding="0">
+                <thead className="bg-gray-50 text-left border-b border-gray-300">
                   <tr>
                     {newColumns?.map((column) => (
                       <th
                         key={column.name}
                         scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
+                        className="px-2 py-3 text-xs font-semibold text-gray-900">
                         {column.label}
                       </th>
                     ))}
 
-                    <th
-                      scope="col"
-                      className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
-                      <span className="sr-only">Meta</span>
-                    </th>
+                    <th scope="col"></th>
                   </tr>
                 </thead>
 
@@ -297,36 +288,18 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData?.map(({ node, properties }: any, index: number) => (
                     <tr
                       key={index}
-                      className="hover:bg-gray-50 cursor-pointer"
+                      className="border-b border-gray-200 h-[36px] hover:bg-gray-50"
                       data-cy="relationship-row"
                       data-testid="relationship-row">
                       {newColumns?.map((column) => (
-                        <td
-                          key={node.id + "-" + column.name}
-                          className={classNames(
-                            index !== relationshipsData.length - 1
-                              ? "border-b border-gray-200"
-                              : "",
-                            "whitespace-nowrap text-xs font-medium h-[39px]"
-                          )}>
-                          <Link
-                            className="whitespace-wrap px-2 py-1 text-xs flex items-center text-gray-900"
-                            to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
-                            {getObjectItemDisplayValue(
-                              node,
-                              column,
-                              schemaKindName,
-                              schemaKindLabel
-                            )}
-                          </Link>
-                        </td>
+                        <ObjectItemsCell
+                          key={node.id + column.name}
+                          row={node}
+                          attribute={column}
+                        />
                       ))}
 
-                      <td
-                        className={classNames(
-                          index !== relationshipsData.length - 1 ? "border-b border-gray-200" : "",
-                          "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex items-center justify-end h-[39px]"
-                        )}>
+                      <td className="text-right">
                         {properties && (
                           <MetaDetailsTooltip
                             updatedAt={properties.updated_at}

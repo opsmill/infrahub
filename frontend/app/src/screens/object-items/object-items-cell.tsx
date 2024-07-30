@@ -1,7 +1,7 @@
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Link } from "react-router-dom";
 import {
-  getObjectItemDisplayValue,
+  getDisplayValue,
   RelationshipManyType,
   RelationshipOneType,
 } from "@/utils/getObjectItemDisplayValue";
@@ -30,17 +30,15 @@ export default function ObjectItemsCell({ row, attribute }: ObjectItemsCellProps
 
   return (
     <td>
-      <Link to={url}>
-        <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
-          {getObjectItemDisplayValue(row, attribute)}
-        </div>
+      <Link to={url} className="px-2 py-3 whitespace-wrap text-xs text-gray-900 flex items-center">
+        {getDisplayValue(row, attribute)}
       </Link>
     </td>
   );
 }
 
 const RelationshipOneCell = ({ data }: { data: RelationshipOneType }) => {
-  if (!data.node) return "-";
+  if (!data.node) return <td>-</td>;
 
   return (
     <td>

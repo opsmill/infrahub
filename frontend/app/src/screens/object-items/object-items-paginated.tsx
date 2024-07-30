@@ -28,7 +28,7 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames, debounce } from "@/utils/common";
-import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
+import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
@@ -205,7 +205,7 @@ export default function ObjectItems({
                     <th
                       key={attribute.name}
                       scope="col"
-                      className="p-2 text-xs font-semibold text-gray-900">
+                      className="px-2 py-3 text-xs font-semibold text-gray-900">
                       {attribute.label}
                     </th>
                   ))}
@@ -213,7 +213,7 @@ export default function ObjectItems({
                 </tr>
               </thead>
 
-              <tbody className="bg-custom-white text-left">
+              <tbody className="bg-custom-white">
                 {rows?.map((row: any, index: number) => (
                   <tr
                     key={index}
@@ -226,8 +226,8 @@ export default function ObjectItems({
                       if (preventLinks) {
                         return (
                           <td key={index}>
-                            <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
-                              {getObjectItemDisplayValue(row, attribute)}
+                            <div className="px-2 py-3 whitespace-wrap text-xs text-gray-900 flex items-center">
+                              {getDisplayValue(row, attribute)}
                             </div>
                           </td>
                         );
