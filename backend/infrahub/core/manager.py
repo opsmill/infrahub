@@ -623,8 +623,8 @@ class NodeManager:
 
             try:
                 filters[key] = python_type(item)
-            except ValueError:
-                raise ValueError(f"Unable to handle HFID for key/value: {key}/{item}")
+            except ValueError as exc:
+                raise ValueError(f"Unable to handle HFID for key/value: {key}/{item}") from exc
 
         items = await NodeManager.query(
             db=db,
