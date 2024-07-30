@@ -90,6 +90,12 @@ class CoreComment(CoreNode):
     created_by: RelatedNode
 
 
+class CoreCredential(CoreNode):
+    name: String
+    label: StringOptional
+    description: StringOptional
+
+
 class CoreGenericAccount(CoreNode):
     name: String
     password: HashedPassword
@@ -104,9 +110,8 @@ class CoreGenericRepository(CoreNode):
     name: String
     description: StringOptional
     location: String
-    username: StringOptional
-    password: StringOptional
     admin_status: Dropdown
+    credential: RelatedNode
     tags: RelationshipManager
     transformations: RelationshipManager
     queries: RelationshipManager
@@ -352,6 +357,11 @@ class CoreObjectThread(CoreThread):
     object_path: String
 
 
+class CorePasswordCredential(CoreCredential):
+    username: StringOptional
+    password: StringOptional
+
+
 class CoreProposedChange(CoreTaskTarget):
     name: String
     description: StringOptional
@@ -493,6 +503,12 @@ class CoreCommentSync(CoreNodeSync):
     created_by: RelatedNodeSync
 
 
+class CoreCredentialSync(CoreNodeSync):
+    name: String
+    label: StringOptional
+    description: StringOptional
+
+
 class CoreGenericAccountSync(CoreNodeSync):
     name: String
     password: HashedPassword
@@ -507,9 +523,8 @@ class CoreGenericRepositorySync(CoreNodeSync):
     name: String
     description: StringOptional
     location: String
-    username: StringOptional
-    password: StringOptional
     admin_status: Dropdown
+    credential: RelatedNodeSync
     tags: RelationshipManagerSync
     transformations: RelationshipManagerSync
     queries: RelationshipManagerSync
@@ -753,6 +768,11 @@ class CoreNumberPoolSync(CoreResourcePoolSync, LineageSourceSync):
 
 class CoreObjectThreadSync(CoreThreadSync):
     object_path: String
+
+
+class CorePasswordCredentialSync(CoreCredentialSync):
+    username: StringOptional
+    password: StringOptional
 
 
 class CoreProposedChangeSync(CoreTaskTargetSync):
