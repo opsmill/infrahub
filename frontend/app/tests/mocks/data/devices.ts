@@ -1089,6 +1089,7 @@ query InfraDevice {
           }
         }
         name {
+            id
             value
             updated_at
             is_from_profile
@@ -1106,6 +1107,7 @@ query InfraDevice {
             }
         }
         description {
+            id
             value
             updated_at
             is_from_profile
@@ -1123,6 +1125,7 @@ query InfraDevice {
             }
         }
         type {
+            id
             value
             updated_at
             is_from_profile
@@ -4071,33 +4074,41 @@ query GetObjectRelationships_InfraDevice($offset: Int, $limit: Int) {
               __typename
               ... on InfraInterface {
                 name {
+                  id
                   value
                 }
                 description {
+                  id
                   value
                 }
                 speed {
+                  id
                   value
                 }
                 mtu {
+                  id
                   value
                 }
                 enabled {
+                  id
                   value
                 }
                 status {
                   node {
+                    id
                     display_label
                   }
                 }
                 role {
                   node {
+                    id
                     display_label
                   }
                 }
                 tags {
                   edges {
                     node {
+                      id
                       display_label
                     }
                   }
