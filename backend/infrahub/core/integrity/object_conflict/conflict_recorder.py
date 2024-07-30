@@ -1,8 +1,8 @@
-from typing import List
+from typing import Union
 
 import infrahub.core.constants.infrahubkind as InfrahubKind
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
-from infrahub.core.diff.model.diff import ObjectConflict
+from infrahub.core.diff.model.diff import DataConflict, ObjectConflict, SchemaConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
@@ -16,7 +16,9 @@ class ObjectConflictValidatorRecorder:
         self.validator_label = validator_label
         self.check_schema_kind = check_schema_kind
 
-    async def record_conflicts(self, proposed_change_id: str, conflicts: List[ObjectConflict]) -> None:
+    async def record_conflicts(
+        self, proposed_change_id: str, conflicts: Union[list[ObjectConflict], list[SchemaConflict], list[DataConflict]]
+    ) -> None:
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, db=self.db
         )
@@ -26,7 +28,7 @@ class ObjectConflictValidatorRecorder:
         previous_checks = await validator.checks.get_peers(db=self.db)  # type: ignore[attr-defined]
         is_success = False
 
-        check_ids: List[str] = []
+        check_ids: list[str] = []
         keep_check = []
         if not conflicts:
             is_success = True
@@ -107,7 +109,7 @@ class ObjectConflictValidatorRecorder:
         validator.completed_at.value = ""  # type: ignore[attr-defined]
         await validator.save(db=self.db)
 
-    async def finalize_validator(self, validator: Node, is_success: bool, check_ids: List[str]) -> None:
+    async def finalize_validator(self, validator: Node, is_success: bool, check_ids: list[str]) -> None:
         validator.state.value = ValidatorState.COMPLETED.value  # type: ignore[attr-defined]
         validator.conclusion.value = (  # type: ignore[attr-defined]
             ValidatorConclusion.SUCCESS.value if is_success else ValidatorConclusion.FAILURE.value
