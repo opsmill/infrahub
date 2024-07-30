@@ -126,7 +126,7 @@ services:
       retries: 3
 
   database:
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.21.2-enterprise}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.22.0-enterprise}
     restart: unless-stopped
     environment:
       - "NEO4J_AUTH=neo4j/admin"
