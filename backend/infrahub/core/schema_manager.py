@@ -639,9 +639,9 @@ class SchemaBranch:
                         required_properties = tuple(
                             schema_path.attribute_schema.get_class().get_allowed_property_in_path()
                         )
-                        if constraint_path.endswith(required_properties):
+                        if schema_path.attribute_property_name not in required_properties:
                             raise ValueError(
-                                f"{node_schema.kind} uniqueness contraint is invalid at attribute '{schema_path.attribute_schema.name}', it must not "
+                                f"{node_schema.kind} uniqueness contraint is invalid at attribute '{schema_path.attribute_schema.name}', it must "
                                 f"end with a property such as: {', '.join(required_properties)}"
                             )
 
@@ -751,7 +751,7 @@ class SchemaBranch:
 
                 if schema_path.is_type_attribute:
                     required_properties = tuple(schema_path.attribute_schema.get_class().get_allowed_property_in_path())
-                    if not item.endswith(required_properties):
+                    if schema_path.attribute_property_name not in required_properties:
                         raise ValueError(
                             f"{node_schema.kind} HFID is invalid at attribute '{schema_path.attribute_schema.name}', it must end with a "
                             f"property such as: {', '.join(required_properties)}"
