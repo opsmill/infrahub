@@ -14,7 +14,7 @@ import { FileRepoDiff } from "./file-repo-diff";
 
 export const FilesDiff = forwardRef((props, ref) => {
   const [filesDiff, setFilesDiff] = useState({});
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
