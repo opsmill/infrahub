@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     ProposedChangeState,
     RelationshipDeleteBehavior,
     RepositoryAdminStatus,
+    RepositoryStatus,
     Severity,
     ValidatorConclusion,
     ValidatorState,
@@ -425,6 +426,46 @@ core_models: dict[str, Any] = {
                     "branch": BranchSupportType.LOCAL.value,
                     "order_weight": 6000,
                     "allow_override": AllowOverrideType.NONE,
+                },
+                {
+                    "name": "status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": RepositoryStatus.UNKNOWN.value,
+                            "label": "Unknown",
+                            "description": "Status of the repository is unknow and mostlikely because it hasn't been synced yet",
+                        },
+                        {
+                            "name": RepositoryStatus.INSYNC.value,
+                            "label": "In Sync",
+                            "description": "Repository sync completed successfully",
+                        },
+                        {
+                            "name": RepositoryStatus.SYNCING.value,
+                            "label": "Syncing",
+                            "description": "Synchronization is in progress",
+                        },
+                        {
+                            "name": RepositoryStatus.ERROR_CRED.value,
+                            "label": "Credential Error",
+                            "description": "Repository can't be synced due to some credential error(s)",
+                        },
+                        {
+                            "name": RepositoryStatus.ERROR_IMPORT.value,
+                            "label": "Import Error",
+                            "description": "Repository can't be synced due to some import error(s)",
+                        },
+                        {
+                            "name": RepositoryStatus.ERROR.value,
+                            "label": "Error",
+                            "description": "Repository can't be synced due to an unknown error",
+                        },
+                    ],
+                    "optional": False,
+                    "branch": BranchSupportType.LOCAL.value,
+                    "default_value": RepositoryStatus.UNKNOWN.value,
+                    "order_weight": 7000,
                 },
             ],
             "relationships": [
