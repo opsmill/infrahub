@@ -42,7 +42,7 @@ export const ProposedChangesPage = () => {
   const permission = usePermission();
   const navigate = useNavigate();
   const [qspState] = useQueryParam(QSP.PROPOSED_CHANGES_STATE, StringParam);
-  useTitle("Proposed changes list");
+  useTitle("Proposed changes");
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
