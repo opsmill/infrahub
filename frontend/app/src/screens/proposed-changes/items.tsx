@@ -13,7 +13,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Table } from "@/components/table/table";
 
-import { Card } from "@/components/ui/card";
+import { CardWithBorder } from "@/components/ui/card";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { debounce } from "@/utils/common";
 import { TabsButtons } from "@/components/buttons/tabs-buttons";
@@ -215,7 +215,7 @@ export const ProposedChangesPage = () => {
         reload={handleRefetch}
         isReloadLoading={loading}
       />
-      <Card className="m-2">
+      <CardWithBorder className="m-2">
         <div className="flex items-center mb-2 gap-2">
           <SearchInput
             loading={loading}
@@ -239,8 +239,13 @@ export const ProposedChangesPage = () => {
           </ButtonWithTooltip>
         </div>
 
-        <Table columns={columns} rows={rows} onDelete={handleDelete} />
-      </Card>
+        <Table
+          columns={columns}
+          rows={rows}
+          onDelete={handleDelete}
+          className="border-0 border-t"
+        />
+      </CardWithBorder>
 
       {relatedRowToDelete && (
         <ModalDelete
