@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,c-extension-no-member
+# pylint: disable=redefined-builtin,c-extension-no-member,too-many-public-methods
 
 
 class AttributeCreateData(BaseModel):
@@ -241,7 +241,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     @classmethod
     def deserialize_from_string(cls, value_as_string: str) -> Any:
         """Return a value corresponding to the attribute type given it formatted as a string."""
-        return cls.type(value_as_string)
+        return cls.type(value_as_string)  # pylint: disable=not-callable
 
     def to_db(self) -> dict[str, Any]:
         """Return the properties of the AttributeValue node in Dict format."""
