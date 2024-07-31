@@ -269,7 +269,7 @@ class RelatedNodeBase:
             Dict: A dictionary representing the basic structure of a GraphQL query, including the node's ID, display label,
                 and typename. The method also includes additional properties and any peer_data provided.
         """
-        data: dict[str, Any] = {"node": {"id": None, "display_label": None, "__typename": None}}
+        data: dict[str, Any] = {"node": {"id": None, "hfid": None, "display_label": None, "__typename": None}}
 
         properties: dict[str, Any] = {}
         for prop_name in PROPERTIES_FLAG:
