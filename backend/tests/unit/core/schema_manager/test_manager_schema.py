@@ -967,7 +967,7 @@ async def test_validate_exception_ipam_ip_namespace(
             "InfraGenericInterface.uniqueness_constraints: cannot use badges relationship, relationship must be of cardinality one",
         ),
         (
-            [["mybool", "badges"]],
+            [["mybool__value", "badges"]],
             "InfraGenericInterface.uniqueness_constraints: cannot use badges relationship, relationship must be of cardinality one",
         ),
         (
