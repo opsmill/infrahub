@@ -129,7 +129,7 @@ services:
     image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.19.0-community}
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: neo4j/${INFRAHUB_DB_PASSWORD}
+      NEO4J_AUTH: neo4j/${INFRAHUB_DB_PASSWORD:-admin}
       dbms_security_procedures_unrestricted: apoc.*"
       dbms_security_auth__minimum__password__length: 4
     volumes:
