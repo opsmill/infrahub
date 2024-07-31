@@ -154,6 +154,7 @@ class RelatedNodeBase:
 
         self._peer = None
         self._id: Optional[str] = None
+        self._hfid: Optional[list[str]] = None
         self._display_label: Optional[str] = None
         self._typename: Optional[str] = None
 
@@ -161,6 +162,8 @@ class RelatedNodeBase:
             self._peer = data
             for prop in self._properties:
                 setattr(self, prop, None)
+        elif isinstance(data, list):
+            data = {"hfid": data}
         elif not isinstance(data, dict):
             data = {"id": data}
 
@@ -172,6 +175,7 @@ class RelatedNodeBase:
 
             if node_data:
                 self._id = node_data.get("id", None)
+                self._hfid = node_data.get("hfid", None)
                 self._display_label = node_data.get("display_label", None)
                 self._typename = node_data.get("__typename", None)
 
@@ -200,7 +204,7 @@ class RelatedNodeBase:
     def hfid(self) -> Optional[list[Any]]:
         if self._peer:
             return self._peer.hfid
-        return None
+        return self._hfid
 
     @property
     def hfid_str(self) -> Optional[str]:
@@ -216,7 +220,7 @@ class RelatedNodeBase:
 
     @property
     def initialized(self) -> bool:
-        return bool(self.id)
+        return bool(self.id) or bool(self.hfid)
 
     @property
     def display_label(self) -> Optional[str]:
@@ -231,13 +235,15 @@ class RelatedNodeBase:
         return self._typename
 
     def _generate_input_data(self) -> dict[str, Any]:
-        data = {}
+        data: dict[str, Any] = {}
 
         if self.is_resource_pool:
             return {"from_pool": {"id": self.id}}
 
         if self.id is not None:
             data["id"] = self.id
+        elif self.hfid is not None:
+            data["hfid"] = self.hfid
 
         for prop_name in self._properties:
             if getattr(self, prop_name) is not None:
