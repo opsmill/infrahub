@@ -44,6 +44,7 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("check approval", async () => {
       await page.getByRole("button", { name: "Approve" }).click();
+      await expect(page.getByText("Proposed change approved")).toBeVisible();
       await page.getByText("Overview").click();
       await expect(page.getByText("ApproversA")).toBeVisible();
       await page.getByRole("link", { name: "Proposed changes", exact: true }).click();
