@@ -256,23 +256,59 @@ async def test_infrahub_repository_config_dups():
         "attributes": [{"name": "name", "kind": "Text"}, {"name": "status", "kind": "Dropdown"}],
     },
 )
-async def test_display_schema_load_errors_details(mock_get_node):
+async def test_display_schema_load_errors_details_dropdown(mock_get_node):
     """Validate error message with details when loading schema."""
     error = {
         "detail": [
             {
+                "type": "value_error",
                 "loc": ["body", "schemas", 0, "nodes", 0, "attributes", 1],
                 "msg": "Value error, The property 'choices' is required for kind=Dropdown",
-                "type": "value_error",
                 "input": {"name": "status", "kind": "Dropdown"},
-            }
+                "ctx": {"error": {}},
+                "url": "https://errors.pydantic.dev/2.7/v/value_error",
+            },
         ]
     }
+
     with mock.patch("infrahub_sdk.ctl.schema.console", Console(file=StringIO(), width=1000)) as console:
         display_schema_load_errors(response=error, schemas_data=[])
         mock_get_node.assert_called_once()
         output = console.file.getvalue()
         expected_console = """Unable to load the schema:
   Node: CloudInstance | Attribute: status ({'name': 'status', 'kind': 'Dropdown'}) | Value error, The property 'choices' is required for kind=Dropdown (value_error)
+"""  # noqa: E501
+        assert output == expected_console
+
+
+@mock.patch(
+    "infrahub_sdk.ctl.schema.get_node",
+    return_value={
+        "name": "Instance",
+        "namespace": "OuT",
+        "attributes": [{"name": "name", "kind": "Text"}, {"name": "status", "kind": "Dropdown"}],
+    },
+)
+async def test_display_schema_load_errors_details_namespace(mock_get_node):
+    """Validate error message with details when loading schema."""
+    error = {
+        "detail": [
+            {
+                "type": "string_pattern_mismatch",
+                "loc": ["body", "schemas", 0, "nodes", 0, "namespace"],
+                "msg": "String should match pattern '^[A-Z][a-z0-9]+$'",
+                "input": "OuT",
+                "ctx": {"pattern": "^[A-Z][a-z0-9]+$"},
+                "url": "https://errors.pydantic.dev/2.7/v/string_pattern_mismatch",
+            },
+        ]
+    }
+
+    with mock.patch("infrahub_sdk.ctl.schema.console", Console(file=StringIO(), width=1000)) as console:
+        display_schema_load_errors(response=error, schemas_data=[])
+        mock_get_node.assert_called_once()
+        output = console.file.getvalue()
+        expected_console = """Unable to load the schema:
+  Node: OuTInstance | namespace (OuT) | String should match pattern '^[A-Z]+$' (string_pattern_mismatch)
 """  # noqa: E501
         assert output == expected_console

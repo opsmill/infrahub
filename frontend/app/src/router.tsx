@@ -30,7 +30,7 @@ export const router = createBrowserRouter([
         lazy: () => import("@/screens/layout/layout"),
         children: [
           {
-            path: "/branches/:branchName",
+            path: "/branches/*",
             lazy: () => import("@/pages/branches/branch-details"),
           },
           {

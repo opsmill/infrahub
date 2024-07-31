@@ -33,7 +33,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
 export const BranchDetails = () => {
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
