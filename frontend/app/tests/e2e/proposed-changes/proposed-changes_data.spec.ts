@@ -95,6 +95,7 @@ test.describe("/proposed-changes diff data", () => {
     await page.goto("/proposed-changes");
     await page
       .getByRole("link", { name: "pc-data-diff 0 atl1-delete-" })
+      .first()
       .locator("../..")
       .getByTestId("delete-row-button")
       .click();
