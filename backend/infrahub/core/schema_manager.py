@@ -634,6 +634,17 @@ class SchemaBranch:
                         allowed_path_types=SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_NO_ATTR,
                         element_name="uniqueness_constraints",
                     )
+
+                    if schema_path.is_type_attribute:
+                        required_properties = tuple(
+                            schema_path.attribute_schema.get_class().get_allowed_property_in_path()
+                        )
+                        if constraint_path.endswith(required_properties):
+                            raise ValueError(
+                                f"{node_schema.kind} uniqueness contraint is invalid at attribute '{schema_path.attribute_schema.name}', it must not "
+                                f"end with a property such as: {', '.join(required_properties)}"
+                            )
+
                     if schema_path.is_type_relationship and schema_path.relationship_schema:
                         if schema_path.relationship_schema.optional and not (
                             schema_path.relationship_schema.name == "ip_namespace"
@@ -737,6 +748,14 @@ class SchemaBranch:
 
                 if schema_path.attribute_schema.unique:
                     has_unique_item = True
+
+                if schema_path.is_type_attribute:
+                    required_properties = tuple(schema_path.attribute_schema.get_class().get_allowed_property_in_path())
+                    if not item.endswith(required_properties):
+                        raise ValueError(
+                            f"{node_schema.kind} HFID is invalid at attribute '{schema_path.attribute_schema.name}', it must end with a "
+                            f"property such as: {', '.join(required_properties)}"
+                        )
 
                 if schema_path.is_type_relationship and schema_path.relationship_schema:
                     if schema_path.relationship_schema.optional and not (
