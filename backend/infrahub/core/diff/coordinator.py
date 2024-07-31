@@ -1,4 +1,3 @@
-from functools import reduce
 
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
@@ -45,12 +44,11 @@ class DiffCoordinator:
             missing_time_range_diffs.append(enriched_diff)
         full_time_range_diffs = calculated_timeframe_diffs + missing_time_range_diffs
         full_time_range_diffs.sort(key=lambda dr: dr.from_time)
-        first_diff = full_time_range_diffs.pop(0)
-        combined_diff = reduce(
-            lambda first, second: self.diff_combiner.combine(earlier_diff=first, later_diff=second),
-            full_time_range_diffs,
-            first_diff,
-        )
+        combined_diff = full_time_range_diffs.pop(0)
+        while full_time_range_diffs:
+            combined_diff = await self.diff_combiner.combine(
+                earlier_diff=combined_diff, later_diff=full_time_range_diffs.pop(0)
+            )
         return combined_diff
 
     def _get_missing_time_ranges(  # pylint: disable=unused-argument
