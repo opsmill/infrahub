@@ -216,7 +216,7 @@ export const ProposedChangesPage = () => {
         isReloadLoading={loading}
       />
       <CardWithBorder className="m-2">
-        <div className="flex items-center mb-2 gap-2">
+        <div className="flex items-center m-2 gap-2">
           <SearchInput
             loading={loading}
             onChange={debouncedHandleSearch}
