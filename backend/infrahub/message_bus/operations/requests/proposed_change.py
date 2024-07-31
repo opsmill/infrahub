@@ -463,25 +463,27 @@ async def run_generators(message: messages.RequestProposedChangeRunGenerators, s
     next_messages: list[InfrahubMessage] = []
     if message.refresh_artifacts:
         await task_report.info("Adding Refresh Artifact job", proposed_change=message.proposed_change)
-        msg = messages.RequestProposedChangeRefreshArtifacts(
-            proposed_change=message.proposed_change,
-            source_branch=message.source_branch,
-            source_branch_sync_with_git=message.source_branch_sync_with_git,
-            destination_branch=message.destination_branch,
-            branch_diff=message.branch_diff,
+        next_messages.append(
+            messages.RequestProposedChangeRefreshArtifacts(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_sync_with_git=message.source_branch_sync_with_git,
+                destination_branch=message.destination_branch,
+                branch_diff=message.branch_diff,
+            )
         )
-        next_messages.append(msg)
 
     if message.do_repository_checks:
         await task_report.info("Adding Repository Check job", proposed_change=message.proposed_change)
-        msg = messages.RequestProposedChangeRepositoryChecks(
-            proposed_change=message.proposed_change,
-            source_branch=message.source_branch,
-            source_branch_sync_with_git=message.source_branch_sync_with_git,
-            destination_branch=message.destination_branch,
-            branch_diff=message.branch_diff,
+        next_messages.append(
+            messages.RequestProposedChangeRepositoryChecks(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_sync_with_git=message.source_branch_sync_with_git,
+                destination_branch=message.destination_branch,
+                branch_diff=message.branch_diff,
+            )
         )
-        next_messages.append(msg)
 
     for next_msg in next_messages:
         next_msg.assign_meta(parent=message)
