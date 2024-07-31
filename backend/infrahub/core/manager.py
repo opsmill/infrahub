@@ -606,25 +606,18 @@ class NodeManager:
         if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
 
-        # TODO: create a function like `hfid_to_graphql_filters` for this?
         filters = {}
-        for idx, item in enumerate(hfid):
-            key = node_schema.human_friendly_id[idx]
+        for key, item in zip(node_schema.human_friendly_id, hfid):
             path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
 
-            if path.is_type_attribute:
-                python_type = path.attribute_schema.get_class().type
-            else:
+            if path.is_type_relationship:
                 rel_schema = path.related_schema
+                # Keep the relationship attribute path and parse it
                 path = rel_schema.parse_schema_path(
                     path=key.split("__", maxsplit=1)[1], schema=registry.schema.get_schema_branch(name=branch.name)
                 )
-                python_type = path.attribute_schema.get_class().type
 
-            try:
-                filters[key] = python_type(item)
-            except ValueError as exc:
-                raise ValueError(f"Unable to handle HFID for key/value: {key}/{item}") from exc
+            filters[key] = path.attribute_schema.get_class().deserialize_from_string(item)
 
         items = await NodeManager.query(
             db=db,

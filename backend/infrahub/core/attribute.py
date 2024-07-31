@@ -238,6 +238,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             except ValueError as exc:
                 raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
 
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        """Return a value corresponding to the attribute type given it formatted as a string."""
+        return cls.type(value_as_string)
+
     def to_db(self) -> dict[str, Any]:
         """Return the properties of the AttributeValue node in Dict format."""
         data: dict[str, Any] = {"is_default": self.is_default}
@@ -575,6 +580,10 @@ class AnyAttribute(BaseAttribute):
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         pass
+
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        return value_as_string
 
 
 class String(BaseAttribute):
@@ -918,6 +927,12 @@ class IPHost(BaseAttribute):
 class ListAttribute(BaseAttribute):
     type = list
 
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        if value_as_string:
+            return ujson.loads(value_as_string)
+        return []
+
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
         return ujson.dumps(self.value)
@@ -931,6 +946,12 @@ class ListAttribute(BaseAttribute):
 
 class JSONAttribute(BaseAttribute):
     type = (dict, list)
+
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        if value_as_string:
+            return ujson.loads(value_as_string)
+        return {}
 
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
