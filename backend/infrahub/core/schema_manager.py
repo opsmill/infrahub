@@ -642,7 +642,7 @@ class SchemaBranch:
                         if schema_path.attribute_property_name not in required_properties:
                             raise ValueError(
                                 f"{node_schema.kind} uniqueness contraint is invalid at attribute '{schema_path.attribute_schema.name}', it must "
-                                f"end with a property such as: {', '.join(required_properties)}"
+                                f"end with one of the following properties: {', '.join(required_properties)}"
                             )
 
                     if schema_path.is_type_relationship and schema_path.relationship_schema:
@@ -753,8 +753,8 @@ class SchemaBranch:
                     required_properties = tuple(schema_path.attribute_schema.get_class().get_allowed_property_in_path())
                     if schema_path.attribute_property_name not in required_properties:
                         raise ValueError(
-                            f"{node_schema.kind} HFID is invalid at attribute '{schema_path.attribute_schema.name}', it must end with a "
-                            f"property such as: {', '.join(required_properties)}"
+                            f"{node_schema.kind} HFID is invalid at attribute '{schema_path.attribute_schema.name}', it must end with one of the "
+                            f"following properties: {', '.join(required_properties)}"
                         )
 
                 if schema_path.is_type_relationship and schema_path.relationship_schema:

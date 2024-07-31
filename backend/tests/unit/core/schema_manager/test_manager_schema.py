@@ -978,6 +978,10 @@ async def test_validate_exception_ipam_ip_namespace(
             [["mybool__value", "status__name__value"]],
             "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node, only the relationship",
         ),
+        (
+            [["mybool", "status__name__value"]],
+            "InfraGenericInterface uniqueness contraint is invalid at attribute 'mybool', it must end with one of the following properties: value",
+        ),
     ],
 )
 async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniqueness_constraints, expected_error):
