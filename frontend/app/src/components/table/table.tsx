@@ -21,16 +21,21 @@ type tTableProps = {
   constructLink?: Function;
   onDelete?: Function;
   onUpdate?: Function;
+  className?: string;
 };
 
 export const Table = (props: tTableProps) => {
-  const { columns, rows, onDelete, onUpdate } = props;
+  const { columns, rows, onDelete, onUpdate, className } = props;
 
   const auth = useAuth();
 
   return (
     <>
-      <table className="table-auto border-spacing-0 w-full border border-gray-300 rounded-md">
+      <table
+        className={classNames(
+          "table-auto border-spacing-0 w-full border border-gray-300 rounded-md",
+          className
+        )}>
         <thead className="bg-gray-50 text-left border-b border-gray-300 rounded-md">
           <tr>
             {columns.map((column) => (

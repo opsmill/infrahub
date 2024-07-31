@@ -13,7 +13,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Table } from "@/components/table/table";
 
-import { Card } from "@/components/ui/card";
+import { CardWithBorder } from "@/components/ui/card";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { debounce } from "@/utils/common";
 import { TabsButtons } from "@/components/buttons/tabs-buttons";
@@ -42,7 +42,7 @@ export const ProposedChangesPage = () => {
   const permission = usePermission();
   const navigate = useNavigate();
   const [qspState] = useQueryParam(QSP.PROPOSED_CHANGES_STATE, StringParam);
-  useTitle("Proposed changes list");
+  useTitle("Proposed changes");
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
@@ -215,8 +215,8 @@ export const ProposedChangesPage = () => {
         reload={handleRefetch}
         isReloadLoading={loading}
       />
-      <Card className="m-2">
-        <div className="flex items-center mb-2 gap-2">
+      <CardWithBorder className="m-2">
+        <div className="flex items-center m-2 gap-2">
           <SearchInput
             loading={loading}
             onChange={debouncedHandleSearch}
@@ -239,8 +239,13 @@ export const ProposedChangesPage = () => {
           </ButtonWithTooltip>
         </div>
 
-        <Table columns={columns} rows={rows} onDelete={handleDelete} />
-      </Card>
+        <Table
+          columns={columns}
+          rows={rows}
+          onDelete={handleDelete}
+          className="border-0 border-t"
+        />
+      </CardWithBorder>
 
       {relatedRowToDelete && (
         <ModalDelete
