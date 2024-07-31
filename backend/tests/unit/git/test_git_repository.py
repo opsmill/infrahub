@@ -768,6 +768,54 @@ async def test_calculate_diff_between_commits(
     assert removed == ["pyproject.toml"]
 
 
+async def test_list_all_files(git_repo_01: InfrahubRepository, branch01: BranchData, branch02: BranchData):
+    repo = git_repo_01
+
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
+
+    worktree = repo.get_worktree(identifier=branch01.name)
+    git_repo = repo.get_git_repo_worktree(identifier=branch01.name)
+
+    # Add a file
+    new_file = "mynewfile.txt"
+    Path(os.path.join(worktree.directory, new_file)).write_text("this is a new file\n", encoding="utf-8")
+
+    # Remove a file
+    file_to_remove = "pyproject.toml"
+    os.remove(os.path.join(worktree.directory, file_to_remove))
+
+    git_repo.index.add([new_file])
+    git_repo.index.remove([file_to_remove])
+
+    git_repo.index.commit("Add 1, remove 1")
+
+    commit_branch01 = repo.get_commit_value(branch_name=branch01.name, remote=False)
+    commit_branch02 = repo.get_commit_value(branch_name=branch02.name, remote=False)
+
+    branch01_files = await repo.list_all_files(commit=commit_branch01)
+    branch02_files = await repo.list_all_files(commit=commit_branch02)
+
+    assert branch01_files == [
+        ".gitignore",
+        "README.md",
+        "mynewfile.txt",
+        "poetry.lock",
+        "tasks.py",
+        "test_files/countries.yml",
+        "test_files/sports.yml",
+    ]
+    assert branch02_files == [
+        ".gitignore",
+        "README.md",
+        "poetry.lock",
+        "pyproject.toml",
+        "tasks.py",
+        "test_files/countries.yml",
+        "test_files/sports.yml",
+    ]
+
+
 def test_extract_repo_file_information():
     file_info = extract_repo_file_information(
         full_filename="/tmp/dir1/dir2/dir3/myfile.py", repo_directory="/tmp", worktree_directory="/tmp/dir1"

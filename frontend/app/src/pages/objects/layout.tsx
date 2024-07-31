@@ -6,6 +6,7 @@ import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { stateAtom } from "@/state/atoms/state.atom";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { CardWithBorder } from "@/components/ui/card";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();
@@ -48,11 +49,13 @@ const ObjectPageLayout = () => {
 
       <div className="flex-grow flex gap-2 p-2 overflow-auto">
         {treeSchema && (
-          <HierarchicalTree
-            className="w-full min-w-64 max-w-sm"
-            schema={treeSchema}
-            currentNodeId={objectid}
-          />
+          <CardWithBorder className="min-w-64 max-w-[400px]">
+            <HierarchicalTree
+              schema={treeSchema}
+              currentNodeId={objectid}
+              className="p-2 min-w-full"
+            />
+          </CardWithBorder>
         )}
 
         <div className="flex-grow">

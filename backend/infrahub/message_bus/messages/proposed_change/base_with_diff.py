@@ -4,7 +4,7 @@ from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 
 
-class RequestProposedChangeRefreshArtifacts(InfrahubMessage):
+class BaseProposedChangeWithDiffMessage(InfrahubMessage):
     """Sent trigger the refresh of artifacts that are impacted by the proposed change."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

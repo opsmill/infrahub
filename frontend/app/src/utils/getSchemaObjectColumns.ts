@@ -10,6 +10,7 @@ import { store } from "@/state";
 import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
 import * as R from "ramda";
 import { isGeneric, sortByOrderWeight } from "./common";
+import { SelectOption } from "@/components/inputs/select";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;
@@ -204,7 +205,7 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
   return [option];
 };
 
-export const getOptionsFromAttribute = (attribute: any, value: any) => {
+export const getOptionsFromAttribute = (attribute: any, value: any): Array<SelectOption> => {
   if (attribute.kind === "List") {
     return (value || [])?.map((option: any) => ({
       name: option,

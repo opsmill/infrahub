@@ -1,8 +1,9 @@
 import { Skeleton } from "@/components/skeleton";
+import { classNames } from "@/utils/common";
 
-export const TreeSkeleton = () => {
+export const TreeSkeleton = ({ className }: { className?: string }) => {
   return (
-    <div className="flex-grow space-y-2 border rounded p-1.5">
+    <div className={classNames("space-y-2 w-full", className)}>
       <Skeleton className="h-4 w-11/12" />
       <Skeleton className="h-4 w-8/12" />
       <Skeleton className="h-4 w-4/5" />

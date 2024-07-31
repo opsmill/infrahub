@@ -24,6 +24,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { ACCOUNT_OBJECT } from "@/config/constants";
 
 export const ProposedChangeCreateForm = () => {
   const { user } = useAuth();
@@ -149,7 +150,7 @@ export const ProposedChangeCreateForm = () => {
               <Select
                 multiple
                 options={
-                  getAllAccountsData?.CoreAccount?.edges.map((edge: any) => ({
+                  getAllAccountsData?.[ACCOUNT_OBJECT]?.edges.map((edge: any) => ({
                     id: edge?.node.id,
                     name: edge?.node?.display_label,
                   })) ?? []

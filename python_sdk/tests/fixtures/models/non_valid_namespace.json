@@ -1,0 +1,26 @@
+{   "version": "1.0",
+    "nodes": [
+        {
+            "name": "Device",
+            "namespace": "OuT",
+            "default_filter": "name__value",
+            "branch": "aware",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text",
+                    "unique": true
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": true
+                },
+                {
+                    "name": "type",
+                    "kind": "Text"
+                }
+            ]
+        }
+    ]
+}

@@ -6,7 +6,7 @@ from git.exc import BadName, GitCommandError
 from infrahub_sdk import GraphQLError
 from pydantic import Field
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
@@ -107,35 +107,42 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
 
         # TODO need to handle properly the situation when a branch is not valid.
-        for branch_name in new_branches:
-            is_valid = await self.validate_remote_branch(branch_name=branch_name)
-            if not is_valid:
-                continue
+        if self.admin_status == RepositoryAdminStatus.ACTIVE.value:
+            for branch_name in new_branches:
+                is_valid = await self.validate_remote_branch(branch_name=branch_name)
+                if not is_valid:
+                    continue
 
-            try:
-                branch = await self.create_branch_in_graph(branch_name=branch_name)
-            except GraphQLError as exc:
-                if "already exist" not in exc.errors[0]["message"]:
-                    raise
-                branch = await self.sdk.branch.get(branch_name=branch_name)
+                try:
+                    branch = await self.create_branch_in_graph(branch_name=branch_name)
+                except GraphQLError as exc:
+                    if "already exist" not in exc.errors[0]["message"]:
+                        raise
+                    branch = await self.sdk.branch.get(branch_name=branch_name)
 
-            await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
+                await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
 
-            commit = self.get_commit_value(branch_name=branch_name, remote=False)
-            self.create_commit_worktree(commit=commit)
-            await self.update_commit_value(branch_name=branch_name, commit=commit)
+                commit = self.get_commit_value(branch_name=branch_name, remote=False)
+                self.create_commit_worktree(commit=commit)
+                await self.update_commit_value(branch_name=branch_name, commit=commit)
 
-            await self.import_objects_from_files(branch_name=branch_name, commit=commit)
+                await self.import_objects_from_files(infrahub_branch_name=branch_name, commit=commit)
 
         for branch_name in updated_branches:
+            if self.admin_status == RepositoryAdminStatus.STAGING.value and branch_name != self.default_branch_name:
+                continue
+
             is_valid = await self.validate_remote_branch(branch_name=branch_name)
             if not is_valid:
                 continue
 
             commit_after = await self.pull(branch_name=branch_name)
-            await self.import_objects_from_files(branch_name=branch_name, commit=commit_after)
+            if isinstance(commit_after, str):
+                await self.import_objects_from_files(
+                    infrahub_branch_name=self.infrahub_branch_name or branch_name, commit=commit_after
+                )
 
-            if commit_after is True:
+            elif commit_after is True:
                 log.warning(
                     f"An update was detected but the commit remained the same after pull() ({commit_after}).",
                     repository=self.name,
@@ -210,7 +217,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     async def new(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubRepository:
         service = service or InfrahubServices()
         self = cls(service=service, **kwargs)
-        await self.create_locally()
+        await self.create_locally(infrahub_branch_name=self.infrahub_branch_name)
         log.info("Created the new project locally.", repository=self.name)
         return self
 
@@ -222,9 +229,6 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
     is_read_only: bool = True
     ref: Optional[str] = Field(None, description="Ref to track on the external repository")
-    infrahub_branch_name: Optional[str] = Field(
-        None, description="Infrahub branch on which to sync the remote repository"
-    )
 
     @classmethod
     async def init(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
@@ -272,7 +276,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         if self.ref in local_branches and commit == local_branches[self.ref].commit:
             return
         self.create_commit_worktree(commit=commit)
-        await self.import_objects_from_files(branch_name=self.infrahub_branch_name, commit=commit)
+        await self.import_objects_from_files(infrahub_branch_name=self.infrahub_branch_name, commit=commit)
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
 
 
