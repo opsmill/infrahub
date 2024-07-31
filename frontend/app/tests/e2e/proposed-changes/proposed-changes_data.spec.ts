@@ -40,8 +40,8 @@ test.describe("/proposed-changes diff data", () => {
     await test.step("go to Data tab and open comment form", async () => {
       await page.getByLabel("Tabs").getByText("Data").click();
       await expect(page.getByText("Just a moment")).not.toBeVisible();
-      await expect(page.getByText("REMOVEDInfraCircuit", { exact: true }).first()).toBeVisible();
-      await page.getByText("REMOVEDInfraCircuit", { exact: true }).first().hover();
+      await expect(page.getByText("RemovedInfraCircuit", { exact: true }).first()).toBeVisible();
+      await page.getByText("RemovedInfraCircuit", { exact: true }).first().hover();
       await expect(page.getByTestId("data-diff-add-comment").first()).toBeVisible();
       await page.getByTestId("data-diff-add-comment").first().click();
       await expect(page.getByText("Conversation")).toBeVisible();

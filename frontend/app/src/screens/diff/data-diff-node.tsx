@@ -149,10 +149,12 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           {kind}
         </Badge>
 
-        <BadgeCircle type={CIRCLE_BADGE_TYPES.GHOST}>
-          <span className="mr-2">{display_label}</span>
-          <CopyToClipboard text={display_label} />
-        </BadgeCircle>
+        {display_label && (
+          <BadgeCircle type={CIRCLE_BADGE_TYPES.GHOST}>
+            <span className="mr-2">{display_label}</span>
+            <CopyToClipboard text={display_label} />
+          </BadgeCircle>
+        )}
 
         {/* Do not display comment button if we are on the branch details view */}
         {!branchName && <DataDiffThread path={path} />}

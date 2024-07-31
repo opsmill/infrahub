@@ -89,12 +89,12 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
               <div className="flex w-2/3 items-center">
                 <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-green-100">
-                  {branch === "main" && (
+                  {branch === "main" && peerChange && (
                     <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
                   )}
                 </span>
                 <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-custom-blue-10">
-                  {branch !== "main" && (
+                  {branch !== "main" && peerChange && (
                     <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
                   )}
                 </span>
@@ -122,14 +122,14 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-green-100">
                 {peerBranch === "main" && (
                   <span className="font-semibold">
-                    {renderDiffDisplay({ new: newPeer, previous: previousPeer }, null)}
+                    {renderDiffDisplay({ new: newPeer, previous: previousPeer }, peerBranch)}
                   </span>
                 )}
               </span>
               <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-custom-blue-10">
                 {peerBranch !== "main" && (
                   <span className="font-semibold">
-                    {renderDiffDisplay(null, { new: newPeer, previous: previousPeer })}
+                    {renderDiffDisplay({ new: newPeer, previous: previousPeer }, peerBranch)}
                   </span>
                 )}
               </span>
@@ -151,15 +151,11 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
   // If there are some properties, then display the accordion
   if (propertiesChanges?.length) {
-    return (
-      <div className="border-l-4 border-transparent">
-        <Accordion title={renderTitleDisplay()}>{propertiesChanges}</Accordion>
-      </div>
-    );
+    return <Accordion title={renderTitleDisplay()}>{propertiesChanges}</Accordion>;
   }
 
   return (
-    <div className={classNames("flex flex-col border-l-4 border-transparent ")}>
+    <div className={classNames("flex flex-col")}>
       {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
       <ChevronDownIcon className="w-4 h-4 mx-2 text-transparent" aria-hidden="true" />
       <div className="flex-1">{renderTitleDisplay()}</div>

@@ -79,7 +79,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
               className="p-0 h-6"
               variant={"outline"}
               size={"icon"}
-              data-cy="data-diff-add-reply">
+              data-testid="data-diff-add-comment">
               <Icon icon={"mdi:plus"} />
             </Button>
           </Tooltip>
