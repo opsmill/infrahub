@@ -2,64 +2,55 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import RelationshipStatus
+from pydantic import BaseModel
+
+from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query import Query
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
     from infrahub.database import InfrahubDatabase
 
-    from .shared import AttributeSchemaMigration, SchemaMigration
+
+class SchemaNodeInfo(BaseModel):
+    name: str
+    namespace: str
+    branch_support: str = BranchSupportType.AWARE.value
+    labels: list[str]
+
+    @property
+    def kind(self) -> str:
+        return self.namespace + self.name
 
 
-class MigrationQuery(Query):
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: SchemaMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
-
-    def get_nbr_migrations_executed(self) -> int:
-        return self.num_of_results
-
-
-class AttributeMigrationQuery(Query):
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: AttributeSchemaMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
-
-    def get_nbr_migrations_executed(self) -> int:
-        return self.num_of_results
-
-
-class NodeDuplicateMigrationQuery(MigrationQuery):
-    name = "migration_node_duplicate"
+class NodeDuplicateMigrationQuery(Query):
+    name = "node_duplicate"
     insert_return: bool = False
 
-    def render_match(self) -> str:
-        self.params["prev_node_kind"] = self.migration.previous_schema.kind
+    def __init__(
+        self,
+        previous_node: SchemaNodeInfo,
+        new_node: SchemaNodeInfo,
+        **kwargs: Any,
+    ) -> None:
+        self.previous_node = previous_node
+        self.new_node = new_node
 
+        super().__init__(**kwargs)
+
+    def render_match(self) -> str:
         query = f"""
         // Find all the active nodes
-        MATCH (node:{self.migration.previous_schema.kind})
+        MATCH (node:{self.previous_node.kind})
         """
 
         return query
 
+    @staticmethod
     def _render_sub_query_per_rel_type(
-        self, rel_name: str, rel_type: str, rel_def: FieldInfo, direction: GraphRelDirection
+        rel_name: str, rel_type: str, rel_def: FieldInfo, direction: GraphRelDirection
     ) -> str:
         subquery = [
             f"WITH peer_node, {rel_name}, active_node, new_node",
@@ -75,9 +66,10 @@ class NodeDuplicateMigrationQuery(MigrationQuery):
         subquery.append("RETURN peer_node as p2")
         return "\n".join(subquery)
 
-    def _render_sub_query_out(self) -> str:
+    @classmethod
+    def _render_sub_query_out(cls) -> str:
         sub_queries_out = [
-            self._render_sub_query_per_rel_type(
+            cls._render_sub_query_per_rel_type(
                 rel_name="rel_outband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.OUTBOUND
             )
             for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
@@ -85,9 +77,10 @@ class NodeDuplicateMigrationQuery(MigrationQuery):
         sub_query_out = "\nUNION\n".join(sub_queries_out)
         return sub_query_out
 
-    def _render_sub_query_in(self) -> str:
+    @classmethod
+    def _render_sub_query_in(cls) -> str:
         sub_queries_in = [
-            self._render_sub_query_per_rel_type(
+            cls._render_sub_query_per_rel_type(
                 rel_name="rel_inband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.INBOUND
             )
             for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
@@ -99,13 +92,12 @@ class NodeDuplicateMigrationQuery(MigrationQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["new_node_kind"] = self.migration.new_schema.kind
-        self.params["new_node_namespace"] = self.migration.new_schema.namespace
-        self.params["prev_node_namespace"] = self.migration.previous_schema.namespace
+        self.params["new_node"] = self.new_node.model_dump()
+        self.params["previous_node"] = self.previous_node.model_dump()
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
-        self.params["branch_support"] = self.migration.new_schema.branch.value
+        self.params["branch_support"] = self.new_node.branch_support
 
         self.params["rel_props_new"] = {
             "branch": self.branch.name,
@@ -138,7 +130,7 @@ class NodeDuplicateMigrationQuery(MigrationQuery):
         }
         WITH n1 as active_node, r1 as rb
         WHERE rb.status = "active"
-        CREATE (new_node:Node:%(labels)s { uuid: active_node.uuid, kind: $new_node_kind, namespace: $new_node_namespace, branch_support: $branch_support })
+        CREATE (new_node:Node:%(labels)s { uuid: active_node.uuid, kind: $new_node.kind, namespace: $new_node.namespace, branch_support: $new_node.branch_support })
         WITH active_node, new_node
         // Process Outbound Relationship
         MATCH (active_node)-[]->(peer)
@@ -181,11 +173,8 @@ class NodeDuplicateMigrationQuery(MigrationQuery):
         RETURN DISTINCT new_node
         """ % {
             "branch_filter": branch_filter,
-            "labels": ":".join(self.migration.new_schema.get_labels()),
+            "labels": ":".join(self.new_node.labels),
             "sub_query_out": sub_query_out,
             "sub_query_in": sub_query_in,
         }
         self.add_to_query(query)
-
-    def get_nbr_migrations_executed(self) -> int:
-        return self.stats.get_counter(name="nodes_created")
