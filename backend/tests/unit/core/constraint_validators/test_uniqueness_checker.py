@@ -589,7 +589,7 @@ class TestUniquenessChecker:
         await car_camry_main.save(db=db)
 
         schema = registry.schema.get("TestCar", branch=default_branch)
-        schema.uniqueness_constraints = [["owner", "color"]]
+        schema.uniqueness_constraints = [["owner", "color__value"]]
         grouped_data_paths = await self.__call_system_under_test(db, default_branch, schema)
 
         assert len(grouped_data_paths) == 1

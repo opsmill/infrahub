@@ -170,7 +170,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def schema_02_car_uniqueness_constraint(self, schema_car_base) -> Dict[str, Any]:
-        schema_car_base["uniqueness_constraints"] = [["owner", "color"]]
+        schema_car_base["uniqueness_constraints"] = [["owner", "color__value"]]
         return schema_car_base
 
     @pytest.fixture(scope="class")
@@ -184,7 +184,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def schema_03_car_uniqueness_constraint(self, schema_car_base) -> Dict[str, Any]:
-        schema_car_base["uniqueness_constraints"] = [["owner", "nbr_seats"]]
+        schema_car_base["uniqueness_constraints"] = [["owner", "nbr_seats__value"]]
         return schema_car_base
 
     @pytest.fixture(scope="class")

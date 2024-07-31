@@ -227,7 +227,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_04_person_constraint_failure(self, schema_person_base) -> Dict[str, Any]:
-        schema_person_base["uniqueness_constraints"] = [["homeworld__value", "favorite_color"]]
+        schema_person_base["uniqueness_constraints"] = [["homeworld__value", "favorite_color__value"]]
         return schema_person_base
 
     @pytest.fixture(scope="class")
