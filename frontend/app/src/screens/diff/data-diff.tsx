@@ -125,6 +125,9 @@ export const DataDiff = forwardRef((props, ref) => {
 
   const checksDictionnary = constructChecksDictionnary(checks);
 
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
+
   const fetchDiffDetails = useCallback(async () => {
     if (!branch) return;
 
@@ -188,14 +191,12 @@ export const DataDiff = forwardRef((props, ref) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change approved" />);
 
-      setIsLoadingApprove(false);
-
-      return;
+      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES"] });
     } catch (e) {
       console.error("Something went wrong while updating the object:", e);
-
-      return;
     }
+
+    setIsLoadingApprove(false);
   };
 
   const handleMerge = async () => {
@@ -228,6 +229,8 @@ export const DataDiff = forwardRef((props, ref) => {
       });
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
+
+      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES"] });
     } catch (error: any) {
       console.log("error: ", error);
 
@@ -278,20 +281,13 @@ export const DataDiff = forwardRef((props, ref) => {
         />
       );
 
-      setIsLoadingClose(false);
-
-      return;
+      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES"] });
     } catch (e) {
       console.error("Something went wrong while updating the object:", e);
-
-      setIsLoadingClose(false);
-
-      return;
     }
-  };
 
-  // Provide refetch function to parent
-  useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
+    setIsLoadingClose(false);
+  };
 
   useEffect(() => {
     fetchDiffDetails();

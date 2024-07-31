@@ -48,7 +48,12 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByText("Overview").click();
       await expect(page.getByText("ApproversA")).toBeVisible();
       await page.getByRole("link", { name: "Proposed changes", exact: true }).click();
-      await expect(page.getByTestId("approved-icon")).toBeVisible();
+      await expect(
+        page
+          .getByRole("link", { name: "pc-diff-e2e-test 0 den1-maintenance-conflict" })
+          .locator("../..")
+          .getByTestId("approved-icon")
+      ).toBeVisible();
     });
   });
 
