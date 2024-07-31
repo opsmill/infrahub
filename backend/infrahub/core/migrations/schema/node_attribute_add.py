@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.constants import NULL_VALUE, RelationshipStatus
 
-from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
+from ..query import AttributeMigrationQuery
+from ..shared import AttributeSchemaMigration
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase

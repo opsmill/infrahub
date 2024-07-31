@@ -7,7 +7,7 @@ from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.path import SchemaPath  # noqa: TCH001
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query import Query  # noqa: TCH001
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -16,6 +16,8 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
+
+from .query import MigrationQuery  # noqa: TCH001
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -170,33 +172,3 @@ class InternalSchemaMigration(BaseModel):
                 return result
 
         return result
-
-
-class MigrationQuery(Query):
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: SchemaMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
-
-    def get_nbr_migrations_executed(self) -> int:
-        return self.num_of_results
-
-
-class AttributeMigrationQuery(Query):
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: AttributeSchemaMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
-
-    def get_nbr_migrations_executed(self) -> int:
-        return self.num_of_results
