@@ -1,4 +1,3 @@
-
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 

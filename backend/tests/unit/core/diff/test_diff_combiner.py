@@ -1,14 +1,22 @@
 from datetime import UTC
+from uuid import uuid4
 
 import pytest
 from pendulum.datetime import DateTime
 
 from infrahub.core.constants import DiffAction
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.combiner import DiffCombiner
-from infrahub.core.diff.model.path import EnrichedDiffNode
+from infrahub.core.diff.model.path import EnrichedDiffAttribute, EnrichedDiffNode, EnrichedDiffProperty
 from infrahub.core.timestamp import Timestamp
 
-from .factories import EnrichedNodeFactory, EnrichedRelationshipGroupFactory, EnrichedRootFactory
+from .factories import (
+    EnrichedAttributeFactory,
+    EnrichedNodeFactory,
+    EnrichedPropertyFactory,
+    EnrichedRelationshipGroupFactory,
+    EnrichedRootFactory,
+)
 
 
 class TestDiffCombiner:
@@ -143,3 +151,125 @@ class TestDiffCombiner:
             ),
             EnrichedNodeFactory.build(action=DiffAction.UNCHANGED, attributes=set(), relationships=set()),
         }
+
+    async def test_attributes_combined(self):
+        added_attr_name = "width"
+        added_attr_owner_property_1 = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            action=DiffAction.ADDED,
+            previous_value=None,
+            new_value=str(uuid4()),
+        )
+        added_attr_owner_property_2 = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            action=DiffAction.UPDATED,
+            previous_value=added_attr_owner_property_1.new_value,
+            new_value=str(uuid4()),
+        )
+        earlier_only_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_VALUE)
+        added_attribute_1 = EnrichedAttributeFactory.build(
+            name=added_attr_name,
+            action=DiffAction.ADDED,
+            properties={added_attr_owner_property_1, earlier_only_property},
+        )
+        later_only_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_SOURCE)
+        added_attribute_2 = EnrichedAttributeFactory.build(
+            name=added_attr_name, action=DiffAction.ADDED, properties={added_attr_owner_property_2, later_only_property}
+        )
+        attr_earlier_only = EnrichedAttributeFactory.build()
+        attr_later_only = EnrichedAttributeFactory.build()
+        earlier_node_1 = EnrichedNodeFactory.build(
+            action=DiffAction.ADDED, attributes={added_attribute_1, attr_earlier_only}, relationships=set()
+        )
+        later_node_1 = EnrichedNodeFactory.build(
+            uuid=earlier_node_1.uuid,
+            kind=earlier_node_1.kind,
+            action=DiffAction.UPDATED,
+            attributes={added_attribute_2, attr_later_only},
+            relationships=set(),
+        )
+        updated_attr_name = "length"
+        updated_attr_value_property_1 = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_VALUE,
+            action=DiffAction.UPDATED,
+            previous_value=str(uuid4()),
+            new_value=str(uuid4()),
+        )
+        updated_attr_value_property_2 = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_VALUE,
+            action=DiffAction.UPDATED,
+            previous_value=updated_attr_value_property_1.new_value,
+            new_value=str(uuid4()),
+        )
+        updated_attribute_1 = EnrichedAttributeFactory.build(
+            name=updated_attr_name,
+            action=DiffAction.UPDATED,
+            properties={updated_attr_value_property_1},
+        )
+        updated_attribute_2 = EnrichedAttributeFactory.build(
+            name=updated_attr_name, action=DiffAction.UPDATED, properties={updated_attr_value_property_2}
+        )
+        earlier_node_2 = EnrichedNodeFactory.build(
+            action=DiffAction.UPDATED, attributes={updated_attribute_1}, relationships=set()
+        )
+        later_node_2 = EnrichedNodeFactory.build(
+            uuid=earlier_node_2.uuid,
+            kind=earlier_node_2.kind,
+            action=DiffAction.UPDATED,
+            attributes={updated_attribute_2},
+            relationships=set(),
+        )
+
+        self.diff_root_1.nodes = {earlier_node_1, earlier_node_2}
+        self.diff_root_2.nodes = {later_node_1, later_node_2}
+
+        expected_added_combined_property = EnrichedDiffProperty(
+            property_type=added_attr_owner_property_2.property_type,
+            changed_at=added_attr_owner_property_2.changed_at,
+            previous_value=added_attr_owner_property_1.previous_value,
+            new_value=added_attr_owner_property_2.new_value,
+            action=DiffAction.ADDED,
+        )
+        expected_updated_combined_property = EnrichedDiffProperty(
+            property_type=updated_attr_value_property_2.property_type,
+            changed_at=updated_attr_value_property_2.changed_at,
+            previous_value=updated_attr_value_property_1.previous_value,
+            new_value=updated_attr_value_property_2.new_value,
+            action=DiffAction.UPDATED,
+        )
+        expected_added_combined_attr = EnrichedDiffAttribute(
+            name=added_attr_name,
+            changed_at=added_attribute_2.changed_at,
+            action=DiffAction.ADDED,
+            properties={earlier_only_property, later_only_property, expected_added_combined_property},
+        )
+        expected_updated_combined_attr = EnrichedDiffAttribute(
+            name=updated_attr_name,
+            changed_at=updated_attribute_2.changed_at,
+            action=DiffAction.UPDATED,
+            properties={expected_updated_combined_property},
+        )
+        expected_nodes = {
+            EnrichedDiffNode(
+                uuid=later_node_1.uuid,
+                kind=later_node_1.kind,
+                label=later_node_1.label,
+                changed_at=later_node_1.changed_at,
+                action=DiffAction.ADDED,
+                attributes={attr_earlier_only, attr_later_only, expected_added_combined_attr},
+            ),
+            EnrichedDiffNode(
+                uuid=later_node_2.uuid,
+                kind=later_node_2.kind,
+                label=later_node_2.label,
+                changed_at=later_node_2.changed_at,
+                action=DiffAction.UPDATED,
+                attributes={expected_updated_combined_attr},
+            ),
+        }
+        self.expected_combined.nodes = expected_nodes
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        self.expected_combined.uuid = combined.uuid
+        assert combined == self.expected_combined
