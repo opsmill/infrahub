@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
 from infrahub.core.query import Query
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class AttributeInfo(BaseModel):
     name: str
     node_kind: str
-    branch_support: str
+    branch_support: str = BranchSupportType.AWARE.value
 
 
 class AttributeRenameMigrationQuery(Query):
@@ -160,7 +160,7 @@ class AttributeRenameMigrationQuery(Query):
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid, "sub_query_create_all": sub_query_create_all}
         self.add_to_query(query)
 
-        if not self.branch.is_default:
+        if not (self.branch.is_default or self.branch.is_global):
             query = """
             CALL {
                 %(sub_query_update_all)s
