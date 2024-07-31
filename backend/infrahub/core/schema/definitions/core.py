@@ -434,12 +434,12 @@ core_models: dict[str, Any] = {
                         {
                             "name": RepositoryStatus.UNKNOWN.value,
                             "label": "Unknown",
-                            "description": "Status of the repository is unknow, mostlikely because it hasn't been synced yet",
+                            "description": "Status of the repository is unknow and mostlikely because it hasn't been synced yet",
                         },
                         {
                             "name": RepositoryStatus.INSYNC.value,
                             "label": "In Sync",
-                            "description": "Repository synced as completed successfully",
+                            "description": "Repository sync completed successfully",
                         },
                         {
                             "name": RepositoryStatus.SYNCING.value,
