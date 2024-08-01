@@ -103,6 +103,7 @@ class CoreGenericAccount(CoreNode):
     description: StringOptional
     account_type: Enum
     role: Enum
+    status: Enum
     tokens: RelationshipManager
 
 
@@ -517,6 +518,7 @@ class CoreGenericAccountSync(CoreNodeSync):
     description: StringOptional
     account_type: Enum
     role: Enum
+    status: Enum
     tokens: RelationshipManagerSync
 
 

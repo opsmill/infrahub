@@ -4,6 +4,7 @@ from infrahub.core.constants import (
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
     AccountRole,
+    AccountStatus,
     AccountType,
     AllowOverrideType,
     ArtifactStatus,
@@ -799,6 +800,12 @@ core_models: dict[str, Any] = {
                     "kind": "Text",
                     "default_value": AccountRole.READ_ONLY.value,
                     "enum": AccountRole.available_types(),
+                },
+                {
+                    "name": "status",
+                    "kind": "Text",
+                    "default_value": AccountStatus.ACTIVE.value,
+                    "enum": AccountStatus.available_types(),
                 },
             ],
             "relationships": [

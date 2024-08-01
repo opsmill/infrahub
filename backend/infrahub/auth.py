@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from infrahub import config, models
 from infrahub.core.account import validate_token
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -46,6 +46,12 @@ class AccountSession(BaseModel):
         return self.auth_type == AuthType.JWT
 
 
+async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
+    account: CoreGenericAccount = await NodeManager.get_one(db=db, id=account_id, raise_on_error=True)
+    if account.status.value.value != AccountStatus.ACTIVE:
+        raise AuthorizationError("This account has been deactivated")
+
+
 async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
@@ -68,6 +74,9 @@ async def authenticate_with_password(
         )
 
     account = response[0]
+    if account.status.value.value != AccountStatus.ACTIVE.value:
+        raise AuthorizationError("This account is not allowed to login")
+
     password = account.password.value
     valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), str(password or "").encode("UTF-8"))
     if not valid_credentials:
@@ -154,12 +163,12 @@ async def authentication_token(
     if api_key:
         return await validate_api_key(db=db, token=api_key)
     if jwt_token:
-        return await validate_jwt_access_token(token=jwt_token)
+        return await validate_jwt_access_token(db=db, token=jwt_token)
 
     return AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE)
 
 
-async def validate_jwt_access_token(token: str) -> AccountSession:
+async def validate_jwt_access_token(db: InfrahubDatabase, token: str) -> AccountSession:
     try:
         payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
         account_id = payload["sub"]
@@ -170,13 +179,15 @@ async def validate_jwt_access_token(token: str) -> AccountSession:
     except Exception:
         raise AuthorizationError("Invalid token") from None
 
+    await validate_active_account(db=db, account_id=str(account_id))
+
     if payload["type"] == "access":
         return AccountSession(account_id=account_id, role=role, session_id=session_id, auth_type=AuthType.JWT)
 
     raise AuthorizationError("Invalid token, current token is not an access token")
 
 
-def validate_jwt_refresh_token(token: str) -> models.RefreshTokenData:
+async def validate_jwt_refresh_token(db: InfrahubDatabase, token: str) -> models.RefreshTokenData:
     try:
         payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
         account_id = payload["sub"]
@@ -185,6 +196,8 @@ def validate_jwt_refresh_token(token: str) -> models.RefreshTokenData:
         raise AuthorizationError("Expired Signature") from None
     except Exception:
         raise AuthorizationError("Invalid token") from None
+
+    await validate_active_account(db=db, account_id=str(account_id))
 
     if payload["type"] == "refresh":
         return models.RefreshTokenData(account_id=account_id, session_id=session_id)
@@ -196,6 +209,8 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
     account_id, role = await validate_token(token=token, db=db)
     if not account_id:
         raise AuthorizationError("Invalid token")
+
+    await validate_active_account(db=db, account_id=str(account_id))
 
     return AccountSession(account_id=account_id, role=role, auth_type=AuthType.API)
 
