@@ -69,6 +69,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
         "MATCH (n3) WHERE n3.uuid in $mylist2",
         "MATCH (n4) WHERE n4.uuid in $myint",
         "CREATE (a)-[:HAS_VALUE $mydict ]->(av)",
+        "MATCH (n6) WHERE n4.uuid = $mydict.name",
     ]
 
     expected_query_lines = [
@@ -77,6 +78,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
         "MATCH (n3) WHERE n3.uuid in [1, 2, 3]",
         "MATCH (n4) WHERE n4.uuid in 198",
         'CREATE (a)-[:HAS_VALUE { name: "myprop", value: 12 } ]->(av)',
+        'MATCH (n6) WHERE n4.uuid = "myprop"',
     ]
 
     result = Query.insert_variables_in_query(query="\n".join(query_lines), variables=params)

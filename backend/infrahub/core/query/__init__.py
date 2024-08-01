@@ -433,8 +433,8 @@ class Query(ABC):
 
         return self.insert_variables_in_query(query=query_str, variables=self.params)
 
-    @staticmethod
-    def insert_variables_in_query(query: str, variables: dict) -> str:
+    @classmethod
+    def insert_variables_in_query(cls, query: str, variables: dict) -> str:
         """Search for all the variables in a Query string and replace each variable with its value."""
 
         def prep_value(v: Any) -> str:
@@ -444,6 +444,11 @@ class Query(ABC):
 
         for key, value in variables.items():
             if isinstance(value, dict):
+                # First try to insert individual element of the dict as var
+                sub_vars = {f"{key}.{sub_key}": sub_value for sub_key, sub_value in value.items()}
+                query = cls.insert_variables_in_query(query=query, variables=sub_vars)
+
+                # Then replace the entire object if nothing else was found
                 value_items = [f"{key1}: {prep_value(value1)}" for key1, value1 in value.items()]
                 value_str = "{ " + ", ".join(value_items) + " }"
                 query = query.replace(f"${key}", value_str)
