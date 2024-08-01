@@ -86,6 +86,12 @@ export const ProposedChangesPage = () => {
       );
     } catch (error) {
       console.error("Error while deleting proposed change:", error);
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message="An error occurred while deleting the proposed changes"
+        />
+      );
     }
   };
 
