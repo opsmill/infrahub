@@ -14,7 +14,7 @@ interface iProps {
   children?: ReactNode;
 }
 
-export default function ModalConfirm({
+export default function ModalDelete({
   title,
   description,
   onCancel,

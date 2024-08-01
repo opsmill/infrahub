@@ -1,7 +1,7 @@
 import { Button, BUTTON_TYPES } from "@/components/buttons/button";
 import { AddComment } from "@/components/conversations/add-comment";
 import { Thread } from "@/components/conversations/thread";
-import { Avatar, AVATAR_SIZE } from "@/components/display/avatar";
+import { Avatar } from "@/components/display/avatar";
 import { Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
 import SlideOver from "@/components/display/slide-over";
@@ -409,7 +409,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       created_by: (
         <Tooltip enabled content={proposedChangesDetails?.created_by?.node?.display_label}>
           <Avatar
-            size={AVATAR_SIZE.SMALL}
+            size={"sm"}
             name={proposedChangesDetails?.created_by?.node?.display_label}
             className="mr-2 bg-custom-blue-green"
           />
@@ -419,7 +419,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         <>
           {reviewers.map((reviewer: any, index: number) => (
             <Tooltip key={index} message={reviewer.display_label}>
-              <Avatar size={AVATAR_SIZE.SMALL} name={reviewer.display_label} className="mr-2" />
+              <Avatar size={"sm"} name={reviewer.display_label} className="mr-2" />
             </Tooltip>
           ))}
         </>
@@ -428,7 +428,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         <>
           {approvers.map((approver: any, index: number) => (
             <Tooltip key={index} message={approver.display_label}>
-              <Avatar size={AVATAR_SIZE.SMALL} name={approver.display_label} className="mr-2" />
+              <Avatar size={"sm"} name={approver.display_label} className="mr-2" />
             </Tooltip>
           ))}
         </>
