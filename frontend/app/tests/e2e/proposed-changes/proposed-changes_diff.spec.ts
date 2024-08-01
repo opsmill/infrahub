@@ -30,8 +30,8 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("check diff data", async () => {
       await page.getByText("Data").click();
-      await expect(page.getByText("Removed")).toBeVisible();
-      await expect(page.getByText("Added")).toBeVisible();
+      await expect(page.getByText("Removed").first()).toBeVisible();
+      await expect(page.getByText("Added").first()).toBeVisible();
       await expect(page.getByText("InfraPlatform").nth(1)).toBeVisible();
       await expect(page.getByText("Cisco IOS XR")).toBeVisible();
       await page.getByText("AddedInfraPlatformCisco IOS XR").click();
