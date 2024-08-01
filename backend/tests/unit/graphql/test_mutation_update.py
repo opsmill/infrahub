@@ -1107,7 +1107,7 @@ async def test_update_relationship_previously_deleted(
 
 async def test_update_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
     car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
-    car_schema.uniqueness_constraints = [["owner", "color"]]
+    car_schema.uniqueness_constraints = [["owner", "color__value"]]
 
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="Bruce Wayne", height=180)

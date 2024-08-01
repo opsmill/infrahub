@@ -147,7 +147,7 @@ It's possible to define multiple uniqueness constraints and each of them will be
 
 In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` guarantee that a car will unique based on the `owner` and the `model` of the car.
 
-`uniqueness_constraints` can be composed of N number of attribute or relationship of cardinality one:
+`uniqueness_constraints` can be composed of a list of N number of attribute or relationship of cardinality one:
 
 - For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future the plan is to allow additional metadata to be used as well.*
 - For a relationship, only the name of the relationship should be provided `<relationshipname>`. *Only relationship of cardinality one are supported and the relationship must be mandatory.*
@@ -162,7 +162,8 @@ nodes:
         unique: true
   - name: Car
     namespace: Example
-    uniqueness_constraints: ["owner", "model__value"]
+    uniqueness_constraints:
+      - ["owner", "model__value"]
     attributes:
       - name: model
         kind: Text
@@ -175,7 +176,7 @@ nodes:
 
 ### Human friendly identifier (hfid)
 
-In addition to the internal id automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitute a human friendly identifier (hfid).
+In addition to the internal ID automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitute a human friendly identifier (HFID).
 
 :::success Use Case
 
