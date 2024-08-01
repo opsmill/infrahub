@@ -24,6 +24,7 @@ query GetObjectRelationships_{{kind}}($offset: Int, $limit: Int) {
                 {{#if this.isAttribute}}
 
                 {{this.name}} {
+                  id
                   value
                   {{#if (eq this.kind "Dropdown")}}
                   color
@@ -41,6 +42,7 @@ query GetObjectRelationships_{{kind}}($offset: Int, $limit: Int) {
                     edges {
                   {{/if}}
                     node {
+                      id
                       display_label
                     }
                   {{#if this.paginated}}
