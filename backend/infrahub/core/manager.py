@@ -559,6 +559,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
         raise_on_error: Literal[False] = False,
     ) -> Optional[Any]: ...
 
@@ -576,6 +577,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
         raise_on_error: Literal[True] = True,
     ) -> Any: ...
 
@@ -592,6 +594,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
         raise_on_error: bool = False,
     ) -> Optional[Any]:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -603,7 +606,18 @@ class NodeManager:
         if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
 
-        filters = {node_schema.human_friendly_id[idx]: item for idx, item in enumerate(hfid)}
+        filters = {}
+        for key, item in zip(node_schema.human_friendly_id, hfid):
+            path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
+
+            if path.is_type_relationship:
+                rel_schema = path.related_schema
+                # Keep the relationship attribute path and parse it
+                path = rel_schema.parse_schema_path(
+                    path=key.split("__", maxsplit=1)[1], schema=registry.schema.get_schema_branch(name=branch.name)
+                )
+
+            filters[key] = path.attribute_schema.get_class().deserialize_from_string(item)
 
         items = await NodeManager.query(
             db=db,
@@ -617,6 +631,7 @@ class NodeManager:
             include_source=include_source,
             prefetch_relationships=prefetch_relationships,
             account=account,
+            branch_agnostic=branch_agnostic,
         )
 
         if len(items) < 1:
