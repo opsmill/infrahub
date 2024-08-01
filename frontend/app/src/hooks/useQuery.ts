@@ -12,7 +12,11 @@ import {
 import { useAtomValue } from "jotai";
 import usePagination from "./usePagination";
 
-const useQuery: typeof useApolloQuery = (QUERY, options?: OperationVariables) => {
+interface Options extends OperationVariables {
+  branch?: string;
+}
+
+const useQuery: typeof useApolloQuery = (QUERY, options?: Options) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [{ offset, limit }] = usePagination();
@@ -25,7 +29,7 @@ const useQuery: typeof useApolloQuery = (QUERY, options?: OperationVariables) =>
       limit,
     },
     context: {
-      uri: CONFIG.GRAPHQL_URL(branch?.name, date),
+      uri: CONFIG.GRAPHQL_URL(options?.branch || branch?.name, date),
     },
   });
 };

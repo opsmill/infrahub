@@ -22,7 +22,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
-import { ProposedChangesData } from "../proposed-changes/diff-summary";
+import { ProposedChangesDiffSummary } from "../proposed-changes/diff-summary";
 import { Button } from "@/components/buttons/button-primitive";
 import { useAuth } from "@/hooks/useAuth";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
@@ -148,8 +148,6 @@ export const DataDiff = forwardRef((props, ref) => {
 
       setDiff(diffDetails.diffs ?? []);
     } catch (err) {
-      console.error("Error when fethcing branches: ", err);
-
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
     }
 
@@ -193,7 +191,12 @@ export const DataDiff = forwardRef((props, ref) => {
 
       await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES"] });
     } catch (e) {
-      console.error("Something went wrong while updating the object:", e);
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={"An error occurred while approving the proposed changes"}
+        />
+      );
     }
 
     setIsLoadingApprove(false);
@@ -232,8 +235,6 @@ export const DataDiff = forwardRef((props, ref) => {
 
       await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES"] });
     } catch (error: any) {
-      console.log("error: ", error);
-
       toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
@@ -283,7 +284,12 @@ export const DataDiff = forwardRef((props, ref) => {
 
       await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES"] });
     } catch (e) {
-      console.error("Something went wrong while updating the object:", e);
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={"An error occurred while closing the proposed changes"}
+        />
+      );
     }
 
     setIsLoadingClose(false);
@@ -320,7 +326,7 @@ export const DataDiff = forwardRef((props, ref) => {
   return (
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
-        <ProposedChangesData branch={branch} />
+        <ProposedChangesDiffSummary branch={branch} timeFrom={proposedChangesDetails._updated_at} />
 
         <div className="flex gap-2">
           <Button

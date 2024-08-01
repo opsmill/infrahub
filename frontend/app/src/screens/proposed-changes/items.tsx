@@ -23,7 +23,7 @@ import { QSP } from "@/config/qsp";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ProposedChangesReviewers } from "./reviewers";
 import { ProposedChangesInfo } from "./item-info";
-import { ProposedChangesData } from "./diff-summary";
+import { ProposedChangesDiffSummary } from "./diff-summary";
 import { ProposedChangesCounter } from "./counter";
 import { getProposedChangesTasks } from "@/graphql/queries/proposed-changes/getProposedChangesTasks";
 import { getProposedChangesArtifacts } from "@/graphql/queries/proposed-changes/getProposedChangesArtifacts";
@@ -158,6 +158,7 @@ export const ProposedChangesPage = () => {
   ];
 
   const rows = nodes.map((node: any) => {
+    console.log("node: ", node);
     return {
       link: constructPath(`/proposed-changes/${node.id}`),
       values: {
@@ -171,7 +172,12 @@ export const ProposedChangesPage = () => {
             comments={node.comments.count}
           />
         ),
-        data: <ProposedChangesData branch={node.source_branch.value} />,
+        data: (
+          <ProposedChangesDiffSummary
+            branch={node.source_branch.value}
+            timeFrom={node.updated_at}
+          />
+        ),
         checks: <Badge className="rounded-full">{node.validations.count}</Badge>,
         tasks: (
           <ProposedChangesCounter id={node.id} query={getProposedChangesTasks} kind={TASK_OBJECT} />

@@ -1,7 +1,13 @@
 export const getProposedChangesDiffSummary = `
-query GET_PROPOSED_CHANGES_DIFF_SUMMARY($branch: String) {
-  DiffSummary(diff_from: $branch){
-    display_label
+query GET_PROPOSED_CHANGES_DIFF_SUMMARY($timeFrom: String) {
+  DiffSummary(time_from: $timeFrom){
+    elements{
+      summary{
+        added
+        updated
+        removed
+      }
+    }
   }
 }
 `;
