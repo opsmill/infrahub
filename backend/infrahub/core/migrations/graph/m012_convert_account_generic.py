@@ -9,6 +9,7 @@ from infrahub.core.query import Query, QueryType  # noqa: TCH001
 
 from ..query.attribute_rename import AttributeInfo, AttributeRenameMigrationQuery
 from ..query.node_duplicate import NodeDuplicateMigrationQuery, SchemaNodeInfo
+from ..query.relationship_duplicate import RelationshipDuplicateQuery, SchemaRelationshipInfo
 from ..query.schema_attribute_update import SchemaAttributeUpdateQuery
 from ..shared import GraphMigration
 
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
 
 # Schema migration
 # - AUTOMATIC : Add `CoreGenericAccount` to `inherit_from` value of `SchemaNode` with name value `Account`
-# - Rename `type` attribute to `account_type`
+# - DONE Rename `type` attribute to `account_type`
 # - Remove relationships for attribute that have moved to Generic
 
 
@@ -39,10 +40,12 @@ class Migration012RenameTypeAttributeData(AttributeRenameMigrationQuery):
         new_attr = AttributeInfo(
             name="account_type",
             node_kind="CoreAccount",
+            branch_support=BranchSupportType.AGNOSTIC.value,
         )
         previous_attr = AttributeInfo(
             name="type",
             node_kind="CoreAccount",
+            branch_support=BranchSupportType.AGNOSTIC.value,
         )
 
         branch = Branch(
@@ -128,12 +131,45 @@ class Migration012RenameTypeAttributeSchema(SchemaAttributeUpdateQuery):
         )
 
 
+class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery):
+    name = "migration_012_rename_rel_account_token_data"
+
+    def __init__(self, **kwargs: Any):
+        new_rel = SchemaRelationshipInfo(
+            name="coregenericaccount__internalaccounttoken",
+            branch_support=BranchSupportType.AGNOSTIC.value,
+            src_peer="CoreAccount",
+            dst_peer="InternalAccountToken",
+        )
+        previous_rel = SchemaRelationshipInfo(
+            name="coreaccount__internalaccounttoken",
+            branch_support=BranchSupportType.AGNOSTIC.value,
+            src_peer="CoreAccount",
+            dst_peer="InternalAccountToken",
+        )
+
+        branch = Branch(
+            name=GLOBAL_BRANCH_NAME,
+            status="OPEN",
+            description="Global Branch",
+            hierarchy_level=1,
+            is_global=True,
+            sync_with_git=False,
+        )
+
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=branch, **kwargs)
+
+
 class Migration012(GraphMigration):
     name: str = "012_convert_account_generic"
     queries: Sequence[type[Query]] = [
         Migration012RenameTypeAttributeData,
         Migration012RenameTypeAttributeSchema,
         Migration012AddLabel,
+        Migration012RenameRelationshipAccountTokenData,
     ]
     minimum_version: int = 11
 

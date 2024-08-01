@@ -4,13 +4,14 @@ from infrahub.core.constants import BranchSupportType, RelationshipCardinality, 
 from infrahub.core.migrations.graph.m012_convert_account_generic import (
     Migration012,
     Migration012AddLabel,
+    Migration012RenameRelationshipAccountTokenData,
     Migration012RenameTypeAttributeData,
     Migration012RenameTypeAttributeSchema,
 )
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot, internal_schema
 from infrahub.core.schema_manager import SchemaBranch
-from infrahub.core.utils import count_nodes
+from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 
 ACCOUNT_SCHEMA = NodeSchema(
@@ -31,6 +32,42 @@ ACCOUNT_SCHEMA = NodeSchema(
             label="Name",
             enum=["User", "Script", "Bot", "Git"],
             branch=BranchSupportType.AGNOSTIC,
+        ),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="tokens",
+            peer="InternalAccountToken",
+            kind=RelationshipKind.GENERIC,
+            identifier="coreaccount__internalaccounttoken",
+            cardinality=RelationshipCardinality.MANY,
+            branch=BranchSupportType.AGNOSTIC.value,
+            optional=True,
+        ),
+    ],
+)
+
+TOKEN_SCHEMA = NodeSchema(
+    name="AccountToken",
+    namespace="Internal",
+    branch=BranchSupportType.AGNOSTIC,
+    attributes=[
+        AttributeSchema(
+            name="name",
+            kind="Text",
+            label="Name",
+            branch=BranchSupportType.AGNOSTIC,
+        ),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="account",
+            peer="CoreAccount",
+            kind=RelationshipKind.GENERIC,
+            identifier="coreaccount__internalaccounttoken",
+            cardinality=RelationshipCardinality.ONE,
+            branch=BranchSupportType.AGNOSTIC.value,
+            optional=False,
         ),
     ],
 )
@@ -97,13 +134,25 @@ async def migration_012_data(db: InfrahubDatabase, reset_registry, default_branc
     schema_branch.load_schema(schema=schema)
     schema_branch.process()
 
-    node1 = await Node.init(db=db, schema=ACCOUNT_SCHEMA)
-    await node1.new(db=db, name="User1", type="User")
-    await node1.save(db=db)
+    user1 = await Node.init(db=db, schema=ACCOUNT_SCHEMA)
+    await user1.new(db=db, name="User1", type="User")
+    await user1.save(db=db)
 
-    node2 = await Node.init(db=db, schema=ACCOUNT_SCHEMA)
-    await node2.new(db=db, name="Script2", type="Script")
-    await node2.save(db=db)
+    user2 = await Node.init(db=db, schema=ACCOUNT_SCHEMA)
+    await user2.new(db=db, name="Script2", type="Script")
+    await user2.save(db=db)
+
+    token1 = await Node.init(db=db, schema=TOKEN_SCHEMA)
+    await token1.new(db=db, name="token1", account=user1)
+    await token1.save(db=db)
+
+    token2 = await Node.init(db=db, schema=TOKEN_SCHEMA)
+    await token2.new(db=db, name="token2", account=user1)
+    await token2.save(db=db)
+
+    token3 = await Node.init(db=db, schema=TOKEN_SCHEMA)
+    await token3.new(db=db, name="token3", account=user2)
+    await token3.save(db=db)
 
 
 @pytest.fixture
@@ -169,6 +218,27 @@ async def test_migration_012_rename_type_schema(
 
     nbr_attrs_value_after = await count_nodes(db=db, label="AttributeValue")
     assert nbr_attrs_value_after == nbr_attrs_value_before + 1
+
+
+async def test_migration_012_rename_relationship_data(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
+):
+    nbr_rels_before = await count_nodes(db=db, label="Relationship")
+    nbr_rels_related_before = await count_relationships(db=db, label="IS_RELATED")
+
+    query = await Migration012RenameRelationshipAccountTokenData.init(db=db)
+    await query.execute(db=db)
+    assert query.stats.get_counter(name="nodes_created") == 3
+
+    query = await Migration012RenameRelationshipAccountTokenData.init(db=db)
+    await query.execute(db=db)
+    assert query.stats.get_counter(name="nodes_created") == 0
+
+    nbr_rels_after = await count_nodes(db=db, label="Relationship")
+    nbr_rels_related_after = await count_relationships(db=db, label="IS_RELATED")
+
+    assert nbr_rels_after == nbr_rels_before + 3
+    assert nbr_rels_related_after == nbr_rels_related_before + (4 * 3)
 
 
 async def test_migration_012(
