@@ -130,7 +130,7 @@ services:
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/${INFRAHUB_DB_PASSWORD:-admin}
-      NEO4J_dbms_security_procedures_unrestricted: apoc.*"
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_dbms_security_auth__minimum__password__length: 4
     volumes:
       - "database_data:/data"
