@@ -34,7 +34,6 @@ export const ProposedChangeCreateForm = () => {
   const navigate = useNavigate();
 
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
-  console.log("getAllAccountsData: ", getAllAccountsData);
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
