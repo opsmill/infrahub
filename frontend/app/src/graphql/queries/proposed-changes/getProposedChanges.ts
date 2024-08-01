@@ -1,6 +1,6 @@
-import { gql } from "@/generated";
+import { gql } from "@apollo/client";
 
-export const GET_PROPOSED_CHANGES = gql(/* GraphQL */ `
+export const GET_PROPOSED_CHANGES = gql`
   query GET_PROPOSED_CHANGES($state: String, $search: String) {
     CoreProposedChange(state__value: $state, any__value: $search, partial_match: true) {
       count
@@ -65,4 +65,4 @@ export const GET_PROPOSED_CHANGES = gql(/* GraphQL */ `
       __typename
     }
   }
-`);
+`;

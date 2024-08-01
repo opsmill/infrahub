@@ -40,10 +40,13 @@ export const ProposedChangesPage = () => {
   const [search, setSearch] = useQueryParam(QSP.SEARCH, StringParam);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<tRow | undefined>();
 
-  const { loading, networkStatus, error, data, refetch } = useQuery(GET_PROPOSED_CHANGES, {
-    variables: { state: qspState, search },
-    notifyOnNetworkStatusChange: true,
-  });
+  const { loading, networkStatus, previousData, error, data, refetch } = useQuery(
+    GET_PROPOSED_CHANGES,
+    {
+      variables: { state: qspState, search },
+      notifyOnNetworkStatusChange: true,
+    }
+  );
   const [deleteProposedChange, { loading: isDeleteLoading }] = useMutation(DELETE_PROPOSED_CHANGE);
 
   if (error) {
@@ -52,15 +55,18 @@ export const ProposedChangesPage = () => {
     );
   }
 
-  const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT];
-  if (!proposedChangesData) return null;
-
-  const nodes = proposedChangesData.edges?.map((edge) => edge?.node).reverse();
-  if (!nodes) return null;
-
   if (networkStatus === NetworkStatus.loading && !data) {
     return <LoadingScreen />;
   }
+
+  const proposedChangesData = (data || previousData)?.[PROPOSED_CHANGES_OBJECT];
+  if (!proposedChangesData) {
+    return (
+      <ErrorScreen message="Something went wrong when displaying proposed changes. Try reloading the page." />
+    );
+  }
+
+  const nodes = proposedChangesData.edges?.map((edge) => edge?.node).reverse() ?? [];
 
   const submitDeleteProposedChange = async () => {
     if (!relatedRowToDelete?.values?.id) return;
