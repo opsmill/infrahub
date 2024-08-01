@@ -48,8 +48,6 @@ def get(
         print(str(exc))
         raise typer.Exit(1) from exc
 
-    # FIXME currently we are only querying the repo in the main branch,
-    # this will not work if a new repository is added in a branch first.
     client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
@@ -57,8 +55,14 @@ def get(
         print("Repository not found in the database.")
         raise typer.Exit(1)
 
-    print(f"username={repo.username.value}")
-    print(f"password={repo.password.value}")
+    if not repo.credential._id:
+        print("Repository doesn't have credentials defined.")
+        raise typer.Exit(1)
+
+    repo.credential.fetch()
+
+    print(f"username={repo.credential.peer.username.value}")
+    print(f"password={repo.credential.peer.password.value}")
 
 
 # pylint: disable=unused-argument

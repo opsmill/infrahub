@@ -374,21 +374,12 @@ ignore_errors = true
 module = "infrahub.message_bus.operations.refresh.webhook"
 ignore_errors = true
 
-
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.requests.artifact"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.generator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.requests.graphql_query_group"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.proposed_change"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

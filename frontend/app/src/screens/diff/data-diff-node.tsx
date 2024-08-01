@@ -121,7 +121,7 @@ export type tDataDiffNodeProps = {
 };
 
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
   // Branch from props is used to filter the changes to a specific branch

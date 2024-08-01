@@ -65,7 +65,7 @@ const constructChecksDictionnary = (checks: any[]) => {
 };
 
 export const DataDiff = forwardRef((props, ref) => {
-  const { branchName, proposedchange } = useParams();
+  const { "*": branchName, proposedchange } = useParams();
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const date = useAtomValue(datetimeAtom);

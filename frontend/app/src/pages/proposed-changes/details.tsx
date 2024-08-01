@@ -69,6 +69,10 @@ const ProposedChangesDetailsPage = () => {
   const { loading, error, data, refetch } = useQuery(query, {
     skip: !schemaData,
     notifyOnNetworkStatusChange: true,
+    variables: {
+      id: proposedchange,
+      nodeId: proposedchange, // Used for tasks, which is a different type
+    },
   });
 
   // TODO: refactor to not need the ref to refetch child query

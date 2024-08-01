@@ -14,7 +14,7 @@ export type tDataDiffNodePropertyProps = {
 export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
   const { property, path } = props;
 
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
 
   const { type, action, branch } = property;
 

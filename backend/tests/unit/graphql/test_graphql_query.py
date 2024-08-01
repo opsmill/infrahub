@@ -970,138 +970,6 @@ def _check_diff_for_branch_and_id(all_dicts: list[dict], branch_name: str, id: s
     return this_dict
 
 
-async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
-
-    p1_main = await Node.init(db=db, schema=person)
-    await p1_main.new(db=db, name="John", height=180)
-    await p1_main.save(db=db)
-    p2_main = await Node.init(db=db, schema=person)
-    await p2_main.new(db=db, name="Jane", height=170)
-    await p2_main.save(db=db)
-
-    c1_main = await Node.init(db=db, schema=car)
-    await c1_main.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1_main)
-    await c1_main.save(db=db)
-    c2_main = await Node.init(db=db, schema=car)
-    await c2_main.new(db=db, name="bolt", nbr_seats=4, is_electric=True, owner=p1_main)
-    await c2_main.save(db=db)
-    c3_main = await Node.init(db=db, schema=car)
-    await c3_main.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2_main)
-    await c3_main.save(db=db)
-
-    branch2 = await create_branch(branch_name="branch2", db=db)
-    await c1_main.delete(db=db)
-    p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
-    )
-    p1_branch2.name.value = "Jonathan"
-    await p1_branch2.save(db=db)
-    p2_main.name.value = "Jeanette"
-    await p2_main.save(db=db)
-    c2_main.name.value = "bolting"
-    await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
-    await c3_branch2.owner.update(data=p1_branch2.id, db=db)
-    await c3_branch2.save(db=db)
-
-    query = """
-    query {
-        DiffSummaryOld {
-            branch
-            node
-            kind
-            actions
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=branch2)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-    assert result.errors is None
-    assert result.data
-    diff_summary = result.data["DiffSummaryOld"]
-    assert len(diff_summary) == 7
-
-    assert {"branch": "main", "node": c1_main.id, "kind": "TestCar", "actions": ["removed"]} in diff_summary
-    assert {"branch": "main", "node": c2_main.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": c3_branch2.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "main", "node": p2_main.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": p1_branch2.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-
-
-async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
-
-    p1_main = await Node.init(db=db, schema=person)
-    await p1_main.new(db=db, name="John", height=180)
-    await p1_main.save(db=db)
-    p2_main = await Node.init(db=db, schema=person)
-    await p2_main.new(db=db, name="Jane", height=170)
-    await p2_main.save(db=db)
-
-    c1_main = await Node.init(db=db, schema=car)
-    await c1_main.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1_main)
-    await c1_main.save(db=db)
-    c2_main = await Node.init(db=db, schema=car)
-    await c2_main.new(db=db, name="bolt", nbr_seats=4, is_electric=True, owner=p1_main)
-    await c2_main.save(db=db)
-    c3_main = await Node.init(db=db, schema=car)
-    await c3_main.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2_main)
-    await c3_main.save(db=db)
-
-    branch2 = await create_branch(branch_name="branch2", db=db)
-    await c1_main.delete(db=db)
-    p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
-    )
-    p1_branch2.name.value = "Jonathan"
-    await p1_branch2.save(db=db)
-    p2_main.name.value = "Jeanette"
-    await p2_main.save(db=db)
-    c2_main.name.value = "bolting"
-    await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
-    await c3_branch2.owner.update(data=p1_branch2.id, db=db)
-    await c3_branch2.save(db=db)
-
-    query = """
-    query {
-        DiffSummaryOld {
-            branch
-            node
-            kind
-            actions
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=branch2)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-    assert result.errors is None
-    assert result.data
-    diff_summary = result.data["DiffSummaryOld"]
-    assert len(diff_summary) == 7
-
-    assert {"branch": "main", "node": c1_main.id, "kind": "TestCar", "actions": ["removed"]} in diff_summary
-    assert {"branch": "main", "node": c2_main.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": c3_branch2.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "main", "node": p2_main.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": p1_branch2.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-
-
 async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
@@ -1277,6 +1145,59 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     assert cars_element["action"] == "ADDED"
     assert len(cars_element["peers"]) == 1
     assert cars_element["peers"][0]["action"] == "ADDED"
+
+
+async def test_diffsummary_on_default_branch(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+    person = registry.schema.get(name="TestPerson")
+
+    before_create = Timestamp()
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+    p2 = await Node.init(db=db, schema=person)
+    await p2.new(db=db, name="Jane", height=170)
+    await p2.save(db=db)
+
+    query = """
+        query DiffSummaries($time_from: String) {
+            DiffSummary(time_from: $time_from) {
+                branch
+                id
+                kind
+                action
+            }
+        }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "time_from is required on default branch"
+
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"time_from": before_create.to_string()},
+    )
+    assert result.errors is None
+    assert result.data
+    summaries = result.data["DiffSummary"]
+    assert len(summaries) == 2
+    assert {"branch": default_branch.name, "kind": "TestPerson", "id": p1.get_id(), "action": "ADDED"} in summaries
+    assert {"branch": default_branch.name, "kind": "TestPerson", "id": p2.get_id(), "action": "ADDED"} in summaries
 
 
 async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema):

@@ -84,6 +84,12 @@ class CoreComment(CoreNode):
     created_by: RelationshipManager
 
 
+class CoreCredential(CoreNode):
+    name: String
+    label: StringOptional
+    description: StringOptional
+
+
 class CoreGenericAccount(CoreNode):
     name: String
     password: HashedPassword
@@ -98,9 +104,9 @@ class CoreGenericRepository(CoreNode):
     name: String
     description: StringOptional
     location: String
-    username: StringOptional
-    password: StringOptional
     admin_status: Dropdown
+    status: Dropdown
+    credential: RelationshipManager
     tags: RelationshipManager
     transformations: RelationshipManager
     queries: RelationshipManager
@@ -344,6 +350,11 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
 
 class CoreObjectThread(CoreThread):
     object_path: String
+
+
+class CorePasswordCredential(CoreCredential):
+    username: StringOptional
+    password: StringOptional
 
 
 class CoreProposedChange(CoreTaskTarget):

@@ -44,6 +44,7 @@ test.describe("/proposed-changes checks", () => {
     await page.goto("/proposed-changes");
     await page
       .getByRole("link", { name: "pc-checks 0 atl1-delete-" })
+      .first()
       .locator("../..")
       .getByTestId("delete-row-button")
       .click();

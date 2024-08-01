@@ -22,7 +22,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const { element } = props;
   console.log("element: ", element);
 
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
 
   const { name, change, path } = element;
 

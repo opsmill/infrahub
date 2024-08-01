@@ -23,7 +23,7 @@ from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, Pro
 from infrahub.core.schema_manager import SchemaBranch, SchemaNamespace, SchemaUpdateValidationResult  # noqa: TCH001
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import MigrationError, PermissionDeniedError
+from infrahub.exceptions import MigrationError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -85,7 +85,7 @@ class SchemaLoadAPI(SchemaRoot):
     version: str
 
 
-class SchemasLoadAPI(SchemaRoot):
+class SchemasLoadAPI(BaseModel):
     schemas: list[SchemaLoadAPI]
 
 
@@ -244,7 +244,7 @@ async def load_schema(
         errors += schema.validate_namespaces()
 
     if errors:
-        raise PermissionDeniedError(", ".join(errors))
+        raise SchemaNotValidError(message=", ".join(errors))
 
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
@@ -330,7 +330,7 @@ async def check_schema(
         errors += schema.validate_namespaces()
 
     if errors:
-        raise PermissionDeniedError(", ".join(errors))
+        raise SchemaNotValidError(message=", ".join(errors))
 
     branch_schema = registry.schema.get_schema_branch(name=branch.name)
 

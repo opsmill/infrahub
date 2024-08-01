@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
 
 export const getProposedChanges = Handlebars.compile(`
-query GET_PROPOSED_CHANGES {
-  {{kind}}(ids: ["{{id}}"]) {
+query GET_PROPOSED_CHANGES($id: ID, $nodeId: String, $state: String) {
+  {{kind}}(ids: [$id], state__value: $state) {
     count
     edges {
       node {
@@ -61,7 +61,7 @@ query GET_PROPOSED_CHANGES {
 
   {{#if taskKind}}
 
-  {{taskKind}}(related_node__ids: ["{{id}}"]) {
+  {{taskKind}}(related_node__ids: [$nodeId]) {
     count
   }
 

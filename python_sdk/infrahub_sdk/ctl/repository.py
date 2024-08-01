@@ -84,13 +84,17 @@ async def add(
             "name": {"value": name},
             "location": {"value": location},
             "description": {"value": description},
-            "username": {"value": username},
-            "password": {"value": password},
             "commit": {"value": commit},
         },
     }
 
     client = await initialize_client()
+
+    if username:
+        credential = await client.create(kind="CorePasswordCredential", name=name, username=username, password=password)
+        await credential.save()
+        input_data["data"]["credential"] = {"id": credential.id}
+
     query = Mutation(
         mutation="CoreReadOnlyRepositoryCreate" if read_only else "CoreRepositoryCreate",
         input_data=input_data,

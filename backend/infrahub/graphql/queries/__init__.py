@@ -1,7 +1,6 @@
 from .account import AccountToken
 from .branch import BranchQueryList
 from .diff.diff import DiffSummary
-from .diff.old import DiffSummaryOld
 from .internal import InfrahubInfo
 from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
 from .relationship import Relationship
@@ -14,7 +13,6 @@ __all__ = [
     "AccountToken",
     "BranchQueryList",
     "DiffSummary",
-    "DiffSummaryOld",
     "InfrahubInfo",
     "InfrahubSearchAnywhere",
     "InfrahubStatus",

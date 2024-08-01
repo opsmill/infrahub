@@ -14,7 +14,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { DataDiffNode } from "./data-diff-node";
 
 export const SchemaDiff = forwardRef((props, ref) => {
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);

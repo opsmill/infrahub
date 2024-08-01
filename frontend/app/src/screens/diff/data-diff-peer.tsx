@@ -42,7 +42,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     name,
   } = props;
 
-  const { branchName } = useParams();
+  const { "*": branchName } = useParams();
   const navigate = useNavigate();
 
   // Relationship mayny: action, changed_at, branches, branches, peer, properties, summary

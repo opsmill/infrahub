@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     ProposedChangeState,
     RelationshipDeleteBehavior,
     RepositoryAdminStatus,
+    RepositoryStatus,
     Severity,
     ValidatorConclusion,
     ValidatorState,
@@ -401,20 +402,6 @@ core_models: dict[str, Any] = {
                     "allow_override": AllowOverrideType.NONE,
                 },
                 {
-                    "name": "username",
-                    "kind": "Text",
-                    "optional": True,
-                    "branch": BranchSupportType.AGNOSTIC.value,
-                    "order_weight": 4000,
-                },
-                {
-                    "name": "password",
-                    "kind": "Password",
-                    "optional": True,
-                    "branch": BranchSupportType.AGNOSTIC.value,
-                    "order_weight": 5000,
-                },
-                {
                     "name": "admin_status",
                     "kind": "Dropdown",
                     "choices": [
@@ -440,8 +427,55 @@ core_models: dict[str, Any] = {
                     "order_weight": 6000,
                     "allow_override": AllowOverrideType.NONE,
                 },
+                {
+                    "name": "status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": RepositoryStatus.UNKNOWN.value,
+                            "label": "Unknown",
+                            "description": "Status of the repository is unknow and mostlikely because it hasn't been synced yet",
+                        },
+                        {
+                            "name": RepositoryStatus.INSYNC.value,
+                            "label": "In Sync",
+                            "description": "Repository sync completed successfully",
+                        },
+                        {
+                            "name": RepositoryStatus.SYNCING.value,
+                            "label": "Syncing",
+                            "description": "Synchronization is in progress",
+                        },
+                        {
+                            "name": RepositoryStatus.ERROR_CRED.value,
+                            "label": "Credential Error",
+                            "description": "Repository can't be synced due to some credential error(s)",
+                        },
+                        {
+                            "name": RepositoryStatus.ERROR_IMPORT.value,
+                            "label": "Import Error",
+                            "description": "Repository can't be synced due to some import error(s)",
+                        },
+                        {
+                            "name": RepositoryStatus.ERROR.value,
+                            "label": "Error",
+                            "description": "Repository can't be synced due to an unknown error",
+                        },
+                    ],
+                    "optional": False,
+                    "branch": BranchSupportType.LOCAL.value,
+                    "default_value": RepositoryStatus.UNKNOWN.value,
+                    "order_weight": 7000,
+                },
             ],
             "relationships": [
+                {
+                    "name": "credential",
+                    "peer": InfrahubKind.CREDENTIAL,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "one",
+                },
                 {
                     "name": "tags",
                     "peer": InfrahubKind.TAG,
@@ -768,6 +802,24 @@ core_models: dict[str, Any] = {
                 {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
             ],
         },
+        {
+            "name": "Credential",
+            "namespace": "Core",
+            "description": "Credential",
+            "include_in_menu": False,
+            "label": "Credential",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["label__value"],
+            "human_friendly_id": ["name__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "documentation": "/topics/auth",
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
+                {"name": "label", "kind": "Text", "optional": True, "order_weight": 2000},
+                {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
+            ],
+        },
     ],
     "nodes": [
         {
@@ -876,6 +928,32 @@ core_models: dict[str, Any] = {
                     "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": False,
                     "cardinality": "one",
+                },
+            ],
+        },
+        {
+            "name": "PasswordCredential",
+            "namespace": "Core",
+            "description": "Username/Password based credential",
+            "include_in_menu": False,
+            "label": "Username / Password",
+            "generate_profile": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": [InfrahubKind.CREDENTIAL],
+            "attributes": [
+                {
+                    "name": "username",
+                    "kind": "Text",
+                    "optional": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 6000,
+                },
+                {
+                    "name": "password",
+                    "kind": "Password",
+                    "optional": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 7000,
                 },
             ],
         },

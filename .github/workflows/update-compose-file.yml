@@ -29,6 +29,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -37,15 +39,13 @@ jobs:
         run: |
           pipx install poetry
           poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
       - name: "Install Package"
         run: "poetry install --all-extras"
 
       - name: "Update Docker Env variable in docker-compose.yml file"
-        run: "invoke dev.gen-config-env -u"
+        run: "poetry run invoke dev.gen-config-env -u"
       - name: "Update Infrahub Image Version in docker-compose.yml file"
-        run: "invoke dev.update-docker-compose"
-
+        run: "poetry run invoke dev.update-docker-compose"
       - name: Commit docker-compose.yml
         uses: github-actions-x/commit@v2.9
         with:
