@@ -8,10 +8,9 @@ import LoadingScreen from "../loading-screen/loading-screen";
 
 type tProposedChangesDiffSummary = {
   branch: string;
-  timeFrom: string;
 };
 
-export const ProposedChangesDiffSummary = ({ branch, timeFrom }: tProposedChangesDiffSummary) => {
+export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSummary) => {
   const query = gql`
     ${getProposedChangesDiffSummary}
   `;
@@ -21,7 +20,6 @@ export const ProposedChangesDiffSummary = ({ branch, timeFrom }: tProposedChange
     error,
     data = {},
   } = useQuery(query, {
-    variables: { timeFrom },
     branch,
   });
 

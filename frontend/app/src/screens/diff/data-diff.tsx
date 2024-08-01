@@ -326,7 +326,7 @@ export const DataDiff = forwardRef((props, ref) => {
   return (
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
-        <ProposedChangesDiffSummary branch={branch} timeFrom={proposedChangesDetails._updated_at} />
+        <ProposedChangesDiffSummary branch={branch} />
 
         <div className="flex gap-2">
           <Button

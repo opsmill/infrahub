@@ -158,7 +158,6 @@ export const ProposedChangesPage = () => {
   ];
 
   const rows = nodes.map((node: any) => {
-    console.log("node: ", node);
     return {
       link: constructPath(`/proposed-changes/${node.id}`),
       values: {
