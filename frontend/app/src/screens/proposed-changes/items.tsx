@@ -171,12 +171,7 @@ export const ProposedChangesPage = () => {
             comments={node.comments.count}
           />
         ),
-        data: (
-          <ProposedChangesDiffSummary
-            branch={node.source_branch.value}
-            timeFrom={node.updated_at}
-          />
-        ),
+        data: <ProposedChangesDiffSummary branch={node.source_branch.value} />,
         checks: <Badge className="rounded-full">{node.validations.count}</Badge>,
         tasks: (
           <ProposedChangesCounter id={node.id} query={getProposedChangesTasks} kind={TASK_OBJECT} />
