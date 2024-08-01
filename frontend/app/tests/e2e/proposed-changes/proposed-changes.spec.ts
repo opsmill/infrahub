@@ -45,6 +45,7 @@ test.describe("/proposed-changes", () => {
       test.describe.configure({ mode: "serial" });
 
       const pcName = "pc-e2e";
+      const pcNameEdit = "pc-e2e-edit";
       const pcBranchName = "main-copy-for-pc-e2e";
 
       test.beforeAll(async ({ browser }) => {
@@ -90,7 +91,7 @@ test.describe("/proposed-changes", () => {
 
         await test.step("edit proposed change reviewers", async () => {
           await page.getByRole("button", { name: "Edit" }).click();
-          await page.getByLabel("Name").fill(pcName + "edit");
+          await page.getByLabel("Name").fill(pcNameEdit);
           await page
             .getByTestId("side-panel-container")
             .getByTestId("codemirror-editor")
@@ -101,7 +102,7 @@ test.describe("/proposed-changes", () => {
           await page.getByRole("button", { name: "Save" }).click();
           await expect(page.getByText("ProposedChange updated")).toBeVisible();
 
-          await expect(page.getByText("Name" + pcName + "edit")).toBeVisible();
+          await expect(page.getByText("Name" + pcNameEdit)).toBeVisible();
           await page.getByText("DescriptionMy description edit").click();
           await expect(page.getByText("ReviewersAT")).toBeVisible();
         });
@@ -109,10 +110,7 @@ test.describe("/proposed-changes", () => {
 
       test.fixme("merged proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
-        await page
-          .getByText(pcName + "edit", { exact: true })
-          .first()
-          .click();
+        await page.getByText(pcNameEdit, { exact: true }).first().click();
 
         await test.step("merge proposed change and update UI", async () => {
           await page.getByRole("button", { name: "Merge" }).click();
@@ -129,13 +127,13 @@ test.describe("/proposed-changes", () => {
       test("delete proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page
-          .getByRole("link", { name: `${pcName} 0 ${pcBranchName}` })
+          .getByRole("link", { name: `${pcNameEdit} 0 ${pcBranchName}` })
           .locator("../..")
           .getByTestId("delete-row-button")
           .click();
         await expect(page.getByTestId("modal-delete")).toBeVisible();
         await page.getByTestId("modal-delete-confirm").click();
-        await expect(page.getByText(`Proposed changes '${pcName}' deleted`)).toBeVisible();
+        await expect(page.getByText(`Proposed changes '${pcNameEdit}' deleted`)).toBeVisible();
       });
     });
   });
