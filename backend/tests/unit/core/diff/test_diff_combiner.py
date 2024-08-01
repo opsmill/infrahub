@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -307,7 +308,9 @@ class TestDiffCombiner:
         old_peer_id = str(uuid4())
         intermediate_peer_id = str(uuid4())
         new_peer_id = str(uuid4())
-        early_only_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_OWNER)
+        early_only_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER, action=DiffAction.UPDATED
+        )
         early_peer_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_RELATED,
             action=DiffAction.UPDATED,
@@ -320,14 +323,19 @@ class TestDiffCombiner:
             previous_value=intermediate_peer_id,
             new_value=new_peer_id,
         )
-        later_only_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_SOURCE)
+        later_only_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_SOURCE, action=DiffAction.UPDATED
+        )
         early_element = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED,
             peer_id=intermediate_peer_id,
             properties={early_only_property, early_peer_property},
         )
         later_element = EnrichedRelationshipElementFactory.build(
-            action=DiffAction.UPDATED, peer_id=new_peer_id, properties={later_only_property, later_peer_property}
+            action=DiffAction.UPDATED,
+            peer_id=new_peer_id,
+            changed_at=early_element.changed_at.add_delta(minutes=1),
+            properties={later_only_property, later_peer_property},
         )
         early_relationship = EnrichedRelationshipGroupFactory.build(
             name=relationship_name, action=DiffAction.ADDED, relationships={early_element}, nodes=set()
@@ -525,4 +533,101 @@ class TestDiffCombiner:
 
         self.expected_combined.uuid = combined.uuid
 
+        assert combined == self.expected_combined
+
+    async def test_unchanged_parents_correctly_updated(self):
+        child_node_uuid = str(uuid4())
+        relationship_name = "related-things"
+        child_node_1 = EnrichedNodeFactory.build(
+            uuid=child_node_uuid, kind="ThisKind", action=DiffAction.UPDATED, relationships=set()
+        )
+        child_node_2 = EnrichedNodeFactory.build(
+            uuid=child_node_uuid, kind="ThisKind", action=DiffAction.UPDATED, relationships=set()
+        )
+        parent_rel_1 = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name, relationships=set(), nodes={child_node_1}, action=DiffAction.UNCHANGED
+        )
+        parent_rel_2 = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name, relationships=set(), nodes={child_node_2}, action=DiffAction.UNCHANGED
+        )
+        parent_node_1 = EnrichedNodeFactory.build(
+            action=DiffAction.UNCHANGED, attributes=set(), relationships={parent_rel_1}
+        )
+        parent_node_2 = EnrichedNodeFactory.build(
+            action=DiffAction.UNCHANGED, attributes=set(), relationships={parent_rel_2}
+        )
+        self.diff_root_1.nodes = {parent_node_1, child_node_1}
+        self.diff_root_2.nodes = {parent_node_2, child_node_2}
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        expected_child_node = EnrichedDiffNode(
+            uuid=child_node_uuid,
+            kind=child_node_2.kind,
+            label=child_node_2.label,
+            changed_at=child_node_2.changed_at,
+            action=DiffAction.UPDATED,
+            attributes=child_node_1.attributes | child_node_2.attributes,
+            relationships=set(),
+        )
+        expected_relationship = EnrichedDiffRelationship(
+            name=relationship_name,
+            label=parent_rel_2.label,
+            changed_at=parent_rel_2.changed_at,
+            action=DiffAction.UNCHANGED,
+            relationships=set(),
+            nodes={expected_child_node},
+        )
+        expected_parent_node = replace(parent_node_2)
+        expected_parent_node.relationships = {expected_relationship}
+        self.expected_combined.uuid = combined.uuid
+        self.expected_combined.nodes = {expected_parent_node, expected_child_node}
+        assert combined == self.expected_combined
+
+    async def test_updated_parents_correctly_updated(self):
+        child_node_uuid = str(uuid4())
+        relationship_name = "related-things"
+        child_node_1 = EnrichedNodeFactory.build(uuid=child_node_uuid, action=DiffAction.UPDATED, relationships=set())
+        child_node_2 = EnrichedNodeFactory.build(uuid=child_node_uuid, action=DiffAction.UPDATED, relationships=set())
+        parent_element_1 = EnrichedRelationshipElementFactory.build()
+        parent_rel_1 = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name, relationships=parent_element_1, nodes={child_node_1}, action=DiffAction.UPDATED
+        )
+        parent_rel_2 = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name, relationships=set(), nodes={child_node_2}, action=DiffAction.UNCHANGED
+        )
+        parent_node_1 = EnrichedNodeFactory.build(action=DiffAction.UPDATED, relationships={parent_rel_1})
+        parent_node_2 = EnrichedNodeFactory.build(
+            action=DiffAction.UNCHANGED, attributes=set(), relationships={parent_rel_2}
+        )
+        self.diff_root_1.nodes = {parent_node_1, child_node_1}
+        self.diff_root_2.nodes = {parent_node_2, child_node_2}
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        expected_child_node = EnrichedDiffNode(
+            uuid=child_node_uuid,
+            kind=child_node_2.kind,
+            label=child_node_2.label,
+            changed_at=child_node_2.changed_at,
+            action=DiffAction.UPDATED,
+            attributes=child_node_1.attributes | child_node_2.attributes,
+            relationships=set(),
+        )
+        expected_parent_relationship = EnrichedDiffRelationship(
+            name=relationship_name,
+            label=parent_rel_2.label,
+            changed_at=parent_rel_2.changed_at,
+            action=DiffAction.UNCHANGED,
+            relationships=set(),
+            nodes={expected_child_node},
+        )
+        expected_former_parent_relationship = parent_rel_1
+        expected_former_parent_relationship.nodes = set()
+        expected_parent_node = parent_node_2
+        expected_parent_node.relationships = {expected_parent_relationship}
+        expected_former_parent_node = parent_node_1
+        expected_former_parent_node.relationships = {expected_former_parent_relationship}
+        self.expected_combined.uuid = combined.uuid
+        self.expected_combined.nodes = {expected_parent_node, expected_child_node, expected_former_parent_node}
         assert combined == self.expected_combined

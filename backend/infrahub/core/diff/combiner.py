@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Iterable
 from uuid import uuid4
@@ -24,7 +25,8 @@ class NodePair:
 class DiffCombiner:
     def __init__(self, schema_manager: SchemaManager) -> None:
         self.schema_manager = schema_manager
-        self._child_parent_uuid_map: dict[str, str] = {}
+        # {child_uuid: (parent_uuid, parent_rel_name)}
+        self._child_parent_uuid_map: dict[str, tuple[str, str]] = {}
         self._parent_node_uuids: set[str] = set()
         self._earlier_nodes_by_uuid: dict[str, EnrichedDiffNode] = {}
         self._later_nodes_by_uuid: dict[str, EnrichedDiffNode] = {}
@@ -42,9 +44,9 @@ class DiffCombiner:
             for node in diff_root.nodes:
                 for rel in node.relationships:
                     for child_node in rel.nodes:
-                        self._child_parent_uuid_map[child_node.uuid] = node.uuid
+                        self._child_parent_uuid_map[child_node.uuid] = (node.uuid, rel.name)
         # UUIDs of all the parents, removing the stale parents from the earlier diff
-        self._parent_node_uuids = set(self._child_parent_uuid_map.values())
+        self._parent_node_uuids = {parent_tuple[0] for parent_tuple in self._child_parent_uuid_map.values()}
         self._earlier_nodes_by_uuid = {n.uuid: n for n in earlier_diff.nodes}
         self._later_nodes_by_uuid = {n.uuid: n for n in later_diff.nodes}
         self._common_node_uuids = set(self._earlier_nodes_by_uuid.keys()) & set(self._later_nodes_by_uuid.keys())
@@ -65,7 +67,7 @@ class DiffCombiner:
             if (
                 earlier_node.action is DiffAction.UNCHANGED
                 and (later_node is None or later_node.action is DiffAction.UNCHANGED)
-                and earlier_node not in self._parent_node_uuids
+                and earlier_node.uuid not in self._parent_node_uuids
             ):
                 continue
             if later_node is None:
@@ -110,7 +112,7 @@ class DiffCombiner:
         combined_properties: set[EnrichedDiffProperty] = set()
         for earlier_property in earlier_properties:
             if earlier_property.property_type not in common_property_types:
-                combined_properties.add(earlier_property)
+                combined_properties.add(deepcopy(earlier_property))
                 continue
             later_property = later_props_by_type[earlier_property.property_type]
             if not self._should_include(earlier=earlier_property.action, later=later_property.action):
@@ -123,7 +125,9 @@ class DiffCombiner:
                 action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
             )
             combined_properties.add(combined_property)
-        combined_properties |= {prop for prop in later_properties if prop.property_type not in common_property_types}
+        combined_properties |= {
+            deepcopy(prop) for prop in later_properties if prop.property_type not in common_property_types
+        }
         return combined_properties
 
     def _combine_attributes(
@@ -135,7 +139,7 @@ class DiffCombiner:
         combined_attributes: set[EnrichedDiffAttribute] = set()
         for earlier_attribute in earlier_attributes:
             if earlier_attribute.name not in common_attr_names:
-                combined_attributes.add(earlier_attribute)
+                combined_attributes.add(deepcopy(earlier_attribute))
                 continue
             later_attribute = later_attrs_by_name[earlier_attribute.name]
             if not self._should_include(earlier=earlier_attribute.action, later=later_attribute.action):
@@ -150,19 +154,19 @@ class DiffCombiner:
                 ),
             )
             combined_attributes.add(combined_attribute)
-        combined_attributes |= {attribute for attribute in later_attributes if attribute.name not in common_attr_names}
+        combined_attributes |= {
+            deepcopy(attribute) for attribute in later_attributes if attribute.name not in common_attr_names
+        }
         return combined_attributes
 
     def _combine_cardinality_one_relationship_elements(
         self, elements: Iterable[EnrichedDiffSingleRelationship]
     ) -> EnrichedDiffSingleRelationship:
         ordered_elements = sorted(elements, key=lambda e: e.changed_at)
-        if len(ordered_elements) == 1:
-            return next(iter(elements))
+        if len(ordered_elements) < 2:
+            return deepcopy(next(iter(elements)))
         combined_action = ordered_elements[0].action
-        combined_properties = self._combine_properties(
-            earlier_properties=ordered_elements[0].properties, later_properties=ordered_elements[1].properties
-        )
+        combined_properties = ordered_elements[0].properties
         for element in ordered_elements[1:]:
             combined_action = self._combine_actions(earlier=combined_action, later=element.action)
             combined_properties = self._combine_properties(
@@ -185,7 +189,7 @@ class DiffCombiner:
         combined_elements: set[EnrichedDiffSingleRelationship] = set()
         for earlier_element in earlier_elements:
             if earlier_element.peer_id not in common_peer_ids:
-                combined_elements.add(earlier_element)
+                combined_elements.add(deepcopy(earlier_element))
                 continue
             later_element = later_elements_by_peer_id[earlier_element.peer_id]
             if not self._should_include(earlier=earlier_element.action, later=later_element.action):
@@ -200,7 +204,7 @@ class DiffCombiner:
             )
             combined_elements.add(combined_element)
         combined_elements |= {
-            later_element for later_element in later_elements if later_element.peer_id not in common_peer_ids
+            deepcopy(later_element) for later_element in later_elements if later_element.peer_id not in common_peer_ids
         }
         return combined_elements
 
@@ -217,7 +221,9 @@ class DiffCombiner:
         combined_relationships: set[EnrichedDiffRelationship] = set()
         for earlier_relationship in earlier_relationships:
             if earlier_relationship.name not in common_rel_names:
-                combined_relationships.add(earlier_relationship)
+                copied = deepcopy(earlier_relationship)
+                copied.nodes = set()
+                combined_relationships.add(copied)
                 continue
             relationship_schema = node_schema.get_relationship(name=earlier_relationship.name)
             is_cardinality_one = relationship_schema.cardinality is RelationshipCardinality.ONE
@@ -241,9 +247,12 @@ class DiffCombiner:
                 nodes=set(),
             )
             combined_relationships.add(combined_relationship)
-        combined_relationships |= {
-            later_rel for later_rel in later_relationships if later_rel.name not in common_rel_names
-        }
+        for later_relationship in later_relationships:
+            if later_relationship.name in common_rel_names:
+                continue
+            copied = deepcopy(later_relationship)
+            copied.nodes = set()
+            combined_relationships.add(copied)
         return combined_relationships
 
     def _combine_nodes(self, node_pairs: list[NodePair]) -> set[EnrichedDiffNode]:
@@ -251,11 +260,17 @@ class DiffCombiner:
         for node_pair in node_pairs:
             if node_pair.earlier is None:
                 if node_pair.later is not None:
-                    combined_nodes.add(node_pair.later)
+                    copied = deepcopy(node_pair.later)
+                    for rel in copied.relationships:
+                        rel.nodes = set()
+                    combined_nodes.add(copied)
                 continue
             if node_pair.later is None:
                 if node_pair.earlier is not None:
-                    combined_nodes.add(node_pair.earlier)
+                    copied = deepcopy(node_pair.earlier)
+                    for rel in copied.relationships:
+                        rel.nodes = set()
+                    combined_nodes.add(copied)
                 continue
             combined_attributes = self._combine_attributes(
                 earlier_attributes=node_pair.earlier.attributes, later_attributes=node_pair.later.attributes
@@ -279,12 +294,21 @@ class DiffCombiner:
             )
         return combined_nodes
 
+    def _link_child_nodes(self, nodes: Iterable[EnrichedDiffNode]) -> None:
+        nodes_by_uuid: dict[str, EnrichedDiffNode] = {n.uuid: n for n in nodes}
+        for child_node in nodes_by_uuid.values():
+            if child_node.uuid not in self._child_parent_uuid_map:
+                continue
+            parent_uuid, parent_rel_name = self._child_parent_uuid_map[child_node.uuid]
+            parent_node = nodes_by_uuid[parent_uuid]
+            parent_rel = parent_node.get_relationship(name=parent_rel_name)
+            parent_rel.nodes.add(child_node)
+
     async def combine(self, earlier_diff: EnrichedDiffRoot, later_diff: EnrichedDiffRoot) -> EnrichedDiffRoot:
         self._initialize(earlier_diff=earlier_diff, later_diff=later_diff)
         filtered_node_pairs = self._filter_nodes_to_keep(earlier_diff=earlier_diff, later_diff=later_diff)
         combined_nodes = self._combine_nodes(node_pairs=filtered_node_pairs)
-        # TODO: this method
-        # self._link_child_nodes(nodes=combined_nodes)
+        self._link_child_nodes(nodes=combined_nodes)
         return EnrichedDiffRoot(
             uuid=str(uuid4()),
             base_branch_name=later_diff.base_branch_name,
