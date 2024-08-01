@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import traceback
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional, Union
@@ -55,7 +56,7 @@ def catch_exception(  # noqa: C901, PLR0915
                     return await func(*args, **kwargs)
                 except Exit:
                     # Ignore click exit error, the original error has been handled already
-                    pass
+                    return None
                 except AuthenticationError as exc:
                     console.print(f"[red]Authentication failure: {str(exc)}")
                     raise typer.Exit(code=2)
@@ -70,10 +71,11 @@ def catch_exception(  # noqa: C901, PLR0915
                 except GraphQLError as exc:
                     print_graphql_errors(console, exc.errors)
                     raise typer.Exit(code=5)
-                except Error as exc:
-                    console.print(f"[red]{str(exc)}")
+                except (Error, Exception) as exc:
+                    console.print(f"[red]Error missing dedicated handler: {str(exc)}")
+                    console.print(traceback.format_exc())
                     raise typer.Exit(code=6)
-                except which_exception as exc:
+                except which_exception as exc:  # pylint: disable=duplicate-except
                     console.print(f"[red]{str(exc)}")
                     raise typer.Exit(code=exit_code)
 
@@ -85,7 +87,7 @@ def catch_exception(  # noqa: C901, PLR0915
                 return func(*args, **kwargs)
             except Exit:
                 # Ignore click exit error, the original error has been handled already
-                pass
+                return None
             except AuthenticationError as exc:
                 console.print(f"[red]Authentication failure: {str(exc)}")
                 raise typer.Exit(code=2)
@@ -100,10 +102,11 @@ def catch_exception(  # noqa: C901, PLR0915
             except GraphQLError as exc:
                 print_graphql_errors(console, exc.errors)
                 raise typer.Exit(code=5)
-            except Error as exc:
-                console.print(f"[red]{str(exc)}")
+            except (Error, Exception) as exc:
+                console.print(f"[red]Error missing dedicated handler: {str(exc)}")
+                console.print(traceback.format_exc())
                 raise typer.Exit(code=6)
-            except which_exception as exc:
+            except which_exception as exc:  # pylint: disable=duplicate-except
                 console.print(f"[red]{str(exc)}")
                 raise typer.Exit(code=exit_code)
 
