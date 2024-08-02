@@ -27,45 +27,27 @@ export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSumma
     return <ErrorScreen message="An error occured while fetching diff summary." />;
   }
 
-  const summary = data?.DiffSummary?.map((node) => {
-    return node?.elements?.map((element) => {
-      return element?.summary;
-    });
-  })
-    .flat()
-    .reduce(
-      (acc, sum) => {
-        return {
-          added: acc.added + sum.added,
-          removed: acc.removed + sum.removed,
-          updated: acc.updated + sum.updated,
-          conflicts: acc.conflicts + sum.conflicts,
-        };
-      },
-      { added: 0, removed: 0, updated: 0, conflicts: 0 }
-    );
-
   return (
     <div className="flex gap-2">
       <Badge className="rounded-full" variant="green">
         <Icon icon="mdi:plus-circle-outline" className="text-xs mr-1" />
-        {loading ? <LoadingScreen size={8} hideText /> : summary.added || "-"}
+        {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_added}
       </Badge>
 
       <Badge className="rounded-full" variant="red">
         <Icon icon="mdi:minus-circle-outline" className="text-xs mr-1" />
-        {loading ? <LoadingScreen size={8} hideText /> : summary.removed || "-"}
+        {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_removed}
       </Badge>
 
       <Badge className="rounded-full" variant="blue">
         <Icon icon="mdi:circle-arrows" className="text-xs mr-1" />
-        {loading ? <LoadingScreen size={8} hideText /> : summary.updated || "-"}
+        {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_updated}
       </Badge>
 
-      {/* <Badge className="rounded-full" variant="yellow">
+      <Badge className="rounded-full" variant="yellow">
         <Icon icon="mdi:warning-outline" className="text-xs mr-1" />
-        {loading ? <LoadingScreen size={8} hideText /> : summary.added}
-      </Badge> */}
+        {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_conflicts}
+      </Badge>
     </div>
   );
 };

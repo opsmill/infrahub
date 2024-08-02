@@ -1,13 +1,10 @@
 export const getProposedChangesDiffSummary = `
 query GET_PROPOSED_CHANGES_DIFF_SUMMARY {
-  DiffSummary{
-    elements{
-      summary{
-        added
-        updated
-        removed
-      }
-    }
+  DiffTree {
+    num_added
+    num_updated
+    num_removed
+    num_conflicts
   }
 }
 `;
