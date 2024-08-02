@@ -324,6 +324,7 @@ export const DataDiff = forwardRef((props, ref) => {
 
         <div className="flex gap-2">
           <Button
+            size={"sm"}
             variant={"outline"}
             onClick={handleApprove}
             isLoading={isLoadingApprove}
@@ -331,6 +332,7 @@ export const DataDiff = forwardRef((props, ref) => {
             Approve
           </Button>
           <Button
+            size={"sm"}
             variant={"active"}
             onClick={handleMerge}
             isLoading={isLoadingMerge}
@@ -338,6 +340,7 @@ export const DataDiff = forwardRef((props, ref) => {
             Merge
           </Button>
           <Button
+            size={"sm"}
             variant={"danger"}
             onClick={handleClose}
             isLoading={isLoadingClose}
