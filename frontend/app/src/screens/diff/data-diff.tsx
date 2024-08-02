@@ -323,7 +323,9 @@ export const DataDiff = forwardRef((props, ref) => {
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
         <div className="flex gap-2">
-          <ProposedChangesData branch={branch} />
+          <div className="mr-4">
+            <ProposedChangesData branch={branch} />
+          </div>
 
           <Badge variant={"green"}>
             <Icon icon="mdi:layers-triple" className="mr-1" />
