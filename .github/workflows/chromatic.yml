@@ -1,4 +1,5 @@
 ---
+# yamllint disable rule:truthy rule:truthy rule:line-length
 name: 'Chromatic Publish'
 on:
   push:
