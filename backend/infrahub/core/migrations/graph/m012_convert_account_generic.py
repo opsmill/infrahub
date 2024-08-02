@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 #     Create DuplicateRelationship query
 
 # Schema migration
-# - AUTOMATIC : Add `CoreGenericAccount` to `inherit_from` value of `SchemaNode` with name value `Account`
+# - DONE : Add `CoreGenericAccount` to `inherit_from` value of `SchemaNode` with name value `Account`
 # - DONE Rename `type` attribute to `account_type`
 # - Remove relationships for attribute that have moved to Generic
 
@@ -74,7 +74,7 @@ class Migration012RenameTypeAttributeData(AttributeRenameMigrationQuery):
         return query
 
 
-class Migration012AddLabel(NodeDuplicateMigrationQuery):
+class Migration012AddLabelData(NodeDuplicateMigrationQuery):
     name = "migration_012_add_labels"
 
     def __init__(self, **kwargs: Any):
@@ -131,6 +131,27 @@ class Migration012RenameTypeAttributeSchema(SchemaAttributeUpdateQuery):
         )
 
 
+class Migration012UpdateInheritedFromAttributeSchema(SchemaAttributeUpdateQuery):
+    name = "migration_012_update_inherited_from_schema"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(
+            attribute_name="inherited_from",
+            node_name="Account",
+            node_namespace="Core",
+            new_value=[
+                "CoreAccount",
+                InfrahubKind.GENERICACCOUNT,
+                InfrahubKind.LINEAGEOWNER,
+                InfrahubKind.LINEAGESOURCE,
+            ],
+            previous_value=["CoreAccount", InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
+            **kwargs,
+        )
+
+
 class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery):
     name = "migration_012_rename_rel_account_token_data"
 
@@ -166,9 +187,10 @@ class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery)
 class Migration012(GraphMigration):
     name: str = "012_convert_account_generic"
     queries: Sequence[type[Query]] = [
-        Migration012RenameTypeAttributeData,
+        Migration012UpdateInheritedFromAttributeSchema,
         Migration012RenameTypeAttributeSchema,
-        Migration012AddLabel,
+        Migration012RenameTypeAttributeData,
+        Migration012AddLabelData,
         Migration012RenameRelationshipAccountTokenData,
     ]
     minimum_version: int = 11
