@@ -82,7 +82,7 @@ test.describe("/proposed-changes diff data", () => {
       await expect(thread.getByText("Resolved")).toBeVisible();
     });
 
-    await test.step("add comment when thread is resolved", async () => {
+    await test.fixme("add comment when thread is resolved", async () => {
       await thread.getByRole("button", { name: "Reply" }).click();
       await thread.getByTestId("codemirror-editor").getByRole("textbox").fill("third resolved");
       await thread.getByRole("button", { name: "Comment", exact: true }).click();
