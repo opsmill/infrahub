@@ -10,6 +10,9 @@ permissions:
 
 jobs:
   chromatic:
+    defaults:
+      run:
+        working-directory: ./docs
     name: Run Chromatic
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +29,10 @@ jobs:
         run: ls -la
       - name: Install dependencies
         run: npm install
+        with: 
+          workingDir: ./frontend/packages/ui
       - name: Run Chromatic
         uses: chromaui/action@latest
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          workingDir: ./frontend/packages/ui
