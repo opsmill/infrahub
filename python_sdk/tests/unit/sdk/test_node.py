@@ -285,6 +285,7 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                         },
                         "node": {
                             "id": None,
+                            "hfid": None,
                             "display_label": None,
                             "__typename": None,
                         },
@@ -351,6 +352,7 @@ async def test_query_data_node(clients, location_schema, client_type):
             },
             "node": {
                 "id": None,
+                "hfid": None,
                 "display_label": None,
                 "__typename": None,
             },
@@ -449,6 +451,7 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                         },
                         "node": {
                             "id": None,
+                            "hfid": None,
                             "display_label": None,
                             "__typename": None,
                             "description": {
@@ -539,6 +542,7 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
                 },
                 "display_label": None,
                 "id": None,
+                "hfid": None,
                 "name": {
                     "is_default": None,
                     "is_from_profile": None,
@@ -660,6 +664,7 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                                 "__typename": None,
                                 "display_label": None,
                                 "id": None,
+                                "hfid": None,
                             },
                             "properties": {
                                 "is_protected": None,
@@ -829,6 +834,7 @@ async def test_query_data_include(client, location_schema, client_type):
                         },
                         "node": {
                             "id": None,
+                            "hfid": None,
                             "display_label": None,
                             "__typename": None,
                         },

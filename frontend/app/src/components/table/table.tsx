@@ -10,7 +10,7 @@ export type tColumn = {
   label: string;
 };
 
-type tRow = {
+export type tRow = {
   link?: string;
   values: any;
 };
@@ -19,7 +19,7 @@ type tTableProps = {
   columns: tColumn[];
   rows: tRow[];
   constructLink?: Function;
-  onDelete?: Function;
+  onDelete?: (row: tRow) => void;
   onUpdate?: Function;
   className?: string;
 };
