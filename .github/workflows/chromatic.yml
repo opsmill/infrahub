@@ -12,7 +12,7 @@ jobs:
   chromatic:
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./frontend/packages/ui
     name: Run Chromatic
     runs-on: ubuntu-latest
     steps:
@@ -30,7 +30,7 @@ jobs:
       - name: test2
         run: ls -la
       - name: Install dependencies
-        run: cd ./frontend/packages/ui && npm install
+        run: npm install
       - name: Run Chromatic
         uses: chromaui/action@latest
         env:
