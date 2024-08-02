@@ -16,6 +16,8 @@ jobs:
       run:
         working-directory: ./frontend/packages/ui
     steps:
+      - name: test
+        run: ls -la
       - name: "Check out repository code"
         uses: actions/checkout@v4
         with:
