@@ -29,6 +29,8 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { stringifyWithoutQuotes } from "@/utils/string";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { datetimeAtom } from "@/state/atoms/time.atom";
+import { Badge } from "@/components/ui/badge";
+import { Icon } from "@iconify-icon/react";
 
 type tDiffContext = {
   refetch?: Function;
@@ -320,7 +322,19 @@ export const DataDiff = forwardRef((props, ref) => {
   return (
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
-        <ProposedChangesData branch={branch} />
+        <div className="flex gap-2">
+          <ProposedChangesData branch={branch} />
+
+          <Badge variant={"green"}>
+            <Icon icon="mdi:layers-triple" className="mr-1" />
+            branch 1
+          </Badge>
+
+          <Badge variant={"blue"}>
+            <Icon icon="mdi:layers-triple" className="mr-1" />
+            banch 2
+          </Badge>
+        </div>
 
         <div className="flex gap-2">
           <Button
