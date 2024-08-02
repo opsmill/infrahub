@@ -61,12 +61,12 @@ export const diffContent: { [key: string]: any } = {
 
     const { previous: previousValue } = value;
 
-    const previousMesage = getValueTooltip(previousValue);
+    const previousMessage = getValueTooltip(previousValue);
 
     return (
       <div className="flex">
-        {previousMesage ? (
-          <Tooltip enabled content={previousMesage}>
+        {previousMessage ? (
+          <Tooltip enabled content={previousMessage}>
             <Badge variant="red-outline">{displayValue(previousValue)}</Badge>
           </Tooltip>
         ) : (
@@ -80,15 +80,15 @@ export const diffContent: { [key: string]: any } = {
 
     const { new: newValue, previous: previousValue } = value;
 
-    const previousMesage = getValueTooltip(previousValue);
+    const previousMessage = getValueTooltip(previousValue);
 
     const newMesage = getValueTooltip(newValue);
 
     return (
       <div className="flex items-center">
         <div className="flex items-center">
-          {previousMesage ? (
-            <Tooltip enabled content={previousMesage}>
+          {previousMessage ? (
+            <Tooltip enabled content={previousMessage}>
               <Badge variant="blue-outline">{displayValue(previousValue)}</Badge>
             </Tooltip>
           ) : (
@@ -117,15 +117,15 @@ export const diffContent: { [key: string]: any } = {
 
     const { new: newValue, previous: previousValue } = value;
 
-    const previousMesage = getValueTooltip(previousValue);
+    const previousMessage = getValueTooltip(previousValue);
 
     const newMesage = getValueTooltip(newValue);
 
     return (
       <div className="flex items-center">
         <div className="flex items-center">
-          {previousMesage ? (
-            <Tooltip enabled content={previousMesage}>
+          {previousMessage ? (
+            <Tooltip enabled content={previousMessage}>
               <Badge variant="blue-outline">{displayValue(previousValue)}</Badge>
             </Tooltip>
           ) : (
