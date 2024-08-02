@@ -1,12 +1,13 @@
 import pytest
 
-from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.migrations.graph.m012_convert_account_generic import (
     Migration012,
-    Migration012AddLabel,
+    Migration012AddLabelData,
     Migration012RenameRelationshipAccountTokenData,
     Migration012RenameTypeAttributeData,
     Migration012RenameTypeAttributeSchema,
+    Migration012UpdateInheritFromNodeSchema,
 )
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot, internal_schema
@@ -87,6 +88,12 @@ NODE_SCHEMA = NodeSchema(
             kind="Text",
             branch=BranchSupportType.AWARE,
         ),
+        AttributeSchema(
+            name="inherit_from",
+            kind="List",
+            branch=BranchSupportType.AGNOSTIC,
+            optional=True,
+        ),
     ],
     relationships=[
         RelationshipSchema(
@@ -163,7 +170,9 @@ async def migration_012_schema(db: InfrahubDatabase, reset_registry, default_bra
     schema_branch.process()
 
     node1 = await Node.init(db=db, schema=NODE_SCHEMA)
-    await node1.new(db=db, name="Account", namespace="Core")
+    await node1.new(
+        db=db, name="Account", namespace="Core", inherit_from=[InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE]
+    )
     await node1.save(db=db)
 
     node2 = await Node.init(db=db, schema=ATTRIBUTE_SCHEMA)
@@ -171,16 +180,16 @@ async def migration_012_schema(db: InfrahubDatabase, reset_registry, default_bra
     await node2.save(db=db)
 
 
-async def test_migration_012_add_label(
+async def test_migration_012_add_label_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
 ):
     nbr_nodes_before = await count_nodes(db=db, label="CoreAccount")
 
-    query = await Migration012AddLabel.init(db=db)
+    query = await Migration012AddLabelData.init(db=db)
     await query.execute(db=db)
     assert query.stats.get_counter(name="nodes_created") == 2
 
-    query = await Migration012AddLabel.init(db=db)
+    query = await Migration012AddLabelData.init(db=db)
     await query.execute(db=db)
     assert query.stats.get_counter(name="nodes_created") == 0
 
@@ -214,6 +223,21 @@ async def test_migration_012_rename_type_schema(
     await query.execute(db=db)
 
     query = await Migration012RenameTypeAttributeSchema.init(db=db)
+    await query.execute(db=db)
+
+    nbr_attrs_value_after = await count_nodes(db=db, label="AttributeValue")
+    assert nbr_attrs_value_after == nbr_attrs_value_before + 1
+
+
+async def test_migration_012_update_inherit_from_schema(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_schema
+):
+    nbr_attrs_value_before = await count_nodes(db=db, label="AttributeValue")
+
+    query = await Migration012UpdateInheritFromNodeSchema.init(db=db)
+    await query.execute(db=db)
+
+    query = await Migration012UpdateInheritFromNodeSchema.init(db=db)
     await query.execute(db=db)
 
     nbr_attrs_value_after = await count_nodes(db=db, label="AttributeValue")

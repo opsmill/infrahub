@@ -56,6 +56,7 @@ async def test_query_base(db: InfrahubDatabase):
 
 async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01):
     params = {
+        "my": "tooshort",
         "mystring": "5ffa45d4",
         "mylist1": ["1", "2", "3"],
         "mylist2": [1, 2, 3],

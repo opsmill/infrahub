@@ -9,7 +9,6 @@ from infrahub.core.graph.schema import GraphRelationshipRelationships, GraphRelD
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
-
     from infrahub.database import InfrahubDatabase
 
 
