@@ -442,7 +442,10 @@ class Query(ABC):
                 return str(v)
             return f'"{v}"'
 
-        for key, value in variables.items():
+        # Sort the list of variables first to ensure the longest will be processed first
+        vars_list = list(variables.items())
+        vars_list.sort(key=lambda x: len(x[0]), reverse=True)
+        for key, value in vars_list:
             if isinstance(value, dict):
                 # First try to insert individual element of the dict as var
                 sub_vars = {f"{key}.{sub_key}": sub_value for sub_key, sub_value in value.items()}
