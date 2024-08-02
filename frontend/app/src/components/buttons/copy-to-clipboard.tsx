@@ -14,7 +14,7 @@ export const CopyToClipboard = ({
 }: CopyToClipboardProps) => {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async (event: React.MouseEvent<HTMLElement>) => {
+  const handleCopy = async (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
       event.stopPropagation();
 
