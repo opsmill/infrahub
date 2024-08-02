@@ -134,29 +134,6 @@ class Migration012RenameTypeAttributeSchema(SchemaAttributeUpdateQuery):
         return self._render_match_schema_attribute()
 
 
-class Migration012UpdateInheritFromNodeSchema(SchemaAttributeUpdateQuery):
-    name = "migration_012_update_inherit_from_schema"
-    type: QueryType = QueryType.WRITE
-    insert_return = False
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(
-            attribute_name="inherit_from",
-            node_name="Account",
-            node_namespace="Core",
-            new_value=[
-                InfrahubKind.GENERICACCOUNT,
-                InfrahubKind.LINEAGEOWNER,
-                InfrahubKind.LINEAGESOURCE,
-            ],
-            previous_value=[InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
-            **kwargs,
-        )
-
-    def render_match(self) -> str:
-        return self._render_match_schema_node()
-
-
 class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery):
     name = "migration_012_rename_rel_account_token_data"
 
@@ -192,7 +169,6 @@ class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery)
 class Migration012(GraphMigration):
     name: str = "012_convert_account_generic"
     queries: Sequence[type[Query]] = [
-        Migration012UpdateInheritFromNodeSchema,
         Migration012RenameTypeAttributeSchema,
         Migration012RenameTypeAttributeData,
         Migration012AddLabelData,

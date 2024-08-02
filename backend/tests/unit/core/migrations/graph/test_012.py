@@ -7,7 +7,6 @@ from infrahub.core.migrations.graph.m012_convert_account_generic import (
     Migration012RenameRelationshipAccountTokenData,
     Migration012RenameTypeAttributeData,
     Migration012RenameTypeAttributeSchema,
-    Migration012UpdateInheritFromNodeSchema,
 )
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot, internal_schema
@@ -223,21 +222,6 @@ async def test_migration_012_rename_type_schema(
     await query.execute(db=db)
 
     query = await Migration012RenameTypeAttributeSchema.init(db=db)
-    await query.execute(db=db)
-
-    nbr_attrs_value_after = await count_nodes(db=db, label="AttributeValue")
-    assert nbr_attrs_value_after == nbr_attrs_value_before + 1
-
-
-async def test_migration_012_update_inherit_from_schema(
-    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_schema
-):
-    nbr_attrs_value_before = await count_nodes(db=db, label="AttributeValue")
-
-    query = await Migration012UpdateInheritFromNodeSchema.init(db=db)
-    await query.execute(db=db)
-
-    query = await Migration012UpdateInheritFromNodeSchema.init(db=db)
     await query.execute(db=db)
 
     nbr_attrs_value_after = await count_nodes(db=db, label="AttributeValue")
