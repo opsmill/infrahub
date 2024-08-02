@@ -20,7 +20,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # In order for Chromatic to correctly determine baseline commits, tot access the full Git history graph.
+          fetch-depth: 0  # In order for Chromatic to correctly determine baseline commits, tot access the full Git history graph.
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
