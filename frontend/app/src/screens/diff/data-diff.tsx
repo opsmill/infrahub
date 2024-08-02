@@ -29,6 +29,8 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { stringifyWithoutQuotes } from "@/utils/string";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { datetimeAtom } from "@/state/atoms/time.atom";
+import { Badge } from "@/components/ui/badge";
+import { Icon } from "@iconify-icon/react";
 
 type tDiffContext = {
   refetch?: Function;
@@ -326,10 +328,25 @@ export const DataDiff = forwardRef((props, ref) => {
   return (
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
-        <ProposedChangesDiffSummary branch={branch} />
+        <div className="flex gap-2">
+          <div className="mr-4">
+            <ProposedChangesDiffSummary branch={branch} />
+          </div>
+
+          <Badge variant={"green"}>
+            <Icon icon="mdi:layers-triple" className="mr-1" />
+            main
+          </Badge>
+
+          <Badge variant={"blue"}>
+            <Icon icon="mdi:layers-triple" className="mr-1" />
+            {branch}
+          </Badge>
+        </div>
 
         <div className="flex gap-2">
           <Button
+            size={"sm"}
             variant={"outline"}
             onClick={handleApprove}
             isLoading={isLoadingApprove}
@@ -337,6 +354,7 @@ export const DataDiff = forwardRef((props, ref) => {
             Approve
           </Button>
           <Button
+            size={"sm"}
             variant={"active"}
             onClick={handleMerge}
             isLoading={isLoadingMerge}
@@ -344,6 +362,7 @@ export const DataDiff = forwardRef((props, ref) => {
             Merge
           </Button>
           <Button
+            size={"sm"}
             variant={"danger"}
             onClick={handleClose}
             isLoading={isLoadingClose}

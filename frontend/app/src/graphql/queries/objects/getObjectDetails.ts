@@ -30,6 +30,7 @@ query {{kind}} {
           {{#if this.isAttribute}}
 
             {{this.name}} {
+              id
               value
               updated_at
               is_from_profile
@@ -120,6 +121,7 @@ query {{kind}} {
 
         {{#each attributes}}
           {{this.name}} {
+              id
               value
               {{#if (eq this.kind "Dropdown")}}
               color

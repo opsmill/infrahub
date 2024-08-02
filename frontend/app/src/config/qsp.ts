@@ -14,5 +14,5 @@ export const QSP = {
   QUERY: "query",
   TAB: "tab",
   TASK_ID: "task_id",
-  LIST_SEARCH: "list-search",
+  SEARCH: "search",
 };

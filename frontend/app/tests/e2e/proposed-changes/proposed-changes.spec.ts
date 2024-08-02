@@ -15,7 +15,7 @@ test.describe("/proposed-changes", () => {
     test("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByRole("main")).toContainText("Proposed changes");
+      await expect(page.locator("header").getByText("Proposed changes")).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeDisabled();
     });
   });
@@ -26,7 +26,7 @@ test.describe("/proposed-changes", () => {
     test("allow to create a proposed change", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByRole("main")).toContainText("Proposed changes");
+      await expect(page.locator("header").getByText("Proposed changes")).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
       await page.getByTestId("add-proposed-changes-button").click();
       await expect(page.getByRole("main")).toContainText("Create a proposed change");

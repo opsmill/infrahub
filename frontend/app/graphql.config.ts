@@ -5,10 +5,14 @@ const config: CodegenConfig = {
   documents: ["src/**/*.tsx", "src/**/*.ts"],
   ignoreNoDocuments: true, // for better experience with the watcher
   generates: {
-    "src/generated/graphql.tsx": {
-      plugins: ["typescript"],
+    "src/generated/": {
       config: {
         withHooks: true,
+      },
+      plugins: ["typescript"],
+      preset: "client",
+      presetConfig: {
+        gqlTagName: "gql",
       },
     },
   },

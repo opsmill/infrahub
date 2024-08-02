@@ -114,4 +114,15 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await expect(page.getByTestId("relationship-row").first()).toBeVisible();
     });
   });
+
+  test("clicking on a relationship value redirects to its details page", async ({ page }) => {
+    await test.step("Navigate to relationship tab of an object", async () => {
+      await page.goto("/objects/InfraPlatform");
+      await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
+      await page.getByText("Devices5").click();
+    });
+    await page.getByRole("link", { name: "atl1", exact: true }).first().click();
+    await expect(page.getByText("Nameatl1")).toBeVisible();
+    expect(page.url()).toContain("/objects/LocationSite/");
+  });
 });

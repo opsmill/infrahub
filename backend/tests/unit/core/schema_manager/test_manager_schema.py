@@ -967,7 +967,7 @@ async def test_validate_exception_ipam_ip_namespace(
             "InfraGenericInterface.uniqueness_constraints: cannot use badges relationship, relationship must be of cardinality one",
         ),
         (
-            [["mybool", "badges"]],
+            [["mybool__value", "badges"]],
             "InfraGenericInterface.uniqueness_constraints: cannot use badges relationship, relationship must be of cardinality one",
         ),
         (
@@ -977,6 +977,10 @@ async def test_validate_exception_ipam_ip_namespace(
         (
             [["mybool__value", "status__name__value"]],
             "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node, only the relationship",
+        ),
+        (
+            [["mybool", "status__name__value"]],
+            "InfraGenericInterface uniqueness contraint is invalid at attribute 'mybool', it must end with one of the following properties: value",
         ),
     ],
 )
