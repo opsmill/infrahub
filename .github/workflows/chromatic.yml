@@ -12,7 +12,7 @@ jobs:
   chromatic:
     defaults:
       run:
-        working-directory: ./docs
+        working-directory: ./frontend
     name: Run Chromatic
     runs-on: ubuntu-latest
     steps:
@@ -23,9 +23,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: test1
+        run: ls -la
       - name: Move to ui project
-        run: cd ./frontend/packages/ui
-      - name: test
+        run: cd ./packages/ui
+      - name: test2
         run: ls -la
       - name: Install dependencies
         run: cd ./frontend/packages/ui && npm install
