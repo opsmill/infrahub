@@ -27,7 +27,6 @@ jobs:
         run: npm install
       - name: Run Chromatic
         uses: chromaui/action@latest
-        env:
-          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
         with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: ./frontend/packages/ui
