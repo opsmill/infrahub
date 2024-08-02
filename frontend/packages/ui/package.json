@@ -9,7 +9,7 @@
     "build": "npm run build-storybook",
     "build-storybook": "storybook build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.0",
