@@ -13,8 +13,6 @@ jobs:
     name: Run Chromatic
     runs-on: ubuntu-latest
     steps:
-      - name: test
-        run: ls -la
       - name: "Check out repository code"
         uses: actions/checkout@v4
         with:
@@ -24,6 +22,8 @@ jobs:
           node-version: 20
       - name: Move to ui project
         run: cd ./frontend/packages/ui
+      - name: test
+        run: ls -la
       - name: Install dependencies
         run: npm install
       - name: Run Chromatic
