@@ -28,9 +28,7 @@ jobs:
       - name: test
         run: ls -la
       - name: Install dependencies
-        run: npm install
-        with: 
-          workingDir: ./frontend/packages/ui
+        run: cd ./frontend/packages/ui && npm install
       - name: Run Chromatic
         uses: chromaui/action@latest
         env:
