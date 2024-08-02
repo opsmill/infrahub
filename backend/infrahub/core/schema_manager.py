@@ -251,9 +251,11 @@ class SchemaBranch:
         #     else:
         #         del self.generics[item_kind]
 
-    def validate_update(self, other: SchemaBranch) -> SchemaUpdateValidationResult:
+    def validate_update(self, other: SchemaBranch, enforce_update_support: bool = True) -> SchemaUpdateValidationResult:
         diff = self.diff(other=other)
-        result = SchemaUpdateValidationResult.init(diff=diff, schema=other)
+        result = SchemaUpdateValidationResult.init(
+            diff=diff, schema=other, enforce_update_support=enforce_update_support
+        )
         result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
 
