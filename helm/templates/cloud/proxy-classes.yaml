@@ -1,0 +1,12 @@
+{{- if .Values.cloud.enabled }}
+{{- range $value := .Values.cloud.proxyclasses }}
+---
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyClass
+metadata:
+  name: {{ $value.name }}
+  namespace: {{ $value.namespace }}
+spec:
+  {{- toYaml $value.spec | nindent 2 }}
+{{- end }}
+{{- end }}
