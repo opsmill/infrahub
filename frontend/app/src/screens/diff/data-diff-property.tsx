@@ -3,7 +3,6 @@ import { diffContent } from "@/utils/diff";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useParams } from "react-router-dom";
 import { tDataDiffNodePropertyChange } from "./data-diff-node";
-import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePropertyProps = {
@@ -42,8 +41,6 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
           </div>
         </div>
       </div>
-
-      {!branchName && <DataDiffConflictInfo path={path} />}
     </div>
   );
 };

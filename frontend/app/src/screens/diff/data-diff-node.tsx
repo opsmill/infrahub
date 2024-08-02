@@ -6,7 +6,6 @@ import { classNames } from "@/utils/common";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { DataDiffElement } from "./data-diff-element";
-import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DataDiffThread } from "./diff-thread";
 import { capitalizeFirstLetter } from "@/utils/string";
 import { Badge } from "@/components/ui/badge";
@@ -172,8 +171,6 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           </Tooltip>
         </div>
       )}
-
-      {!branchName && <DataDiffConflictInfo path={path} />}
     </div>
   );
 
