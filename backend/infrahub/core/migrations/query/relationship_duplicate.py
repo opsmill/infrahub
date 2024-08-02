@@ -9,7 +9,6 @@ from infrahub.core.graph.schema import GraphRelationshipRelationships, GraphRelD
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
-    from pydantic.fields import FieldInfo
 
     from infrahub.database import InfrahubDatabase
 
@@ -46,9 +45,7 @@ class RelationshipDuplicateQuery(Query):
         return query
 
     @staticmethod
-    def _render_sub_query_per_rel_type(
-        rel_name: str, rel_type: str, rel_def: FieldInfo, direction: GraphRelDirection
-    ) -> str:
+    def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, direction: GraphRelDirection) -> str:
         subquery = [
             f"WITH peer_node, {rel_name}, active_rel, new_rel",
             f"WITH peer_node, {rel_name}, active_rel, new_rel",
@@ -67,7 +64,7 @@ class RelationshipDuplicateQuery(Query):
     def _render_sub_query_out(cls) -> str:
         sub_queries_out = [
             cls._render_sub_query_per_rel_type(
-                rel_name="rel_outband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.OUTBOUND
+                rel_name="rel_outband", rel_type=rel_type, direction=GraphRelDirection.OUTBOUND
             )
             for rel_type, rel_def in GraphRelationshipRelationships.model_fields.items()
             if rel_def.default.direction in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]
@@ -79,7 +76,7 @@ class RelationshipDuplicateQuery(Query):
     def _render_sub_query_in(cls) -> str:
         sub_queries_in = [
             cls._render_sub_query_per_rel_type(
-                rel_name="rel_inband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.INBOUND
+                rel_name="rel_inband", rel_type=rel_type, direction=GraphRelDirection.INBOUND
             )
             for rel_type, rel_def in GraphRelationshipRelationships.model_fields.items()
             if rel_def.default.direction in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]
