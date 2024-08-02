@@ -327,12 +327,12 @@ export const DataDiff = forwardRef((props, ref) => {
 
           <Badge variant={"green"}>
             <Icon icon="mdi:layers-triple" className="mr-1" />
-            branch 1
+            main
           </Badge>
 
           <Badge variant={"blue"}>
             <Icon icon="mdi:layers-triple" className="mr-1" />
-            banch 2
+            {branch}
           </Badge>
         </div>
 
