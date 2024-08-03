@@ -1041,7 +1041,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "threads",
-                    "peer": "CoreThread",
+                    "peer": InfrahubKind.THREAD,
                     "identifier": "proposedchange__thread",
                     "kind": "Component",
                     "optional": True,
@@ -1066,7 +1066,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Change Thread",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [],
             "relationships": [],
@@ -1078,7 +1078,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Thread - File",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [
                 {"name": "file", "kind": "Text", "optional": True},
@@ -1102,7 +1102,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Thread - Artifact",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [
                 {"name": "artifact_id", "kind": "Text", "optional": True},
@@ -1118,7 +1118,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Thread - Object",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [
                 {"name": "object_path", "kind": "Text", "optional": False},
@@ -1134,7 +1134,7 @@ core_models: dict[str, Any] = {
             "default_filter": "text__value",
             "display_labels": ["text__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreComment"],
+            "inherit_from": [InfrahubKind.COMMENT],
             "generate_profile": False,
             "relationships": [
                 {
@@ -1155,13 +1155,13 @@ core_models: dict[str, Any] = {
             "default_filter": "text__value",
             "display_labels": ["text__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreComment"],
+            "inherit_from": [InfrahubKind.COMMENT],
             "generate_profile": False,
             "attributes": [],
             "relationships": [
                 {
                     "name": "thread",
-                    "peer": "CoreThread",
+                    "peer": InfrahubKind.THREAD,
                     "kind": "Parent",
                     "identifier": "thread__threadcomment",
                     "cardinality": "one",
