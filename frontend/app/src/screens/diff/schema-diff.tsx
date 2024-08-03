@@ -72,8 +72,8 @@ export const SchemaDiff = forwardRef((props, ref) => {
         {branchOnly === "false" && (
           <div className="flex items-center">
             <span className="mr-2">Branches colours:</span>
-            <div className={"rounded-lg shadow px-2 mr-2 bg-custom-blue-10"}>main</div>
-            <div className={"rounded-lg shadow px-2 bg-green-200"}>{branch}</div>
+            <div className={"rounded-lg shadow px-2 mr-2 bg-custom-blue-700/10"}>main</div>
+            <div className={"rounded-lg shadow px-2 bg-green-700/10"}>{branch}</div>
           </div>
         )}
       </div>

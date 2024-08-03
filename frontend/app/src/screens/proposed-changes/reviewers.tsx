@@ -30,6 +30,7 @@ export const ProposedChangesReviewers = ({
                 <Icon
                   icon={"mdi:check"}
                   className="text-green-700 absolute -right-[4px] -bottom-[4px] bg-green-300 rounded-full border border-white"
+                  data-testid="approved-icon"
                 />
               )}
             </>
