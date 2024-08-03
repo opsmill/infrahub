@@ -9,8 +9,7 @@ import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { tDataDiffNode } from "./data-diff-node";
-import { ProposedChangesDiffSummary } from "../proposed-changes/diff-summary";
+import { ProposedChangesDiffSummary } from "../../proposed-changes/diff-summary";
 import { Button } from "@/components/buttons/button-primitive";
 import { useAuth } from "@/hooks/useAuth";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
@@ -20,15 +19,9 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/getProposedChangesDiffTree";
+import { DiffNode } from "./diff-node";
 
-type tDiffContext = {
-  refetch?: Function;
-  node?: tDataDiffNode;
-  currentBranch?: string;
-  checksDictionnary?: any;
-};
-
-export const DiffContext = createContext<tDiffContext>({});
+export const DiffContext = createContext({});
 
 export const DataDiff = () => {
   const { "*": branchName, proposedchange } = useParams();
@@ -54,7 +47,6 @@ export const DataDiff = () => {
   `;
 
   const { loading, data } = useQuery(query, { skip: !schemaData });
-  console.log("data: ", data);
 
   const handleApprove = async () => {
     if (!approverId) {
@@ -197,6 +189,8 @@ export const DataDiff = () => {
     setIsLoadingClose(false);
   };
 
+  const nodes = data?.DiffTree?.nodes;
+
   return (
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
@@ -245,6 +239,8 @@ export const DataDiff = () => {
       </div>
 
       {loading && <LoadingScreen />}
+
+      {nodes?.length && nodes.map((node, index) => <DiffNode key={index} node={node} />)}
     </>
   );
 };

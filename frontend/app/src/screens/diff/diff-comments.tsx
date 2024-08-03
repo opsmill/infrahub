@@ -23,7 +23,7 @@ import { useAtomValue } from "jotai/index";
 import { useContext } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { DiffContext } from "./data-diff";
+import { DiffContext } from "./data-diff/diff";
 
 type tDataDiffComments = {
   path: string;
