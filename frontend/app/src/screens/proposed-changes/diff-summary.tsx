@@ -1,10 +1,8 @@
-import { Badge } from "@/components/ui/badge";
 import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
 import useQuery from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
 import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
+import { BadgeAdd, BadgeConflict, BadgeRemove, BadgeUpdate } from "../diff/ui/badge";
 
 type tProposedChangesDiffSummary = {
   branch: string;
@@ -29,25 +27,10 @@ export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSumma
 
   return (
     <div className="flex gap-2">
-      <Badge className="rounded-full" variant="green">
-        <Icon icon="mdi:plus-circle-outline" className="text-xs mr-1" />
-        {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_added}
-      </Badge>
-
-      <Badge className="rounded-full" variant="red">
-        <Icon icon="mdi:minus-circle-outline" className="text-xs mr-1" />
-        {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_removed}
-      </Badge>
-
-      <Badge className="rounded-full" variant="blue">
-        <Icon icon="mdi:circle-arrows" className="text-xs mr-1" />
-        {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_updated}
-      </Badge>
-
-      <Badge className="rounded-full" variant="yellow">
-        <Icon icon="mdi:warning-outline" className="text-xs mr-1" />
-        {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_conflicts}
-      </Badge>
+      <BadgeAdd loading={loading}>{data?.DiffTree?.num_added}</BadgeAdd>
+      <BadgeRemove loading={loading}>{data?.DiffTree?.num_removed}</BadgeRemove>
+      <BadgeUpdate loading={loading}>{data?.DiffTree?.num_updated}</BadgeUpdate>
+      <BadgeConflict loading={loading}>{data?.DiffTree?.num_conflicts}</BadgeConflict>
     </div>
   );
 };
