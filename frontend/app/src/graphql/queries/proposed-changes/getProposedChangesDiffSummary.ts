@@ -1,7 +1,10 @@
 export const getProposedChangesDiffSummary = `
-query GET_PROPOSED_CHANGES_DIFF_SUMMARY($branch: String) {
-  DiffSummary(diff_from: $branch){
-    display_label
+query GET_PROPOSED_CHANGES_DIFF_SUMMARY {
+  DiffTree {
+    num_added
+    num_updated
+    num_removed
+    num_conflicts
   }
 }
 `;

@@ -15,7 +15,7 @@ import { TabsButtons } from "@/components/buttons/tabs-buttons";
 import { useNavigate } from "react-router-dom";
 import { constructPath } from "@/utils/fetch";
 import { QSP } from "@/config/qsp";
-import { StringParam, useQueryParam } from "use-query-params";
+import { ProposedChangesDiffSummary } from "./diff-summary";
 import { useState } from "react";
 import ModalDelete from "@/components/modals/modal-delete";
 import { toast } from "react-toastify";
@@ -24,13 +24,13 @@ import { DELETE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/del
 import { GET_PROPOSED_CHANGES } from "@/graphql/queries/proposed-changes/getProposedChanges";
 import { ARTIFACT_OBJECT, PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { ProposedChangesInfo } from "@/screens/proposed-changes/item-info";
-import { ProposedChangesData } from "@/screens/proposed-changes/diff-summary";
 import { ProposedChangesCounter } from "@/screens/proposed-changes/counter";
 import { getProposedChangesTasks } from "@/graphql/queries/proposed-changes/getProposedChangesTasks";
 import { getProposedChangesArtifacts } from "@/graphql/queries/proposed-changes/getProposedChangesArtifacts";
 import { ProposedChangesReviewers } from "@/screens/proposed-changes/reviewers";
 import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { StringParam, useQueryParam } from "use-query-params";
 
 export const ProposedChangesPage = () => {
   const permission = usePermission();
@@ -143,7 +143,7 @@ export const ProposedChangesPage = () => {
             comments={node.comments.count}
           />
         ),
-        data: <ProposedChangesData branch={node.source_branch.value} />,
+        data: <ProposedChangesDiffSummary branch={node.source_branch.value} />,
         checks: <Badge className="rounded-full">{node.validations.count}</Badge>,
         tasks: (
           <ProposedChangesCounter id={node.id} query={getProposedChangesTasks} kind={TASK_OBJECT} />
