@@ -41,8 +41,15 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("junos", { exact: true })).toBeVisible();
       await expect(page.getByText("juniper_junos")).toBeVisible();
     });
+  });
 
-    await test.fixme("check approval", async () => {
+  test.fixme("should approve a proposed changes", async ({ page }) => {
+    await test.step("got to the propsoed changes data tab", async () => {
+      await page.getByRole("link", { name: "pc-diff-e2e-test 0" });
+      await page.getByText("Data").click();
+    });
+
+    await test.step("check approval", async () => {
       await page.getByRole("button", { name: "Approve" }).click();
       await expect(page.getByText("Proposed change approved")).toBeVisible();
       await page.getByText("Overview").click();
