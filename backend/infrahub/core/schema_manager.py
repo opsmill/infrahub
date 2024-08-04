@@ -1492,26 +1492,24 @@ class SchemaBranch:
             if node.namespace in RESTRICTED_NAMESPACES:
                 continue
 
-            profiles_rel_settings = dict(
-                name="profiles",
-                identifier="node__profile",
-                peer=InfrahubKind.PROFILE,
-                kind=RelationshipKind.PROFILE,
-                cardinality=RelationshipCardinality.MANY,
-                branch=BranchSupportType.AWARE,
-            )
+            profiles_rel_settings: dict[str, Any] = {
+                "name": "profiles",
+                "identifier": "node__profile",
+                "peer": InfrahubKind.PROFILE,
+                "kind": RelationshipKind.PROFILE,
+                "cardinality": RelationshipCardinality.MANY,
+                "branch": BranchSupportType.AWARE,
+            }
 
             # Add relationship between node and profile
             if "profiles" not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
 
-                node_schema.relationships.append(
-                    RelationshipSchema( **profiles_rel_settings )
-                )
+                node_schema.relationships.append(RelationshipSchema(**profiles_rel_settings))
                 self.set(name=node_name, schema=node_schema)
             else:
                 has_changes: bool = False
-                rel_profiles = node_schema.get_relationship(name="profiles")
+                rel_profiles = node.get_relationship(name="profiles")
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         has_changes = True
@@ -1526,7 +1524,6 @@ class SchemaBranch:
                         setattr(rel_profiles, name, value)
 
                 self.set(name=node_name, schema=node_schema)
-
 
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
