@@ -163,6 +163,28 @@ async def test_schema_branch_process_inheritance_node_level(animal_person_schema
     assert dog.icon == animal.icon
 
 
+async def test_schema_branch_process_inheritance_update_inherited_elements(animal_person_schema_dict):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+
+    dog = schema.get(name="TestDog")
+    assert dog.get_attribute(name="name").description is None
+    assert dog.get_relationship(name="owner").optional is False
+
+    updated_schema = animal_person_schema_dict
+    updated_schema["generics"][0]["attributes"][0]["description"] = "new description"
+    updated_schema["generics"][0]["relationships"][0]["optional"] = True
+
+    schema.load_schema(schema=SchemaRoot(**updated_schema))
+    schema.process_inheritance()
+
+    dog = schema.get(name="TestDog")
+    assert dog.get_attribute(name="name").description == "new description"
+    assert dog.get_relationship(name="owner").optional is True
+
+
 async def test_schema_branch_process_humain_friendly_id(animal_person_schema_dict):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
