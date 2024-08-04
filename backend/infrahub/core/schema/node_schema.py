@@ -94,8 +94,7 @@ class NodeSchema(GeneratedNodeSchema):
                 self.attributes.append(new_attribute)
             else:
                 item_idx = existing_inherited_attributes[attribute.name]
-                new_attribute.id = self.attributes[item_idx].id
-                self.attributes[item_idx] = new_attribute
+                self.attributes[item_idx].update_from_generic(other=new_attribute)
 
         for relationship in interface.relationships:
             if relationship.name in self.valid_local_names:
@@ -108,8 +107,7 @@ class NodeSchema(GeneratedNodeSchema):
                 self.relationships.append(new_relationship)
             else:
                 item_idx = existing_inherited_relationships[relationship.name]
-                new_relationship.id = self.relationships[item_idx].id
-                self.relationships[item_idx] = new_relationship
+                self.relationships[item_idx].update_from_generic(other=new_relationship)
 
     def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
         if not self.hierarchy:
