@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from ..query import AttributeMigrationQuery
-from ..query.attribute_rename import AttributeInfo, AttributeRenameMigrationQuery
+from ..query.attribute_rename import AttributeInfo, AttributeRenameQuery
 from ..shared import AttributeSchemaMigration
 
 
-class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRenameMigrationQuery):
+class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRenameQuery):
     name = "migration_attribute_name_update_01"
 
     def __init__(

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from ..query.node_duplicate import NodeDuplicateMigrationQuery, SchemaNodeInfo
+from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from ..shared import MigrationQuery, SchemaMigration
 
 
-class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateMigrationQuery):
+class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
     name = "migration_node_kind_update_01"
 
     def __init__(
