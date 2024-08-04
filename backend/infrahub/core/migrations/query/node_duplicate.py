@@ -25,7 +25,7 @@ class SchemaNodeInfo(BaseModel):
         return self.namespace + self.name
 
 
-class NodeDuplicateMigrationQuery(Query):
+class NodeDuplicateQuery(Query):
     name = "node_duplicate"
     insert_return: bool = False
 

@@ -7,9 +7,9 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, Infra
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType  # noqa: TCH001
 
-from ..query.attribute_rename import AttributeInfo, AttributeRenameMigrationQuery
+from ..query.attribute_rename import AttributeInfo, AttributeRenameQuery
 from ..query.delete_element_in_schema import DeleteElementInSchemaQuery
-from ..query.node_duplicate import NodeDuplicateMigrationQuery, SchemaNodeInfo
+from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from ..query.relationship_duplicate import RelationshipDuplicateQuery, SchemaRelationshipInfo
 from ..query.schema_attribute_update import SchemaAttributeUpdateQuery
 from ..shared import GraphMigration
@@ -38,7 +38,7 @@ default_branch = Branch(
 )
 
 
-class Migration012RenameTypeAttributeData(AttributeRenameMigrationQuery):
+class Migration012RenameTypeAttributeData(AttributeRenameQuery):
     name = "migration_012_rename_attr_type"
 
     def __init__(self, **kwargs: Any):
@@ -70,7 +70,7 @@ class Migration012RenameTypeAttributeData(AttributeRenameMigrationQuery):
         return query
 
 
-class Migration012AddLabelData(NodeDuplicateMigrationQuery):
+class Migration012AddLabelData(NodeDuplicateQuery):
     name = "migration_012_add_labels"
 
     def __init__(self, **kwargs: Any):

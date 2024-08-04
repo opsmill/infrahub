@@ -20,8 +20,8 @@ class AttributeInfo(BaseModel):
     branch_support: str = BranchSupportType.AWARE.value
 
 
-class AttributeRenameMigrationQuery(Query):
-    name = "migration_attribute_rename"
+class AttributeRenameQuery(Query):
+    name = "attribute_rename"
     insert_return: bool = False
 
     def __init__(
