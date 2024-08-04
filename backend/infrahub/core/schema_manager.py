@@ -466,9 +466,10 @@ class SchemaBranch:
             new_item.update(node_extension)
             self.set(name=node_extension.kind, schema=new_item)
 
-    def process(self) -> None:
+    def process(self, validate_schema: bool = True) -> None:
         self.process_pre_validation()
-        self.process_validate()
+        if validate_schema:
+            self.process_validate()
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
@@ -2160,6 +2161,7 @@ class SchemaManager(NodeManager):
         schema: Optional[SchemaBranch] = None,
         schema_diff: Optional[SchemaBranchDiff] = None,
         at: Optional[Timestamp] = None,
+        validate_schema: bool = True,
     ) -> SchemaBranch:
         """Query all the node of type NodeSchema and GenericSchema from the database and convert them to their respective type.
 
@@ -2227,7 +2229,7 @@ class SchemaManager(NodeManager):
                     schema=await self.convert_node_schema_to_schema(schema_node=schema_node, db=db),
                 )
 
-        schema.process()
+        schema.process(validate_schema=validate_schema)
 
         return schema
 
