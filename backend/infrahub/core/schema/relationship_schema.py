@@ -57,7 +57,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
     def update_from_generic(self, other: RelationshipSchema) -> None:
         fields_to_exclude = ("id", "order_weight", "branch", "inherited", "filters")
-        for name, field in self.model_fields.items():
+        for name in self.model_fields:
             if name in fields_to_exclude:
                 continue
             if getattr(self, name) != getattr(other, name):
