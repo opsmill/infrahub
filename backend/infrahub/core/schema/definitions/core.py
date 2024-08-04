@@ -1045,7 +1045,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "threads",
-                    "peer": "CoreThread",
+                    "peer": InfrahubKind.THREAD,
                     "identifier": "proposedchange__thread",
                     "kind": "Component",
                     "optional": True,
@@ -1070,7 +1070,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Change Thread",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [],
             "relationships": [],
@@ -1082,7 +1082,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Thread - File",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [
                 {"name": "file", "kind": "Text", "optional": True},
