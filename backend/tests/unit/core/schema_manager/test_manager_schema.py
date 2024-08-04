@@ -2314,6 +2314,7 @@ async def test_load_schema_to_db_core_models(
     assert len(results) > 1
     assert all(r for r in results if r.namespace.value != "Profile")
 
+
 async def test_clean_diff_after_reload_from_db(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
 ):
@@ -2328,6 +2329,7 @@ async def test_clean_diff_after_reload_from_db(
     await registry.schema.load_schema_from_db(db=db, branch=default_branch, schema=schema_branch)
 
     assert not schema_pre.diff(other=schema_branch).all
+
 
 async def test_load_schema_to_db_simple_01(
     db: InfrahubDatabase,
