@@ -4,6 +4,7 @@ from infrahub.core.constants import BranchSupportType, InfrahubKind, Relationshi
 from infrahub.core.migrations.graph.m012_convert_account_generic import (
     Migration012,
     Migration012AddLabelData,
+    Migration012DeleteOldElementsSchema,
     Migration012RenameRelationshipAccountTokenData,
     Migration012RenameTypeAttributeData,
     Migration012RenameTypeAttributeSchema,
@@ -174,9 +175,17 @@ async def migration_012_schema(db: InfrahubDatabase, reset_registry, default_bra
     )
     await node1.save(db=db)
 
-    node2 = await Node.init(db=db, schema=ATTRIBUTE_SCHEMA)
-    await node2.new(db=db, name="type", node=node1)
-    await node2.save(db=db)
+    attr1 = await Node.init(db=db, schema=ATTRIBUTE_SCHEMA)
+    await attr1.new(db=db, name="name", node=node1)
+    await attr1.save(db=db)
+
+    attr2 = await Node.init(db=db, schema=ATTRIBUTE_SCHEMA)
+    await attr2.new(db=db, name="description", node=node1)
+    await attr2.save(db=db)
+
+    attr3 = await Node.init(db=db, schema=ATTRIBUTE_SCHEMA)
+    await attr3.new(db=db, name="type", node=node1)
+    await attr3.save(db=db)
 
 
 async def test_migration_012_add_label_data(
@@ -247,6 +256,23 @@ async def test_migration_012_rename_relationship_data(
 
     assert nbr_rels_after == nbr_rels_before + 3
     assert nbr_rels_related_after == nbr_rels_related_before + (4 * 3)
+
+
+async def test_migration_012_delete_old_attribute_schema(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_schema
+):
+    nbr_rels_before = await count_relationships(db=db)
+    # nbr_rels_related_before = await count_relationships(db=db, label="IS_RELATED")
+
+    query = await Migration012DeleteOldElementsSchema.init(db=db)
+    await query.execute(db=db)
+
+    query = await Migration012DeleteOldElementsSchema.init(db=db)
+    await query.execute(db=db)
+
+    nbr_rels_after = await count_relationships(db=db)
+
+    assert nbr_rels_after == nbr_rels_before + (3 * 3)
 
 
 async def test_migration_012(

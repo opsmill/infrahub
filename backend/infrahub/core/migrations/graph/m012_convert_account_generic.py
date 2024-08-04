@@ -8,6 +8,7 @@ from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType  # noqa: TCH001
 
 from ..query.attribute_rename import AttributeInfo, AttributeRenameMigrationQuery
+from ..query.delete_element_in_schema import DeleteElementInSchemaQuery
 from ..query.node_duplicate import NodeDuplicateMigrationQuery, SchemaNodeInfo
 from ..query.relationship_duplicate import RelationshipDuplicateQuery, SchemaRelationshipInfo
 from ..query.schema_attribute_update import SchemaAttributeUpdateQuery
@@ -17,20 +18,24 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-# Data Migration
-# - Add `CoreGenericAccount` to labels of `CoreAccount` nodes
-#   NodeDuplicate query
-# - Rename `type` attribute to `account_type`
-#   AttributeRename query
+global_branch = Branch(
+    name=GLOBAL_BRANCH_NAME,
+    status="OPEN",
+    description="Global Branch",
+    hierarchy_level=1,
+    is_global=True,
+    sync_with_git=False,
+)
 
-# - Rename `coreaccount__internalaccounttoken` relationship to `coregenericaccount__internalaccounttoken`
-#   Rename relationship
-#     Create DuplicateRelationship query
-
-# Schema migration
-# - DONE : Add `CoreGenericAccount` to `inherit_from` value of `SchemaNode` with name value `Account`
-# - DONE Rename `type` attribute to `account_type`
-# - Remove relationships for attribute that have moved to Generic
+default_branch = Branch(
+    name="main",
+    status="OPEN",
+    description="Default Branch",
+    hierarchy_level=1,
+    is_global=False,
+    is_default=True,
+    sync_with_git=False,
+)
 
 
 class Migration012RenameTypeAttributeData(AttributeRenameMigrationQuery):
@@ -48,19 +53,10 @@ class Migration012RenameTypeAttributeData(AttributeRenameMigrationQuery):
             branch_support=BranchSupportType.AGNOSTIC.value,
         )
 
-        branch = Branch(
-            name=GLOBAL_BRANCH_NAME,
-            status="OPEN",
-            description="Global Branch",
-            hierarchy_level=1,
-            is_global=True,
-            sync_with_git=False,
-        )
-
         if "branch" in kwargs:
             del kwargs["branch"]
 
-        super().__init__(new_attr=new_attr, previous_attr=previous_attr, branch=branch, **kwargs)
+        super().__init__(new_attr=new_attr, previous_attr=previous_attr, branch=global_branch, **kwargs)
 
     def render_match(self) -> str:
         query = """
@@ -139,40 +135,197 @@ class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery)
 
     def __init__(self, **kwargs: Any):
         new_rel = SchemaRelationshipInfo(
-            name="coregenericaccount__internalaccounttoken",
+            name="account__token",
             branch_support=BranchSupportType.AGNOSTIC.value,
-            src_peer="CoreAccount",
-            dst_peer="InternalAccountToken",
+            src_peer=InfrahubKind.ACCOUNT,
+            dst_peer=InfrahubKind.ACCOUNTTOKEN,
         )
         previous_rel = SchemaRelationshipInfo(
             name="coreaccount__internalaccounttoken",
             branch_support=BranchSupportType.AGNOSTIC.value,
-            src_peer="CoreAccount",
-            dst_peer="InternalAccountToken",
-        )
-
-        branch = Branch(
-            name=GLOBAL_BRANCH_NAME,
-            status="OPEN",
-            description="Global Branch",
-            hierarchy_level=1,
-            is_global=True,
-            sync_with_git=False,
+            src_peer=InfrahubKind.ACCOUNT,
+            dst_peer=InfrahubKind.ACCOUNTTOKEN,
         )
 
         if "branch" in kwargs:
             del kwargs["branch"]
 
-        super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=branch, **kwargs)
+        super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=global_branch, **kwargs)
+
+
+class Migration012RenameRelationshipRefreshTokenData(RelationshipDuplicateQuery):
+    name = "migration_012_rename_rel_refresh_token_data"
+
+    def __init__(self, **kwargs: Any):
+        new_rel = SchemaRelationshipInfo(
+            name="account__refreshtoken",
+            branch_support=BranchSupportType.AGNOSTIC.value,
+            src_peer=InfrahubKind.ACCOUNT,
+            dst_peer=InfrahubKind.REFRESHTOKEN,
+        )
+        previous_rel = SchemaRelationshipInfo(
+            name="coreaccount__internalrefreshtoken",
+            branch_support=BranchSupportType.AGNOSTIC.value,
+            src_peer=InfrahubKind.ACCOUNT,
+            dst_peer=InfrahubKind.REFRESHTOKEN,
+        )
+
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=global_branch, **kwargs)
+
+
+class Migration012RenameRelationshipThreadData(RelationshipDuplicateQuery):
+    name = "migration_012_rename_rel_thread_data"
+
+    def __init__(self, **kwargs: Any):
+        new_rel = SchemaRelationshipInfo(
+            name="thread__account",
+            branch_support=BranchSupportType.AGNOSTIC.value,
+            src_peer=InfrahubKind.ACCOUNT,
+            dst_peer=InfrahubKind.THREAD,
+        )
+        previous_rel = SchemaRelationshipInfo(
+            name="coreaccount__corethread",
+            branch_support=BranchSupportType.AGNOSTIC.value,
+            src_peer=InfrahubKind.ACCOUNT,
+            dst_peer=InfrahubKind.THREAD,
+        )
+
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=global_branch, **kwargs)
+
+
+class Migration012RenameRelationshipCommentData(RelationshipDuplicateQuery):
+    name = "migration_012_rename_rel_comment_data"
+
+    def __init__(self, **kwargs: Any):
+        new_rel = SchemaRelationshipInfo(
+            name="comment__account",
+            branch_support=BranchSupportType.AGNOSTIC.value,
+            src_peer=InfrahubKind.ACCOUNT,
+            dst_peer=InfrahubKind.COMMENT,
+        )
+        previous_rel = SchemaRelationshipInfo(
+            name="coreaccount__corecomment",
+            branch_support=BranchSupportType.AGNOSTIC.value,
+            src_peer=InfrahubKind.ACCOUNT,
+            dst_peer=InfrahubKind.COMMENT,
+        )
+
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=default_branch, **kwargs)
+
+
+class Migration012DeleteOldElementsSchema(DeleteElementInSchemaQuery):
+    name = "migration_012_delete_old_elements_schema"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, **kwargs: Any):
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(
+            element_names=["name", "password", "label", "description", "type", "role", "tokens"],
+            node_name="Account",
+            node_namespace="Core",
+            branch=default_branch,
+            **kwargs,
+        )
+
+
+class Migration012UpdateDisplayLabels(SchemaAttributeUpdateQuery):
+    name = "migration_012_display_labels"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, **kwargs: Any):
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(
+            attribute_name="display_labels",
+            node_name="Account",
+            node_namespace="Core",
+            new_value="NULL",
+            **kwargs,
+        )
+
+
+class Migration012UpdateOrderBy(SchemaAttributeUpdateQuery):
+    name = "migration_012_order_by"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, **kwargs: Any):
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(
+            attribute_name="order_by",
+            node_name="Account",
+            node_namespace="Core",
+            new_value="NULL",
+            **kwargs,
+        )
+
+
+class Migration012UpdateDefaultFilter(SchemaAttributeUpdateQuery):
+    name = "migration_012_reset_default_filter"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, **kwargs: Any):
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(
+            attribute_name="default_filter",
+            node_name="Account",
+            node_namespace="Core",
+            new_value="NULL",
+            **kwargs,
+        )
+
+
+class Migration012UpdateHFID(SchemaAttributeUpdateQuery):
+    name = "migration_012_reset_hfid"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, **kwargs: Any):
+        if "branch" in kwargs:
+            del kwargs["branch"]
+
+        super().__init__(
+            attribute_name="human_friendly_id",
+            node_name="Account",
+            node_namespace="Core",
+            new_value="NULL",
+            **kwargs,
+        )
 
 
 class Migration012(GraphMigration):
     name: str = "012_convert_account_generic"
     queries: Sequence[type[Query]] = [
-        Migration012RenameTypeAttributeSchema,
+        Migration012DeleteOldElementsSchema,
         Migration012RenameTypeAttributeData,
         Migration012AddLabelData,
         Migration012RenameRelationshipAccountTokenData,
+        Migration012RenameRelationshipRefreshTokenData,
+        Migration012RenameRelationshipThreadData,
+        Migration012RenameRelationshipCommentData,
+        Migration012UpdateDefaultFilter,
+        Migration012UpdateOrderBy,
+        Migration012UpdateDisplayLabels,
+        Migration012UpdateHFID,
     ]
     minimum_version: int = 11
 
