@@ -57,8 +57,8 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (isFilterForm || isProfile) {
-    return <NodeForm schema={schema} {...props} />;
+  if (isFilterForm || isProfile || !schema.generate_profile) {
+    return <NodeForm schema={schema} isFilterForm={isFilterForm} {...props} />;
   }
 
   if (isGeneric) {
