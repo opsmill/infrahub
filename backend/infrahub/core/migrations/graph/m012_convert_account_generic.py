@@ -44,12 +44,12 @@ class Migration012RenameTypeAttributeData(AttributeRenameQuery):
     def __init__(self, **kwargs: Any):
         new_attr = AttributeInfo(
             name="account_type",
-            node_kind="CoreAccount",
+            node_kind=InfrahubKind.ACCOUNT,
             branch_support=BranchSupportType.AGNOSTIC.value,
         )
         previous_attr = AttributeInfo(
             name="type",
-            node_kind="CoreAccount",
+            node_kind=InfrahubKind.ACCOUNT,
             branch_support=BranchSupportType.AGNOSTIC.value,
         )
 
@@ -79,13 +79,13 @@ class Migration012AddLabelData(NodeDuplicateQuery):
             name="Account",
             namespace="Core",
             branch_support=BranchSupportType.AGNOSTIC.value,
-            labels=["CoreAccount", InfrahubKind.GENERICACCOUNT, InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
+            labels=[InfrahubKind.ACCOUNT, InfrahubKind.GENERICACCOUNT, InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
         )
         previous_node = SchemaNodeInfo(
             name="Account",
             namespace="Core",
             branch_support=BranchSupportType.AGNOSTIC.value,
-            labels=["CoreAccount", InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
+            labels=[InfrahubKind.ACCOUNT, InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
         )
 
         branch = Branch(
