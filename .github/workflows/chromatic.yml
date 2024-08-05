@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - bab-deploy-storybook
+    paths:
+      - 'frontend/packages/ui/**'
 
 permissions:
   contents: read
