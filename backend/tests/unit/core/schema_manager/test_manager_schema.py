@@ -2099,6 +2099,7 @@ async def test_schema_branch_validate_check_missing(
                 },
             },
         ],
+        "enforce_update_support": True,
         "errors": [],
         "migrations": [],
     }
@@ -2174,7 +2175,12 @@ async def test_schema_branch_validate_add_node_relationships(
     new_schema.load_schema(schema=schema2)
 
     result = schema_branch.validate_update(other=new_schema)
-    assert result.model_dump(exclude=["diff"]) == {"constraints": [], "errors": [], "migrations": []}
+    assert result.model_dump(exclude=["diff"]) == {
+        "constraints": [],
+        "enforce_update_support": True,
+        "errors": [],
+        "migrations": [],
+    }
 
 
 # -----------------------------------------------------------------
