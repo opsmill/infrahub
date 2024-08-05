@@ -1,0 +1,45 @@
+---
+name: from-librenms
+source:
+  name: librenms
+  settings:
+    url: "http://localhost:8080"
+    # api_endpoint: "api/v0"
+    # auth_method: "token"
+    token: "LIBRENMS_TOKEN"
+
+destination:
+  name: infrahub
+  settings:
+    url: "http://localhost:8000"
+
+order: [
+  "IpamIPAddress",
+  "InfraDevice",
+]
+
+schema_mapping:
+  # Primary Device IP
+  - name: IpamIPAddress
+    mapping: devices
+    identifiers: ["address"]
+    fields:
+      - name: address
+        mapping: ip
+      - name: description
+        mapping: hostname
+
+  - name: InfraDevice
+    mapping: devices
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: hostname
+      - name: hostname
+        mapping: hostname
+      - name: serial_number
+        mapping: serial
+      - name: description
+        mapping: os
+      - name: type
+        mapping: hardware

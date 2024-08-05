@@ -112,7 +112,7 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
                 if not field_is_list:
                     if node := obj[field.mapping]:
                         matching_nodes = []
-                        node_id = self.build_mapping(field.reference, obj)
+                        node_id = self.build_mapping(reference=field.reference, obj=obj)
                         matching_nodes = [item for item in nodes if str(item) == node_id]
                         if len(matching_nodes) == 0:
                             data[field.name] = None
