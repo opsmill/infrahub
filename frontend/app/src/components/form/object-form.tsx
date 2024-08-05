@@ -6,10 +6,9 @@ import {
   schemaState,
 } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
-import { useId, useState } from "react";
-import { Combobox, tComboboxItem } from "@/components/ui/combobox";
+import { useState } from "react";
+import { tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
-import Label from "@/components/ui/label";
 import { gql } from "@apollo/client";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -29,6 +28,7 @@ import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFr
 import { ProfilesSelector } from "@/components/form/profiles-selector";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
+import { GenericSelector } from "@/components/form/generic-selector";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
@@ -102,23 +102,6 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
   }
 
   return <NodeWithProfileForm kind={kind} isFilterForm={isFilterForm} {...props} />;
-};
-
-type GenericSelectorProps = {
-  items: Array<tComboboxItem>;
-  value?: string;
-  onChange: (item: string) => void;
-};
-
-const GenericSelector = (props: GenericSelectorProps) => {
-  const id = useId();
-
-  return (
-    <div className="p-4 bg-gray-200">
-      <Label htmlFor={id}>Select an object type</Label>
-      <Combobox id={id} {...props} />
-    </div>
-  );
 };
 
 const NodeWithProfileForm = ({
