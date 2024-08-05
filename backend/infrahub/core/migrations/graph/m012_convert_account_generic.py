@@ -79,7 +79,12 @@ class Migration012AddLabelData(NodeDuplicateQuery):
             name="Account",
             namespace="Core",
             branch_support=BranchSupportType.AGNOSTIC.value,
-            labels=[InfrahubKind.ACCOUNT, InfrahubKind.GENERICACCOUNT, InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
+            labels=[
+                InfrahubKind.ACCOUNT,
+                InfrahubKind.GENERICACCOUNT,
+                InfrahubKind.LINEAGEOWNER,
+                InfrahubKind.LINEAGESOURCE,
+            ],
         )
         previous_node = SchemaNodeInfo(
             name="Account",
