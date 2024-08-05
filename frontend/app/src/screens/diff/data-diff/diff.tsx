@@ -19,7 +19,7 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/getProposedChangesDiffTree";
-import { DiffNode } from "./diff-node";
+import { DiffNode } from "./node";
 
 export const DiffContext = createContext({});
 

@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
 import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
 import { capitalizeFirstLetter } from "@/utils/string";
-import { DiffNodeRelationship } from "./diff-node-relationship";
+import { DiffNodeRelationship } from "./node-relationship";
+import { useParams } from "react-router-dom";
+import { DataDiffThread } from "../diff-thread";
 
 const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdd,
@@ -19,10 +21,12 @@ type DiffNodeProps = {
 };
 
 export const DiffNode = ({ node }: DiffNodeProps) => {
+  const { "*": branchName } = useParams();
+
   const DiffBadge = diffBadges[node.status];
 
   const title = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 relative group">
       <div>
         <DiffBadge conflicts={node.contains_conflict}>
           {capitalizeFirstLetter(node.status)}
@@ -41,6 +45,8 @@ export const DiffNode = ({ node }: DiffNodeProps) => {
           </BadgeCircle>
         )}
       </div>
+
+      {!branchName && <DataDiffThread path={`data/${node.id}`} />}
     </div>
   );
 
