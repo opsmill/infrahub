@@ -60,8 +60,10 @@ class NodeSchema(GeneratedNodeSchema):
                 )
 
     def inherit_from_interface(self, interface: GenericSchema) -> None:
-        existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
-        existing_inherited_relationships = {
+        existing_inherited_attributes: dict[str, int] = {
+            item.name: idx for idx, item in enumerate(self.attributes) if item.inherited
+        }
+        existing_inherited_relationships: dict[str, int] = {
             item.name: idx for idx, item in enumerate(self.relationships) if item.inherited
         }
         existing_inherited_fields = list(existing_inherited_attributes.keys()) + list(
@@ -82,7 +84,7 @@ class NodeSchema(GeneratedNodeSchema):
                 setattr(self, prop_name, getattr(interface, prop_name))
 
         for attribute in interface.attributes:
-            if attribute.name in self.valid_input_names:
+            if attribute.name in self.valid_local_names:
                 continue
 
             new_attribute = attribute.duplicate()
@@ -92,10 +94,10 @@ class NodeSchema(GeneratedNodeSchema):
                 self.attributes.append(new_attribute)
             else:
                 item_idx = existing_inherited_attributes[attribute.name]
-                self.attributes[item_idx] = new_attribute
+                self.attributes[item_idx].update_from_generic(other=new_attribute)
 
         for relationship in interface.relationships:
-            if relationship.name in self.valid_input_names:
+            if relationship.name in self.valid_local_names:
                 continue
 
             new_relationship = relationship.duplicate()
@@ -105,7 +107,7 @@ class NodeSchema(GeneratedNodeSchema):
                 self.relationships.append(new_relationship)
             else:
                 item_idx = existing_inherited_relationships[relationship.name]
-                self.relationships[item_idx] = new_relationship
+                self.relationships[item_idx].update_from_generic(other=new_relationship)
 
     def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
         if not self.hierarchy:

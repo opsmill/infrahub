@@ -299,6 +299,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES
 
     @property
+    def valid_local_names(self) -> list[str]:
+        return self.local_attribute_names + self.local_relationship_names + NODE_METADATA_ATTRIBUTES
+
+    @property
     def attribute_names(self) -> list[str]:
         return [item.name for item in self.attributes]
 
@@ -327,8 +331,16 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         return [item for item in self.attributes if not item.inherited]
 
     @property
+    def local_attribute_names(self) -> list[str]:
+        return [item.name for item in self.local_attributes]
+
+    @property
     def local_relationships(self) -> list[RelationshipSchema]:
         return [item for item in self.relationships if not item.inherited]
+
+    @property
+    def local_relationship_names(self) -> list[str]:
+        return [item.name for item in self.local_relationships]
 
     @property
     def unique_attributes(self) -> list[AttributeSchema]:
