@@ -6,8 +6,7 @@ import {
   schemaState,
 } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
-import { useEffect, useState } from "react";
-import { tComboboxItem } from "@/components/ui/combobox";
+import { useState } from "react";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { gql } from "@apollo/client";
 import { createObject } from "@/graphql/mutations/objects/createObject";
@@ -28,8 +27,8 @@ import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFr
 import { ProfilesSelector } from "@/components/form/profiles-selector";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
-import { GenericSelector } from "@/components/form/generic-selector";
 import { useSchema } from "@/hooks/useSchema";
+import { GenericObjectForm } from "@/components/form/generic-object-form";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
@@ -38,7 +37,7 @@ export type ProfileData = {
   __typename: string;
 };
 
-interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
+export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -48,16 +47,7 @@ interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> 
 }
 
 const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
-  const nodeSchemas = useAtomValue(schemaState);
-  const profileSchemas = useAtomValue(profilesAtom);
-  const { schema, isGeneric } = useSchema(kind);
-  const [kindToCreate, setKindToCreate] = useState<string>();
-
-  useEffect(() => {
-    if (isGeneric && schema.used_by?.length === 1) {
-      setKindToCreate(schema.used_by[0]);
-    }
-  }, [schema?.kind]);
+  const { schema, isProfile, isGeneric } = useSchema(kind);
 
   if (!schema) {
     return (
@@ -67,45 +57,18 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (isFilterForm) {
+  if (isFilterForm || isProfile) {
     return <NodeForm schema={schema} {...props} />;
   }
 
   if (isGeneric) {
-    if (!schema.used_by || schema.used_by?.length === 0) {
-      return (
-        <NoDataFound message="This generic schema is not currently associated with any nodes. To create an instance, you need to first link this generic to at least one node type. Please check your schema configuration." />
-      );
-    }
-
-    const items: Array<tComboboxItem> = schema.used_by
-      .map((kind) => {
-        const relatedSchema = [...nodeSchemas, ...profileSchemas].find(
-          (schema) => schema.kind === kind
-        );
-
-        if (!relatedSchema) return null;
-
-        return {
-          value: relatedSchema.kind,
-          label: relatedSchema.label ?? relatedSchema.name,
-          badge: relatedSchema.namespace,
-        };
-      })
-      .filter((item) => !!item);
-
-    return (
-      <>
-        <GenericSelector items={items} value={kindToCreate} onChange={setKindToCreate} />
-        {kindToCreate && <NodeWithProfileForm kind={kindToCreate} {...props} />}
-      </>
-    );
+    return <GenericObjectForm schema={schema} {...props} />;
   }
 
   return <NodeWithProfileForm kind={kind} isFilterForm={isFilterForm} {...props} />;
 };
 
-const NodeWithProfileForm = ({
+export const NodeWithProfileForm = ({
   isFilterForm,
   kind,
   currentProfiles,
