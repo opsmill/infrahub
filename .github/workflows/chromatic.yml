@@ -4,10 +4,9 @@ name: 'Chromatic Publish'
 on:
   push:
     branches:
-      - bab-deploy-storybook
-    #   - develop
-    # paths:
-    #   - 'frontend/packages/ui/**'
+      - develop
+    paths:
+      - 'frontend/packages/ui/**'
 
 permissions:
   contents: read
@@ -38,12 +37,6 @@ jobs:
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: ./frontend/packages/ui
-      - name: Outputs Storybook storybookUrl
-        run: |
-          echo "Storybook URL: ${{ steps.chromatic.outputs.storybookUrl }}"
       - name: Outputs Storybook URL
         run: |
-          echo "Storybook URL: ${{ steps.chromatic.outputs.url }}"
-      - name: Outputs Storybook buildUrl
-        run: |
-          echo "Storybook URL: ${{ steps.chromatic.outputs.buildUrl }}"
+          echo "Storybook URL: ${{ steps.chromatic.outputs.storybookUrl }}"
