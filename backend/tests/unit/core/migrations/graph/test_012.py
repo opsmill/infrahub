@@ -187,6 +187,10 @@ async def migration_012_schema(db: InfrahubDatabase, reset_registry, default_bra
     await attr3.new(db=db, name="type", node=node1)
     await attr3.save(db=db)
 
+    attr4 = await Node.init(db=db, schema=ATTRIBUTE_SCHEMA)
+    await attr4.new(db=db, name="donttouch", node=node1)
+    await attr4.save(db=db)
+
 
 async def test_migration_012_add_label_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data

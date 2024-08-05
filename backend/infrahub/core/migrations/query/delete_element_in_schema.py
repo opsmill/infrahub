@@ -30,7 +30,8 @@ class DeleteElementInSchemaQuery(Query):
 
     def render_match(self) -> str:
         query = """
-        MATCH path = (attr_node:SchemaAttribute|SchemaRelationship)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+        MATCH path = (attr_node:Node)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+        MATCH (attr_node)-[:HAS_ATTRIBUTE]->(attr_name:Attribute)-[:HAS_VALUE]->(attr_value:AttributeValue)
         """
         return query
 
@@ -41,9 +42,10 @@ class DeleteElementInSchemaQuery(Query):
 
         # ruff: noqa: E501
         query = """
-        WHERE (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(:AttributeValue { value: $node_name })
-            AND (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(:AttributeValue { value: $node_namespace })
-            AND attr.name IN $element_names
+        WHERE ( "SchemaAttribute" in LABELS(attr_node) OR "SchemaRelationship" IN LABELS(attr_node))
+            AND exists( (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute { name: "name"})-[:HAS_VALUE]->(:AttributeValue { value: $node_name }) )
+            AND exists( (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute { name: "namespace"})-[:HAS_VALUE]->(:AttributeValue  { value: $node_namespace }) )
+            AND ( attr_name.name = "name" AND attr_value.value IN $element_names)
             AND all(r IN relationships(path) WHERE ( %(filters)s ))
         """ % {"filters": filters}
 
@@ -144,7 +146,7 @@ class DeleteElementInSchemaQuery(Query):
         FOREACH (i in CASE WHEN rel_outband.branch = $branch_name THEN [1] ELSE [] END |
             SET rel_outband.to = $current_time
         )
-        WITH DISTINCT(element_to_delete)
+        WITH DISTINCT(element_to_delete) AS element_to_delete
         // Process Inbound Relationship
         MATCH (element_to_delete)<-[]-(peer)
         CALL {

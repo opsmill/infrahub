@@ -126,7 +126,7 @@ class RelationshipDuplicateQuery(Query):
         WITH rel1 as active_rel, r11 as r1, r12 as r2
         WHERE r1.status = "active" AND r2.status = "active"
         CREATE (new_rel:Relationship { uuid: active_rel.uuid, name: $new_rel.name, branch_support: $new_rel.branch_support })
-        WITH DISTINCT(active_rel), new_rel
+        WITH DISTINCT(active_rel) as active_rel, new_rel
         // Process Inbound Relationship
         MATCH (active_rel)<-[]-(peer)
         CALL {
@@ -146,7 +146,7 @@ class RelationshipDuplicateQuery(Query):
         FOREACH (i in CASE WHEN rel_inband.branch = $branch_name THEN [1] ELSE [] END |
             SET rel_inband.to = $current_time
         )
-        WITH DISTINCT(active_rel), new_rel
+        WITH DISTINCT(active_rel) as active_rel, new_rel
         // Process Outbound Relationship
         MATCH (active_rel)-[]->(peer)
         CALL {

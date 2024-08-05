@@ -57,8 +57,8 @@ class SchemaAttributeUpdateQuery(Query):
 
         # ruff: noqa: E501
         query = """
-        WHERE (node)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(:AttributeValue { value: $node_name})
-            AND (node)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(:AttributeValue { value: $node_namespace })
+        WHERE exists((node)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(:AttributeValue { value: $node_name}))
+            AND exists((node)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(:AttributeValue { value: $node_namespace }))
             AND attr.name = $attr_name
             AND all(r IN relationships(path) WHERE ( %(filters)s ))
         """ % {"filters": filters}
