@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { CSSProperties, useState } from "react";
 
 export type AccordionProps = {
@@ -25,11 +25,7 @@ export default function Accordion({
           className="flex flex-1 w-full items-center cursor-pointer"
           onClick={() => setIsOpen(!isOpen)}>
           <span className="flex h-7 items-center mx-2 relative">
-            {isOpen ? (
-              <ChevronDownIcon className="w-4 h-4" aria-hidden="true" />
-            ) : (
-              <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
-            )}
+            {isOpen ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
           </span>
           <span className="flex-1 font-semibold text-left justify-start">{title}</span>
         </div>
