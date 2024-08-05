@@ -6,7 +6,7 @@ import {
   schemaState,
 } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { tComboboxItem } from "@/components/ui/combobox";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { gql } from "@apollo/client";
@@ -29,6 +29,7 @@ import { ProfilesSelector } from "@/components/form/profiles-selector";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { GenericSelector } from "@/components/form/generic-selector";
+import { useSchema } from "@/hooks/useSchema";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
@@ -47,41 +48,41 @@ interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> 
 }
 
 const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
-  // get all attributes and relationship ordered
-  // map them into form fields
-  // render form
-  const schemas = useAtomValue(schemaState);
-  const profiles = useAtomValue(profilesAtom);
-  const generics = useAtomValue(genericsState);
-  const generic = generics.find((g) => g.kind === kind);
+  const nodeSchemas = useAtomValue(schemaState);
+  const profileSchemas = useAtomValue(profilesAtom);
+  const { schema, isGeneric } = useSchema(kind);
   const [kindToCreate, setKindToCreate] = useState<string>();
 
-  if (!isFilterForm && generic) {
-    if (!generic.used_by || generic.used_by.length === 0) {
+  useEffect(() => {
+    if (isGeneric && schema.used_by?.length === 1) {
+      setKindToCreate(schema.used_by[0]);
+    }
+  }, [schema?.kind]);
+
+  if (!schema) {
+    return (
+      <NoDataFound
+        message={`Unable to generate the form. We couldn't find a schema for the kind "${kind}". Please check if the kind is correct or contact support if this issue persists.`}
+      />
+    );
+  }
+
+  if (isFilterForm) {
+    return <NodeForm schema={schema} {...props} />;
+  }
+
+  if (isGeneric) {
+    if (!schema.used_by || schema.used_by?.length === 0) {
       return (
-        <NoDataFound message="No nodes are referencing this generic. Only nodes can be created." />
+        <NoDataFound message="This generic schema is not currently associated with any nodes. To create an instance, you need to first link this generic to at least one node type. Please check your schema configuration." />
       );
     }
 
-    if (!kindToCreate && generic.used_by.length === 1) {
-      const genericKind = generic.used_by[0];
-
-      const relatedSchema = schemas.find((schema) => schema.kind === genericKind);
-
-      if (!relatedSchema) return;
-
-      const currentGeneric = {
-        value: relatedSchema.kind,
-        label: relatedSchema.label ?? relatedSchema.name,
-        badge: relatedSchema.namespace,
-      };
-
-      setKindToCreate(currentGeneric.value ?? "");
-    }
-
-    const items = generic.used_by
+    const items: Array<tComboboxItem> = schema.used_by
       .map((kind) => {
-        const relatedSchema = [...schemas, ...profiles].find((schema) => schema.kind === kind);
+        const relatedSchema = [...nodeSchemas, ...profileSchemas].find(
+          (schema) => schema.kind === kind
+        );
 
         if (!relatedSchema) return null;
 
@@ -91,7 +92,7 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
           badge: relatedSchema.namespace,
         };
       })
-      .filter(Boolean) as Array<tComboboxItem>;
+      .filter((item) => !!item);
 
     return (
       <>
