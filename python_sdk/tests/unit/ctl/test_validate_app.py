@@ -19,14 +19,15 @@ def test_validate_schema_empty():
     fixture_file = get_fixtures_dir() / "models" / "empty.json"
 
     result = runner.invoke(app=app, args=["schema", str(fixture_file)])
-    assert result.exit_code == 1
+    assert result.exit_code == 2
+    assert "'version' | Field required (missing)" in result.stdout
 
 
 def test_validate_schema_non_valid():
     fixture_file = get_fixtures_dir() / "models" / "non_valid_model_01.json"
 
     result = runner.invoke(app=app, args=["schema", str(fixture_file)])
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "Schema not valid" in result.stdout
 
 

@@ -47,16 +47,15 @@ def catch_exception(  # noqa: C901, PLR0915
     if not console:
         console = Console()
 
-    def decorator(func: Callable):  # noqa: C901
+    def decorator(func: Callable):  # noqa: C901, PLR0915
         if asyncio.iscoroutinefunction(func):
 
             @wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any):
                 try:
                     return await func(*args, **kwargs)
-                except Exit:
-                    # Ignore click exit error, the original error has been handled already
-                    return None
+                except Exit as exc:
+                    raise typer.Exit(code=exc.exit_code) from exc
                 except AuthenticationError as exc:
                     console.print(f"[red]Authentication failure: {str(exc)}")
                     raise typer.Exit(code=2)
@@ -85,9 +84,8 @@ def catch_exception(  # noqa: C901, PLR0915
         def wrapper(*args: Any, **kwargs: Any):
             try:
                 return func(*args, **kwargs)
-            except Exit:
-                # Ignore click exit error, the original error has been handled already
-                return None
+            except Exit as exc:
+                raise typer.Exit(code=exc.exit_code) from exc
             except AuthenticationError as exc:
                 console.print(f"[red]Authentication failure: {str(exc)}")
                 raise typer.Exit(code=2)

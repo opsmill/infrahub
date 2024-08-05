@@ -13,7 +13,7 @@ def test_schema_load_empty(httpx_mock: HTTPXMock):
     fixture_file = get_fixtures_dir() / "models" / "empty.json"
     result = runner.invoke(app=app, args=["load", str(fixture_file)])
 
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "Empty YAML/JSON file" in result.stdout
 
 
@@ -118,7 +118,7 @@ def test_schema_load_notvalid_namespace(httpx_mock: HTTPXMock):
         "Unable to load the schema:  Node: OuTDevice | "
         "namespace (OuT) | String should match pattern '^[A-Z]+$' (string_pattern_mismatch) "
         " Node: OuTDevice | Attribute: name (NotValid) | Value error, Only valid Attribute Kind "
-        "are : ['ID', 'Dropdown']  (value_error)1"
+        "are : ['ID', 'Dropdown']  (value_error)"
     )
     assert expected_result == clean_output
 
