@@ -39,8 +39,11 @@ jobs:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: ./frontend/packages/ui
       - name: Outputs Storybook storybookUrl
-        run: echo "Storybook URL: ${{ steps.chromatic.outputs.storybookUrl }}"
+        run: |
+          echo "Storybook URL: ${{ steps.chromatic.outputs.storybookUrl }}"
       - name: Outputs Storybook URL
-        run: echo "Storybook URL: ${{ steps.chromatic.outputs.url }}"
+        run: |
+          echo "Storybook URL: ${{ steps.chromatic.outputs.url }}"
       - name: Outputs Storybook buildUrl
-        run: echo "Storybook URL: ${{ steps.chromatic.outputs.buildUrl }}"
+        run: |
+          echo "Storybook URL: ${{ steps.chromatic.outputs.buildUrl }}"
