@@ -1,4 +1,4 @@
-import Accordion from "@/components/display/accordion";
+import Accordion, { EmptyAccordion } from "@/components/display/accordion";
 import { Card } from "@/components/ui/card";
 import { BadgeAdd, BadgeRemove, BadgeType, BadgeUnchange, BadgeUpdate } from "../ui/badge";
 import { Badge } from "@/components/ui/badge";
@@ -47,11 +47,15 @@ export const DiffNode = ({ node }: DiffNodeProps) => {
   return (
     <Card className="m-4">
       <div className="bg-gray-100 rounded-md border">
-        <Accordion title={title}>
-          {node.relationships.map((relationship: any, index: number) => (
-            <DiffNodeRelationship key={index} relationship={relationship} />
-          ))}
-        </Accordion>
+        {!!node.relationships.length && (
+          <Accordion title={title}>
+            {node.relationships.map((relationship: any, index: number) => (
+              <DiffNodeRelationship key={index} relationship={relationship} />
+            ))}
+          </Accordion>
+        )}
+
+        {!node.relationships.length && <EmptyAccordion title={title} />}
       </div>
     </Card>
   );

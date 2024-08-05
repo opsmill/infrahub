@@ -34,3 +34,19 @@ export default function Accordion({
     </div>
   );
 }
+
+// If alignement to other accordions is needed
+export const EmptyAccordion = ({ title, className, ...props }: AccordionProps) => {
+  return (
+    <div className={className} {...props}>
+      <div className="flex">
+        <div className="flex flex-1 w-full items-center">
+          <span className="flex h-7 items-center mx-2 relative">
+            <Icon icon={"mdi:minus"} />
+          </span>
+          <span className="flex-1 font-semibold text-left justify-start">{title}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
