@@ -17,14 +17,14 @@ def get_value(obj, name: str):
 
 class RestApiClient:
     def __init__(
-            self,
-            base_url: str,
-            auth_method: str,
-            api_token: Optional[str] = None,
-            username: Optional[str] = None,
-            password: Optional[str] = None,
-            timeout: Optional[int] = 30
-        ):
+        self,
+        base_url: str,
+        auth_method: str,
+        api_token: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        timeout: Optional[int] = 30,
+    ):
         self.base_url = base_url.rstrip("/")
         self.headers = {
             "Content-Type": "application/json",
@@ -41,7 +41,9 @@ class RestApiClient:
 
         self.timeout = timeout
 
-    def request(self, method: str, endpoint: str, params: Optional[dict[str, Any]] = None, data: Optional[dict[str, Any]] = None) -> Any:
+    def request(
+        self, method: str, endpoint: str, params: Optional[dict[str, Any]] = None, data: Optional[dict[str, Any]] = None
+    ) -> Any:
         """Make a request to the REST API."""
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
@@ -54,16 +56,11 @@ class RestApiClient:
                     params=params,
                     json=data,
                     auth=self.auth,
-                    timeout=self.timeout
+                    timeout=self.timeout,
                 )
             else:
                 response = requests.request(
-                    method=method,
-                    url=url,
-                    headers=self.headers,
-                    params=params,
-                    json=data,
-                    timeout=self.timeout
+                    method=method, url=url, headers=self.headers, params=params, json=data, timeout=self.timeout
                 )
 
             response.raise_for_status()  # Raise an HTTPError for bad responses

@@ -45,7 +45,7 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
             api_token=api_token,
             username=username,
             password=password,
-            timeout=timeout
+            timeout=timeout,
         )
 
     def model_loader(self, model_name: str, model: DiffSyncModel):
@@ -62,7 +62,7 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
                 raise ValueError(f"Error fetching data from REST API: {str(e)}")
 
             print(f"{self.type}: Loading {len(objs)} devices from {resource_endpoint}")
-            for _, obj in objs.items():
+            for obj in objs.values():
                 data = self.obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
                 self.add(item)

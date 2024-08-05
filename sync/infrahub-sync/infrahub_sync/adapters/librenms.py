@@ -40,12 +40,7 @@ class LibreNMSAdapter(DiffSyncMixin, Adapter):
             raise ValueError("Token-based authentication requires a valid API token!")
 
         full_base_url = f"{url.rstrip('/')}/{api_endpoint.strip('/')}"
-        return RestApiClient(
-            base_url=full_base_url,
-            auth_method=auth_method,
-            api_token=api_token,
-            timeout=timeout
-        )
+        return RestApiClient(base_url=full_base_url, auth_method=auth_method, api_token=api_token, timeout=timeout)
 
     def model_loader(self, model_name: str, model: DiffSyncModel):
         for element in self.config.schema_mapping:
@@ -61,7 +56,7 @@ class LibreNMSAdapter(DiffSyncMixin, Adapter):
                 raise ValueError(f"Error fetching data from REST API: {str(e)}")
 
             print(f"{self.type}: Loading {len(objs)} devices from {resource_endpoint}")
-            for _, obj in objs.items():
+            for obj in objs.values():
                 data = self.obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
                 self.add(item)
