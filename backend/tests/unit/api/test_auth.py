@@ -157,10 +157,7 @@ async def test_password_based_login_invalid_password(db: InfrahubDatabase, defau
         response = client.post("/api/auth/login", json={"username": "First Account", "password": "incorrect"})
 
     assert response.status_code == 401
-    assert response.json() == {
-        "data": None,
-        "errors": [{"extensions": {"code": 401}, "message": "Incorrect password"}],
-    }
+    assert response.json() == {"data": None, "errors": [{"extensions": {"code": 401}, "message": "Incorrect password"}]}
 
 
 async def test_use_expired_token(db: InfrahubDatabase, default_branch, client):
@@ -203,11 +200,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
     """It should not be possible to generate an API token using a JWT token"""
     with client:
         login_response = client.post(
-            "/api/auth/login",
-            json={
-                "username": "test-admin",
-                "password": config.SETTINGS.initial.admin_password,
-            },
+            "/api/auth/login", json={"username": "test-admin", "password": config.SETTINGS.initial.admin_password}
         )
 
     assert login_response.status_code == 200
@@ -228,9 +221,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
     """
     with client:
         jwt_response = client.post(
-            "/graphql",
-            json={"query": token_mutation},
-            headers={"Authorization": f"Bearer {access_token}"},
+            "/graphql", json={"query": token_mutation}, headers={"Authorization": f"Bearer {access_token}"}
         )
 
     assert jwt_response.status_code == 200
@@ -239,11 +230,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
 
     # Validate that the generated API token can't be used to generate another API token
     with client:
-        api_response = client.post(
-            "/graphql",
-            json={"query": token_mutation},
-            headers={"X-INFRAHUB-KEY": api_token},
-        )
+        api_response = client.post("/graphql", json={"query": token_mutation}, headers={"X-INFRAHUB-KEY": api_token})
 
     assert api_response.status_code == 200
     assert not api_response.json()["data"]["InfrahubAccountTokenCreate"]
@@ -251,23 +238,21 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
 
     token_query = """
     query InfrahubAccountToken {
-    InfrahubAccountToken(offset: 0, limit: 5) {
-        count
-        edges {
-        node {
-            expiration
-            id
-            name
+        InfrahubAccountToken(offset: 0, limit: 5) {
+            count
+            edges {
+                node {
+                    expiration
+                    id
+                    name
+                }
+            }
         }
-        }
-    }
     }
     """
     with client:
         token_query_response = client.post(
-            "/graphql",
-            json={"query": token_query},
-            headers={"Authorization": f"Bearer {access_token}"},
+            "/graphql", json={"query": token_query}, headers={"Authorization": f"Bearer {access_token}"}
         )
 
     assert token_query_response.status_code == 200
@@ -287,9 +272,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
 
     with client:
         token_delete_response = client.post(
-            "/graphql",
-            json={"query": token_delete_mutation},
-            headers={"Authorization": f"Bearer {access_token}"},
+            "/graphql", json={"query": token_delete_mutation}, headers={"Authorization": f"Bearer {access_token}"}
         )
 
     assert token_delete_response.status_code == 200
@@ -297,9 +280,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
 
     with client:
         token_query_response = client.post(
-            "/graphql",
-            json={"query": token_query},
-            headers={"Authorization": f"Bearer {access_token}"},
+            "/graphql", json={"query": token_query}, headers={"Authorization": f"Bearer {access_token}"}
         )
 
     assert token_query_response.status_code == 200

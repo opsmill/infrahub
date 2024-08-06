@@ -65,11 +65,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
     """It should not be possible to generate an API token using a JWT token"""
     with client:
         login_response = client.post(
-            "/api/auth/login",
-            json={
-                "username": "test-admin",
-                "password": config.SETTINGS.initial.admin_password,
-            },
+            "/api/auth/login", json={"username": "test-admin", "password": config.SETTINGS.initial.admin_password}
         )
 
     assert login_response.status_code == 200
@@ -80,9 +76,9 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
         InfrahubAccountTokenCreate(data: { name: "my-first-token" }) {
             ok
             object {
-            token {
-                value
-            }
+                token {
+                    value
+                }
             }
         }
     }
