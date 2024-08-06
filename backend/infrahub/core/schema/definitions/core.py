@@ -474,6 +474,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "credential",
                     "peer": InfrahubKind.CREDENTIAL,
+                    "identifier": "gitrepository__credential",
                     "kind": "Attribute",
                     "optional": True,
                     "cardinality": "one",
