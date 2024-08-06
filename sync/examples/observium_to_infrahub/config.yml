@@ -7,7 +7,7 @@ source:
     # api_endpoint: "api/v0"
     # auth_method: "basic"
     username: "OBSERVIUM_USERNAME"
-    password: "OBSERVIUM_TOKEN"
+    password: "OBSERVIUM_PASSWORD"
 
 destination:
   name: infrahub
@@ -15,11 +15,20 @@ destination:
     url: "http://localhost:8000"
 
 order: [
+  "CoreStandardGroup",
   "IpamIPAddress",
   "InfraDevice",
 ]
 
 schema_mapping:
+  - name: CoreStandardGroup
+    mapping: groups
+    fields:
+      - name: name
+        mapping: group_name
+      - name: description
+        mapping: group_descr
+
   # Primary Device IP
   - name: IpamIPAddress
     mapping: devices
@@ -36,11 +45,24 @@ schema_mapping:
     fields:
       - name: name
         mapping: hostname
-      - name: hostname
-        mapping: hostname
-      - name: serial_number
-        mapping: serial
       - name: description
+        mapping: serial
+      # Not in the demo schema
+      # - name: serial_number
+      #   mapping: serial
+
+      # /!\ Platform need to exist beforehand !
+      - name: platform
         mapping: os
+        reference: InfraPlatform
+
+      # Not in the demo schema
+      # - name: manufacturer
+      #   mapping: vendor
+      #   reference: OrganizationManufacturer
+
       - name: type
-        mapping: hardware
+        mapping: serial
+      - name: primary_address
+        mapping: ip
+        reference: IpamIPAddress

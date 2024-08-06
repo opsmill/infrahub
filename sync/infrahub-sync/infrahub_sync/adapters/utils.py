@@ -15,6 +15,17 @@ def get_value(obj, name: str):
     return get_value(sub_obj, name=remaining_part)
 
 
+def derive_identifier_key(obj: dict[str, Any]) -> Optional[str]:
+    obj_id = str(obj.get("id", None))
+    if not obj_id:
+        for key in obj.keys():
+            if key.endswith("_id"):
+                obj_id = obj[key]
+    if not obj_id:
+        raise ValueError("No suitable identifier key found in object")
+    return obj_id
+
+
 class RestApiClient:
     def __init__(
         self,

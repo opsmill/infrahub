@@ -1,8 +1,10 @@
 from infrahub_sync.adapters.infrahub import InfrahubAdapter
 
 from .sync_models import (
+    CoreStandardGroup,
     InfraDevice,
     IpamIPAddress,
+    LocationSite,
 )
 
 
@@ -12,5 +14,7 @@ from .sync_models import (
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 class InfrahubSync(InfrahubAdapter):
+    CoreStandardGroup = CoreStandardGroup
     InfraDevice = InfraDevice
     IpamIPAddress = IpamIPAddress
+    LocationSite = LocationSite

@@ -8,15 +8,24 @@ from infrahub_sync.adapters.infrahub import InfrahubModel
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 
+class CoreStandardGroup(InfrahubModel):
+    _modelname = "CoreStandardGroup"
+    _identifiers = ("name",)
+    _attributes = ("description",)
+    name: str
+    description: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
     _identifiers = ("name",)
-    _attributes = ("description", "serial_number", "type")
+    _attributes = ("primary_address", "platform", "description", "type")
     name: str
-    hostname: str
     description: Optional[str] = None
-    serial_number: Optional[str] = None
-    type: Optional[str] = None
+    type: str
+    primary_address: Optional[str] = None
+    platform: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Optional
 
 from diffsync import Adapter, DiffSyncModel
 from infrahub_sync import (
@@ -12,10 +12,10 @@ from infrahub_sync import (
     SyncConfig,
 )
 
-from .utils import RestApiClient, get_value
+from .utils import RestApiClient, derive_identifier_key, get_value
 
 
-class LibreNMSAdapter(DiffSyncMixin, Adapter):
+class LibrenmsAdapter(DiffSyncMixin, Adapter):
     type = "LibreNMS"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):
@@ -48,27 +48,28 @@ class LibreNMSAdapter(DiffSyncMixin, Adapter):
                 continue
 
             resource_endpoint = element.mapping  # Use the resource endpoint from the schema mapping
+            response_key = resource_endpoint.split("/")[-1]  # Get the last part of the endpoint as the key
 
             try:
                 response_data = self.client.get(resource_endpoint)  # Fetch data from the specified resource endpoint
-                objs = response_data.get("devices", {})  # Extract the devices dictionary
+                objs = response_data.get(response_key, [])  # Extract the data using the derived key
             except Exception as e:
                 raise ValueError(f"Error fetching data from REST API: {str(e)}")
 
-            print(f"{self.type}: Loading {len(objs)} devices from {resource_endpoint}")
-            for obj in objs.values():
+            print(f"{self.type}: Loading {len(objs)} {response_key}")
+            for obj in objs:
                 data = self.obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
                 self.add(item)
 
-    def derive_identifier_key(self, obj: dict[str, Any]) -> str:
-        for key in obj.keys():
-            if key.endswith("_id"):
-                return obj[key]
-        raise ValueError("No suitable identifier key found in object")
-
-    def obj_to_diffsync(self, obj: dict[str, Any], mapping: SchemaMappingModel, model: DiffSyncModel) -> dict:
-        data: dict[str, Any] = {"local_id": str(self.derive_identifier_key(obj=obj))}
+    def obj_to_diffsync(
+            self,
+            obj: dict[str, Any],
+            mapping: SchemaMappingModel,
+            model: DiffSyncModel
+        ) -> dict:
+        obj_id = derive_identifier_key(obj=obj)
+        data: dict[str, Any] = {"local_id": str(obj_id)}
 
         for field in mapping.fields:  # pylint: disable=too-many-nested-blocks
             field_is_list = model.is_list(name=field.name)
@@ -94,13 +95,17 @@ class LibreNMSAdapter(DiffSyncMixin, Adapter):
                     )
                 if not field_is_list:
                     if node := get_value(obj, field.mapping):
-                        matching_nodes = []
-                        node_id = node.get("id", None)
-                        matching_nodes = [item for item in nodes if item.local_id == str(node_id)]
-                        if len(matching_nodes) == 0:
-                            raise IndexError(f"Unable to locate the node {model} {node_id}")
-                        node = matching_nodes[0]
-                        data[field.name] = node.get_unique_id()
+                        if isinstance(node, dict):
+                            matching_nodes = []
+                            node_id = node.get("id", None)
+                            matching_nodes = [item for item in nodes if item.local_id == str(node_id)]
+                            if len(matching_nodes) == 0:
+                                raise IndexError(f"Unable to locate the node {model} {node_id}")
+                            node = matching_nodes[0]
+                            data[field.name] = node.get_unique_id()
+                        else:
+                            # Some link are referencing the node identifier directly without the id (i.e location in device)
+                            data[field.name] = node
 
                 else:
                     data[field.name] = []
@@ -121,5 +126,5 @@ class LibreNMSAdapter(DiffSyncMixin, Adapter):
         return data
 
 
-class LibreNMSModel(DiffSyncModelMixin, DiffSyncModel):
+class LibrenmsModel(DiffSyncModelMixin, DiffSyncModel):
     pass

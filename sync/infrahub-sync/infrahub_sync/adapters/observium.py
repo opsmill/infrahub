@@ -12,7 +12,7 @@ from infrahub_sync import (
     SyncConfig,
 )
 
-from .utils import RestApiClient, get_value
+from .utils import RestApiClient, derive_identifier_key, get_value
 
 
 class ObserviumAdapter(DiffSyncMixin, Adapter):
@@ -28,7 +28,7 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
     def _create_rest_client(self, adapter: SyncAdapter) -> RestApiClient:
         settings = adapter.settings or {}
         url = os.environ.get("OBSERVIUM_ADDRESS") or settings.get("url")
-        api_endpoint = settings.get("api_endpoint", "/api")
+        api_endpoint = settings.get("api_endpoint", "/api/v0")
         auth_method = settings.get("auth_method", "basic")
         api_token = os.environ.get("OBSERVIUM_TOKEN") or settings.get("token")
         username = os.environ.get("OBSERVIUM_USERNAME") or settings.get("username")
@@ -57,24 +57,27 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
 
             try:
                 response_data = self.client.get(resource_endpoint)  # Fetch data from the specified resource endpoint
-                objs = response_data.get("devices", {})  # Extract the devices dictionary
+                objs = response_data.get(resource_endpoint, {})  # Extract the resource_endpoint dictionary
             except Exception as e:
                 raise ValueError(f"Error fetching data from REST API: {str(e)}")
 
-            print(f"{self.type}: Loading {len(objs)} devices from {resource_endpoint}")
-            for obj in objs.values():
-                data = self.obj_to_diffsync(obj=obj, mapping=element, model=model)
-                item = model(**data)
-                self.add(item)
-
-    def derive_identifier_key(self, obj: dict[str, Any]) -> str:
-        for key in obj.keys():
-            if key.endswith("_id"):
-                return obj[key]
-        raise ValueError("No suitable identifier key found in object")
+            print(f"{self.type}: Loading {len(objs)} {resource_endpoint}")
+            if isinstance(objs, dict):
+                # Iterate over dictionary values for endpoints (i.e devices)
+                for obj in objs.values():
+                    data = self.obj_to_diffsync(obj=obj, mapping=element, model=model)
+                    item = model(**data)
+                    self.add(item)
+            elif isinstance(objs, list):
+                # Iterate over list elements for endpoints (i.e groups)
+                for obj in objs:
+                    data = self.obj_to_diffsync(obj=obj, mapping=element, model=model)
+                    item = model(**data)
+                    self.add(item)
 
     def obj_to_diffsync(self, obj: dict[str, Any], mapping: SchemaMappingModel, model: DiffSyncModel) -> dict:
-        data: dict[str, Any] = {"local_id": str(self.derive_identifier_key(obj=obj))}
+        obj_id = derive_identifier_key(obj=obj)
+        data: dict[str, Any] = {"local_id": str(obj_id)}
 
         for field in mapping.fields:  # pylint: disable=too-many-nested-blocks
             field_is_list = model.is_list(name=field.name)
@@ -100,20 +103,24 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
                     )
                 if not field_is_list:
                     if node := get_value(obj, field.mapping):
-                        matching_nodes = []
-                        node_id = node.get("id", None)
-                        matching_nodes = [item for item in nodes if item.local_id == str(node_id)]
-                        if len(matching_nodes) == 0:
-                            raise IndexError(f"Unable to locate the node {model} {node_id}")
-                        node = matching_nodes[0]
-                        data[field.name] = node.get_unique_id()
+                        if isinstance(node, dict):
+                            matching_nodes = []
+                            node_id = node.get("id", None)
+                            matching_nodes = [item for item in nodes if item.local_id == str(node_id)]
+                            if len(matching_nodes) == 0:
+                                raise IndexError(f"Unable to locate the node {model} {node_id}")
+                            node = matching_nodes[0]
+                            data[field.name] = node.get_unique_id()
+                        else:
+                            # Some link are referencing the node identifier directly without the id (i.e location in device)
+                            data[field.name] = node
 
                 else:
                     data[field.name] = []
                     for node in get_value(obj, field.mapping):
                         if not node:
                             continue
-                        node_id = node.get("id", None)
+                        node_id = getattr(node, "id", None)
                         if not node_id:
                             if isinstance(node, tuple):
                                 node_id = node[1] if node[0] == "id" else None
