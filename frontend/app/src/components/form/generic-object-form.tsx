@@ -1,9 +1,7 @@
 import NoDataFound from "@/screens/errors/no-data-found";
-import { tComboboxItem } from "@/components/ui/combobox";
 import { GenericSelector } from "@/components/form/generic-selector";
 import { useEffect, useState } from "react";
-import { iGenericSchema, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { useAtomValue } from "jotai/index";
+import { iGenericSchema } from "@/state/atoms/schema.atom";
 import { ObjectFormProps } from "@/components/form/object-form";
 import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 
@@ -12,8 +10,6 @@ interface GenericObjectFormProps extends Omit<ObjectFormProps, "kind"> {
 }
 
 export const GenericObjectForm = ({ schema, ...props }: GenericObjectFormProps) => {
-  const nodeSchemas = useAtomValue(schemaState);
-  const profileSchemas = useAtomValue(profilesAtom);
   const [kindToCreate, setKindToCreate] = useState<string>();
 
   useEffect(() => {
@@ -28,25 +24,13 @@ export const GenericObjectForm = ({ schema, ...props }: GenericObjectFormProps) 
     );
   }
 
-  const items: Array<tComboboxItem> = schema.used_by
-    .map((kind) => {
-      const relatedSchema = [...nodeSchemas, ...profileSchemas].find(
-        (schema) => schema.kind === kind
-      );
-
-      if (!relatedSchema) return null;
-
-      return {
-        value: relatedSchema.kind,
-        label: relatedSchema.label ?? relatedSchema.name,
-        badge: relatedSchema.namespace,
-      };
-    })
-    .filter((item) => !!item);
-
   return (
     <>
-      <GenericSelector items={items} value={kindToCreate} onChange={setKindToCreate} />
+      <GenericSelector
+        kindInheritingFromGeneric={schema.used_by}
+        value={kindToCreate}
+        onChange={setKindToCreate}
+      />
       {kindToCreate && <NodeWithProfileForm kind={kindToCreate} {...props} />}
     </>
   );
