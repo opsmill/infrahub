@@ -22,8 +22,8 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
   onSubmit?: (data: NodeFormSubmitParams) => void;
 }
 
-const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
-  const { schema, isNode, isProfile, isGeneric } = useSchema(kind);
+const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFormProps) => {
+  const { schema, isNode, isGeneric } = useSchema(kind);
 
   if (!schema) {
     return (
@@ -33,15 +33,28 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (isFilterForm || isProfile || (isNode && !schema.generate_profile)) {
+  if (isFilterForm) {
     return <NodeForm schema={schema} isFilterForm={isFilterForm} {...props} />;
   }
 
   if (isGeneric) {
-    return <GenericObjectForm schema={schema} {...props} />;
+    return <GenericObjectForm genericSchema={schema} {...props} />;
   }
 
-  return <NodeWithProfileForm kind={kind} isFilterForm={isFilterForm} {...props} />;
+  if (isNode && schema.generate_profile) {
+    return (
+      <NodeWithProfileForm
+        schema={schema}
+        isFilterForm={isFilterForm}
+        profiles={currentProfiles}
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <NodeForm schema={schema} isFilterForm={isFilterForm} profiles={currentProfiles} {...props} />
+  );
 };
 
 export default ObjectForm;

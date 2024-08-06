@@ -8,7 +8,7 @@ import {
   schemaState,
 } from "@/state/atoms/schema.atom";
 
-type UseSchema = (kind: string) =>
+type UseSchema = (kind?: string) =>
   | {
       schema: iNodeSchema;
       isGeneric: false;
@@ -34,10 +34,19 @@ type UseSchema = (kind: string) =>
       isProfile: false;
     };
 
-export const useSchema: UseSchema = (kind: string) => {
+export const useSchema: UseSchema = (kind) => {
   const nodesSchema = useAtomValue(schemaState);
   const profilesSchema = useAtomValue(profilesAtom);
   const genericsSchema = useAtomValue(genericsState);
+
+  if (!kind) {
+    return {
+      schema: null,
+      isGeneric: false,
+      isNode: false,
+      isProfile: false,
+    };
+  }
 
   const node = nodesSchema.find((schema) => schema.kind === kind);
   if (node) {

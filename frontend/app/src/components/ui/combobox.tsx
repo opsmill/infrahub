@@ -151,11 +151,11 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
 
       {filteredOptions.length > 0 ? (
         <ComboboxPrimitive.Options static className="h-full overflow-auto">
-          {filteredOptions.map((item) => {
+          {filteredOptions.map((item, index) => {
             return typeof item === "string" ? (
-              <ComboboxItem key={item} item={item} />
+              <ComboboxItem key={item + index} item={item} />
             ) : (
-              <ComboboxItem key={item.label} item={item} />
+              <ComboboxItem key={item.label + index} item={item} />
             );
           })}
         </ComboboxPrimitive.Options>
