@@ -29,7 +29,7 @@ class AccountTokenEdge(ObjectType):
 
 class AccountTokenEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=AccountTokenEdge, required=True), required=True)
+    edges = Field(List(of_type=AccountTokenEdge, required=True), required=False)
 
 
 async def resolve_account_tokens(
