@@ -1,12 +1,5 @@
-import {
-  genericsState,
-  iNodeSchema,
-  IProfileSchema,
-  profilesAtom,
-  schemaState,
-} from "@/state/atoms/schema.atom";
+import { iNodeSchema, IProfileSchema } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
-import { useState } from "react";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { gql } from "@apollo/client";
 import { createObject } from "@/graphql/mutations/objects/createObject";
@@ -24,11 +17,11 @@ import useFilters from "@/hooks/useFilters";
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { CREATE_ACCOUNT_TOKEN } from "@/graphql/mutations/accounts/createAccountToken";
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
-import { ProfilesSelector } from "@/components/form/profiles-selector";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { useSchema } from "@/hooks/useSchema";
 import { GenericObjectForm } from "@/components/form/generic-object-form";
+import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
@@ -68,45 +61,6 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
   return <NodeWithProfileForm kind={kind} isFilterForm={isFilterForm} {...props} />;
 };
 
-export const NodeWithProfileForm = ({
-  isFilterForm,
-  kind,
-  currentProfiles,
-  ...props
-}: ObjectFormProps) => {
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
-
-  const [selectedProfiles, setSelectedProfiles] = useState<ProfileData[] | undefined>();
-
-  const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
-
-  if (!nodeSchema) {
-    return <NoDataFound message={`${kind} schema not found. Try to reload the page.`} />;
-  }
-
-  return (
-    <>
-      {!isFilterForm && "generate_profile" in nodeSchema && nodeSchema.generate_profile && (
-        <ProfilesSelector
-          schema={nodeSchema}
-          defaultValue={currentProfiles}
-          value={selectedProfiles}
-          onChange={setSelectedProfiles}
-          currentProfiles={currentProfiles}
-        />
-      )}
-      <NodeForm
-        schema={nodeSchema}
-        isFilterForm={isFilterForm}
-        profiles={selectedProfiles}
-        {...props}
-      />
-    </>
-  );
-};
-
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
   formData: Record<string, FormFieldValue>;
@@ -124,7 +78,7 @@ type NodeFormProps = {
   onSubmit?: (data: NodeFormSubmitParams) => void;
 };
 
-const NodeForm = ({
+export const NodeForm = ({
   className,
   currentObject,
   schema,

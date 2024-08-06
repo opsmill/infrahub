@@ -4,7 +4,8 @@ import { GenericSelector } from "@/components/form/generic-selector";
 import { useEffect, useState } from "react";
 import { iGenericSchema, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
-import { NodeWithProfileForm, ObjectFormProps } from "@/components/form/object-form";
+import { ObjectFormProps } from "@/components/form/object-form";
+import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 
 interface GenericObjectFormProps extends Omit<ObjectFormProps, "kind"> {
   schema: iGenericSchema;
