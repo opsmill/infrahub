@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from infrahub import config, models
 from infrahub.core.account import validate_token
-from infrahub.core.constants import AccountStatus, InfrahubKind
+from infrahub.core.constants import ACCOUNT_STATUS_ACTIVE, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -48,7 +48,7 @@ class AccountSession(BaseModel):
 
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
     account: CoreGenericAccount = await NodeManager.get_one(db=db, id=account_id, raise_on_error=True)
-    if account.status.value.value != AccountStatus.ACTIVE:
+    if account.status.value != ACCOUNT_STATUS_ACTIVE:
         raise AuthorizationError("This account has been deactivated")
 
 
@@ -74,7 +74,7 @@ async def authenticate_with_password(
         )
 
     account = response[0]
-    if account.status.value.value != AccountStatus.ACTIVE.value:
+    if account.status.value != ACCOUNT_STATUS_ACTIVE:
         raise AuthorizationError("This account is not allowed to login")
 
     password = account.password.value
@@ -163,12 +163,12 @@ async def authentication_token(
     if api_key:
         return await validate_api_key(db=db, token=api_key)
     if jwt_token:
-        return await validate_jwt_access_token(db=db, token=jwt_token)
+        return await validate_jwt_access_token(token=jwt_token)
 
     return AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE)
 
 
-async def validate_jwt_access_token(db: InfrahubDatabase, token: str) -> AccountSession:
+async def validate_jwt_access_token(token: str) -> AccountSession:
     try:
         payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
         account_id = payload["sub"]
@@ -178,8 +178,6 @@ async def validate_jwt_access_token(db: InfrahubDatabase, token: str) -> Account
         raise AuthorizationError("Expired Signature") from None
     except Exception:
         raise AuthorizationError("Invalid token") from None
-
-    await validate_active_account(db=db, account_id=str(account_id))
 
     if payload["type"] == "access":
         return AccountSession(account_id=account_id, role=role, session_id=session_id, auth_type=AuthType.JWT)

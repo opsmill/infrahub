@@ -63,11 +63,6 @@ class AccountType(InfrahubStringEnum):
     Git = "Git"
 
 
-class AccountStatus(InfrahubStringEnum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-
 class ArtifactStatus(InfrahubStringEnum):
     ERROR = "Error"
     PENDING = "Pending"
@@ -318,3 +313,5 @@ DEFAULT_KIND_MAX_LENGTH = 32
 NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
+
+ACCOUNT_STATUS_ACTIVE = "active"
