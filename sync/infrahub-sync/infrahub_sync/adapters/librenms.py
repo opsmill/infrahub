@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from diffsync import Adapter, DiffSyncModel
 from infrahub_sync import (
@@ -62,12 +62,7 @@ class LibrenmsAdapter(DiffSyncMixin, Adapter):
                 item = model(**data)
                 self.add(item)
 
-    def obj_to_diffsync(
-            self,
-            obj: dict[str, Any],
-            mapping: SchemaMappingModel,
-            model: DiffSyncModel
-        ) -> dict:
+    def obj_to_diffsync(self, obj: dict[str, Any], mapping: SchemaMappingModel, model: DiffSyncModel) -> dict:  # noqa: C901
         obj_id = derive_identifier_key(obj=obj)
         data: dict[str, Any] = {"local_id": str(obj_id)}
 
