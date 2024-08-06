@@ -3,7 +3,8 @@ import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.a
 import { useState } from "react";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { ProfilesSelector } from "@/components/form/profiles-selector";
-import { NodeForm, ObjectFormProps, ProfileData } from "@/components/form/object-form";
+import { ObjectFormProps, ProfileData } from "@/components/form/object-form";
+import { NodeForm } from "@/components/form/node-form";
 
 export const NodeWithProfileForm = ({
   isFilterForm,
