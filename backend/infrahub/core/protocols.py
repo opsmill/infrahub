@@ -103,6 +103,7 @@ class CoreGenericAccount(CoreNode):
     role: Enum
     status: Dropdown
     tokens: RelationshipManager
+    groups: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):

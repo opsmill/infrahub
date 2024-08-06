@@ -73,7 +73,7 @@ class CoreArtifactTarget(CoreNode):
 
 
 class CoreBasePermission(CoreNode):
-    roles: Union[RelationshipManager, RelationshipManagerSync]
+    roles: RelationshipManager
 
 
 class CoreCheck(CoreNode):
@@ -109,6 +109,7 @@ class CoreGenericAccount(CoreNode):
     role: Enum
     status: Dropdown
     tokens: RelationshipManager
+    groups: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):
@@ -321,8 +322,8 @@ class CoreGeneratorValidator(CoreValidator):
 
 
 class CoreGlobalPermission(CoreBasePermission):
-    name: str
-    action: str
+    name: String
+    action: Dropdown
 
 
 class CoreGraphQLQuery(CoreNode):
@@ -367,8 +368,8 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
 
 
 class CoreObjectPermission(CoreBasePermission):
-    kind: str
-    action: str
+    kind: String
+    action: Enum
 
 
 class CoreObjectThread(CoreThread):
@@ -442,15 +443,15 @@ class CoreTransformPython(CoreTransformation):
 
 
 class CoreUserGroup(CoreNode):
-    name: str
-    users: Union[RelationshipManager, RelationshipManagerSync]
-    roles: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    users: RelationshipManager
+    roles: RelationshipManager
 
 
 class CoreUserRole(CoreNode):
-    name: str
-    groups: Union[RelationshipManager, RelationshipManagerSync]
-    permissions: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    groups: RelationshipManager
+    permissions: RelationshipManager
 
 
 class CoreUserValidator(CoreValidator):
@@ -515,6 +516,10 @@ class CoreArtifactTargetSync(CoreNodeSync):
     artifacts: RelationshipManagerSync
 
 
+class CoreBasePermissionSync(CoreNodeSync):
+    roles: RelationshipManagerSync
+
+
 class CoreCheckSync(CoreNodeSync):
     name: StringOptional
     label: StringOptional
@@ -548,6 +553,7 @@ class CoreGenericAccountSync(CoreNodeSync):
     role: Enum
     status: Dropdown
     tokens: RelationshipManagerSync
+    groups: RelationshipManagerSync
 
 
 class CoreGenericRepositorySync(CoreNodeSync):
@@ -759,6 +765,11 @@ class CoreGeneratorValidatorSync(CoreValidatorSync):
     definition: RelatedNodeSync
 
 
+class CoreGlobalPermissionSync(CoreBasePermissionSync):
+    name: String
+    action: Dropdown
+
+
 class CoreGraphQLQuerySync(CoreNodeSync):
     name: String
     description: StringOptional
@@ -798,6 +809,11 @@ class CoreNumberPoolSync(CoreResourcePoolSync, LineageSourceSync):
     unique_for: StringOptional
     start_range: Integer
     end_range: Integer
+
+
+class CoreObjectPermissionSync(CoreBasePermissionSync):
+    kind: String
+    action: Enum
 
 
 class CoreObjectThreadSync(CoreThreadSync):
@@ -868,6 +884,18 @@ class CoreTransformJinja2Sync(CoreTransformationSync):
 class CoreTransformPythonSync(CoreTransformationSync):
     file_path: String
     class_name: String
+
+
+class CoreUserGroupSync(CoreNodeSync):
+    name: String
+    users: RelationshipManagerSync
+    roles: RelationshipManagerSync
+
+
+class CoreUserRoleSync(CoreNodeSync):
+    name: String
+    groups: RelationshipManagerSync
+    permissions: RelationshipManagerSync
 
 
 class CoreUserValidatorSync(CoreValidatorSync):
