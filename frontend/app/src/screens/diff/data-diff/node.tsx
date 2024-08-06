@@ -7,7 +7,7 @@ import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
 import { capitalizeFirstLetter } from "@/utils/string";
 import { DiffNodeRelationship } from "./node-relationship";
 import { useParams } from "react-router-dom";
-import { DataDiffThread } from "../diff-thread";
+import { DiffThread } from "./thread";
 
 const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdd,
@@ -46,7 +46,7 @@ export const DiffNode = ({ node }: DiffNodeProps) => {
         )}
       </div>
 
-      {!branchName && <DataDiffThread path={`data/${node.id}`} />}
+      {!branchName && <DiffThread path={`data/${node.id}`} />}
     </div>
   );
 

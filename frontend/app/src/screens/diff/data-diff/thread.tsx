@@ -11,17 +11,18 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
-import { DiffContext } from "./data-diff/diff";
-import { DataDiffComments } from "./diff-comments";
+
 import { Icon } from "@iconify-icon/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/buttons/button-primitive";
+import { DiffContext } from "./diff";
+import { DiffComments } from "./comments";
 
-type tDataDiffThread = {
+type tDiffThread = {
   path: string;
 };
 
-export const DataDiffThread = (props: tDataDiffThread) => {
+export const DiffThread = (props: tDiffThread) => {
   const { path } = props;
 
   const { proposedchange } = useParams();
@@ -87,7 +88,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
       </div>
 
       <SlideOver title={title} open={showThread} setOpen={setShowThread}>
-        <DataDiffComments path={path} refetch={refetch} />
+        <DiffComments path={path} refetch={refetch} />
 
         <div className="flex items-center justify-end gap-x-6 py-3 pr-3 border-t">
           <Button onClick={() => setShowThread(false)}>Close</Button>

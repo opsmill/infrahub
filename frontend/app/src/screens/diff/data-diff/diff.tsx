@@ -189,7 +189,7 @@ export const DataDiff = () => {
     setIsLoadingClose(false);
   };
 
-  const nodes = data?.DiffTree?.nodes;
+  const nodes = data?.DiffTree?.nodes?.filter((node) => node.status !== "UNCHANGED");
 
   return (
     <>
