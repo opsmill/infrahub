@@ -26,7 +26,7 @@ export type NodeFormSubmitParams = {
   profiles: Array<ProfileData>;
 };
 
-type NodeFormProps = {
+export type NodeFormProps = {
   operation?: "create" | "update";
   className?: string;
   schema: iNodeSchema | IProfileSchema;
