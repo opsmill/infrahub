@@ -16,11 +16,15 @@ def get_value(obj, name: str):
 
 
 def derive_identifier_key(obj: dict[str, Any]) -> Optional[str]:
+    """Try to get obj.id, and if it doesn't exist, try to get a key ending with _id"""
     obj_id = str(obj.get("id", None))
+
     if not obj_id:
-        for key in obj.keys():
+        for key, value in obj.items():
             if key.endswith("_id"):
-                obj_id = obj[key]
+                obj_id = value
+
+    # If we still didn't find any id, raise ValueError
     if not obj_id:
         raise ValueError("No suitable identifier key found in object")
     return obj_id

@@ -61,4 +61,3 @@ schema_mapping:
       - name: site
         mapping: location
         reference: LocationSite
-
