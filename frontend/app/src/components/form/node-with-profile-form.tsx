@@ -15,7 +15,7 @@ export const NodeWithProfileForm = ({
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
 
-  const [selectedProfiles, setSelectedProfiles] = useState<ProfileData[]>([]);
+  const [selectedProfiles, setSelectedProfiles] = useState<ProfileData[] | undefined>();
 
   const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
