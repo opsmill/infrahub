@@ -16,7 +16,7 @@ import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
-import ObjectForm, { NodeFormSubmitParams } from "@/components/form/object-form";
+import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 
 interface Props {
@@ -86,7 +86,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge) => edge?.node) ?? [];
 
-  async function onSubmit({ fields, formData, profiles }: NodeFormSubmitParams) {
+  const onSubmit: ObjectFormProps["onSubmit"] = async ({ fields, formData, profiles }) => {
     const updatedObject = getUpdateMutationFromFormData({ formData, fields });
 
     if (Object.keys(updatedObject).length) {
@@ -122,7 +122,7 @@ export default function ObjectItemEditComponent(props: Props) {
         console.error("Something went wrong while updating the object:", e);
       }
     }
-  }
+  };
 
   return (
     <ObjectForm
