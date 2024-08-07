@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from infrahub_sync.adapters.librenms import LibrenmsModel
 
@@ -8,6 +8,7 @@ from infrahub_sync.adapters.librenms import LibrenmsModel
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 
+
 class CoreStandardGroup(LibrenmsModel):
     _modelname = "CoreStandardGroup"
     _identifiers = ("name",)
@@ -16,6 +17,7 @@ class CoreStandardGroup(LibrenmsModel):
     description: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraDevice(LibrenmsModel):
     _modelname = "InfraDevice"
@@ -27,6 +29,7 @@ class InfraDevice(LibrenmsModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class IpamIPAddress(LibrenmsModel):
     _modelname = "IpamIPAddress"
     _identifiers = ("address",)
@@ -35,6 +38,7 @@ class IpamIPAddress(LibrenmsModel):
     description: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class LocationSite(LibrenmsModel):
     _modelname = "LocationSite"

@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from infrahub_sync.adapters.infrahub import InfrahubModel
 
@@ -8,6 +8,7 @@ from infrahub_sync.adapters.infrahub import InfrahubModel
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 
+
 class CoreStandardGroup(InfrahubModel):
     _modelname = "CoreStandardGroup"
     _identifiers = ("name",)
@@ -16,6 +17,7 @@ class CoreStandardGroup(InfrahubModel):
     description: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
@@ -27,6 +29,7 @@ class InfraDevice(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class IpamIPAddress(InfrahubModel):
     _modelname = "IpamIPAddress"
     _identifiers = ("address",)
@@ -35,6 +38,7 @@ class IpamIPAddress(InfrahubModel):
     description: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class LocationSite(InfrahubModel):
     _modelname = "LocationSite"

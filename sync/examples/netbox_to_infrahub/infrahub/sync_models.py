@@ -1,8 +1,10 @@
 from typing import Any, List, Optional
-import netutils.regex
+
 import netutils.ip
+import netutils.regex
 
 from infrahub_sync.adapters.infrahub import InfrahubModel
+
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY
@@ -19,6 +21,7 @@ class CoreStandardGroup(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class BuiltinTag(InfrahubModel):
     _modelname = "BuiltinTag"
     _identifiers = ("name",)
@@ -28,6 +31,7 @@ class BuiltinTag(InfrahubModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraCircuit(InfrahubModel):
     _modelname = "InfraCircuit"
@@ -43,6 +47,7 @@ class InfraCircuit(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class TemplateCircuitType(InfrahubModel):
     _modelname = "TemplateCircuitType"
     _identifiers = ("name",)
@@ -53,6 +58,7 @@ class TemplateCircuitType(InfrahubModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
@@ -71,30 +77,36 @@ class InfraDevice(InfrahubModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
     @classmethod
     def filter_records(cls, records: List[Any]) -> List[Any]:
         filtered_records = []
         for record in records:
             include = True
             try:
-                field_value = getattr(record, 'name', '') if not isinstance(record, dict) else record.get('name', '')
+                field_value = getattr(record, "name", "") if not isinstance(record, dict) else record.get("name", "")
                 field_value = field_value or ""
-                if not netutils.regex.regex_search('dmi01', field_value):
+                if not netutils.regex.regex_search("dmi01", field_value):
                     include = False
             except Exception as e:
-                print(f"Error evaluating filter: 'name | netutils.regex.regex_search('dmi01')' with record {record}: {e}")
+                print(
+                    f"Error evaluating filter: 'name | netutils.regex.regex_search('dmi01')' with record {record}: {e}"
+                )
                 include = False
             try:
-                field_value = getattr(record, 'name', '') if not isinstance(record, dict) else record.get('name', '')
+                field_value = getattr(record, "name", "") if not isinstance(record, dict) else record.get("name", "")
                 field_value = field_value or ""
-                if netutils.regex.regex_search('pdu', field_value):
+                if netutils.regex.regex_search("pdu", field_value):
                     include = False
             except Exception as e:
-                print(f"Error evaluating filter: 'name | not netutils.regex.regex_search('pdu')' with record {record}: {e}")
+                print(
+                    f"Error evaluating filter: 'name | not netutils.regex.regex_search('pdu')' with record {record}: {e}"
+                )
                 include = False
             if include:
                 filtered_records.append(record)
         return filtered_records
+
 
 class TemplateDeviceType(InfrahubModel):
     _modelname = "TemplateDeviceType"
@@ -109,6 +121,7 @@ class TemplateDeviceType(InfrahubModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraInterfaceL2L3(InfrahubModel):
     _modelname = "InfraInterfaceL2L3"
@@ -128,6 +141,7 @@ class InfraInterfaceL2L3(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraIPAddress(InfrahubModel):
     _modelname = "InfraIPAddress"
     _identifiers = ("address", "vrf")
@@ -139,6 +153,7 @@ class InfraIPAddress(InfrahubModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraProviderNetwork(InfrahubModel):
     _modelname = "InfraProviderNetwork"
@@ -153,6 +168,7 @@ class InfraProviderNetwork(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
     _identifiers = ("prefix", "vrf")
@@ -166,6 +182,7 @@ class InfraPrefix(InfrahubModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraRack(InfrahubModel):
     _modelname = "InfraRack"
@@ -183,6 +200,7 @@ class InfraRack(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraRouteTarget(InfrahubModel):
     _modelname = "InfraRouteTarget"
     _identifiers = ("name", "organization")
@@ -193,6 +211,7 @@ class InfraRouteTarget(InfrahubModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraVLAN(InfrahubModel):
     _modelname = "InfraVLAN"
@@ -208,6 +227,7 @@ class InfraVLAN(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraVRF(InfrahubModel):
     _modelname = "InfraVRF"
     _identifiers = ("name",)
@@ -222,6 +242,7 @@ class InfraVRF(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class OrganizationGeneric(InfrahubModel):
     _modelname = "OrganizationGeneric"
     _identifiers = ("name",)
@@ -233,6 +254,7 @@ class OrganizationGeneric(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class RoleGeneric(InfrahubModel):
     _modelname = "RoleGeneric"
     _identifiers = ("name",)
@@ -242,6 +264,7 @@ class RoleGeneric(InfrahubModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class LocationGeneric(InfrahubModel):
     _modelname = "LocationGeneric"

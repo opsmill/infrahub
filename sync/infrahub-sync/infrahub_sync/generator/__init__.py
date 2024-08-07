@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import jinja2
 from infrahub_sdk import (
@@ -139,7 +139,7 @@ def has_children(node: NodeSchema, config: SyncConfig) -> bool:
     return False
 
 
-def render_template(template_file: Path, output_dir: Path, output_file: Path, context: Dict[str, Any]):
+def render_template(template_file: Path, output_dir: Path, output_file: Path, context: dict[str, Any]):
     template_loader = jinja2.PackageLoader("infrahub_sync", "generator/templates")
     template_env = jinja2.Environment(
         loader=template_loader,

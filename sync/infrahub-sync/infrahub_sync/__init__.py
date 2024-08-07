@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 import pydantic
 
@@ -20,12 +20,12 @@ class SchemaMappingModel(pydantic.BaseModel):
 
 class SyncAdapter(pydantic.BaseModel):
     name: str
-    settings: Optional[Dict[str, Any]] = {}
+    settings: Optional[dict[str, Any]] = {}
 
 
 class SyncStore(pydantic.BaseModel):
     type: str
-    settings: Optional[Dict[str, Any]] = {}
+    settings: Optional[dict[str, Any]] = {}
 
 
 class SyncConfig(pydantic.BaseModel):

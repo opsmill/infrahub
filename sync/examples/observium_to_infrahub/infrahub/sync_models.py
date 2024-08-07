@@ -1,8 +1,10 @@
 from typing import Any, List, Optional
-import netutils.regex
+
 import netutils.ip
+import netutils.regex
 
 from infrahub_sync.adapters.infrahub import InfrahubModel
+
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY
@@ -28,6 +30,7 @@ class CoreStandardGroup(InfrahubModel):
                 filtered_records.append(record)
         return filtered_records
 
+
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
     _identifiers = ("name",)
@@ -47,34 +50,39 @@ class InfraDevice(InfrahubModel):
         for record in records:
             include = True
             try:
-                record_value = int(record.get('device_id', 0))
+                record_value = int(record.get("device_id", 0))
                 if not (record_value > 100):
                     include = False
             except Exception as e:
                 print(f"Error evaluating filter: 'device_id > 100' with record {record}: {e}")
                 include = False
             try:
-                record_value = int(record.get('device_id', 0))
+                record_value = int(record.get("device_id", 0))
                 if not (record_value <= 200):
                     include = False
             except Exception as e:
                 print(f"Error evaluating filter: 'device_id <= 200' with record {record}: {e}")
                 include = False
             try:
-                if not netutils.regex.regex_search('xxx', record.get('hostname', '')):
+                if not netutils.regex.regex_search("xxx", record.get("hostname", "")):
                     include = False
             except Exception as e:
-                print(f"Error evaluating filter: 'hostname | netutils.regex.regex_search('xxx')' with record {record}: {e}")
+                print(
+                    f"Error evaluating filter: 'hostname | netutils.regex.regex_search('xxx')' with record {record}: {e}"
+                )
                 include = False
             try:
-                if not netutils.regex.regex_match('^pe-[0-9]{3}$', record.get('name', '')):
+                if not netutils.regex.regex_match("^pe-[0-9]{3}$", record.get("name", "")):
                     include = False
             except Exception as e:
-                print(f"Error evaluating filter: 'name | netutils.regex.regex_match('^pe-[0-9]{3}$')' with record {record}: {e}")
+                print(
+                    f"Error evaluating filter: 'name | netutils.regex.regex_match('^pe-[0-9]{3}$')' with record {record}: {e}"
+                )
                 include = False
             if include:
                 filtered_records.append(record)
         return filtered_records
+
 
 class IpamIPAddress(InfrahubModel):
     _modelname = "IpamIPAddress"
@@ -92,22 +100,28 @@ class IpamIPAddress(InfrahubModel):
         for record in records:
             include = True
             try:
-                if not (netutils.ip.is_ip_within(record.get('ip'), '100.125.0.0/16')):
+                if not (netutils.ip.is_ip_within(record.get("ip"), "100.125.0.0/16")):
                     include = False
             except Exception as e:
-                print(f"Error evaluating filter: 'netutils.ip.is_ip_within(record.get('ip'), '100.125.0.0/16')' with record {record}: {e}")
+                print(
+                    f"Error evaluating filter: 'netutils.ip.is_ip_within(record.get('ip'), '100.125.0.0/16')' with record {record}: {e}"
+                )
                 include = False
             try:
-                if not netutils.regex.regex_search('xxx', record.get('hostname', '')):
+                if not netutils.regex.regex_search("xxx", record.get("hostname", "")):
                     include = False
             except Exception as e:
-                print(f"Error evaluating filter: 'hostname | netutils.regex.regex_search('xxx')' with record {record}: {e}")
+                print(
+                    f"Error evaluating filter: 'hostname | netutils.regex.regex_search('xxx')' with record {record}: {e}"
+                )
                 include = False
             try:
-                if not netutils.regex.regex_match('^pe-[0-9]{3}$', record.get('name', '')):
+                if not netutils.regex.regex_match("^pe-[0-9]{3}$", record.get("name", "")):
                     include = False
             except Exception as e:
-                print(f"Error evaluating filter: 'name | netutils.regex.regex_match('^pe-[0-9]{3}$')' with record {record}: {e}")
+                print(
+                    f"Error evaluating filter: 'name | netutils.regex.regex_match('^pe-[0-9]{3}$')' with record {record}: {e}"
+                )
                 include = False
             if include:
                 filtered_records.append(record)
