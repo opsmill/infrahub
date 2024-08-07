@@ -858,6 +858,20 @@ files = [
 ]
 
 [[package]]
+name = "netutils"
+version = "1.9.1"
+description = "Common helper functions useful in network automation."
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "netutils-1.9.1-py3-none-any.whl", hash = "sha256:0d6e9026cc529f365a63377159aed07769baee0bf7a7138fa86fce37b64dd9d4"},
+    {file = "netutils-1.9.1.tar.gz", hash = "sha256:8ad8b5e02eb9d6692d0aaaf9c0f36da1a81f520f426a79d0e08e56cf7dbb3476"},
+]
+
+[package.extras]
+optionals = ["jsonschema (>=4.17.3,<5.0.0)", "napalm (>=4.0.0,<5.0.0)"]
+
+[[package]]
 name = "nodeenv"
 version = "1.9.1"
 description = "Node.js virtual environment builder"
@@ -2048,4 +2062,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9, < 3.13"
-content-hash = "09fc408104517313040372697f4d8ac79a952458475d4de5a06b7c52a5f8a9e7"
+content-hash = "5687a0b3ebe13903cdc48e4fda7c44b84ca5d15498a7e284ddb322128ca63a82"

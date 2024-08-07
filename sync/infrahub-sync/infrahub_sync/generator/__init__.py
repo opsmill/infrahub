@@ -8,6 +8,7 @@ from infrahub_sdk import (
     RelationshipKind,
     RelationshipSchema,
 )
+from netutils.utils import jinja2_convenience_function
 
 from infrahub_sync import SyncConfig
 from infrahub_sync.generator.utils import list_to_set, list_to_str
@@ -38,6 +39,14 @@ def has_field(config: SyncConfig, name: str, field: str) -> bool:
                 if subitem.name == field:
                     return True
     return False
+
+
+def get_filters(schema_mapping, node_kind):
+    """Extract filters for a specific node kind from the schema mapping."""
+    for mapping in schema_mapping:
+        if mapping.name == node_kind:
+            return mapping.filters or []
+    return []
 
 
 def get_identifiers(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]:
@@ -135,6 +144,11 @@ def render_template(template_file: Path, output_dir: Path, output_file: Path, co
     template_env = jinja2.Environment(
         loader=template_loader,
     )
+    # Add netuils filters to Jinja2
+    template_env.filters.update(jinja2_convenience_function())
+
+    # Add custom filters to Jinja2
+    template_env.filters["get_filters"] = get_filters
     template_env.filters["get_identifiers"] = get_identifiers
     template_env.filters["get_attributes"] = get_attributes
     template_env.filters["get_children"] = get_children

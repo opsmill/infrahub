@@ -202,6 +202,10 @@ schema_mapping:
   - name: InfraDevice
     identifiers: ["location", "rack", "organization", "name"]
     mapping: dcim.devices
+    # Showcase of the filters on the device, it will import the ones with dmu01 in their name *AND* without pdu
+    filters:
+      - "name | netutils.regex.regex_search('dmi01')"
+      - "name | not netutils.regex.regex_search('pdu')"
     fields:
       - name: name
         mapping: name
