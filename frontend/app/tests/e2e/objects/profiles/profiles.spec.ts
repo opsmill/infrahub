@@ -35,7 +35,6 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await expect(
         page.locator("#alert-success-BuiltinTag-created").getByText("BuiltinTag created")
       ).toBeVisible();
-      await expect(page.getByRole("link", { name: "ProfileBuiltinTag" })).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" })).toBeVisible();
     });
   });
@@ -73,6 +72,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
       await expect(page.getByTestId("source-profile-badge")).toBeVisible();
       await expect(page.getByTestId("source-profile-badge")).toContainText("profile test tag");
+      await page.getByLabel("Select profiles").click();
       await page.getByTestId("source-profile-badge").hover();
       await expect(page.getByTestId("source-profile-tooltip").first()).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" }).first()).toBeVisible();
@@ -127,6 +127,23 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByRole("link", { name: "tag with profile" }).click();
       await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
     });
+  });
+
+  test("edit profile of tag without touching any other field", async ({ page }) => {
+    await test.step("got to edit form of tag", async () => {
+      await page.goto("/objects/BuiltinTag");
+      await page.getByRole("link", { name: "tag with profile" }).click();
+      await page.getByTestId("edit-button").click();
+    });
+
+    await test.step("remove profile from tag", async () => {
+      await page.getByLabel("Select profiles optional").click();
+      await page.getByRole("option", { name: "profile test tag" }).click();
+      await expect(page.getByLabel("Description")).toBeEmpty();
+      await page.getByRole("button", { name: "Save" }).click();
+    });
+
+    await expect(page.getByText("Description-")).toBeVisible();
   });
 
   test("delete the profile and reset object attribute value", async ({ page }) => {

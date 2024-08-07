@@ -23,7 +23,7 @@ import { ProfileData } from "@/components/form/object-form";
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
   formData: Record<string, FormFieldValue>;
-  profiles: Array<ProfileData>;
+  profiles?: Array<ProfileData>;
 };
 
 export type NodeFormProps = {
@@ -41,7 +41,7 @@ export const NodeForm = ({
   className,
   currentObject,
   schema,
-  profiles = [],
+  profiles,
   onSuccess,
   isFilterForm,
   onSubmit,
@@ -84,8 +84,10 @@ export const NodeForm = ({
       }
 
       const newObject = getCreateMutationFromFormData(fields, data);
+      const isObjectEmpty = Object.keys(newObject).length === 0;
+      const isProfilesEmpty = !profiles || profiles.length === 0;
 
-      if (!Object.keys(newObject).length) {
+      if (isObjectEmpty && isProfilesEmpty) {
         return;
       }
 
