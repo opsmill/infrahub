@@ -16,9 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-packages = [
-    { include = "infrahub", from = "backend" }
-]
+packages = [{ include = "infrahub", from = "backend" }]
 
 
 [tool.poetry.group.test-scale]
@@ -28,7 +26,10 @@ optional = true
 python = "^3.10, < 3.13"
 neo4j = "~5.20"
 neo4j-rust-ext = "^5.20.0.0"
-infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
+infrahub-sdk = { path = "python_sdk", extras = [
+    "ctl",
+    "tests",
+], develop = true }
 pydantic = "2.7.2"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
@@ -36,7 +37,7 @@ aio-pika = "~9.4"
 structlog = "24.1.0"
 boto3 = "1.34.129"
 email-validator = "~2.1"
-redis = { version = "^5.0.0", extras = ["hiredis"]}
+redis = { version = "^5.0.0", extras = ["hiredis"] }
 typer = "~0.7"
 
 # Dependencies specific to the API Server
@@ -46,11 +47,11 @@ graphene = "~3.3"
 gunicorn = "^22.0.0"
 lunr = "^0.7.0.post1"
 starlette-exporter = "~0.21"
-python-multipart = "0.0.9"          # Required by FastAPI to upload large files
-asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
-bcrypt = "~4.1"                     # Used to hash and validate password
-pyjwt = "~2.8"                      # Used to manage JWT tokens
-uvicorn = {version = "~0.27", extras = ["standard"]}
+python-multipart = "0.0.9"                             # Required by FastAPI to upload large files
+asgi-correlation-id = "4.2.0"                          # Middleware for FastAPI to generate ID per request
+bcrypt = "~4.1"                                        # Used to hash and validate password
+pyjwt = "~2.8"                                         # Used to manage JWT tokens
+uvicorn = { version = "~0.27", extras = ["standard"] }
 opentelemetry-instrumentation-aio-pika = "^0.45b0"
 opentelemetry-instrumentation-fastapi = "^0.45b0"
 opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
@@ -65,8 +66,8 @@ mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
 pytest-httpx = [
-    { version = "~0.21", python = "<3.9"},
-    { version = ">=0.30", python = ">=3.9"},
+    { version = "~0.21", python = "<3.9" },
+    { version = ">=0.30", python = ">=3.9" },
 ]
 pytest-clarity = "~1.0"
 pytest-cov = "~4.1"
@@ -98,23 +99,17 @@ infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 branch = true
 
 [tool.coverage.report]
-exclude_lines = [
-    "if TYPE_CHECKING:",
-    "raise NotImplementedError()"
-]
+exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 
 [tool.pylint.general]
-extension-pkg-whitelist = [
-    "pydantic",
-    "ujson",
-]
+extension-pkg-whitelist = ["pydantic", "ujson"]
 
 [tool.pylint.format]
 disable = "logging-fstring-interpolation"
 
 [tool.pylint.basic]
 # No docstrings required for private methods (Pylint default), or for test_ functions.
-no-docstring-rgx="^(_|test_)"
+no-docstring-rgx = "^(_|test_)"
 
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
@@ -160,9 +155,7 @@ min-similarity-lines = 20
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = [
-    "tests"
-]
+testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
     "ignore:Deprecated call to",
@@ -174,10 +167,7 @@ junit_duration_report = "call"
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
-exclude = [
-    "^backend/tests/scale",
-    "^backend/tests/unit",
-]
+exclude = ["^backend/tests/scale", "^backend/tests/unit"]
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"
@@ -452,26 +442,21 @@ ignore_errors = true
 line-length = 120
 
 exclude = [
-        ".git",
-        ".tox",
-        ".venv",
-        "env",
-        "_build",
-        "build",
-        "dist",
-        "examples",
+    ".git",
+    ".tox",
+    ".venv",
+    "env",
+    "_build",
+    "build",
+    "dist",
+    "examples",
 ]
-
 
 
 [tool.ruff.lint]
 preview = true
 
-task-tags = [
-    "FIXME",
-    "TODO",
-    "XXX",
-]
+task-tags = ["FIXME", "TODO", "XXX"]
 
 select = [
     "ASYNC", # flake8-async
@@ -504,11 +489,11 @@ select = [
 
 ignore = [
 
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one. Alternatively ignored after further       #
-# investigation if they are deemed to not make sense.                                            #
-##################################################################################################
+    ##################################################################################################
+    # The ignored rules below should be removed once the code has been updated, they are included    #
+    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
+    # investigation if they are deemed to not make sense.                                            #
+    ##################################################################################################
     "ASYNC101", # Async functions should not call `open`, `time.sleep`, or `subprocess` methods
     "B007",     # Loop control variable not used within loop body
     "B008",     # Do not perform function call `Depends` in argument defaults;
@@ -597,14 +582,55 @@ max-complexity = 33
 
 "models/infrastructure_edge.py" = [
     "S106", # Hardcoded password
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one. Alternatively ignored after further       #
-# investigation if they are deemed to not make sense.                                            #
-##################################################################################################
+    ##################################################################################################
+    # The ignored rules below should be removed once the code has been updated, they are included    #
+    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
+    # investigation if they are deemed to not make sense.                                            #
+    ##################################################################################################
     "C901", # `generate_site` is too complex (34 > 33)"
     "E501", # Line too long
 ]
+
+[tool.towncrier]
+
+package = "infrahub"
+directory = "changelog"
+filename = "CHANGELOG.md"
+start_string = "<!-- towncrier release notes start -->\n"
+underlines = ["", "", ""]
+title_format = "## [{version}](https://github.com/opsmill/infrahub/tree/v{version}) - {project_date}"
+issue_format = "[#{issue}](https://github.com/opsmill/infrahub/issues/{issue})"
+orphan_prefix = "+"
+
+[[tool.towncrier.type]]
+directory = "security"
+name = "Security"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "removed"
+name = "Removed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "deprecated"
+name = "Deprecated"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "added"
+name = "Added"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "changed"
+name = "Changed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fixed"
+name = "Fixed"
+showcontent = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

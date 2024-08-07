@@ -65,6 +65,7 @@ namespace
 namespaces
 Nautobot
 Netbox
+Newsfragment
 Nornir
 npm
 o'brian
