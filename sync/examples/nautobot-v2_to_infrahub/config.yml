@@ -273,6 +273,9 @@ schema_mapping:
   - name: InfraCircuit
     mapping: circuits.circuits
     identifiers: ["circuit_id"]
+    # Showcase of the filters on the Circuits, it will import the ones with ntt in their cid
+    filters:
+      - "cid | netutils.regex.regex_match('ntt')"
     fields:
       - name: circuit_id
         mapping: cid

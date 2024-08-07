@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Dict, Mapping
+from typing import Any, Mapping
 
 from infrahub_sdk import (
     Config,
@@ -82,7 +82,7 @@ class InfrahubAdapter(DiffSyncMixin, Adapter):
 
     def infrahub_node_to_diffsync(self, node: InfrahubNodeSync) -> dict:
         """Convert an InfrahubNode into a dict that will be used to create a DiffSyncModel."""
-        data: Dict[str, Any] = {"local_id": str(node.id)}
+        data: dict[str, Any] = {"local_id": str(node.id)}
 
         for attr_name in node._schema.attribute_names:
             if has_field(config=self.config, name=node._schema.kind, field=attr_name):
