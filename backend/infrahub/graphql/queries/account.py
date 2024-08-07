@@ -57,12 +57,9 @@ async def resolve_account_tokens(
         objs: List[InternalAccountToken] = await NodeManager.query(
             db=context.db, schema=node_schema, filters=filters, limit=limit, offset=offset
         )
-
-        if objs:
-            objects = [
-                {"node": {"id": obj.id, "name": obj.name.value, "expiration": obj.expiration.value}} for obj in objs
-            ]
-            response["edges"] = objects
+        response["edges"] = [
+            {"node": {"id": obj.id, "name": obj.name.value, "expiration": obj.expiration.value}} for obj in objs
+        ]
 
     return response
 
