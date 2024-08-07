@@ -84,8 +84,10 @@ export const NodeForm = ({
       }
 
       const newObject = getCreateMutationFromFormData(fields, data);
+      const isObjectEmpty = Object.keys(newObject).length === 0;
+      const isProfilesEmpty = !profiles || profiles.length === 0;
 
-      if (!Object.keys(newObject).length) {
+      if (isObjectEmpty && isProfilesEmpty) {
         return;
       }
 

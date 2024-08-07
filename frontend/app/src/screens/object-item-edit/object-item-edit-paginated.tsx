@@ -18,6 +18,7 @@ import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
+import { areObjectArraysEqualById } from "@/utils/array";
 
 interface Props {
   objectname: string;
@@ -26,16 +27,6 @@ interface Props {
   onUpdateComplete?: Function;
   formStructure?: DynamicFieldData[];
 }
-
-const areObjectArraysEqualById = (
-  arr1: Array<{ id: string }>,
-  arr2: Array<{ id: string }>
-): boolean => {
-  if (arr1.length !== arr2.length) return false;
-
-  const idSet = new Set(arr1.map((item) => item.id));
-  return idSet.size === arr1.length && arr2.every((item) => idSet.has(item.id));
-};
 
 export default function ObjectItemEditComponent(props: Props) {
   const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
