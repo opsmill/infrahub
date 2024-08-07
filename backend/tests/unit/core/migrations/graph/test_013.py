@@ -5,9 +5,10 @@ from infrahub.core.constants import BranchSupportType, RelationshipCardinality, 
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m013_convert_git_password_credential import (
     Migration013,
+    Migration013AddAdminStatusData,
     Migration013ConvertCoreRepositoryWithCred,
     Migration013ConvertCoreRepositoryWithoutCred,
-    Migration013DeleteUsernamePasswordSchema,
+    Migration013DeleteUsernamePasswordGenericSchema,
 )
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot, internal_schema
@@ -207,7 +208,7 @@ async def test_migration_013_query_01(
 
     query = await Migration013ConvertCoreRepositoryWithCred.init(db=db)
     await query.execute(db=db)
-    assert query.stats.get_counter(name="nodes_created") == 7 * 2
+    assert query.stats.get_counter(name="nodes_created") == 6 * 2
 
     nbr_rels_after = await count_relationships(db=db)
     assert nbr_rels_after == nbr_rels_before + (19 * 2)
@@ -243,7 +244,6 @@ async def test_migration_013_query_02(
 
     query = await Migration013ConvertCoreRepositoryWithoutCred.init(db=db)
     await query.execute(db=db)
-    assert query.stats.get_counter(name="nodes_created") == 0
 
     nbr_rels_after = await count_relationships(db=db)
     assert nbr_rels_after == nbr_rels_before + 2
@@ -254,7 +254,6 @@ async def test_migration_013_query_02(
     # Execute the same query one more time to validate that it doesn't do anything
     query = await Migration013ConvertCoreRepositoryWithoutCred.init(db=db)
     await query.execute(db=db)
-    assert query.stats.get_counter(name="nodes_created") == 0
 
     nbr_rels_after2 = await count_relationships(db=db)
     assert nbr_rels_after == nbr_rels_after2
@@ -265,15 +264,33 @@ async def test_migration_013_delete_username_password_schema(
 ):
     nbr_rels_before = await count_relationships(db=db)
 
-    query = await Migration013DeleteUsernamePasswordSchema.init(db=db)
+    query = await Migration013DeleteUsernamePasswordGenericSchema.init(db=db)
     await query.execute(db=db)
 
-    query = await Migration013DeleteUsernamePasswordSchema.init(db=db)
+    query = await Migration013DeleteUsernamePasswordGenericSchema.init(db=db)
     await query.execute(db=db)
 
     nbr_rels_after = await count_relationships(db=db)
 
     assert nbr_rels_after == nbr_rels_before + (2 * 3)
+
+
+async def test_migration_013_add_admin_status_data(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
+):
+    nbr_rels_before = await count_relationships(db=db)
+
+    query = await Migration013AddAdminStatusData.init(db=db)
+    await query.execute(db=db)
+    assert query.stats.get_counter(name="nodes_created") == 3 + 1
+
+    query = await Migration013AddAdminStatusData.init(db=db)
+    await query.execute(db=db)
+    assert query.stats.get_counter(name="nodes_created") == 0
+
+    nbr_rels_after = await count_relationships(db=db)
+
+    assert nbr_rels_after == nbr_rels_before + (3 * 4)
 
 
 async def test_migration_013(
@@ -297,5 +314,5 @@ async def test_migration_013(
     nbr_rels_after = await count_relationships(db=db)
     nbr_nodes_after = await count_nodes(db=db)
 
-    assert nbr_nodes_after == nbr_nodes_before + (7 * 2)
-    assert nbr_rels_after == nbr_rels_before + (19 * 2) + (2 * 3)
+    assert nbr_nodes_after == nbr_nodes_before + (6 * 2) + (3 + 1)
+    assert nbr_rels_after == nbr_rels_before + (19 * 2) + (2 * 3) + (3 * 4) + 2
