@@ -5,8 +5,9 @@ from infrahub.core.constants import BranchSupportType, RelationshipCardinality, 
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m013_convert_git_password_credential import (
     Migration013,
+    Migration013ConvertCoreRepositoryWithCred,
+    Migration013ConvertCoreRepositoryWithoutCred,
     Migration013DeleteUsernamePasswordSchema,
-    Migration013Query01,
 )
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot, internal_schema
@@ -25,14 +26,22 @@ GIT_SCHEMA = NodeSchema(
             branch=BranchSupportType.AGNOSTIC,
         ),
         AttributeSchema(
+            name="description",
+            kind="Text",
+            branch=BranchSupportType.AGNOSTIC,
+            optional=True,
+        ),
+        AttributeSchema(
             name="username",
             kind="Text",
             branch=BranchSupportType.AGNOSTIC,
+            optional=True,
         ),
         AttributeSchema(
             name="password",
             kind="Text",
             branch=BranchSupportType.AGNOSTIC,
+            optional=True,
         ),
     ],
 )
@@ -152,6 +161,10 @@ async def migration_013_data(db: InfrahubDatabase, reset_registry, default_branc
     await repo2.new(db=db, name="repo2", username="user2", password="pwd2")
     await repo2.save(db=db)
 
+    repo3 = await Node.init(db=db, schema=GIT_SCHEMA)
+    await repo3.new(db=db, name="repo3", description="no-cred")
+    await repo3.save(db=db)
+
 
 @pytest.fixture
 async def migration_013_schema(db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db):
@@ -192,7 +205,7 @@ async def test_migration_013_query_01(
     # nbr_nodes_before = await count_nodes(db=db, label="CoreAccount")
     nbr_rels_before = await count_relationships(db=db)
 
-    query = await Migration013Query01.init(db=db)
+    query = await Migration013ConvertCoreRepositoryWithCred.init(db=db)
     await query.execute(db=db)
     assert query.stats.get_counter(name="nodes_created") == 7 * 2
 
@@ -209,7 +222,37 @@ async def test_migration_013_query_01(
     assert creds_by_name["repo1"].password.value == "pwd1"
 
     # Execute the same query one more time to validate that it doesn't do anything
-    query = await Migration013Query01.init(db=db)
+    query = await Migration013ConvertCoreRepositoryWithCred.init(db=db)
+    await query.execute(db=db)
+    assert query.stats.get_counter(name="nodes_created") == 0
+
+    nbr_rels_after2 = await count_relationships(db=db)
+    assert nbr_rels_after == nbr_rels_after2
+
+
+async def test_migration_013_query_02(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
+):
+    registry.branch[default_branch.name] = default_branch
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    schema_branch.set(name=PASSWORD_CRED.kind, schema=PASSWORD_CRED)
+
+    # nbr_nodes_before = await count_nodes(db=db, label="CoreAccount")
+    nbr_rels_before = await count_relationships(db=db)
+
+    query = await Migration013ConvertCoreRepositoryWithoutCred.init(db=db)
+    await query.execute(db=db)
+    assert query.stats.get_counter(name="nodes_created") == 0
+
+    nbr_rels_after = await count_relationships(db=db)
+    assert nbr_rels_after == nbr_rels_before + 2
+
+    creds = await NodeManager.query(db=db, schema=PASSWORD_CRED, branch=default_branch)
+    assert len(creds) == 0
+
+    # Execute the same query one more time to validate that it doesn't do anything
+    query = await Migration013ConvertCoreRepositoryWithoutCred.init(db=db)
     await query.execute(db=db)
     assert query.stats.get_counter(name="nodes_created") == 0
 

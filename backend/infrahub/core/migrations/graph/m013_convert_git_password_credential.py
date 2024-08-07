@@ -25,8 +25,8 @@ default_branch = Branch(
 )
 
 
-class Migration013Query01(Query):
-    name = "migration_003_01"
+class Migration013ConvertCoreRepositoryWithCred(Query):
+    name = "migration_013_convert_repository_with_cred"
     type: QueryType = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
@@ -75,10 +75,10 @@ class Migration013Query01(Query):
         // --------------------------------
         // Identify the git repositories to convert
         // --------------------------------
-        MATCH path = (node:%(git_repository)s)-[r9:HAS_ATTRIBUTE]-(a:Attribute)
+        MATCH path = (node:%(git_repository)s)-[r9:HAS_ATTRIBUTE]-(a:Attribute)-[:HAS_VALUE]-(av:AttributeValue)
         WHERE a.name in ["username", "password"]
-            AND r9.status = "active"
-            AND all(r IN relationships(path) WHERE %(filters)s)
+            AND av.value <> "NULL"
+            AND all(r IN relationships(path) WHERE %(filters)s AND r.status = "active")
         CALL {
             WITH node
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
@@ -171,6 +171,69 @@ class Migration013Query01(Query):
         self.return_labels = ["git_repo", "cred"]
 
 
+class Migration013ConvertCoreRepositoryWithoutCred(Query):
+    name = "migration_013_convert_repository_without_cred"
+    type: QueryType = QueryType.WRITE
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+        at = Timestamp()
+        filters, params = at.get_query_filter_path()
+
+        global_branch = Branch(
+            name=GLOBAL_BRANCH_NAME,
+            status="OPEN",
+            description="Global Branch",
+            hierarchy_level=1,
+            is_global=True,
+            sync_with_git=False,
+        )
+        self.params.update(params)
+
+        self.params["rel_props_del"] = {
+            "branch": global_branch.name,
+            "branch_level": global_branch.hierarchy_level,
+            "status": RelationshipStatus.DELETED.value,
+            "from": self.at.to_string(),
+        }
+
+        self.params["current_time"] = self.at.to_string()
+
+        # ruff: noqa: E501
+        query = """
+        // --------------------------------
+        // Identify the git repositories to convert
+        // --------------------------------
+        MATCH path = (node:%(git_repository)s)-[r9:HAS_ATTRIBUTE]-(a:Attribute)-[:HAS_VALUE]-(av:AttributeValue)
+        WHERE a.name in ["username", "password"]
+            AND av.value = "NULL"
+            AND all(r IN relationships(path) WHERE %(filters)s AND r.status = "active")
+        CALL {
+            WITH node
+            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+            WHERE %(filters)s
+            RETURN node as n1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n1 as node, r1 as rb
+        WHERE rb.status = "active"
+        WITH DISTINCT(node) as git_repo
+        // --------------------------------
+        // Delete Username and Password attributes
+        // --------------------------------
+        MATCH (git_repo)-[r1:HAS_ATTRIBUTE]-(git_attr:Attribute)
+        WHERE git_attr.name IN ["username", "password"]
+        CREATE (git_repo)-[:HAS_ATTRIBUTE $rel_props_del ]->(git_attr)
+        SET r1.to = $current_time
+        WITH DISTINCT(git_repo) as git_repo
+        """ % {
+            "filters": filters,
+            "git_repository": InfrahubKind.GENERICREPOSITORY,
+        }
+        self.add_to_query(query)
+        self.return_labels = ["git_repo"]
+
+
 class Migration013DeleteUsernamePasswordSchema(DeleteElementInSchemaQuery):
     name = "migration_013_delete_username_password_schema"
     type: QueryType = QueryType.WRITE
@@ -191,7 +254,11 @@ class Migration013DeleteUsernamePasswordSchema(DeleteElementInSchemaQuery):
 
 class Migration013(GraphMigration):
     name: str = "013_convert_git_password_credential"
-    queries: Sequence[type[Query]] = [Migration013Query01, Migration013DeleteUsernamePasswordSchema]
+    queries: Sequence[type[Query]] = [
+        Migration013ConvertCoreRepositoryWithCred,
+        Migration013ConvertCoreRepositoryWithoutCred,
+        Migration013DeleteUsernamePasswordSchema,
+    ]
     minimum_version: int = 12
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
