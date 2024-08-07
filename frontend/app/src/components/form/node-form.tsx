@@ -23,7 +23,7 @@ import { ProfileData } from "@/components/form/object-form";
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
   formData: Record<string, FormFieldValue>;
-  profiles: Array<ProfileData>;
+  profiles?: Array<ProfileData>;
 };
 
 export type NodeFormProps = {
@@ -41,7 +41,7 @@ export const NodeForm = ({
   className,
   currentObject,
   schema,
-  profiles = [],
+  profiles,
   onSuccess,
   isFilterForm,
   onSubmit,

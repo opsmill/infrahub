@@ -27,6 +27,16 @@ interface Props {
   formStructure?: DynamicFieldData[];
 }
 
+const areObjectArraysEqualById = (
+  arr1: Array<{ id: string }>,
+  arr2: Array<{ id: string }>
+): boolean => {
+  if (arr1.length !== arr2.length) return false;
+
+  const idSet = new Set(arr1.map((item) => item.id));
+  return idSet.size === arr1.length && arr2.every((item) => idSet.has(item.id));
+};
+
 export default function ObjectItemEditComponent(props: Props) {
   const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
 
@@ -88,8 +98,11 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const onSubmit: ObjectFormProps["onSubmit"] = async ({ fields, formData, profiles }) => {
     const updatedObject = getUpdateMutationFromFormData({ formData, fields });
+    const isObjectUpdated = Object.keys(updatedObject).length > 0;
 
-    if (Object.keys(updatedObject).length) {
+    const isProfilesUpdated = !!profiles && !areObjectArraysEqualById(profiles, objectProfiles);
+
+    if (isObjectUpdated || isProfilesUpdated) {
       const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];
 
       try {
@@ -98,7 +111,7 @@ export default function ObjectItemEditComponent(props: Props) {
           data: stringifyWithoutQuotes({
             id: objectid,
             ...updatedObject,
-            ...(profilesId.length ? { profiles: profilesId } : {}),
+            ...(isProfilesUpdated ? { profiles: profilesId } : {}),
           }),
         });
 
