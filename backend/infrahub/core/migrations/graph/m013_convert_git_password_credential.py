@@ -75,9 +75,9 @@ class Migration013Query01(Query):
         // --------------------------------
         // Identify the git repositories to convert
         // --------------------------------
-        MATCH path = (node:%(git_repository)s)-[r:HAS_ATTRIBUTE]-(a:Attribute)
+        MATCH path = (node:%(git_repository)s)-[r9:HAS_ATTRIBUTE]-(a:Attribute)
         WHERE a.name in ["username", "password"]
-            AND r.status = "active"
+            AND r9.status = "active"
             AND all(r IN relationships(path) WHERE %(filters)s)
         CALL {
             WITH node
@@ -158,11 +158,11 @@ class Migration013Query01(Query):
         CREATE (git_repo)-[:IS_RELATED $rel_props_new]->(rel)<-[:IS_RELATED $rel_props_new]-(cred)
         """ % {
             "filters": filters,
-            "cred_guid": db.render_uuid_generation(node_label="cred", node_attr="uuid"),
-            "attr_name_guid": db.render_uuid_generation(node_label="attr_name", node_attr="uuid"),
-            "attr_label_guid": db.render_uuid_generation(node_label="attr_lbl", node_attr="uuid"),
-            "attr_desc_guid": db.render_uuid_generation(node_label="attr_desc", node_attr="uuid"),
-            "rel_guid": db.render_uuid_generation(node_label="rel", node_attr="uuid"),
+            "cred_guid": db.render_uuid_generation(node_label="cred", node_attr="uuid", index=1),
+            "attr_name_guid": db.render_uuid_generation(node_label="attr_name", node_attr="uuid", index=2),
+            "attr_label_guid": db.render_uuid_generation(node_label="attr_lbl", node_attr="uuid", index=3),
+            "attr_desc_guid": db.render_uuid_generation(node_label="attr_desc", node_attr="uuid", index=4),
+            "rel_guid": db.render_uuid_generation(node_label="rel", node_attr="uuid", index=5),
             "git_repository": InfrahubKind.GENERICREPOSITORY,
             "credential": InfrahubKind.CREDENTIAL,
             "password_credential": InfrahubKind.PASSWORDCREDENTIAL,
