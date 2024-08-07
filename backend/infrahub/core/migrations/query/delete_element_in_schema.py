@@ -43,8 +43,8 @@ class DeleteElementInSchemaQuery(Query):
         # ruff: noqa: E501
         query = """
         WHERE ( "SchemaAttribute" in LABELS(attr_node) OR "SchemaRelationship" IN LABELS(attr_node))
-            AND exists( (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute { name: "name"})-[:HAS_VALUE]->(:AttributeValue { value: $node_name }) )
-            AND exists( (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute { name: "namespace"})-[:HAS_VALUE]->(:AttributeValue  { value: $node_namespace }) )
+            AND exists( (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:Node)-[:HAS_ATTRIBUTE]->(:Attribute { name: "name"})-[:HAS_VALUE]->(:AttributeValue { value: $node_name }) )
+            AND exists( (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:Node)-[:HAS_ATTRIBUTE]->(:Attribute { name: "namespace"})-[:HAS_VALUE]->(:AttributeValue  { value: $node_namespace }) )
             AND ( attr_name.name = "name" AND attr_value.value IN $element_names)
             AND all(r IN relationships(path) WHERE ( %(filters)s ))
         """ % {"filters": filters}
@@ -125,7 +125,7 @@ class DeleteElementInSchemaQuery(Query):
         }
         WITH n1 as element_to_delete, r1 as rb
         WHERE rb.status = "active"
-        WITH element_to_delete
+        WITH DISTINCT(element_to_delete) as element_to_delete
 
         // Process Outbound Relationship
         MATCH (element_to_delete)-[]->(peer)

@@ -6,7 +6,6 @@ from infrahub.core.constants import NULL_VALUE, RelationshipStatus
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
-
     from infrahub.database import InfrahubDatabase
 
 
