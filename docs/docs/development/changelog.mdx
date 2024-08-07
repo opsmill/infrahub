@@ -26,11 +26,11 @@ What this means in practice for contributing to Infrahub is:
     - `changelog/` for Infrahub changes
     - `python-sdk/changelog` for Infrahub SDK changes
 1. This file should be named with the format `<github issue id>.<change type>.md`. For example:
-    - A Newsfragment file named `1234.fixed.md` represents a bugfix PR closing Github Issue #1234
+    - A Newsfragment file named `1234.fixed.md` represents a bug fix PR closing Github Issue #1234
     - This allows `towncrier` to populate the correct section of the Changelog with the relevant information
     - *Note*: If a PR doesn't close (or at least reference) a specific issue, you can utilize plain-text for the prefix by appending `+` to the filename.
-        - e.g.: `+this_is_not_a_github_issue.fixed.md`
-1. Available newsfile suffixes are:
+        - For example: `+this_is_not_a_github_issue.fixed.md`
+1. Available Newsfragment suffixes are:
     - `added`
     - `changed`
     - `deprecated`
@@ -38,5 +38,5 @@ What this means in practice for contributing to Infrahub is:
     - `fixed`
     - `security`
 1. Upon release of a new version, maintainers (and eventually CI) will execute `towncrier build` in each package directory which will do the following:
-    1. Consolidate all Newsfragment files in each `changelog` directories into a respective file each named `CHANGELOG.md` (automatically prepending the changelog into the relevant release section)
+    1. Consolidate all Newsfragment files in each `changelog` directories into a respective file each named `CHANGELOG.md`, and automatically prepend the changelog into the relevant release section
     1. `git rm` all individual Newsfragment files
