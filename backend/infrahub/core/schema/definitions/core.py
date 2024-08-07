@@ -1,10 +1,10 @@
 from typing import Any
 
 from infrahub.core.constants import (
-    ACCOUNT_STATUS_ACTIVE,
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
     AccountRole,
+    AccountStatus,
     AccountType,
     AllowOverrideType,
     ArtifactStatus,
@@ -806,19 +806,19 @@ core_models: dict[str, Any] = {
                     "kind": "Dropdown",
                     "choices": [
                         {
-                            "name": ACCOUNT_STATUS_ACTIVE,
+                            "name": AccountStatus.ACTIVE.value,
                             "label": "Active",
                             "description": "Account is allowed to login",
                             "color": "#52be80",
                         },
                         {
-                            "name": "inactive",
+                            "name": AccountStatus.INACTIVE.value,
                             "label": "Inactive",
                             "description": "Account is not allowed to login",
                             "color": "#e74c3c",
                         },
                     ],
-                    "default_value": ACCOUNT_STATUS_ACTIVE,
+                    "default_value": AccountStatus.ACTIVE.value,
                 },
             ],
             "relationships": [
