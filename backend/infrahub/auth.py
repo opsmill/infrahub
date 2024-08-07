@@ -3,11 +3,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Sequence
 
 import bcrypt
 import jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from infrahub import config, models
 from infrahub.core.account import fetch_permissions, validate_token
@@ -35,7 +35,7 @@ class AccountSession(BaseModel):
     account_id: str
     session_id: Optional[str] = None
     role: str = "read-only"
-    permissions: Optional[dict[str, list[str]]] = None
+    permissions: Optional[AccountPermissions] = None
     auth_type: AuthType
 
     @property
@@ -45,6 +45,17 @@ class AccountSession(BaseModel):
     @property
     def authenticated_by_jwt(self) -> bool:
         return self.auth_type == AuthType.JWT
+
+
+class AccountPermissions(BaseModel):
+    global_permissions: list[str] = Field(default_factory=list)
+    object_permissions: list[str] = Field(default_factory=list)
+
+    def has_permission(self, permission: str) -> bool:
+        return permission in self.global_permissions or permission in self.object_permissions
+
+    def has_permissions(self, permissions: Sequence[str]) -> bool:
+        return all(self.has_permission(permission=p) for p in permissions)
 
 
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
@@ -177,7 +188,9 @@ async def validate_jwt_access_token(db: InfrahubDatabase, token: str) -> Account
         account_id = payload["sub"]
         role = payload["user_claims"]["role"]
         session_id = payload["session_id"]
-        permissions = {"global_permissions": [p.action for p in await fetch_permissions(db=db, account_id=account_id)]}
+        permissions = AccountPermissions(
+            global_permissions=[str(p) for p in await fetch_permissions(db=db, account_id=account_id)]
+        )
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
     except Exception:

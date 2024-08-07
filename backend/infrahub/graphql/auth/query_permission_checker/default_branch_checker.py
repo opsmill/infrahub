@@ -1,6 +1,6 @@
 from infrahub import config
 from infrahub.auth import AccountSession
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 
@@ -8,14 +8,15 @@ from .interface import GraphQLQueryPermissionCheckerInterface
 
 
 class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
+    permissions_required = ["global:edit_default_branch:allow"]
+
     def __init__(self) -> None:
         self.can_edit_default_branch: bool = False
 
     async def supports(self, account_session: AccountSession) -> bool:
-        if account_session.permissions is not None and (
-            global_permissions := account_session.permissions.get("global_permissions", [])
-        ):
-            self.can_edit_default_branch = GlobalPermissions.EDIT_DEFAULT_BRANCH.value in global_permissions
+        self.can_edit_default_branch = account_session.permissions and account_session.permissions.has_permissions(
+            self.permissions_required
+        )
         return account_session.authenticated
 
     async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
