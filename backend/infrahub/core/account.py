@@ -14,10 +14,24 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class Permission:
+class GlobalPermission:
     id: str
     name: str
     action: str
+
+    def __str__(self) -> str:
+        return f"global:{self.action}:allow"
+
+
+@dataclass
+class ObjectPermission:
+    id: str
+    namespace: str
+    kind: str
+    action: str
+
+    def __str__(self) -> str:
+        return f"object:{self.namespace}:{self.kind}:{self.action}"
 
 
 class AccountPermissionQuery(Query):
@@ -39,12 +53,12 @@ class AccountPermissionQuery(Query):
 
         self.return_labels = ["account", "permission", "permission_action"]
 
-    def get_permissions(self) -> list[Permission]:
-        permissions: list[Permission] = []
+    def get_permissions(self) -> list[GlobalPermission]:
+        permissions: list[GlobalPermission] = []
 
         for result in self.get_results():
             permissions.append(
-                Permission(
+                GlobalPermission(
                     id=result.get("permission").get("uuid"),
                     name=result.get("permission_action").get("value"),
                     action=result.get("permission_action").get("value"),
@@ -56,7 +70,7 @@ class AccountPermissionQuery(Query):
 
 async def fetch_permissions(
     account_id: str, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None
-) -> list[Permission]:
+) -> list[GlobalPermission]:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await AccountPermissionQuery.init(db=db, branch=branch, account_id=account_id)
     await query.execute(db=db)
