@@ -91,9 +91,9 @@ export default function ObjectItemEditComponent(props: Props) {
     const updatedObject = getUpdateMutationFromFormData({ formData, fields });
     const isObjectUpdated = Object.keys(updatedObject).length > 0;
 
-    const isProfilesUpdated = !!profiles && !areObjectArraysEqualById(profiles, objectProfiles);
+    const areProfilesUpdated = !!profiles && !areObjectArraysEqualById(profiles, objectProfiles);
 
-    if (isObjectUpdated || isProfilesUpdated) {
+    if (isObjectUpdated || areProfilesUpdated) {
       const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];
 
       try {
@@ -102,7 +102,7 @@ export default function ObjectItemEditComponent(props: Props) {
           data: stringifyWithoutQuotes({
             id: objectid,
             ...updatedObject,
-            ...(isProfilesUpdated ? { profiles: profilesId } : {}),
+            ...(areProfilesUpdated ? { profiles: profilesId } : {}),
           }),
         });
 
