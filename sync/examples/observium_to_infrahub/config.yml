@@ -33,6 +33,10 @@ schema_mapping:
   - name: IpamIPAddress
     mapping: devices
     identifiers: ["address"]
+    filters:
+      - "netutils.ip.is_ip_within(record.get('ip'), '100.125.0.0/16')"
+      - "hostname | netutils.regex.regex_search('xxx')"
+      - "name | netutils.regex.regex_match('^pe-[0-9]{3}$')"
     fields:
       - name: address
         mapping: ip
@@ -42,25 +46,26 @@ schema_mapping:
   - name: InfraDevice
     mapping: devices
     identifiers: ["name"]
+    filters:
+      - "device_id > 100"
+      - "device_id <= 200"
+      - "hostname | netutils.regex.regex_search('xxx')"
+      - "name | netutils.regex.regex_match('^pe-[0-9]{3}$')"
     fields:
       - name: name
         mapping: hostname
       - name: description
         mapping: serial
-      # Not in the demo schema
-      # - name: serial_number
-      #   mapping: serial
-
+      - name: serial_number
+        mapping: serial
       # /!\ Platform need to exist beforehand !
       - name: platform
         mapping: os
         reference: InfraPlatform
-
-      # Not in the demo schema
-      # - name: manufacturer
-      #   mapping: vendor
-      #   reference: OrganizationManufacturer
-
+      # /!\ Manufacturer need to exist beforehand !
+      - name: manufacturer
+        mapping: vendor
+        reference: OrganizationManufacturer
       - name: type
         mapping: serial
       - name: primary_address

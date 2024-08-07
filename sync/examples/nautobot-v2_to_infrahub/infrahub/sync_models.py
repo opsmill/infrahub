@@ -1,4 +1,6 @@
 from typing import Any, List, Optional
+import netutils.regex
+import netutils.ip
 
 from infrahub_sync.adapters.infrahub import InfrahubModel
 
@@ -7,13 +9,13 @@ from infrahub_sync.adapters.infrahub import InfrahubModel
 #  This file has been generated with the command `infrahub-sync generate`
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
-
 class CoreStandardGroup(InfrahubModel):
     _modelname = "CoreStandardGroup"
     _identifiers = ("name",)
     _attributes = ("description",)
     name: str
     description: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -23,6 +25,7 @@ class BuiltinTag(InfrahubModel):
     _attributes = ("description",)
     name: str
     description: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -34,6 +37,7 @@ class InfraAutonomousSystem(InfrahubModel):
     asn: int
     description: Optional[str] = None
     organization: str
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -47,8 +51,25 @@ class InfraCircuit(InfrahubModel):
     provider: str
     type: str
     tags: Optional[List[str]] = []
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+    @classmethod
+    def filter_records(cls, records: List[Any]) -> List[Any]:
+        filtered_records = []
+        for record in records:
+            include = True
+            try:
+                field_value = getattr(record, 'cid', '') if not isinstance(record, dict) else record.get('cid', '')
+                field_value = field_value or ""
+                if not netutils.regex.regex_match('ntt', field_value):
+                    include = False
+            except Exception as e:
+                print(f"Error evaluating filter: 'cid | netutils.regex.regex_match('ntt')' with record {record}: {e}")
+                include = False
+            if include:
+                filtered_records.append(record)
+        return filtered_records
 
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
@@ -64,6 +85,7 @@ class InfraDevice(InfrahubModel):
     tags: Optional[List[str]] = []
     platform: Optional[str] = None
     organization: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -76,6 +98,7 @@ class InfraFrontPort(InfrahubModel):
     port_type: Optional[str] = None
     rear_port: Optional[List[str]] = []
     device: str
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -89,6 +112,7 @@ class InfraIPAddress(InfrahubModel):
     interfaces: Optional[List[str]] = []
     prefix: Optional[str] = None
     role: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -106,6 +130,7 @@ class InfraInterfaceL2L3(InfrahubModel):
     tagged_vlan: Optional[List[str]] = []
     device: str
     tags: Optional[List[str]] = []
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -117,6 +142,7 @@ class InfraPlatform(InfrahubModel):
     description: Optional[str] = None
     napalm_driver: Optional[str] = None
     manufacturer: str
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -131,6 +157,7 @@ class InfraPrefix(InfrahubModel):
     locations: Optional[List[str]] = []
     role: Optional[str] = None
     vlan: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -143,6 +170,7 @@ class InfraProviderNetwork(InfrahubModel):
     vendor_id: Optional[str] = None
     provider: str
     tags: Optional[List[str]] = []
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -158,6 +186,7 @@ class InfraRack(InfrahubModel):
     location: str
     role: Optional[str] = None
     tags: Optional[List[str]] = []
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -169,6 +198,7 @@ class InfraRearPort(InfrahubModel):
     description: Optional[str] = None
     port_type: Optional[str] = None
     device: str
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -179,6 +209,7 @@ class InfraRouteTarget(InfrahubModel):
     name: str
     description: Optional[str] = None
     organization: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -193,6 +224,7 @@ class InfraVLAN(InfrahubModel):
     locations: Optional[List[str]] = []
     role: Optional[str] = None
     vlan_group: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -207,6 +239,7 @@ class InfraVRF(InfrahubModel):
     nautobot_namespace: str
     import_rt: Optional[List[str]] = []
     export_rt: Optional[List[str]] = []
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -218,6 +251,7 @@ class LocationGeneric(InfrahubModel):
     description: Optional[str] = None
     tags: Optional[List[str]] = []
     location_type: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -227,6 +261,7 @@ class NautobotNamespace(InfrahubModel):
     _attributes = ("description",)
     name: str
     description: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -238,6 +273,7 @@ class OrganizationGeneric(InfrahubModel):
     description: Optional[str] = None
     type: Optional[str] = None
     group: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -248,6 +284,7 @@ class RoleGeneric(InfrahubModel):
     name: str
     label: Optional[str] = None
     description: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -257,6 +294,7 @@ class TemplateCircuitType(InfrahubModel):
     _attributes = ("description",)
     name: str
     description: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -270,6 +308,7 @@ class TemplateDeviceType(InfrahubModel):
     name: str
     manufacturer: str
     tags: Optional[List[str]] = []
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -279,5 +318,6 @@ class TemplateLocationType(InfrahubModel):
     _attributes = ("description",)
     name: str
     description: Optional[str] = None
+
     local_id: Optional[str] = None
     local_data: Optional[Any] = None

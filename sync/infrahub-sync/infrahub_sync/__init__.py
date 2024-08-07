@@ -14,6 +14,7 @@ class SchemaMappingModel(pydantic.BaseModel):
     name: str
     mapping: str
     identifiers: Optional[List[str]] = pydantic.Field(default=None)
+    filters: Optional[List[str]] = pydantic.Field(default=None)
     fields: List[SchemaMappingField] = []
 
 
