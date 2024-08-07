@@ -49,6 +49,7 @@ class TestDefaultBranchPermissionChecker:
     async def test_raise_if_not_permission(self, can_edit_default_branch, contains_mutations, branch_name):
         self.checker.can_edit_default_branch = can_edit_default_branch
         self.graphql_query.contains_mutations = contains_mutations
+        self.graphql_query.operation_name = "CreateTags"
         self.graphql_query.branch = MagicMock()
         self.graphql_query.branch.name = branch_name
 
