@@ -12,8 +12,10 @@ import {
   DynamicEnumFieldProps,
   DynamicFieldProps,
   DynamicInputFieldProps,
+  DynamicNumberFieldProps,
   DynamicRelationshipFieldProps,
   FormFieldValue,
+  NumberPoolData,
 } from "@/components/form/type";
 import {
   getObjectRelationshipsForForm,
@@ -39,6 +41,7 @@ type GetFormFieldsFromSchema = {
   auth?: AuthContextType;
   isFilterForm?: boolean;
   filters?: Array<Filter>;
+  pools?: Array<NumberPoolData>;
 };
 
 export const getFormFieldsFromSchema = ({
@@ -48,6 +51,7 @@ export const getFormFieldsFromSchema = ({
   auth,
   isFilterForm,
   filters,
+  pools = [],
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields = [
     ...(schema.attributes ?? []),
@@ -126,6 +130,19 @@ export const getFormFieldsFromSchema = ({
           color: choice.color ?? undefined,
           description: choice.description ?? undefined,
         })),
+      };
+
+      return dropdownField;
+    }
+
+    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER) {
+      const numberPool = pools.find((pool) => pool.nodeAttribute.name === attribute.name);
+
+      const dropdownField: DynamicNumberFieldProps = {
+        ...basicFomFieldProps,
+        type: "Number",
+        unique: attribute.unique,
+        pool: numberPool,
       };
 
       return dropdownField;

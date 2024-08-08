@@ -80,6 +80,11 @@ export type DynamicInputFieldProps = FormFieldProps & {
   type: Exclude<SchemaAttributeType, "Dropdown">;
 };
 
+export type DynamicNumberFieldProps = FormFieldProps & {
+  type: "Number";
+  pool?: NumberPoolData;
+};
+
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<SelectOption>;
@@ -110,6 +115,7 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
 
 export type DynamicFieldProps =
   | DynamicInputFieldProps
+  | DynamicNumberFieldProps
   | DynamicDropdownFieldProps
   | DynamicEnumFieldProps
   | DynamicRelationshipFieldProps;
@@ -117,3 +123,14 @@ export type DynamicFieldProps =
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue
 ): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
+
+export type NumberPoolData = {
+  pool: {
+    id: string;
+    label: string;
+  };
+  nodeAttribute: {
+    id: string;
+    name: string;
+  };
+};
