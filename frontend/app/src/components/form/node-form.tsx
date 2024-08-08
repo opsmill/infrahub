@@ -65,6 +65,7 @@ export const NodeForm = ({
     ({ node }: { node: CoreNumberPool }): NumberPoolData => ({
       id: node.id,
       label: node.display_label as string,
+      kind: node.__typename as string,
       nodeAttribute: {
         id: node.node_attribute.id as string,
         name: node.node_attribute.value as string,

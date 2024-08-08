@@ -127,6 +127,7 @@ export const isFormFieldValueFromPool = (
 export type NumberPoolData = {
   id: string;
   label: string;
+  kind: string;
   nodeAttribute: {
     id: string;
     name: string;
