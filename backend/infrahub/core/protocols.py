@@ -97,6 +97,7 @@ class CoreGenericAccount(CoreNode):
     description: StringOptional
     account_type: Enum
     role: Enum
+    status: Dropdown
     tokens: RelationshipManager
 
 

@@ -4,6 +4,7 @@ from infrahub.core.constants import (
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
     AccountRole,
+    AccountStatus,
     AccountType,
     AllowOverrideType,
     ArtifactStatus,
@@ -799,6 +800,25 @@ core_models: dict[str, Any] = {
                     "kind": "Text",
                     "default_value": AccountRole.READ_ONLY.value,
                     "enum": AccountRole.available_types(),
+                },
+                {
+                    "name": "status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": AccountStatus.ACTIVE.value,
+                            "label": "Active",
+                            "description": "Account is allowed to login",
+                            "color": "#52be80",
+                        },
+                        {
+                            "name": AccountStatus.INACTIVE.value,
+                            "label": "Inactive",
+                            "description": "Account is not allowed to login",
+                            "color": "#e74c3c",
+                        },
+                    ],
+                    "default_value": AccountStatus.ACTIVE.value,
                 },
             ],
             "relationships": [
