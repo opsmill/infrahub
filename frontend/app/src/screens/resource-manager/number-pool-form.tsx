@@ -48,7 +48,7 @@ export const NumberPoolForm = () => {
       },
     },
     {
-      name: "descrption",
+      name: "description",
       label: "Description",
       type: SCHEMA_ATTRIBUTE_KIND.TEXT,
     },
@@ -61,7 +61,7 @@ export const NumberPoolForm = () => {
       onChange: (newNode) => setNode(newNode),
     },
     {
-      name: "node_atttribute",
+      name: "node_attribute",
       label: "Node attribute",
       description: "The model of the object that requires integers to be allocated",
       type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
