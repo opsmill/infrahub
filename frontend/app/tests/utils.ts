@@ -5,7 +5,7 @@ export const saveScreenshotForDocs = async (page: Page, filename: string) => {
 
   await page.waitForLoadState("networkidle");
   await page.screenshot({
-    path: `../docs/docs/media/${filename}.png`,
+    path: `../../docs/docs/media/${filename}.png`,
     animations: "disabled",
   });
 };
