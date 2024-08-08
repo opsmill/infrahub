@@ -16,7 +16,7 @@ const NumberField = ({
   name,
   rules,
   unique,
-  pool,
+  pools,
   ...props
 }: NumberFieldProps) => {
   return (
@@ -27,7 +27,6 @@ const NumberField = ({
       defaultValue={defaultValue}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
-        console.log(fieldData);
 
         return (
           <div className="relative mb-2 flex flex-col">

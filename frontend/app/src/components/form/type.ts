@@ -82,7 +82,7 @@ export type DynamicInputFieldProps = FormFieldProps & {
 
 export type DynamicNumberFieldProps = FormFieldProps & {
   type: "Number";
-  pool?: NumberPoolData;
+  pools?: Array<NumberPoolData>;
 };
 
 export type DynamicDropdownFieldProps = FormFieldProps & {

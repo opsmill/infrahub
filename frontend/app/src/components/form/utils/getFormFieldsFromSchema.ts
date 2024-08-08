@@ -135,13 +135,13 @@ export const getFormFieldsFromSchema = ({
     }
 
     if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER) {
-      const numberPool = pools.find((pool) => pool.nodeAttribute.name === attribute.name);
+      const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attribute.name);
 
       const dropdownField: DynamicNumberFieldProps = {
         ...basicFomFieldProps,
         type: "Number",
         unique: attribute.unique,
-        pool: numberPool,
+        pools: numberPools,
       };
 
       return dropdownField;
