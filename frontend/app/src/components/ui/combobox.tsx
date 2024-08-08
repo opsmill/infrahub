@@ -130,6 +130,7 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
 
   return (
     <PopoverContent
+      onCloseAutoFocus={() => setQuery("")}
       className="p-2 space-y-2 overflow-hidden flex flex-col"
       style={{
         width: "var(--radix-popover-trigger-width)",
