@@ -1,22 +1,24 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Input, InputProps } from "@/components/ui/input";
-import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
+import { DynamicNumberFieldProps, FormAttributeValue } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import React from "react";
 
-export interface InputFieldProps
-  extends FormFieldProps,
+export interface NumberFieldProps
+  extends Omit<DynamicNumberFieldProps, "type">,
     Omit<InputProps, "defaultValue" | "name"> {}
 
-const InputField = ({
+const NumberField = ({
   defaultValue,
   description,
   label,
   name,
   rules,
   unique,
+  pool,
   ...props
-}: InputFieldProps) => {
+}: NumberFieldProps) => {
   return (
     <FormField
       key={name}
@@ -25,6 +27,7 @@ const InputField = ({
       defaultValue={defaultValue}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
+        console.log(fieldData);
 
         return (
           <div className="relative mb-2 flex flex-col">
@@ -39,9 +42,11 @@ const InputField = ({
             <FormInput>
               <Input
                 {...field}
-                value={(fieldData?.value as string) ?? ""}
+                type="number"
+                value={(fieldData?.value as number) ?? ""}
                 onChange={(event) => {
-                  field.onChange(updateFormFieldValue(event.target.value, defaultValue));
+                  const value = event.target.valueAsNumber;
+                  field.onChange(updateFormFieldValue(isNaN(value) ? null : value, defaultValue));
                 }}
                 {...props}
               />
@@ -54,4 +59,4 @@ const InputField = ({
   );
 };
 
-export default InputField;
+export default NumberField;
