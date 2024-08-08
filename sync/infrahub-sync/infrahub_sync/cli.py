@@ -141,7 +141,7 @@ def generate(
         print_error_and_abort(str(exc))
 
     missing_schema_models = find_missing_schema_model(sync_instance=sync_instance, schema=schema)
-    if len(missing_schema_models):
+    if missing_schema_models:
         print_error_and_abort(f"One or more model model are not present in the Schema - {missing_schema_models}")
 
     rendered_files = render_adapter(sync_instance=sync_instance, schema=schema)

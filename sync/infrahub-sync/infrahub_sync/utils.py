@@ -157,7 +157,7 @@ def get_potenda_from_instance(
                 internal_storage_engine=source_store,
             )
     except ValueError as exc:
-        raise ValueError(f"{sync_instance.source.name.title()}Adapter - {exc}")
+        raise ValueError(f"{sync_instance.source.name.title()}Adapter") from exc
     try:
         if sync_instance.destination.name == "infrahub" and branch:
             dst = destination(
@@ -175,7 +175,7 @@ def get_potenda_from_instance(
                 internal_storage_engine=destination_store,
             )
     except ValueError as exc:
-        raise ValueError(f"{sync_instance.destination.name.title()}Adapter - {exc}")
+        raise ValueError(f"{sync_instance.destination.name.title()}Adapter") from exc
 
     ptd = Potenda(
         destination=dst,
