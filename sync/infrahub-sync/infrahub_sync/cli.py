@@ -6,7 +6,13 @@ from infrahub_sdk import InfrahubClientSync
 from infrahub_sdk.exceptions import ServerNotResponsiveError
 from rich.console import Console
 
-from infrahub_sync.utils import get_all_sync, get_instance, get_potenda_from_instance, render_adapter
+from infrahub_sync.utils import (
+    find_missing_schema_model,
+    get_all_sync,
+    get_instance,
+    get_potenda_from_instance,
+    render_adapter,
+)
 
 app = typer.Typer()
 console = Console()
@@ -133,6 +139,10 @@ def generate(
         schema = client.schema.all()
     except ServerNotResponsiveError as exc:
         print_error_and_abort(str(exc))
+
+    missing_schema_models = find_missing_schema_model(sync_instance=sync_instance, schema=schema)
+    if len(missing_schema_models):
+        print_error_and_abort(f"One or more model model are not present in the Schema - {missing_schema_models}")
 
     rendered_files = render_adapter(sync_instance=sync_instance, schema=schema)
     for template, output_path in rendered_files:

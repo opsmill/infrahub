@@ -8,7 +8,6 @@ from infrahub_sdk import (
     RelationshipKind,
     RelationshipSchema,
 )
-from netutils.utils import jinja2_convenience_function
 
 from infrahub_sync import SyncConfig
 from infrahub_sync.generator.utils import list_to_set, list_to_str
@@ -144,9 +143,6 @@ def render_template(template_file: Path, output_dir: Path, output_file: Path, co
     template_env = jinja2.Environment(
         loader=template_loader,
     )
-    # Add netuils filters to Jinja2
-    template_env.filters.update(jinja2_convenience_function())
-
     # Add custom filters to Jinja2
     template_env.filters["get_filters"] = get_filters
     template_env.filters["get_identifiers"] = get_identifiers
