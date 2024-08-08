@@ -308,6 +308,14 @@ class AttributeDBNodeType(InfrahubStringEnum):
     IPNETWORK = "ipnetwork"
 
 
+class PermissionAction(InfrahubStringEnum):
+    ALL = "all"
+    ADD = "add"
+    CHANGE = "change"
+    DELETE = "delete"
+    VIEW = "view"
+
+
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
