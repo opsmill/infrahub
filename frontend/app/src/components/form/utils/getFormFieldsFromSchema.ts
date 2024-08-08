@@ -29,7 +29,6 @@ import { store } from "@/state";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { ProfileData } from "@/components/form/object-form";
 import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
-import { useAtomValue } from "jotai/index";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { Filter } from "@/hooks/useFilters";
 import { getRelationshipParent } from "@/components/form/utils/getRelationshipParent";
@@ -172,8 +171,8 @@ export const getFormFieldsFromSchema = ({
   // Allow kind filter for generic
   if (isFilterForm && isGeneric(schema) && schema.used_by?.length) {
     const kindFilter = filters?.find((filter) => filter.name == "kind__value");
-    const nodes = useAtomValue(schemaState);
-    const profiles = useAtomValue(profilesAtom);
+    const nodes = store.get(schemaState);
+    const profiles = store.get(profilesAtom);
     const schemas = [...nodes, ...profiles];
 
     const items = schema.used_by
