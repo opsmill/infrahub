@@ -41,10 +41,11 @@ const DropdownField = ({
               <Select
                 {...field}
                 value={fieldData?.value}
+                {...props}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
+                  if (props.onChange) props.onChange(newValue);
                 }}
-                {...props}
                 options={items}
                 dropdown
                 className="w-full"

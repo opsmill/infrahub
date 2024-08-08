@@ -20,7 +20,7 @@ export const NumberPoolForm = () => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const schemaList = useAtomValue(schemaState);
-  const [node, setNode] = useState<string>("");
+  const [node, setNode] = useState("");
 
   const availableSchemaList = schemaList
     // ?.filter((schema) => schema.namespace !== "Core")
@@ -58,7 +58,7 @@ export const NumberPoolForm = () => {
       description: "The model of the object that requires integers to be allocated",
       type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
       items: nodesOptions,
-      onChange: (newNode: string) => setNode(newNode),
+      onChange: (newNode) => setNode(newNode),
     },
     {
       name: "node_atttribute",

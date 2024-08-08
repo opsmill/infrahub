@@ -74,6 +74,7 @@ export type FormFieldProps = {
   placeholder?: string;
   unique?: boolean;
   rules?: ComponentProps<typeof FormField>["rules"];
+  onChange?: (value: FormAttributeValue) => void;
 };
 
 export type DynamicInputFieldProps = FormFieldProps & {
