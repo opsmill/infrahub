@@ -1,7 +1,7 @@
 import DynamicForm from "@/components/form/dynamic-form";
-import { DropdownFieldProps } from "@/components/form/fields/dropdown.field";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
+import { SelectOption } from "@/components/inputs/select";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -20,23 +20,22 @@ export const NumberPoolForm = () => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const schemaList = useAtomValue(schemaState);
-  const [node, setNode] = useState("");
+  const [node, setNode] = useState<FormFieldValue>();
 
   const availableSchemaList = schemaList
     // ?.filter((schema) => schema.namespace !== "Core")
     ?.filter((schema) => !!schema.attributes?.find((attribute) => attribute.kind === "Number"));
 
   const selectedNode = availableSchemaList.find((schema) => schema.kind === node);
-  console.log("selectedNode: ", selectedNode);
 
-  const nodesOptions: DropdownFieldProps["items"] = availableSchemaList.map((schema) => ({
-    id: schema.kind,
-    name: schema.label,
+  const nodesOptions: SelectOption[] = availableSchemaList.map((schema) => ({
+    id: schema.kind as string,
+    name: schema.label as string,
   }));
 
-  const attributesOptions: DropdownFieldProps["items"] = selectedNode?.attributes
+  const attributesOptions: SelectOption[] = selectedNode?.attributes
     ?.filter((attribute) => attribute.kind === "Number")
-    ?.map((attribute) => ({ id: attribute.name, name: attribute.label }));
+    ?.map((attribute) => ({ id: attribute.name as string, name: attribute.label as string }));
 
   const fields: Array<DynamicFieldProps> = [
     {
