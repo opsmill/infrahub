@@ -61,7 +61,7 @@ export const NodeForm = ({
 
   if (loading) return <LoadingScreen hideText className="mt-4" />;
 
-  const numberPools: Array<NumberPoolData> = data[NUMBER_POOL_KIND].edges.map(
+  const numberPools: Array<NumberPoolData> = data?.[NUMBER_POOL_KIND].edges.map(
     ({ node }: { node: CoreNumberPool }) => ({
       pool: {
         id: node.id,
