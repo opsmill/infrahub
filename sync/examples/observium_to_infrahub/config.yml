@@ -35,8 +35,8 @@ schema_mapping:
     identifiers: ["address"]
     filters:
       - "netutils.ip.is_ip_within(record.get('ip'), '100.125.0.0/16')"
-      - "hostname | netutils.regex.regex_search('xxx')"
-      - "name | netutils.regex.regex_match('^pe-[0-9]{3}$')"
+      - "netutils.regex.regex_search('xxx', 'hostname')"
+      - "netutils.regex.regex_match('^pe-[0-9]{3}$', 'hostname')"
     fields:
       - name: address
         mapping: ip
@@ -49,13 +49,13 @@ schema_mapping:
     filters:
       - "device_id > 100"
       - "device_id <= 200"
-      - "hostname | netutils.regex.regex_search('xxx')"
-      - "name | netutils.regex.regex_match('^pe-[0-9]{3}$')"
+      - "netutils.regex.regex_search('xxx', 'hostname')"
+      - "netutils.regex.regex_match('^pe-[0-9]{3}$', 'hostname')"
     fields:
       - name: name
         mapping: hostname
       - name: description
-        mapping: serial
+        mapping: description
       - name: serial_number
         mapping: serial
       # /!\ Platform need to exist beforehand !
@@ -67,7 +67,7 @@ schema_mapping:
         mapping: vendor
         reference: OrganizationManufacturer
       - name: type
-        mapping: serial
+        mapping: hardware
       - name: primary_address
         mapping: ip
         reference: IpamIPAddress

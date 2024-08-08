@@ -43,7 +43,7 @@ class NetboxAdapter(DiffSyncMixin, Adapter):
 
     def _create_netbox_client(self, adapter: SyncAdapter):
         settings = adapter.settings or {}
-        url = os.environ.get("NETBOX_ADDRESS") or settings.get("url")
+        url = os.environ.get("NETBOX_ADDRESS") or os.environ.get("NETBOX_URL") or settings.get("url")
         token = os.environ.get("NETBOX_TOKEN") or settings.get("token")
 
         if not url or not token:

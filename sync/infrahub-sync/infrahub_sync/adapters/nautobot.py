@@ -43,7 +43,7 @@ class NautobotAdapter(DiffSyncMixin, Adapter):
 
     def _create_nautobot_client(self, adapter: SyncAdapter):
         settings = adapter.settings or {}
-        url = os.environ.get("NAUTOBOT_ADDRESS") or settings.get("url")
+        url = os.environ.get("NAUTOBOT_ADDRESS") or os.environ.get("NAUTOBOT_URL") or settings.get("url")
         token = os.environ.get("NAUTOBOT_TOKEN") or settings.get("token")
 
         if not url or not token:

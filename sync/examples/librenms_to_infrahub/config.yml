@@ -51,6 +51,8 @@ schema_mapping:
   - name: InfraDevice
     mapping: devices
     identifiers: ["name"]
+    filters:
+      - "netutils.regex.regex_search('xxx', 'hostname')"
     fields:
       - name: name
         mapping: hostname

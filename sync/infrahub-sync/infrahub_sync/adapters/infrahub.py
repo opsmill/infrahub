@@ -1,4 +1,5 @@
 import copy
+import os
 from typing import Any, Mapping
 
 from infrahub_sdk import (
@@ -54,15 +55,20 @@ class InfrahubAdapter(DiffSyncMixin, Adapter):
         super().__init__(*args, **kwargs)
         self.target = target
         self.config = config
+
+        settings = adapter.settings or {}
+        url = os.environ.get("INFRAHUB_ADDRESS") or os.environ.get("INFRAHUB_URL") or settings.get("url")
+        token = os.environ.get("INFRAHUB_API_TOKEN") or settings.get("token")
+
+        if not url or not token:
+            raise ValueError("Both url and token must be specified!")
+
         if branch:
-            sdk_config = Config(timeout=60, default_branch=branch)
+            sdk_config = Config(timeout=60, default_branch=branch, api_token=token)
         else:
-            sdk_config = Config(timeout=60)
+            sdk_config = Config(timeout=60, api_token=token)
 
-        if not isinstance(adapter.settings, dict) or "url" not in adapter.settings:
-            raise ValueError("url must be specified!")
-
-        self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
+        self.client = InfrahubClientSync(address=url, config=sdk_config)
 
         # We need to identify with an account until we have some auth in place
         remote_account = config.source.name

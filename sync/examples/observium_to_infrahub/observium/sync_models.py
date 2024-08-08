@@ -21,23 +21,15 @@ class CoreStandardGroup(ObserviumModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
-    @classmethod
-    def filter_records(cls, records: List[dict]) -> List[dict]:
-        filtered_records = []
-        for record in records:
-            include = True
-            if include:
-                filtered_records.append(record)
-        return filtered_records
-
 
 class InfraDevice(ObserviumModel):
     _modelname = "InfraDevice"
     _identifiers = ("name",)
-    _attributes = ("primary_address", "platform", "description", "type")
+    _attributes = ("primary_address", "platform", "description", "serial_number", "type")
     name: str
     description: Optional[str] = None
     type: str
+    serial_number: Optional[str] = None
     primary_address: Optional[str] = None
     platform: Optional[str] = None
 
@@ -45,38 +37,44 @@ class InfraDevice(ObserviumModel):
     local_data: Optional[Any] = None
 
     @classmethod
-    def filter_records(cls, records: List[dict]) -> List[dict]:
+    def filter_records(cls, records: List[Any]) -> List[Any]:
         filtered_records = []
         for record in records:
             include = True
             try:
-                record_value = int(record.get("device_id", 0))
+                field_value = (
+                    getattr(record, "device_id", 0) if not isinstance(record, dict) else record.get("device_id", 0)
+                )
+                record_value = int(field_value)
                 if not (record_value > 100):
                     include = False
             except Exception as e:
                 print(f"Error evaluating filter: 'device_id > 100' with record {record}: {e}")
                 include = False
             try:
-                record_value = int(record.get("device_id", 0))
+                field_value = (
+                    getattr(record, "device_id", 0) if not isinstance(record, dict) else record.get("device_id", 0)
+                )
+                record_value = int(field_value)
                 if not (record_value <= 200):
                     include = False
             except Exception as e:
                 print(f"Error evaluating filter: 'device_id <= 200' with record {record}: {e}")
                 include = False
             try:
-                if not netutils.regex.regex_search("xxx", record.get("hostname", "")):
+                if netutils.regex.regex_search("xxx", "hostname"):
                     include = False
             except Exception as e:
                 print(
-                    f"Error evaluating filter: 'hostname | netutils.regex.regex_search('xxx')' with record {record}: {e}"
+                    f"Error evaluating filter: 'netutils.regex.regex_search('xxx', 'hostname')' with record {record}: {e}"
                 )
                 include = False
             try:
-                if not netutils.regex.regex_match("^pe-[0-9]{3}$", record.get("name", "")):
+                if netutils.regex.regex_match("^pe-[0-9]{3}$", "hostname"):
                     include = False
             except Exception as e:
                 print(
-                    f"Error evaluating filter: 'name | netutils.regex.regex_match('^pe-[0-9]{3}$')' with record {record}: {e}"
+                    f"Error evaluating filter: 'netutils.regex.regex_match('^pe-[0-9]{3}$', 'hostname')' with record {record}: {e}"
                 )
                 include = False
             if include:
@@ -95,12 +93,12 @@ class IpamIPAddress(ObserviumModel):
     local_data: Optional[Any] = None
 
     @classmethod
-    def filter_records(cls, records: List[dict]) -> List[dict]:
+    def filter_records(cls, records: List[Any]) -> List[Any]:
         filtered_records = []
         for record in records:
             include = True
             try:
-                if not (netutils.ip.is_ip_within(record.get("ip"), "100.125.0.0/16")):
+                if netutils.ip.is_ip_within(record.get("ip"), "100.125.0.0/16"):
                     include = False
             except Exception as e:
                 print(
@@ -108,19 +106,19 @@ class IpamIPAddress(ObserviumModel):
                 )
                 include = False
             try:
-                if not netutils.regex.regex_search("xxx", record.get("hostname", "")):
+                if netutils.regex.regex_search("xxx", "hostname"):
                     include = False
             except Exception as e:
                 print(
-                    f"Error evaluating filter: 'hostname | netutils.regex.regex_search('xxx')' with record {record}: {e}"
+                    f"Error evaluating filter: 'netutils.regex.regex_search('xxx', 'hostname')' with record {record}: {e}"
                 )
                 include = False
             try:
-                if not netutils.regex.regex_match("^pe-[0-9]{3}$", record.get("name", "")):
+                if netutils.regex.regex_match("^pe-[0-9]{3}$", "hostname"):
                     include = False
             except Exception as e:
                 print(
-                    f"Error evaluating filter: 'name | netutils.regex.regex_match('^pe-[0-9]{3}$')' with record {record}: {e}"
+                    f"Error evaluating filter: 'netutils.regex.regex_match('^pe-[0-9]{3}$', 'hostname')' with record {record}: {e}"
                 )
                 include = False
             if include:

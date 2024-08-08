@@ -27,7 +27,7 @@ class LibrenmsAdapter(DiffSyncMixin, Adapter):
 
     def _create_rest_client(self, adapter: SyncAdapter) -> RestApiClient:
         settings = adapter.settings or {}
-        url = os.environ.get("LIBRENMS_ADDRESS") or settings.get("url")
+        url = os.environ.get("LIBRENMS_ADDRESS") or os.environ.get("LIBRENMS_URL") or settings.get("url")
         api_endpoint = settings.get("api_endpoint", "/api/v0")
         auth_method = settings.get("auth_method", "token")
         api_token = os.environ.get("LIBRENMS_TOKEN") or settings.get("token")

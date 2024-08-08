@@ -44,9 +44,15 @@ def diff_cmd(
     if not sync_instance:
         print_error_and_abort("Failed to load sync instance.")
 
-    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
-    ptd.source_load()
-    ptd.destination_load()
+    try:
+        ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
+    except ValueError as exc:
+        print_error_and_abort(f"Failed to initialize the Sync Instance due to {exc}")
+    try:
+        ptd.source_load()
+        ptd.destination_load()
+    except ValueError as exc:
+        print_error_and_abort(exc)
 
     mydiff = ptd.diff()
 
@@ -72,9 +78,15 @@ def sync_cmd(
     if not sync_instance:
         print_error_and_abort("Failed to load sync instance.")
 
-    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
-    ptd.source_load()
-    ptd.destination_load()
+    try:
+        ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
+    except ValueError as exc:
+        print_error_and_abort(f"Failed to initialize the Sync Instance: {exc}")
+    try:
+        ptd.source_load()
+        ptd.destination_load()
+    except ValueError as exc:
+        print_error_and_abort(exc)
 
     mydiff = ptd.diff()
 

@@ -39,31 +39,28 @@ class {{ nodekind }}({{ adapter.name.title() }}Model):
             include = True
 {%-         for filter_expr in filters %}
             try:
-{%-             set filter_parts = filter_expr.split(' ', 2) %}
-{%-             set field = filter_parts[0] %}
-{%-             set operation = filter_parts[1] %}
-{%-             set value = filter_parts[2] %}
-
-{%-             if operation == '|' and ('netutils.regex.' in value or 'not netutils.regex.' in value) %}
-{%-                 set is_negated = 'not ' in value %}
-{%-                 set filter_fn = value.replace('not ', '').split('(')[0].strip() %}
-{%-                 set regex_pattern = value.replace('not ', '').split('(', 1)[1].rsplit(')', 1)[0].strip('\'') %}
-                field_value = getattr(record, '{{ field }}', '') if not isinstance(record, dict) else record.get('{{ field }}', '')
-                field_value = field_value or ""
-                if {{ 'not ' if not is_negated else '' }}{{ filter_fn }}('{{ regex_pattern }}', field_value):
-                    include = False
-{%-             elif ('netutils.ip.' in value) %}
-{%-                 set is_negated = 'not ' in value %}
+{%-             if 'netutils.regex.' in filter_expr %}
+{%-                 set is_negated = 'not ' in filter_expr %}
                 if {{ 'not ' if is_negated else '' }}({{filter_expr.replace('not ', '')}}):
                     include = False
-{%-             elif operation in ['==', '!=', '>', '<', '>=', '<='] %}
+{%-             elif ('netutils.ip.' in filter_expr) %}
+{%-                 set is_negated = 'not ' in filter_expr %}
+                if {{ 'not ' if is_negated else '' }}({{filter_expr.replace('not ', '')}}):
+                    include = False
+{%-             else %}
+{%-                 set filter_parts = filter_expr.split(' ', 2) %}
+{%-                 set field = filter_parts[0] %}
+{%-                 set operation = filter_parts[1] %}
+{%-                 set value = filter_parts[2] %}
+{%-                 if operation in ['==', '!=', '>', '<', '>=', '<='] %}
                 field_value = getattr(record, '{{ field }}', 0) if not isinstance(record, dict) else record.get('{{ field }}', 0)
                 record_value = int(field_value)
                 if not (record_value {{ operation }} {{ value }}):
                     include = False
-{%-             else %}
+{%-                 else %}
                 # /!\ Filter didn't match any working filters, ignored
                 pass
+{%-                 endif %}
 {%-             endif %}
             except Exception as e:
                 print(f"Error evaluating filter: '{{ filter_expr }}' with record {record}: {e}")
