@@ -37,7 +37,7 @@ export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
             </div>
           </ComboboxTrigger>
 
-          <ComboboxList items={items} onReset={handleChange} />
+          <ComboboxList items={items} onReset={() => handleChange([])} />
         </Popover>
       </ComboboxPrimitive>
     );
