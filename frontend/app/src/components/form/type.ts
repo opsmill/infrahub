@@ -22,6 +22,16 @@ export type AttributeValueFromProfile = {
   value: string | number | boolean | null;
 };
 
+export type AttributeValueFormPool = {
+  source: {
+    type: "pool";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: { from_pool: string };
+};
+
 export type AttributeValueForCheckbox = {
   source: null;
   value: boolean;
@@ -39,7 +49,8 @@ export type AttributeValueFromUser =
 export type FormAttributeValue =
   | AttributeValueFromUser
   | AttributeValueFromProfile
-  | EmptyFieldValue;
+  | EmptyFieldValue
+  | AttributeValueFormPool;
 
 export type RelationshipValueFormPool = {
   source: {
