@@ -13,7 +13,9 @@ from infrahub_sync.generator import render_template
 from potenda import Potenda
 
 
-def find_missing_schema_model(sync_instance: SyncInstance, schema: MutableMapping[str, Union[NodeSchema, GenericSchema]]) -> List[str]:
+def find_missing_schema_model(
+    sync_instance: SyncInstance, schema: MutableMapping[str, Union[NodeSchema, GenericSchema]]
+) -> List[str]:
     missing_schema_models = []
     for item in sync_instance.schema_mapping:
         match_found = any(item.name == node.kind for node in schema.values())
