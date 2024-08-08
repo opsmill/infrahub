@@ -99,12 +99,17 @@ def get_instance(
         for item in all_sync_instances:
             if item.name == name:
                 return item
+        return None
 
     config_file_path = None
-    if Path(config_file).is_absolute() or directory is None:
-        config_file_path = Path(config_file)
-    elif directory:
-        config_file_path = Path(directory, config_file)
+    try:
+        if Path(config_file).is_absolute() or directory is None:
+            config_file_path = Path(config_file)
+        elif directory:
+            config_file_path = Path(directory, config_file)
+    except TypeError:
+        # TODO Log or raise an Error/Warning
+        return None
 
     if config_file_path:
         directory_path = config_file_path.parent
