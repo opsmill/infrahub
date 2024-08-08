@@ -121,16 +121,13 @@ async def resolve_account_permissions(
 
     response: dict[str, Any] = {}
     if "global_permissions" in fields:
-        if permissions:
-            response["global_permissions"] = {}
-            response["global_permissions"]["count"] = len(permissions)
-            response["global_permissions"]["edges"] = [
-                {"node": {"id": obj.id, "name": obj.name, "action": obj.action, "identifier": str(obj)}}
-                for obj in permissions
-            ]
+        response["global_permissions"] = {"count": len(permissions)}
+        response["global_permissions"]["edges"] = [
+            {"node": {"id": obj.id, "name": obj.name, "action": obj.action, "identifier": str(obj)}}
+            for obj in permissions
+        ]
     if "object_permissions" in fields:
-        response["object_permissions"] = {}
-        response["object_permissions"]["count"] = 0
+        response["object_permissions"] = {"count": 0}
         response["object_permissions"]["edges"] = []
 
     return response
