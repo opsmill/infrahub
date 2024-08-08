@@ -2,26 +2,54 @@ import { Combobox, tComboboxItem } from "@/components/ui/combobox";
 import { useId } from "react";
 import Label from "@/components/ui/label";
 import { useAtomValue } from "jotai/index";
-import { profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { PROFILE_KIND } from "@/config/constants";
 
 type GenericSelectorProps = {
+  currentKind: string;
   kindInheritingFromGeneric: string[];
   value?: string;
   onChange: (item: string) => void;
 };
 
-export const GenericSelector = ({ kindInheritingFromGeneric, ...props }: GenericSelectorProps) => {
+export const GenericSelector = ({
+  currentKind,
+  kindInheritingFromGeneric,
+  ...props
+}: GenericSelectorProps) => {
   const id = useId();
   const nodeSchemas = useAtomValue(schemaState);
+  const nodeGenerics = useAtomValue(genericsState);
   const profileSchemas = useAtomValue(profilesAtom);
 
   const items: Array<tComboboxItem> = kindInheritingFromGeneric
-    .map((kind) => {
+    .map((usedByKind) => {
       const relatedSchema = [...nodeSchemas, ...profileSchemas].find(
-        (schema) => schema.kind === kind
+        (schema) => schema.kind === usedByKind
       );
 
-      if (!relatedSchema) return null;
+      if (!relatedSchema) return;
+
+      // When choosing a profile, display informations about the related node
+      if (currentKind === PROFILE_KIND) {
+        const relationship = relatedSchema.relationships?.find(
+          (relationship) => relationship.name === "related_nodes"
+        );
+
+        const nodeSchema =
+          relationship?.peer &&
+          [...nodeSchemas, ...nodeGenerics, ...profileSchemas].find(
+            (schema) => schema.kind === relationship.peer
+          );
+
+        if (!nodeSchema) return;
+
+        return {
+          value: nodeSchema.kind,
+          label: nodeSchema.label ?? nodeSchema.name,
+          badge: nodeSchema.namespace,
+        };
+      }
 
       return {
         value: relatedSchema.kind,

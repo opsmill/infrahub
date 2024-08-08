@@ -22,6 +22,7 @@ export const GenericObjectForm = ({ genericSchema, ...props }: GenericObjectForm
   return (
     <>
       <GenericSelector
+        currentKind={genericSchema.kind as string}
         kindInheritingFromGeneric={genericSchema.used_by}
         value={kindToCreate}
         onChange={setKindToCreate}
