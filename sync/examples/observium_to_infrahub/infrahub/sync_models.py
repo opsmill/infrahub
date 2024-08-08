@@ -98,11 +98,11 @@ class IpamIPAddress(InfrahubModel):
         for record in records:
             include = True
             try:
-                if netutils.ip.is_ip_within(record.get("ip"), "100.125.0.0/16"):
+                if netutils.ip.is_ip_within(record.get("ip"), "10.0.0.0/8"):
                     include = False
             except Exception as e:
                 print(
-                    f"Error evaluating filter: 'netutils.ip.is_ip_within(record.get('ip'), '100.125.0.0/16')' with record {record}: {e}"
+                    f"Error evaluating filter: 'netutils.ip.is_ip_within(record.get('ip'), '10.0.0.0/8')' with record {record}: {e}"
                 )
                 include = False
             try:
