@@ -1,4 +1,5 @@
 import DynamicForm from "@/components/form/dynamic-form";
+import { NodeFormProps } from "@/components/form/node-form";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { SelectOption } from "@/components/inputs/select";
@@ -16,7 +17,9 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-export const NumberPoolForm = () => {
+interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {}
+
+export const NumberPoolForm = ({ onSuccess }: NumberPoolFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const schemaList = useAtomValue(schemaState);
@@ -105,7 +108,7 @@ export const NumberPoolForm = () => {
         ${mutationString}
       `;
 
-      await graphqlClient.mutate({
+      const result = await graphqlClient.mutate({
         mutation,
         context: {
           branch: branch?.name,
@@ -116,6 +119,8 @@ export const NumberPoolForm = () => {
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Number pool created"} />, {
         toastId: "alert-success-number-pool-created",
       });
+
+      if (onSuccess) await onSuccess(result?.data?.[`${NUMBER_POOL_OBJECT}Create`]);
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
     }

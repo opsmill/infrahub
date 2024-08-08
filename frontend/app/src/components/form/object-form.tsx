@@ -55,7 +55,7 @@ const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFor
   }
 
   if (kind === NUMBER_POOL_OBJECT) {
-    return <NumberPoolForm />;
+    return <NumberPoolForm {...props} />;
   }
 
   return (
