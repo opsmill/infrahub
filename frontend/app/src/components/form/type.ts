@@ -125,10 +125,8 @@ export const isFormFieldValueFromPool = (
 ): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
 
 export type NumberPoolData = {
-  pool: {
-    id: string;
-    label: string;
-  };
+  id: string;
+  label: string;
   nodeAttribute: {
     id: string;
     name: string;

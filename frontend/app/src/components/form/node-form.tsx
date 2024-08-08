@@ -62,14 +62,12 @@ export const NodeForm = ({
   if (loading) return <LoadingScreen hideText className="mt-4" />;
 
   const numberPools: Array<NumberPoolData> = data?.[NUMBER_POOL_KIND].edges.map(
-    ({ node }: { node: CoreNumberPool }) => ({
-      pool: {
-        id: node.id,
-        label: node.display_label,
-      },
+    ({ node }: { node: CoreNumberPool }): NumberPoolData => ({
+      id: node.id,
+      label: node.display_label as string,
       nodeAttribute: {
-        id: node.node_attribute.id,
-        name: node.node_attribute.value,
+        id: node.node_attribute.id as string,
+        name: node.node_attribute.value as string,
       },
     })
   );
