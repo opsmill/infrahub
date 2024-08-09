@@ -22,7 +22,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       // Generic profile
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "ProfileInfraInterface Profile" }).click();
+      await page.getByRole("option", { name: "Interface Infra", exact: true }).click();
       await page.getByLabel("Profile Name *").fill("Generic profile");
       await page.getByLabel("Description").fill("Desc from generic profile");
       await page.getByRole("button", { name: "Save" }).click();

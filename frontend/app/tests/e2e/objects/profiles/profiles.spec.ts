@@ -294,9 +294,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page
-        .getByRole("option", { name: "ProfileInfraInterface Profile", exact: true })
-        .click();
+      await page.getByRole("option", { name: "Interface Infra", exact: true }).click();
     });
 
     await test.step("fill and submit form", async () => {
