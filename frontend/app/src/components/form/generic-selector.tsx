@@ -45,7 +45,7 @@ export const GenericSelector = ({
         if (!nodeSchema) return;
 
         return {
-          value: nodeSchema.kind,
+          value: relatedSchema.kind,
           label: nodeSchema.label ?? nodeSchema.name,
           badge: nodeSchema.namespace,
         };
