@@ -30,6 +30,7 @@ import useFilters from "@/hooks/useFilters";
 import useQuery from "@/hooks/useQuery";
 import { getProfiles } from "@/graphql/queries/objects/getProfiles";
 import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
+import { PROFILE_KIND } from "@/config/constants";
 
 type Profile = Record<string, Pick<AttributeType, "value" | "__typename">>;
 
@@ -66,6 +67,28 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
 
       if (!relatedSchema) return;
 
+      if (kind === PROFILE_KIND) {
+        const relationship = relatedSchema.relationships?.find(
+          (relationship) => relationship.name === "related_nodes"
+        );
+
+        const nodeSchema =
+          relationship?.peer &&
+          [...schemas, ...generics, ...profiles].find(
+            (schema) => schema.kind === relationship.peer
+          );
+
+        if (!nodeSchema) return;
+
+        const currentGeneric = {
+          value: relatedSchema.kind,
+          label: nodeSchema.label ?? nodeSchema.name,
+          badge: nodeSchema.namespace,
+        };
+
+        setKindToCreate(currentGeneric.value ?? "");
+      }
+
       const currentGeneric = {
         value: relatedSchema.kind,
         label: relatedSchema.label ?? relatedSchema.name,
@@ -76,10 +99,33 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
     }
 
     const items = generic.used_by
-      .map((kind) => {
-        const relatedSchema = [...schemas, ...profiles].find((schema) => schema.kind === kind);
+      .map((usedByKind) => {
+        const relatedSchema = [...schemas, ...profiles].find(
+          (schema) => schema.kind === usedByKind
+        );
 
-        if (!relatedSchema) return null;
+        if (!relatedSchema) return;
+
+        // When choosing a profile, display informations about the related node
+        if (kind === PROFILE_KIND) {
+          const relationship = relatedSchema.relationships?.find(
+            (relationship) => relationship.name === "related_nodes"
+          );
+
+          const nodeSchema =
+            relationship?.peer &&
+            [...schemas, ...generics, ...profiles].find(
+              (schema) => schema.kind === relationship.peer
+            );
+
+          if (!nodeSchema) return;
+
+          return {
+            value: relatedSchema.kind,
+            label: nodeSchema.label ?? nodeSchema.name,
+            badge: nodeSchema.namespace,
+          };
+        }
 
         return {
           value: relatedSchema.kind,
@@ -132,7 +178,7 @@ const NodeWithProfileForm = ({ kind, currentProfiles, ...props }: ObjectFormProp
 
   return (
     <>
-      {nodeSchema.generate_profile && (
+      {nodeSchema.generate_profile && !props.isFilterForm && (
         <ProfilesSelector
           schema={nodeSchema}
           defaultValue={currentProfiles}
