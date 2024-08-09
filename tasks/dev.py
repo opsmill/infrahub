@@ -176,6 +176,32 @@ def migrate(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task
+def update_helm_chart(context: Context, chart_file: Optional[str] = "helm/Chart.yaml"):
+    """Update helm/Chart.yaml with the current version from pyproject.toml."""
+    import re
+
+    import toml
+
+    # Load the version from pyproject.toml
+    version = toml.load("pyproject.toml")["tool"]["poetry"]["version"]
+    version_pattern = r"^appVersion:\s*[\d\.\-a-zA-Z]+"
+
+    # Define a replacement function to update the appVersion
+    def replace_version(match):
+        return f"appVersion: {version}"
+
+    # Read the Chart.yaml file
+    chart_path = Path(chart_file)
+    chart_yaml = chart_path.read_text(encoding="utf-8")
+
+    # Update the appVersion in the file
+    updated_chart_yaml = re.sub(version_pattern, replace_version, chart_yaml, flags=re.MULTILINE)
+    chart_path.write_text(updated_chart_yaml, encoding="utf-8")
+
+    print(f"{chart_file} updated with appVersion {version}")
+
+
+@task
 def update_docker_compose(context: Context, docker_file: Optional[str] = "docker-compose.yml"):
     """Update docker-compose.yml with the current version from pyproject.toml."""
     import re
