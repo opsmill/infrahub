@@ -70,9 +70,7 @@ def get_identifiers(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]
 
 def get_attributes(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]:
     """Return the attributes that should be used by DiffSync."""
-    attrs_attributes = [
-        attr.name for attr in node.attributes if has_field(config, name=node.kind, field=attr.name)
-    ]
+    attrs_attributes = [attr.name for attr in node.attributes if has_field(config, name=node.kind, field=attr.name)]
     rels_identifiers = [
         rel.name
         for rel in node.relationships
