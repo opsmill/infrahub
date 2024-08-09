@@ -81,7 +81,7 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
         if (!nodeSchema) return;
 
         const currentGeneric = {
-          value: nodeSchema.kind,
+          value: relatedSchema.kind,
           label: nodeSchema.label ?? nodeSchema.name,
           badge: nodeSchema.namespace,
         };
@@ -121,7 +121,7 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
           if (!nodeSchema) return;
 
           return {
-            value: nodeSchema.kind,
+            value: relatedSchema.kind,
             label: nodeSchema.label ?? nodeSchema.name,
             badge: nodeSchema.namespace,
           };
