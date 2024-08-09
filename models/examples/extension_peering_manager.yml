@@ -5,6 +5,8 @@ version: '1.0'
 generics:
   - name: RoutingPolicy
     namespace: Infra
+    icon: carbon:deployment-policy
+    include_in_menu: false
     description: "A generic template for defining the rules for routing traffic in a network."
     attributes:
       - name: name
@@ -71,6 +73,8 @@ generics:
 nodes:
   - name: BGPRoutingPolicy
     namespace: Infra
+    label: "BGP Routing Policy"
+    menu_placement: InfraBGPSession
     description: "Defines the rules for BGP routing traffic in a network."
     inherit_from:
       - "InfraRoutingPolicy"
@@ -85,6 +89,9 @@ nodes:
 
   - name: BGPCommunity
     namespace: Infra
+    icon: iconoir:community
+    label: "BGP Community"
+    menu_placement: InfraBGPSession
     description: "Defines a BGP community."
     attributes:
       - name: name
@@ -176,3 +183,32 @@ extensions:
           optional: true
           cardinality: one
           kind: Attribute
+    - kind: InfraBGPPeerGroup
+      attributes:
+        # TODO Add Status Dropdown.
+        # Removing the existing Attributes as we are replacing it with Relationships
+        - name: import_policies
+          kind: Text
+          state: absent
+        - name: export_policies
+          kind: Text
+          state: absent
+      relationships:
+        - name: import_policies
+          label: Import Routing Policies
+          peer: InfraBGPRoutingPolicy
+          identifier: bgppeergroup__import_bgppolicies
+          cardinality: many
+          kind: Attribute
+        - name: export_policies
+          label: Export Routing Policies
+          peer: InfraBGPRoutingPolicy
+          identifier: bgppeergroup__export_bgppolicies
+          cardinality: many
+          kind: Attribute
+        - name: bgp_communities
+          label: BGP Communities
+          peer: InfraBGPCommunity
+          description: "The BGP communities associated with the BGP Group."
+          kind: Attribute
+          cardinality: many
