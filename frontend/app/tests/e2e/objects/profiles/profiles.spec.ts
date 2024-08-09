@@ -34,7 +34,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Create a new profile", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "ProfileBuiltinTag" }).click();
+      await page.getByRole("option", { name: "Tag Builtin", exact: true }).click();
       await page.getByLabel("Profile Name *").fill("profile test tag");
       await page.getByLabel("Description").fill("A profile for E2E test");
       await page.getByRole("button", { name: "Save" }).click();
