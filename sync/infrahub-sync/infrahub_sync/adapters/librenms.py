@@ -34,7 +34,7 @@ class LibrenmsAdapter(DiffSyncMixin, Adapter):
         timeout = settings.get("timeout", 30)
 
         if not url:
-            raise ValueError("API base URL must be specified!")
+            raise ValueError("url must be specified!")
 
         if auth_method != "token" or not api_token:
             raise ValueError("Token-based authentication requires a valid API token!")
@@ -47,12 +47,14 @@ class LibrenmsAdapter(DiffSyncMixin, Adapter):
             if not element.name == model_name:
                 continue
 
-            resource_name = element.mapping  # Use the resource endpoint from the schema mapping
-            response_key = resource_name.split("/")[-1]  # Get the last part of the endpoint as the key
+            # Use the resource endpoint from the schema mapping
+            resource_name = element.mapping
+            response_key = resource_name.split("/")[-1]
 
             try:
-                response_data = self.client.get(resource_name)  # Fetch data from the specified resource endpoint
-                objs = response_data.get(response_key, [])  # Extract the data using the derived key
+                # Fetch data from the specified resource endpoint
+                response_data = self.client.get(resource_name)
+                objs = response_data.get(response_key, [])
             except Exception as e:
                 raise ValueError(f"Error fetching data from REST API: {str(e)}")
 

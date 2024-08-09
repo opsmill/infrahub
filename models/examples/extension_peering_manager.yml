@@ -1,0 +1,180 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+
+generics:
+  - name: RoutingPolicy
+    namespace: Infra
+    description: "A generic template for defining the rules for routing traffic in a network."
+    attributes:
+      - name: name
+        kind: Text
+        description: "The name of the routing policy."
+        optional: false
+      - name: label
+        kind: Text
+        description: "An optional label for the routing policy."
+        optional: true
+      - name: description
+        kind: Text
+        description: "An optional description of the routing policy."
+        optional: true
+      - name: policy_type
+        label: Type
+        kind: Dropdown
+        description: "The type of routing policy which specifies the direction of route advertisement."
+        choices:
+          - name: import-policy
+            label: Import
+            description: "Policy for incoming routes."
+            color: "#e6e6fa"
+          - name: export-policy
+            label: Export
+            description: "Policy for outgoing routes."
+            color: "#e6e6fa"
+          - name: import-export-policy
+            label: Import + Export
+            description: "Policy for both incoming and outgoing routes."
+            color: "#e6e6fa"
+      - name: weight
+        kind: Number
+        description: "Priority of the routing policy. The higher the number, the higher the priority."
+        optional: true
+        default_value: 1000
+      - name: address_family
+        description: "The address family for the routing policy indicating the type of IP address."
+        kind: Number
+        enum: [0, 4, 6]
+        # Can't use Number into Dropdown, and it's a Int on Peering Manager Side
+        # kind: Dropdown
+        # choices:
+        #   - name: "4"
+        #     label: IPv4
+        #     description: "Policy applies to IPv4 addresses."
+        #     color: "#e6e6fa"
+        #   - name: "6"
+        #     label: IPv6
+        #     description: "Policy applies to IPv6 addresses."
+        #     color: "#e6e6fa"
+        #   - name: "0"
+        #     label: All
+        #     description: "Policy applies to both IPv4 and IPv6 addresses."
+        #     color: "#e6e6fa"
+        # default_value: "0"
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        kind: Attribute
+        optional: true
+        cardinality: many
+
+nodes:
+  - name: BGPRoutingPolicy
+    namespace: Infra
+    description: "Defines the rules for BGP routing traffic in a network."
+    inherit_from:
+      - "InfraRoutingPolicy"
+    relationships:
+      - name: bgp_communities
+        label: BGP Communities
+        peer: InfraBGPCommunity
+        description: "The BGP communities associated with the routing policy."
+        kind: Attribute
+        cardinality: many
+
+
+  - name: BGPCommunity
+    namespace: Infra
+    description: "Defines a BGP community."
+    attributes:
+      - name: name
+        kind: Text
+        description: "The name of the BGP community."
+        optional: false
+      - name: label
+        kind: Text
+        description: "An optional label for the BGP community."
+        optional: true
+      - name: description
+        kind: Text
+        description: "An optional description of the BGP community."
+        optional: true
+      - name: value
+        kind: Text
+        # regex: '^(?:6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]?\d{0,4}):([0-5]?\d{0,4}|6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3})$|^(?:RT|SOO|ENCAP|RO|COLO|LB|LB-LC)\:(6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]?\d{0,4})\:(6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]?\d{0,4})$|^(?:RT|SOO|ENCAP|RO|COLO|LB|LB-LC)\:(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})\.(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})\.(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})\.(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})\:(6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]?\d{0,4})$|^(429496729[0-5]|42949672[0-8]\d|4294967[0-1]\d{2}|429496[0-6]\d{3}|42949[0-5]\d{4}|4294[0-8]\d{5}|429[0-3]\d{6}|42[0-8]\d{7}|4[01]\d{8}|[1-3]?\d{0,9}):([0-9]{1,10}):([0-9]{1,10})$'
+        # regex: '^(?:(\d{1,5}):(\d{1,5})|(?:RT|SOO|ENCAP|RO|COLO|LB|LB-LC):(\d{1,5}):(\d{1,5})|(?:RT|SOO|ENCAP|RO|COLO|LB|LB-LC):((?:25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})\.(?:25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})\.(?:25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})\.(?:25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})):(\d{1,5})|(\d{1,10}):(\d{1,10}):(\d{1,10}))$'
+        description: "The value of the BGP community (RFC1997), extended community (RFC4360), or large community (RFC8092)."
+        optional: false
+      - name: community_type
+        label: Type
+        kind: Dropdown
+        description: "The type of BGP community, indicating the direction of traffic it is associated with."
+        optional: true
+        choices:
+          # It's an empty string and not `None` when it's empty
+          - name: ""
+            label: "None"
+            description: "None"
+            color: "#e6e6fa"
+          - name: ingress
+            label: Ingress
+            description: "Community applies to incoming traffic."
+            color: "#e6e6fa"
+          - name: egress
+            label: Egress
+            description: "Community applies to outgoing traffic."
+            color: "#e6e6fa"
+    relationships:
+      - name: routing_policy
+        label: Routing Policies
+        peer: InfraRoutingPolicy
+        description: "The BGP Policies using this BGP Community."
+        kind: Attribute
+        cardinality: many
+      - name: tags
+        peer: BuiltinTag
+        kind: Attribute
+        optional: true
+        cardinality: many
+
+extensions:
+  nodes:
+    - kind: InfraAutonomousSystem
+      attributes:
+        - name: irr_as_set
+          label: IRR AS-SET
+          description: "An AS-SET defines a set of Autonomous Systems (AS)."
+          kind: Text
+          optional: true
+        - name: ipv4_max_prefixes
+          label: IPv4 Max Prefixes
+          kind: Number
+          optional: true
+        - name: ipv6_max_prefixes
+          label: IPv6 Max Prefixes
+          kind: Number
+          optional: true
+        - name: affiliated
+          label: Affiliated
+          description: "Check if you own/manage this AS"
+          kind: Boolean
+          optional: true
+      relationships:
+        - name: import_policies
+          label: Import Routing Policies
+          peer: InfraBGPRoutingPolicy
+          identifier: as__import_bgppolicies
+          cardinality: many
+          kind: Attribute
+        - name: export_policies
+          label: Export Routing Policies
+          peer: InfraBGPRoutingPolicy
+          identifier: as__export_bgppolicies
+          cardinality: many
+          kind: Attribute
+        # Peering Manager doesn't have Organization on the ASN. Changing the relationship to optional
+        - name: organization
+          peer: OrganizationGeneric
+          optional: true
+          cardinality: one
+          kind: Attribute

@@ -15,8 +15,8 @@ from infrahub_sync import (
 from .utils import RestApiClient, derive_identifier_key, get_value
 
 
-class ObserviumAdapter(DiffSyncMixin, Adapter):
-    type = "Observium"
+class PeeringmanagerAdapter(DiffSyncMixin, Adapter):
+    type = "Peeringmanager"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):
         super().__init__(*args, **kwargs)
@@ -27,26 +27,20 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
 
     def _create_rest_client(self, adapter: SyncAdapter) -> RestApiClient:
         settings = adapter.settings or {}
-        url = os.environ.get("OBSERVIUM_ADDRESS") or os.environ.get("OBSERVIUM_URL") or settings.get("url")
-        api_endpoint = settings.get("api_endpoint", "/api/v0")
-        auth_method = settings.get("auth_method", "basic")
-        api_token = os.environ.get("OBSERVIUM_TOKEN") or settings.get("token")
-        username = os.environ.get("OBSERVIUM_USERNAME") or settings.get("username")
-        password = os.environ.get("OBSERVIUM_PASSWORD") or settings.get("password")
-        timeout = settings.get("timeout")
+        url = os.environ.get("PEERING_MANAGER_ADDRESS") or os.environ.get("PEERING_MANAGER_URL") or settings.get("url")
+        api_endpoint = settings.get("api_endpoint", "/api")  # Default endpoint, change if necessary
+        auth_method = settings.get("auth_method", "token")
+        api_token = os.environ.get("PEERING_MANAGER_TOKEN") or settings.get("token")
+        timeout = settings.get("timeout", 30)
 
         if not url:
             raise ValueError("url must be specified!")
 
-        base_url = f"{url.rstrip('/')}/{api_endpoint.strip('/')}"
-        return RestApiClient(
-            base_url=base_url,
-            auth_method=auth_method,
-            api_token=api_token,
-            username=username,
-            password=password,
-            timeout=timeout,
-        )
+        if auth_method != "token" or not api_token:
+            raise ValueError("Token-based authentication requires a valid API token!")
+
+        full_base_url = f"{url.rstrip('/')}/{api_endpoint.strip('/')}"
+        return RestApiClient(base_url=full_base_url, auth_method=auth_method, api_token=api_token, timeout=timeout)
 
     def model_loader(self, model_name: str, model: DiffSyncModel):
         for element in self.config.schema_mapping:
@@ -57,9 +51,8 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
             resource_name = element.mapping
 
             try:
-                # Fetch data from the specified resource endpoint
                 response_data = self.client.get(resource_name)
-                objs = response_data.get(resource_name, {})
+                objs = response_data.get("results", [])
             except Exception as e:
                 raise ValueError(f"Error fetching data from REST API: {str(e)}")
 
@@ -79,7 +72,7 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
         obj_id = derive_identifier_key(obj=obj)
         data: dict[str, Any] = {"local_id": str(obj_id)}
 
-        for field in mapping.fields:  # pylint: disable=too-many-nested-blocks
+        for field in mapping.fields:
             field_is_list = model.is_list(name=field.name)
 
             if field.static:
@@ -90,12 +83,11 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
                     data[field.name] = value
             elif field_is_list and field.mapping and not field.reference:
                 raise NotImplementedError(
-                    "it's not supported yet to have an attribute of type list with a simple mapping"
+                    "It's not supported yet to have an attribute of type list with a simple mapping"
                 )
-
             elif field.mapping and field.reference:
                 all_nodes_for_reference = self.store.get_all(model=field.reference)
-                nodes = [item for item in all_nodes_for_reference]  # noqa: C416
+                nodes = [item for item in all_nodes_for_reference]
                 if not nodes and all_nodes_for_reference:
                     raise IndexError(
                         f"Unable to get '{field.mapping}' with '{field.reference}' reference from store."
@@ -112,15 +104,13 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
                             node = matching_nodes[0]
                             data[field.name] = node.get_unique_id()
                         else:
-                            # Some link are referencing the node identifier directly without the id (i.e location in device)
                             data[field.name] = node
-
                 else:
                     data[field.name] = []
                     for node in get_value(obj, field.mapping):
                         if not node:
                             continue
-                        node_id = getattr(node, "id", None)
+                        node_id = node.get("id", None)
                         if not node_id:
                             if isinstance(node, tuple):
                                 node_id = node[1] if node[0] == "id" else None
@@ -134,7 +124,7 @@ class ObserviumAdapter(DiffSyncMixin, Adapter):
         return data
 
 
-class ObserviumModel(DiffSyncModelMixin, DiffSyncModel):
+class PeeringmanagerModel(DiffSyncModelMixin, DiffSyncModel):
     @classmethod
     def create(
         cls,

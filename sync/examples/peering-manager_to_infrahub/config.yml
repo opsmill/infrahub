@@ -1,0 +1,76 @@
+---
+name: from-peering-manager
+source:
+  name: peeringmanager
+  settings:
+    url: "https://demo.peering-manager.net"
+    # api_endpoint: "api"
+    # auth_method: "token"
+    token: "13bf6338aed52d172e33750d39717fff5a5f5d18"
+
+destination:
+  name: infrahub
+  settings:
+    url: "http://localhost:8000"
+
+order: [
+  "InfraAutonomousSystem",
+  "InfraBGPCommunity",
+  "InfraBGPRoutingPolicy"
+]
+
+schema_mapping:
+  - name: InfraAutonomousSystem
+    mapping: peering/autonomous-systems
+    identifiers: ["asn"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: display
+      - name: asn
+        mapping: asn
+      - name: irr_as_set
+        mapping: irr_as_set
+      - name: ipv4_max_prefixes
+        mapping: ipv4_max_prefixes
+      - name: ipv6_max_prefixes
+        mapping: ipv6_max_prefixes
+      - name: affiliated
+        mapping: affiliated
+
+  - name: InfraBGPCommunity
+    mapping: peering/communities
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: slug
+      - name: label
+        mapping: name
+      - name: description
+        mapping: description
+      - name: value
+        mapping: value
+      - name: community_type
+        mapping: type
+
+
+  - name: InfraBGPRoutingPolicy
+    mapping: peering/routing-policies
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: slug
+      - name: label
+        mapping: name
+      - name: description
+        mapping: description
+      - name: policy_type
+        mapping: type
+      - name: weight
+        mapping: weight
+      - name: address_family
+        mapping: address_family
+      - name: bgp_communities
+        mapping: communities
+        reference: InfraBGPCommunity
