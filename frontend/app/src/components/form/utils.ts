@@ -126,7 +126,6 @@ export const getFormFieldsFromSchema = ({
         if (!schemas) return null;
 
         const relatedSchema = schemas.find((schema) => schema.kind === kind);
-        console.log("relatedSchema: ", relatedSchema);
 
         if (!relatedSchema) return null;
 
