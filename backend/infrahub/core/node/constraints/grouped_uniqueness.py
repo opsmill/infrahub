@@ -60,7 +60,11 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                     if filters and attribute_path.attribute_schema.name in filters:
                         include_in_query = True
                     attribute_name = attribute_path.attribute_schema.name
-                    attribute_value = getattr(updated_node, attribute_name).value
+                    attribute = getattr(updated_node, attribute_name)
+                    if attribute.is_enum:
+                        attribute_value = attribute.value.value
+                    else:
+                        attribute_value = attribute.value
                     query_attribute_paths.add(
                         QueryAttributePath(
                             attribute_name=attribute_name,
