@@ -25,7 +25,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Create a new profile", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Tag" }).click();
+      await page.getByRole("option", { name: "Tag Builtin" }).click();
       await page.getByLabel("Profile Name *").fill("profile test tag");
       await page.getByLabel("Description").fill("A profile for E2E test");
       await page.getByRole("button", { name: "Save" }).click();
@@ -199,7 +199,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .filter({ hasText: /^Clear$/ })
         .getByRole("combobox")
         .fill("l2");
-      await page.getByRole("option", { name: "Profile Interface L2" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     });
 
     await test.step("verify Interface L2 optional attributes are all visible", async () => {
@@ -227,7 +227,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await page.goto("/objects/CoreProfile");
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Interface L2" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     });
 
     await test.step("fill and submit form", async () => {
@@ -251,7 +251,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await page.goto("/objects/CoreProfile");
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Interface Profile", exact: true }).click();
+      await page.getByRole("option", { name: "Interface Infra", exact: true }).click();
     });
 
     await test.step("fill and submit form", async () => {
