@@ -33,7 +33,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       // L2 profile v1
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "ProfileInfraInterfaceL2 Profile" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
       await page.getByLabel("Profile Name *").fill("L2 profile v1");
       await page.getByLabel("Description").fill("Desc from L2 profile v1");
       await page.getByRole("button", { name: "Save" }).click();
@@ -44,7 +44,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       // L2 profile v2
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "ProfileInfraInterfaceL2 Profile" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
       await page.getByLabel("Profile Name *").fill("L2 profile v2");
       await page.getByLabel("Description").fill("Desc from L2 profile v2");
       await page.getByLabel("Profile Priority").fill("10");

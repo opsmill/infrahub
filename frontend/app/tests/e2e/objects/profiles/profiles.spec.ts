@@ -220,7 +220,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .filter({ hasText: /^Clear$/ })
         .getByRole("combobox")
         .fill("l2");
-      await page.getByRole("option", { name: "ProfileInfraInterfaceL2" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     });
 
     await test.step("verify Interface L2 optional attributes are all visible", async () => {
@@ -257,7 +257,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "ProfileInfraInterfaceL2" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     });
 
     await test.step("fill and submit form", async () => {
