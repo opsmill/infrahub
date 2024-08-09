@@ -39,15 +39,9 @@ const InputField = ({
             <FormInput>
               <Input
                 {...field}
-                {...field}
-                value={fieldData?.value ?? ""}
+                value={(fieldData?.value as string) ?? ""}
                 onChange={(event) => {
-                  field.onChange(
-                    updateFormFieldValue(
-                      props.type === "number" ? event.target.valueAsNumber : event.target.value,
-                      defaultValue
-                    )
-                  );
+                  field.onChange(updateFormFieldValue(event.target.value, defaultValue));
                 }}
                 {...props}
               />

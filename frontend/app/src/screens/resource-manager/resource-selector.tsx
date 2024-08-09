@@ -30,6 +30,7 @@ const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelect
       <PropertyList
         className="block overflow-auto"
         valueClassName="w-full"
+        labelClassName="truncate"
         properties={resources.map((resource) => ({
           name: (
             <Link

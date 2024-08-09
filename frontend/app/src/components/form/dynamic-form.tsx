@@ -14,6 +14,7 @@ import TextareaField from "@/components/form/fields/textarea.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
 import { warnUnexpectedType } from "@/utils/common";
 import EnumField from "@/components/form/fields/enum.field";
+import NumberField from "@/components/form/fields/number.field";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;
@@ -77,7 +78,7 @@ const DynamicInput = (props: DynamicFieldProps) => {
     case SCHEMA_ATTRIBUTE_KIND.BANDWIDTH:
     case SCHEMA_ATTRIBUTE_KIND.NUMBER: {
       const { type, ...otherProps } = props;
-      return <InputField {...otherProps} type="number" />;
+      return <NumberField {...otherProps} />;
     }
     case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
     case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD: {
