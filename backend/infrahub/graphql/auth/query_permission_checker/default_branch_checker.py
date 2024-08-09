@@ -14,8 +14,9 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         self.can_edit_default_branch: bool = False
 
     async def supports(self, account_session: AccountSession) -> bool:
-        self.can_edit_default_branch = account_session.permissions and account_session.permissions.has_permissions(
-            self.permissions_required
+        self.can_edit_default_branch = (
+            account_session.permissions is not None
+            and account_session.permissions.has_permissions(self.permissions_required)
         )
         return account_session.authenticated
 
