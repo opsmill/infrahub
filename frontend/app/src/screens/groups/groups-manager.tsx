@@ -1,17 +1,16 @@
 import { SearchInput } from "@/components/ui/search-input";
 import { useState } from "react";
-import { genericsState, IModelSchema } from "@/state/atoms/schema.atom";
-import { useAtomValue } from "jotai/index";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import useQuery from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
-import { getGroups } from "@/graphql/queries/groups/getGroups";
-import { GROUP_OBJECT } from "@/config/constants";
+import { getGroupsQuery } from "@/graphql/queries/groups/getGroups";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ErrorScreen from "@/screens/errors/error-screen";
-import ObjectGroupsList, { ObjectGroup } from "@/screens/groups/object-groups-list";
+import ObjectGroupsList from "@/screens/groups/object-groups-list";
 import AddGroupTriggerButton from "@/screens/groups/add-group-trigger-button";
 import { classNames } from "@/utils/common";
+import { GroupDataFromAPI } from "@/screens/groups/types";
 
 export type GroupsManagerProps = {
   className?: string;
@@ -21,20 +20,15 @@ export type GroupsManagerProps = {
 };
 
 export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProps) => {
-  const generics = useAtomValue(genericsState);
-  const coreGroupSchema = generics.find((s) => s.kind === GROUP_OBJECT);
   const [query, setQuery] = useState("");
 
   const { loading, error, data } = useQuery(
     gql(
-      getGroups({
-        attributes: coreGroupSchema?.attributes,
-        kind: schema.kind,
-        groupKind: GROUP_OBJECT,
-        objectid: objectId,
+      getGroupsQuery({
+        objectKind: schema.kind,
+        objectId,
       })
-    ),
-    { skip: !coreGroupSchema }
+    )
   );
 
   if (loading) {
@@ -65,9 +59,8 @@ export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProp
     );
   }
 
-  const currentObjectGroups: Array<ObjectGroup> = currentObjectData.member_of_groups?.edges?.map(
-    ({ node }: { node: ObjectGroup }) => node
-  );
+  const currentObjectGroups: Array<GroupDataFromAPI> =
+    currentObjectData.member_of_groups?.edges?.map(({ node }: { node: GroupDataFromAPI }) => node);
 
   const filteredVisibleGroups =
     query === ""
