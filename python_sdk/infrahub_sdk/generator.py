@@ -122,7 +122,9 @@ class InfrahubGenerator:
         for kind in data:
             if kind in self._init_client.schema.cache[self.branch_name]:
                 for result in data[kind].get("edges", []):
-                    node = await self.infrahub_node.from_graphql(client=self._init_client, branch=self.branch_name, data=result)
+                    node = await self.infrahub_node.from_graphql(
+                        client=self._init_client, branch=self.branch_name, data=result
+                    )
                     self._nodes.append(node)
                     await node._process_relationships(
                         node_data=result, branch=self.branch_name, related_nodes=self._related_nodes
