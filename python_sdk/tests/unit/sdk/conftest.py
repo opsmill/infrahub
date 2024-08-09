@@ -1661,9 +1661,7 @@ async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (get_fixtures_dir() / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
-        method="GET",
-        url="http://mock/api/schema/?branch=main",
-        json=ujson.loads(response_text),
+        method="GET", url=re.compile(r"^http://mock/api/schema/\?branch=(main|cr1234)"), json=ujson.loads(response_text)
     )
     return httpx_mock
 
