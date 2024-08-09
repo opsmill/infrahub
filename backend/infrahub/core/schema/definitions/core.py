@@ -2102,9 +2102,9 @@ core_models: dict[str, Any] = {
             "description": "A permission that grants rights to perform actions on objects",
             "label": "Object permission",
             "include_in_menu": False,
-            "order_by": ["kind__value", "action__value"],
-            "display_labels": ["kind__value", "action__value"],
-            "uniqueness_constraints": [["kind__value", "action__value"]],
+            "order_by": ["namespace__value", "kind__value", "action__value"],
+            "display_labels": ["namespace__value", "kind__value", "action__value"],
+            "uniqueness_constraints": [["namespace__value", "kind__value", "action__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
             "attributes": [
