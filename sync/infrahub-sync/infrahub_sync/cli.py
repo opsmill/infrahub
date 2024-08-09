@@ -44,7 +44,7 @@ def diff_cmd(
 ):
     """Calculate and print the differences between the source and the destination systems for a given project."""
     if sum([bool(name), bool(config_file)]) != 1:
-        print_error_and_abort("Please specify exactly one of 'name' or 'config_file'.")
+        print_error_and_abort("Please specify exactly one of 'name' or 'config-file'.")
 
     sync_instance = get_instance(name=name, config_file=config_file, directory=directory)
     if not sync_instance:
@@ -78,7 +78,7 @@ def sync_cmd(
 ):
     """Synchronize the data between source and the destination systems for a given project or configuration file."""
     if sum([bool(name), bool(config_file)]) != 1:
-        print_error_and_abort("Please specify exactly one of 'name' or 'config_file'.")
+        print_error_and_abort("Please specify exactly one of 'name' or 'config-file'.")
 
     sync_instance = get_instance(name=name, config_file=config_file, directory=directory)
     if not sync_instance:
@@ -104,7 +104,7 @@ def sync_cmd(
         end_synctime = timer()
         console.print(f"Sync: Completed in {end_synctime - start_synctime} sec")
     else:
-        console.print("No diffence found. Nothing to sync")
+        console.print("No difference found. Nothing to sync")
 
 
 @app.command(name="generate")
