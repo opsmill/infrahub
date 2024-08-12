@@ -16,7 +16,11 @@ destination:
 order: [
   "InfraAutonomousSystem",
   "InfraBGPCommunity",
-  "InfraBGPRoutingPolicy"
+  "InfraBGPRoutingPolicy",
+  "InfraBGPPeerGroup",
+  "InfraIXP",
+  "IpamIPAddress",
+  "InfraIXPConnection"
 ]
 
 schema_mapping:
@@ -74,3 +78,85 @@ schema_mapping:
       - name: bgp_communities
         mapping: communities
         reference: InfraBGPCommunity
+
+  - name: InfraBGPPeerGroup
+    mapping: peering/bgp-groups
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: status
+        mapping: status.value
+      - name: import_policies
+        mapping: import_routing_policies
+        reference: InfraBGPRoutingPolicy
+      - name: export_policies
+        mapping: export_routing_policies
+        reference: InfraBGPRoutingPolicy
+      - name: bgp_communities
+        mapping: communities
+        reference: InfraBGPCommunity
+
+  - name: InfraIXP
+    mapping: peering/internet-exchanges
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: status
+        mapping: status.value
+      - name: import_policies
+        mapping: import_routing_policies
+        reference: InfraBGPRoutingPolicy
+      - name: export_policies
+        mapping: export_routing_policies
+        reference: InfraBGPRoutingPolicy
+      - name: bgp_communities
+        mapping: communities
+        reference: InfraBGPCommunity
+
+  # Create the IPv4 and IPv6 from the InfraIXPConnection
+  # - name: IpamIPAddress
+  #   mapping: net/connections
+  #   identifiers: ["address"]
+  #   fields:
+  #     - name: address
+  #       mapping: ipv6_address
+  #     - name: description
+  #       mapping: name
+  # - name: IpamIPAddress
+  #   mapping: net/connections
+  #   identifiers: ["address"]
+  #   fields:
+  #     - name: address
+  #       mapping: ipv4_address
+  #     - name: description
+  #       mapping: name
+
+  - name: InfraIXPConnection
+    mapping: net/connections
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: peeringdb_netixlan
+        mapping: peeringdb_netixlan.id
+      - name: description
+        mapping: description
+      - name: status
+        mapping: status.value
+      - name: vlan
+        mapping: vlan
+      - name: ipv6_address
+        mapping: ipv6_address
+        reference: IpamIPAddress
+      - name: ipv4_address
+        mapping: ipv4_address
+        reference: IpamIPAddress
+      - name: internet_exchange_point
+        mapping: internet_exchange_point
+        reference: InfraIXP

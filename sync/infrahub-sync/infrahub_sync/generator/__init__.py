@@ -113,7 +113,13 @@ def get_kind(item: Union[RelationshipSchema, AttributeSchema]) -> str:
         if item.optional:
             kind = f"Optional[{kind}]"
             if item.default_value is not None:
-                kind += f" = {item.default_value}"
+                # Format the default value based on its type
+                if isinstance(item.default_value, str):
+                    kind += f' = "{item.default_value}"'
+                elif isinstance(item.default_value, (int, float, bool)):
+                    kind += f" = {item.default_value}"
+                else:
+                    kind += f" = {repr(item.default_value)}"
             else:
                 kind += " = None"
 

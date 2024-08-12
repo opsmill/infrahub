@@ -3,7 +3,11 @@ from infrahub_sync.adapters.peeringmanager import PeeringmanagerAdapter
 from .sync_models import (
     InfraAutonomousSystem,
     InfraBGPCommunity,
+    InfraBGPPeerGroup,
     InfraBGPRoutingPolicy,
+    InfraIXP,
+    InfraIXPConnection,
+    IpamIPAddress,
 )
 
 
@@ -14,5 +18,9 @@ from .sync_models import (
 # -------------------------------------------------------
 class PeeringmanagerSync(PeeringmanagerAdapter):
     InfraAutonomousSystem = InfraAutonomousSystem
+    InfraBGPPeerGroup = InfraBGPPeerGroup
+    IpamIPAddress = IpamIPAddress
     InfraBGPCommunity = InfraBGPCommunity
     InfraBGPRoutingPolicy = InfraBGPRoutingPolicy
+    InfraIXP = InfraIXP
+    InfraIXPConnection = InfraIXPConnection

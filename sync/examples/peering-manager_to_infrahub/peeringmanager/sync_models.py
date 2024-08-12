@@ -1,5 +1,8 @@
 from typing import Any, List, Optional
 
+import netutils.ip
+import netutils.regex
+
 from infrahub_sync.adapters.peeringmanager import PeeringmanagerModel
 
 
@@ -22,6 +25,49 @@ class InfraAutonomousSystem(PeeringmanagerModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
+
+class InfraBGPPeerGroup(PeeringmanagerModel):
+    _modelname = "InfraBGPPeerGroup"
+    _identifiers = ("name",)
+    _attributes = ("import_policies", "export_policies", "bgp_communities", "description", "status")
+    name: str
+    description: Optional[str] = None
+    status: Optional[str] = None
+    import_policies: Optional[List[str]] = []
+    export_policies: Optional[List[str]] = []
+    bgp_communities: Optional[List[str]] = []
+
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+
+class IpamIPAddress(PeeringmanagerModel):
+    _modelname = "IpamIPAddress"
+    _identifiers = ("address",)
+    _attributes = ("description",)
+    address: str
+    description: Optional[str] = None
+
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+    @classmethod
+    def filter_records(cls, records: List[Any]) -> List[Any]:
+        filtered_records = []
+        for record in records:
+            include = True
+            try:
+                if netutils.regex.regex_search(".+", "ipv6_address"):
+                    include = False
+            except Exception as e:
+                print(
+                    f"Error evaluating filter: 'netutils.regex.regex_search('.+', 'ipv6_address')' with record {record}: {e}"
+                )
+                include = False
+            if include:
+                filtered_records.append(record)
+        return filtered_records
 
 
 class InfraBGPCommunity(PeeringmanagerModel):
@@ -49,6 +95,46 @@ class InfraBGPRoutingPolicy(PeeringmanagerModel):
     weight: Optional[int] = 1000
     address_family: int
     bgp_communities: Optional[List[str]] = []
+
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+
+class InfraIXP(PeeringmanagerModel):
+    _modelname = "InfraIXP"
+    _identifiers = ("name",)
+    _attributes = ("import_policies", "export_policies", "bgp_communities", "description", "status")
+    name: str
+    description: str
+    status: Optional[str] = "enabled"
+    import_policies: Optional[List[str]] = []
+    export_policies: Optional[List[str]] = []
+    bgp_communities: Optional[List[str]] = []
+
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+
+class InfraIXPConnection(PeeringmanagerModel):
+    _modelname = "InfraIXPConnection"
+    _identifiers = ("name",)
+    _attributes = (
+        "ipv6_address",
+        "ipv4_address",
+        "internet_exchange_point",
+        "description",
+        "peeringdb_netixlan",
+        "status",
+        "vlan",
+    )
+    name: str
+    description: Optional[str] = None
+    peeringdb_netixlan: Optional[int] = None
+    status: Optional[str] = "enabled"
+    vlan: int
+    ipv6_address: Optional[str] = None
+    ipv4_address: Optional[str] = None
+    internet_exchange_point: str
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
