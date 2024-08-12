@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { GET_PREFIXES_ONLY } from "@/graphql/queries/ipam/prefixes";
 import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
-import { IPAM_QSP, IPAM_ROUTE } from "@/screens/ipam/constants";
+import { IPAM_QSP, IPAM_ROUTE, TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
@@ -18,6 +18,7 @@ import {
   formatIPPrefixResponseForTreeView,
   getTreeItemAncestors,
   updateTreeData,
+  EMPTY_TREE,
 } from "./utils";
 import { Badge } from "@/components/ui/badge";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
@@ -49,14 +50,6 @@ export default function IpamTree({ className }: { className?: string }) {
     });
   }, [namespace, defaultIpNamespace]);
 
-  const handleNodeSelect = ({ element, isSelected }) => {
-    if (!isSelected) return;
-
-    const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
-
-    navigate(url);
-  };
-
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
 
@@ -73,35 +66,60 @@ export default function IpamTree({ className }: { className?: string }) {
   const handleSearch: SearchInputProps["onChange"] = async (e) => {
     const value = e.target.value as string;
 
+    if (value === "") {
+      const currentIpNamespace = namespace ?? defaultIpNamespace;
+      if (!currentIpNamespace) return;
+
+      return reloadIpamTree(currentIpNamespace, prefix).then((newTree) => {
+        if (prefix) {
+          const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
+          setExpandedIds(ancestorIds);
+        }
+        setLoading(false);
+      });
+    }
+
     const { data } = await fetchPrefixes({
       variables: { search: value },
     });
 
     if (!data) return;
 
-    const treeNodes = formatIPPrefixResponseForTreeView(data);
-    console.log("treeNodes: ", treeNodes);
+    const treeNodes = formatIPPrefixResponseForTreeView(data).map((element) => ({
+      ...element,
+      isBranch: false,
+    }));
+
+    setTreeData(updateTreeData(EMPTY_TREE, TREE_ROOT_ID, treeNodes));
   };
 
   const debouncedHandleSearch = debounce(handleSearch, 500);
 
   return (
-    <Tree
-      loading={isLoading}
-      data={treeData}
-      itemContent={IpamTreeItem}
-      onLoadData={onLoadData}
-      selectedIds={prefix ? [prefix] : []}
-      defaultExpandedIds={expandedIds}
-      onNodeSelect={({ element, isSelected }) => {
-        if (!isSelected) return;
+    <>
+      <SearchInput
+        containerClassName="mb-2"
+        placeholder="Filter..."
+        onChange={debouncedHandleSearch}
+      />
 
-        const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
-        navigate(url);
-      }}
-      className={className}
-      data-testid="ipam-tree"
-    />
+      <Tree
+        loading={isLoading}
+        data={treeData}
+        itemContent={IpamTreeItem}
+        onLoadData={onLoadData}
+        selectedIds={prefix ? [prefix] : []}
+        defaultExpandedIds={expandedIds}
+        onNodeSelect={({ element, isSelected }) => {
+          if (!isSelected) return;
+
+          const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+          navigate(url);
+        }}
+        className={className}
+        data-testid="ipam-tree"
+      />
+    </>
   );
 }
 
