@@ -31,4 +31,12 @@ test.describe("/resource-manager - Resource Manager", () => {
     await expect(page.getByText("1")).toBeVisible();
     await expect(page.getByText("10")).toBeVisible();
   });
+
+  test("verfy pool update form", async ({ page }) => {
+    await page.goto("/resource-manager");
+    await page.getByTestId("object-items").getByRole("link", { name: "number pool test" }).click();
+    await expect(page.getByRole("cell", { name: "number pool test" }).first()).toBeVisible();
+    await expect(page.getByText("Node *")).not.toBeVisible();
+    await expect(page.getByText("Attribute *")).not.toBeVisible();
+  });
 });
