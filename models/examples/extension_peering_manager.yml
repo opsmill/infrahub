@@ -8,10 +8,19 @@ generics:
     icon: carbon:deployment-policy
     include_in_menu: false
     description: "A generic template for defining the rules for routing traffic in a network."
+    uniqueness_constraints:
+      - ["name__value"]
+    human_friendly_id:
+      - "name__value"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
     attributes:
       - name: name
         kind: Text
         description: "The name of the routing policy."
+        unique: true
         optional: false
       - name: label
         kind: Text
@@ -91,9 +100,18 @@ nodes:
     label: "BGP Community"
     menu_placement: InfraBGPSession
     description: "Defines a BGP community."
+    uniqueness_constraints:
+      - ["name__value"]
+    human_friendly_id:
+      - "name__value"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
     attributes:
       - name: name
         kind: Text
+        unique: true
         description: "The name of the BGP community."
         optional: false
       - name: label
