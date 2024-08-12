@@ -88,6 +88,7 @@ export default function IpamTree({ className }: { className?: string }) {
     const treeNodes = formatIPPrefixResponseForTreeView(data).map((element) => ({
       ...element,
       isBranch: false,
+      parent: TREE_ROOT_ID,
     }));
 
     setTreeData(updateTreeData(EMPTY_TREE, TREE_ROOT_ID, treeNodes));
