@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import DiffAction, RelationshipStatus
@@ -15,23 +14,6 @@ if TYPE_CHECKING:
     from neo4j.graph import Relationship as Neo4jRelationship
 
 
-class ConflictBranchChoice(Enum):
-    BASE = "base"
-    DIFF = "diff"
-
-
-@dataclass
-class EnrichedDiffPropertyConflict:
-    uuid: str
-    base_branch_action: DiffAction
-    base_branch_value: Any
-    base_branch_changed_at: Timestamp
-    diff_branch_action: DiffAction
-    diff_branch_value: Any
-    diff_branch_changed_at: Timestamp
-    selected_branch: Optional[ConflictBranchChoice]
-
-
 @dataclass
 class EnrichedDiffProperty:
     property_type: str
@@ -39,7 +21,9 @@ class EnrichedDiffProperty:
     previous_value: Any
     new_value: Any
     action: DiffAction
-    conflict: Optional[EnrichedDiffPropertyConflict]
+
+    def __hash__(self) -> int:
+        return hash(self.property_type)
 
 
 @dataclass
@@ -47,7 +31,10 @@ class EnrichedDiffAttribute:
     name: str
     changed_at: Timestamp
     action: DiffAction
-    properties: list[EnrichedDiffProperty] = field(default_factory=list)
+    properties: set[EnrichedDiffProperty] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 @dataclass
@@ -55,17 +42,23 @@ class EnrichedDiffSingleRelationship:
     changed_at: Timestamp
     action: DiffAction
     peer_id: str
-    conflict: Optional[EnrichedDiffPropertyConflict]
-    properties: list[EnrichedDiffProperty] = field(default_factory=list)
+    properties: set[EnrichedDiffProperty] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.peer_id)
 
 
 @dataclass
 class EnrichedDiffRelationship:
     name: str
+    label: str
     changed_at: Timestamp
     action: DiffAction
-    relationships: list[EnrichedDiffSingleRelationship] = field(default_factory=list)
-    nodes: list[EnrichedDiffNode] = field(default_factory=list)
+    relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)
+    nodes: set[EnrichedDiffNode] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 @dataclass
@@ -75,8 +68,36 @@ class EnrichedDiffNode:
     label: str
     changed_at: Timestamp
     action: DiffAction
-    attributes: list[EnrichedDiffAttribute] = field(default_factory=list)
-    relationships: list[EnrichedDiffRelationship] = field(default_factory=list)
+    attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
+    relationships: set[EnrichedDiffRelationship] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.uuid)
+
+    def get_all_child_nodes(self) -> set[EnrichedDiffNode]:
+        all_children = set()
+        for r in self.relationships:
+            for n in r.nodes:
+                all_children.add(n)
+                all_children |= n.get_all_child_nodes()
+        return all_children
+
+    def get_trimmed_node(self, max_depth: int) -> EnrichedDiffNode:
+        trimmed = replace(self, relationships=set())
+        for rel in self.relationships:
+            trimmed_rel = replace(rel, nodes=set())
+            trimmed.relationships.add(trimmed_rel)
+            if max_depth == 0:
+                continue
+            for child_node in rel.nodes:
+                trimmed_rel.nodes.add(child_node.get_trimmed_node(max_depth=max_depth - 1))
+        return trimmed
+
+    def get_relationship(self, name: str) -> EnrichedDiffRelationship:
+        for rel in self.relationships:
+            if rel.name == name:
+                return rel
+        raise ValueError(f"No relationship {name} found")
 
 
 @dataclass
@@ -86,7 +107,23 @@ class EnrichedDiffRoot:
     from_time: Timestamp
     to_time: Timestamp
     uuid: str
-    nodes: list[EnrichedDiffNode] = field(default_factory=list)
+    nodes: set[EnrichedDiffNode] = field(default_factory=set)
+
+    def __hash__(self) -> int:
+        return hash(self.uuid)
+
+    def get_nodes_without_parents(self) -> set[EnrichedDiffNode]:
+        nodes_with_parent_uuids = set()
+        for n in self.nodes:
+            for r in n.relationships:
+                nodes_with_parent_uuids |= {child_n.uuid for child_n in r.nodes}
+        return {node for node in self.nodes if node.uuid not in nodes_with_parent_uuids}
+
+    def get_node(self, node_uuid: str) -> EnrichedDiffNode:
+        for n in self.nodes:
+            if n.uuid == node_uuid:
+                return n
+        raise ValueError(f"No node {node_uuid} in diff root")
 
 
 @dataclass

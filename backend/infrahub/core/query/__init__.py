@@ -231,6 +231,12 @@ class QueryResult:
             return entry
         raise ValueError(f"{label} is not a collection use .get_node() or .get()")
 
+    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode]]:
+        entry = self._get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+
     def get_node(self, label: str) -> Neo4jNode:
         node = self.get(label=label)
         if isinstance(node, Neo4jNode):
@@ -307,6 +313,7 @@ class Query(ABC):
 
     raise_error_if_empty: bool = False
     insert_return: bool = True
+    insert_limit: bool = True
 
     def __init__(
         self,
@@ -408,10 +415,10 @@ class Query(ABC):
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if offset:
+        if offset and self.insert_limit:
             tmp_query_lines.append(f"SKIP {offset}")
 
-        if limit:
+        if limit and self.insert_limit:
             tmp_query_lines.append(f"LIMIT {limit}")
 
         query_str = "\n".join(tmp_query_lines)
