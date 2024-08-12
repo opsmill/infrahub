@@ -81,6 +81,14 @@ class AttributeSchema(GeneratedAttributeSchema):
             return data.value
         return data
 
+    def update_from_generic(self, other: AttributeSchema) -> None:
+        fields_to_exclude = ("id", "order_weight", "branch", "inherited")
+        for name in self.model_fields:
+            if name in fields_to_exclude:
+                continue
+            if getattr(self, name) != getattr(other, name):
+                setattr(self, name, getattr(other, name))
+
     async def get_query_filter(
         self,
         name: str,
