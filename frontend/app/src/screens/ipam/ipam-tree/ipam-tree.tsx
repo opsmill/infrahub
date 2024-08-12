@@ -28,10 +28,10 @@ export default function IpamTree({ className }: { className?: string }) {
   const { prefix } = useParams();
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
-  const [treeData, setTreeData] = useAtom(ipamTreeAtom);
-  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
+  const [treeData, setTreeData] = useAtom(ipamTreeAtom);
+  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds?: string[]; search?: string }>(
     GET_PREFIXES_ONLY
   );
