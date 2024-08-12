@@ -64,6 +64,7 @@ test.describe("/ipam - Ipam Tree", () => {
       await page.goto("/ipam");
 
       await test.step("search on IPAM tree", async () => {
+        await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
         await page.getByPlaceholder("Filter...").fill("10.2");
         await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
         expect(await page.getByRole("treeitem").count()).toEqual(1);
