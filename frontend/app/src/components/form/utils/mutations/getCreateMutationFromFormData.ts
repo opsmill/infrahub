@@ -30,3 +30,25 @@ export const getCreateMutationFromFormData = (
     return acc;
   }, {});
 };
+
+export const getCreateMutationFromFormDataOnly = (formData: Record<string, FormFieldValue>) => {
+  return Object.entries(formData).reduce((acc, [name, data]) => {
+    if (!data) {
+      return acc;
+    }
+
+    if (data.source?.type === "user") {
+      const fieldValue = data.value === "" ? null : data.value;
+      return {
+        ...acc,
+        [name]: { value: fieldValue },
+      };
+    }
+
+    if (isFormFieldValueFromPool(data)) {
+      return { ...acc, [name]: data.value };
+    }
+
+    return acc;
+  }, {});
+};

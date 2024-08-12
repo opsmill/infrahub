@@ -27,6 +27,9 @@ const DropdownField = ({
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 
+        console.log("label: ", label);
+        console.log("fieldData?.value: ", fieldData?.value);
+
         return (
           <div className="relative flex flex-col">
             <LabelFormField
@@ -44,7 +47,6 @@ const DropdownField = ({
                 {...props}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
-                  if (props.onChange) props.onChange(newValue);
                 }}
                 options={items}
                 dropdown

@@ -1,97 +1,50 @@
-import DynamicForm from "@/components/form/dynamic-form";
+import DropdownField from "@/components/form/fields/dropdown.field";
+import InputField from "@/components/form/fields/input.field";
 import { NodeFormProps } from "@/components/form/node-form";
-import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
-import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
+import { FormFieldValue } from "@/components/form/type";
+import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
+import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { SelectOption } from "@/components/inputs/select";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { Form } from "@/components/ui/form";
+import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { classNames } from "@/utils/common";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { FieldValues, useForm, UseFormReturn, useWatch } from "react-hook-form";
 import { toast } from "react-toastify";
 
-interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {}
+interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
+  currentObject?: Record<string, AttributeType>;
+}
 
-export const NumberPoolForm = ({ onSuccess }: NumberPoolFormProps) => {
+export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const schemaList = useAtomValue(schemaState);
-  const [node, setNode] = useState<FormFieldValue>();
 
-  const availableSchemaList = schemaList
-    // ?.filter((schema) => schema.namespace !== "Core")
-    ?.filter((schema) => !!schema.attributes?.find((attribute) => attribute.kind === "Number"));
+  const defaultValues = {
+    name: getCurrentFieldValue("name", currentObject),
+    description: getCurrentFieldValue("description", currentObject),
+    node: getCurrentFieldValue("node", currentObject),
+    node_attribute: getCurrentFieldValue("node_attribute", currentObject),
+    start_range: getCurrentFieldValue("start_range", currentObject),
+    end_range: getCurrentFieldValue("end_range", currentObject),
+  };
 
-  const selectedNode = availableSchemaList.find((schema) => schema.kind === node);
-
-  const nodesOptions: SelectOption[] = availableSchemaList.map((schema) => ({
-    id: schema.kind as string,
-    name: schema.label as string,
-  }));
-
-  const attributesOptions: SelectOption[] = selectedNode?.attributes
-    ?.filter((attribute) => attribute.kind === "Number")
-    ?.map((attribute) => ({ id: attribute.name as string, name: attribute.label as string }));
-
-  const fields: Array<DynamicFieldProps> = [
-    {
-      name: "name",
-      label: "Name",
-      type: SCHEMA_ATTRIBUTE_KIND.TEXT,
-      rules: {
-        required: true,
-      },
-    },
-    {
-      name: "description",
-      label: "Description",
-      type: SCHEMA_ATTRIBUTE_KIND.TEXT,
-    },
-    {
-      name: "node",
-      label: "Node",
-      description: "The model of the object that requires integers to be allocated",
-      type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
-      items: nodesOptions,
-      onChange: (newNode) => setNode(newNode),
-    },
-    {
-      name: "node_attribute",
-      label: "Node attribute",
-      description: "The model of the object that requires integers to be allocated",
-      type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
-      items: attributesOptions,
-    },
-    {
-      name: "start_range",
-      label: "Start range",
-      description: "The start range for the pool",
-      type: SCHEMA_ATTRIBUTE_KIND.NUMBER,
-      rules: {
-        required: true,
-      },
-    },
-    {
-      name: "end_range",
-      label: "End range",
-      description: "The end range for the pool",
-      type: SCHEMA_ATTRIBUTE_KIND.NUMBER,
-      rules: {
-        required: true,
-      },
-    },
-  ];
+  const form = useForm<FieldValues>({
+    defaultValues,
+  });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     try {
-      const newObject = getCreateMutationFromFormData(fields, data);
+      const newObject = getCreateMutationFromFormDataOnly(data);
+      console.log("newObject: ", newObject);
 
       if (!Object.keys(newObject).length) {
         return;
@@ -127,10 +80,73 @@ export const NumberPoolForm = ({ onSuccess }: NumberPoolFormProps) => {
   }
 
   return (
-    <DynamicForm
-      fields={fields}
-      className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4")}
-      onSubmit={handleSubmit}
-    />
+    <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
+      <Form form={form} onSubmit={handleSubmit}>
+        <InputField name="name" label="Name" rules={{ required: true }} />
+        <InputField name="description" label="Description" />
+        <NodeAttributesSelects form={form} />
+        <InputField
+          name="start_range"
+          label="Start range"
+          description="The start range for the pool"
+          rules={{ required: true }}
+          type="number"
+        />
+        <InputField
+          name="end_range"
+          label="End range"
+          description="The end range for the pool"
+          rules={{ required: true }}
+          type="number"
+        />
+      </Form>
+    </div>
+  );
+};
+
+type NodeAttributesSelectsProps = {
+  form: UseFormReturn;
+};
+
+const NodeAttributesSelects = ({ form }: NodeAttributesSelectsProps) => {
+  const schemaList = useAtomValue(schemaState);
+
+  // Watch form value to rebuild 2nd select options
+  const node = useWatch({ control: form.control, name: "node" });
+
+  const availableSchemaList = schemaList?.filter(
+    (schema) =>
+      !!schema.attributes?.find((attribute) => attribute.kind === "Number" && !attribute.read_only)
+  );
+
+  const selectedNode = availableSchemaList.find((schema) => schema.kind === node?.value);
+  const nodesOptions: SelectOption[] = availableSchemaList.map((schema) => ({
+    id: schema.kind as string,
+    name: schema.label as string,
+  }));
+
+  const attributesOptions: SelectOption[] = selectedNode?.attributes
+    ? selectedNode.attributes
+        ?.filter((attribute) => attribute.kind === "Number")
+        ?.map((attribute) => ({ id: attribute.name as string, name: attribute.label as string }))
+    : [];
+
+  return (
+    <>
+      <DropdownField
+        name="node"
+        label="Node"
+        description="The model of the object that requires integers to be allocated"
+        rules={{ required: true }}
+        items={nodesOptions}
+      />
+      <DropdownField
+        name="node_attribute"
+        label="Attribute"
+        description="The attribute of the selected model"
+        rules={{ required: true }}
+        items={attributesOptions}
+      />
+    </>
   );
 };
