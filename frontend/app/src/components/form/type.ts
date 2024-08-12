@@ -22,6 +22,16 @@ export type AttributeValueFromProfile = {
   value: string | number | boolean | null;
 };
 
+export type AttributeValueFormPool = {
+  source: {
+    type: "pool";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: { from_pool: string };
+};
+
 export type AttributeValueForCheckbox = {
   source: null;
   value: boolean;
@@ -39,7 +49,8 @@ export type AttributeValueFromUser =
 export type FormAttributeValue =
   | AttributeValueFromUser
   | AttributeValueFromProfile
-  | EmptyFieldValue;
+  | EmptyFieldValue
+  | AttributeValueFormPool;
 
 export type RelationshipValueFormPool = {
   source: {
@@ -81,6 +92,11 @@ export type DynamicInputFieldProps = FormFieldProps & {
   type: Exclude<SchemaAttributeType, "Dropdown">;
 };
 
+export type DynamicNumberFieldProps = FormFieldProps & {
+  type: "Number";
+  pools?: Array<NumberPoolData>;
+};
+
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<SelectOption>;
@@ -111,6 +127,7 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
 
 export type DynamicFieldProps =
   | DynamicInputFieldProps
+  | DynamicNumberFieldProps
   | DynamicDropdownFieldProps
   | DynamicEnumFieldProps
   | DynamicRelationshipFieldProps;
@@ -118,3 +135,13 @@ export type DynamicFieldProps =
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue
 ): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
+
+export type NumberPoolData = {
+  id: string;
+  label: string;
+  kind: string;
+  nodeAttribute: {
+    id: string;
+    name: string;
+  };
+};

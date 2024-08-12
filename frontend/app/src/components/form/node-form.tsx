@@ -1,4 +1,4 @@
-import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
+import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/components/form/type";
 import { iNodeSchema, IProfileSchema } from "@/state/atoms/schema.atom";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
 import { useAtomValue } from "jotai/index";
@@ -19,11 +19,16 @@ import { gql } from "@apollo/client";
 import DynamicForm from "@/components/form/dynamic-form";
 import { classNames } from "@/utils/common";
 import { ProfileData } from "@/components/form/object-form";
+import useQuery from "@/hooks/useQuery";
+import { GET_FORM_REQUIREMENTS } from "@/graphql/queries/forms/getFormRequirements";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { NUMBER_POOL_KIND } from "@/screens/resource-manager/constants";
+import { CoreNumberPool } from "@/generated/graphql";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
   formData: Record<string, FormFieldValue>;
-  profiles: Array<ProfileData>;
+  profiles?: Array<ProfileData>;
 };
 
 export type NodeFormProps = {
@@ -41,7 +46,7 @@ export const NodeForm = ({
   className,
   currentObject,
   schema,
-  profiles = [],
+  profiles,
   onSuccess,
   isFilterForm,
   onSubmit,
@@ -52,6 +57,22 @@ export const NodeForm = ({
   const [filters] = useFilters();
   const auth = useAuth();
 
+  const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
+
+  if (loading) return <LoadingScreen hideText className="mt-4" />;
+
+  const numberPools: Array<NumberPoolData> = data?.[NUMBER_POOL_KIND].edges.map(
+    ({ node }: { node: CoreNumberPool }): NumberPoolData => ({
+      id: node.id,
+      label: node.display_label as string,
+      kind: node.__typename as string,
+      nodeAttribute: {
+        id: node.node_attribute.id as string,
+        name: node.node_attribute.value as string,
+      },
+    })
+  );
+
   const fields = getFormFieldsFromSchema({
     schema,
     profiles,
@@ -59,6 +80,7 @@ export const NodeForm = ({
     auth,
     isFilterForm,
     filters,
+    pools: numberPools,
   });
 
   async function onSubmitCreate(data: Record<string, FormFieldValue>) {
@@ -84,8 +106,10 @@ export const NodeForm = ({
       }
 
       const newObject = getCreateMutationFromFormData(fields, data);
+      const isObjectEmpty = Object.keys(newObject).length === 0;
+      const isProfilesEmpty = !profiles || profiles.length === 0;
 
-      if (!Object.keys(newObject).length) {
+      if (isObjectEmpty && isProfilesEmpty) {
         return;
       }
 

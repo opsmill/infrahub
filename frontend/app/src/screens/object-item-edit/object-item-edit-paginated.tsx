@@ -18,6 +18,7 @@ import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
+import { areObjectArraysEqualById } from "@/utils/array";
 
 interface Props {
   objectname: string;
@@ -88,8 +89,11 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const onSubmit: ObjectFormProps["onSubmit"] = async ({ fields, formData, profiles }) => {
     const updatedObject = getUpdateMutationFromFormData({ formData, fields });
+    const isObjectUpdated = Object.keys(updatedObject).length > 0;
 
-    if (Object.keys(updatedObject).length) {
+    const areProfilesUpdated = !!profiles && !areObjectArraysEqualById(profiles, objectProfiles);
+
+    if (isObjectUpdated || areProfilesUpdated) {
       const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];
 
       try {
@@ -98,7 +102,7 @@ export default function ObjectItemEditComponent(props: Props) {
           data: stringifyWithoutQuotes({
             id: objectid,
             ...updatedObject,
-            ...(profilesId.length ? { profiles: profilesId } : {}),
+            ...(areProfilesUpdated ? { profiles: profilesId } : {}),
           }),
         });
 

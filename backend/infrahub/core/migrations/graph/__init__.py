@@ -14,6 +14,7 @@ from .m009_add_generate_profile_attr import Migration009
 from .m010_add_generate_profile_attr_generic import Migration010
 from .m011_remove_profile_relationship_schema import Migration011
 from .m012_convert_account_generic import Migration012
+from .m013_convert_git_password_credential import Migration013
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -33,6 +34,7 @@ MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration]]] = [
     Migration010,
     Migration011,
     Migration012,
+    Migration013,
 ]
 
 
