@@ -134,6 +134,19 @@ export const getFormFieldsFromSchema = ({
       return dropdownField;
     }
 
+    if (Array.isArray(attribute.enum)) {
+      const enumField: DynamicEnumFieldProps = {
+        ...basicFomFieldProps,
+        type: "enum",
+        field: attribute,
+        schema: schema,
+        unique: attribute.unique,
+        items: getOptionsFromAttribute(attribute, basicFomFieldProps.defaultValue),
+      };
+
+      return enumField;
+    }
+
     if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER) {
       const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attribute.name);
 
@@ -145,19 +158,6 @@ export const getFormFieldsFromSchema = ({
       };
 
       return dropdownField;
-    }
-
-    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.TEXT && Array.isArray(attribute.enum)) {
-      const enumField: DynamicEnumFieldProps = {
-        ...basicFomFieldProps,
-        type: "enum",
-        field: attribute,
-        schema: schema,
-        unique: attribute.unique,
-        items: getOptionsFromAttribute(attribute, basicFomFieldProps.defaultValue),
-      };
-
-      return enumField;
     }
 
     const field: DynamicInputFieldProps = {
