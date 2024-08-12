@@ -10,6 +10,7 @@ import { Form } from "@/components/ui/form";
 import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
+import { useFormValues } from "@/hooks/useFormValues";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -17,7 +18,7 @@ import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { FieldValues, useForm, UseFormReturn, useWatch } from "react-hook-form";
+import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
@@ -83,7 +84,7 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
-        <NodeAttributesSelects form={form} />
+        <NodeAttributesSelects />
         <InputField
           name="start_range"
           label="Start range"
@@ -103,15 +104,11 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
   );
 };
 
-type NodeAttributesSelectsProps = {
-  form: UseFormReturn;
-};
-
-const NodeAttributesSelects = ({ form }: NodeAttributesSelectsProps) => {
+const NodeAttributesSelects = () => {
   const schemaList = useAtomValue(schemaState);
 
   // Watch form value to rebuild 2nd select options
-  const node = useWatch({ control: form.control, name: "node" });
+  const { node } = useFormValues();
 
   const availableSchemaList = schemaList?.filter(
     (schema) =>
