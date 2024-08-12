@@ -27,6 +27,7 @@ describe("getFieldDefaultValue", () => {
       const initialObject: Record<string, AttributeType> = {
         field1: {
           value: "test-value-from-user",
+          is_default: false,
           is_from_profile: false,
         },
       };
@@ -61,6 +62,7 @@ describe("getFieldDefaultValue", () => {
       const initialObject: Record<string, AttributeType> = {
         field1: {
           value: null,
+          is_default: false,
           is_from_profile: false,
         },
       };
@@ -95,6 +97,7 @@ describe("getFieldDefaultValue", () => {
       const initialObject: Record<string, AttributeType> = {
         field1: {
           value: 0,
+          is_default: false,
           is_from_profile: false,
         },
       };
@@ -164,6 +167,7 @@ describe("getFieldDefaultValue", () => {
         field1: {
           value: "test-value-form-profile",
           is_from_profile: true,
+          is_default: false,
         },
       };
 
@@ -429,6 +433,30 @@ describe("getFieldDefaultValue", () => {
           type: "schema",
         },
         value: null,
+      });
+    });
+
+    it("returns schema's default value when current value has is_default: true", () => {
+      // GIVEN
+      const fieldSchema = buildAttributeSchema({ default_value: "my-default-value" });
+
+      const initialObject: Record<string, AttributeType> = {
+        field1: {
+          value: "my-default-value",
+          is_default: true,
+          is_from_profile: false,
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "schema",
+        },
+        value: "my-default-value",
       });
     });
   });
