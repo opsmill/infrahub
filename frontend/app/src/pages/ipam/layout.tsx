@@ -13,8 +13,8 @@ function IpamLayout() {
       </Content.Title>
 
       <Content className="flex p-2 gap-2">
-        <CardWithBorder className="min-w-64 max-w-[400px]">
-          <IpamTree className="p-2 min-w-full" />
+        <CardWithBorder contentClassName="p-2" className="min-w-64 max-w-[400px]">
+          <IpamTree className="min-w-full" />
         </CardWithBorder>
 
         <section className="flex-grow">

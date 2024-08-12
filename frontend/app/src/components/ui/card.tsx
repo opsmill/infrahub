@@ -11,13 +11,22 @@ export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   )
 );
 
-const CardWithBorderRoot = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ children, className }, ref) => {
+interface CardWithBorderRootProps extends HTMLAttributes<HTMLDivElement> {
+  contentClassName?: string;
+}
+
+const CardWithBorderRoot = forwardRef<HTMLDivElement, CardWithBorderRootProps>(
+  ({ children, className, contentClassName, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        className={classNames("bg-custom-white p-3 border rounded-lg overflow-hidden", className)}>
-        <div className="h-full w-full border rounded-md overflow-auto flex flex-col">
+        className={classNames("bg-custom-white p-3 border rounded-lg overflow-hidden", className)}
+        {...props}>
+        <div
+          className={classNames(
+            "h-full w-full border rounded-md overflow-auto flex flex-col",
+            contentClassName
+          )}>
           {children}
         </div>
       </div>
