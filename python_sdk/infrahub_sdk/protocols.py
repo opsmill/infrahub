@@ -368,6 +368,7 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
 
 
 class CoreObjectPermission(CoreBasePermission):
+    namespace: String
     kind: String
     action: Enum
 
@@ -812,6 +813,7 @@ class CoreNumberPoolSync(CoreResourcePoolSync, LineageSourceSync):
 
 
 class CoreObjectPermissionSync(CoreBasePermissionSync):
+    namespace: String
     kind: String
     action: Enum
 
