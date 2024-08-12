@@ -1,6 +1,7 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.query_parser import DiffQueryParser
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -51,7 +52,7 @@ async def test_diff_attribute_branch_update(
     assert attribute_diff.action is DiffAction.UPDATED
     assert len(attribute_diff.properties) == 1
     property_diff = attribute_diff.properties[0]
-    assert property_diff.property_type == "HAS_VALUE"
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Big Alfred"
     assert property_diff.action is DiffAction.UPDATED
@@ -69,7 +70,7 @@ async def test_diff_attribute_branch_update(
     assert attribute_diff.action is DiffAction.UPDATED
     assert len(attribute_diff.properties) == 1
     property_diff = attribute_diff.properties[0]
-    assert property_diff.property_type == "HAS_VALUE"
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Little Alfred"
     assert property_diff.action is DiffAction.UPDATED
@@ -113,14 +114,14 @@ async def test_attribute_property_main_update(
     assert attribute_diff.action is DiffAction.UPDATED
     assert len(attribute_diff.properties) == 2
     properties_by_type = {p.property_type: p for p in attribute_diff.properties}
-    property_diff = properties_by_type["IS_VISIBLE"]
-    assert property_diff.property_type == "IS_VISIBLE"
+    property_diff = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
+    assert property_diff.property_type == DatabaseEdgeType.IS_VISIBLE
     assert property_diff.previous_value is True
     assert property_diff.new_value is False
     assert property_diff.action is DiffAction.UPDATED
     assert before_change < property_diff.changed_at < after_change
-    property_diff = properties_by_type["IS_PROTECTED"]
-    assert property_diff.property_type == "IS_PROTECTED"
+    property_diff = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_PROTECTED
     assert property_diff.previous_value is False
     assert property_diff.new_value is True
     assert property_diff.action is DiffAction.UPDATED
@@ -161,7 +162,7 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     assert attribute_diff.action is DiffAction.UPDATED
     assert len(attribute_diff.properties) == 1
     property_diff = attribute_diff.properties[0]
-    assert property_diff.property_type == "HAS_VALUE"
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == 5
     assert property_diff.new_value == "NULL"
     assert property_diff.action is DiffAction.REMOVED
@@ -202,7 +203,7 @@ async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, 
     for attribute_diff in attributes_by_name.values():
         assert attribute_diff.action is DiffAction.REMOVED
         properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
-        diff_property = properties_by_type["HAS_VALUE"]
+        diff_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
         assert diff_property.action is DiffAction.REMOVED
         assert diff_property.new_value is None
     assert len(node_diff.relationships) == 1
@@ -266,7 +267,7 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
     assert attribute_diff.action is DiffAction.ADDED
     assert before_change < attribute_diff.changed_at < after_change
     properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
-    diff_property = properties_by_type["HAS_VALUE"]
+    diff_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
     assert diff_property.action is DiffAction.ADDED
     assert diff_property.new_value == "Stokely"
     assert before_change < diff_property.changed_at < after_change
@@ -312,7 +313,7 @@ async def test_attribute_property_multiple_branch_updates(
     assert attribute_diff.action is DiffAction.UPDATED
     assert len(attribute_diff.properties) == 1
     property_diff = attribute_diff.properties[0]
-    assert property_diff.property_type == "HAS_VALUE"
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Alfred Four"
     assert before_last_change < property_diff.changed_at < after_last_change
@@ -369,15 +370,16 @@ async def test_relationship_one_property_branch_update(
     assert single_relationship.action is DiffAction.UPDATED
     assert len(single_relationship.properties) == 2
     property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
-    property_diff = property_diff_by_type["IS_VISIBLE"]
-    assert property_diff.property_type == "IS_VISIBLE"
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_VISIBLE]
+    assert property_diff.property_type == DatabaseEdgeType.IS_VISIBLE
     assert property_diff.previous_value is True
     assert property_diff.new_value is False
     assert before_branch_change < property_diff.changed_at < after_branch_change
-    property_diff = property_diff_by_type["IS_RELATED"]
-    assert property_diff.property_type == "IS_RELATED"
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_RELATED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_RELATED
     assert property_diff.previous_value == person_john_main.id
     assert property_diff.new_value == person_john_main.id
+    assert property_diff.action is DiffAction.UNCHANGED
     assert property_diff.changed_at < before_branch_change
     root_main_path = diff_parser.get_diff_root_for_branch(branch=default_branch.name)
     assert root_main_path.branch == default_branch.name
@@ -426,20 +428,20 @@ async def test_relationship_one_property_branch_update(
     assert len(single_relationship.properties) == 3
     assert before_main_change < single_relationship.changed_at < after_main_change
     property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
-    property_diff = property_diff_by_type["IS_RELATED"]
-    assert property_diff.property_type == "IS_RELATED"
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_RELATED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_RELATED
     assert property_diff.previous_value is None
     assert property_diff.new_value == person_jane_main.id
     assert property_diff.action is DiffAction.ADDED
     assert before_main_change < property_diff.changed_at < after_main_change
-    property_diff = property_diff_by_type["IS_VISIBLE"]
-    assert property_diff.property_type == "IS_VISIBLE"
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_VISIBLE]
+    assert property_diff.property_type == DatabaseEdgeType.IS_VISIBLE
     assert property_diff.previous_value is None
     assert property_diff.new_value is True
     assert property_diff.action is DiffAction.ADDED
     assert before_main_change < property_diff.changed_at < after_main_change
-    property_diff = property_diff_by_type["IS_PROTECTED"]
-    assert property_diff.property_type == "IS_PROTECTED"
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_PROTECTED
     assert property_diff.previous_value is None
     assert property_diff.new_value is False
     assert property_diff.action is DiffAction.ADDED
@@ -450,20 +452,20 @@ async def test_relationship_one_property_branch_update(
     assert len(single_relationship.properties) == 3
     assert before_main_change < single_relationship.changed_at < after_main_change
     property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
-    property_diff = property_diff_by_type["IS_RELATED"]
-    assert property_diff.property_type == "IS_RELATED"
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_RELATED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_RELATED
     assert property_diff.previous_value == person_john_main.id
     assert property_diff.new_value is None
     assert property_diff.action is DiffAction.REMOVED
     assert before_main_change < property_diff.changed_at < after_main_change
-    property_diff = property_diff_by_type["IS_VISIBLE"]
-    assert property_diff.property_type == "IS_VISIBLE"
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_VISIBLE]
+    assert property_diff.property_type == DatabaseEdgeType.IS_VISIBLE
     assert property_diff.previous_value is True
     assert property_diff.new_value is None
     assert property_diff.action is DiffAction.REMOVED
     assert before_main_change < property_diff.changed_at < after_main_change
-    property_diff = property_diff_by_type["IS_PROTECTED"]
-    assert property_diff.property_type == "IS_PROTECTED"
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_PROTECTED
     assert property_diff.previous_value is False
     assert property_diff.new_value is None
     assert property_diff.action is DiffAction.REMOVED
@@ -514,7 +516,11 @@ async def test_add_node_branch(
     assert single_relationship.peer_id == new_car.id
     assert single_relationship.action is DiffAction.ADDED
     assert len(single_relationship.properties) == 3
-    assert {p.property_type for p in single_relationship.properties} == {"IS_RELATED", "IS_VISIBLE", "IS_PROTECTED"}
+    assert {p.property_type for p in single_relationship.properties} == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
     assert all(p.action is DiffAction.ADDED for p in single_relationship.properties)
     node_diff = diff_nodes_by_id[new_car.id]
     assert node_diff.uuid == new_car.id
@@ -527,16 +533,16 @@ async def test_add_node_branch(
     attribute_diff = attributes_by_name["name"]
     assert len(attribute_diff.properties) == 3
     assert {(p.property_type, p.action, p.new_value, p.previous_value) for p in attribute_diff.properties} == {
-        ("IS_VISIBLE", DiffAction.ADDED, True, None),
-        ("IS_PROTECTED", DiffAction.ADDED, False, None),
-        ("HAS_VALUE", DiffAction.ADDED, "Batmobile", None),
+        (DatabaseEdgeType.IS_VISIBLE, DiffAction.ADDED, True, None),
+        (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, False, None),
+        (DatabaseEdgeType.HAS_VALUE, DiffAction.ADDED, "Batmobile", None),
     }
     attribute_diff = attributes_by_name["color"]
     assert len(attribute_diff.properties) == 3
     assert {(p.property_type, p.action, p.new_value, p.previous_value) for p in attribute_diff.properties} == {
-        ("IS_VISIBLE", DiffAction.ADDED, True, None),
-        ("IS_PROTECTED", DiffAction.ADDED, False, None),
-        ("HAS_VALUE", DiffAction.ADDED, "#000000", None),
+        (DatabaseEdgeType.IS_VISIBLE, DiffAction.ADDED, True, None),
+        (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, False, None),
+        (DatabaseEdgeType.HAS_VALUE, DiffAction.ADDED, "#000000", None),
     }
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
@@ -548,7 +554,7 @@ async def test_add_node_branch(
     assert single_relationship.action is DiffAction.ADDED
     assert len(single_relationship.properties) == 3
     assert {(p.property_type, p.action, p.new_value, p.previous_value) for p in single_relationship.properties} == {
-        ("IS_VISIBLE", DiffAction.ADDED, True, None),
-        ("IS_PROTECTED", DiffAction.ADDED, False, None),
-        ("IS_RELATED", DiffAction.ADDED, person_jane_main.id, None),
+        (DatabaseEdgeType.IS_VISIBLE, DiffAction.ADDED, True, None),
+        (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, False, None),
+        (DatabaseEdgeType.IS_RELATED, DiffAction.ADDED, person_jane_main.id, None),
     }

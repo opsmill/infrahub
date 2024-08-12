@@ -87,7 +87,7 @@ class EnrichedDiffSaveQuery(Query):
     def _build_diff_property_params(self, enriched_property: EnrichedDiffProperty) -> dict[str, Any]:
         return {
             "node_properties": {
-                "property_type": enriched_property.property_type,
+                "property_type": enriched_property.property_type.value,
                 "changed_at": enriched_property.changed_at.to_string(),
                 "previous_value": enriched_property.previous_value,
                 "new_value": enriched_property.new_value,

@@ -5,39 +5,26 @@ from uuid import uuid4
 
 import pytest
 from pendulum.datetime import DateTime
-from polyfactory.factories import DataclassFactory
 
 from infrahub import config
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import (
-    EnrichedDiffAttribute,
     EnrichedDiffNode,
-    EnrichedDiffProperty,
-    EnrichedDiffRelationship,
     EnrichedDiffRoot,
-    EnrichedDiffSingleRelationship,
 )
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 
-
-class PropertyFactory(DataclassFactory[EnrichedDiffProperty]): ...
-
-
-class AttributeFactory(DataclassFactory[EnrichedDiffAttribute]): ...
-
-
-class RelationshipGroupFactory(DataclassFactory[EnrichedDiffRelationship]): ...
-
-
-class RelationshipElementFactory(DataclassFactory[EnrichedDiffSingleRelationship]): ...
-
-
-class NodeFactory(DataclassFactory[EnrichedDiffNode]): ...
-
-
-class RootFactory(DataclassFactory[EnrichedDiffRoot]): ...
+from .factories import (
+    EnrichedAttributeFactory,
+    EnrichedNodeFactory,
+    EnrichedPropertyFactory,
+    EnrichedRelationshipElementFactory,
+    EnrichedRelationshipGroupFactory,
+    EnrichedRootFactory,
+)
 
 
 class TestDiffRepositorySaveAndLoad:
@@ -51,16 +38,24 @@ class TestDiffRepositorySaveAndLoad:
         return DiffRepository(db=db)
 
     def build_diff_node(self, num_sub_fields=2) -> EnrichedDiffNode:
-        enriched_node = NodeFactory.build(
+        enriched_node = EnrichedNodeFactory.build(
             attributes={
-                AttributeFactory.build(properties={PropertyFactory.build() for _ in range(num_sub_fields)})
+                EnrichedAttributeFactory.build(
+                    properties={
+                        EnrichedPropertyFactory.build(property_type=det)
+                        for det in random.sample(list(DatabaseEdgeType), num_sub_fields)
+                    }
+                )
                 for _ in range(num_sub_fields)
             },
             relationships={
-                RelationshipGroupFactory.build(
+                EnrichedRelationshipGroupFactory.build(
                     relationships={
-                        RelationshipElementFactory.build(
-                            properties={PropertyFactory.build() for _ in range(num_sub_fields)},
+                        EnrichedRelationshipElementFactory.build(
+                            properties={
+                                EnrichedPropertyFactory.build(property_type=det)
+                                for det in random.sample(list(DatabaseEdgeType), num_sub_fields)
+                            }
                         )
                         for _ in range(num_sub_fields)
                     },
@@ -109,12 +104,12 @@ class TestDiffRepositorySaveAndLoad:
         assert len(enriched_diffs) == 0
 
     async def test_save_and_retrieve(self, diff_repository: DiffRepository, reset_database):
-        enriched_diff = RootFactory.build(
+        enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
             to_time=Timestamp(self.diff_to_time),
-            nodes=self._build_nodes(num_nodes=5, num_sub_fields=3),
+            nodes=self._build_nodes(num_nodes=5, num_sub_fields=2),
         )
 
         await diff_repository.save(enriched_diff=enriched_diff)
@@ -132,7 +127,7 @@ class TestDiffRepositorySaveAndLoad:
     async def test_base_branch_name_filter(self, diff_repository: DiffRepository, reset_database):
         name_uuid_map = {name: str(uuid4()) for name in (self.base_branch_name, "more-main", "most-main")}
         for base_branch_name, root_uuid in name_uuid_map.items():
-            enriched_diff = RootFactory.build(
+            enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=base_branch_name,
                 diff_branch_name=self.diff_branch_name,
                 from_time=Timestamp(self.diff_from_time),
@@ -162,7 +157,7 @@ class TestDiffRepositorySaveAndLoad:
                 end_time = start_time.add(seconds=random.randint(25_000, 100_000))
                 root_uuid = str(uuid4())
                 diff_uuids_by_name[diff_branch_name].add(root_uuid)
-                enriched_diff = RootFactory.build(
+                enriched_diff = EnrichedRootFactory.build(
                     base_branch_name=self.base_branch_name,
                     diff_branch_name=diff_branch_name,
                     from_time=Timestamp(start_time),
@@ -196,7 +191,7 @@ class TestDiffRepositorySaveAndLoad:
 
     async def test_filter_time_ranges(self, diff_repository: DiffRepository, reset_database):
         root_uuid = str(uuid4())
-        enriched_diff = RootFactory.build(
+        enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
@@ -260,7 +255,7 @@ class TestDiffRepositorySaveAndLoad:
         enriched_diffs: list[EnrichedDiffRoot] = []
         for i in range(5):
             nodes = self._build_nodes(num_nodes=4, num_sub_fields=3)
-            enriched_diff = RootFactory.build(
+            enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=f"branch{i}",
                 from_time=Timestamp(self.diff_from_time),
@@ -329,9 +324,9 @@ class TestDiffRepositorySaveAndLoad:
         previous_node = None
         depth = 0
         while depth < 4:
-            node = NodeFactory.build(relationships=set())
+            node = EnrichedNodeFactory.build(relationships=set())
             if previous_node:
-                relationship_group = RelationshipGroupFactory.build(nodes={previous_node})
+                relationship_group = EnrichedRelationshipGroupFactory.build(nodes={previous_node})
                 node.relationships.add(relationship_group)
             nodes_by_depth_of_children[depth] = node
             previous_node = node
@@ -341,7 +336,7 @@ class TestDiffRepositorySaveAndLoad:
         one_deep_node = nodes_by_depth_of_children[1]
         zero_deep_node = nodes_by_depth_of_children[0]
 
-        enriched_diff = RootFactory.build(
+        enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
@@ -399,8 +394,8 @@ class TestDiffRepositorySaveAndLoad:
     async def test_filter_limit_and_offset_flat(self, diff_repository: DiffRepository, reset_database):
         ordered_nodes = []
         for kind, label in (("A", "a"), ("A", "b"), ("B", "a"), ("B", "b")):
-            ordered_nodes.append(NodeFactory.build(kind=kind, label=label, relationships=set()))
-        enriched_diff = RootFactory.build(
+            ordered_nodes.append(EnrichedNodeFactory.build(kind=kind, label=label, relationships=set()))
+        enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
@@ -432,7 +427,7 @@ class TestDiffRepositorySaveAndLoad:
 
     async def test_filter_limit_and_offset_with_nested_nodes(self, diff_repository: DiffRepository, reset_database):
         nodes = self._build_nodes(num_nodes=10, num_sub_fields=3)
-        enriched_diff = RootFactory.build(
+        enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
@@ -491,7 +486,7 @@ class TestDiffRepositorySaveAndLoad:
         start_time = self.diff_from_time.add(minutes=1)
         for i in range(3):
             nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-            enriched_diff = RootFactory.build(
+            enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
                 from_time=Timestamp(start_time.add(minutes=i * 30)),
@@ -562,7 +557,7 @@ class TestDiffRepositorySaveAndLoad:
         start_time = self.diff_from_time.add(seconds=1)
         for i in range(5):
             nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-            enriched_diff = RootFactory.build(
+            enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
                 from_time=Timestamp(start_time.add(minutes=i * 30)),
@@ -573,7 +568,7 @@ class TestDiffRepositorySaveAndLoad:
             diffs_to_retrieve.append(enriched_diff)
         for i in range(5):
             nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-            enriched_diff = RootFactory.build(
+            enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
                 from_time=Timestamp(start_time.add(days=3, minutes=(i * 30))),
@@ -596,7 +591,7 @@ class TestDiffRepositorySaveAndLoad:
     ):
         for i in range(5):
             nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-            incremental_enriched_diff = RootFactory.build(
+            incremental_enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
                 from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
@@ -605,7 +600,7 @@ class TestDiffRepositorySaveAndLoad:
             )
             await diff_repository.save(enriched_diff=incremental_enriched_diff)
         nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-        super_enriched_diff = RootFactory.build(
+        super_enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),

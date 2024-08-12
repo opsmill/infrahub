@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import DiffAction, RelationshipStatus
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 
 from ..exceptions import InvalidCypherPathError
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class EnrichedDiffProperty:
-    property_type: str
+    property_type: DatabaseEdgeType
     changed_at: Timestamp
     previous_value: Any
     new_value: Any
@@ -46,6 +47,12 @@ class EnrichedDiffSingleRelationship:
 
     def __hash__(self) -> int:
         return hash(self.peer_id)
+
+    def get_property(self, property_type: DatabaseEdgeType) -> EnrichedDiffProperty:
+        for prop in self.properties:
+            if prop.property_type == property_type:
+                return prop
+        raise ValueError(f"Relationship element diff does not have property of type {property_type}")
 
 
 @dataclass
@@ -136,7 +143,7 @@ class CalculatedDiffs:
 
 @dataclass
 class DiffProperty:
-    property_type: str
+    property_type: DatabaseEdgeType
     changed_at: Timestamp
     previous_value: Any
     new_value: Any
@@ -282,8 +289,8 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return self.attribute_name
 
     @property
-    def property_type(self) -> str:
-        return self.path_to_property.type
+    def property_type(self) -> DatabaseEdgeType:
+        return DatabaseEdgeType(self.path_to_property.type)
 
     @property
     def property_id(self) -> str:

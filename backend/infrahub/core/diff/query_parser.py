@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipStatus
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 
 from .model.path import (
@@ -73,7 +74,7 @@ class DiffValueIntermediate:
 
 @dataclass
 class DiffPropertyIntermediate:
-    property_type: str
+    property_type: DatabaseEdgeType
     diff_values: set[DiffValueIntermediate] = field(default_factory=set)
     _ordered_values: list[DiffValueIntermediate] = field(default_factory=list)
 
@@ -141,7 +142,7 @@ class DiffPropertyIntermediate:
 class DiffAttributeIntermediate(TrackedStatusUpdates):
     uuid: str
     name: str
-    properties_by_type: dict[str, DiffPropertyIntermediate] = field(default_factory=dict)
+    properties_by_type: dict[DatabaseEdgeType, DiffPropertyIntermediate] = field(default_factory=dict)
 
     def to_diff_attribute(self, from_time: Timestamp) -> DiffAttribute:
         properties = [prop.to_diff_property(from_time=from_time) for prop in self.properties_by_type.values()]
@@ -153,7 +154,7 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
 
 @dataclass
 class DiffRelationshipPropertyIntermediate:
-    property_type: str
+    property_type: DatabaseEdgeType
     db_id: str
     changed_at: Timestamp
     status: RelationshipStatus
@@ -161,7 +162,9 @@ class DiffRelationshipPropertyIntermediate:
 
     def __hash__(self) -> int:
         return hash(
-            "|".join((self.property_type, self.db_id, self.changed_at.to_string(), self.status.value, str(self.value)))
+            "|".join(
+                (self.property_type.value, self.db_id, self.changed_at.to_string(), self.status.value, str(self.value))
+            )
         )
 
 
@@ -169,7 +172,9 @@ class DiffRelationshipPropertyIntermediate:
 class DiffSingleRelationshipIntermediate:
     peer_id: str
     last_changed_at: Timestamp
-    ordered_properties_by_type: dict[str, list[DiffRelationshipPropertyIntermediate]] = field(default_factory=dict)
+    ordered_properties_by_type: dict[DatabaseEdgeType, list[DiffRelationshipPropertyIntermediate]] = field(
+        default_factory=dict
+    )
 
     @classmethod
     def from_properties(
@@ -179,19 +184,20 @@ class DiffSingleRelationshipIntermediate:
             raise DiffNoChildPathError()
         peer_id = None
         for diff_property in properties:
-            if diff_property.property_type == "IS_RELATED":
+            if diff_property.property_type == DatabaseEdgeType.IS_RELATED:
                 peer_id = diff_property.value
                 break
         if not peer_id:
             raise DiffNoPeerIdError(f"Cannot identify peer ID for relationship property {(properties[0]).db_id}")
 
-        ordered_properties_by_type: dict[str, list[DiffRelationshipPropertyIntermediate]] = {}
+        ordered_properties_by_type: dict[DatabaseEdgeType, list[DiffRelationshipPropertyIntermediate]] = {}
         chronological_properties = sorted(properties, key=lambda p: p.changed_at)
         last_changed_at = chronological_properties[-1].changed_at
         for chronological_property in chronological_properties:
+            property_key = DatabaseEdgeType(chronological_property.property_type)
             if chronological_property.property_type not in ordered_properties_by_type:
-                ordered_properties_by_type[chronological_property.property_type] = []
-            ordered_properties_by_type[chronological_property.property_type].append(chronological_property)
+                ordered_properties_by_type[property_key] = []
+            ordered_properties_by_type[property_key].append(chronological_property)
         return cls(
             peer_id=peer_id,
             last_changed_at=last_changed_at,
@@ -201,7 +207,7 @@ class DiffSingleRelationshipIntermediate:
     def _get_single_relationship_final_property(
         self, chronological_properties: list[DiffRelationshipPropertyIntermediate], from_time: Timestamp
     ) -> DiffProperty:
-        property_type = chronological_properties[0].property_type
+        property_type = DatabaseEdgeType(chronological_properties[0].property_type)
         changed_at = chronological_properties[-1].changed_at
         previous_value = None
         first_diff_prop = chronological_properties[0]
@@ -236,7 +242,7 @@ class DiffSingleRelationshipIntermediate:
 
     def get_final_single_relationship(self, from_time: Timestamp) -> DiffSingleRelationship:
         final_properties = []
-        peer_id_properties = self.ordered_properties_by_type["IS_RELATED"]
+        peer_id_properties = self.ordered_properties_by_type[DatabaseEdgeType.IS_RELATED]
         peer_final_property = self._get_single_relationship_final_property(
             chronological_properties=peer_id_properties, from_time=from_time
         )
@@ -244,7 +250,7 @@ class DiffSingleRelationshipIntermediate:
         other_final_properties = [
             self._get_single_relationship_final_property(chronological_properties=property_list, from_time=from_time)
             for property_type, property_list in self.ordered_properties_by_type.items()
-            if property_type != "IS_RELATED"
+            if property_type != DatabaseEdgeType.IS_RELATED
         ]
         final_properties = [peer_final_property] + other_final_properties
         last_changed_property = max(final_properties, key=lambda fp: fp.changed_at)
@@ -268,7 +274,7 @@ class DiffRelationshipIntermediate:
     _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
 
     def add_path(self, database_path: DatabasePath) -> None:
-        if database_path.property_type == "IS_RELATED":
+        if database_path.property_type == DatabaseEdgeType.IS_RELATED:
             value = database_path.peer_id
         else:
             value = database_path.property_value
@@ -503,12 +509,12 @@ class DiffQueryParser:
                 base_property_set = base_diff_relationship.properties_by_db_id.get(db_id)
                 if not base_property_set:
                     continue
-                base_diff_property_by_type: dict[str, Optional[DiffRelationshipPropertyIntermediate]] = {
-                    p.property_type: None for p in property_set
+                base_diff_property_by_type: dict[DatabaseEdgeType, Optional[DiffRelationshipPropertyIntermediate]] = {
+                    DatabaseEdgeType(p.property_type): None for p in property_set
                 }
-                base_diff_property_by_type["IS_RELATED"] = None
+                base_diff_property_by_type[DatabaseEdgeType.IS_RELATED] = None
                 for base_diff_property in base_property_set:
-                    prop_type = base_diff_property.property_type
+                    prop_type = DatabaseEdgeType(base_diff_property.property_type)
                     if prop_type not in base_diff_property_by_type:
                         continue
                     if base_diff_property.changed_at >= self.from_time:
