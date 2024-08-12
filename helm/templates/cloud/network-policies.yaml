@@ -1,0 +1,11 @@
+{{- if .Values.cloud.enabled }}
+{{- range $value := .Values.cloud.networkpolicies }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $value.name }}
+spec:
+  {{- toYaml $value.spec | nindent 2 }}
+{{- end }}
+{{- end }}

@@ -222,7 +222,7 @@
     "children": [
       {
         "title": "Accounts",
-        "path": "objects/CoreAccount",
+        "path": "objects/CoreGenericAccount",
         "icon": "",
         "children": []
       }

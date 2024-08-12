@@ -1,7 +1,6 @@
-import { Button, BUTTON_TYPES } from "@/components/buttons/button";
 import { AddComment } from "@/components/conversations/add-comment";
 import { Thread } from "@/components/conversations/thread";
-import { Avatar, AVATAR_SIZE } from "@/components/display/avatar";
+import { Avatar } from "@/components/display/avatar";
 import { Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
 import SlideOver from "@/components/display/slide-over";
@@ -45,6 +44,8 @@ import DynamicForm from "@/components/form/dynamic-form";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
+import { Button } from "@/components/buttons/button-primitive";
+import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 
 type tConversations = {
   refetch?: Function;
@@ -408,7 +409,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       created_by: (
         <Tooltip enabled content={proposedChangesDetails?.created_by?.node?.display_label}>
           <Avatar
-            size={AVATAR_SIZE.SMALL}
+            size={"sm"}
             name={proposedChangesDetails?.created_by?.node?.display_label}
             className="mr-2 bg-custom-blue-green"
           />
@@ -418,7 +419,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         <>
           {reviewers.map((reviewer: any, index: number) => (
             <Tooltip key={index} message={reviewer.display_label}>
-              <Avatar size={AVATAR_SIZE.SMALL} name={reviewer.display_label} className="mr-2" />
+              <Avatar size={"sm"} name={reviewer.display_label} className="mr-2" />
             </Tooltip>
           ))}
         </>
@@ -427,7 +428,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         <>
           {approvers.map((approver: any, index: number) => (
             <Tooltip key={index} message={approver.display_label}>
-              <Avatar size={AVATAR_SIZE.SMALL} name={approver.display_label} className="mr-2" />
+              <Avatar size={"sm"} name={approver.display_label} className="mr-2" />
             </Tooltip>
           ))}
         </>
@@ -436,6 +437,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       actions: (
         <>
           <Button
+            variant={"outline"}
             onClick={handleApprove}
             isLoading={isLoadingApprove}
             disabled={!auth?.permissions?.write || !approverId || !canApprove}
@@ -444,8 +446,8 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
           </Button>
 
           <Button
+            variant={"active"}
             onClick={handleMerge}
-            buttonType={BUTTON_TYPES.VALIDATE}
             isLoading={isLoadingMerge}
             disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}
             className="mr-2">
@@ -453,8 +455,8 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
           </Button>
 
           <Button
+            variant={"danger"}
             onClick={handleClose}
-            buttonType={BUTTON_TYPES.CANCEL}
             isLoading={isLoadingClose}
             disabled={!auth?.permissions?.write || state === "merged"}>
             {state === "closed" ? "Re-open" : "Close"}
@@ -490,7 +492,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
                 </div>
               </div>
 
-              <div className="">
+              <div>
                 <Button
                   disabled={
                     !auth?.permissions?.write ||
@@ -573,9 +575,73 @@ const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChangeEditFo
 
   if (!proposedChangeSchema) return null;
 
-  async function onSubmit(data: any) {
-    const updatedObject = getUpdateMutationFromFormData(data);
+  const fields: Array<DynamicFieldProps> = [
+    {
+      name: "name",
+      type: "Text",
+      label: "Name",
+      defaultValue: { source: { type: "user" }, value: initialData?.name?.value },
+      rules: {
+        validate: {
+          required: ({ value }: FormFieldValue) => {
+            return (value !== null && value !== undefined && value !== "") || "Required";
+          },
+        },
+      },
+    },
+    {
+      name: "description",
+      type: "TextArea",
+      label: "Description",
+      defaultValue: { source: { type: "user" }, value: initialData?.description?.value },
+    },
+    {
+      name: "source_branch",
+      type: "enum",
+      label: "Source Branch",
+      defaultValue: { source: { type: "user" }, value: initialData?.source_branch?.value },
+      items: branches.map(({ id, name }) => ({ id, name })),
+      rules: {
+        validate: {
+          required: ({ value }: FormFieldValue) => {
+            return (value !== null && value !== undefined) || "Required";
+          },
+        },
+      },
+      disabled: true,
+    },
+    {
+      name: "destination_branch",
+      type: "enum",
+      label: "Destination Branch",
+      defaultValue: { source: { type: "user" }, value: initialData?.destination_branch?.value },
+      items: branches.map(({ id, name }) => ({ id, name })),
+      disabled: true,
+    },
+    {
+      name: "reviewers",
+      label: "Reviewers",
+      type: "relationship",
+      relationship: { cardinality: "many", peer: ACCOUNT_OBJECT } as any,
+      schema: {} as any,
+      defaultValue: {
+        source: { type: "user" },
+        value:
+          initialData?.reviewers?.edges
+            .map((edge: any) => ({ id: edge?.node?.id }))
+            .filter(Boolean) ?? [],
+      },
+      options: initialData?.reviewers?.edges.map(({ node }) => ({
+        id: node?.id,
+        name: node?.display_label,
+      })),
+    },
+  ];
 
+  async function onSubmit(formData: any) {
+    const updatedObject = getUpdateMutationFromFormData({ formData, fields });
+
+    console.log(updatedObject);
     if (Object.keys(updatedObject).length) {
       try {
         const mutationString = updateObjectWithId({
@@ -611,61 +677,5 @@ const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChangeEditFo
     }
   }
 
-  return (
-    <DynamicForm
-      onSubmit={onSubmit}
-      fields={[
-        {
-          name: "name",
-          type: "Text",
-          label: "Name",
-          defaultValue: initialData?.name?.value,
-          rules: {
-            required: true,
-          },
-        },
-        {
-          name: "description",
-          type: "TextArea",
-          label: "Description",
-          defaultValue: initialData?.description?.value,
-        },
-        {
-          name: "source_branch",
-          type: "enum",
-          label: "Source Branch",
-          defaultValue: initialData?.source_branch?.value,
-          items: branches.map(({ name }) => name),
-          rules: {
-            required: true,
-          },
-          disabled: true,
-        },
-        {
-          name: "destination_branch",
-          type: "enum",
-          label: "Destination Branch",
-          defaultValue: { source: null, value: "main" },
-          items: [],
-          disabled: true,
-        },
-        {
-          name: "reviewers",
-          label: "Reviewers",
-          type: "relationship",
-          relationship: { cardinality: "many", peer: "CoreAccount" } as any,
-          schema: {} as any,
-          defaultValue:
-            initialData?.reviewers?.edges
-              .map((edge: any) => ({ id: edge?.node?.id }))
-              .filter(Boolean) ?? [],
-          options: initialData?.reviewers?.edges.map(({ node }) => ({
-            id: node?.id,
-            name: node?.display_label,
-          })),
-        },
-      ]}
-      className="p-4"
-    />
-  );
+  return <DynamicForm onSubmit={onSubmit} fields={fields} className="p-4" />;
 };

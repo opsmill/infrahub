@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines
+# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
 
 
 class AttributeCreateData(BaseModel):
@@ -238,6 +238,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 schema.convert_value_to_enum(value)
             except ValueError as exc:
                 raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
+
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        """Return a value corresponding to the attribute type given it formatted as a string."""
+        return cls.type(value_as_string)  # pylint: disable=not-callable
 
     def to_db(self) -> dict[str, Any]:
         """Return the properties of the AttributeValue node in Dict format."""
@@ -546,7 +551,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     def get_create_data(self) -> AttributeCreateData:
         # pylint: disable=no-member
-        branch = self.get_branch_based_on_support_type()
+        branch = self.branch
+        hierarchy_level = branch.hierarchy_level
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
+            branch = registry.get_global_branch()
+        elif self.schema.branch == BranchSupportType.LOCAL and self.node._schema.branch == BranchSupportType.AGNOSTIC:
+            branch = registry.get_global_branch()
+            hierarchy_level = 0
         data = AttributeCreateData(
             node_type=self.get_db_node_type(),
             uuid=str(UUIDT()),
@@ -554,7 +565,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             type=self.get_kind(),
             branch=branch.name,
             status="active",
-            branch_level=self.branch.hierarchy_level,
+            branch_level=hierarchy_level,
             branch_support=self.schema.branch.value,
             content=self.to_db(),
             is_default=self.is_default,
@@ -580,7 +591,9 @@ class AnyAttribute(BaseAttribute):
 
 
 class AnyAttributeOptional(AnyAttribute):
-    pass
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        return value_as_string
 
 
 class String(BaseAttribute):
@@ -1076,6 +1089,12 @@ class ListAttribute(BaseAttribute):
     type = list
     value: list[Any]
 
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        if value_as_string:
+            return ujson.loads(value_as_string)
+        return []
+
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
         return ujson.dumps(self.value)
@@ -1094,6 +1113,12 @@ class ListAttributeOptional(ListAttribute):
 class JSONAttribute(BaseAttribute):
     type = (dict, list)
     value: Union[dict, list]
+
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        if value_as_string:
+            return ujson.loads(value_as_string)
+        return {}
 
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""

@@ -4,8 +4,8 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { UPDATE_ACCOUNT_PASSWORD } from "@/graphql/mutations/accounts/updateAccountPassword";
 import Content from "@/screens/layout/content";
-import { useMutation } from "@apollo/client";
 import { toast } from "react-toastify";
+import { useMutation } from "@/hooks/useQuery";
 
 type UpdatePasswordFormData = {
   newPassword: string;

@@ -289,7 +289,7 @@ async def tag_green(db: InfrahubDatabase) -> Node:
 @pytest.fixture
 async def first_account(db: InfrahubDatabase) -> Node:
     obj = await Node.init(db=db, schema="CoreAccount")
-    await obj.new(db=db, name="First Account", type="Git", password="TestPassword123")
+    await obj.new(db=db, name="First Account", account_type="Git", password="TestPassword123")
     await obj.save(db=db)
     return obj
 
@@ -297,7 +297,7 @@ async def first_account(db: InfrahubDatabase) -> Node:
 @pytest.fixture
 async def second_account(db: InfrahubDatabase) -> Node:
     obj = await Node.init(db=db, schema="CoreAccount")
-    await obj.new(db=db, name="Second Account", type="Git", password="TestPassword123")
+    await obj.new(db=db, name="Second Account", account_type="Git", password="TestPassword123")
     await obj.save(db=db)
     return obj
 

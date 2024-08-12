@@ -173,7 +173,7 @@ class TestConstraintDeterminer:
         person_schema = schema_branch.get(name="TestPerson", duplicate=False)
         person_schema.uniqueness_constraints = [["name", "height"]]
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
-        car_schema.uniqueness_constraints = [["owner", "color"]]
+        car_schema.uniqueness_constraints = [["owner", "color__value"]]
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
         person_uniqueness_constraint_info = SchemaUpdateConstraintInfo(

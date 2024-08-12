@@ -21,7 +21,7 @@ import {
 } from "./utils";
 import { Badge } from "@/components/ui/badge";
 
-export default function IpamTree() {
+export default function IpamTree({ className }: { className?: string }) {
   const { prefix } = useParams();
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
@@ -59,23 +59,22 @@ export default function IpamTree() {
   };
 
   return (
-    <nav className="flex min-w-64">
-      <Tree
-        loading={isLoading}
-        data={treeData}
-        itemContent={IpamTreeItem}
-        onLoadData={onLoadData}
-        selectedIds={prefix ? [prefix] : []}
-        defaultExpandedIds={expandedIds}
-        onNodeSelect={({ element, isSelected }) => {
-          if (!isSelected) return;
+    <Tree
+      loading={isLoading}
+      data={treeData}
+      itemContent={IpamTreeItem}
+      onLoadData={onLoadData}
+      selectedIds={prefix ? [prefix] : []}
+      defaultExpandedIds={expandedIds}
+      onNodeSelect={({ element, isSelected }) => {
+        if (!isSelected) return;
 
-          const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
-          navigate(url);
-        }}
-        data-testid="ipam-tree"
-      />
-    </nav>
+        const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+        navigate(url);
+      }}
+      className={className}
+      data-testid="ipam-tree"
+    />
   );
 }
 
@@ -90,12 +89,12 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
     <Link
       to={url}
       tabIndex={-1}
-      className="flex flex-grow items-center gap-2 overflow-hidden"
+      className="flex items-center gap-2 w-full"
       data-testid="ipam-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
-      <span className="truncate flex-1">{element.name}</span>
+      <span>{element.name}</span>
       {!!element.metadata?.descendantsCount && (
-        <Badge className="self-end">{element.metadata?.descendantsCount}</Badge>
+        <Badge className="ml-auto">{element.metadata?.descendantsCount}</Badge>
       )}
     </Link>
   );

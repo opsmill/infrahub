@@ -975,7 +975,7 @@ class InfrahubClient(BaseClient):
                 kind=kind,
                 branch=branch_name,
                 fragment=True,
-                include=["id", "name", "location", "commit", "ref"],
+                include=["id", "name", "location", "commit", "ref", "admin_status"],
             )
 
         responses = []

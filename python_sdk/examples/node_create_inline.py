@@ -9,7 +9,7 @@ async def main():
         kind="CoreAccount",
         name="janedoe",
         label="Jane Doe",
-        type="User",
+        account_type="User",
         password="J0esSecret!",
     )
     await obj.save()

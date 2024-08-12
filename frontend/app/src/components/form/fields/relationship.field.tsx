@@ -11,7 +11,7 @@ import {
   FormRelationshipValue,
 } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
-import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import { updateRelationshipFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}
 
@@ -167,7 +167,7 @@ const RelationshipField = ({
                       {...field}
                       value={fieldData?.value}
                       onChange={(newValue) => {
-                        field.onChange(updateFormFieldValue(newValue, defaultValue));
+                        field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
                       }}
                       {...props}
                       options={[]}
@@ -253,6 +253,7 @@ const RelationshipField = ({
                 required={!!rules?.required}
                 description={description}
                 variant={parentRelationship && "small"}
+                fieldData={fieldData}
               />
 
               <FormInput>
@@ -260,7 +261,7 @@ const RelationshipField = ({
                   {...field}
                   value={fieldData?.value}
                   onChange={(newValue) => {
-                    field.onChange(updateFormFieldValue(newValue, defaultValue));
+                    field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
                   }}
                   {...props}
                   peer={relationship?.peer}

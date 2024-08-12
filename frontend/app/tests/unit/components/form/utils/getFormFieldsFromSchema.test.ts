@@ -285,6 +285,48 @@ describe("getFormFieldsFromSchema", () => {
     });
   });
 
+  it("should map a enum attribute correctly", () => {
+    // GIVEN
+    const schema = {
+      attributes: [
+        buildAttributeSchema({
+          kind: "Number",
+          enum: [1, 2, 3],
+          unique: false,
+          optional: false,
+        }),
+      ],
+    } as IModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "schema" }, value: null },
+      description: undefined,
+      disabled: false,
+      name: "field1",
+      label: "Field 1",
+      type: "enum",
+      rules: {
+        required: true,
+        validate: {
+          required: expect.any(Function),
+        },
+      },
+      items: [
+        { id: 1, name: 1 },
+        { id: 2, name: 2 },
+        { id: 3, name: 3 },
+      ],
+      field: schema.attributes?.[0],
+      schema,
+      unique: false,
+    });
+  });
+
   it("should disable a protected field if the owner is not the current user", () => {
     // GIVEN
     const schema = {

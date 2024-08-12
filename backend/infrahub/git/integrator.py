@@ -129,22 +129,28 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
 
-    async def import_objects_from_files(self, branch_name: str, commit: Optional[str] = None) -> None:
+    async def import_objects_from_files(
+        self, infrahub_branch_name: str, git_branch_name: Optional[str] = None, commit: Optional[str] = None
+    ) -> None:
         if not commit:
-            commit = self.get_commit_value(branch_name=branch_name)
+            commit = self.get_commit_value(branch_name=git_branch_name or infrahub_branch_name)
 
         self.create_commit_worktree(commit)
-        config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
+        config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)
 
         if config_file:
-            await self.import_schema_files(branch_name=branch_name, commit=commit, config_file=config_file)
+            await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
 
-        await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
+        await self.import_all_graphql_query(branch_name=infrahub_branch_name, commit=commit)
 
         if config_file:
-            await self.import_all_python_files(branch_name=branch_name, commit=commit, config_file=config_file)
-            await self.import_jinja2_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
-            await self.import_artifact_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
+            await self.import_all_python_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
+            await self.import_jinja2_transforms(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
+            await self.import_artifact_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
 
     async def import_jinja2_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
@@ -166,7 +172,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         for config_transform in config_file.jinja2_transforms:
             try:
                 self.sdk.schema.validate_data_against_schema(
-                    schema=schema, data=config_transform.dict(exclude_none=True)
+                    schema=schema, data=config_transform.model_dump(exclude_none=True)
                 )
             except PydanticValidationError as exc:
                 for error in exc.errors():
@@ -274,7 +280,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         # Process the list of local Artifact Definitions to organize them by name
         for artdef in config_file.artifact_definitions:
             try:
-                self.sdk.schema.validate_data_against_schema(schema=schema, data=artdef.dict(exclude_none=True))
+                self.sdk.schema.validate_data_against_schema(schema=schema, data=artdef.model_dump(exclude_none=True))
             except PydanticValidationError as exc:
                 for error in exc.errors():
                     locations = [str(error_location) for error_location in error["loc"]]
@@ -893,7 +899,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     async def _create_generator_definition(
         self, generator: InfrahubGeneratorDefinitionConfig, branch_name: str
     ) -> InfrahubNode:
-        data = generator.dict(exclude_none=True, exclude={"file_path"})
+        data = generator.model_dump(exclude_none=True, exclude={"file_path"})
         data["file_path"] = str(generator.file_path)
         data["repository"] = self.id
 

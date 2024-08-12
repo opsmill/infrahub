@@ -15,7 +15,6 @@ type ProfilesSelectorProps = {
   value?: any[];
   defaultValue?: any[];
   onChange: (item: any[]) => void;
-  currentProfiles?: any[];
 };
 
 export const ProfilesSelector = ({

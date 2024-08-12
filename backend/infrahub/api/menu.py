@@ -58,10 +58,7 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
     log.info("menu_request", branch=branch.name)
 
     full_schema = registry.schema.get_full(branch=branch, duplicate=False)
-    objects = InterfaceMenu(
-        title="Objects",
-        children=[],
-    )
+    objects = InterfaceMenu(title="Objects", children=[])
 
     structure: dict[str, list[InterfaceMenu]] = {}
 
@@ -201,13 +198,14 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
             ),
         ],
     )
+
     admin = InterfaceMenu(
         title="Admin",
         children=[
             InterfaceMenu(
                 title="Accounts",
-                path=f"/objects/{InfrahubKind.ACCOUNT}",
-                icon=_extract_node_icon(full_schema[InfrahubKind.ACCOUNT]),
+                path=f"/objects/{InfrahubKind.GENERICACCOUNT}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.GENERICACCOUNT]),
             ),
             InterfaceMenu(
                 title="Webhooks",

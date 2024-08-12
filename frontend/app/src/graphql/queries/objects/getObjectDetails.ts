@@ -30,8 +30,10 @@ query {{kind}} {
           {{#if this.isAttribute}}
 
             {{this.name}} {
+              id
               value
               updated_at
+              is_default
               is_from_profile
               is_protected
               is_visible
@@ -120,6 +122,7 @@ query {{kind}} {
 
         {{#each attributes}}
           {{this.name}} {
+              id
               value
               {{#if (eq this.kind "Dropdown")}}
               color

@@ -18,6 +18,7 @@ export const getUpdateMutationFromFormData = ({
     }
 
     switch (fieldData.source?.type) {
+      case "pool":
       case "user": {
         const fieldValue = fieldData.value === "" ? null : fieldData.value;
         return {

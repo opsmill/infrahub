@@ -40,5 +40,10 @@ def askpass(
     client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
-    attr = getattr(repo, request_type)
+    if not repo.credential._id:
+        raise typer.Exit("Repository doesn't have credentials defined.")
+
+    repo.credential.fetch()
+
+    attr = getattr(repo.credential.peer, request_type)
     print(attr.value)

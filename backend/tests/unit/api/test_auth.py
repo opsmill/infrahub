@@ -214,8 +214,8 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
     access_token = login_response.json()["access_token"]
 
     token_mutation = """
-    mutation CoreAccountTokenCreate {
-        CoreAccountTokenCreate(data: { name: "my-first-token" }) {
+    mutation InfrahubAccountTokenCreate {
+        InfrahubAccountTokenCreate(data: { name: "my-first-token" }) {
             ok
             object {
                 id
@@ -234,8 +234,8 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
         )
 
     assert jwt_response.status_code == 200
-    api_token = jwt_response.json()["data"]["CoreAccountTokenCreate"]["object"]["token"]["value"]
-    token_id = jwt_response.json()["data"]["CoreAccountTokenCreate"]["object"]["id"]
+    api_token = jwt_response.json()["data"]["InfrahubAccountTokenCreate"]["object"]["token"]["value"]
+    token_id = jwt_response.json()["data"]["InfrahubAccountTokenCreate"]["object"]["id"]
 
     # Validate that the generated API token can't be used to generate another API token
     with client:
@@ -246,12 +246,12 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
         )
 
     assert api_response.status_code == 200
-    assert not api_response.json()["data"]["CoreAccountTokenCreate"]
+    assert not api_response.json()["data"]["InfrahubAccountTokenCreate"]
     assert api_response.json()["errors"][0]["message"] == api_response.json()["errors"][0]["message"]
 
     token_query = """
-    query CoreAccountToken {
-    CoreAccountToken(offset: 0, limit: 5) {
+    query InfrahubAccountToken {
+    InfrahubAccountToken(offset: 0, limit: 5) {
         count
         edges {
         node {
@@ -271,13 +271,13 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
         )
 
     assert token_query_response.status_code == 200
-    tokens = token_query_response.json()["data"]["CoreAccountToken"]["edges"]
+    tokens = token_query_response.json()["data"]["InfrahubAccountToken"]["edges"]
     assert token_id in [token["node"]["id"] for token in tokens]
 
     token_delete_mutation = (
         """
     mutation MyMutation {
-        CoreAccountTokenDelete(data: {id: "%s"}) {
+        InfrahubAccountTokenDelete(data: {id: "%s"}) {
             ok
         }
     }
@@ -293,7 +293,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
         )
 
     assert token_delete_response.status_code == 200
-    assert token_delete_response.json()["data"]["CoreAccountTokenDelete"]["ok"]
+    assert token_delete_response.json()["data"]["InfrahubAccountTokenDelete"]["ok"]
 
     with client:
         token_query_response = client.post(
@@ -303,5 +303,5 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
         )
 
     assert token_query_response.status_code == 200
-    tokens = token_query_response.json()["data"]["CoreAccountToken"]["edges"]
+    tokens = token_query_response.json()["data"]["InfrahubAccountToken"]["edges"]
     assert token_id not in [token["node"]["id"] for token in tokens]

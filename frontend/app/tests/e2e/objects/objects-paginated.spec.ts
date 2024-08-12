@@ -25,6 +25,13 @@ test.describe("/objects/:objectKind", () => {
     await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
   });
 
+  test("clicking on a relationship value redirects to its details page", async ({ page }) => {
+    await page.goto("/objects/InfraDevice");
+    await page.getByRole("link", { name: "Juniper JunOS" }).first().click();
+    await expect(page.getByText("NameJuniper JunOS")).toBeVisible();
+    expect(page.url()).toContain("/objects/InfraPlatform/");
+  });
+
   test.describe("when not logged in", () => {
     test("should not be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");

@@ -1,16 +1,18 @@
 import { Tooltip } from "@/components/ui/tooltip";
+import { classNames } from "@/utils/common";
 import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
 type DateDisplayProps = {
   date?: number | string | Date;
   hideDefault?: boolean;
+  className?: string;
 };
 
 export const getDateDisplay = (date?: number | string | Date) =>
   format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
 
 export const DateDisplay = (props: DateDisplayProps) => {
-  const { date, hideDefault } = props;
+  const { date, hideDefault, className } = props;
 
   if (!date && hideDefault) {
     return null;
@@ -31,7 +33,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
   }
 
   return (
-    <span className="flex items-center flex-wrap">
+    <span className={classNames("flex items-center flex-wrap", className)}>
       <Tooltip enabled content={getDateDisplay(date)}>
         <span className="text-xs font-normal">
           {formatDistanceToNow(dateData, { addSuffix: true })}

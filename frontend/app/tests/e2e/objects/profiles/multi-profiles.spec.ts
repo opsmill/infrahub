@@ -22,7 +22,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       // Generic profile
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Interface Profile" }).click();
+      await page.getByRole("option", { name: "Interface Infra", exact: true }).click();
       await page.getByLabel("Profile Name *").fill("Generic profile");
       await page.getByLabel("Description").fill("Desc from generic profile");
       await page.getByRole("button", { name: "Save" }).click();
@@ -33,7 +33,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       // L2 profile v1
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Interface L2" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
       await page.getByLabel("Profile Name *").fill("L2 profile v1");
       await page.getByLabel("Description").fill("Desc from L2 profile v1");
       await page.getByRole("button", { name: "Save" }).click();
@@ -44,7 +44,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       // L2 profile v2
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Interface L2" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
       await page.getByLabel("Profile Name *").fill("L2 profile v2");
       await page.getByLabel("Description").fill("Desc from L2 profile v2");
       await page.getByLabel("Profile Priority").fill("10");
@@ -62,15 +62,19 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByLabel("Select profiles optional").click();
       await page.getByRole("option", { name: "L2 profile v1" }).click();
       await expect(page.getByLabel("Description")).toHaveValue("Desc from L2 profile v1");
+      await expect(page.getByTestId("source-profile-badge")).toContainText("L2 profile v1");
 
       await page.getByRole("option", { name: "L2 profile v2" }).click();
       await expect(page.getByLabel("Description")).toHaveValue("Desc from L2 profile v2");
+      await expect(page.getByTestId("source-profile-badge")).toContainText("L2 profile v2");
 
       await page.getByRole("option", { name: "Generic profile" }).click();
       await expect(page.getByLabel("Description")).toHaveValue("Desc from L2 profile v2");
+      await expect(page.getByTestId("source-profile-badge")).toContainText("L2 profile v2");
 
       await page.getByRole("option", { name: "L2 profile v2" }).click();
       await expect(page.getByLabel("Description")).toHaveValue("Desc from generic profile");
+      await expect(page.getByTestId("source-profile-badge")).toContainText("Generic profile");
     });
   });
 });

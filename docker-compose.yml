@@ -129,9 +129,9 @@ services:
     image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.19.0-community}
     restart: unless-stopped
     environment:
-      - "NEO4J_AUTH=neo4j/admin"
-      - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
-      - "NEO4J_dbms_security_auth__minimum__password__length=4"
+      NEO4J_AUTH: neo4j/${INFRAHUB_DB_PASSWORD:-admin}
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_dbms_security_auth__minimum__password__length: 4
     volumes:
       - "database_data:/data"
       - "database_logs:/logs"
@@ -146,7 +146,7 @@ services:
       - 6362:6362
 
   infrahub-server:
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.15.0}"
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.15.2}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -185,7 +185,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.15.0}"
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.15.2}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:

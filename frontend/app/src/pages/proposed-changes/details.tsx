@@ -2,7 +2,7 @@ import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
 import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { getProposedChanges } from "@/graphql/queries/proposed-changes/getProposedChanges";
+import { getProposedChanges } from "@/graphql/queries/proposed-changes/getProposedChangesDetails";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
@@ -26,7 +26,7 @@ import { useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Conversations } from "@/screens/proposed-changes/conversations";
-import { ProposedChangesChecksTab } from "@/screens/proposed-changes/proposed-changes-checks-tab";
+import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -69,6 +69,10 @@ const ProposedChangesDetailsPage = () => {
   const { loading, error, data, refetch } = useQuery(query, {
     skip: !schemaData,
     notifyOnNetworkStatusChange: true,
+    variables: {
+      id: proposedchange,
+      nodeId: proposedchange, // Used for tasks, which is a different type
+    },
   });
 
   // TODO: refactor to not need the ref to refetch child query

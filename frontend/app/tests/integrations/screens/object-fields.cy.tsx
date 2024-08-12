@@ -61,6 +61,7 @@ import {
 } from "../../mocks/data/task_7";
 import { TestProvider } from "../../mocks/jotai/atom";
 import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
+import { numberPoolData, numberPoolQuery } from "../../mocks/data/number-pool";
 
 // URL for the current view
 const mockedUrl = "/objects/TestTask";
@@ -157,6 +158,12 @@ const mocks: any[] = [
     result: {
       data: taskMocksData7,
     },
+  },
+  {
+    request: {
+      query: numberPoolQuery,
+    },
+    result: numberPoolData,
   },
 ];
 

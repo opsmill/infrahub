@@ -2,110 +2,144 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Protocol, Union, runtime_checkable
+from typing import TYPE_CHECKING
+
+from .protocols_base import CoreNode, CoreNodeSync
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from infrahub_sdk.node import RelatedNode, RelatedNodeSync, RelationshipManager, RelationshipManagerSync
 
+    from .protocols_base import (
+        URL,
+        Boolean,
+        BooleanOptional,
+        DateTime,
+        DateTimeOptional,
+        Dropdown,
+        Enum,
+        HashedPassword,
+        Integer,
+        IntegerOptional,
+        IPHost,
+        IPNetwork,
+        JSONAttribute,
+        JSONAttributeOptional,
+        ListAttributeOptional,
+        String,
+        StringOptional,
+    )
 
-@runtime_checkable
-class CoreNode(Protocol):
-    id: str
-    display_label: Optional[str]
-    hfid: Optional[list[str]]
-    hfid_str: Optional[str]
+# pylint: disable=too-many-ancestors
 
-    def get_kind(self) -> str: ...
+# ---------------------------------------------
+# ASYNC
+# ---------------------------------------------
 
 
 class BuiltinIPAddress(CoreNode):
-    address: str
-    description: Optional[str]
-    ip_namespace: Union[RelatedNode, RelatedNodeSync]
-    ip_prefix: Union[RelatedNode, RelatedNodeSync]
+    address: IPHost
+    description: StringOptional
+    ip_namespace: RelatedNode
+    ip_prefix: RelatedNode
 
 
 class BuiltinIPNamespace(CoreNode):
-    name: str
-    description: Optional[str]
-    ip_prefixes: Union[RelationshipManager, RelationshipManagerSync]
-    ip_addresses: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    description: StringOptional
+    ip_prefixes: RelationshipManager
+    ip_addresses: RelationshipManager
 
 
 class BuiltinIPPrefix(CoreNode):
-    prefix: str
-    description: Optional[str]
-    member_type: str
-    is_pool: bool
-    is_top_level: Optional[bool]
-    utilization: Optional[int]
-    netmask: Optional[str]
-    hostmask: Optional[str]
-    network_address: Optional[str]
-    broadcast_address: Optional[str]
-    ip_namespace: Union[RelatedNode, RelatedNodeSync]
-    ip_addresses: Union[RelationshipManager, RelationshipManagerSync]
-    resource_pool: Union[RelationshipManager, RelationshipManagerSync]
-    parent: Union[RelatedNode, RelatedNodeSync]
-    children: Union[RelationshipManager, RelationshipManagerSync]
+    prefix: IPNetwork
+    description: StringOptional
+    member_type: Dropdown
+    is_pool: Boolean
+    is_top_level: BooleanOptional
+    utilization: IntegerOptional
+    netmask: StringOptional
+    hostmask: StringOptional
+    network_address: StringOptional
+    broadcast_address: StringOptional
+    ip_namespace: RelatedNode
+    ip_addresses: RelationshipManager
+    resource_pool: RelationshipManager
+    parent: RelatedNode
+    children: RelationshipManager
 
 
 class CoreArtifactTarget(CoreNode):
-    artifacts: Union[RelationshipManager, RelationshipManagerSync]
+    artifacts: RelationshipManager
 
 
 class CoreCheck(CoreNode):
-    name: Optional[str]
-    label: Optional[str]
-    origin: str
-    kind: str
-    message: Optional[str]
-    conclusion: Optional[str]
-    severity: Optional[str]
-    created_at: Optional[datetime]
-    validator: Union[RelatedNode, RelatedNodeSync]
+    name: StringOptional
+    label: StringOptional
+    origin: String
+    kind: String
+    message: StringOptional
+    conclusion: Enum
+    severity: Enum
+    created_at: DateTimeOptional
+    validator: RelatedNode
 
 
 class CoreComment(CoreNode):
-    text: str
-    created_at: Optional[datetime]
-    created_by: Union[RelatedNode, RelatedNodeSync]
+    text: String
+    created_at: DateTimeOptional
+    created_by: RelatedNode
+
+
+class CoreCredential(CoreNode):
+    name: String
+    label: StringOptional
+    description: StringOptional
+
+
+class CoreGenericAccount(CoreNode):
+    name: String
+    password: HashedPassword
+    label: StringOptional
+    description: StringOptional
+    account_type: Enum
+    role: Enum
+    status: Dropdown
+    tokens: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):
-    name: str
-    description: Optional[str]
-    location: str
-    username: Optional[str]
-    password: Optional[str]
-    tags: Union[RelationshipManager, RelationshipManagerSync]
-    transformations: Union[RelationshipManager, RelationshipManagerSync]
-    queries: Union[RelationshipManager, RelationshipManagerSync]
-    checks: Union[RelationshipManager, RelationshipManagerSync]
-    generators: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    description: StringOptional
+    location: String
+    admin_status: Dropdown
+    status: Dropdown
+    credential: RelatedNode
+    tags: RelationshipManager
+    transformations: RelationshipManager
+    queries: RelationshipManager
+    checks: RelationshipManager
+    generators: RelationshipManager
 
 
 class CoreGroup(CoreNode):
-    name: str
-    label: Optional[str]
-    description: Optional[str]
-    group_type: str
-    members: Union[RelationshipManager, RelationshipManagerSync]
-    subscribers: Union[RelationshipManager, RelationshipManagerSync]
-    parent: Union[RelatedNode, RelatedNodeSync]
-    children: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    label: StringOptional
+    description: StringOptional
+    group_type: Enum
+    members: RelationshipManager
+    subscribers: RelationshipManager
+    parent: RelatedNode
+    children: RelationshipManager
 
 
 class CoreProfile(CoreNode):
-    profile_name: str
-    profile_priority: Optional[int]
+    profile_name: String
+    profile_priority: IntegerOptional
 
 
 class CoreResourcePool(CoreNode):
-    name: str
-    description: Optional[str]
+    name: String
+    description: StringOptional
 
 
 class CoreTaskTarget(CoreNode):
@@ -113,39 +147,39 @@ class CoreTaskTarget(CoreNode):
 
 
 class CoreThread(CoreNode):
-    label: Optional[str]
-    resolved: bool
-    created_at: Optional[datetime]
-    change: Union[RelatedNode, RelatedNodeSync]
-    comments: Union[RelationshipManager, RelationshipManagerSync]
-    created_by: Union[RelatedNode, RelatedNodeSync]
+    label: StringOptional
+    resolved: Boolean
+    created_at: DateTimeOptional
+    change: RelatedNode
+    comments: RelationshipManager
+    created_by: RelatedNode
 
 
 class CoreTransformation(CoreNode):
-    name: str
-    label: Optional[str]
-    description: Optional[str]
-    timeout: int
-    query: Union[RelatedNode, RelatedNodeSync]
-    repository: Union[RelatedNode, RelatedNodeSync]
-    tags: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    label: StringOptional
+    description: StringOptional
+    timeout: Integer
+    query: RelatedNode
+    repository: RelatedNode
+    tags: RelationshipManager
 
 
 class CoreValidator(CoreNode):
-    label: Optional[str]
-    state: str
-    conclusion: str
-    completed_at: Optional[datetime]
-    started_at: Optional[datetime]
-    proposed_change: Union[RelatedNode, RelatedNodeSync]
-    checks: Union[RelationshipManager, RelationshipManagerSync]
+    label: StringOptional
+    state: Enum
+    conclusion: Enum
+    completed_at: DateTimeOptional
+    started_at: DateTimeOptional
+    proposed_change: RelatedNode
+    checks: RelationshipManager
 
 
 class CoreWebhook(CoreNode):
-    name: str
-    description: Optional[str]
-    url: str
-    validate_certificates: Optional[bool]
+    name: String
+    description: StringOptional
+    url: URL
+    validate_certificates: BooleanOptional
 
 
 class LineageOwner(CoreNode):
@@ -157,61 +191,55 @@ class LineageSource(CoreNode):
 
 
 class BuiltinTag(CoreNode):
-    name: str
-    description: Optional[str]
+    name: String
+    description: StringOptional
 
 
-class CoreAccount(LineageOwner, LineageSource):
-    name: str
-    password: str
-    label: Optional[str]
-    description: Optional[str]
-    type: str
-    role: str
-    tokens: Union[RelationshipManager, RelationshipManagerSync]
+class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
+    pass
 
 
 class CoreArtifact(CoreTaskTarget):
-    name: str
-    status: str
-    content_type: str
-    checksum: Optional[str]
-    storage_id: Optional[str]
-    parameters: Optional[dict]
-    object: Union[RelatedNode, RelatedNodeSync]
-    definition: Union[RelatedNode, RelatedNodeSync]
+    name: String
+    status: Enum
+    content_type: Enum
+    checksum: StringOptional
+    storage_id: StringOptional
+    parameters: JSONAttributeOptional
+    object: RelatedNode
+    definition: RelatedNode
 
 
 class CoreArtifactCheck(CoreCheck):
-    changed: Optional[bool]
-    checksum: Optional[str]
-    artifact_id: Optional[str]
-    storage_id: Optional[str]
-    line_number: Optional[int]
+    changed: BooleanOptional
+    checksum: StringOptional
+    artifact_id: StringOptional
+    storage_id: StringOptional
+    line_number: IntegerOptional
 
 
 class CoreArtifactDefinition(CoreTaskTarget):
-    name: str
-    artifact_name: str
-    description: Optional[str]
-    parameters: dict
-    content_type: str
-    targets: Union[RelatedNode, RelatedNodeSync]
-    transformation: Union[RelatedNode, RelatedNodeSync]
+    name: String
+    artifact_name: String
+    description: StringOptional
+    parameters: JSONAttribute
+    content_type: Enum
+    targets: RelatedNode
+    transformation: RelatedNode
 
 
 class CoreArtifactThread(CoreThread):
-    artifact_id: Optional[str]
-    storage_id: Optional[str]
-    line_number: Optional[int]
+    artifact_id: StringOptional
+    storage_id: StringOptional
+    line_number: IntegerOptional
 
 
 class CoreArtifactValidator(CoreValidator):
-    definition: Union[RelatedNode, RelatedNodeSync]
+    definition: RelatedNode
 
 
 class CoreChangeComment(CoreComment):
-    change: Union[RelatedNode, RelatedNodeSync]
+    change: RelatedNode
 
 
 class CoreChangeThread(CoreThread):
@@ -219,25 +247,25 @@ class CoreChangeThread(CoreThread):
 
 
 class CoreCheckDefinition(CoreTaskTarget):
-    name: str
-    description: Optional[str]
-    file_path: str
-    class_name: str
-    timeout: int
-    parameters: Optional[dict]
-    repository: Union[RelatedNode, RelatedNodeSync]
-    query: Union[RelatedNode, RelatedNodeSync]
-    targets: Union[RelatedNode, RelatedNodeSync]
-    tags: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    description: StringOptional
+    file_path: String
+    class_name: String
+    timeout: Integer
+    parameters: JSONAttributeOptional
+    repository: RelatedNode
+    query: RelatedNode
+    targets: RelatedNode
+    tags: RelationshipManager
 
 
 class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
-    transformation: Union[RelatedNode, RelatedNodeSync]
+    transformation: RelatedNode
 
 
 class CoreDataCheck(CoreCheck):
-    conflicts: dict
-    keep_branch: Optional[str]
+    conflicts: JSONAttribute
+    keep_branch: Enum
 
 
 class CoreDataValidator(CoreValidator):
@@ -245,31 +273,31 @@ class CoreDataValidator(CoreValidator):
 
 
 class CoreFileCheck(CoreCheck):
-    files: Optional[list]
-    commit: Optional[str]
+    files: ListAttributeOptional
+    commit: StringOptional
 
 
 class CoreFileThread(CoreThread):
-    file: Optional[str]
-    commit: Optional[str]
-    line_number: Optional[int]
-    repository: Union[RelatedNode, RelatedNodeSync]
+    file: StringOptional
+    commit: StringOptional
+    line_number: IntegerOptional
+    repository: RelatedNode
 
 
 class CoreGeneratorCheck(CoreCheck):
-    instance: str
+    instance: String
 
 
 class CoreGeneratorDefinition(CoreTaskTarget):
-    name: str
-    description: Optional[str]
-    parameters: dict
-    file_path: str
-    class_name: str
-    convert_query_response: Optional[bool]
-    query: Union[RelatedNode, RelatedNodeSync]
-    repository: Union[RelatedNode, RelatedNodeSync]
-    targets: Union[RelatedNode, RelatedNodeSync]
+    name: String
+    description: StringOptional
+    parameters: JSONAttribute
+    file_path: String
+    class_name: String
+    convert_query_response: BooleanOptional
+    query: RelatedNode
+    repository: RelatedNode
+    targets: RelatedNode
 
 
 class CoreGeneratorGroup(CoreGroup):
@@ -277,90 +305,95 @@ class CoreGeneratorGroup(CoreGroup):
 
 
 class CoreGeneratorInstance(CoreTaskTarget):
-    name: str
-    status: str
-    object: Union[RelatedNode, RelatedNodeSync]
-    definition: Union[RelatedNode, RelatedNodeSync]
+    name: String
+    status: Enum
+    object: RelatedNode
+    definition: RelatedNode
 
 
 class CoreGeneratorValidator(CoreValidator):
-    definition: Union[RelatedNode, RelatedNodeSync]
+    definition: RelatedNode
 
 
 class CoreGraphQLQuery(CoreNode):
-    name: str
-    description: Optional[str]
-    query: str
-    variables: Optional[dict]
-    operations: Optional[list]
-    models: Optional[list]
-    depth: Optional[int]
-    height: Optional[int]
-    repository: Union[RelatedNode, RelatedNodeSync]
-    tags: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    description: StringOptional
+    query: String
+    variables: JSONAttributeOptional
+    operations: ListAttributeOptional
+    models: ListAttributeOptional
+    depth: IntegerOptional
+    height: IntegerOptional
+    repository: RelatedNode
+    tags: RelationshipManager
 
 
 class CoreGraphQLQueryGroup(CoreGroup):
-    parameters: Optional[dict]
-    query: Union[RelatedNode, RelatedNodeSync]
+    parameters: JSONAttributeOptional
+    query: RelatedNode
 
 
 class CoreIPAddressPool(CoreResourcePool, LineageSource):
-    default_address_type: str
-    default_prefix_length: Optional[int]
-    resources: Union[RelationshipManager, RelationshipManagerSync]
-    ip_namespace: Union[RelatedNode, RelatedNodeSync]
+    default_address_type: String
+    default_prefix_length: IntegerOptional
+    resources: RelationshipManager
+    ip_namespace: RelatedNode
 
 
 class CoreIPPrefixPool(CoreResourcePool, LineageSource):
-    default_prefix_length: Optional[int]
-    default_member_type: Optional[str]
-    default_prefix_type: Optional[str]
-    resources: Union[RelationshipManager, RelationshipManagerSync]
-    ip_namespace: Union[RelatedNode, RelatedNodeSync]
+    default_prefix_length: IntegerOptional
+    default_member_type: Enum
+    default_prefix_type: StringOptional
+    resources: RelationshipManager
+    ip_namespace: RelatedNode
 
 
 class CoreNumberPool(CoreResourcePool, LineageSource):
-    node: str
-    node_attribute: str
-    start_range: int
-    end_range: int
+    node: String
+    node_attribute: String
+    start_range: Integer
+    end_range: Integer
 
 
 class CoreObjectThread(CoreThread):
-    object_path: str
+    object_path: String
+
+
+class CorePasswordCredential(CoreCredential):
+    username: StringOptional
+    password: StringOptional
 
 
 class CoreProposedChange(CoreTaskTarget):
-    name: str
-    description: Optional[str]
-    source_branch: str
-    destination_branch: str
-    state: Optional[str]
-    approved_by: Union[RelationshipManager, RelationshipManagerSync]
-    reviewers: Union[RelationshipManager, RelationshipManagerSync]
-    created_by: Union[RelatedNode, RelatedNodeSync]
-    comments: Union[RelationshipManager, RelationshipManagerSync]
-    threads: Union[RelationshipManager, RelationshipManagerSync]
-    validations: Union[RelationshipManager, RelationshipManagerSync]
+    name: String
+    description: StringOptional
+    source_branch: String
+    destination_branch: String
+    state: Enum
+    approved_by: RelationshipManager
+    reviewers: RelationshipManager
+    created_by: RelatedNode
+    comments: RelationshipManager
+    threads: RelationshipManager
+    validations: RelationshipManager
 
 
 class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
-    ref: str
-    commit: Optional[str]
+    ref: String
+    commit: StringOptional
 
 
 class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
-    default_branch: str
-    commit: Optional[str]
+    default_branch: String
+    commit: StringOptional
 
 
 class CoreRepositoryValidator(CoreValidator):
-    repository: Union[RelatedNode, RelatedNodeSync]
+    repository: RelatedNode
 
 
 class CoreSchemaCheck(CoreCheck):
-    conflicts: dict
+    conflicts: JSONAttribute
 
 
 class CoreSchemaValidator(CoreValidator):
@@ -376,38 +409,453 @@ class CoreStandardGroup(CoreGroup):
 
 
 class CoreStandardWebhook(CoreWebhook, CoreTaskTarget):
-    shared_key: str
+    shared_key: String
 
 
 class CoreThreadComment(CoreComment):
-    thread: Union[RelatedNode, RelatedNodeSync]
+    thread: RelatedNode
 
 
 class CoreTransformJinja2(CoreTransformation):
-    template_path: str
+    template_path: String
 
 
 class CoreTransformPython(CoreTransformation):
-    file_path: str
-    class_name: str
+    file_path: String
+    class_name: String
 
 
 class CoreUserValidator(CoreValidator):
-    check_definition: Union[RelatedNode, RelatedNodeSync]
-    repository: Union[RelatedNode, RelatedNodeSync]
+    check_definition: RelatedNode
+    repository: RelatedNode
 
 
 class InternalAccountToken(CoreNode):
-    name: Optional[str]
-    token: str
-    expiration: Optional[datetime]
-    account: Union[RelatedNode, RelatedNodeSync]
+    name: StringOptional
+    token: String
+    expiration: DateTimeOptional
+    account: RelatedNode
 
 
 class InternalRefreshToken(CoreNode):
-    expiration: datetime
-    account: Union[RelatedNode, RelatedNodeSync]
+    expiration: DateTime
+    account: RelatedNode
 
 
 class IpamNamespace(BuiltinIPNamespace):
-    default: Optional[bool]
+    default: BooleanOptional
+
+
+# ---------------------------------------------
+# SYNC
+# ---------------------------------------------
+
+
+class BuiltinIPAddressSync(CoreNodeSync):
+    address: IPHost
+    description: StringOptional
+    ip_namespace: RelatedNodeSync
+    ip_prefix: RelatedNodeSync
+
+
+class BuiltinIPNamespaceSync(CoreNodeSync):
+    name: String
+    description: StringOptional
+    ip_prefixes: RelationshipManagerSync
+    ip_addresses: RelationshipManagerSync
+
+
+class BuiltinIPPrefixSync(CoreNodeSync):
+    prefix: IPNetwork
+    description: StringOptional
+    member_type: Dropdown
+    is_pool: Boolean
+    is_top_level: BooleanOptional
+    utilization: IntegerOptional
+    netmask: StringOptional
+    hostmask: StringOptional
+    network_address: StringOptional
+    broadcast_address: StringOptional
+    ip_namespace: RelatedNodeSync
+    ip_addresses: RelationshipManagerSync
+    resource_pool: RelationshipManagerSync
+    parent: RelatedNodeSync
+    children: RelationshipManagerSync
+
+
+class CoreArtifactTargetSync(CoreNodeSync):
+    artifacts: RelationshipManagerSync
+
+
+class CoreCheckSync(CoreNodeSync):
+    name: StringOptional
+    label: StringOptional
+    origin: String
+    kind: String
+    message: StringOptional
+    conclusion: Enum
+    severity: Enum
+    created_at: DateTimeOptional
+    validator: RelatedNodeSync
+
+
+class CoreCommentSync(CoreNodeSync):
+    text: String
+    created_at: DateTimeOptional
+    created_by: RelatedNodeSync
+
+
+class CoreCredentialSync(CoreNodeSync):
+    name: String
+    label: StringOptional
+    description: StringOptional
+
+
+class CoreGenericAccountSync(CoreNodeSync):
+    name: String
+    password: HashedPassword
+    label: StringOptional
+    description: StringOptional
+    account_type: Enum
+    role: Enum
+    status: Dropdown
+    tokens: RelationshipManagerSync
+
+
+class CoreGenericRepositorySync(CoreNodeSync):
+    name: String
+    description: StringOptional
+    location: String
+    admin_status: Dropdown
+    status: Dropdown
+    credential: RelatedNodeSync
+    tags: RelationshipManagerSync
+    transformations: RelationshipManagerSync
+    queries: RelationshipManagerSync
+    checks: RelationshipManagerSync
+    generators: RelationshipManagerSync
+
+
+class CoreGroupSync(CoreNodeSync):
+    name: String
+    label: StringOptional
+    description: StringOptional
+    group_type: Enum
+    members: RelationshipManagerSync
+    subscribers: RelationshipManagerSync
+    parent: RelatedNodeSync
+    children: RelationshipManagerSync
+
+
+class CoreProfileSync(CoreNodeSync):
+    profile_name: String
+    profile_priority: IntegerOptional
+
+
+class CoreResourcePoolSync(CoreNodeSync):
+    name: String
+    description: StringOptional
+
+
+class CoreTaskTargetSync(CoreNodeSync):
+    pass
+
+
+class CoreThreadSync(CoreNodeSync):
+    label: StringOptional
+    resolved: Boolean
+    created_at: DateTimeOptional
+    change: RelatedNodeSync
+    comments: RelationshipManagerSync
+    created_by: RelatedNodeSync
+
+
+class CoreTransformationSync(CoreNodeSync):
+    name: String
+    label: StringOptional
+    description: StringOptional
+    timeout: Integer
+    query: RelatedNodeSync
+    repository: RelatedNodeSync
+    tags: RelationshipManagerSync
+
+
+class CoreValidatorSync(CoreNodeSync):
+    label: StringOptional
+    state: Enum
+    conclusion: Enum
+    completed_at: DateTimeOptional
+    started_at: DateTimeOptional
+    proposed_change: RelatedNodeSync
+    checks: RelationshipManagerSync
+
+
+class CoreWebhookSync(CoreNodeSync):
+    name: String
+    description: StringOptional
+    url: URL
+    validate_certificates: BooleanOptional
+
+
+class LineageOwnerSync(CoreNodeSync):
+    pass
+
+
+class LineageSourceSync(CoreNodeSync):
+    pass
+
+
+class BuiltinTagSync(CoreNodeSync):
+    name: String
+    description: StringOptional
+
+
+class CoreAccountSync(LineageOwnerSync, LineageSourceSync, CoreGenericAccountSync):
+    pass
+
+
+class CoreArtifactSync(CoreTaskTargetSync):
+    name: String
+    status: Enum
+    content_type: Enum
+    checksum: StringOptional
+    storage_id: StringOptional
+    parameters: JSONAttributeOptional
+    object: RelatedNodeSync
+    definition: RelatedNodeSync
+
+
+class CoreArtifactCheckSync(CoreCheckSync):
+    changed: BooleanOptional
+    checksum: StringOptional
+    artifact_id: StringOptional
+    storage_id: StringOptional
+    line_number: IntegerOptional
+
+
+class CoreArtifactDefinitionSync(CoreTaskTargetSync):
+    name: String
+    artifact_name: String
+    description: StringOptional
+    parameters: JSONAttribute
+    content_type: Enum
+    targets: RelatedNodeSync
+    transformation: RelatedNodeSync
+
+
+class CoreArtifactThreadSync(CoreThreadSync):
+    artifact_id: StringOptional
+    storage_id: StringOptional
+    line_number: IntegerOptional
+
+
+class CoreArtifactValidatorSync(CoreValidatorSync):
+    definition: RelatedNodeSync
+
+
+class CoreChangeCommentSync(CoreCommentSync):
+    change: RelatedNodeSync
+
+
+class CoreChangeThreadSync(CoreThreadSync):
+    pass
+
+
+class CoreCheckDefinitionSync(CoreTaskTargetSync):
+    name: String
+    description: StringOptional
+    file_path: String
+    class_name: String
+    timeout: Integer
+    parameters: JSONAttributeOptional
+    repository: RelatedNodeSync
+    query: RelatedNodeSync
+    targets: RelatedNodeSync
+    tags: RelationshipManagerSync
+
+
+class CoreCustomWebhookSync(CoreWebhookSync, CoreTaskTargetSync):
+    transformation: RelatedNodeSync
+
+
+class CoreDataCheckSync(CoreCheckSync):
+    conflicts: JSONAttribute
+    keep_branch: Enum
+
+
+class CoreDataValidatorSync(CoreValidatorSync):
+    pass
+
+
+class CoreFileCheckSync(CoreCheckSync):
+    files: ListAttributeOptional
+    commit: StringOptional
+
+
+class CoreFileThreadSync(CoreThreadSync):
+    file: StringOptional
+    commit: StringOptional
+    line_number: IntegerOptional
+    repository: RelatedNodeSync
+
+
+class CoreGeneratorCheckSync(CoreCheckSync):
+    instance: String
+
+
+class CoreGeneratorDefinitionSync(CoreTaskTargetSync):
+    name: String
+    description: StringOptional
+    parameters: JSONAttribute
+    file_path: String
+    class_name: String
+    convert_query_response: BooleanOptional
+    query: RelatedNodeSync
+    repository: RelatedNodeSync
+    targets: RelatedNodeSync
+
+
+class CoreGeneratorGroupSync(CoreGroupSync):
+    pass
+
+
+class CoreGeneratorInstanceSync(CoreTaskTargetSync):
+    name: String
+    status: Enum
+    object: RelatedNodeSync
+    definition: RelatedNodeSync
+
+
+class CoreGeneratorValidatorSync(CoreValidatorSync):
+    definition: RelatedNodeSync
+
+
+class CoreGraphQLQuerySync(CoreNodeSync):
+    name: String
+    description: StringOptional
+    query: String
+    variables: JSONAttributeOptional
+    operations: ListAttributeOptional
+    models: ListAttributeOptional
+    depth: IntegerOptional
+    height: IntegerOptional
+    repository: RelatedNodeSync
+    tags: RelationshipManagerSync
+
+
+class CoreGraphQLQueryGroupSync(CoreGroupSync):
+    parameters: JSONAttributeOptional
+    query: RelatedNodeSync
+
+
+class CoreIPAddressPoolSync(CoreResourcePoolSync, LineageSourceSync):
+    default_address_type: String
+    default_prefix_length: IntegerOptional
+    resources: RelationshipManagerSync
+    ip_namespace: RelatedNodeSync
+
+
+class CoreIPPrefixPoolSync(CoreResourcePoolSync, LineageSourceSync):
+    default_prefix_length: IntegerOptional
+    default_member_type: Enum
+    default_prefix_type: StringOptional
+    resources: RelationshipManagerSync
+    ip_namespace: RelatedNodeSync
+
+
+class CoreNumberPoolSync(CoreResourcePoolSync, LineageSourceSync):
+    node: String
+    node_attribute: String
+    start_range: Integer
+    end_range: Integer
+
+
+class CoreObjectThreadSync(CoreThreadSync):
+    object_path: String
+
+
+class CorePasswordCredentialSync(CoreCredentialSync):
+    username: StringOptional
+    password: StringOptional
+
+
+class CoreProposedChangeSync(CoreTaskTargetSync):
+    name: String
+    description: StringOptional
+    source_branch: String
+    destination_branch: String
+    state: Enum
+    approved_by: RelationshipManagerSync
+    reviewers: RelationshipManagerSync
+    created_by: RelatedNodeSync
+    comments: RelationshipManagerSync
+    threads: RelationshipManagerSync
+    validations: RelationshipManagerSync
+
+
+class CoreReadOnlyRepositorySync(LineageOwnerSync, LineageSourceSync, CoreGenericRepositorySync, CoreTaskTargetSync):
+    ref: String
+    commit: StringOptional
+
+
+class CoreRepositorySync(LineageOwnerSync, LineageSourceSync, CoreGenericRepositorySync, CoreTaskTargetSync):
+    default_branch: String
+    commit: StringOptional
+
+
+class CoreRepositoryValidatorSync(CoreValidatorSync):
+    repository: RelatedNodeSync
+
+
+class CoreSchemaCheckSync(CoreCheckSync):
+    conflicts: JSONAttribute
+
+
+class CoreSchemaValidatorSync(CoreValidatorSync):
+    pass
+
+
+class CoreStandardCheckSync(CoreCheckSync):
+    pass
+
+
+class CoreStandardGroupSync(CoreGroupSync):
+    pass
+
+
+class CoreStandardWebhookSync(CoreWebhookSync, CoreTaskTargetSync):
+    shared_key: String
+
+
+class CoreThreadCommentSync(CoreCommentSync):
+    thread: RelatedNodeSync
+
+
+class CoreTransformJinja2Sync(CoreTransformationSync):
+    template_path: String
+
+
+class CoreTransformPythonSync(CoreTransformationSync):
+    file_path: String
+    class_name: String
+
+
+class CoreUserValidatorSync(CoreValidatorSync):
+    check_definition: RelatedNodeSync
+    repository: RelatedNodeSync
+
+
+class InternalAccountTokenSync(CoreNodeSync):
+    name: StringOptional
+    token: String
+    expiration: DateTimeOptional
+    account: RelatedNodeSync
+
+
+class InternalRefreshTokenSync(CoreNodeSync):
+    expiration: DateTime
+    account: RelatedNodeSync
+
+
+class IpamNamespaceSync(BuiltinIPNamespaceSync):
+    default: BooleanOptional

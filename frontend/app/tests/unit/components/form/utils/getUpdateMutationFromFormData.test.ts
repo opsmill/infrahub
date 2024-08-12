@@ -1,5 +1,9 @@
 import { describe, expect } from "vitest";
-import { DynamicFieldProps, FormAttributeValue } from "@/components/form/type";
+import {
+  DynamicFieldProps,
+  FormAttributeValue,
+  RelationshipValueFormPool,
+} from "@/components/form/type";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { buildField } from "./getCreateMutationFromFormData.test";
 
@@ -98,6 +102,40 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
   });
 
+  it("keeps field if source change from user to pool", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildField({
+        name: "field1",
+        type: "relationship",
+        defaultValue: { source: { type: "user" }, value: { id: "value1" } },
+      }),
+    ];
+    const formData: Record<string, RelationshipValueFormPool> = {
+      field1: {
+        source: {
+          type: "pool",
+          label: "test name pool",
+          id: "pool-id",
+          kind: "FakeResourcePool",
+        },
+        value: {
+          from_pool: { id: "pool-id" },
+        },
+      },
+    };
+
+    // WHEN
+    const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      field1: {
+        from_pool: { id: "pool-id" },
+      },
+    });
+  });
+
   it("set is_default: true if field if value is from profile", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
@@ -107,7 +145,15 @@ describe("getUpdateMutationFromFormData - test", () => {
       }),
     ];
     const formData: Record<string, FormAttributeValue> = {
-      field1: { source: { type: "profile" }, value: "profile1" },
+      field1: {
+        source: {
+          type: "profile",
+          kind: "FakeProfileKind",
+          id: "profile-id",
+          label: "Profile 1",
+        },
+        value: "profile1",
+      },
     };
 
     // WHEN

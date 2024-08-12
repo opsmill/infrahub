@@ -5,22 +5,74 @@ import { SelectOption } from "@/components/inputs/select";
 import { components } from "@/infraops";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 
-type FormSourceType = "pool" | "profile" | "schema" | "user";
+type SourceType = "schema" | "user";
 
-type SourceType = {
-  type: FormSourceType;
-  label?: string | null;
+export type EmptyFieldValue = {
+  source: null;
+  value: null;
 };
 
-export type FormAttributeValue = {
-  source: SourceType | null;
-  value: string | number | boolean | null | undefined;
+export type AttributeValueFromProfile = {
+  source: {
+    type: "profile";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: string | number | boolean | null;
 };
 
-export type FormRelationshipValue = {
-  source: SourceType | null;
-  value: { id: string } | Array<{ id: string }> | { from_pool: { id: string } } | null | undefined;
+export type AttributeValueFormPool = {
+  source: {
+    type: "pool";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: { from_pool: string };
 };
+
+export type AttributeValueForCheckbox = {
+  source: null;
+  value: boolean;
+};
+
+export type AttributeValueFromUser =
+  | {
+      source: {
+        type: SourceType;
+      };
+      value: string | number | boolean | null;
+    }
+  | AttributeValueForCheckbox;
+
+export type FormAttributeValue =
+  | AttributeValueFromUser
+  | AttributeValueFromProfile
+  | EmptyFieldValue
+  | AttributeValueFormPool;
+
+export type RelationshipValueFormPool = {
+  source: {
+    type: "pool";
+    label: string | null;
+    kind: string;
+    id: string;
+  };
+  value: { id: string } | { from_pool: { id: string } };
+};
+
+export type RelationshipValueFormUser = {
+  source: {
+    type: SourceType;
+  };
+  value: { id: string } | Array<{ id: string }> | null;
+};
+
+export type FormRelationshipValue =
+  | RelationshipValueFormUser
+  | RelationshipValueFormPool
+  | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
@@ -39,6 +91,11 @@ export type DynamicInputFieldProps = FormFieldProps & {
   type: Exclude<SchemaAttributeType, "Dropdown">;
 };
 
+export type DynamicNumberFieldProps = FormFieldProps & {
+  type: "Number";
+  pools?: Array<NumberPoolData>;
+};
+
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<SelectOption>;
@@ -50,7 +107,7 @@ export type DynamicDropdownFieldProps = FormFieldProps & {
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
-  items: Array<string>;
+  items: Array<SelectOption>;
   field?:
     | components["schemas"]["AttributeSchema-Output"]
     | components["schemas"]["RelationshipSchema-Output"];
@@ -69,6 +126,21 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
 
 export type DynamicFieldProps =
   | DynamicInputFieldProps
+  | DynamicNumberFieldProps
   | DynamicDropdownFieldProps
   | DynamicEnumFieldProps
   | DynamicRelationshipFieldProps;
+
+export const isFormFieldValueFromPool = (
+  fieldData: FormFieldValue
+): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
+
+export type NumberPoolData = {
+  id: string;
+  label: string;
+  kind: string;
+  nodeAttribute: {
+    id: string;
+    name: string;
+  };
+};

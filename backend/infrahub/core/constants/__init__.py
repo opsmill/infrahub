@@ -63,6 +63,11 @@ class AccountType(InfrahubStringEnum):
     Git = "Git"
 
 
+class AccountStatus(InfrahubStringEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
 class ArtifactStatus(InfrahubStringEnum):
     ERROR = "Error"
     PENDING = "Pending"
@@ -100,6 +105,21 @@ class CheckType(InfrahubStringEnum):
     TEST = "test"
     USER = "user"
     ALL = "all"
+
+
+class RepositoryAdminStatus(InfrahubStringEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    STAGING = "staging"
+
+
+class RepositoryStatus(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    SYNCING = "syncing"
+    INSYNC = "in-sync"
+    ERROR_CRED = "error-cred"
+    ERROR_IMPORT = "error-import"
+    ERROR = "error"
 
 
 class DiffAction(InfrahubStringEnum):

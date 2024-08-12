@@ -8,9 +8,10 @@ import { Link } from "react-router-dom";
 
 const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
   return (
-    <CardWithBorder className="flex-grow relative">
-      <GraphqlViewer value={query} />
-      <div className="flex gap-2 absolute top-6 right-6">
+    <CardWithBorder className="flex-grow">
+      <CardWithBorder.Title className="flex gap-2 items-center">
+        <h3 className="mr-auto">Query</h3>
+
         <CopyToClipboard variant="outline" text={query} />
 
         <Link to={constructPath("/graphql", [{ name: "query", value: query }])}>
@@ -18,7 +19,9 @@ const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
             GraphQL sandbox <Icon icon="mdi:arrow-top-right" className="ml-1" />
           </Button>
         </Link>
-      </div>
+      </CardWithBorder.Title>
+
+      <GraphqlViewer value={query} />
     </CardWithBorder>
   );
 };

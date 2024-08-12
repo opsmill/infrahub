@@ -159,3 +159,9 @@ nats:
   config:
     jetstream:
       enabled: true
+
+# -------------- Cloud --------------
+traefik:
+  enabled: false
+cloud:
+  enabled: false
