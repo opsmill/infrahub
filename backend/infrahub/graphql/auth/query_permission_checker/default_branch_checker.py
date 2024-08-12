@@ -28,7 +28,10 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                 or analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, config.SETTINGS.initial.default_branch)
             )
             and analyzed_query.contains_mutation
-            and analyzed_query.operation_name != "BranchCreate"  # Find a way better way to reference this?
+            and (
+                analyzed_query.operation_name != "BranchCreate"  # Allow user to create a branch
+                and not analyzed_query.operation_name.startswith("InfrahubAccount")  # Allow user to manage self
+            )
         ):
             raise PermissionDeniedError(
                 f"You are not allowed to change data in the default branch '{config.SETTINGS.initial.default_branch}'"
