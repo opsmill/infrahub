@@ -1,12 +1,13 @@
 import DropdownField from "@/components/form/fields/dropdown.field";
 import InputField from "@/components/form/fields/input.field";
+import NumberField from "@/components/form/fields/number.field";
 import { NodeFormProps } from "@/components/form/node-form";
 import { FormFieldValue } from "@/components/form/type";
 import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { SelectOption } from "@/components/inputs/select";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import { Form } from "@/components/ui/form";
+import { Form, FormSubmit } from "@/components/ui/form";
 import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
@@ -43,8 +44,10 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
+    console.log("data: ", data);
     try {
       const newObject = getCreateMutationFromFormDataOnly(data);
+      console.log("newObject: ", newObject);
 
       if (!Object.keys(newObject).length) {
         return;
@@ -85,20 +88,21 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
         <NodeAttributesSelects />
-        <InputField
+        <NumberField
           name="start_range"
           label="Start range"
           description="The start range for the pool"
           rules={{ required: true }}
-          type="number"
         />
-        <InputField
+        <NumberField
           name="end_range"
           label="End range"
           description="The end range for the pool"
           rules={{ required: true }}
-          type="number"
         />
+        <div className="text-right">
+          <FormSubmit>Create</FormSubmit>
+        </div>
       </Form>
     </div>
   );
