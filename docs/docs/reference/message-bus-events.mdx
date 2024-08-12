@@ -350,7 +350,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **repository_kind** | The kind of the repository | string | None |
 | **first_commit** | The first commit | string | None |
-| **second_commit** | The second commit | string | None |
+| **second_commit** | The second commit | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -397,6 +397,8 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **default_branch_name** | Default branch for this repository | N/A | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **admin_status** | Administrative status of the repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.connectivity
@@ -410,9 +412,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
-| **repository_id** | The unique ID of the Repository | string | None |
 | **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The type of repository | string | None |
 | **repository_location** | The location of repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
@@ -429,6 +429,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **repository_id** | The unique ID of the Repository | string | None |
 | **repository_name** | The name of the repository | string | None |
+| **admin_status** | Administrative status of the repository | string | None |
 | **source_branch** | The source branch | string | None |
 | **destination_branch** | The source branch | string | None |
 <!-- vale on -->
@@ -450,6 +451,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **ref** | Ref to track on the external repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **admin_status** | Administrative status of the repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.import_objects
@@ -889,6 +891,8 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The destination branch of the proposed change | string | None |
 | **branch_diff** | The calculated diff between the two branches | N/A | None |
+| **refresh_artifacts** | Whether to regenerate artifacts after the generators are run | boolean | None |
+| **do_repository_checks** | Whether to run repository and user checks after the generators are run | boolean | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event request.proposed_change.schema_integrity
@@ -1532,7 +1536,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **repository_kind** | The kind of the repository | string | None |
 | **first_commit** | The first commit | string | None |
-| **second_commit** | The second commit | string | None |
+| **second_commit** | The second commit | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -1581,6 +1585,8 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **default_branch_name** | Default branch for this repository | N/A | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **admin_status** | Administrative status of the repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.connectivity
@@ -1595,9 +1601,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
-| **repository_id** | The unique ID of the Repository | string | None |
 | **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The type of repository | string | None |
 | **repository_location** | The location of repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
@@ -1615,6 +1619,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **repository_id** | The unique ID of the Repository | string | None |
 | **repository_name** | The name of the repository | string | None |
+| **admin_status** | Administrative status of the repository | string | None |
 | **source_branch** | The source branch | string | None |
 | **destination_branch** | The source branch | string | None |
 <!-- vale on -->
@@ -1637,6 +1642,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **ref** | Ref to track on the external repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **admin_status** | Administrative status of the repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.import_objects
@@ -2098,6 +2104,8 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The destination branch of the proposed change | string | None |
 | **branch_diff** | The calculated diff between the two branches | N/A | None |
+| **refresh_artifacts** | Whether to regenerate artifacts after the generators are run | boolean | None |
+| **do_repository_checks** | Whether to run repository and user checks after the generators are run | boolean | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event request.proposed_change.schema_integrity

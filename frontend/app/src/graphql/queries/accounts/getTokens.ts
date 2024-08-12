@@ -1,6 +1,6 @@
 export const getTokens = `
-query CoreAccountToken($offset: Int, $limit: Int) {
-  CoreAccountToken(offset: $offset, limit: $limit) {
+query InfrahubAccountToken($offset: Int, $limit: Int) {
+  InfrahubAccountToken(offset: $offset, limit: $limit) {
     count
     edges {
       node {

@@ -8,7 +8,7 @@ from .interface import GraphQLQueryPermissionCheckerInterface
 
 
 class ReadOnlyGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
-    allowed_readonly_mutations = ["CoreAccountSelfUpdate"]
+    allowed_readonly_mutations = ["InfrahubAccountSelfUpdate"]
 
     async def supports(self, account_session: AccountSession) -> bool:
         return account_session.authenticated and account_session.read_only

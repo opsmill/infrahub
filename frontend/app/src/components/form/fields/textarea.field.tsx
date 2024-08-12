@@ -1,6 +1,6 @@
 import { MarkdownEditor } from "@/components/editor";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { FormFieldProps } from "@/components/form/type";
+import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
@@ -20,6 +20,8 @@ const TextareaField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
+        const fieldData: FormAttributeValue = field.value;
+
         return (
           <div className="relative flex flex-col">
             <LabelFormField
@@ -27,6 +29,7 @@ const TextareaField = ({
               unique={unique}
               required={!!rules?.required}
               description={description}
+              fieldData={fieldData}
             />
 
             <FormInput>

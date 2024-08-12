@@ -28,22 +28,20 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames, debounce } from "@/utils/common";
-import { constructPath } from "@/utils/fetch";
-import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
-import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useObjectItems } from "@/hooks/useObjectItems";
+import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
+import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
-  overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
   onSuccess?: (newObject: any) => void;
   preventBlock?: boolean;
   preventLinks?: boolean;
@@ -51,7 +49,6 @@ type ObjectItemsProps = {
 
 export default function ObjectItems({
   schema,
-  overrideDetailsViewUrl,
   onSuccess,
   preventBlock,
   preventLinks,
@@ -201,50 +198,40 @@ export default function ObjectItems({
         {/* TODO: use new Table component for list */}
         {rows && (
           <div className="overflow-auto">
-            <table className="table-auto border-spacing-0 w-full">
+            <table className="table-auto border-spacing-0 w-full" cellPadding="0">
               <thead className="bg-gray-50 text-left border-y border-gray-300">
                 <tr>
                   {columns?.map((attribute) => (
-                    <th
-                      key={attribute.name}
-                      scope="col"
-                      className="p-2 text-xs font-semibold text-gray-900">
-                      {attribute.label}
+                    <th key={attribute.name} scope="col" className="h-9 font-semibold">
+                      <TextCell>{attribute.label}</TextCell>
                     </th>
                   ))}
                   <th scope="col"></th>
                 </tr>
               </thead>
 
-              <tbody className="bg-custom-white text-left">
+              <tbody className="bg-custom-white">
                 {rows?.map((row: any, index: number) => (
                   <tr
                     key={index}
                     className={classNames(
-                      "border-b border-gray-200 h-[36px]",
-                      !preventLinks && "hover:bg-gray-50 cursor-pointer"
+                      "border-b border-gray-200",
+                      !preventLinks && "hover:bg-gray-50"
                     )}
                     data-cy="object-table-row">
-                    {columns?.map((attribute, index) => (
-                      <td key={index} className="p-0">
-                        <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
+                    {columns?.map((attribute, index) => {
+                      return (
+                        <td key={index} className="h-9">
                           {preventLinks ? (
-                            <div>{getObjectItemDisplayValue(row, attribute)}</div>
+                            <TextCell key={index}>{getDisplayValue(row, attribute)}</TextCell>
                           ) : (
-                            <Link
-                              to={
-                                overrideDetailsViewUrl
-                                  ? overrideDetailsViewUrl(row.id, row.__typename)
-                                  : constructPath(getObjectDetailsUrl(row.id, row.__typename))
-                              }>
-                              <div>{getObjectItemDisplayValue(row, attribute)}</div>
-                            </Link>
+                            <ObjectItemsCell row={row} attribute={attribute} />
                           )}
-                        </div>
-                      </td>
-                    ))}
+                        </td>
+                      );
+                    })}
 
-                    <td className="text-right w-8">
+                    <td className="h-9 text-right">
                       <ButtonWithTooltip
                         data-cy="delete"
                         data-testid="delete-row-button"

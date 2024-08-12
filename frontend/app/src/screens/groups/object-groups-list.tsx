@@ -8,27 +8,18 @@ import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { QSP } from "@/config/qsp";
 import ModalDelete from "@/components/modals/modal-delete";
 import { useState } from "react";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@/hooks/useQuery";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { pluralize } from "@/utils/string";
 import { useAtomValue } from "jotai";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { REMOVE_RELATIONSHIP } from "@/graphql/mutations/relationships/removeRelationship";
-
-export type ObjectGroup = {
-  id: string;
-  display_label: string;
-  description: { value: string } | null;
-  members: {
-    count: number;
-  };
-  __typename: string;
-};
+import { GroupDataFromAPI } from "@/screens/groups/types";
 
 type ObjectGroupsListProps = {
   className?: string;
   objectId?: string;
-  groups: Array<ObjectGroup>;
+  groups: Array<GroupDataFromAPI>;
 };
 
 export default function ObjectGroupsList({ className, objectId, groups }: ObjectGroupsListProps) {
@@ -47,7 +38,7 @@ export default function ObjectGroupsList({ className, objectId, groups }: Object
 
 type ObjectGroupProps = {
   objectId?: string;
-  group: ObjectGroup;
+  group: GroupDataFromAPI;
 };
 
 const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {

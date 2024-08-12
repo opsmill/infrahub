@@ -240,7 +240,7 @@ async def test_schema_load_restricted_namespace(
             json={"schemas": [helper.schema_file("restricted_namespace_01.json")]},
         )
 
-    assert response.status_code == 403
+    assert response.status_code == 422
     assert response.json()["errors"][0]["message"] == "Restricted namespace 'Internal' used on 'Timestamp'"
 
 

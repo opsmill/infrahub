@@ -7,11 +7,12 @@ export enum CIRCLE_BADGE_TYPES {
   CANCEL,
   WARNING,
   LIGHT,
+  GHOST,
 }
 
 // type BadgeProps = {}
 
-const DEFAULT_CLASS = "flex items-center font-medium mr-2 last:mr-0 rounded";
+const DEFAULT_CLASS = "flex items-center font-medium mr-2 pl-2 last:mr-0 rounded";
 
 const getClassName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
   switch (type) {
@@ -36,6 +37,12 @@ const getClassName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
     case CIRCLE_BADGE_TYPES.LIGHT: {
       return `
         bg-custom-white text-gray-800
+        ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
+      `;
+    }
+    case CIRCLE_BADGE_TYPES.GHOST: {
+      return `
+        text-gray-800
         ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }

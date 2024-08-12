@@ -234,23 +234,13 @@ async def create_account(
 ) -> Node:
     token_schema = db.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(
-        db=db,
-        name=name,
-        type="User",
-        role=role,
-        password=password,
-    )
+    await obj.new(db=db, name=name, account_type="User", role=role, password=password)
     await obj.save(db=db)
     log.info(f"Created Account: {name}", account_name=name)
 
     if token_value:
         token = await Node.init(db=db, schema=token_schema)
-        await token.new(
-            db=db,
-            token=token_value,
-            account=obj,
-        )
+        await token.new(db=db, token=token_value, name="Created automatically", account=obj)
         await token.save(db=db)
 
     return obj

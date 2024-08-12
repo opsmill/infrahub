@@ -6,10 +6,12 @@ from graphene import Boolean, Field, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
 from graphene import Interface as GrapheneInterface
 
+from infrahub.core import registry
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.model.diff import BranchDiffRelationshipMany, DiffElementType
 from infrahub.core.diff.payload_builder import DiffPayloadBuilder
+from infrahub.exceptions import QueryValidationError
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -81,6 +83,9 @@ class DiffSummaryEntry(ObjectType):
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
     ) -> list[dict[str, Union[str, list[dict[str, str]]]]]:
+        context: GraphqlContext = info.context
+        if context.branch.name == registry.default_branch and time_from is None:
+            raise QueryValidationError("time_from is required on default branch")
         return await DiffSummaryEntry.get_summary(
             info=info,
             branch_only=branch_only,

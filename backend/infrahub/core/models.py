@@ -135,11 +135,12 @@ class SchemaUpdateValidationResult(BaseModel):
     errors: list[SchemaUpdateValidationError] = Field(default_factory=list)
     constraints: list[SchemaUpdateConstraintInfo] = Field(default_factory=list)
     migrations: list[SchemaUpdateMigrationInfo] = Field(default_factory=list)
+    enforce_update_support: bool = True
     diff: SchemaDiff
 
     @classmethod
-    def init(cls, diff: SchemaDiff, schema: SchemaBranch) -> Self:
-        obj = cls(diff=diff)
+    def init(cls, diff: SchemaDiff, schema: SchemaBranch, enforce_update_support: bool = True) -> Self:
+        obj = cls(diff=diff, enforce_update_support=enforce_update_support)
         obj.process_diff(schema=schema)
 
         return obj
@@ -244,7 +245,7 @@ class SchemaUpdateValidationResult(BaseModel):
         schema_path: SchemaPath,
         field_update: str,
     ) -> None:
-        if field_update == UpdateSupport.NOT_SUPPORTED.value:
+        if field_update == UpdateSupport.NOT_SUPPORTED.value and self.enforce_update_support:
             self.errors.append(
                 SchemaUpdateValidationError(
                     path=schema_path,

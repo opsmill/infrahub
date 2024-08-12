@@ -3,7 +3,6 @@ import { genericsState } from "@/state/atoms/schema.atom";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItems from "@/screens/object-items/object-items-paginated";
-import { constructPath } from "@/utils/fetch";
 import ObjectHeader from "@/screens/objects/object-header";
 import Content from "@/screens/layout/content";
 
@@ -18,10 +17,7 @@ const ResourceManagerPage = () => {
       <ObjectHeader schema={resourcePoolSchema} />
 
       <Content className="p-2">
-        <ObjectItems
-          schema={resourcePoolSchema}
-          overrideDetailsViewUrl={(objectId) => constructPath(`/resource-manager/${objectId}`)}
-        />
+        <ObjectItems schema={resourcePoolSchema} />
       </Content>
     </>
   );

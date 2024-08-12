@@ -1,4 +1,4 @@
-import { AVATAR_SIZE, Avatar } from "@/components/display/avatar";
+import { Avatar } from "@/components/display/avatar";
 import { DateDisplay } from "@/components/display/date-display";
 import { MarkdownViewer } from "@/components/editor/markdown-viewer";
 import { classNames } from "@/utils/common";
@@ -18,7 +18,7 @@ export const Comment: React.FC<CommentProps> = ({ author, createdAt, content, cl
       <div className="flex justify-between items-center mb-2 text-xs">
         <div className="flex items-center w-full">
           <div className="inline-flex items-center mr-3 text-sm text-gray-900 flex-1">
-            <Avatar name={author} size={AVATAR_SIZE.SMALL} className="mr-4" />
+            <Avatar name={author} size={"sm"} className="mr-4" />
             {author}
           </div>
 

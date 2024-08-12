@@ -155,8 +155,8 @@ class TestInfrahubClientSync:
         assert len(nodes)
 
     async def test_get_generic_fragment(self, client: InfrahubClientSync, init_db_base, base_dataset):
-        nodes = client.all(kind="LineageSource", fragment=True, exclude=["type"])
-        assert len(nodes) == 2
+        nodes = client.all(kind="CoreGenericAccount", fragment=True, exclude=["type"])
+        assert len(nodes)
         assert nodes[0].typename == "CoreAccount"
         assert nodes[0].name.value is not None  # type: ignore[attr-defined]
 

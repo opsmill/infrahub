@@ -25,7 +25,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Create a new profile", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Tag" }).click();
+      await page.getByRole("option", { name: "Tag Builtin" }).click();
       await page.getByLabel("Profile Name *").fill("profile test tag");
       await page.getByLabel("Description").fill("A profile for E2E test");
       await page.getByRole("button", { name: "Save" }).click();
@@ -35,7 +35,6 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await expect(
         page.locator("#alert-success-BuiltinTag-created").getByText("BuiltinTag created")
       ).toBeVisible();
-      await expect(page.getByRole("link", { name: "ProfileBuiltinTag" })).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" })).toBeVisible();
     });
   });
@@ -70,6 +69,14 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       // Verify initial input fields for profile
       await expect(page.getByLabel("Name *")).toBeEmpty();
       await expect(page.getByLabel("Description")).toHaveValue("A profile for E2E test");
+
+      await expect(page.getByTestId("source-profile-badge")).toBeVisible();
+      await expect(page.getByTestId("source-profile-badge")).toContainText("profile test tag");
+      await page.getByLabel("Select profiles").click();
+      await page.getByTestId("source-profile-badge").hover();
+      await expect(page.getByTestId("source-profile-tooltip").first()).toBeVisible();
+      await expect(page.getByRole("link", { name: "profile test tag" }).first()).toBeVisible();
+      await page.locator("body").press("Escape"); // hide tooltip
 
       await page.getByLabel("Name *").fill("tag with profile");
       await page.getByRole("button", { name: "Save" }).click();
@@ -122,6 +129,23 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
   });
 
+  test("edit profile of tag without touching any other field", async ({ page }) => {
+    await test.step("got to edit form of tag", async () => {
+      await page.goto("/objects/BuiltinTag");
+      await page.getByRole("link", { name: "tag with profile" }).click();
+      await page.getByTestId("edit-button").click();
+    });
+
+    await test.step("remove profile from tag", async () => {
+      await page.getByLabel("Select profiles optional").click();
+      await page.getByRole("option", { name: "profile test tag" }).click();
+      await expect(page.getByLabel("Description")).toBeEmpty();
+      await page.getByRole("button", { name: "Save" }).click();
+    });
+
+    await expect(page.getByText("Description-")).toBeVisible();
+  });
+
   test("delete the profile and reset object attribute value", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto("/objects/CoreProfile");
@@ -133,7 +157,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
         .getByTestId("delete-row-button")
         .click();
       await expect(page.getByTestId("modal-delete")).toContainText(
-        "Are you sure you want to remove the Profile\"profile test tag\"?"
+        'Are you sure you want to remove the Profile"profile test tag"?'
       );
       await page.getByTestId("modal-delete-confirm").click();
     });
@@ -175,7 +199,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .filter({ hasText: /^Clear$/ })
         .getByRole("combobox")
         .fill("l2");
-      await page.getByRole("option", { name: "Profile Interface L2" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     });
 
     await test.step("verify Interface L2 optional attributes are all visible", async () => {
@@ -203,7 +227,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await page.goto("/objects/CoreProfile");
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Interface L2" }).click();
+      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     });
 
     await test.step("fill and submit form", async () => {
@@ -227,7 +251,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await page.goto("/objects/CoreProfile");
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page.getByRole("option", { name: "Profile Interface Profile", exact: true }).click();
+      await page.getByRole("option", { name: "Interface Infra", exact: true }).click();
     });
 
     await test.step("fill and submit form", async () => {

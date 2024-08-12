@@ -1,13 +1,8 @@
-import { DateDisplay } from "@/components/display/date-display";
-import { QSP } from "@/config/qsp";
 import { classNames } from "@/utils/common";
 import { diffContent } from "@/utils/diff";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useParams } from "react-router-dom";
-import { StringParam, useQueryParam } from "use-query-params";
-import { getNodeClassName, tDataDiffNodePropertyChange } from "./data-diff-node";
-import { DataDiffConflictInfo } from "./diff-conflict-info";
-import { DiffPill } from "./diff-pill";
+import { tDataDiffNodePropertyChange } from "./data-diff-node";
 import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePropertyProps = {
@@ -18,43 +13,34 @@ export type tDataDiffNodePropertyProps = {
 export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
   const { property, path } = props;
 
-  const { branchName } = useParams();
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
+  const { "*": branchName } = useParams();
 
-  const { type, action, changed_at, branch } = property;
+  const { type, action, branch } = property;
 
   return (
     <div className="relative flex group">
       {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
-      <ChevronDownIcon className="w-4 h-4 mr-2 text-transparent" aria-hidden="true" />
+      <ChevronDownIcon className="w-4 h-4 mx-2 text-transparent" aria-hidden="true" />
 
-      <div
-        className={classNames(
-          "p-1 pr-0 flex-1 flex flex-col lg:flex-row rounded-md mb-1",
-          getNodeClassName([], branch, branchOnly)
-        )}>
+      <div className={classNames("flex-1 flex flex-col lg:flex-row")}>
         <div className="flex flex-1 items-center">
-          <div className="flex flex-1 items-center group">
+          <div className="flex w-1/3 items-center group">
             <span className="">{type}</span>
 
             {/* Do not display comment button if we are on the branch details view */}
             {!branchName && <DataDiffThread path={path} />}
           </div>
 
-          <div className="flex flex-1 items-center">{diffContent[action](property)}</div>
-        </div>
-
-        <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
-          <DiffPill hidden />
-
-          <div className="flex lg:w-[200px]">
-            {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
-            <DateDisplay date={changed_at} />
+          <div className="flex w-2/3 items-center">
+            <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-green-700/10">
+              {branch === "main" && diffContent[action](property)}
+            </span>
+            <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-custom-blue-700/10">
+              {branch !== "main" && diffContent[action](property)}
+            </span>
           </div>
         </div>
       </div>
-
-      {!branchName && <DataDiffConflictInfo path={path} />}
     </div>
   );
 };

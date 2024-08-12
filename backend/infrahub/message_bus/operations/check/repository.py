@@ -17,7 +17,9 @@ log = get_logger()
 
 
 async def check_definition(message: messages.CheckRepositoryCheckDefinition, service: InfrahubServices):
-    definition = await service.client.get(kind=InfrahubKind.CHECKDEFINITION, id=message.check_definition_id)
+    definition = await service.client.get(
+        kind=InfrahubKind.CHECKDEFINITION, id=message.check_definition_id, branch=message.branch_name
+    )
     async with service.task_report(
         related_node=message.proposed_change,
         title=f"{definition.name.value} check triggered for {message.repository_name}",

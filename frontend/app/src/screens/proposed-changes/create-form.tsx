@@ -16,15 +16,15 @@ import { Input } from "@/components/ui/input";
 import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
 import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "@/hooks/useAuth";
-import useQuery from "@/hooks/useQuery";
+import useQuery, { useMutation } from "@/hooks/useQuery";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { constructPath } from "@/utils/fetch";
-import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { ACCOUNT_OBJECT } from "@/config/constants";
 
 export const ProposedChangeCreateForm = () => {
   const { user } = useAuth();
@@ -150,7 +150,7 @@ export const ProposedChangeCreateForm = () => {
               <Select
                 multiple
                 options={
-                  getAllAccountsData?.CoreAccount?.edges.map((edge: any) => ({
+                  getAllAccountsData?.[ACCOUNT_OBJECT]?.edges.map((edge: any) => ({
                     id: edge?.node.id,
                     name: edge?.node?.display_label,
                   })) ?? []

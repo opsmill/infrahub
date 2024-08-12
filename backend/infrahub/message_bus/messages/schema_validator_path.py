@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import Field
 
 from infrahub.core.branch import Branch  # noqa: TCH001
@@ -22,8 +20,8 @@ class SchemaValidatorPath(InfrahubMessage):
 
 class SchemaValidatorPathResponseData(InfrahubResponseData):
     violations: list[SchemaViolation] = Field(default_factory=list)
-    constraint_name: Optional[str] = None
-    schema_path: Optional[SchemaPath] = None
+    constraint_name: str
+    schema_path: SchemaPath
 
 
 class SchemaValidatorPathResponse(InfrahubResponse):

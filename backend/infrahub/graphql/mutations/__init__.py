@@ -1,4 +1,4 @@
-from .account import CoreAccountSelfUpdate, CoreAccountTokenCreate, CoreAccountTokenDelete
+from .account import InfrahubAccountSelfUpdate, InfrahubAccountTokenCreate, InfrahubAccountTokenDelete
 from .artifact_definition import InfrahubArtifactDefinitionMutation
 from .attribute import (
     AnyAttributeCreate,
@@ -55,9 +55,9 @@ __all__ = [
     "BranchUpdate",
     "CheckboxAttributeCreate",
     "CheckboxAttributeUpdate",
-    "CoreAccountSelfUpdate",
-    "CoreAccountTokenCreate",
-    "CoreAccountTokenDelete",
+    "InfrahubAccountSelfUpdate",
+    "InfrahubAccountTokenCreate",
+    "InfrahubAccountTokenDelete",
     "IPPrefixPoolGetResource",
     "IPAddressPoolGetResource",
     "InfrahubArtifactDefinitionMutation",

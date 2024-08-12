@@ -6,12 +6,17 @@ import {
   OperationVariables,
   useLazyQuery as useApolloLazyQuery,
   useQuery as useApolloQuery,
+  useMutation as useApolloMutation,
   useSubscription as useApolloSubscription,
 } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import usePagination from "./usePagination";
 
-const useQuery: typeof useApolloQuery = (QUERY, options?: OperationVariables) => {
+interface Options extends OperationVariables {
+  branch?: string;
+}
+
+const useQuery: typeof useApolloQuery = (QUERY, options?: Options) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [{ offset, limit }] = usePagination();
@@ -24,7 +29,7 @@ const useQuery: typeof useApolloQuery = (QUERY, options?: OperationVariables) =>
       limit,
     },
     context: {
-      uri: CONFIG.GRAPHQL_URL(branch?.name, date),
+      uri: CONFIG.GRAPHQL_URL(options?.branch || branch?.name, date),
     },
   });
 };
@@ -41,6 +46,21 @@ export const useLazyQuery: typeof useApolloLazyQuery = (
       uri: CONFIG.GRAPHQL_URL(branch?.name, date),
     },
     ...options,
+  });
+};
+
+export const useMutation: typeof useApolloMutation<any, Record<string, any>, { uri: string }> = (
+  QUERY,
+  options
+) => {
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
+
+  return useApolloMutation(QUERY, {
+    ...options,
+    context: {
+      uri: CONFIG.GRAPHQL_URL(branch?.name, date),
+    },
   });
 };
 

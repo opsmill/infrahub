@@ -19,7 +19,7 @@ export const cleanTabsAndNewLines = (string: string) => {
 };
 
 export const capitalizeFirstLetter = (string: string) => {
-  return string.charAt(0).toUpperCase() + string.slice(1);
+  return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 };
 
 export const concatString = (acc: string, elem: string) => `${acc}${elem}`;

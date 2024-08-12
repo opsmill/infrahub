@@ -109,7 +109,7 @@ class TestDiffRepositorySaveAndLoad:
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
             to_time=Timestamp(self.diff_to_time),
-            nodes=self._build_nodes(num_nodes=1, num_sub_fields=2),
+            nodes=self._build_nodes(num_nodes=5, num_sub_fields=2),
         )
 
         await diff_repository.save(enriched_diff=enriched_diff)
@@ -552,39 +552,39 @@ class TestDiffRepositorySaveAndLoad:
             assert len(root_nodes) == 1
             assert root_nodes == {third_nodes[index]}
 
-    # async def test_save_and_retrieve_many_diffs(self, diff_repository: DiffRepository, reset_database):
-    #     diffs_to_retrieve: list[EnrichedDiffRoot] = []
-    #     start_time = self.diff_from_time.add(seconds=1)
-    #     for i in range(5):
-    #         nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-    #         enriched_diff = EnrichedRootFactory.build(
-    #             base_branch_name=self.base_branch_name,
-    #             diff_branch_name=self.diff_branch_name,
-    #             from_time=Timestamp(start_time.add(minutes=i * 30)),
-    #             to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
-    #             nodes=nodes,
-    #         )
-    #         await diff_repository.save(enriched_diff=enriched_diff)
-    #         diffs_to_retrieve.append(enriched_diff)
-    #     for i in range(5):
-    #         nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-    #         enriched_diff = EnrichedRootFactory.build(
-    #             base_branch_name=self.base_branch_name,
-    #             diff_branch_name=self.diff_branch_name,
-    #             from_time=Timestamp(start_time.add(days=3, minutes=(i * 30))),
-    #             to_time=Timestamp(start_time.add(days=3, minutes=(i * 30) + 29)),
-    #             nodes=nodes,
-    #         )
-    #         await diff_repository.save(enriched_diff=enriched_diff)
+    async def test_save_and_retrieve_many_diffs(self, diff_repository: DiffRepository, reset_database):
+        diffs_to_retrieve: list[EnrichedDiffRoot] = []
+        start_time = self.diff_from_time.add(seconds=1)
+        for i in range(5):
+            nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
+            enriched_diff = EnrichedRootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=self.diff_branch_name,
+                from_time=Timestamp(start_time.add(minutes=i * 30)),
+                to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
+                nodes=nodes,
+            )
+            await diff_repository.save(enriched_diff=enriched_diff)
+            diffs_to_retrieve.append(enriched_diff)
+        for i in range(5):
+            nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
+            enriched_diff = EnrichedRootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=self.diff_branch_name,
+                from_time=Timestamp(start_time.add(days=3, minutes=(i * 30))),
+                to_time=Timestamp(start_time.add(days=3, minutes=(i * 30) + 29)),
+                nodes=nodes,
+            )
+            await diff_repository.save(enriched_diff=enriched_diff)
 
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[self.diff_branch_name],
-    #         from_time=Timestamp(start_time),
-    #         to_time=Timestamp(start_time.add(minutes=150)),
-    #     )
-    #     assert len(retrieved) == 5
-    #     assert set(retrieved) == set(diffs_to_retrieve)
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(start_time),
+            to_time=Timestamp(start_time.add(minutes=150)),
+        )
+        assert len(retrieved) == 5
+        assert set(retrieved) == set(diffs_to_retrieve)
 
     async def test_retrieve_overlapping_diffs_excludes_duplicates(
         self, diff_repository: DiffRepository, reset_database

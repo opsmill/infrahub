@@ -1,7 +1,7 @@
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { iNodeSchema } from "@/state/atoms/schema.atom";
 import NoDataFound from "@/screens/errors/no-data-found";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@/hooks/useQuery";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { pluralize } from "@/utils/string";

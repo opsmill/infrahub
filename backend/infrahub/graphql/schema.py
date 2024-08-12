@@ -16,9 +16,9 @@ from .mutations import (
     BranchRebase,
     BranchUpdate,
     BranchValidate,
-    CoreAccountSelfUpdate,
-    CoreAccountTokenCreate,
-    CoreAccountTokenDelete,
+    InfrahubAccountSelfUpdate,
+    InfrahubAccountTokenCreate,
+    InfrahubAccountTokenDelete,
     IPAddressPoolGetResource,
     IPPrefixPoolGetResource,
     ProcessRepository,
@@ -38,7 +38,6 @@ from .queries import (
     AccountToken,
     BranchQueryList,
     DiffSummary,
-    DiffSummaryOld,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -72,25 +71,24 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
     async with context.db.start_session() as db:
         results = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, fields=fields, db=db
+            schema=InfrahubKind.GENERICACCOUNT,
+            filters={"ids": [context.account_session.account_id]},
+            fields=fields,
+            db=db,
         )
         if results:
             account_profile = await results[0].to_graphql(db=db, fields=fields)
             return account_profile
 
-        raise NodeNotFoundError(
-            node_type=InfrahubKind.ACCOUNT,
-            identifier=context.account_session.account_id,
-        )
+        raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
 
 
 class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
-    CoreAccountToken = AccountToken
+    InfrahubAccountToken = AccountToken
 
     DiffTree = DiffTreeQuery
     DiffSummary = DiffSummary
-    DiffSummaryOld = DiffSummaryOld
 
     Relationship = Relationship
 
@@ -108,9 +106,9 @@ class InfrahubBaseQuery(ObjectType):
 
 
 class InfrahubBaseMutation(ObjectType):
-    CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
-    CoreAccountSelfUpdate = CoreAccountSelfUpdate.Field()
-    CoreAccountTokenDelete = CoreAccountTokenDelete.Field()
+    InfrahubAccountTokenCreate = InfrahubAccountTokenCreate.Field()
+    InfrahubAccountSelfUpdate = InfrahubAccountSelfUpdate.Field()
+    InfrahubAccountTokenDelete = InfrahubAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
 
     IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()

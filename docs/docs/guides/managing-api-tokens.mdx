@@ -15,7 +15,7 @@ Managing API tokens for users is, at this moment, only possible through the Grap
 
 ```graphql
 mutation {
-  CoreAccountTokenCreate(data: {name: "token name"}) {
+  InfrahubAccountTokenCreate(data: {name: "token name"}) {
     object {
       token {
         value
@@ -34,7 +34,7 @@ mutation {
 
 ```graphql
 query {
-  CoreAccountToken {
+  InfrahubAccountToken {
     edges {
       node {
         name
@@ -53,7 +53,7 @@ query {
 
 ```graphql
 mutation {
-  CoreAccountTokenDelete(data: {id: "17d8cde3-d36b-a0a3-370e-c51707234f19"}) {
+  InfrahubAccountTokenDelete(data: {id: "17d8cde3-d36b-a0a3-370e-c51707234f19"}) {
     ok
   }
 }

@@ -1,6 +1,10 @@
 import { FieldSchema, AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { ProfileData } from "@/components/form/object-form";
-import { FormAttributeValue } from "@/components/form/type";
+import {
+  AttributeValueFromProfile,
+  AttributeValueFromUser,
+  FormAttributeValue,
+} from "@/components/form/type";
 import * as R from "ramda";
 
 export type GetFieldDefaultValue = {
@@ -31,40 +35,54 @@ export const getFieldDefaultValue = ({
 const getCurrentFieldValue = (
   fieldName: string,
   objectData?: Record<string, AttributeType>
-): FormAttributeValue | null => {
+): AttributeValueFromUser | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
   if (!currentField) return null;
 
-  return currentField.is_from_profile
-    ? null
-    : { source: { type: "user" }, value: currentField.value };
+  if (currentField.is_default || currentField.is_from_profile) {
+    return null;
+  }
+
+  return { source: { type: "user" }, value: currentField.value };
 };
 
 const getDefaultValueFromProfiles = (
   fieldName: string,
   profiles: Array<ProfileData>
-): FormAttributeValue | null => {
+): AttributeValueFromProfile | null => {
   // Get value from profiles depending on the priority
   const orderedProfiles = R.sortWith<ProfileData>([
     R.ascend(R.path(["profile_priority", "value"])),
     R.ascend(R.prop("id")),
   ])(profiles);
 
-  const profileWithDefaultValueForField = orderedProfiles.find((profile) => profile?.[fieldName]);
+  const profileWithDefaultValueForField = orderedProfiles.find((profile) => {
+    const profileFieldData = profile[fieldName] as
+      | Pick<AttributeType, "value" | "__typename">
+      | undefined;
+
+    if (!profileFieldData) return false;
+    return profileFieldData.value !== null;
+  });
+
   if (!profileWithDefaultValueForField) return null;
 
   return {
     source: {
       type: "profile",
+      id: profileWithDefaultValueForField.id,
       label: profileWithDefaultValueForField.display_label,
+      kind: profileWithDefaultValueForField.__typename,
     },
-    value: profileWithDefaultValueForField[fieldName].value,
+    value: (
+      profileWithDefaultValueForField[fieldName] as Pick<AttributeType, "value" | "__typename">
+    ).value,
   };
 };
 
-const getDefaultValueFromSchema = (fieldSchema: FieldSchema): FormAttributeValue | null => {
+const getDefaultValueFromSchema = (fieldSchema: FieldSchema): AttributeValueFromUser | null => {
   if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
     return {
       source: typeof fieldSchema.default_value === "boolean" ? { type: "schema" } : null,
@@ -75,7 +93,7 @@ const getDefaultValueFromSchema = (fieldSchema: FieldSchema): FormAttributeValue
   return "default_value" in fieldSchema
     ? {
         source: { type: "schema" },
-        value: fieldSchema.default_value as FormAttributeValue["value"],
+        value: fieldSchema.default_value as AttributeValueFromUser["value"],
       }
     : null;
 };

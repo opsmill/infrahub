@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const CREATE_ACCOUNT_TOKEN = gql`
-  mutation CoreAccountTokenCreate($name: String!) {
-    CoreAccountTokenCreate(data: { name: $name }) {
+  mutation InfrahubAccountTokenCreate($name: String!) {
+    InfrahubAccountTokenCreate(data: { name: $name }) {
       object {
         id
         token {

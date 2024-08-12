@@ -2,7 +2,6 @@ import { useAtomValue } from "jotai";
 import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
 import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
 import { genericsState, IModelSchema, schemaState } from "@/state/atoms/schema.atom";
-import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
@@ -124,26 +123,24 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
   };
 
   return (
-    <Card className={className}>
-      <Tree
-        loading={isLoading}
-        data={treeData}
-        itemContent={ObjectTreeItem}
-        defaultExpandedIds={expandedIds}
-        selectedIds={selectedIds}
-        onLoadData={onLoadData}
-        onNodeSelect={({ element, isSelected }) => {
-          if (!isSelected) return;
+    <Tree
+      loading={isLoading}
+      data={treeData}
+      itemContent={ObjectTreeItem}
+      defaultExpandedIds={expandedIds}
+      selectedIds={selectedIds}
+      onLoadData={onLoadData}
+      onNodeSelect={({ element, isSelected }) => {
+        if (!isSelected) return;
 
-          const url = constructPath(
-            getObjectDetailsUrl(element.id.toString(), element.metadata?.kind as string)
-          );
-          navigate(url);
-        }}
-        className="overflow-auto h-full p-1"
-        data-testid="hierarchical-tree"
-      />
-    </Card>
+        const url = constructPath(
+          getObjectDetailsUrl(element.id.toString(), element.metadata?.kind as string)
+        );
+        navigate(url);
+      }}
+      className={className}
+      data-testid="hierarchical-tree"
+    />
   );
 };
 

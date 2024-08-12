@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { GET_PREFIXES_ONLY } from "@/graphql/queries/ipam/prefixes";
 import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
-import { IPAM_QSP, IPAM_ROUTE } from "@/screens/ipam/constants";
+import { IPAM_QSP, IPAM_ROUTE, TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
@@ -18,10 +18,13 @@ import {
   formatIPPrefixResponseForTreeView,
   getTreeItemAncestors,
   updateTreeData,
+  EMPTY_TREE,
 } from "./utils";
 import { Badge } from "@/components/ui/badge";
+import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
+import { debounce } from "@/utils/common";
 
-export default function IpamTree() {
+export default function IpamTree({ className }: { className?: string }) {
   const { prefix } = useParams();
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
@@ -29,7 +32,9 @@ export default function IpamTree() {
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useAtom(ipamTreeAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
-  const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
+  const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds?: string[]; search?: string }>(
+    GET_PREFIXES_ONLY
+  );
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -58,8 +63,47 @@ export default function IpamTree() {
     setTreeData((tree) => updateTreeData(tree, element.id.toString(), treeNodes));
   };
 
+  const handleSearch: SearchInputProps["onChange"] = async (e) => {
+    const value = e.target.value as string;
+
+    if (value === "") {
+      const currentIpNamespace = namespace ?? defaultIpNamespace;
+      if (!currentIpNamespace) return;
+
+      return reloadIpamTree(currentIpNamespace, prefix).then((newTree) => {
+        if (prefix) {
+          const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
+          setExpandedIds(ancestorIds);
+        }
+        setLoading(false);
+      });
+    }
+
+    const { data } = await fetchPrefixes({
+      variables: { search: value },
+    });
+
+    if (!data) return;
+
+    const treeNodes = formatIPPrefixResponseForTreeView(data).map((element) => ({
+      ...element,
+      isBranch: false,
+      parent: TREE_ROOT_ID,
+    }));
+
+    setTreeData(updateTreeData(EMPTY_TREE, TREE_ROOT_ID, treeNodes));
+  };
+
+  const debouncedHandleSearch = debounce(handleSearch, 500);
+
   return (
-    <nav className="flex min-w-64">
+    <>
+      <SearchInput
+        containerClassName="mb-2"
+        placeholder="Filter..."
+        onChange={debouncedHandleSearch}
+      />
+
       <Tree
         loading={isLoading}
         data={treeData}
@@ -73,9 +117,10 @@ export default function IpamTree() {
           const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
           navigate(url);
         }}
+        className={className}
         data-testid="ipam-tree"
       />
-    </nav>
+    </>
   );
 }
 
@@ -90,12 +135,12 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
     <Link
       to={url}
       tabIndex={-1}
-      className="flex flex-grow items-center gap-2 overflow-hidden"
+      className="flex items-center gap-2 w-full"
       data-testid="ipam-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
-      <span className="truncate flex-1">{element.name}</span>
+      <span>{element.name}</span>
       {!!element.metadata?.descendantsCount && (
-        <Badge className="self-end">{element.metadata?.descendantsCount}</Badge>
+        <Badge className="ml-auto">{element.metadata?.descendantsCount}</Badge>
       )}
     </Link>
   );

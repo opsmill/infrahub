@@ -32,15 +32,22 @@ test.describe("Object groups update", () => {
       await expect(page.getByText("There are no groups to display")).toBeVisible();
     });
 
-    await test.step("add groups to an object", async () => {
+    await test.step("open groups manager", async () => {
       await page.getByTestId("open-group-form-button").click();
       await expect(page.getByTestId("multi-select-input")).toContainText("Empty list");
+    });
+
+    await test.step("add groups to an object", async () => {
       await page.getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "arista_devices" }).click();
       await page.getByRole("option", { name: "backbone_interfaces" }).click();
       await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("2 groups added")).toBeVisible();
+    });
+
+    await test.step("auto-generated toggle button not visible if there is no auto-generated groups", async () => {
+      await expect(page.getByRole("button", { name: "auto-generated" })).not.toBeVisible();
     });
 
     await test.step("new groups are visible in groups manager", async () => {

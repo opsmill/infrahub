@@ -52,7 +52,9 @@ export const getRelationshipDefaultValue = ({
     return {
       source: {
         type: "pool",
-        label: source.display_label,
+        label: source.display_label ?? null,
+        id: source.id as string,
+        kind: source.__typename as string,
       },
       value: relationshipData.node,
     };

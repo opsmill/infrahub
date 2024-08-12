@@ -10,8 +10,9 @@ export const QSP = {
   FILTER: "filters",
   PAGINATION: "pagination",
   PROPOSED_CHANGES_TAB: "pr_tab",
+  PROPOSED_CHANGES_STATE: "pr_state",
   QUERY: "query",
   TAB: "tab",
   TASK_ID: "task_id",
-  LIST_SEARCH: "list-search",
+  SEARCH: "search",
 };

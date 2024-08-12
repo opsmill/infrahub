@@ -11,14 +11,14 @@ from pydantic import BaseModel
 
 from infrahub import config, models
 from infrahub.core.account import validate_token
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 
 if TYPE_CHECKING:
-    from infrahub.core.protocols import CoreAccount
+    from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
 
 # from ..datatypes import AuthResult
@@ -46,33 +46,43 @@ class AccountSession(BaseModel):
         return self.auth_type == AuthType.JWT
 
 
+async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
+    account: CoreGenericAccount = await NodeManager.get_one(db=db, id=account_id, raise_on_error=True)
+    if account.status.value != AccountStatus.ACTIVE.value:
+        raise AuthorizationError("This account has been deactivated")
+
+
 async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
     selected_branch = await registry.get_branch(db=db, branch=branch)
-    response: list[CoreAccount] = await NodeManager.query(
-        schema=InfrahubKind.ACCOUNT,
+
+    response: list[CoreGenericAccount] = await NodeManager.query(
+        schema=InfrahubKind.GENERICACCOUNT,
         db=db,
         branch=selected_branch,
         filters={"name__value": credentials.username},
         limit=1,
     )
+
     if not response:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
-            node_type=InfrahubKind.ACCOUNT,
+            node_type=InfrahubKind.GENERICACCOUNT,
             identifier=credentials.username,
             message="That login user doesn't exist in the system",
         )
 
     account = response[0]
+    if account.status.value != AccountStatus.ACTIVE.value:
+        raise AuthorizationError("This account is not allowed to login")
+
     password = account.password.value
     valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), str(password or "").encode("UTF-8"))
     if not valid_credentials:
         raise AuthorizationError("Incorrect password")
 
     now = datetime.now(tz=timezone.utc)
-
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, role=account.role.value.value, session_id=session_id)
@@ -97,7 +107,7 @@ async def create_fresh_access_token(
     if not refresh_token:
         raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
-    account: Optional[CoreAccount] = await NodeManager.get_one(id=refresh_data.account_id, db=db)
+    account: Optional[CoreGenericAccount] = await NodeManager.get_one(id=refresh_data.account_id, db=db)
     if not account:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
@@ -175,7 +185,7 @@ async def validate_jwt_access_token(token: str) -> AccountSession:
     raise AuthorizationError("Invalid token, current token is not an access token")
 
 
-def validate_jwt_refresh_token(token: str) -> models.RefreshTokenData:
+async def validate_jwt_refresh_token(db: InfrahubDatabase, token: str) -> models.RefreshTokenData:
     try:
         payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
         account_id = payload["sub"]
@@ -184,6 +194,8 @@ def validate_jwt_refresh_token(token: str) -> models.RefreshTokenData:
         raise AuthorizationError("Expired Signature") from None
     except Exception:
         raise AuthorizationError("Invalid token") from None
+
+    await validate_active_account(db=db, account_id=str(account_id))
 
     if payload["type"] == "refresh":
         return models.RefreshTokenData(account_id=account_id, session_id=session_id)
@@ -195,6 +207,8 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
     account_id, role = await validate_token(token=token, db=db)
     if not account_id:
         raise AuthorizationError("Invalid token")
+
+    await validate_active_account(db=db, account_id=str(account_id))
 
     return AccountSession(account_id=account_id, role=role, auth_type=AuthType.API)
 

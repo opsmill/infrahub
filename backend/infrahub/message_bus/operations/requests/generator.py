@@ -2,6 +2,7 @@ import os
 
 from infrahub_sdk import InfrahubNode
 from infrahub_sdk.exceptions import ModuleImportError
+from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
 
 from infrahub import lock
@@ -12,7 +13,7 @@ from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 
-async def run(message: messages.RequestGeneratorRun, service: InfrahubServices):
+async def run(message: messages.RequestGeneratorRun, service: InfrahubServices) -> None:
     repository = await get_initialized_repo(
         repository_id=message.repository_id,
         name=message.repository_name,
@@ -62,9 +63,9 @@ async def run(message: messages.RequestGeneratorRun, service: InfrahubServices):
     await generator_instance.update(do_full_update=True)
 
 
-async def _define_instance(message: messages.RequestGeneratorRun, service: InfrahubServices) -> InfrahubNode:
+async def _define_instance(message: messages.RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
     if message.generator_instance:
-        instance = await service.client.get(
+        instance: CoreGeneratorInstance = await service.client.get(
             kind=InfrahubKind.GENERATORINSTANCE, id=message.generator_instance, branch=message.branch_name
         )
         instance.status.value = GeneratorInstanceStatus.PENDING.value
@@ -74,7 +75,7 @@ async def _define_instance(message: messages.RequestGeneratorRun, service: Infra
         async with lock.registry.get(
             f"{message.target_id}-{message.generator_definition.definition_id}", namespace="generator"
         ):
-            instances = await service.client.filters(
+            instances: list[CoreGeneratorInstance] = await service.client.filters(
                 kind=InfrahubKind.GENERATORINSTANCE,
                 definition__ids=[message.generator_definition.definition_id],
                 object__ids=[message.target_id],

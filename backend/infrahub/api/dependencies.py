@@ -47,8 +47,7 @@ async def get_db(request: Request) -> InfrahubDatabase:
 
 
 async def get_access_token(
-    request: Request,
-    jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
+    request: Request, jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme)
 ) -> AccountSession:
     if jwt_header:
         return await validate_jwt_access_token(token=jwt_header.credentials)
@@ -59,7 +58,9 @@ async def get_access_token(
 
 
 async def get_refresh_token(
-    request: Request, jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme)
+    request: Request,
+    db: InfrahubDatabase = Depends(get_db),
+    jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme),
 ) -> RefreshTokenData:
     token = None
 
@@ -75,7 +76,7 @@ async def get_refresh_token(
     if not token:
         raise AuthorizationError("A JWT refresh token is required to perform this operation.")
 
-    return validate_jwt_refresh_token(token=token)
+    return await validate_jwt_refresh_token(db=db, token=token)
 
 
 async def get_branch_params(

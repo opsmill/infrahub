@@ -16,7 +16,7 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
     new_description = "what a cool description"
     query = """
     mutation {
-        CoreAccountSelfUpdate(data: {password: "%s", description: "%s"}) {
+        InfrahubAccountSelfUpdate(data: {password: "%s", description: "%s"}) {
             ok
         }
     }
@@ -40,7 +40,7 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
     )
 
     assert result.errors is None
-    assert result.data["CoreAccountSelfUpdate"]["ok"] is True
+    assert result.data["InfrahubAccountSelfUpdate"]["ok"] is True
 
     updated_account = await NodeManager.get_one(db=db, id=first_account.id, branch=default_branch)
     assert bcrypt.checkpw(new_password.encode("UTF-8"), updated_account.password.value.encode("UTF-8"))

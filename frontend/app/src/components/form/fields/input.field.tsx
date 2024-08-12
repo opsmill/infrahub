@@ -1,6 +1,6 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Input, InputProps } from "@/components/ui/input";
-import { FormFieldProps } from "@/components/form/type";
+import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
@@ -24,7 +24,7 @@ const InputField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        const fieldData = field.value;
+        const fieldData: FormAttributeValue = field.value;
 
         return (
           <div className="relative mb-2 flex flex-col">
@@ -33,20 +33,15 @@ const InputField = ({
               unique={unique}
               required={!!rules?.required}
               description={description}
+              fieldData={fieldData}
             />
 
             <FormInput>
               <Input
                 {...field}
-                {...field}
-                value={fieldData?.value ?? ""}
+                value={(fieldData?.value as string) ?? ""}
                 onChange={(event) => {
-                  field.onChange(
-                    updateFormFieldValue(
-                      props.type === "number" ? event.target.valueAsNumber : event.target.value,
-                      defaultValue
-                    )
-                  );
+                  field.onChange(updateFormFieldValue(event.target.value, defaultValue));
                 }}
                 {...props}
               />

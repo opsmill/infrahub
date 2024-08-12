@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
 
-import { Card } from "@/components/ui/card";
+import { CardWithBorder } from "@/components/ui/card";
 import Content from "@/screens/layout/content";
 import IpNamespaceSelector from "../../screens/ipam/ip-namespace-selector";
 import IpamTree from "../../screens/ipam/ipam-tree/ipam-tree";
@@ -13,9 +13,9 @@ function IpamLayout() {
       </Content.Title>
 
       <Content className="flex p-2 gap-2">
-        <Card className="flex overflow-auto">
-          <IpamTree />
-        </Card>
+        <CardWithBorder contentClassName="p-2" className="min-w-64 max-w-[400px]">
+          <IpamTree className="min-w-full" />
+        </CardWithBorder>
 
         <section className="flex-grow">
           <Outlet />
