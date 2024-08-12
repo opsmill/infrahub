@@ -66,6 +66,7 @@ class DiffSingleRelationship(DiffSummaryCounts):
 
 class DiffRelationship(DiffSummaryCounts):
     name = String(required=True)
+    label = String(required=False)
     last_changed_at = DateTime(required=False)
     status = Field(GrapheneDiffActionEnum, required=True)
     elements = List(DiffSingleRelationship, required=True)

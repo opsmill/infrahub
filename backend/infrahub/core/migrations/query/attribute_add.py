@@ -38,7 +38,7 @@ class AttributeAddQuery(Query):
         self.params["attr_type"] = self.attribute_kind
         self.params["branch_support"] = self.branch_support
 
-        if self.default_value:
+        if self.default_value is not None:
             self.params["attr_value"] = self.default_value
         else:
             self.params["attr_value"] = NULL_VALUE

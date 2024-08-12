@@ -41,9 +41,11 @@ export const getCurrentFieldValue = (
   const currentField = objectData[fieldName];
   if (!currentField) return null;
 
-  return currentField.is_from_profile
-    ? null
-    : { source: { type: "user" }, value: currentField.value };
+  if (currentField.is_default || currentField.is_from_profile) {
+    return null;
+  }
+
+  return { source: { type: "user" }, value: currentField.value };
 };
 
 const getDefaultValueFromProfiles = (
@@ -93,7 +95,7 @@ export const getDefaultValueFromSchema = (
   return "default_value" in fieldSchema
     ? {
         source: { type: "schema" },
-        value: fieldSchema.default_value as FormAttributeValue["value"],
+        value: fieldSchema.default_value as AttributeValueFromUser["value"],
       }
     : null;
 };
