@@ -24,7 +24,7 @@ interface Props {
   objectname: string;
   objectid: string;
   closeDrawer: () => void;
-  onUpdateComplete?: Function;
+  onUpdateComplete?: () => void;
   formStructure?: DynamicFieldData[];
 }
 
@@ -132,6 +132,7 @@ export default function ObjectItemEditComponent(props: Props) {
     <ObjectForm
       onCancel={closeDrawer}
       onSubmit={onSubmit}
+      onUpdateComplete={onUpdateComplete}
       kind={objectname}
       currentObject={objectDetailsData}
       currentProfiles={objectProfiles}

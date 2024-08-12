@@ -3,6 +3,7 @@ import {
   FormFieldValue,
   isFormFieldValueFromPool,
 } from "@/components/form/type";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 
 export const getCreateMutationFromFormData = (
   fields: Array<DynamicFieldProps>,
@@ -31,11 +32,17 @@ export const getCreateMutationFromFormData = (
   }, {});
 };
 
-export const getCreateMutationFromFormDataOnly = (formData: Record<string, FormFieldValue>) => {
+export const getCreateMutationFromFormDataOnly = (
+  formData: Record<string, FormFieldValue>,
+  currentObject?: Record<string, AttributeType>
+) => {
   return Object.entries(formData).reduce((acc, [name, data]) => {
     if (!data) {
       return acc;
     }
+
+    // Avoid updating same values from current object
+    if (currentObject && data.value === currentObject[name]?.value) return acc;
 
     if (data.source?.type === "user") {
       const fieldValue = data.value === "" ? null : data.value;

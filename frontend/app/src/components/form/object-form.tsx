@@ -22,6 +22,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
   currentProfiles?: ProfileData[];
   isFilterForm?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
+  onUpdateComplete?: () => void;
 }
 
 const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFormProps) => {

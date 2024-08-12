@@ -1,3 +1,4 @@
+import { Button } from "@/components/buttons/button-primitive";
 import DropdownField from "@/components/form/fields/dropdown.field";
 import InputField from "@/components/form/fields/input.field";
 import NumberField from "@/components/form/fields/number.field";
@@ -11,6 +12,7 @@ import { Form, FormSubmit } from "@/components/ui/form";
 import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { useFormValues } from "@/hooks/useFormValues";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
@@ -24,9 +26,16 @@ import { toast } from "react-toastify";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType>;
+  onCancel?: () => void;
+  onUpdateComplete?: () => void;
 }
 
-export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps) => {
+export const NumberPoolForm = ({
+  currentObject,
+  onSuccess,
+  onCancel,
+  onUpdateComplete,
+}: NumberPoolFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
@@ -44,21 +53,27 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    console.log("data: ", data);
     try {
-      const newObject = getCreateMutationFromFormDataOnly(data);
-      console.log("newObject: ", newObject);
+      const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
 
       if (!Object.keys(newObject).length) {
         return;
       }
 
-      const mutationString = createObject({
-        kind: NUMBER_POOL_OBJECT,
-        data: stringifyWithoutQuotes({
-          ...newObject,
-        }),
-      });
+      const mutationString = currentObject
+        ? updateObjectWithId({
+            kind: NUMBER_POOL_OBJECT,
+            data: stringifyWithoutQuotes({
+              id: currentObject.id,
+              ...newObject,
+            }),
+          })
+        : createObject({
+            kind: NUMBER_POOL_OBJECT,
+            data: stringifyWithoutQuotes({
+              ...newObject,
+            }),
+          });
 
       const mutation = gql`
         ${mutationString}
@@ -77,6 +92,7 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
       });
 
       if (onSuccess) await onSuccess(result?.data?.[`${NUMBER_POOL_OBJECT}Create`]);
+      if (onUpdateComplete) await onUpdateComplete();
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
     }
@@ -87,7 +103,7 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
-        <NodeAttributesSelects />
+        {!currentObject && <NodeAttributesSelects />}
         <NumberField
           name="start_range"
           label="Start range"
@@ -101,7 +117,13 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
           rules={{ required: true }}
         />
         <div className="text-right">
-          <FormSubmit>Create</FormSubmit>
+          {onCancel && (
+            <Button variant="outline" className="mr-2" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+
+          <FormSubmit>{currentObject ? "Update" : "Create"}</FormSubmit>
         </div>
       </Form>
     </div>
