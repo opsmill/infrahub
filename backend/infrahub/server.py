@@ -3,6 +3,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from functools import partial
+from pathlib import Path
 from typing import AsyncGenerator, Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -38,6 +39,8 @@ from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
+
+CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
 async def app_initialization(application: FastAPI) -> None:
@@ -95,8 +98,8 @@ app = FastAPI(
     version=__version__,
     lifespan=lifespan,
     openapi_url="/api/openapi.json",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url=None,
+    redoc_url=None,
 )
 
 
@@ -179,6 +182,7 @@ app.add_exception_handler(ValidationError, partial(generic_api_exception_handler
 app.add_route(path="/metrics", route=handle_metrics)
 app.include_router(graphql_router)
 
+app.mount("/api-static", StaticFiles(directory=f"{CURRENT_DIRECTORY}/api/static"), name="static")
 
 if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
