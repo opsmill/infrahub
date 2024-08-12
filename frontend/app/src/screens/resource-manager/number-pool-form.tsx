@@ -44,7 +44,6 @@ export const NumberPoolForm = ({ onSuccess, currentObject }: NumberPoolFormProps
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     try {
       const newObject = getCreateMutationFromFormDataOnly(data);
-      console.log("newObject: ", newObject);
 
       if (!Object.keys(newObject).length) {
         return;
