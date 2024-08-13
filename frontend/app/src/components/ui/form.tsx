@@ -8,6 +8,7 @@ import React, {
   useContext,
   useEffect,
   useId,
+  useImperativeHandle,
 } from "react";
 import {
   Controller,
@@ -19,37 +20,43 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
 
+export type FormRef = ReturnType<typeof useForm>;
+
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, any>) => void;
   defaultValues?: Partial<Record<string, unknown>>;
 }
 
-export const Form = ({ defaultValues, className, children, onSubmit, ...props }: FormProps) => {
-  const form = useForm({ defaultValues });
+export const Form = React.forwardRef<FormRef, FormProps>(
+  ({ defaultValues, className, children, onSubmit, ...props }, ref) => {
+    const form = useForm({ defaultValues });
 
-  useEffect(() => {
-    form.reset(defaultValues);
-  }, [JSON.stringify(defaultValues), form.formState.isSubmitSuccessful]);
+    useImperativeHandle(ref, () => form, []);
 
-  return (
-    <FormProvider {...form}>
-      <form
-        onSubmit={(event) => {
-          if (event && event.stopPropagation) {
-            event.stopPropagation();
-          }
+    useEffect(() => {
+      form.reset(defaultValues);
+    }, [JSON.stringify(defaultValues)]);
 
-          if (!onSubmit) return;
+    return (
+      <FormProvider {...form}>
+        <form
+          onSubmit={(event) => {
+            if (event && event.stopPropagation) {
+              event.stopPropagation();
+            }
 
-          form.handleSubmit(onSubmit)(event);
-        }}
-        className={classNames("space-y-4", className)}
-        {...props}>
-        {children}
-      </form>
-    </FormProvider>
-  );
-};
+            if (!onSubmit) return;
+
+            form.handleSubmit(onSubmit)(event);
+          }}
+          className={classNames("space-y-4", className)}
+          {...props}>
+          {children}
+        </form>
+      </FormProvider>
+    );
+  }
+);
 
 type FormFieldContextType = { id: string; name: string };
 const FormFieldContext = createContext<FormFieldContextType>({} as FormFieldContextType);

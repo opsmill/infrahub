@@ -4,8 +4,9 @@ import { DynamicFieldProps } from "@/components/form/type";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
-import { ReactElement } from "react";
+import { forwardRef, ReactElement } from "react";
 import { useLocation } from "react-router-dom";
+import { FormRef } from "@/components/ui/form";
 
 const fields: Array<DynamicFieldProps> = [
   {
@@ -29,13 +30,14 @@ type tAddComment = {
   additionalButtons?: ReactElement;
 };
 
-export const AddComment = ({ onSubmit, onCancel }: tAddComment) => {
+export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel }, ref) => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
     return (
       <DynamicForm
+        ref={ref}
         fields={fields}
         onCancel={onCancel}
         onSubmit={async ({ comment }) => {
@@ -61,4 +63,4 @@ export const AddComment = ({ onSubmit, onCancel }: tAddComment) => {
       to be able to add a comment.
     </div>
   );
-};
+});
