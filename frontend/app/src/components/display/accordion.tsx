@@ -5,6 +5,7 @@ export type AccordionProps = {
   title?: any;
   children?: any;
   className?: string;
+  iconClassName?: string;
   defaultOpen?: boolean;
   style?: CSSProperties;
 };
@@ -36,13 +37,13 @@ export default function Accordion({
 }
 
 // If alignement to other accordions is needed
-export const EmptyAccordion = ({ title, className, ...props }: AccordionProps) => {
+export const EmptyAccordion = ({ title, className, iconClassName, ...props }: AccordionProps) => {
   return (
     <div className={className} {...props}>
       <div className="flex">
         <div className="flex flex-1 w-full items-center">
           <span className="flex h-7 items-center mx-2 relative">
-            <Icon icon={"mdi:minus"} />
+            <Icon icon={"mdi:minus"} className={iconClassName} />
           </span>
           <span className="flex-1 font-semibold text-left justify-start">{title}</span>
         </div>

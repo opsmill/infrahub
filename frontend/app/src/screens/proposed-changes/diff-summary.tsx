@@ -13,13 +13,7 @@ export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSumma
     ${getProposedChangesDiffSummary}
   `;
 
-  const {
-    loading,
-    error,
-    data = {},
-  } = useQuery(query, {
-    branch,
-  });
+  const { loading, error, data = {} } = useQuery(query, { skip: !branch, variables: { branch } });
 
   if (error) {
     return <ErrorScreen message="An error occured while fetching diff summary." />;
@@ -27,10 +21,10 @@ export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSumma
 
   return (
     <div className="flex gap-2">
-      <BadgeAdd loading={loading}>{data?.DiffTree?.num_added}</BadgeAdd>
-      <BadgeRemove loading={loading}>{data?.DiffTree?.num_removed}</BadgeRemove>
-      <BadgeUpdate loading={loading}>{data?.DiffTree?.num_updated}</BadgeUpdate>
-      <BadgeConflict loading={loading}>{data?.DiffTree?.num_conflicts}</BadgeConflict>
+      <BadgeAdd loading={!branch && loading}>{data?.DiffTree?.num_added}</BadgeAdd>
+      <BadgeRemove loading={!branch && loading}>{data?.DiffTree?.num_removed}</BadgeRemove>
+      <BadgeUpdate loading={!branch && loading}>{data?.DiffTree?.num_updated}</BadgeUpdate>
+      <BadgeConflict loading={!branch && loading}>{data?.DiffTree?.num_conflicts}</BadgeConflict>
     </div>
   );
 };

@@ -8,7 +8,6 @@ type DiffNodeRelationshipProps = {
 };
 
 export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps) => {
-  console.log("relationship: ", relationship);
   const title = (
     <div className="flex items-center gap-2">
       {relationship.contains_conflict && <BadgeConflict />}
@@ -19,7 +18,7 @@ export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps
   return (
     <div
       className={classNames(
-        "border-l-4 border-transparent",
+        "border-l-4 border-transparent bg-custom-white",
         relationship.contains_conflict && "border-yellow-200 bg-yellow-50"
       )}>
       <Accordion title={title}>

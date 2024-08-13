@@ -1,6 +1,6 @@
 export const getProposedChangesDiffTree = `
-query GET_PROPOSED_CHANGES_DIFF_TREE {
-  DiffTree {
+query GET_PROPOSED_CHANGES_DIFF_TREE($branch: String) {
+  DiffTree (branch: $branch) {
     nodes {
       label
       contains_conflict

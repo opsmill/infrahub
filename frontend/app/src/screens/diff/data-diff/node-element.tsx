@@ -1,3 +1,5 @@
+import { DiffNodeProperty } from "./node-property";
+
 type DiffNodeElementProps = {
   element: any;
 };
@@ -5,5 +7,11 @@ type DiffNodeElementProps = {
 export const DiffNodeElement = ({ element }: DiffNodeElementProps) => {
   console.log("element: ", element);
 
-  return <div>ok</div>;
+  return (
+    <div>
+      {element.properties.map((property, index) => (
+        <DiffNodeProperty key={index} property={property} />
+      ))}
+    </div>
+  );
 };

@@ -46,7 +46,10 @@ export const DataDiff = () => {
     ${getProposedChangesDiffTree}
   `;
 
-  const { loading, data } = useQuery(query, { skip: !schemaData });
+  const { loading, data } = useQuery(query, {
+    skip: !schemaData,
+    variables: { branch },
+  });
 
   const handleApprove = async () => {
     if (!approverId) {
@@ -189,7 +192,9 @@ export const DataDiff = () => {
     setIsLoadingClose(false);
   };
 
-  const nodes = data?.DiffTree?.nodes?.filter((node) => node.status !== "UNCHANGED");
+  const nodes = data?.DiffTree?.nodes
+    ?.filter((node) => node.status !== "UNCHANGED")
+    ?.filter((node) => node.__typename === "DiffNode");
 
   return (
     <>

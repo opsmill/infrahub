@@ -1,58 +1,38 @@
 import Accordion, { EmptyAccordion } from "@/components/display/accordion";
 import { Card } from "@/components/ui/card";
-import { BadgeAdd, BadgeRemove, BadgeType, BadgeUnchange, BadgeUpdate } from "../ui/badge";
 import { Badge } from "@/components/ui/badge";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
 import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
-import { capitalizeFirstLetter } from "@/utils/string";
 import { DiffNodeRelationship } from "./node-relationship";
-import { useParams } from "react-router-dom";
-import { DiffThread } from "./thread";
-
-const diffBadges: { [key: string]: BadgeType } = {
-  ADDED: BadgeAdd,
-  UPDATED: BadgeUpdate,
-  REMOVED: BadgeRemove,
-  UNCHANGED: BadgeUnchange,
-};
+import { DiffTitle } from "./utils";
 
 type DiffNodeProps = {
   node: any;
 };
 
 export const DiffNode = ({ node }: DiffNodeProps) => {
-  const { "*": branchName } = useParams();
-
-  const DiffBadge = diffBadges[node.status];
-
   const title = (
-    <div className="flex items-center gap-2 relative group">
-      <div>
-        <DiffBadge conflicts={node.contains_conflict}>
-          {capitalizeFirstLetter(node.status)}
-        </DiffBadge>
-      </div>
+    <DiffTitle id={node.id} containsConflict={node.contains_conflict} status={node.status}>
+      <div className="flex items-center">
+        <div>
+          <Badge variant={"white"}>{node.kind}</Badge>
+        </div>
 
-      <div>
-        <Badge variant={"white"}>{node.kind}</Badge>
+        <div className="text-sm">
+          {node.label && (
+            <BadgeCircle type={CIRCLE_BADGE_TYPES.GHOST}>
+              <span className="mr-2">{node.label}</span>
+              <CopyToClipboard text={node.label} />
+            </BadgeCircle>
+          )}
+        </div>
       </div>
-
-      <div className="text-sm">
-        {node.label && (
-          <BadgeCircle type={CIRCLE_BADGE_TYPES.GHOST}>
-            <span className="mr-2">{node.label}</span>
-            <CopyToClipboard text={node.label} />
-          </BadgeCircle>
-        )}
-      </div>
-
-      {!branchName && <DiffThread path={`data/${node.id}`} />}
-    </div>
+    </DiffTitle>
   );
 
   return (
     <Card className="m-4">
-      <div className="bg-gray-100 rounded-md border">
+      <div className="bg-gray-100 rounded-md border overflow-hidden">
         {!!node.relationships.length && (
           <Accordion title={title}>
             {node.relationships.map((relationship: any, index: number) => (
