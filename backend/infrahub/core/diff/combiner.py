@@ -3,8 +3,8 @@ from dataclasses import dataclass, field
 from typing import Iterable
 from uuid import uuid4
 
+from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
-from infrahub.core.schema_manager import SchemaManager
 
 from .model.path import (
     EnrichedDiffAttribute,
@@ -23,8 +23,8 @@ class NodePair:
 
 
 class DiffCombiner:
-    def __init__(self, schema_manager: SchemaManager) -> None:
-        self.schema_manager = schema_manager
+    def __init__(self) -> None:
+        self.schema_manager = registry.schema
         # {child_uuid: (parent_uuid, parent_rel_name)}
         self._child_parent_uuid_map: dict[str, tuple[str, str]] = {}
         self._parent_node_uuids: set[str] = set()

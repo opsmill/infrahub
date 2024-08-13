@@ -1,16 +1,31 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Counter, Optional, Union
 
 from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
 from infrahub_sdk.utils import extract_fields
 
+from infrahub.core import registry
 from infrahub.core.constants import DiffAction
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.timestamp import Timestamp
+from infrahub.dependencies.registry import get_component_registry
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from graphql import GraphQLResolveInfo
+
+    from infrahub.core.diff.model.path import (
+        EnrichedDiffAttribute,
+        EnrichedDiffNode,
+        EnrichedDiffProperty,
+        EnrichedDiffRelationship,
+        EnrichedDiffRoot,
+        EnrichedDiffSingleRelationship,
+    )
+    from infrahub.graphql import GraphqlContext
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
 
@@ -94,178 +109,112 @@ class DiffTree(DiffSummaryCounts):
 
 
 class DiffTreeResolver:
-    the_time = datetime(year=2024, month=2, day=3, hour=4, minute=5, second=6, tzinfo=UTC)
-    EXAMPLE_DIFF = DiffTree(
-        base_branch="main",
-        diff_branch="branch",
-        from_time=the_time,
-        to_time=the_time,
-        num_added=1,
-        num_updated=0,
-        num_removed=0,
-        num_conflicts=0,
-        nodes=[
-            DiffNode(
-                uuid="cdea5cb3-36eb-4b26-87aa-0a1123dd7960",
-                kind="SomethingKind",
-                num_added=1,
-                num_updated=0,
-                num_removed=0,
-                num_conflicts=0,
-                last_changed_at=the_time,
-                label="SomethingLabel",
-                status=DiffAction.ADDED,
-                contains_conflict=False,
-                relationships=[],
-                attributes=[
-                    DiffAttribute(
-                        name="SomethingAttribute",
-                        last_changed_at=the_time,
-                        status=DiffAction.ADDED,
-                        num_added=1,
-                        num_updated=0,
-                        num_removed=0,
-                        num_conflicts=0,
-                        contains_conflict=False,
-                        properties=[
-                            DiffProperty(
-                                property_type="value",
-                                last_changed_at=the_time,
-                                previous_value=None,
-                                new_value=42,
-                                status=DiffAction.ADDED,
-                                conflict=None,
-                            )
-                        ],
-                    )
-                ],
-            ),
-            DiffNode(
-                uuid="990e1eda-687b-454d-a6c3-dc6039f125dd",
-                kind="ChildKind",
-                num_added=0,
-                num_updated=1,
-                num_removed=0,
-                num_conflicts=0,
-                last_changed_at=the_time,
-                label="ChildLabel",
-                status=DiffAction.UPDATED,
-                contains_conflict=False,
-                relationships=[],
-                attributes=[
-                    DiffAttribute(
-                        name="ChildAttribute",
-                        last_changed_at=the_time,
-                        status=DiffAction.UPDATED,
-                        num_added=0,
-                        num_updated=1,
-                        num_removed=0,
-                        num_conflicts=0,
-                        contains_conflict=False,
-                        properties=[
-                            DiffProperty(
-                                property_type="owner",
-                                last_changed_at=the_time,
-                                previous_value="herbert",
-                                new_value="willy",
-                                status=DiffAction.UPDATED,
-                                conflict=None,
-                            )
-                        ],
-                    )
-                ],
-            ),
-            DiffNode(
-                uuid="2beecc03-8d17-4360-b331-f242c9fb4997",
-                kind="ParentKind",
-                num_added=0,
-                num_updated=0,
-                num_removed=0,
-                num_conflicts=0,
-                last_changed_at=the_time,
-                label="ParentLabel",
-                status=DiffAction.UNCHANGED,
-                contains_conflict=False,
-                attributes=[],
-                relationships=[
-                    DiffRelationship(
-                        name="child_relationship",
-                        last_changed_at=the_time,
-                        status=DiffAction.UPDATED,
-                        contains_conflict=False,
-                        elements=[],
-                        node_uuids=["990e1eda-687b-454d-a6c3-dc6039f125dd"],
-                    )
-                ],
-            ),
-            DiffNode(
-                uuid="a1b2f0c8-eda7-47e3-b3a2-5a055974c19c",
-                kind="RelationshipConflictKind",
-                num_added=0,
-                num_updated=1,
-                num_removed=0,
-                num_conflicts=1,
-                last_changed_at=the_time,
-                label="RelationshipConflictLabel",
-                status=DiffAction.UPDATED,
-                contains_conflict=True,
-                attributes=[],
-                relationships=[
-                    DiffRelationship(
-                        name="conflict_relationship",
-                        last_changed_at=the_time,
-                        status=DiffAction.UPDATED,
-                        contains_conflict=True,
-                        node_uuids=[],
-                        elements=[
-                            DiffSingleRelationship(
-                                last_changed_at=the_time,
-                                status=DiffAction.UPDATED,
-                                peer_id="7f0d1a04-1543-4d7e-b348-8fb1d19f7a8c",
-                                contains_conflict=True,
-                                properties=[
-                                    DiffProperty(
-                                        property_type="peer_id",
-                                        last_changed_at=the_time,
-                                        previous_value="87a4e7f8-5d7d-4b22-ab92-92b4d8890e75",
-                                        new_value="c411c56f-d88b-402d-8753-0a35defaab1f",
-                                        status=DiffAction.UPDATED,
-                                        conflict=ConflictDetails(
-                                            uuid="0a7a5898-e8a0-4baf-b7ae-1fac1fcdf468",
-                                            base_branch_action=DiffAction.REMOVED,
-                                            base_branch_value=None,
-                                            base_branch_changed_at=the_time,
-                                            diff_branch_action=DiffAction.UPDATED,
-                                            diff_branch_value="c411c56f-d88b-402d-8753-0a35defaab1f",
-                                            diff_branch_changed_at=the_time,
-                                            selected_branch=None,
-                                        ),
-                                    ),
-                                    DiffProperty(
-                                        property_type="is_visible",
-                                        last_changed_at=the_time,
-                                        previous_value=False,
-                                        new_value=True,
-                                        status=DiffAction.UPDATED,
-                                        conflict=ConflictDetails(
-                                            uuid="60b2456b-0dcd-47c9-a9f1-590b30a597de",
-                                            base_branch_action=DiffAction.REMOVED,
-                                            base_branch_value=None,
-                                            base_branch_changed_at=the_time,
-                                            diff_branch_action=DiffAction.UPDATED,
-                                            diff_branch_value=True,
-                                            diff_branch_changed_at=the_time,
-                                            selected_branch=ConflictSelection.DIFF_BRANCH,
-                                        ),
-                                    ),
-                                ],
-                            )
-                        ],
-                    )
-                ],
-            ),
-        ],
-    )
+    def to_diff_tree(self, enriched_diff_root: EnrichedDiffRoot) -> DiffTree:
+        all_nodes = list(enriched_diff_root.nodes)
+        for e_node in enriched_diff_root.nodes:
+            all_nodes += list(e_node.get_all_child_nodes())
+        tree_nodes = [self.to_diff_node(enriched_node=e_node) for e_node in all_nodes]
+        summary_counter = Counter((n.status for n in tree_nodes))
+        return DiffTree(
+            base_branch=enriched_diff_root.base_branch_name,
+            diff_branch=enriched_diff_root.diff_branch_name,
+            from_time=enriched_diff_root.from_time.to_graphql(),
+            to_time=enriched_diff_root.to_time.to_graphql(),
+            nodes=tree_nodes,
+            num_added=summary_counter[DiffAction.ADDED],
+            num_updated=summary_counter[DiffAction.UPDATED],
+            num_removed=summary_counter[DiffAction.REMOVED],
+            num_conflicts=0,
+        )
+
+    def to_diff_node(self, enriched_node: EnrichedDiffNode) -> DiffNode:
+        diff_attributes = [self.to_diff_attribute(e_attr) for e_attr in enriched_node.attributes]
+        diff_relationships = [self.to_diff_relationship(e_rel) for e_rel in enriched_node.relationships]
+        summary_counter = Counter((field.action for field in (enriched_node.attributes | enriched_node.relationships)))
+        num_conflicts = 0
+        contains_conflict = any(a.contains_conflict for a in diff_attributes)
+        contains_conflict |= any(r.contains_conflict for r in diff_relationships)
+        return DiffNode(
+            uuid=enriched_node.uuid,
+            kind=enriched_node.kind,
+            label=enriched_node.label,
+            status=enriched_node.action,
+            last_changed_at=enriched_node.changed_at.obj,
+            attributes=diff_attributes,
+            relationships=diff_relationships,
+            contains_conflict=contains_conflict,
+            num_added=summary_counter[DiffAction.ADDED],
+            num_updated=summary_counter[DiffAction.UPDATED],
+            num_removed=summary_counter[DiffAction.REMOVED],
+            num_conflicts=num_conflicts,
+        )
+
+    def to_diff_attribute(self, enriched_attribute: EnrichedDiffAttribute) -> DiffAttribute:
+        diff_properties = [self.to_diff_property(e_prop) for e_prop in enriched_attribute.properties]
+        summary_counter = Counter((prop.action for prop in enriched_attribute.properties))
+        num_conflicts = 0
+        contains_conflict = any(p.conflict is not None for p in diff_properties)
+        return DiffAttribute(
+            name=enriched_attribute.name,
+            last_changed_at=enriched_attribute.changed_at.obj,
+            status=enriched_attribute.action,
+            properties=diff_properties,
+            contains_conflict=contains_conflict,
+            num_added=summary_counter[DiffAction.ADDED],
+            num_updated=summary_counter[DiffAction.UPDATED],
+            num_removed=summary_counter[DiffAction.REMOVED],
+            num_conflicts=num_conflicts,
+        )
+
+    def to_diff_relationship(self, enriched_relationship: EnrichedDiffRelationship) -> DiffRelationship:
+        diff_elements = [self.to_diff_relationship_element(element) for element in enriched_relationship.relationships]
+        node_uuids = [n.uuid for n in enriched_relationship.nodes]
+        num_conflicts = 0
+        contains_conflict = any(element.contains_conflict for element in diff_elements)
+        summary_counter = Counter(
+            (element.action for element in (enriched_relationship.relationships | enriched_relationship.nodes))
+        )
+        return DiffRelationship(
+            name=enriched_relationship.name,
+            label=enriched_relationship.label,
+            last_changed_at=enriched_relationship.changed_at.obj,
+            status=enriched_relationship.action,
+            elements=diff_elements,
+            node_uuids=node_uuids,
+            contains_conflict=contains_conflict,
+            num_added=summary_counter[DiffAction.ADDED],
+            num_updated=summary_counter[DiffAction.UPDATED],
+            num_removed=summary_counter[DiffAction.REMOVED],
+            num_conflicts=num_conflicts,
+        )
+
+    def to_diff_relationship_element(self, enriched_element: EnrichedDiffSingleRelationship) -> DiffSingleRelationship:
+        diff_properties = [self.to_diff_property(e_prop) for e_prop in enriched_element.properties]
+        num_conflicts = 0
+        contains_conflict = any(p.conflict is not None for p in diff_properties)
+        summary_counter = Counter((prop.action for prop in enriched_element.properties))
+        return DiffSingleRelationship(
+            last_changed_at=enriched_element.changed_at.obj,
+            status=enriched_element.action,
+            peer_id=enriched_element.peer_id,
+            contains_conflict=contains_conflict,
+            conflict=None,
+            properties=diff_properties,
+            num_added=summary_counter[DiffAction.ADDED],
+            num_updated=summary_counter[DiffAction.UPDATED],
+            num_removed=summary_counter[DiffAction.REMOVED],
+            num_conflicts=num_conflicts,
+        )
+
+    def to_diff_property(self, enriched_property: EnrichedDiffProperty) -> DiffProperty:
+        return DiffProperty(
+            property_type=enriched_property.property_type.value,
+            last_changed_at=enriched_property.changed_at.obj,
+            previous_value=enriched_property.previous_value,
+            new_value=enriched_property.new_value,
+            status=enriched_property.action,
+            conflict=None,
+        )
 
     def to_graphql(
         self, fields: dict[str, dict], diff_object: Optional[Any]
@@ -298,17 +247,49 @@ class DiffTreeResolver:
         self,
         root: dict,
         info: GraphQLResolveInfo,
-        **kwargs: Any,
+        branch: str | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        root_node_uuids: list[str] | None = None,
+        max_depth: int | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
+        component_registry = get_component_registry()
+        context: GraphqlContext = info.context
+        base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
+        diff_branch = await registry.get_branch(db=context.db, branch=branch)
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=context.db, branch=diff_branch)
+        if from_time:
+            from_timestamp = Timestamp(from_time.isoformat())
+        else:
+            from_timestamp = Timestamp(diff_branch.get_created_at())
+        if to_time:
+            to_timestamp = Timestamp(to_time.isoformat())
+        else:
+            to_timestamp = context.at or Timestamp()
+
+        enriched_diff = await diff_coordinator.get_diff(
+            base_branch=base_branch,
+            diff_branch=diff_branch,
+            from_time=from_timestamp,
+            to_time=to_timestamp,
+            root_node_uuids=root_node_uuids,
+            max_depth=max_depth,
+            limit=limit,
+            offset=offset,
+        )
+
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
-        return self.to_graphql(fields=full_fields, diff_object=self.EXAMPLE_DIFF)
+        diff_tree = self.to_diff_tree(enriched_diff_root=enriched_diff)
+        return self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
 
 DiffTreeQuery = Field(
     DiffTree,
     name=String(),
     resolver=DiffTreeResolver().resolve,
-    branches=List(String),
+    branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
     root_node_uuids=List(String),
