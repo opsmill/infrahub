@@ -1,5 +1,5 @@
 import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import SlideOver from "@/components/display/slide-over";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import { Filters } from "@/components/filters/filters";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
@@ -9,7 +9,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 import {
   ACCOUNT_TOKEN_OBJECT,
   ARTIFACT_OBJECT,
-  DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
   SEARCH_ANY_FILTER,
   SEARCH_FILTERS,
@@ -260,28 +259,12 @@ export default function ObjectItems({
 
       <SlideOver
         title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {schema?.label}</span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-
-            <div className="text-sm">{schema?.description}</div>
-
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {schema?.kind}
-            </span>
-          </div>
+          <SlideOverTitle
+            schema={schema}
+            currentObjectLabel="New"
+            title={`Create ${schema.label}`}
+            subtitle={schema.description}
+          />
         }
         open={showCreateDrawer}
         setOpen={setShowCreateDrawer}>
