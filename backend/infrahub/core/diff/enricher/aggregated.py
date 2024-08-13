@@ -1,4 +1,3 @@
-
 from ..model.path import CalculatedDiffs, EnrichedDiffRoot
 from .interface import DiffEnricherInterface
 
