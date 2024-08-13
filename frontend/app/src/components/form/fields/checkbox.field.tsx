@@ -7,7 +7,7 @@ import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldVal
 export interface CheckboxFieldProps extends FormFieldProps {}
 
 const CheckboxField = ({
-  defaultValue,
+  defaultValue = { source: null, value: false },
   description,
   label,
   name,
@@ -22,8 +22,8 @@ const CheckboxField = ({
       rules={{
         validate: {
           ...rules?.validate,
-          required: (checked: boolean) => {
-            if (rules?.required) return checked !== undefined && checked !== null;
+          required: (checked: FormAttributeValue) => {
+            if (rules?.required) return checked.value !== undefined && checked.value !== null;
 
             return true;
           },

@@ -16,7 +16,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           ref={ref}
           {...props}
           type={showPassword ? props.type : "password"}
-          className={classNames("pr-8 leading-6 h-auto", className)}
+          className={classNames("pr-8", className)}
         />
 
         <Button

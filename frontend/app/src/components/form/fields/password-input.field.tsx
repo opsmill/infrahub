@@ -5,7 +5,7 @@ import { LabelFormField } from "@/components/form/fields/common";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 const PasswordInputField = ({
-  defaultValue,
+  defaultValue = { source: null, value: null },
   description,
   label,
   name,
