@@ -3,6 +3,7 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 
 from .cardinality_one import DiffCardinalityOneEnricherDependency
 from .hierarchy import DiffHierarchyEnricherDependency
+from .labels import DiffLabelsEnricherDependency
 
 
 class DiffAggregatedEnricherDependency(DependencyBuilder[AggregatedDiffEnricher]):
@@ -12,5 +13,6 @@ class DiffAggregatedEnricherDependency(DependencyBuilder[AggregatedDiffEnricher]
             enrichers=[
                 DiffCardinalityOneEnricherDependency.build(context=context),
                 DiffHierarchyEnricherDependency.build(context=context),
+                DiffLabelsEnricherDependency.build(context=context),
             ]
         )
