@@ -377,6 +377,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "icon": "mdi:source-repository",
             "branch": BranchSupportType.AGNOSTIC.value,
             "documentation": "/topics/repository",
             "attributes": [
