@@ -42,12 +42,14 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
           }}
         />
 
-        {onCancel && (
-          <Button variant="outline" className="mr-2" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
-        <FormSubmit>Comment</FormSubmit>
+        <div className="text-right">
+          {onCancel && (
+            <Button variant="outline" className="mr-2" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+          <FormSubmit>Comment</FormSubmit>
+        </div>
       </Form>
     );
   }
