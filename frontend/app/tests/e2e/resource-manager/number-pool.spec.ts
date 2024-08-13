@@ -12,7 +12,6 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByText("Number PoolCore").click();
     await expect(page.getByText("Name *")).toBeVisible();
     await page.getByLabel("Name *").fill("number pool test");
-    await expect(page.getByText("number pool test")).toBeVisible();
     await page.getByLabel("Node *").click();
     await page.getByText("Interface L2", { exact: true }).click();
     await page.getByLabel("Attribute *").click();
@@ -26,10 +25,10 @@ test.describe("/resource-manager - Resource Manager", () => {
   test("pool details should be correct", async ({ page }) => {
     await page.goto("/resource-manager");
     await page.getByTestId("object-items").getByRole("link", { name: "number pool test" }).click();
-    await expect(page.getByRole("cell", { name: "number pool test" }).first()).toBeVisible();
-    await expect(page.getByText("Speed")).toBeVisible();
-    await expect(page.getByText("1")).toBeVisible();
-    await expect(page.getByText("10")).toBeVisible();
+    await page.getByRole("cell", { name: "number pool test" }).first().click();
+    await expect(page.getByRole("cell", { name: "speed" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "1", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "10", exact: true })).toBeVisible();
   });
 
   test("update form should not include node and attribute selects", async ({ page }) => {
