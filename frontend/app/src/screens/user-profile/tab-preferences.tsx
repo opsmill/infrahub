@@ -1,4 +1,3 @@
-import { FormFieldValue } from "@/components/form/type";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { UPDATE_ACCOUNT_PASSWORD } from "@/graphql/mutations/accounts/updateAccountPassword";
@@ -7,6 +6,7 @@ import { toast } from "react-toastify";
 import { useMutation } from "@/hooks/useQuery";
 import { Form, FormSubmit } from "@/components/ui/form";
 import PasswordInputField from "@/components/form/fields/password-input.field";
+import { isRequired } from "@/components/form/utils/validation";
 
 type UpdatePasswordFormData = {
   newPassword: string;
@@ -45,9 +45,7 @@ export default function TabPreferences() {
             rules={{
               required: true,
               validate: {
-                required: ({ value }: FormFieldValue) => {
-                  return (value !== null && value !== undefined) || "Required";
-                },
+                required: isRequired,
               },
             }}
           />
@@ -58,9 +56,7 @@ export default function TabPreferences() {
             rules={{
               required: true,
               validate: {
-                required: ({ value }: FormFieldValue) => {
-                  return (value !== null && value !== undefined) || "Required";
-                },
+                required: isRequired,
                 isSamePassword: ({ value }, fieldValues) => {
                   return value === fieldValues.newPassword.value || "Passwords don't match";
                 },
