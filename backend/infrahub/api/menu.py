@@ -136,13 +136,8 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
             InterfaceMenu(title="Schema", path="/schema", icon="mdi:file-code"),
             InterfaceMenu(
                 title="Repository",
-                path=f"/objects/{InfrahubKind.REPOSITORY}",
-                icon=_extract_node_icon(full_schema[InfrahubKind.REPOSITORY]),
-            ),
-            InterfaceMenu(
-                title="Read-only Repository",
-                path=f"/objects/{InfrahubKind.READONLYREPOSITORY}",
-                icon="mdi:source-repository",
+                path=f"/objects/{InfrahubKind.GENERICREPOSITORY}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.GENERICREPOSITORY]),
             ),
             InterfaceMenu(
                 title="GraphQL Query",
