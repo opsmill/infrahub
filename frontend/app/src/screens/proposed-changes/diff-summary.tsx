@@ -15,13 +15,7 @@ export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSumma
     ${getProposedChangesDiffSummary}
   `;
 
-  const {
-    loading,
-    error,
-    data = {},
-  } = useQuery(query, {
-    branch,
-  });
+  const { loading, error, data = {} } = useQuery(query, { variables: { branch } });
 
   if (error) {
     return <ErrorScreen message="An error occured while fetching diff summary." />;
