@@ -40,6 +40,10 @@ const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFor
     return <NodeForm schema={schema} isFilterForm={isFilterForm} {...props} />;
   }
 
+  if (kind === NUMBER_POOL_OBJECT) {
+    return <NumberPoolForm {...props} />;
+  }
+
   if (isGeneric) {
     return <GenericObjectForm genericSchema={schema} {...props} />;
   }
@@ -53,10 +57,6 @@ const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFor
         {...props}
       />
     );
-  }
-
-  if (kind === NUMBER_POOL_OBJECT) {
-    return <NumberPoolForm {...props} />;
   }
 
   return (
