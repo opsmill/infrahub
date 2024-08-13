@@ -6,6 +6,7 @@ from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole, GlobalPermissions
 from infrahub.exceptions import PermissionDeniedError
+from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 
@@ -57,4 +58,6 @@ class TestDefaultBranchPermissionChecker:
             with pytest.raises(
                 PermissionDeniedError, match=r"You are not allowed to change data in the default branch"
             ):
-                await self.checker.check(self.graphql_query)
+                await self.checker.check(
+                    analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams)
+                )

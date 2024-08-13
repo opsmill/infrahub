@@ -1,9 +1,10 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole
+from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.read_write_checker import ReadWriteGraphQLPermissionChecker
 
@@ -33,4 +34,4 @@ class TestReadWriteAuthChecker:
     async def test_never_raises_error(self, contains_mutations):
         self.graphql_query.contains_mutations = contains_mutations
 
-        await self.checker.check(self.graphql_query)
+        await self.checker.check(analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams))

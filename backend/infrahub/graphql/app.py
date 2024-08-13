@@ -47,7 +47,7 @@ from infrahub.auth import AccountSession, authentication_token
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.log import get_logger
 
@@ -211,7 +211,9 @@ class InfrahubGraphQLApp:
             operation_name=operation_name,
             variables=variable_values,
         )
-        await self._evaluate_permissions(request=request, query=analyzed_query, account_session=account_session)
+        await self._evaluate_permissions(
+            request=request, query=analyzed_query, query_parameters=graphql_params, account_session=account_session
+        )
 
         # if the query contains some mutation, it's not currently supported to set AT manually
         if analyzed_query.contains_mutation:
@@ -281,27 +283,26 @@ class InfrahubGraphQLApp:
         }
 
     async def _evaluate_permissions(
-        self, request: Request, query: InfrahubGraphQLQueryAnalyzer, account_session: AccountSession
+        self,
+        request: Request,
+        query: InfrahubGraphQLQueryAnalyzer,
+        query_parameters: GraphqlParams,
+        account_session: AccountSession,
     ) -> None:
-        await self.permission_checker.check(account_session=account_session, analyzed_query=query)
+        await self.permission_checker.check(
+            account_session=account_session, analyzed_query=query, query_parameters=query_parameters
+        )
 
     def _log_error(self, error: Exception) -> None:
         if isinstance(error, Error):
             if 500 <= error.HTTP_CODE <= 500:
-                self.logger.error(
-                    "An exception occurred in resolvers",
-                    exc_info=error,
-                )
+                self.logger.error("An exception occurred in resolvers", exc_info=error)
             elif error.HTTP_CODE == 401:
                 self.logger.info("Permission denied within resolver", message=error.message)
             else:
                 self.logger.debug("An exception occurred in resolvers", exc_info=error)
-
         else:
-            self.logger.critical(
-                "Unhandled exception occurred in resolvers",
-                exc_info=error,
-            )
+            self.logger.critical("Unhandled exception occurred in resolvers", exc_info=error)
 
     async def _run_websocket_server(self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket) -> None:
         subscriptions: dict[str, AsyncGenerator[Any, None]] = {}

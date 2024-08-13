@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from graphql import OperationType
@@ -7,6 +7,7 @@ from infrahub_sdk.analyzer import GraphQLOperation
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole
 from infrahub.exceptions import PermissionDeniedError
+from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.read_only_checker import ReadOnlyGraphQLPermissionChecker
 
@@ -39,17 +40,17 @@ class TestReadOnlyAuthChecker:
         ]
 
         with pytest.raises(PermissionDeniedError):
-            await self.checker.check(self.graphql_query)
+            await self.checker.check(analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams))
 
     async def test_legal_mutation_is_okay(self):
         self.checker.allowed_readonly_mutations = ["ThisIsAllowed"]
         self.graphql_query.contains_mutation = True
         self.graphql_query.operations = [GraphQLOperation(name="ThisIsAllowed", operation_type=OperationType.MUTATION)]
 
-        await self.checker.check(self.graphql_query)
+        await self.checker.check(analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams))
 
     async def test_query_is_okay(self):
         self.graphql_query.contains_mutation = False
         self.graphql_query.operations = [GraphQLOperation(name="ThisIsAQuery", operation_type=OperationType.QUERY)]
 
-        await self.checker.check(self.graphql_query)
+        await self.checker.check(analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams))

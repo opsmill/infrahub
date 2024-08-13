@@ -4,6 +4,7 @@ import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.exceptions import AuthorizationError
+from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
 
@@ -29,10 +30,10 @@ class TestAnonymousAuthChecker:
         self.graphql_query.contains_mutation = query_has_mutations
 
         with pytest.raises(AuthorizationError):
-            await self.checker.check(self.graphql_query)
+            await self.checker.check(self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams))
 
     async def test_check_passes(self):
         self.mock_anonymous_setting_get.return_value = True
         self.graphql_query.contains_mutation = False
 
-        await self.checker.check(self.graphql_query)
+        await self.checker.check(analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams))

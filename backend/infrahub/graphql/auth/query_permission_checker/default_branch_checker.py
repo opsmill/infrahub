@@ -2,9 +2,10 @@ from infrahub import config
 from infrahub.auth import AccountSession
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import PermissionDeniedError
+from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 
-from .interface import GraphQLQueryPermissionCheckerInterface
+from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
@@ -20,7 +21,9 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         )
         return account_session.authenticated
 
-    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
+    async def check(
+        self, analyzed_query: InfrahubGraphQLQueryAnalyzer, query_parameters: GraphqlParams
+    ) -> CheckerResolution:
         if (
             not self.can_edit_default_branch
             and (
@@ -29,10 +32,13 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             )
             and analyzed_query.contains_mutation
             and (
-                analyzed_query.operation_name != "BranchCreate"  # Allow user to create a branch
+                analyzed_query.operation_name
+                and analyzed_query.operation_name != "BranchCreate"  # Allow user to create a branch
                 and not analyzed_query.operation_name.startswith("InfrahubAccount")  # Allow user to manage self
             )
         ):
             raise PermissionDeniedError(
                 f"You are not allowed to change data in the default branch '{config.SETTINGS.initial.default_branch}'"
             )
+
+        return CheckerResolution.NEXT_CHECKER
