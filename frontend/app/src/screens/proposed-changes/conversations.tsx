@@ -65,7 +65,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const formRef = useRef<FormRef>();
+  const formRef = useRef<FormRef>(null);
   const queryString = getProposedChangesThreads({
     id: proposedchange,
     kind: PROPOSED_CHANGES_THREAD_OBJECT,
@@ -179,8 +179,8 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
-      await refetch();
       formRef.current?.reset();
+      await refetch();
     } catch (error: any) {
       if (threadId) {
         const mutationString = deleteObject({
