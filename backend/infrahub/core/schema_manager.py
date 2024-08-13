@@ -251,9 +251,11 @@ class SchemaBranch:
         #     else:
         #         del self.generics[item_kind]
 
-    def validate_update(self, other: SchemaBranch) -> SchemaUpdateValidationResult:
+    def validate_update(self, other: SchemaBranch, enforce_update_support: bool = True) -> SchemaUpdateValidationResult:
         diff = self.diff(other=other)
-        result = SchemaUpdateValidationResult.init(diff=diff, schema=other)
+        result = SchemaUpdateValidationResult.init(
+            diff=diff, schema=other, enforce_update_support=enforce_update_support
+        )
         result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
 
@@ -464,9 +466,10 @@ class SchemaBranch:
             new_item.update(node_extension)
             self.set(name=node_extension.kind, schema=new_item)
 
-    def process(self) -> None:
+    def process(self, validate_schema: bool = True) -> None:
         self.process_pre_validation()
-        self.process_validate()
+        if validate_schema:
+            self.process_validate()
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
@@ -477,7 +480,7 @@ class SchemaBranch:
         self.process_hierarchy()
         self.process_branch_support()
         self.manage_profile_schemas()
-        self.add_profile_relationships()
+        self.manage_profile_relationships()
 
     def process_validate(self) -> None:
         self.validate_names()
@@ -1485,28 +1488,45 @@ class SchemaBranch:
                 core_node_schema.used_by = sorted(list(updated_used_by_node))
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
-    def add_profile_relationships(self) -> None:
+    def manage_profile_relationships(self) -> None:
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
-            needs_profile_relationship = "profiles" not in node.relationship_names
-            if node.namespace in RESTRICTED_NAMESPACES:
-                needs_profile_relationship = False
 
-            if needs_profile_relationship:
+            if node.namespace in RESTRICTED_NAMESPACES:
+                continue
+
+            profiles_rel_settings: dict[str, Any] = {
+                "name": "profiles",
+                "identifier": "node__profile",
+                "peer": InfrahubKind.PROFILE,
+                "kind": RelationshipKind.PROFILE,
+                "cardinality": RelationshipCardinality.MANY,
+                "branch": BranchSupportType.AWARE,
+            }
+
+            # Add relationship between node and profile
+            if "profiles" not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
-                # Add relationship between node and profile
-                node_schema.relationships.append(
-                    RelationshipSchema(
-                        name="profiles",
-                        identifier="node__profile",
-                        peer=InfrahubKind.PROFILE,
-                        kind=RelationshipKind.PROFILE,
-                        cardinality=RelationshipCardinality.MANY,
-                        branch=BranchSupportType.AWARE,
-                    )
-                )
+
+                node_schema.relationships.append(RelationshipSchema(**profiles_rel_settings))
                 self.set(name=node_name, schema=node_schema)
-                # Add relationship between group and profile
+            else:
+                has_changes: bool = False
+                rel_profiles = node.get_relationship(name="profiles")
+                for name, value in profiles_rel_settings.items():
+                    if getattr(rel_profiles, name) != value:
+                        has_changes = True
+
+                if not has_changes:
+                    continue
+
+                node_schema = self.get(name=node_name, duplicate=True)
+                rel_profiles = node_schema.get_relationship(name="profiles")
+                for name, value in profiles_rel_settings.items():
+                    if getattr(rel_profiles, name) != value:
+                        setattr(rel_profiles, name, value)
+
+                self.set(name=node_name, schema=node_schema)
 
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
@@ -1865,9 +1885,6 @@ class SchemaManager(NodeManager):
                 new_node.attributes.append(new_attr)
 
             for item in node.relationships:
-                if item.name == "profiles":
-                    new_node.relationships.append(item)
-                    continue
                 new_rel = await self.create_relationship_in_db(
                     schema=relationship_schema, item=item, parent=obj, branch=branch, db=db
                 )
@@ -1933,10 +1950,6 @@ class SchemaManager(NodeManager):
             if item.id and item.id in items:
                 await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
             elif not item.id:
-                if item.name == "profiles":
-                    if "profiles" not in new_node.relationship_names:
-                        new_node.relationships.append(item)
-                    continue
                 new_rel = await self.create_relationship_in_db(
                     schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
                 )
@@ -2158,6 +2171,7 @@ class SchemaManager(NodeManager):
         schema: Optional[SchemaBranch] = None,
         schema_diff: Optional[SchemaBranchDiff] = None,
         at: Optional[Timestamp] = None,
+        validate_schema: bool = True,
     ) -> SchemaBranch:
         """Query all the node of type NodeSchema and GenericSchema from the database and convert them to their respective type.
 
@@ -2225,7 +2239,7 @@ class SchemaManager(NodeManager):
                     schema=await self.convert_node_schema_to_schema(schema_node=schema_node, db=db),
                 )
 
-        schema.process()
+        schema.process(validate_schema=validate_schema)
 
         return schema
 

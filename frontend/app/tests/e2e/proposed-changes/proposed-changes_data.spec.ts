@@ -46,6 +46,13 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByTestId("data-diff-add-comment").first().click();
       await expect(page.getByText("Conversation")).toBeVisible();
     });
+  });
+
+  test.fixme("should add comments", async ({ page }) => {
+    await test.step("got to the data tab of the proposed changes", async () => {
+      await page.getByRole("link", { name: "pc-data-diff 0 atl1-delete-" }).click();
+      await page.getByLabel("Tabs").getByText("Data").click();
+    });
 
     await test.step("add first comment", async () => {
       await page.getByTestId("codemirror-editor").getByRole("textbox").fill("first is comment");

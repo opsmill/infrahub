@@ -29,7 +29,7 @@ export const Form = ({ defaultValues, className, children, onSubmit, ...props }:
 
   useEffect(() => {
     form.reset(defaultValues);
-  }, [JSON.stringify(defaultValues)]);
+  }, [JSON.stringify(defaultValues), form.formState.isSubmitSuccessful]);
 
   return (
     <FormProvider {...form}>

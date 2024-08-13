@@ -12,8 +12,10 @@ import {
   DynamicEnumFieldProps,
   DynamicFieldProps,
   DynamicInputFieldProps,
+  DynamicNumberFieldProps,
   DynamicRelationshipFieldProps,
   FormFieldValue,
+  NumberPoolData,
 } from "@/components/form/type";
 import {
   getObjectRelationshipsForForm,
@@ -27,7 +29,6 @@ import { store } from "@/state";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { ProfileData } from "@/components/form/object-form";
 import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
-import { useAtomValue } from "jotai/index";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { Filter } from "@/hooks/useFilters";
 import { getRelationshipParent } from "@/components/form/utils/getRelationshipParent";
@@ -39,6 +40,7 @@ type GetFormFieldsFromSchema = {
   auth?: AuthContextType;
   isFilterForm?: boolean;
   filters?: Array<Filter>;
+  pools?: Array<NumberPoolData>;
 };
 
 export const getFormFieldsFromSchema = ({
@@ -48,6 +50,7 @@ export const getFormFieldsFromSchema = ({
   auth,
   isFilterForm,
   filters,
+  pools = [],
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields = [
     ...(schema.attributes ?? []),
@@ -131,7 +134,7 @@ export const getFormFieldsFromSchema = ({
       return dropdownField;
     }
 
-    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.TEXT && Array.isArray(attribute.enum)) {
+    if (Array.isArray(attribute.enum)) {
       const enumField: DynamicEnumFieldProps = {
         ...basicFomFieldProps,
         type: "enum",
@@ -142,6 +145,19 @@ export const getFormFieldsFromSchema = ({
       };
 
       return enumField;
+    }
+
+    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER) {
+      const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attribute.name);
+
+      const dropdownField: DynamicNumberFieldProps = {
+        ...basicFomFieldProps,
+        type: "Number",
+        unique: attribute.unique,
+        pools: numberPools,
+      };
+
+      return dropdownField;
     }
 
     const field: DynamicInputFieldProps = {
@@ -155,8 +171,8 @@ export const getFormFieldsFromSchema = ({
   // Allow kind filter for generic
   if (isFilterForm && isGeneric(schema) && schema.used_by?.length) {
     const kindFilter = filters?.find((filter) => filter.name == "kind__value");
-    const nodes = useAtomValue(schemaState);
-    const profiles = useAtomValue(profilesAtom);
+    const nodes = store.get(schemaState);
+    const profiles = store.get(profilesAtom);
     const schemas = [...nodes, ...profiles];
 
     const items = schema.used_by

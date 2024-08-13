@@ -63,6 +63,11 @@ class AccountType(InfrahubStringEnum):
     Git = "Git"
 
 
+class AccountStatus(InfrahubStringEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
 class ArtifactStatus(InfrahubStringEnum):
     ERROR = "Error"
     PENDING = "Pending"

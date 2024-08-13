@@ -240,7 +240,7 @@ async def create_account(
 
     if token_value:
         token = await Node.init(db=db, schema=token_schema)
-        await token.new(db=db, token=token_value, account=obj)
+        await token.new(db=db, token=token_value, name="Created automatically", account=obj)
         await token.save(db=db)
 
     return obj

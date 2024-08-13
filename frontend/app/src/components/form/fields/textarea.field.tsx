@@ -37,6 +37,7 @@ const TextareaField = ({
                 {...field}
                 {...props}
                 defaultValue={defaultValue?.value as string | undefined}
+                value={fieldData?.value as string | undefined}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
                 }}

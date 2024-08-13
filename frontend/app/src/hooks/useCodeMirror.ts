@@ -38,6 +38,7 @@ const theme = EditorView.baseTheme({
 
 type CodeMirrorProps = {
   defaultValue?: string;
+  value?: string;
   placeholder?: string;
   onChange?: (value: string) => void;
   lang?: "markdown" | "graphql";
@@ -47,6 +48,7 @@ type CodeMirrorProps = {
 export function useCodeMirror(
   container: HTMLDivElement | null,
   {
+    value,
     defaultValue = "",
     onChange,
     placeholder = "",
@@ -63,6 +65,19 @@ export function useCodeMirror(
       onChange(viewUpdate.state.doc.toString());
     }
   });
+
+  useEffect(() => {
+    if (!view) return;
+
+    const currentValue = view.state.doc.toString();
+    const newValue = value ?? "";
+
+    if (value === currentValue) return;
+
+    view.dispatch({
+      changes: { from: 0, to: currentValue.length, insert: newValue || "" },
+    });
+  }, [value, view]);
 
   useEffect(() => {
     if (containerElement && !state) {

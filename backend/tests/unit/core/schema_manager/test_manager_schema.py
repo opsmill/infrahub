@@ -163,6 +163,28 @@ async def test_schema_branch_process_inheritance_node_level(animal_person_schema
     assert dog.icon == animal.icon
 
 
+async def test_schema_branch_process_inheritance_update_inherited_elements(animal_person_schema_dict):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+
+    dog = schema.get(name="TestDog")
+    assert dog.get_attribute(name="name").description is None
+    assert dog.get_relationship(name="owner").optional is False
+
+    updated_schema = animal_person_schema_dict
+    updated_schema["generics"][0]["attributes"][0]["description"] = "new description"
+    updated_schema["generics"][0]["relationships"][0]["optional"] = True
+
+    schema.load_schema(schema=SchemaRoot(**updated_schema))
+    schema.process_inheritance()
+
+    dog = schema.get(name="TestDog")
+    assert dog.get_attribute(name="name").description == "new description"
+    assert dog.get_relationship(name="owner").optional is True
+
+
 async def test_schema_branch_process_humain_friendly_id(animal_person_schema_dict):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
@@ -2077,6 +2099,7 @@ async def test_schema_branch_validate_check_missing(
                 },
             },
         ],
+        "enforce_update_support": True,
         "errors": [],
         "migrations": [],
     }
@@ -2152,7 +2175,12 @@ async def test_schema_branch_validate_add_node_relationships(
     new_schema.load_schema(schema=schema2)
 
     result = schema_branch.validate_update(other=new_schema)
-    assert result.model_dump(exclude=["diff"]) == {"constraints": [], "errors": [], "migrations": []}
+    assert result.model_dump(exclude=["diff"]) == {
+        "constraints": [],
+        "enforce_update_support": True,
+        "errors": [],
+        "migrations": [],
+    }
 
 
 # -----------------------------------------------------------------
@@ -2313,6 +2341,22 @@ async def test_load_schema_to_db_core_models(
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
     assert all(r for r in results if r.namespace.value != "Profile")
+
+
+async def test_clean_diff_after_reload_from_db(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+):
+    schema = SchemaRoot(**core_models)
+    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
+
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_pre = schema_branch.duplicate()
+
+    await registry.schema.load_schema_from_db(db=db, branch=default_branch, schema=schema_branch)
+
+    assert not schema_pre.diff(other=schema_branch).all
 
 
 async def test_load_schema_to_db_simple_01(

@@ -231,6 +231,12 @@ class QueryResult:
             return entry
         raise ValueError(f"{label} is not a collection use .get_node() or .get()")
 
+    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode]]:
+        entry = self._get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+
     def get_node(self, label: str) -> Neo4jNode:
         node = self.get(label=label)
         if isinstance(node, Neo4jNode):
@@ -307,6 +313,7 @@ class Query(ABC):
 
     raise_error_if_empty: bool = False
     insert_return: bool = True
+    insert_limit: bool = True
 
     def __init__(
         self,
@@ -408,10 +415,10 @@ class Query(ABC):
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if offset:
+        if offset and self.insert_limit:
             tmp_query_lines.append(f"SKIP {offset}")
 
-        if limit:
+        if limit and self.insert_limit:
             tmp_query_lines.append(f"LIMIT {limit}")
 
         query_str = "\n".join(tmp_query_lines)
@@ -433,8 +440,8 @@ class Query(ABC):
 
         return self.insert_variables_in_query(query=query_str, variables=self.params)
 
-    @staticmethod
-    def insert_variables_in_query(query: str, variables: dict) -> str:
+    @classmethod
+    def insert_variables_in_query(cls, query: str, variables: dict) -> str:
         """Search for all the variables in a Query string and replace each variable with its value."""
 
         def prep_value(v: Any) -> str:
@@ -442,8 +449,16 @@ class Query(ABC):
                 return str(v)
             return f'"{v}"'
 
-        for key, value in variables.items():
+        # Sort the list of variables first to ensure the longest will be processed first
+        vars_list = list(variables.items())
+        vars_list.sort(key=lambda x: len(x[0]), reverse=True)
+        for key, value in vars_list:
             if isinstance(value, dict):
+                # First try to insert individual element of the dict as var
+                sub_vars = {f"{key}.{sub_key}": sub_value for sub_key, sub_value in value.items()}
+                query = cls.insert_variables_in_query(query=query, variables=sub_vars)
+
+                # Then replace the entire object if nothing else was found
                 value_items = [f"{key1}: {prep_value(value1)}" for key1, value1 in value.items()]
                 value_str = "{ " + ", ".join(value_items) + " }"
                 query = query.replace(f"${key}", value_str)

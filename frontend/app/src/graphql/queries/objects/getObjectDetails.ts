@@ -33,6 +33,7 @@ query {{kind}} {
               id
               value
               updated_at
+              is_default
               is_from_profile
               is_protected
               is_visible

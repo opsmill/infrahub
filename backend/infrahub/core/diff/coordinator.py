@@ -1,13 +1,11 @@
-from functools import reduce
-
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 
 from .calculator import DiffCalculator
 from .combiner import DiffCombiner
-from .enricher import DiffEnricher
+from .enricher.aggregated import AggregatedDiffEnricher
 from .model.path import EnrichedDiffRoot
-from .repository import DiffRepository
+from .repository.repository import DiffRepository
 
 
 class DiffCoordinator:
@@ -15,7 +13,7 @@ class DiffCoordinator:
         self,
         diff_repo: DiffRepository,
         diff_calculator: DiffCalculator,
-        diff_enricher: DiffEnricher,
+        diff_enricher: AggregatedDiffEnricher,
         diff_combiner: DiffCombiner,
     ) -> None:
         self.diff_repo = diff_repo
@@ -27,7 +25,10 @@ class DiffCoordinator:
         self, base_branch: Branch, diff_branch: Branch, from_time: Timestamp, to_time: Timestamp
     ) -> EnrichedDiffRoot:
         calculated_timeframe_diffs = await self.diff_repo.get(
-            base_branch=base_branch, diff_branch=diff_branch, from_time=from_time, to_time=to_time
+            base_branch_name=base_branch.name,
+            diff_branch_names=[diff_branch.name],
+            from_time=from_time,
+            to_time=to_time,
         )
         missing_time_ranges = self._get_missing_time_ranges(
             diffs=calculated_timeframe_diffs, from_time=from_time, to_time=to_time
@@ -42,12 +43,11 @@ class DiffCoordinator:
             missing_time_range_diffs.append(enriched_diff)
         full_time_range_diffs = calculated_timeframe_diffs + missing_time_range_diffs
         full_time_range_diffs.sort(key=lambda dr: dr.from_time)
-        first_diff = full_time_range_diffs.pop(0)
-        combined_diff = reduce(
-            lambda first, second: self.diff_combiner.combine(earlier_diff=first, later_diff=second),
-            full_time_range_diffs,
-            first_diff,
-        )
+        combined_diff = full_time_range_diffs.pop(0)
+        while full_time_range_diffs:
+            combined_diff = await self.diff_combiner.combine(
+                earlier_diff=combined_diff, later_diff=full_time_range_diffs.pop(0)
+            )
         return combined_diff
 
     def _get_missing_time_ranges(  # pylint: disable=unused-argument
