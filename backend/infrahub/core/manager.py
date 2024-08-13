@@ -23,7 +23,6 @@ from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
 
 if TYPE_CHECKING:
@@ -941,8 +940,7 @@ class NodeManager:
     ) -> list[Any]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
-        component_registry = get_component_registry()
-        node_delete_validator = await component_registry.get_component(NodeDeleteValidator, db=db, branch=branch)
+        node_delete_validator = NodeDeleteValidator(db=db, branch=branch)
         ids_to_delete = await node_delete_validator.get_ids_to_delete(nodes=nodes, at=at)
         node_ids = {node.get_id() for node in nodes}
         missing_ids_to_delete = ids_to_delete - node_ids
