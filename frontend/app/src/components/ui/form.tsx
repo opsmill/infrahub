@@ -8,6 +8,7 @@ import React, {
   useContext,
   useEffect,
   useId,
+  useImperativeHandle,
 } from "react";
 import {
   Controller,
@@ -20,45 +21,44 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
 
+export type FormRef = ReturnType<typeof useForm>;
+
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, any>) => void;
   defaultValues?: Partial<Record<string, unknown>>;
   form?: UseFormReturn;
 }
 
-export const Form = ({
-  form,
-  defaultValues,
-  className,
-  children,
-  onSubmit,
-  ...props
-}: FormProps) => {
-  const currentForm = form ?? useForm({ defaultValues });
+export const Form = React.forwardRef<FormRef, FormProps>(
+  ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
+    const currentForm = form ?? useForm({ defaultValues });
 
-  useEffect(() => {
-    currentForm.reset(defaultValues);
-  }, [JSON.stringify(defaultValues), currentForm.formState.isSubmitSuccessful]);
+    useImperativeHandle(ref, () => currentForm);
 
-  return (
-    <FormProvider {...currentForm}>
-      <form
-        onSubmit={(event) => {
-          if (event && event.stopPropagation) {
-            event.stopPropagation();
-          }
+    useEffect(() => {
+      currentForm.reset(defaultValues);
+    }, [JSON.stringify(defaultValues), currentForm.formState.isSubmitSuccessful]);
 
-          if (!onSubmit) return;
+    return (
+      <FormProvider {...currentForm}>
+        <form
+          onSubmit={(event) => {
+            if (event && event.stopPropagation) {
+              event.stopPropagation();
+            }
 
-          currentForm.handleSubmit(onSubmit)(event);
-        }}
-        className={classNames("space-y-4", className)}
-        {...props}>
-        {children}
-      </form>
-    </FormProvider>
-  );
-};
+            if (!onSubmit) return;
+
+            currentForm.handleSubmit(onSubmit)(event);
+          }}
+          className={classNames("space-y-4", className)}
+          {...props}>
+          {children}
+        </form>
+      </FormProvider>
+    );
+  }
+);
 
 type FormFieldContextType = { id: string; name: string };
 const FormFieldContext = createContext<FormFieldContextType>({} as FormFieldContextType);

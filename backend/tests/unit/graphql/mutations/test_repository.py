@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.graphql.mutations.repository import cleanup_payload
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from tests.adapters.message_bus import BusRecorder
@@ -95,3 +98,30 @@ async def test_repository_update(db: InfrahubDatabase, register_core_models_sche
 
     assert repo_main.admin_status.value == RepositoryAdminStatus.ACTIVE.value
     assert repo_main.commit.value == commit_id
+
+
+@pytest.mark.parametrize(
+    "test_input,expected",
+    [
+        ({"location": {"value": "/tmp/repo_dir"}}, {"location": {"value": "/tmp/repo_dir"}}),
+        (
+            {"location": {"value": "https://github.com/opsmill/infrahub-demo-edge-develop"}},
+            {"location": {"value": "https://github.com/opsmill/infrahub-demo-edge-develop.git"}},
+        ),
+        (
+            {"name": "demo", "location": {"value": "http://github.com/opsmill/infrahub-demo-edge-develop"}},
+            {"name": "demo", "location": {"value": "http://github.com/opsmill/infrahub-demo-edge-develop.git"}},
+        ),
+        (
+            {"name": "demo"},
+            {"name": "demo"},
+        ),
+        (
+            {"name": "demo", "location": {"value": "http://github.com/opsmill/infrahub-demo-edge-develop.git"}},
+            {"name": "demo", "location": {"value": "http://github.com/opsmill/infrahub-demo-edge-develop.git"}},
+        ),
+    ],
+)
+def test_cleanup_payload(test_input, expected):
+    cleanup_payload(data=test_input)
+    assert test_input == expected

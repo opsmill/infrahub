@@ -1,5 +1,5 @@
 import { Button } from "@/components/buttons/button-primitive";
-import { Form, FormProps, FormSubmit } from "@/components/ui/form";
+import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import ColorField from "@/components/form/fields/color.field";
@@ -15,6 +15,7 @@ import RelationshipField from "@/components/form/fields/relationship.field";
 import { warnUnexpectedType } from "@/utils/common";
 import EnumField from "@/components/form/fields/enum.field";
 import NumberField from "@/components/form/fields/number.field";
+import React, { forwardRef } from "react";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;
@@ -23,30 +24,32 @@ export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
 }
 
-const DynamicForm = ({ fields, onCancel, submitLabel, ...props }: DynamicFormProps) => {
-  const formDefaultValues = fields.reduce(
-    (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
-    {}
-  );
+const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
+  ({ fields, onCancel, submitLabel, ...props }, ref) => {
+    const formDefaultValues = fields.reduce(
+      (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
+      {}
+    );
 
-  return (
-    <Form {...props} defaultValues={formDefaultValues}>
-      {fields.map((field) => (
-        <DynamicInput key={field.name} {...field} />
-      ))}
+    return (
+      <Form ref={ref} {...props} defaultValues={formDefaultValues}>
+        {fields.map((field) => (
+          <DynamicInput key={field.name} {...field} />
+        ))}
 
-      <div className="text-right">
-        {onCancel && (
-          <Button variant="outline" className="mr-2" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
+        <div className="text-right">
+          {onCancel && (
+            <Button variant="outline" className="mr-2" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
 
-        <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
-      </div>
-    </Form>
-  );
-};
+          <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
+        </div>
+      </Form>
+    );
+  }
+);
 
 const DynamicInput = (props: DynamicFieldProps) => {
   switch (props.type) {
