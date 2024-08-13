@@ -37,7 +37,7 @@ export const Form = React.forwardRef<FormRef, FormProps>(
 
     useEffect(() => {
       currentForm.reset(defaultValues);
-    }, [JSON.stringify(defaultValues), currentForm.formState.isSubmitSuccessful]);
+    }, [JSON.stringify(defaultValues)]);
 
     return (
       <FormProvider {...currentForm}>

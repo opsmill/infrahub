@@ -6,7 +6,6 @@ export const useFormValues = () => {
 
   return {
     ...useWatch(), // subscribe to form value updates
-
     ...getValues(), // always merge with latest form values
   };
 };
