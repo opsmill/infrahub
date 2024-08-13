@@ -1,5 +1,5 @@
 import { Button } from "@/components/buttons/button-primitive";
-import { Form, FormProps, FormSubmit } from "@/components/ui/form";
+import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
 import { DynamicFieldProps } from "@/components/form/type";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import ColorField from "@/components/form/fields/color.field";
@@ -14,6 +14,7 @@ import TextareaField from "@/components/form/fields/textarea.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
 import { warnUnexpectedType } from "@/utils/common";
 import EnumField from "@/components/form/fields/enum.field";
+import { forwardRef } from "react";
 
 export interface DynamicFormProps extends FormProps {
   fields: Array<DynamicFieldProps>;
@@ -21,30 +22,32 @@ export interface DynamicFormProps extends FormProps {
   submitLabel?: string;
 }
 
-const DynamicForm = ({ fields, onCancel, submitLabel, ...props }: DynamicFormProps) => {
-  const formDefaultValues = fields.reduce(
-    (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
-    {}
-  );
+const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
+  ({ fields, onCancel, submitLabel, ...props }, ref) => {
+    const formDefaultValues = fields.reduce(
+      (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
+      {}
+    );
 
-  return (
-    <Form {...props} defaultValues={formDefaultValues}>
-      {fields.map((field) => (
-        <DynamicInput key={field.name} {...field} />
-      ))}
+    return (
+      <Form ref={ref} {...props} defaultValues={formDefaultValues}>
+        {fields.map((field) => (
+          <DynamicInput key={field.name} {...field} />
+        ))}
 
-      <div className="text-right">
-        {onCancel && (
-          <Button variant="outline" className="mr-2" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
+        <div className="text-right">
+          {onCancel && (
+            <Button variant="outline" className="mr-2" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
 
-        <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
-      </div>
-    </Form>
-  );
-};
+          <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
+        </div>
+      </Form>
+    );
+  }
+);
 
 const DynamicInput = (props: DynamicFieldProps) => {
   const { type, ...otherProps } = props;

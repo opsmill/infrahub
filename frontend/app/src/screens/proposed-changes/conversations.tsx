@@ -38,13 +38,14 @@ import { Icon } from "@iconify-icon/react";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import DynamicForm from "@/components/form/dynamic-form";
 import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { FormRef } from "@/components/ui/form";
 
 type tConversations = {
   refetch?: Function;
@@ -62,6 +63,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
   const [isLoadingClose, setIsLoadingClose] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
+  const formRef = useRef<FormRef>(null);
 
   const queryString = getProposedChangesThreads({
     id: proposedchange,
@@ -177,6 +179,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
       await refetch();
+      formRef.current?.reset();
     } catch (error: any) {
       if (threadId) {
         const mutationString = deleteObject({
@@ -474,7 +477,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         </div>
 
         <div className="bg-custom-white p-4 m-4 rounded-lg relative">
-          <AddComment onSubmit={handleSubmit} />
+          <AddComment ref={formRef} onSubmit={handleSubmit} />
         </div>
       </div>
 
