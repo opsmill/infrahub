@@ -9,7 +9,7 @@ export interface InputFieldProps
     Omit<InputProps, "defaultValue" | "name"> {}
 
 const InputField = ({
-  defaultValue,
+  defaultValue = { source: null, value: null },
   description,
   label,
   name,
