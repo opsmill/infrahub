@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from pendulum.datetime import DateTime
 
+from infrahub.core import registry
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.combiner import DiffCombiner
@@ -58,7 +59,8 @@ class TestDiffCombiner:
             nodes=set(),
         )
         self.schema_manager = AsyncMock(spec=SchemaManager)
-        self.combiner = DiffCombiner(schema_manager=self.schema_manager)
+        registry.schema = self.schema_manager
+        self.combiner = DiffCombiner()
 
     @pytest.fixture
     def with_schema_manager(self, car_person_schema_unregistered):
