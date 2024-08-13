@@ -24,7 +24,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix attribute uniqueness check that was incorrectly running against schema nodes, ([#3986](https://github.com/opsmill/infrahub/issues/3986))
 - Provide better information when available during schema conflicts in the pipeline. ([#3987](https://github.com/opsmill/infrahub/issues/3987))
 - Fix schema sync issue between worker nodes. ([#3994](https://github.com/opsmill/infrahub/issues/3994))
-- Updates the profile type select when creating a profile, to display more relevant informations about the related nodes. ([#4001](https://github.com/opsmill/infrahub/issues/4001))
+- Updates the profile type select when creating a profile, to display more relevant information about the related nodes. ([#4001](https://github.com/opsmill/infrahub/issues/4001))
 - Fix logic that prevented existing inherited attribute / relationships from being updated. ([#4004](https://github.com/opsmill/infrahub/issues/4004))
 - Fix attribute uniqueness validator to not run in isolated mode. ([#4025](https://github.com/opsmill/infrahub/issues/4025))
 - Update getting-started/branches referencing the wrong org from previous step.
