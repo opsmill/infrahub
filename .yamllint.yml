@@ -13,6 +13,10 @@ ignore: |
 rules:
   new-lines: disable
   comments-indentation: disable
+  comments:
+    # Changed this to stop a mess between linters from Prettier (vscode) to yamllint
+    # See https://github.com/prettier/prettier/pull/10926 or https://github.com/redhat-developer/vscode-yaml/issues/433
+    min-spaces-from-content: 1
   line-length:
     max: 120
     allow-non-breakable-words: true
