@@ -20,7 +20,7 @@ order: [
   "InfraBGPPeerGroup",
   "InfraIXP",
   "IpamIPAddress",
-  "InfraIXPConnection"
+  "InfraIXPConnection",
 ]
 
 schema_mapping:
@@ -118,16 +118,37 @@ schema_mapping:
       - name: bgp_communities
         mapping: communities
         reference: InfraBGPCommunity
+    # Showcase Filters
+    filters:
+      - field: name
+        operation: "is_not_empty"
+        value: true
+      - field: status.value
+        operation: contains
+        value: "'enabled'"
+      - field: name
+        operation: contains
+        value: "'S.H.I.E.L.D'"
+    # Showcase Transforms
+    transforms:
+      - field: description
+        expression: "{name.upper()}"
 
   # Create the IPv4 and IPv6 from the InfraIXPConnection
-  # - name: IpamIPAddress
-  #   mapping: net/connections
-  #   identifiers: ["address"]
-  #   fields:
-  #     - name: address
-  #       mapping: ipv6_address
-  #     - name: description
-  #       mapping: name
+  # /!\ 'address' is mandatory on Infrahub but it can be empty in PeeringManager
+  # As you can't have 2 times the same model with differents filters, you need to import those separetly
+  - name: IpamIPAddress
+    mapping: net/connections
+    identifiers: ["address"]
+    fields:
+      - name: address
+        mapping: ipv6_address
+      - name: description
+        mapping: name
+    filters:
+      - field: ipv6_address
+        operation: "is_not_empty"
+        value: true
   # - name: IpamIPAddress
   #   mapping: net/connections
   #   identifiers: ["address"]
@@ -136,6 +157,10 @@ schema_mapping:
   #       mapping: ipv4_address
   #     - name: description
   #       mapping: name
+  #   filters:
+  #     - field: ipv4_address
+  #       operation: "is_not_empty"
+  #       value: true
 
   - name: InfraIXPConnection
     mapping: net/connections
@@ -160,3 +185,10 @@ schema_mapping:
       - name: internet_exchange_point
         mapping: internet_exchange_point
         reference: InfraIXP
+    # Showcase Filters
+    # As we filter InfraIXP on the name S.H.I.E.L.D, we need to have the same filter here
+    # to avoid importing IXP Connection without IXP
+    filters:
+      - field: internet_exchange_point.name
+        operation: contains
+        value: "'S.H.I.E.L.D'"

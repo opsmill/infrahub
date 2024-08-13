@@ -1,9 +1,7 @@
 from typing import Any, List, Optional
 
-import netutils.ip
-import netutils.regex
-
 from infrahub_sync.adapters.peeringmanager import PeeringmanagerModel
+from infrahub_sync.adapters.utils import apply_filters, apply_transforms
 
 
 # -------------------------------------------------------
@@ -54,20 +52,11 @@ class IpamIPAddress(PeeringmanagerModel):
 
     @classmethod
     def filter_records(cls, records: List[Any]) -> List[Any]:
-        filtered_records = []
-        for record in records:
-            include = True
-            try:
-                if netutils.regex.regex_search(".+", "ipv6_address"):
-                    include = False
-            except Exception as e:
-                print(
-                    f"Error evaluating filter: 'netutils.regex.regex_search('.+', 'ipv6_address')' with record {record}: {e}"
-                )
-                include = False
-            if include:
-                filtered_records.append(record)
-        return filtered_records
+        """Filter records based on the defined filters."""
+        filters = [
+            {"field": "ipv6_address", "operation": "is_not_empty", "value": True},
+        ]
+        return [record for record in records if apply_filters(record, filters)]
 
 
 class InfraBGPCommunity(PeeringmanagerModel):
@@ -105,7 +94,7 @@ class InfraIXP(PeeringmanagerModel):
     _identifiers = ("name",)
     _attributes = ("import_policies", "export_policies", "bgp_communities", "description", "status")
     name: str
-    description: str
+    description: Optional[str] = None
     status: Optional[str] = "enabled"
     import_policies: Optional[List[str]] = []
     export_policies: Optional[List[str]] = []
@@ -113,6 +102,26 @@ class InfraIXP(PeeringmanagerModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
+    @classmethod
+    def filter_records(cls, records: List[Any]) -> List[Any]:
+        """Filter records based on the defined filters."""
+        filters = [
+            {"field": "name", "operation": "is_not_empty", "value": True},
+            {"field": "status.value", "operation": "contains", "value": "enabled"},
+            {"field": "name", "operation": "contains", "value": "S.H.I.E.L.D"},
+        ]
+        return [record for record in records if apply_filters(record, filters)]
+
+    @classmethod
+    def transform_records(cls, records: List[Any]) -> List[Any]:
+        """Transform records based on the defined transforms."""
+        transforms = [
+            {"field": "description", "expression": "{name.upper()}"},
+        ]
+        for record in records:
+            apply_transforms(record, transforms)
+        return records
 
 
 class InfraIXPConnection(PeeringmanagerModel):
@@ -131,10 +140,18 @@ class InfraIXPConnection(PeeringmanagerModel):
     description: Optional[str] = None
     peeringdb_netixlan: Optional[int] = None
     status: Optional[str] = "enabled"
-    vlan: int
+    vlan: Optional[int] = None
     ipv6_address: Optional[str] = None
     ipv4_address: Optional[str] = None
     internet_exchange_point: str
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
+    @classmethod
+    def filter_records(cls, records: List[Any]) -> List[Any]:
+        """Filter records based on the defined filters."""
+        filters = [
+            {"field": "internet_exchange_point.name", "operation": "contains", "value": "S.H.I.E.L.D"},
+        ]
+        return [record for record in records if apply_filters(record, filters)]

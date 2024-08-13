@@ -28,6 +28,7 @@ structlog = "^22.3.0"
 diffsync = { version = ">=1.10,<2.0 || >=2.0", extras = ["redis"] }
 netutils = "^1.9.1"
 tqdm = "^4.66.5"
+asteval = "^1.0.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

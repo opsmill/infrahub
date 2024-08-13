@@ -1,8 +1,5 @@
 from typing import Any, List, Optional
 
-import netutils.ip
-import netutils.regex
-
 from infrahub_sync.adapters.infrahub import InfrahubModel
 
 
@@ -52,23 +49,6 @@ class IpamIPAddress(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        filtered_records = []
-        for record in records:
-            include = True
-            try:
-                if netutils.regex.regex_search(".+", "ipv6_address"):
-                    include = False
-            except Exception as e:
-                print(
-                    f"Error evaluating filter: 'netutils.regex.regex_search('.+', 'ipv6_address')' with record {record}: {e}"
-                )
-                include = False
-            if include:
-                filtered_records.append(record)
-        return filtered_records
-
 
 class InfraBGPCommunity(InfrahubModel):
     _modelname = "InfraBGPCommunity"
@@ -105,7 +85,7 @@ class InfraIXP(InfrahubModel):
     _identifiers = ("name",)
     _attributes = ("import_policies", "export_policies", "bgp_communities", "description", "status")
     name: str
-    description: str
+    description: Optional[str] = None
     status: Optional[str] = "enabled"
     import_policies: Optional[List[str]] = []
     export_policies: Optional[List[str]] = []
@@ -131,7 +111,7 @@ class InfraIXPConnection(InfrahubModel):
     description: Optional[str] = None
     peeringdb_netixlan: Optional[int] = None
     status: Optional[str] = "enabled"
-    vlan: int
+    vlan: Optional[int] = None
     ipv6_address: Optional[str] = None
     ipv4_address: Optional[str] = None
     internet_exchange_point: str

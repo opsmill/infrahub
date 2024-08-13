@@ -3,6 +3,17 @@ from typing import Any, List, Optional
 import pydantic
 
 
+class SchemaMappingFilter(pydantic.BaseModel):
+    field: str
+    operation: str
+    value: Optional[Any] = None
+
+
+class SchemaMappingTransform(pydantic.BaseModel):
+    field: str
+    expression: str
+
+
 class SchemaMappingField(pydantic.BaseModel):
     name: str
     mapping: Optional[str] = pydantic.Field(default=None)
@@ -14,7 +25,8 @@ class SchemaMappingModel(pydantic.BaseModel):
     name: str
     mapping: str
     identifiers: Optional[List[str]] = pydantic.Field(default=None)
-    filters: Optional[List[str]] = pydantic.Field(default=None)
+    filters: Optional[List[SchemaMappingFilter]] = pydantic.Field(default=None)
+    transforms: Optional[List[SchemaMappingTransform]] = pydantic.Field(default=None)
     fields: List[SchemaMappingField] = []
 
 
@@ -58,6 +70,14 @@ class DiffSyncMixin:
 
 
 class DiffSyncModelMixin:
+    @classmethod
+    def get_resource_name(cls, schema_mapping):
+        """Get the resource name from the schema mapping."""
+        for element in schema_mapping:
+            if element.name == cls.__name__:
+                return element.mapping
+        raise ValueError(f"Resource name not found for class {cls.__name__}")
+
     @classmethod
     def is_list(cls, name):
         field = cls.__fields__.get(name)

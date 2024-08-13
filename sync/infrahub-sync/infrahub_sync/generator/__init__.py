@@ -48,6 +48,14 @@ def get_filters(schema_mapping, node_kind):
     return []
 
 
+def get_transforms(schema_mapping, node_kind):
+    """Extract transforms for a specific node kind from the schema mapping."""
+    for mapping in schema_mapping:
+        if mapping.name == node_kind:
+            return mapping.transforms or []
+    return []
+
+
 def get_identifiers(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]:
     """Return the identifiers that should be used by DiffSync."""
 
@@ -149,6 +157,7 @@ def render_template(template_file: Path, output_dir: Path, output_file: Path, co
     )
     # Add custom filters to Jinja2
     template_env.filters["get_filters"] = get_filters
+    template_env.filters["get_transforms"] = get_transforms
     template_env.filters["get_identifiers"] = get_identifiers
     template_env.filters["get_attributes"] = get_attributes
     template_env.filters["get_children"] = get_children

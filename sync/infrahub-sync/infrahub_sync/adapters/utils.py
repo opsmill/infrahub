@@ -1,18 +1,134 @@
-from typing import Any, Optional
+import operator
+import re
+from typing import Any, List, Optional, Union
 
 import requests
+from asteval import Interpreter
+from netutils.ip import is_ip_within as netutils_is_ip_within
+
+
+def is_ip_within_filter(ip: str, ip_compare: Union[str, List[str]]) -> bool:
+    """Check if an IP address is within a given subnet."""
+    return netutils_is_ip_within(ip=ip, ip_compare=ip_compare)
+
+
+def convert_to_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        raise ValueError(f"Cannot convert '{value}' to int")
+
+
+def regex_filter(field_value: str, pattern: str) -> bool:
+    return bool(re.match(pattern, field_value))
+
+
+# Operations mapping
+OPERATIONS = {
+    "==": operator.eq,
+    "!=": operator.ne,
+    ">": lambda x, y: operator.gt(convert_to_int(x), convert_to_int(y)),
+    "<": lambda x, y: operator.lt(convert_to_int(x), convert_to_int(y)),
+    ">=": lambda x, y: operator.ge(convert_to_int(x), convert_to_int(y)),
+    "<=": lambda x, y: operator.le(convert_to_int(x), convert_to_int(y)),
+    "in": lambda x, y: y and x in y,
+    "not in": lambda x, y: x not in y,
+    "contains": lambda x, y: x and y in x,
+    "not contains": lambda x, y: x and y not in x,
+    "regex": lambda x, pattern: re.match(pattern, x) is not None,
+    "is_empty": lambda x: x is None or not x,
+    "is_not_empty": lambda x: x is not None and x,
+    "is_ip_within": is_ip_within_filter,
+}
+
+STRING_METHODS = {
+    "upper": str.upper,
+    "lower": str.lower,
+    "capitalize": str.capitalize,
+    "title": str.title,
+    "replace": str.replace,
+    "join": str.join,
+    "strip": str.strip,
+    "lstrip": str.lstrip,
+    "rstrip": str.rstrip,
+    "format": str.format,
+}
+
+
+def apply_filter(field_value: Any, operation: str, value: Any) -> bool:
+    """Apply a specified operation to a field value."""
+    operation_func = OPERATIONS.get(operation)
+    if operation_func is None:
+        raise ValueError(f"Unsupported operation: {operation}")
+
+    # Handle is_empty and is_not_empty which do not use the value argument
+    if operation in {"is_empty", "is_not_empty"}:
+        return operation_func(field_value)
+
+    return operation_func(field_value, value)
+
+
+def apply_filters(item: dict[str, Any], filters: List[dict[str, Any]]) -> bool:
+    """Apply filters to an item and return True if it passes all filters."""
+    for filter_obj in filters:
+        field_value = get_value(obj=item, name=filter_obj["field"])
+        if not apply_filter(field_value, filter_obj["operation"], filter_obj["value"]):
+            return False
+    return True
+
+
+def apply_transform(item: dict[str, Any], transform_expr: str, field: str) -> None:
+    """Apply a transformation expression to a specified field in the item."""
+    try:
+        # Initialize asteval interpreter
+        aeval = Interpreter()
+        aeval.symtable.update(STRING_METHODS)
+        context = {k: v for k, v in item.items() if isinstance(v, (str, int, float, dict, list))}
+        aeval.symtable.update(context)
+
+        # Safely evaluate the expression using asteval
+        transformed_value = aeval.eval(expr=transform_expr)
+        # If the result is a set, convert it to a string or extract the first element
+        if isinstance(transformed_value, set):
+            if len(transformed_value) == 1:
+                transformed_value = next(iter(transformed_value))
+            else:
+                transformed_value = ", ".join(transformed_value)
+
+        # Assign the result back to the item
+        item[field] = transformed_value
+    except Exception as e:
+        raise ValueError(f"Failed to transform '{field}' with '{transform_expr}': {e}")
+
+
+def apply_transforms(item: dict[str, Any], transforms: List[dict[str, str]]) -> dict[str, Any]:
+    """Apply a list of structured transformations to an item."""
+    for transform_obj in transforms:
+        field = transform_obj["field"]
+        expr = transform_obj["expression"]
+        apply_transform(item, expr, field)
+    return item
 
 
 def get_value(obj, name: str):
     """Query a value in dot notation recursively"""
     if "." not in name:
-        return obj.get(name)
+        # Check if the object is a dictionary and use appropriate method to access the attribute.
+        if isinstance(obj, dict):
+            return obj.get(name)
+        return getattr(obj, name, None)
 
     first_name, remaining_part = name.split(".", maxsplit=1)
-    sub_obj = obj.get(first_name)
+
+    # Check if the object is a dictionary and use appropriate method to access the attribute.
+    if isinstance(obj, dict):
+        sub_obj = obj.get(first_name)
+    else:
+        sub_obj = getattr(obj, first_name, None)
+
     if not sub_obj:
         return None
-    return get_value(sub_obj, name=remaining_part)
+    return get_value(obj=sub_obj, name=remaining_part)
 
 
 def derive_identifier_key(obj: dict[str, Any]) -> Optional[str]:
@@ -48,7 +164,7 @@ class RestApiClient:
 
         # Determine authentication method
         if auth_method == "token" and api_token:
-            self.headers["Authorization"] = f"Bearer {api_token}"
+            self.headers["Authorization"] = f"Token {api_token}"
         elif auth_method == "basic" and username and password:
             self.auth = (username, password)
         else:
@@ -94,6 +210,9 @@ class RestApiClient:
 
     def post(self, endpoint: str, data: Optional[dict[str, Any]] = None) -> Any:
         return self.request("POST", endpoint, data=data)
+
+    def patch(self, endpoint: str, data: Optional[dict[str, Any]] = None) -> Any:
+        return self.request("PATCH", endpoint, data=data)
 
     def put(self, endpoint: str, data: Optional[dict[str, Any]] = None) -> Any:
         return self.request("PUT", endpoint, data=data)

@@ -1,8 +1,7 @@
 from typing import Any, List, Optional
-import netutils.regex
-import netutils.ip
 
 from infrahub_sync.adapters.{{ adapter.name }} import {{ adapter.name.title() }}Model
+from infrahub_sync.adapters.utils import apply_filter, apply_filters, apply_transform, apply_transforms
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY
@@ -30,45 +29,29 @@ class {{ nodekind }}({{ adapter.name.title() }}Model):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
-{%-      set filters = config.schema_mapping | get_filters(nodekind) %}
-{%-      if filters %}
+{%-      if direction == "source"  and config.schema_mapping | get_filters(nodekind) %}
     @classmethod
     def filter_records(cls, records: List[Any]) -> List[Any]:
-        filtered_records = []
-        for record in records:
-            include = True
-{%-         for filter_expr in filters %}
-            try:
-{%-             if 'netutils.regex.' in filter_expr %}
-{%-                 set is_negated = 'not ' in filter_expr %}
-                if {{ 'not ' if is_negated else '' }}({{filter_expr.replace('not ', '')}}):
-                    include = False
-{%-             elif ('netutils.ip.' in filter_expr) %}
-{%-                 set is_negated = 'not ' in filter_expr %}
-                if {{ 'not ' if is_negated else '' }}({{filter_expr.replace('not ', '')}}):
-                    include = False
-{%-             else %}
-{%-                 set filter_parts = filter_expr.split(' ', 2) %}
-{%-                 set field = filter_parts[0] %}
-{%-                 set operation = filter_parts[1] %}
-{%-                 set value = filter_parts[2] %}
-{%-                 if operation in ['==', '!=', '>', '<', '>=', '<='] %}
-                field_value = getattr(record, '{{ field }}', 0) if not isinstance(record, dict) else record.get('{{ field }}', 0)
-                record_value = int(field_value)
-                if not (record_value {{ operation }} {{ value }}):
-                    include = False
-{%-                 else %}
-                # /!\ Filter didn't match any working filters, ignored
-                pass
-{%-                 endif %}
-{%-             endif %}
-            except Exception as e:
-                print(f"Error evaluating filter: '{{ filter_expr }}' with record {record}: {e}")
-                include = False
+        """Filter records based on the defined filters."""
+        filters = [
+{%-         for filter_obj in config.schema_mapping | get_filters(nodekind) %}
+            {'field': '{{ filter_obj.field }}', 'operation': '{{ filter_obj.operation }}', 'value': {{ filter_obj.value }}},
 {%-         endfor %}
-            if include:
-                filtered_records.append(record)
-        return filtered_records
-{%-  endif %}
+        ]
+        return [record for record in records if apply_filters(record, filters)]
+{%-      endif %}
+{%-      if direction == "source"  and config.schema_mapping | get_transforms(nodekind) %}
+    @classmethod
+    def transform_records(cls, records: List[Any]) -> List[Any]:
+        """Transform records based on the defined transforms."""
+        transforms = [
+{%-         for transform_obj in config.schema_mapping | get_transforms(nodekind) %}
+            {'field': '{{ transform_obj.field }}', 'expression': "{{ transform_obj.expression | replace('"', '\\"') }}"},
+{%-         endfor %}
+        ]
+        for record in records:
+            apply_transforms(record, transforms)
+        return records
+{%-      endif %}
 {%  endif %}
 {%- endfor %}

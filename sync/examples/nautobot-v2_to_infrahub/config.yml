@@ -11,16 +11,16 @@ destination:
   settings:
     url: "http://localhost:8000"
 
-store:
-  type: redis
-  settings:
-    host: localhost
-    port: 6379
+# store:
+#   type: redis
+#   settings:
+#     host: localhost
+#     port: 6379
 
 order: [
   "BuiltinTag",
   "RoleGeneric",
-  # "StatusGeneric",
+  "StatusGeneric",
   "CoreStandardGroup",
   "OrganizationGeneric",
   "TemplateLocationType",
@@ -36,11 +36,11 @@ order: [
   "InfraVRF",
   "InfraDevice",
   "InfraVLAN",
-  "InfraPrefix",
-  "InfraInterfaceL2L3",
-  "InfraRearPort",
-  "InfraFrontPort",
-  "InfraIPAddress",
+  # "InfraPrefix",
+  # "InfraInterfaceL2L3",
+  # "InfraRearPort",
+  # "InfraFrontPort",
+  # "InfraIPAddress",
 ]
 
 schema_mapping:
@@ -67,16 +67,21 @@ schema_mapping:
         mapping: display
 
   # Status (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
-  # - name: StatusGeneric
-  #   mapping: extras.statuses
-  #   identifiers: ["name"]
-  #   fields:
-  #     - name: name
-  #       mapping: name
-  #     - name: description
-  #       mapping: description
-  #     - name: label
-  #       mapping: display
+  - name: StatusGeneric
+    mapping: extras.statuses
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: label
+        mapping: display
+    # Filter the "fake" Null Status from Nautobot v2
+    filters:
+      - field: name
+        operation: "!="
+        value: "'NULL'"
 
   # Tenancy (tenants, tenant groups)
   - name: CoreStandardGroup
@@ -121,9 +126,9 @@ schema_mapping:
       - name: location_type
         mapping: location_type
         reference: TemplateLocationType
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -219,9 +224,9 @@ schema_mapping:
       - name: role
         mapping: role
         reference: RoleGeneric
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
       - name: location
         mapping: location
         reference: LocationGeneric
@@ -253,9 +258,9 @@ schema_mapping:
         mapping: provider.slug
       - name: description
         mapping: description
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -275,7 +280,12 @@ schema_mapping:
     identifiers: ["circuit_id"]
     # Showcase of the filters on the Circuits, it will import the ones starting with a CID starting with ntt
     filters:
-      - "not netutils.regex.regex_match('ntt', 'cid')"
+      - field: circuit_id
+        operation: "contains"
+        value: "'ntt'"
+    transforms:
+      - field: circuit_id
+        expression: "{circuit_id.upper()}"
     fields:
       - name: circuit_id
         mapping: cid
@@ -286,9 +296,9 @@ schema_mapping:
         reference: OrganizationGeneric
       - name: description
         mapping: description
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
       - name: type
         mapping: circuit_type
         reference: TemplateCircuitType
@@ -386,9 +396,9 @@ schema_mapping:
       - name: role
         mapping: role
         reference: RoleGeneric
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
       - name: vlan_group
         mapping: vlan_group
         reference: CoreStandardGroup
@@ -409,9 +419,9 @@ schema_mapping:
       - name: role
         mapping: role
         reference: RoleGeneric
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
       - name: vlan
         mapping: vlan
         reference: InfraVLAN
@@ -438,9 +448,9 @@ schema_mapping:
       - name: role
         mapping: role
         reference: RoleGeneric
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
 
   # Interfaces (interfaces, rear port, front port)
   - name: InfraInterfaceL2L3
@@ -474,9 +484,9 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: BuiltinTag
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
 
   - name: InfraFrontPort
     identifiers: ["name", "device"]
@@ -494,9 +504,9 @@ schema_mapping:
       - name: device
         mapping: device
         reference: InfraDevice
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric
   - name: InfraRearPort
     identifiers: ["name", "device"]
     mapping: dcim.rear-ports
@@ -510,6 +520,6 @@ schema_mapping:
       - name: device
         mapping: device
         reference: InfraDevice
-      # - name: status
-      #   mapping: status
-      #   reference: StatusGeneric
+      - name: status
+        mapping: status
+        reference: StatusGeneric

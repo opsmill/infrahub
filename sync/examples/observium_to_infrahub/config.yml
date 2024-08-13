@@ -33,24 +33,26 @@ schema_mapping:
   - name: IpamIPAddress
     mapping: devices
     identifiers: ["address"]
-    filters:
-      - "netutils.ip.is_ip_within(record.get('ip'), '10.0.0.0/8')"
-      - "netutils.regex.regex_search('xxx', 'hostname')"
-      - "netutils.regex.regex_match('^pe-[0-9]{3}$', 'hostname')"
     fields:
       - name: address
         mapping: ip
       - name: description
-        mapping: hostname
+        # We are using the field created via the transforms
+        mapping: new_description
+    filters:
+      - field: hostname
+        operation: regex
+        value: "'^pe-[0-9]{3}$'"
+      - field: ip
+        operation: is_ip_within
+        value: "'10.0.0.0/8'"
+    transforms:
+      - field: new_description
+        expression: "{hostname.upper().replace('.', '-')}"
 
   - name: InfraDevice
     mapping: devices
     identifiers: ["name"]
-    filters:
-      - "device_id > 100"
-      - "device_id <= 200"
-      - "netutils.regex.regex_search('xxx', 'hostname')"
-      - "netutils.regex.regex_match('^pe-[0-9]{3}$', 'hostname')"
     fields:
       - name: name
         mapping: hostname
@@ -71,3 +73,13 @@ schema_mapping:
       - name: primary_address
         mapping: ip
         reference: IpamIPAddress
+    filters:
+      - field: device_id
+        operation: ">"
+        value: 100
+      - field: device_id
+        operation: "<="
+        value: 200
+      - field: hostname
+        operation: regex
+        value: "'^pe-[0-9]{3}$'"

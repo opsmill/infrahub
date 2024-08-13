@@ -1,5 +1,6 @@
 ---
 name: from-netbox
+
 source:
   name: netbox
   settings:
@@ -28,7 +29,7 @@ order: [
   "InfraVLAN",
   "InfraPrefix",
   "InfraIPAddress",
-  "InfraInterfaceL2L3",
+  # "InfraInterfaceL2L3",
 ]
 
 schema_mapping:
@@ -203,9 +204,9 @@ schema_mapping:
     identifiers: ["location", "rack", "organization", "name"]
     mapping: dcim.devices
     # Showcase of the filters on the device, it will import the ones with dmu01 in their name *AND* without pdu
-    filters:
-      - "netutils.regex.regex_search('dmi01', 'name')"
-      - "not netutils.regex.regex_search('pdu', 'name')"
+    # filters:
+    #   - "netutils.regex.regex_search('dmi01', 'name')"
+    #   - "not netutils.regex.regex_search('pdu', 'name')"
     fields:
       - name: name
         mapping: name
@@ -236,42 +237,54 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: BuiltinTag
+    filters:
+      - field: name
+        operation: "contains"
+        value: "'dmi01'"
+      - field: name
+        operation: "not contains"
+        value: "'pdu'"
+    transforms:
+      - field: name
+        expression: "{name.lower()}"
+      - field: serial_number
+        expression: "{serial_number.lower() if serial_number is not None else ''}"
 
-  # Interfaces (interfaces, rear port, front port)
-  - name: InfraInterfaceL2L3
-    identifiers: ["device", "name"]
-    mapping: dcim.interfaces
-    fields:
-      - name: name
-        mapping: name
-      - name: description
-        mapping: description
-      - name: interface_type
-        mapping: type.label
-      - name: l2_mode
-        mapping: mode.label
-      - name: mac_address
-        mapping: mac_address
-      # - name: ip_addresses
-      #   mapping: ip_addresses
-      #   reference: InfraIPAddress
-      - name: mgmt_only
-        mapping: mgmt_only
-      - name: untagged_vlan
-        mapping: untagged_vlan
-        reference: InfraVLAN
-      - name: tagged_vlan
-        mapping: tagged_vlans
-        reference: InfraVLAN
-      - name: device
-        mapping: device
-        reference: InfraDevice
-      - name: tags
-        mapping: tags
-        reference: BuiltinTag
-      # - name: status
-      #   mapping: status
-      #   reference: BuiltinStatus
+  # # Interfaces (interfaces, rear port, front port)
+  # - name: InfraInterfaceL2L3
+  #   identifiers: ["device", "name"]
+  #   mapping: dcim.interfaces
+  #   fields:
+  #     - name: name
+  #       mapping: name
+  #     - name: description
+  #       mapping: description
+  #     - name: interface_type
+  #       mapping: type.label
+  #     - name: l2_mode
+  #       mapping: mode.label
+  #     - name: mac_address
+  #       mapping: mac_address
+  #     # - name: ip_addresses
+  #     #   mapping: ip_addresses
+  #     #   reference: InfraIPAddress
+  #     - name: mgmt_only
+  #       mapping: mgmt_only
+  #     - name: untagged_vlan
+  #       mapping: untagged_vlan
+  #       reference: InfraVLAN
+  #     - name: tagged_vlan
+  #       mapping: tagged_vlans
+  #       reference: InfraVLAN
+  #     - name: device
+  #       mapping: device
+  #       reference: InfraDevice
+  #     - name: tags
+  #       mapping: tags
+  #       reference: BuiltinTag
+  #     # - name: status
+  #     #   mapping: status
+  #     #   reference: BuiltinStatus
 
   # Circuits (Provider, Provider Network, Circuits Types, Circuits)
   - name: OrganizationGeneric

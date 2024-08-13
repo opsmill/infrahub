@@ -35,6 +35,7 @@ def render_adapter(
     )
     rendered_files = []
     for adapter in [sync_instance.source, sync_instance.destination]:
+        direction = "source" if adapter == sync_instance.source else "destination"
         output_dir_path = Path(sync_instance.directory, adapter.name)
         if not output_dir_path.is_dir():
             output_dir_path.mkdir(exist_ok=True)
@@ -48,7 +49,7 @@ def render_adapter(
                 template_file=item[0],
                 output_dir=output_dir_path,
                 output_file=item[1],
-                context={"schema": schema, "adapter": adapter, "config": sync_instance},
+                context={"schema": schema, "adapter": adapter, "config": sync_instance, "direction": direction},
             )
             output_file_path = output_dir_path / item[1]
             rendered_files.append((item[0], output_file_path))

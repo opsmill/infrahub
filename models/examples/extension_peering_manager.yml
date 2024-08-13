@@ -177,7 +177,8 @@ nodes:
         description: "Name of the Internet Exchange"
       - name: description
         kind: Text
-        description: "Slug identifier for the Internet Exchange"
+        description: "An optional description of the Internet Exchange"
+        optional: true
       - name: status
         kind: Dropdown
         choices:

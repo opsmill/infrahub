@@ -1,8 +1,5 @@
 from typing import Any, List, Optional
 
-import netutils.ip
-import netutils.regex
-
 from infrahub_sync.adapters.infrahub import InfrahubModel
 
 
@@ -36,7 +33,7 @@ class BuiltinTag(InfrahubModel):
 class InfraAutonomousSystem(InfrahubModel):
     _modelname = "InfraAutonomousSystem"
     _identifiers = ("name",)
-    _attributes = ("organization", "description")
+    _attributes = ("organization", "asn", "description")
     name: str
     asn: int
     description: Optional[str] = None
@@ -49,10 +46,11 @@ class InfraAutonomousSystem(InfrahubModel):
 class InfraCircuit(InfrahubModel):
     _modelname = "InfraCircuit"
     _identifiers = ("circuit_id",)
-    _attributes = ("provider", "type", "tags", "description", "vendor_id")
+    _attributes = ("status", "provider", "type", "tags", "description", "vendor_id")
     circuit_id: str
     description: Optional[str] = None
     vendor_id: Optional[str] = None
+    status: Optional[str] = None
     provider: str
     type: str
     tags: Optional[List[str]] = []
@@ -60,34 +58,18 @@ class InfraCircuit(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        filtered_records = []
-        for record in records:
-            include = True
-            try:
-                field_value = getattr(record, "cid", "") if not isinstance(record, dict) else record.get("cid", "")
-                field_value = field_value or ""
-                if not netutils.regex.regex_match("ntt", field_value):
-                    include = False
-            except Exception as e:
-                print(f"Error evaluating filter: 'cid | netutils.regex.regex_match('ntt')' with record {record}: {e}")
-                include = False
-            if include:
-                filtered_records.append(record)
-        return filtered_records
-
 
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
     _identifiers = ("location", "organization", "name")
-    _attributes = ("model", "rack", "role", "tags", "platform", "serial_number", "asset_tag")
+    _attributes = ("model", "rack", "status", "role", "tags", "platform", "serial_number", "asset_tag")
     name: Optional[str] = None
     serial_number: Optional[str] = None
     asset_tag: Optional[str] = None
     location: str
     model: str
     rack: Optional[str] = None
+    status: Optional[str] = None
     role: Optional[str] = None
     tags: Optional[List[str]] = []
     platform: Optional[str] = None
@@ -129,7 +111,16 @@ class InfraIPAddress(InfrahubModel):
 class InfraInterfaceL2L3(InfrahubModel):
     _modelname = "InfraInterfaceL2L3"
     _identifiers = ("name", "device")
-    _attributes = ("tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
+    _attributes = (
+        "tagged_vlan",
+        "status",
+        "tags",
+        "l2_mode",
+        "description",
+        "mgmt_only",
+        "mac_address",
+        "interface_type",
+    )
     l2_mode: Optional[str] = None
     name: str
     description: Optional[str] = None
@@ -138,6 +129,7 @@ class InfraInterfaceL2L3(InfrahubModel):
     interface_type: Optional[str] = None
     untagged_vlan: Optional[str] = None
     tagged_vlan: Optional[List[str]] = []
+    status: Optional[str] = None
     device: str
     tags: Optional[List[str]] = []
 
@@ -161,12 +153,13 @@ class InfraPlatform(InfrahubModel):
 class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
     _identifiers = ("prefix", "nautobot_namespace")
-    _attributes = ("organization", "locations", "role", "vlan", "description")
+    _attributes = ("organization", "locations", "status", "role", "vlan", "description")
     prefix: str
     description: Optional[str] = None
     organization: Optional[str] = None
     nautobot_namespace: str
     locations: Optional[List[str]] = []
+    status: Optional[str] = None
     role: Optional[str] = None
     vlan: Optional[str] = None
 
@@ -177,10 +170,11 @@ class InfraPrefix(InfrahubModel):
 class InfraProviderNetwork(InfrahubModel):
     _modelname = "InfraProviderNetwork"
     _identifiers = ("name",)
-    _attributes = ("provider", "tags", "description", "vendor_id")
+    _attributes = ("status", "provider", "tags", "description", "vendor_id")
     name: str
     description: Optional[str] = None
     vendor_id: Optional[str] = None
+    status: Optional[str] = None
     provider: str
     tags: Optional[List[str]] = []
 
@@ -233,12 +227,13 @@ class InfraRouteTarget(InfrahubModel):
 class InfraVLAN(InfrahubModel):
     _modelname = "InfraVLAN"
     _identifiers = ("name", "vlan_id", "locations", "organization")
-    _attributes = ("role", "vlan_group", "description")
+    _attributes = ("status", "role", "vlan_group", "description")
     name: str
     description: Optional[str] = None
     vlan_id: int
     organization: Optional[str] = None
     locations: Optional[List[str]] = []
+    status: Optional[str] = None
     role: Optional[str] = None
     vlan_group: Optional[str] = None
 
@@ -265,11 +260,12 @@ class InfraVRF(InfrahubModel):
 class LocationGeneric(InfrahubModel):
     _modelname = "LocationGeneric"
     _identifiers = ("name",)
-    _attributes = ("tags", "location_type", "description")
+    _attributes = ("tags", "location_type", "status", "description")
     name: str
     description: Optional[str] = None
     tags: Optional[List[str]] = []
     location_type: Optional[str] = None
+    status: Optional[str] = None
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -301,6 +297,18 @@ class OrganizationGeneric(InfrahubModel):
 
 class RoleGeneric(InfrahubModel):
     _modelname = "RoleGeneric"
+    _identifiers = ("name",)
+    _attributes = ("label", "description")
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+
+class StatusGeneric(InfrahubModel):
+    _modelname = "StatusGeneric"
     _identifiers = ("name",)
     _attributes = ("label", "description")
     name: str
