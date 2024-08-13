@@ -361,7 +361,7 @@ class InfrahubClient(BaseClient):
             fragment=fragment,
             prefetch_relationships=prefetch_relationships,
             **filters,
-        )  # type: ignore[arg-type]
+        )
 
         if len(results) == 0:
             raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
@@ -964,9 +964,9 @@ class InfrahubClient(BaseClient):
         self, branches: Optional[dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
     ) -> dict[str, RepositoryData]:
         if not branches:
-            branches = await self.branch.all()  # type: ignore
+            branches = await self.branch.all()
 
-        branch_names = sorted(branches.keys())  # type: ignore
+        branch_names = sorted(branches.keys())
 
         batch = await self.create_batch()
         for branch_name in branch_names:
@@ -1362,7 +1362,7 @@ class InfrahubClientSync(BaseClient):
             fragment=fragment,
             prefetch_relationships=prefetch_relationships,
             **filters,
-        )  # type: ignore[arg-type]
+        )
 
         if len(results) == 0:
             raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
