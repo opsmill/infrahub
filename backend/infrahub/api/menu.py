@@ -133,6 +133,11 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
     unified_storage = InterfaceMenu(
         title="Unified Storage",
         children=[
+            InterfaceMenu(
+                title="Credentials",
+                path=f"/objects/{InfrahubKind.CREDENTIAL}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.CREDENTIAL]),
+            ),
             InterfaceMenu(title="Schema", path="/schema", icon="mdi:file-code"),
             InterfaceMenu(
                 title="Repository",
