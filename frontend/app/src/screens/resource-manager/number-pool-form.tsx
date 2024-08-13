@@ -21,7 +21,8 @@ import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { FieldValues, useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
@@ -133,6 +134,8 @@ export const NumberPoolForm = ({
 const NodeAttributesSelects = () => {
   const schemaList = useAtomValue(schemaState);
 
+  const { resetField } = useFormContext();
+
   // Watch form value to rebuild 2nd select options
   const { node } = useFormValues();
 
@@ -152,6 +155,10 @@ const NodeAttributesSelects = () => {
         ?.filter((attribute) => attribute.kind === "Number")
         ?.map((attribute) => ({ id: attribute.name as string, name: attribute.label as string }))
     : [];
+
+  useEffect(() => {
+    resetField("node_attribute");
+  }, [node?.value]);
 
   return (
     <>
