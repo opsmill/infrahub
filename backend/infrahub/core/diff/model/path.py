@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Optional
+from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -16,6 +17,12 @@ if TYPE_CHECKING:
 
 
 @dataclass
+class TimeRange:
+    from_time: Timestamp
+    to_time: Timestamp
+
+
+@dataclass
 class EnrichedDiffProperty:
     property_type: DatabaseEdgeType
     changed_at: Timestamp
@@ -25,6 +32,16 @@ class EnrichedDiffProperty:
 
     def __hash__(self) -> int:
         return hash(self.property_type)
+
+    @classmethod
+    def from_calculated_property(cls, calculated_property: DiffProperty) -> EnrichedDiffProperty:
+        return EnrichedDiffProperty(
+            property_type=calculated_property.property_type,
+            changed_at=calculated_property.changed_at,
+            previous_value=calculated_property.previous_value,
+            new_value=calculated_property.new_value,
+            action=calculated_property.action,
+        )
 
 
 @dataclass
@@ -36,6 +53,18 @@ class EnrichedDiffAttribute:
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    @classmethod
+    def from_calculated_attribute(cls, calculated_attribute: DiffAttribute) -> EnrichedDiffAttribute:
+        return EnrichedDiffAttribute(
+            name=calculated_attribute.name,
+            changed_at=calculated_attribute.changed_at,
+            action=calculated_attribute.action,
+            properties={
+                EnrichedDiffProperty.from_calculated_property(calculated_property=prop)
+                for prop in calculated_attribute.properties
+            },
+        )
 
 
 @dataclass
@@ -54,6 +83,18 @@ class EnrichedDiffSingleRelationship:
                 return prop
         raise ValueError(f"Relationship element diff does not have property of type {property_type}")
 
+    @classmethod
+    def from_calculated_element(cls, calculated_element: DiffSingleRelationship) -> EnrichedDiffSingleRelationship:
+        return EnrichedDiffSingleRelationship(
+            changed_at=calculated_element.changed_at,
+            action=calculated_element.action,
+            peer_id=calculated_element.peer_id,
+            properties={
+                EnrichedDiffProperty.from_calculated_property(calculated_property=prop)
+                for prop in calculated_element.properties
+            },
+        )
+
 
 @dataclass
 class EnrichedDiffRelationship:
@@ -66,6 +107,20 @@ class EnrichedDiffRelationship:
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    @classmethod
+    def from_calculated_relationship(cls, calculated_relationship: DiffRelationship) -> EnrichedDiffRelationship:
+        return EnrichedDiffRelationship(
+            name=calculated_relationship.name,
+            label="",
+            changed_at=calculated_relationship.changed_at,
+            action=calculated_relationship.action,
+            relationships={
+                EnrichedDiffSingleRelationship.from_calculated_element(calculated_element=element)
+                for element in calculated_relationship.relationships
+            },
+            nodes=set(),
+        )
 
 
 @dataclass
@@ -106,6 +161,24 @@ class EnrichedDiffNode:
                 return rel
         raise ValueError(f"No relationship {name} found")
 
+    @classmethod
+    def from_calculated_node(cls, calculated_node: DiffNode) -> EnrichedDiffNode:
+        return EnrichedDiffNode(
+            uuid=calculated_node.uuid,
+            kind=calculated_node.kind,
+            label="",
+            changed_at=calculated_node.changed_at,
+            action=calculated_node.action,
+            attributes={
+                EnrichedDiffAttribute.from_calculated_attribute(calculated_attribute=attr)
+                for attr in calculated_node.attributes
+            },
+            relationships={
+                EnrichedDiffRelationship.from_calculated_relationship(calculated_relationship=rel)
+                for rel in calculated_node.relationships
+            },
+        )
+
 
 @dataclass
 class EnrichedDiffRoot:
@@ -131,6 +204,20 @@ class EnrichedDiffRoot:
             if n.uuid == node_uuid:
                 return n
         raise ValueError(f"No node {node_uuid} in diff root")
+
+    @classmethod
+    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffRoot:
+        return EnrichedDiffRoot(
+            base_branch_name=calculated_diffs.base_branch_name,
+            diff_branch_name=calculated_diffs.diff_branch_name,
+            from_time=calculated_diffs.diff_branch_diff.from_time,
+            to_time=calculated_diffs.diff_branch_diff.to_time,
+            uuid=str(uuid4()),
+            nodes={
+                EnrichedDiffNode.from_calculated_node(calculated_node=n)
+                for n in calculated_diffs.diff_branch_diff.nodes
+            },
+        )
 
 
 @dataclass

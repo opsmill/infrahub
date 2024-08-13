@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
+from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -356,12 +357,14 @@ class DiffQueryParser:
         self,
         diff_query: DiffAllPathsQuery,
         base_branch_name: str,
+        diff_branch_name: str,
         schema_manager: SchemaManager,
         from_time: Timestamp,
         to_time: Optional[Timestamp] = None,
     ) -> None:
         self.diff_query = diff_query
         self.base_branch_name = base_branch_name
+        self.diff_branch_name = diff_branch_name
         self.schema_manager = schema_manager
         self.from_time = from_time
         self.to_time = to_time or Timestamp()
@@ -372,10 +375,11 @@ class DiffQueryParser:
         return set(self._final_diff_root_by_branch.keys())
 
     def get_diff_root_for_branch(self, branch: str) -> DiffRoot:
-        try:
+        if branch not in (self.base_branch_name, self.diff_branch_name):
+            raise DiffNotFoundError(f"No diff found for branch {branch}")
+        if branch in self._final_diff_root_by_branch:
             return self._final_diff_root_by_branch[branch]
-        except KeyError as exc:
-            raise DiffNotFoundError(f"No diff found for branch {branch}") from exc
+        return DiffRoot(from_time=self.from_time, to_time=self.to_time, uuid=str(uuid4()), branch=branch, nodes=[])
 
     def parse(self) -> None:
         if not self.diff_query.has_been_executed:

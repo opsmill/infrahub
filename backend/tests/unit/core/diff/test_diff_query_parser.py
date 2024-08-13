@@ -34,7 +34,11 @@ async def test_diff_attribute_branch_update(
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
-        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
     )
     diff_parser.parse()
 
@@ -96,7 +100,11 @@ async def test_attribute_property_main_update(
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
-        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=default_branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
     )
     diff_parser.parse()
 
@@ -144,7 +152,11 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
-        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
     )
     diff_parser.parse()
 
@@ -182,7 +194,11 @@ async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, 
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
-        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
     )
     diff_parser.parse()
 
@@ -248,7 +264,11 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
-        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
     )
     diff_parser.parse()
 
@@ -295,7 +315,11 @@ async def test_attribute_property_multiple_branch_updates(
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
-        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
     )
     diff_parser.parse()
 
@@ -347,7 +371,11 @@ async def test_relationship_one_property_branch_update(
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
-        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
     )
     diff_parser.parse()
 
@@ -493,7 +521,11 @@ async def test_add_node_branch(
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
-        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
     )
     diff_parser.parse()
 

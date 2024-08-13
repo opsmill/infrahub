@@ -24,6 +24,7 @@ class DiffCalculator:
         diff_parser = DiffQueryParser(
             diff_query=diff_query,
             base_branch_name=base_branch.name,
+            diff_branch_name=diff_branch.name,
             schema_manager=registry.schema,
             from_time=from_time,
             to_time=to_time,
