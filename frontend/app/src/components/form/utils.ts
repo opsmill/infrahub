@@ -84,6 +84,17 @@ export const getFormFieldsFromSchema = ({
       };
     }
 
+    if (Array.isArray(attribute.enum)) {
+      return {
+        ...basicFomFieldProps,
+        type: "enum",
+        field: attribute,
+        schema: schema,
+        unique: attribute.unique,
+        items: getOptionsFromAttribute(attribute, basicFomFieldProps.defaultValue),
+      };
+    }
+
     if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
       return {
         ...basicFomFieldProps,
@@ -97,17 +108,6 @@ export const getFormFieldsFromSchema = ({
           color: choice.color ?? undefined,
           description: choice.description ?? undefined,
         })),
-      };
-    }
-
-    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.TEXT && Array.isArray(attribute.enum)) {
-      return {
-        ...basicFomFieldProps,
-        type: "enum",
-        field: attribute,
-        schema: schema,
-        unique: attribute.unique,
-        items: getOptionsFromAttribute(attribute, basicFomFieldProps.defaultValue),
       };
     }
 
