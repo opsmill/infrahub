@@ -4,7 +4,6 @@ import os
 from typing import Any, Mapping
 
 import requests
-from rich import print as rprint
 
 from diffsync import Adapter, DiffSyncModel
 from infrahub_sync import (
@@ -137,23 +136,36 @@ class PeeringmanagerModel(DiffSyncModelMixin, DiffSyncModel):
         adapter: Adapter,
     ):
         # TODO
-        print(f"IN CREATE for {ids} with {attrs}")
         return super().create(adapter, ids=ids, attrs=attrs)
 
     def update(self, attrs):
-        # Determine the endpoint using the schema mapping
+        """
+        Update an object in the Peering Manager system with new attributes.
+
+        This method maps the given attributes to the corresponding target fields
+        based on the schema mapping configuration, and sends an update request
+        to the API endpoint of the object.
+        """
+        # Determine the resource name using the schema mapping
         resource_name = self.__class__.get_resource_name(self.adapter.config.schema_mapping)
-        # Assuming the object has a unique identifier attribute for URL construction
+
+        # Determine the unique identifier for the API request
         unique_identifier = self.local_id if hasattr(self, "local_id") else self.get_unique_id()
         endpoint = f"{resource_name}/{unique_identifier}/"
 
-        # Debug prints to verify object and configuration
-        rprint(f"Attempting to update: {endpoint} with data: {attrs}")
+        # Map incoming attributes to the target attributes based on schema mapping
+        mapped_attrs: dict[str, Any] = {}
+        for field in self.adapter.config.schema_mapping:
+            if field.name == self.__class__.get_type():
+                for field_mapping in field.fields:
+                    # Map source field name to target field name
+                    if field_mapping.name in attrs:
+                        target_field_name = field_mapping.mapping
+                        mapped_attrs[target_field_name] = attrs[field_mapping.name]
 
-        # Use the adapter's client to perform the API request
+        # Attempt to send the update request to the API
         try:
-            response = self.adapter.client.patch(endpoint, data=attrs)
-            print(f"IN UPDATE for {self} with {attrs}. Response: {response}")
+            self.adapter.client.patch(endpoint, data=mapped_attrs)
             return super().update(attrs)
         except requests.exceptions.HTTPError as e:
             print(f"HTTPError: {e.response.status_code} - {e.response.text}")

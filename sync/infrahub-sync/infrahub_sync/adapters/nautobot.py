@@ -154,7 +154,12 @@ class NautobotModel(DiffSyncModelMixin, DiffSyncModel):
         attrs: Mapping[Any, Any],
         adapter: Adapter,
     ):
+        # TODO
         return super().create(adapter, ids=ids, attrs=attrs)
+
+    def update(self, attrs):
+        # TODO
+        return super().update(attrs)
 
     @classmethod
     def filter_records(cls, records: list[Any]) -> list[Any]:
