@@ -24,18 +24,20 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     async def check(
         self, analyzed_query: InfrahubGraphQLQueryAnalyzer, query_parameters: GraphqlParams
     ) -> CheckerResolution:
+        operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in (
+            GLOBAL_BRANCH_NAME,
+            config.SETTINGS.initial.default_branch,
+        )
+        is_exempt_operation = analyzed_query.operation_name is not None and (
+            analyzed_query.operation_name == "BranchCreate"  # Allow user to create a branch
+            or analyzed_query.operation_name.startswith("InfrahubAccount")  # Allow user to manage self
+        )
+
         if (
             not self.can_edit_default_branch
-            and (
-                analyzed_query.branch is None
-                or analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, config.SETTINGS.initial.default_branch)
-            )
+            and operates_on_default_branch
             and analyzed_query.contains_mutation
-            and (
-                analyzed_query.operation_name
-                and analyzed_query.operation_name != "BranchCreate"  # Allow user to create a branch
-                and not analyzed_query.operation_name.startswith("InfrahubAccount")  # Allow user to manage self
-            )
+            and not is_exempt_operation
         ):
             raise PermissionDeniedError(
                 f"You are not allowed to change data in the default branch '{config.SETTINGS.initial.default_branch}'"
