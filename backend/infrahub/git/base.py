@@ -742,6 +742,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 message=f"The branch {branch_name} isn't a valid branch for the repository {name} at {location}.",
             ) from error
 
+        if "SSL certificate problem" in error.stderr or "server certificate verification failed" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=f"SSL verification failed for {name}, please validate the certificate chain.",
+            ) from error
+
         if "authentication failed for" in error.stderr.lower():
             raise RepositoryError(
                 identifier=name,

@@ -84,6 +84,6 @@ class Timestamp:
     def __hash__(self) -> int:
         return hash(self.to_string())
 
-    def add_delta(self, hours: int = 0, minutes: int = 0, seconds: int = 0) -> Timestamp:
-        time = self.obj.add(hours=hours, minutes=minutes, seconds=seconds)
+    def add_delta(self, hours: int = 0, minutes: int = 0, seconds: int = 0, microseconds: int = 0) -> Timestamp:
+        time = self.obj.add(hours=hours, minutes=minutes, seconds=seconds, microseconds=microseconds)
         return Timestamp(time)
