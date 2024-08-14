@@ -8,15 +8,16 @@ type DiffNodeRelationshipProps = {
 };
 
 export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps) => {
+  console.log("relationship: ", relationship);
   const title = (
     <DiffTitle
       id={relationship.id}
       containsConflict={relationship.contains_conflict}
       status={relationship.status}>
       <div className="flex flex-1 items-center">
-        <span className="flex-1 font-normal text-xs">{relationship.name}</span>
+        <span className="w-1/3 font-normal text-xs">{relationship.name}</span>
 
-        <div className="flex-1">
+        <div className="w-2/3">
           <DiffDisplay />
         </div>
       </div>

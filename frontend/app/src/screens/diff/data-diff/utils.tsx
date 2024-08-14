@@ -43,7 +43,7 @@ type DiffDisplayProps = {
 
 export const DiffDisplay = ({ left, right }: DiffDisplayProps) => {
   return (
-    <div className="flex h-7">
+    <div className="flex h-7 bg-custom-white">
       <div className="flex-1 px-2 bg-green-700/10">{left}</div>
 
       <div className="flex-1 px-2 bg-custom-blue-700/10 ">{right}</div>

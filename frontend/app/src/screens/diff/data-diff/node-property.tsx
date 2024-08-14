@@ -18,9 +18,9 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
   const title = (
     <DiffTitle status={property.status}>
       <div className="flex flex-1 items-center">
-        <span className="flex-1 font-normal text-xs">{property.property_type}</span>
+        <span className="w-1/3 font-normal text-xs">{property.property_type}</span>
 
-        <div className="flex-1">
+        <div className="w-2/3">
           <DiffDisplay left={previousValue} right={newValue} />
         </div>
       </div>

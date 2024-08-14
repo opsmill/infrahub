@@ -5,14 +5,16 @@ import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circ
 import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
 import { DiffNodeRelationship } from "./node-relationship";
 import { DiffTitle } from "./utils";
+import { DiffNodeAttribute } from "./node-attribute";
 
 type DiffNodeProps = {
   node: any;
 };
 
 export const DiffNode = ({ node }: DiffNodeProps) => {
+  console.log("node: ", node);
   const title = (
-    <DiffTitle id={node.id} containsConflict={node.contains_conflict} status={node.status}>
+    <DiffTitle id={node.uuid} containsConflict={node.contains_conflict} status={node.status}>
       <div className="flex items-center">
         <div>
           <Badge variant={"white"}>{node.kind}</Badge>
@@ -33,15 +35,20 @@ export const DiffNode = ({ node }: DiffNodeProps) => {
   return (
     <Card className="m-4">
       <div className="bg-gray-100 rounded-md border overflow-hidden">
-        {!!node.relationships.length && (
+        {(node.attributes?.length || node.relationships?.length) && (
           <Accordion title={title}>
+            {node.attributes.map((attribute: any, index: number) => (
+              <DiffNodeAttribute key={index} attribute={attribute} />
+            ))}
             {node.relationships.map((relationship: any, index: number) => (
               <DiffNodeRelationship key={index} relationship={relationship} />
             ))}
           </Accordion>
         )}
 
-        {!node.relationships.length && <EmptyAccordion title={title} />}
+        {!node.attributes?.length && !node.relationships?.length && (
+          <EmptyAccordion title={title} />
+        )}
       </div>
     </Card>
   );
