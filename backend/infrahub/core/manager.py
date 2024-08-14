@@ -388,7 +388,7 @@ class NodeManager:
         peers_ids = list(query.get_peer_ids())
 
         if not peers_ids:
-            return []
+            return {}
 
         hierarchy_schema = node_schema.get_hierarchy_schema(db=db, branch=branch)
 

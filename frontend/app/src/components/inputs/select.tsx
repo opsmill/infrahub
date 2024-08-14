@@ -1,8 +1,7 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
-import SlideOver from "@/components/display/slide-over";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ModalDelete from "@/components/modals/modal-delete";
 import {
-  DEFAULT_BRANCH_NAME,
   SCHEMA_DROPDOWN_ADD,
   SCHEMA_DROPDOWN_REMOVE,
   SCHEMA_ENUM_ADD,
@@ -135,6 +134,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
         )
       : localOptions?.find((option) => option?.id === value || option.name === value);
   };
+
   const [selectedOption, setSelectedOption] = useState(findSelectedOption());
 
   const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
@@ -661,33 +661,24 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       return (
         <SlideOver
           title={
-            <div className="space-y-2">
-              <div className="flex items-center w-full">
-                <span className="text-lg font-semibold mr-3">Create {schemaData?.label}</span>
-                <div className="flex-1"></div>
-                <div className="flex items-center">
-                  <Icon icon={"mdi:layers-triple"} />
-                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                </div>
-              </div>
-
-              <div className="text-sm">{schemaData?.description}</div>
-
-              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-                <svg
-                  className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                  viewBox="0 0 6 6"
-                  aria-hidden="true">
-                  <circle cx={3} cy={3} r={3} />
-                </svg>
-                {schemaData?.kind}
-              </span>
-            </div>
+            schemaData && (
+              <SlideOverTitle
+                schema={schemaData}
+                currentObjectLabel="New"
+                title={`Create ${schemaData.label}`}
+                subtitle={schemaData.description}
+              />
+            )
           }
           open={open}
           setOpen={setOpen}
           offset={1}>
-          <ObjectForm kind={peer} onSuccess={handleCreate} onCancel={() => setOpen(false)} />
+          <ObjectForm
+            kind={peer}
+            onSuccess={handleCreate}
+            onCancel={() => setOpen(false)}
+            data-testid="new-object-form"
+          />
         </SlideOver>
       );
     }
@@ -701,28 +692,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
         <>
           <SlideOver
             title={
-              <div className="space-y-2">
-                <div className="flex items-center w-full">
-                  <span className="text-lg font-semibold mr-3">Create new option</span>
-                  <div className="flex-1"></div>
-                  <div className="flex items-center">
-                    <Icon icon={"mdi:layers-triple"} />
-                    <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                  </div>
-                </div>
-
-                <div className="text-sm">{field?.description ?? field?.label}</div>
-
-                <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-                  <svg
-                    className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                    viewBox="0 0 6 6"
-                    aria-hidden="true">
-                    <circle cx={3} cy={3} r={3} />
-                  </svg>
-                  {schema?.kind}
-                </span>
-              </div>
+              <SlideOverTitle
+                schema={schema}
+                currentObjectLabel={field?.label}
+                title="Add a new option"
+                subtitle={field?.description}
+              />
             }
             open={open}
             setOpen={setOpen}
@@ -748,28 +723,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
         <>
           <SlideOver
             title={
-              <div className="space-y-2">
-                <div className="flex items-center w-full">
-                  <span className="text-lg font-semibold mr-3">Create new option</span>
-                  <div className="flex-1"></div>
-                  <div className="flex items-center">
-                    <Icon icon={"mdi:layers-triple"} />
-                    <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                  </div>
-                </div>
-
-                <div className="text-sm">{field?.description ?? field?.label}</div>
-
-                <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-                  <svg
-                    className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                    viewBox="0 0 6 6"
-                    aria-hidden="true">
-                    <circle cx={3} cy={3} r={3} />
-                  </svg>
-                  {schema?.kind}
-                </span>
-              </div>
+              <SlideOverTitle
+                schema={schema}
+                currentObjectLabel={field?.label}
+                title="Add a new option"
+                subtitle={field?.description}
+              />
             }
             open={open}
             setOpen={setOpen}

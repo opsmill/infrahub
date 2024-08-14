@@ -1,6 +1,6 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
-import SlideOver from "@/components/display/slide-over";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
 import {
@@ -278,45 +278,12 @@ export default function ObjectItemDetails({
 
       <SlideOver
         title={
-          <div className="space-y-2">
-            <div className="flex items-start">
-              <div className="flex-grow flex items-center flex-wrap overflow-hidden">
-                <span className="font-semibold text-gray-900 truncate">{schema.label}</span>
-
-                <Icon icon="mdi:chevron" className="w-4 h-4 flex-shrink-0 text-gray-400" />
-
-                <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
-                  {objectDetailsData.display_label}
-                </span>
-              </div>
-
-              <div className="flex items-center ml-3">
-                <Icon icon="mdi:layers-triple" />
-                <span className="ml-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</span>
-              </div>
-            </div>
-
-            <div className="">{schema?.description}</div>
-
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {schema.kind}
-            </span>
-            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              ID: {objectDetailsData.id}
-            </div>
-          </div>
+          <SlideOverTitle
+            schema={schema}
+            currentObjectLabel={objectDetailsData.display_label}
+            title={`Edit ${objectDetailsData.display_label}`}
+            subtitle={schema.description}
+          />
         }
         open={showEditDrawer}
         setOpen={setShowEditDrawer}>

@@ -5,6 +5,8 @@ import { useSchema } from "@/hooks/useSchema";
 import { GenericObjectForm } from "@/components/form/generic-object-form";
 import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 import { NodeForm, NodeFormSubmitParams } from "@/components/form/node-form";
+import { NUMBER_POOL_OBJECT } from "@/config/constants";
+import { NumberPoolForm } from "@/screens/resource-manager/number-pool-form";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
@@ -20,6 +22,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
   currentProfiles?: ProfileData[];
   isFilterForm?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
+  onUpdateComplete?: () => void;
 }
 
 const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFormProps) => {
@@ -35,6 +38,10 @@ const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFor
 
   if (isFilterForm) {
     return <NodeForm schema={schema} isFilterForm={isFilterForm} {...props} />;
+  }
+
+  if (kind === NUMBER_POOL_OBJECT) {
+    return <NumberPoolForm {...props} />;
   }
 
   if (isGeneric) {

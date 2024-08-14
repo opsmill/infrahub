@@ -1,12 +1,11 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { RoundedButton } from "@/components/buttons/rounded-button";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
-import SlideOver from "@/components/display/slide-over";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import { SelectOption } from "@/components/inputs/select";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link as StyledLink } from "@/components/ui/link";
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
@@ -394,27 +393,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
       <SlideOver
         title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">
-                Add associated {relationshipSchema.label}
-              </span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {relationshipSchema.peer}
-            </span>
-          </div>
+          parentSchema && (
+            <SlideOverTitle
+              schema={parentSchema}
+              currentObjectLabel={relationshipSchema.label}
+              title={`Associate a new ${relationshipSchema.label}`}
+              subtitle={`Add a new ${relationshipSchema.label} to the current object`}
+            />
+          )
         }
         open={showAddDrawer}
         setOpen={setShowAddDrawer}>
@@ -465,31 +451,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       {relatedObjectToEdit && (
         <SlideOver
           title={
-            <>
-              {
-                <div className="space-y-2">
-                  <div className="flex items-center w-full">
-                    <span className="text-lg font-semibold mr-3">
-                      {relatedObjectToEdit?.display_label}
-                    </span>
-                    <div className="flex-1"></div>
-                    <div className="flex items-center">
-                      <Icon icon={"mdi:layers-triple"} />
-                      <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-                    <svg
-                      className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                      viewBox="0 0 6 6"
-                      aria-hidden="true">
-                      <circle cx={3} cy={3} r={3} />
-                    </svg>
-                    {relatedObjectToEdit?.__typename.replace(regex, "")}
-                  </span>
-                </div>
-              }
-            </>
+            parentSchema && (
+              <SlideOverTitle
+                schema={parentSchema}
+                currentObjectLabel={relationshipSchema.label}
+                title={`Edit ${relatedObjectToEdit?.display_label}`}
+                subtitle="Update the details of the related object"
+              />
+            )
           }
           open={!!relatedObjectToEdit}
           setOpen={() => setRelatedObjectToEdit(undefined)}>

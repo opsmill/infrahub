@@ -16,6 +16,7 @@ import {
   FormProvider,
   useForm,
   useFormContext,
+  UseFormReturn,
 } from "react-hook-form";
 import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
@@ -25,20 +26,21 @@ export type FormRef = ReturnType<typeof useForm>;
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, any>) => void;
   defaultValues?: Partial<Record<string, unknown>>;
+  form?: UseFormReturn;
 }
 
 export const Form = React.forwardRef<FormRef, FormProps>(
-  ({ defaultValues, className, children, onSubmit, ...props }, ref) => {
-    const form = useForm({ defaultValues });
+  ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
+    const currentForm = form ?? useForm({ defaultValues });
 
-    useImperativeHandle(ref, () => form, []);
+    useImperativeHandle(ref, () => currentForm);
 
     useEffect(() => {
-      form.reset(defaultValues);
+      currentForm.reset(defaultValues);
     }, [JSON.stringify(defaultValues)]);
 
     return (
-      <FormProvider {...form}>
+      <FormProvider {...currentForm}>
         <form
           onSubmit={(event) => {
             if (event && event.stopPropagation) {
@@ -47,7 +49,7 @@ export const Form = React.forwardRef<FormRef, FormProps>(
 
             if (!onSubmit) return;
 
-            form.handleSubmit(onSubmit)(event);
+            currentForm.handleSubmit(onSubmit)(event);
           }}
           className={classNames("space-y-4", className)}
           {...props}>

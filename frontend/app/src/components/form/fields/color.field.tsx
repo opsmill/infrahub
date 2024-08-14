@@ -40,7 +40,7 @@ const ColorField = ({
             <FormInput>
               <ColorPicker
                 {...field}
-                value={fieldData.value}
+                value={fieldData?.value}
                 onChange={(newValue: string) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
                 }}

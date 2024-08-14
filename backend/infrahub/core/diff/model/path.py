@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, Any, Optional
+from enum import Enum
+from typing import TYPE_CHECKING, Any, Optional, Self
 from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipStatus
@@ -23,12 +24,46 @@ class TimeRange:
 
 
 @dataclass
+class BaseSummary:
+    num_added: int = field(default=0, kw_only=True)
+    num_updated: int = field(default=0, kw_only=True)
+    num_removed: int = field(default=0, kw_only=True)
+    num_conflicts: int = field(default=0, kw_only=True)
+    contains_conflict: bool = field(default=False, kw_only=True)
+
+    def reset_summaries(self) -> None:
+        self.num_added = 0
+        self.num_updated = 0
+        self.num_removed = 0
+        self.num_conflicts = 0
+        self.contains_conflict = False
+
+
+class ConflictSelection(Enum):
+    BASE_BRANCH = "base"
+    DIFF_BRANCH = "diff"
+
+
+@dataclass
+class EnrichedDiffConflict:
+    uuid: str
+    base_branch_action: DiffAction
+    base_branch_value: Any
+    base_branch_changed_at: Timestamp
+    diff_branch_action: DiffAction
+    diff_branch_value: Any
+    diff_branch_changed_at: Timestamp
+    selected_branch: ConflictSelection | None = field(default=None)
+
+
+@dataclass
 class EnrichedDiffProperty:
     property_type: DatabaseEdgeType
     changed_at: Timestamp
     previous_value: Any
     new_value: Any
     action: DiffAction
+    conflict: EnrichedDiffConflict | None = field(default=None)
 
     def __hash__(self) -> int:
         return hash(self.property_type)
@@ -45,7 +80,7 @@ class EnrichedDiffProperty:
 
 
 @dataclass
-class EnrichedDiffAttribute:
+class EnrichedDiffAttribute(BaseSummary):
     name: str
     changed_at: Timestamp
     action: DiffAction
@@ -68,10 +103,11 @@ class EnrichedDiffAttribute:
 
 
 @dataclass
-class EnrichedDiffSingleRelationship:
+class EnrichedDiffSingleRelationship(BaseSummary):
     changed_at: Timestamp
     action: DiffAction
     peer_id: str
+    conflict: EnrichedDiffConflict | None = field(default=None)
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
 
     def __hash__(self) -> int:
@@ -97,7 +133,7 @@ class EnrichedDiffSingleRelationship:
 
 
 @dataclass
-class EnrichedDiffRelationship:
+class EnrichedDiffRelationship(BaseSummary):
     name: str
     label: str
     changed_at: Timestamp
@@ -122,14 +158,29 @@ class EnrichedDiffRelationship:
             nodes=set(),
         )
 
+    @classmethod
+    def from_graph(cls, node: Neo4jNode) -> Self:
+        return cls(
+            name=node.get("name"),
+            label=node.get("label"),
+            changed_at=Timestamp(node.get("changed_at")),
+            action=node.get("action"),
+            num_added=int(node.get("num_added")),
+            num_conflicts=int(node.get("num_conflicts")),
+            num_removed=int(node.get("num_removed")),
+            num_updated=int(node.get("num_updated")),
+            contains_conflict=str(node.get("contains_conflict")).lower() == "true",
+        )
+
 
 @dataclass
-class EnrichedDiffNode:
+class EnrichedDiffNode(BaseSummary):
     uuid: str
     kind: str
     label: str
     changed_at: Timestamp
     action: DiffAction
+    conflict: EnrichedDiffConflict | None = field(default=None)
     attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
     relationships: set[EnrichedDiffRelationship] = field(default_factory=set)
 
@@ -161,6 +212,13 @@ class EnrichedDiffNode:
                 return rel
         raise ValueError(f"No relationship {name} found")
 
+    def has_relationship(self, name: str) -> bool:
+        try:
+            self.get_relationship(name=name)
+            return True
+        except ValueError:
+            return False
+
     @classmethod
     def from_calculated_node(cls, calculated_node: DiffNode) -> EnrichedDiffNode:
         return EnrichedDiffNode(
@@ -179,9 +237,17 @@ class EnrichedDiffNode:
             },
         )
 
+    def add_relationship_from_DiffRelationship(self, diff_rel: Neo4jNode) -> bool:
+        if self.has_relationship(name=diff_rel.get("name")):
+            return False
+
+        rel = EnrichedDiffRelationship.from_graph(node=diff_rel)
+        self.relationships.add(rel)
+        return True
+
 
 @dataclass
-class EnrichedDiffRoot:
+class EnrichedDiffRoot(BaseSummary):
     base_branch_name: str
     diff_branch_name: str
     from_time: Timestamp
@@ -205,18 +271,45 @@ class EnrichedDiffRoot:
                 return n
         raise ValueError(f"No node {node_uuid} in diff root")
 
+    def has_node(self, node_uuid: str) -> bool:
+        try:
+            self.get_node(node_uuid=node_uuid)
+            return True
+        except ValueError:
+            return False
+
     @classmethod
-    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffRoot:
+    def from_calculated_diff(cls, calculated_diff: DiffRoot, base_branch_name: str) -> EnrichedDiffRoot:
         return EnrichedDiffRoot(
+            base_branch_name=base_branch_name,
+            diff_branch_name=calculated_diff.branch,
+            from_time=calculated_diff.from_time,
+            to_time=calculated_diff.to_time,
+            uuid=str(uuid4()),
+            nodes={EnrichedDiffNode.from_calculated_node(calculated_node=n) for n in calculated_diff.nodes},
+        )
+
+
+@dataclass
+class EnrichedDiffs:
+    base_branch_name: str
+    diff_branch_name: str
+    base_branch_diff: EnrichedDiffRoot
+    diff_branch_diff: EnrichedDiffRoot
+
+    @classmethod
+    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffs:
+        base_branch_diff = EnrichedDiffRoot.from_calculated_diff(
+            calculated_diff=calculated_diffs.base_branch_diff, base_branch_name=calculated_diffs.base_branch_name
+        )
+        diff_branch_diff = EnrichedDiffRoot.from_calculated_diff(
+            calculated_diff=calculated_diffs.diff_branch_diff, base_branch_name=calculated_diffs.base_branch_name
+        )
+        return EnrichedDiffs(
             base_branch_name=calculated_diffs.base_branch_name,
             diff_branch_name=calculated_diffs.diff_branch_name,
-            from_time=calculated_diffs.diff_branch_diff.from_time,
-            to_time=calculated_diffs.diff_branch_diff.to_time,
-            uuid=str(uuid4()),
-            nodes={
-                EnrichedDiffNode.from_calculated_node(calculated_node=n)
-                for n in calculated_diffs.diff_branch_diff.nodes
-            },
+            base_branch_diff=base_branch_diff,
+            diff_branch_diff=diff_branch_diff,
         )
 
 

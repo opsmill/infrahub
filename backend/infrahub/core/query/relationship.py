@@ -491,18 +491,18 @@ class RelationshipGetPeerQuery(Query):
         source: Optional[Node] = None,
         source_ids: Optional[list[str]] = None,
         source_kind: Optional[str] = None,
-        rel: Union[type[Relationship], Relationship] = None,
+        rel: Optional[Union[type[Relationship], Relationship]] = None,
         rel_type: Optional[str] = None,
-        schema: RelationshipSchema = None,
-        branch: Branch = None,
-        at: Union[Timestamp, str] = None,
+        schema: Optional[RelationshipSchema] = None,
+        branch: Optional[Branch] = None,
+        at: Optional[Union[Timestamp, str]] = None,
         **kwargs,
     ):
         if not source and not source_ids:
             raise ValueError("Either source or source_ids must be provided.")
         if not rel and not rel_type:
             raise ValueError("Either rel or rel_type must be provided.")
-        if not inspect.isclass(rel) and not hasattr(rel, "schema"):
+        if rel and not inspect.isclass(rel) and not hasattr(rel, "schema"):
             raise ValueError("Rel must be a Relationship class or an instance of Relationship.")
         if not schema and inspect.isclass(rel) and not hasattr(rel, "schema"):
             raise ValueError("Either an instance of Relationship or a valid schema must be provided.")

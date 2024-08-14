@@ -263,6 +263,7 @@ class DiffCombiner:
                     copied = deepcopy(node_pair.later)
                     for rel in copied.relationships:
                         rel.nodes = set()
+                        rel.reset_summaries()
                     combined_nodes.add(copied)
                 continue
             if node_pair.later is None:
@@ -270,6 +271,7 @@ class DiffCombiner:
                     copied = deepcopy(node_pair.earlier)
                     for rel in copied.relationships:
                         rel.nodes = set()
+                        rel.reset_summaries()
                     combined_nodes.add(copied)
                 continue
             combined_attributes = self._combine_attributes(

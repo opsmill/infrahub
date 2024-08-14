@@ -32,7 +32,7 @@ export const getFieldDefaultValue = ({
   );
 };
 
-const getCurrentFieldValue = (
+export const getCurrentFieldValue = (
   fieldName: string,
   objectData?: Record<string, AttributeType>
 ): AttributeValueFromUser | null => {
@@ -82,7 +82,9 @@ const getDefaultValueFromProfiles = (
   };
 };
 
-const getDefaultValueFromSchema = (fieldSchema: FieldSchema): AttributeValueFromUser | null => {
+export const getDefaultValueFromSchema = (
+  fieldSchema: FieldSchema
+): AttributeValueFromUser | null => {
   if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
     return {
       source: typeof fieldSchema.default_value === "boolean" ? { type: "schema" } : null,

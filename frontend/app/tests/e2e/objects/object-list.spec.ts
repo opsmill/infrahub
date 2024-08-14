@@ -70,7 +70,7 @@ test.describe("/objects/:objectKind", () => {
       await expect(page.getByTestId("create-object-button")).toBeEnabled();
       await expect(page.getByRole("row", { name: "blue" }).getByRole("button")).toBeEnabled();
       await page.getByTestId("create-object-button").click();
-      await expect(page.getByRole("heading", { name: "Create Tag" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Create Tag", exact: true })).toBeVisible();
     });
   });
 });
