@@ -10,7 +10,6 @@ from infrahub_sdk import (
 )
 
 from infrahub_sync import SyncConfig
-from infrahub_sync.generator.utils import list_to_set, list_to_str
 
 ATTRIBUTE_KIND_MAP = {
     "Text": "str",
@@ -22,6 +21,23 @@ ATTRIBUTE_KIND_MAP = {
     "Integer": "int",
     "Boolean": "bool",
 }
+
+
+def list_to_set(items: List[str]) -> str:
+    """Convert a list in a string representation of a Set."""
+    if not items:
+        return "()"
+
+    response = '"' + '", "'.join(items) + '"'
+    if len(items) == 1:
+        response += ","
+
+    return "(" + response + ")"
+
+
+def list_to_str(items: List[str]) -> str:
+    """Convert a list into a string separated with comma"""
+    return ", ".join(items)
 
 
 def has_node(config: SyncConfig, name: str) -> bool:
@@ -38,22 +54,6 @@ def has_field(config: SyncConfig, name: str, field: str) -> bool:
                 if subitem.name == field:
                     return True
     return False
-
-
-def get_filters(schema_mapping, node_kind):
-    """Extract filters for a specific node kind from the schema mapping."""
-    for mapping in schema_mapping:
-        if mapping.name == node_kind:
-            return mapping.filters or []
-    return []
-
-
-def get_transforms(schema_mapping, node_kind):
-    """Extract transforms for a specific node kind from the schema mapping."""
-    for mapping in schema_mapping:
-        if mapping.name == node_kind:
-            return mapping.transforms or []
-    return []
 
 
 def get_identifiers(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]:
@@ -156,8 +156,6 @@ def render_template(template_file: Path, output_dir: Path, output_file: Path, co
         loader=template_loader,
     )
     # Add custom filters to Jinja2
-    template_env.filters["get_filters"] = get_filters
-    template_env.filters["get_transforms"] = get_transforms
     template_env.filters["get_identifiers"] = get_identifiers
     template_env.filters["get_attributes"] = get_attributes
     template_env.filters["get_children"] = get_children

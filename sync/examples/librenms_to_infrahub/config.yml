@@ -1,12 +1,13 @@
 ---
 name: from-librenms
+
 source:
   name: librenms
   settings:
-    url: "LIBRENMS_URL"
+    url: "http://localhost:8080"
     # api_endpoint: "api/v0"
-    # auth_method: "token"
-    token: "LIBRENMS_TOKEN"
+    # auth_method: "x-auth-token"
+    # token: "LIBRENMS_TOKEN"
 
 destination:
   name: infrahub
@@ -51,8 +52,10 @@ schema_mapping:
   - name: InfraDevice
     mapping: devices
     identifiers: ["name"]
-    # filters:
-    #   - "netutils.regex.regex_search('xxx', 'hostname')"
+    filters:
+      - field: hostname
+        operation: contains
+        value: "xxx"
     fields:
       - name: name
         mapping: hostname

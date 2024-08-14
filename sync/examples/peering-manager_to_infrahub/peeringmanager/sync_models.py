@@ -1,7 +1,6 @@
 from typing import Any, List, Optional
 
 from infrahub_sync.adapters.peeringmanager import PeeringmanagerModel
-from infrahub_sync.adapters.utils import apply_filters, apply_transforms
 
 
 # -------------------------------------------------------
@@ -50,40 +49,32 @@ class IpamIPAddress(PeeringmanagerModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        """Filter records based on the defined filters."""
-        filters = [
-            {"field": "ipv6_address", "operation": "is_not_empty", "value": True},
-        ]
-        return [record for record in records if apply_filters(record, filters)]
 
-
-class InfraBGPCommunity(PeeringmanagerModel):
-    _modelname = "InfraBGPCommunity"
+class InfraBGPRoutingPolicy(PeeringmanagerModel):
+    _modelname = "InfraBGPRoutingPolicy"
     _identifiers = ("name",)
-    _attributes = ("label", "description", "value", "community_type")
-    name: str
+    _attributes = ("bgp_communities", "address_family", "label", "description", "policy_type", "weight")
+    address_family: int
     label: Optional[str] = None
     description: Optional[str] = None
-    value: str
-    community_type: Optional[str] = None
+    name: str
+    policy_type: str
+    weight: Optional[int] = 1000
+    bgp_communities: Optional[List[str]] = []
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
 
-class InfraBGPRoutingPolicy(PeeringmanagerModel):
-    _modelname = "InfraBGPRoutingPolicy"
+class InfraBGPCommunity(PeeringmanagerModel):
+    _modelname = "InfraBGPCommunity"
     _identifiers = ("name",)
-    _attributes = ("bgp_communities", "label", "description", "policy_type", "weight", "address_family")
-    name: str
-    label: Optional[str] = None
+    _attributes = ("description", "value", "label", "community_type")
     description: Optional[str] = None
-    policy_type: str
-    weight: Optional[int] = 1000
-    address_family: int
-    bgp_communities: Optional[List[str]] = []
+    name: str
+    value: str
+    label: Optional[str] = None
+    community_type: Optional[str] = None
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -92,66 +83,38 @@ class InfraBGPRoutingPolicy(PeeringmanagerModel):
 class InfraIXP(PeeringmanagerModel):
     _modelname = "InfraIXP"
     _identifiers = ("name",)
-    _attributes = ("import_policies", "export_policies", "bgp_communities", "description", "status")
-    name: str
+    _attributes = ("export_policies", "bgp_communities", "import_policies", "description", "status")
     description: Optional[str] = None
+    name: str
     status: Optional[str] = "enabled"
-    import_policies: Optional[List[str]] = []
     export_policies: Optional[List[str]] = []
     bgp_communities: Optional[List[str]] = []
+    import_policies: Optional[List[str]] = []
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
-
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        """Filter records based on the defined filters."""
-        filters = [
-            {"field": "name", "operation": "is_not_empty", "value": True},
-            {"field": "status.value", "operation": "contains", "value": "enabled"},
-            {"field": "name", "operation": "contains", "value": "S.H.I.E.L.D"},
-        ]
-        return [record for record in records if apply_filters(record, filters)]
-
-    @classmethod
-    def transform_records(cls, records: List[Any]) -> List[Any]:
-        """Transform records based on the defined transforms."""
-        transforms = [
-            {"field": "description", "expression": "{name.upper()}"},
-        ]
-        for record in records:
-            apply_transforms(record, transforms)
-        return records
 
 
 class InfraIXPConnection(PeeringmanagerModel):
     _modelname = "InfraIXPConnection"
     _identifiers = ("name",)
     _attributes = (
-        "ipv6_address",
         "ipv4_address",
         "internet_exchange_point",
-        "description",
-        "peeringdb_netixlan",
+        "ipv6_address",
         "status",
         "vlan",
+        "description",
+        "peeringdb_netixlan",
     )
+    status: Optional[str] = "enabled"
+    vlan: Optional[int] = None
     name: str
     description: Optional[str] = None
     peeringdb_netixlan: Optional[int] = None
-    status: Optional[str] = "enabled"
-    vlan: Optional[int] = None
-    ipv6_address: Optional[str] = None
     ipv4_address: Optional[str] = None
     internet_exchange_point: str
+    ipv6_address: Optional[str] = None
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
-
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        """Filter records based on the defined filters."""
-        filters = [
-            {"field": "internet_exchange_point.name", "operation": "contains", "value": "S.H.I.E.L.D"},
-        ]
-        return [record for record in records if apply_filters(record, filters)]

@@ -1,7 +1,6 @@
 from typing import Any, List, Optional
 
 from infrahub_sync.adapters.nautobot import NautobotModel
-from infrahub_sync.adapters.utils import apply_filters, apply_transforms
 
 
 # -------------------------------------------------------
@@ -59,24 +58,6 @@ class InfraCircuit(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        """Filter records based on the defined filters."""
-        filters = [
-            {"field": "circuit_id", "operation": "contains", "value": "ntt"},
-        ]
-        return [record for record in records if apply_filters(record, filters)]
-
-    @classmethod
-    def transform_records(cls, records: List[Any]) -> List[Any]:
-        """Transform records based on the defined transforms."""
-        transforms = [
-            {"field": "circuit_id", "expression": "{circuit_id.upper()}"},
-        ]
-        for record in records:
-            apply_transforms(record, transforms)
-        return records
-
 
 class InfraDevice(NautobotModel):
     _modelname = "InfraDevice"
@@ -114,14 +95,14 @@ class InfraFrontPort(NautobotModel):
 
 class InfraIPAddress(NautobotModel):
     _modelname = "InfraIPAddress"
-    _identifiers = ("address", "prefix")
+    _identifiers = ("address", "ip_prefix")
     _attributes = ("organization", "interfaces", "role", "description")
     address: str
     description: Optional[str] = None
     organization: Optional[str] = None
     interfaces: Optional[List[str]] = []
-    prefix: Optional[str] = None
     role: Optional[str] = None
+    ip_prefix: Optional[str] = None
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -171,16 +152,16 @@ class InfraPlatform(NautobotModel):
 
 class InfraPrefix(NautobotModel):
     _modelname = "InfraPrefix"
-    _identifiers = ("prefix", "nautobot_namespace")
+    _identifiers = ("prefix", "ip_namespace")
     _attributes = ("organization", "locations", "status", "role", "vlan", "description")
     prefix: str
     description: Optional[str] = None
     organization: Optional[str] = None
-    nautobot_namespace: str
     locations: Optional[List[str]] = []
     status: Optional[str] = None
     role: Optional[str] = None
     vlan: Optional[str] = None
+    ip_namespace: Optional[str] = None
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -245,8 +226,8 @@ class InfraRouteTarget(NautobotModel):
 
 class InfraVLAN(NautobotModel):
     _modelname = "InfraVLAN"
-    _identifiers = ("name", "vlan_id", "locations", "organization")
-    _attributes = ("status", "role", "vlan_group", "description")
+    _identifiers = ("name",)
+    _attributes = ("organization", "locations", "status", "role", "vlan_group", "description", "vlan_id")
     name: str
     description: Optional[str] = None
     vlan_id: int
@@ -262,13 +243,13 @@ class InfraVLAN(NautobotModel):
 
 class InfraVRF(NautobotModel):
     _modelname = "InfraVRF"
-    _identifiers = ("name", "nautobot_namespace")
+    _identifiers = ("name", "ip_namespace")
     _attributes = ("organization", "import_rt", "export_rt", "description", "vrf_rd")
     name: str
     description: Optional[str] = None
     vrf_rd: Optional[str] = None
     organization: Optional[str] = None
-    nautobot_namespace: str
+    ip_namespace: str
     import_rt: Optional[List[str]] = []
     export_rt: Optional[List[str]] = []
 
@@ -336,14 +317,6 @@ class StatusGeneric(NautobotModel):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
-
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        """Filter records based on the defined filters."""
-        filters = [
-            {"field": "name", "operation": "!=", "value": "NULL"},
-        ]
-        return [record for record in records if apply_filters(record, filters)]
 
 
 class TemplateCircuitType(NautobotModel):

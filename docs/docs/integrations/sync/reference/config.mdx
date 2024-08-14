@@ -55,7 +55,8 @@ Defines the mappings from source to destination schemas.
 | mapping | string | The source's schema mapping (API) path. | Yes |
 | identifiers | List of strings | Fields used to uniquely identify an object. | Yes |
 | fields | List of SchemaMappingField | Describes individual field mappings or transformations. | Yes |
-| filters | List of strings | Filters you want to apply during the sync. | No |
+| filters | List of SchemaMappingFilter | Filters you want to apply during the sync. | No |
+| transforms | List of SchemaMappingTransform | Transforms you want to apply during the sync. | No |
 
 ##### Mapping field
 
@@ -65,3 +66,37 @@ Defines the mappings from source to destination schemas.
 | mapping | string | How the field is mapped from source to destination. | No |
 | static | Any | A static value to assign to the field, used if `mapping` is not provided. | No |
 | reference | string | Reference to another object in the configuration, used if direct mapping is not applicable. | No |
+
+##### Mapping filters
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| field | string | Name of the source field to filter on. | Yes |
+| operation | string | Which filters will be applied on the field. Available operations are described below. | No |
+| value | string | The expected value linked to the operation. | Yes except for both is_empty and is_not_empty operation |
+
+###### Available filter operations
+
+| Operation | Description |
+| --------- | ----------- |
+| `==` | Checks if the field value is equal to the provided value. |
+| `!=` | Checks if the field value is not equal to the provided value. |
+| `>` | Checks if the field value is greater than the provided value (after converting both to integers if necessary). |
+| `<` | Checks if the field value is less than the provided value (after converting both to integers if necessary). |
+| `>=` | Checks if the field value is greater than or equal to the provided value (after converting both to integers if necessary). |
+| `<=` | Checks if the field value is less than or equal to the provided value (after converting both to integers if necessary). |
+| `in` | Checks if the field value is within the provided list or string. |
+| `not in` | Checks if the field value is not within the provided list or string. |
+| `contains` | Checks if the provided value is contained within the field value. |
+| `not contains` | Checks if the provided value is not contained within the field value. |
+| `is_empty` | Checks if the field value is `None` or empty. Does not require a `value` argument. |
+| `is_not_empty` | Checks if the field value is not `None` and not empty. Does not require a `value` argument. |
+| `regex` | Checks if the field value matches the provided regular expression pattern. |
+| `is_ip_within` | Checks if the field value (an IP address) is within the provided IP range using `netutils`. |
+
+##### Mapping transforms
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| field | string | Name of the target field. | Yes |
+| expression | string | A Jinja filter compatible expression. | Yes |

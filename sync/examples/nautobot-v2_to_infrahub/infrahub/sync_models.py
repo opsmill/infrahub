@@ -95,14 +95,14 @@ class InfraFrontPort(InfrahubModel):
 
 class InfraIPAddress(InfrahubModel):
     _modelname = "InfraIPAddress"
-    _identifiers = ("address", "prefix")
+    _identifiers = ("address", "ip_prefix")
     _attributes = ("organization", "interfaces", "role", "description")
     address: str
     description: Optional[str] = None
     organization: Optional[str] = None
     interfaces: Optional[List[str]] = []
-    prefix: Optional[str] = None
     role: Optional[str] = None
+    ip_prefix: Optional[str] = None
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -152,16 +152,16 @@ class InfraPlatform(InfrahubModel):
 
 class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
-    _identifiers = ("prefix", "nautobot_namespace")
+    _identifiers = ("prefix", "ip_namespace")
     _attributes = ("organization", "locations", "status", "role", "vlan", "description")
     prefix: str
     description: Optional[str] = None
     organization: Optional[str] = None
-    nautobot_namespace: str
     locations: Optional[List[str]] = []
     status: Optional[str] = None
     role: Optional[str] = None
     vlan: Optional[str] = None
+    ip_namespace: Optional[str] = None
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -226,8 +226,8 @@ class InfraRouteTarget(InfrahubModel):
 
 class InfraVLAN(InfrahubModel):
     _modelname = "InfraVLAN"
-    _identifiers = ("name", "vlan_id", "locations", "organization")
-    _attributes = ("status", "role", "vlan_group", "description")
+    _identifiers = ("name",)
+    _attributes = ("organization", "locations", "status", "role", "vlan_group", "description", "vlan_id")
     name: str
     description: Optional[str] = None
     vlan_id: int
@@ -243,13 +243,13 @@ class InfraVLAN(InfrahubModel):
 
 class InfraVRF(InfrahubModel):
     _modelname = "InfraVRF"
-    _identifiers = ("name", "nautobot_namespace")
+    _identifiers = ("name", "ip_namespace")
     _attributes = ("organization", "import_rt", "export_rt", "description", "vrf_rd")
     name: str
     description: Optional[str] = None
     vrf_rd: Optional[str] = None
     organization: Optional[str] = None
-    nautobot_namespace: str
+    ip_namespace: str
     import_rt: Optional[List[str]] = []
     export_rt: Optional[List[str]] = []
 

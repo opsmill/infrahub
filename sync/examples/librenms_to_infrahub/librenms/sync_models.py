@@ -1,7 +1,4 @@
-from typing import Any, List, Optional
-
-import netutils.ip
-import netutils.regex
+from typing import Any, Optional
 
 from infrahub_sync.adapters.librenms import LibrenmsModel
 
@@ -25,32 +22,14 @@ class CoreStandardGroup(LibrenmsModel):
 class InfraDevice(LibrenmsModel):
     _modelname = "InfraDevice"
     _identifiers = ("name",)
-    _attributes = ("site", "description", "serial_number", "type")
+    _attributes = ("site", "type", "serial_number")
     name: str
-    description: Optional[str] = None
-    serial_number: Optional[str] = None
     type: str
+    serial_number: str
     site: str
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
-
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        filtered_records = []
-        for record in records:
-            include = True
-            try:
-                if netutils.regex.regex_search("xxx", "hostname"):
-                    include = False
-            except Exception as e:
-                print(
-                    f"Error evaluating filter: 'netutils.regex.regex_search('xxx', 'hostname')' with record {record}: {e}"
-                )
-                include = False
-            if include:
-                filtered_records.append(record)
-        return filtered_records
 
 
 class IpamIPAddress(LibrenmsModel):

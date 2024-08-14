@@ -28,7 +28,7 @@ order: [
   "InfraDevice",
   "InfraVLAN",
   "InfraPrefix",
-  "InfraIPAddress",
+  # "InfraIPAddress",
   # "InfraInterfaceL2L3",
 ]
 
@@ -190,23 +190,22 @@ schema_mapping:
       - name: full_depth
         mapping: is_full_depth
       - name: height
-        mapping: u_height
+        mapping: integer_height
       - name: tags
         mapping: tags
         reference: BuiltinTag
       - name: manufacturer
         mapping: manufacturer
         reference: OrganizationGeneric
+    transforms:
+      - field: integer_height
+        expression: "{{ u_height|float|round(0, 'ceil') }}"
   # -> The netbox constraint is `dcim_device_unique_name_site_tenant`
   # Reusing device_name + site + Organization as identifiers
   # /!\ Seem like Netbox allowed device to have the same name if there is a virtual-chassis
   - name: InfraDevice
     identifiers: ["location", "rack", "organization", "name"]
     mapping: dcim.devices
-    # Showcase of the filters on the device, it will import the ones with dmu01 in their name *AND* without pdu
-    # filters:
-    #   - "netutils.regex.regex_search('dmi01', 'name')"
-    #   - "not netutils.regex.regex_search('pdu', 'name')"
     fields:
       - name: name
         mapping: name
@@ -237,54 +236,61 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: BuiltinTag
+    # Showcase Filters
+    # It will import the ones with dmu01 in their name *AND* without pdu
     filters:
       - field: name
         operation: "contains"
-        value: "'dmi01'"
+        value: "dmi01"
       - field: name
         operation: "not contains"
-        value: "'pdu'"
+        value: "pdu"
+    # Showcase Transforms
     transforms:
       - field: name
-        expression: "{name.lower()}"
+        expression: "{{ name.lower() }}"
       - field: serial_number
-        expression: "{serial_number.lower() if serial_number is not None else ''}"
+        expression: "{{ serial_number.lower() if serial_number else '' }}}"
 
-  # # Interfaces (interfaces, rear port, front port)
-  # - name: InfraInterfaceL2L3
-  #   identifiers: ["device", "name"]
-  #   mapping: dcim.interfaces
-  #   fields:
-  #     - name: name
-  #       mapping: name
-  #     - name: description
-  #       mapping: description
-  #     - name: interface_type
-  #       mapping: type.label
-  #     - name: l2_mode
-  #       mapping: mode.label
-  #     - name: mac_address
-  #       mapping: mac_address
-  #     # - name: ip_addresses
-  #     #   mapping: ip_addresses
-  #     #   reference: InfraIPAddress
-  #     - name: mgmt_only
-  #       mapping: mgmt_only
-  #     - name: untagged_vlan
-  #       mapping: untagged_vlan
-  #       reference: InfraVLAN
-  #     - name: tagged_vlan
-  #       mapping: tagged_vlans
-  #       reference: InfraVLAN
-  #     - name: device
-  #       mapping: device
-  #       reference: InfraDevice
-  #     - name: tags
-  #       mapping: tags
-  #       reference: BuiltinTag
-  #     # - name: status
-  #     #   mapping: status
-  #     #   reference: BuiltinStatus
+  # Interfaces (interfaces, rear port, front port)
+  - name: InfraInterfaceL2L3
+    identifiers: ["device", "name"]
+    mapping: dcim.interfaces
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: interface_type
+        mapping: type.label
+      - name: l2_mode
+        mapping: mode.label
+      - name: mac_address
+        mapping: mac_address
+      # - name: ip_addresses
+      #   mapping: ip_addresses
+      #   reference: InfraIPAddress
+      - name: mgmt_only
+        mapping: mgmt_only
+      - name: untagged_vlan
+        mapping: untagged_vlan
+        reference: InfraVLAN
+      - name: tagged_vlan
+        mapping: tagged_vlans
+        reference: InfraVLAN
+      - name: device
+        mapping: device
+        reference: InfraDevice
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+      # - name: status
+      #   mapping: status
+      #   reference: StatusGeneric
+    filters:
+      - field: device.name
+        operation: "contains"
+        value: "dmi01"
 
   # Circuits (Provider, Provider Network, Circuits Types, Circuits)
   - name: OrganizationGeneric

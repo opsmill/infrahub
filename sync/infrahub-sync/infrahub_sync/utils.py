@@ -35,7 +35,6 @@ def render_adapter(
     )
     rendered_files = []
     for adapter in [sync_instance.source, sync_instance.destination]:
-        direction = "source" if adapter == sync_instance.source else "destination"
         output_dir_path = Path(sync_instance.directory, adapter.name)
         if not output_dir_path.is_dir():
             output_dir_path.mkdir(exist_ok=True)
@@ -49,7 +48,7 @@ def render_adapter(
                 template_file=item[0],
                 output_dir=output_dir_path,
                 output_file=item[1],
-                context={"schema": schema, "adapter": adapter, "config": sync_instance, "direction": direction},
+                context={"schema": schema, "adapter": adapter, "config": sync_instance},
             )
             output_file_path = output_dir_path / item[1]
             rendered_files.append((item[0], output_file_path))
@@ -158,7 +157,7 @@ def get_potenda_from_instance(
                 internal_storage_engine=source_store,
             )
     except ValueError as exc:
-        raise ValueError(f"{sync_instance.source.name.title()}Adapter") from exc
+        raise ValueError(f"{sync_instance.source.name.title()}Adapter - {exc}") from exc
     try:
         if sync_instance.destination.name == "infrahub" and branch:
             dst = destination(
@@ -176,7 +175,7 @@ def get_potenda_from_instance(
                 internal_storage_engine=destination_store,
             )
     except ValueError as exc:
-        raise ValueError(f"{sync_instance.destination.name.title()}Adapter") from exc
+        raise ValueError(f"{sync_instance.destination.name.title()}Adapter - {exc}") from exc
 
     ptd = Potenda(
         destination=dst,

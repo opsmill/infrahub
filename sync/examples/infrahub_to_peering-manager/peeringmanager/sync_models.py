@@ -39,31 +39,31 @@ class InfraBGPPeerGroup(PeeringmanagerModel):
     local_data: Optional[Any] = None
 
 
-class InfraBGPCommunity(PeeringmanagerModel):
-    _modelname = "InfraBGPCommunity"
+class InfraBGPRoutingPolicy(PeeringmanagerModel):
+    _modelname = "InfraBGPRoutingPolicy"
     _identifiers = ("name",)
-    _attributes = ("label", "description", "value", "community_type")
-    name: str
+    _attributes = ("bgp_communities", "address_family", "label", "description", "policy_type", "weight")
+    address_family: int
     label: Optional[str] = None
     description: Optional[str] = None
-    value: str
-    community_type: Optional[str] = None
+    name: str
+    policy_type: str
+    weight: Optional[int] = 1000
+    bgp_communities: Optional[List[str]] = []
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
 
-class InfraBGPRoutingPolicy(PeeringmanagerModel):
-    _modelname = "InfraBGPRoutingPolicy"
+class InfraBGPCommunity(PeeringmanagerModel):
+    _modelname = "InfraBGPCommunity"
     _identifiers = ("name",)
-    _attributes = ("bgp_communities", "label", "description", "policy_type", "weight", "address_family")
-    name: str
-    label: Optional[str] = None
+    _attributes = ("description", "value", "label", "community_type")
     description: Optional[str] = None
-    policy_type: str
-    weight: Optional[int] = 1000
-    address_family: int
-    bgp_communities: Optional[List[str]] = []
+    name: str
+    value: str
+    label: Optional[str] = None
+    community_type: Optional[str] = None
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -72,13 +72,13 @@ class InfraBGPRoutingPolicy(PeeringmanagerModel):
 class InfraIXP(PeeringmanagerModel):
     _modelname = "InfraIXP"
     _identifiers = ("name",)
-    _attributes = ("import_policies", "export_policies", "bgp_communities", "description", "status")
-    name: str
+    _attributes = ("export_policies", "bgp_communities", "import_policies", "description", "status")
     description: Optional[str] = None
+    name: str
     status: Optional[str] = "enabled"
-    import_policies: Optional[List[str]] = []
     export_policies: Optional[List[str]] = []
     bgp_communities: Optional[List[str]] = []
+    import_policies: Optional[List[str]] = []
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -87,12 +87,12 @@ class InfraIXP(PeeringmanagerModel):
 class InfraIXPConnection(PeeringmanagerModel):
     _modelname = "InfraIXPConnection"
     _identifiers = ("name",)
-    _attributes = ("internet_exchange_point", "description", "peeringdb_netixlan", "status", "vlan")
+    _attributes = ("internet_exchange_point", "status", "vlan", "description", "peeringdb_netixlan")
+    status: Optional[str] = "enabled"
+    vlan: Optional[int] = None
     name: str
     description: Optional[str] = None
     peeringdb_netixlan: Optional[int] = None
-    status: Optional[str] = "enabled"
-    vlan: Optional[int] = None
     internet_exchange_point: str
 
     local_id: Optional[str] = None

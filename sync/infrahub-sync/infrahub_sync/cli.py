@@ -53,7 +53,7 @@ def diff_cmd(
     try:
         ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
     except ValueError as exc:
-        print_error_and_abort(f"Failed to initialize the Sync Instance due to {exc}")
+        print_error_and_abort(f"Failed to initialize the Sync Instance: {exc}")
     try:
         ptd.source_load()
         ptd.destination_load()

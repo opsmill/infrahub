@@ -20,7 +20,7 @@ class PeeringmanagerSync(PeeringmanagerAdapter):
     InfraAutonomousSystem = InfraAutonomousSystem
     InfraBGPPeerGroup = InfraBGPPeerGroup
     IpamIPAddress = IpamIPAddress
-    InfraBGPCommunity = InfraBGPCommunity
     InfraBGPRoutingPolicy = InfraBGPRoutingPolicy
+    InfraBGPCommunity = InfraBGPCommunity
     InfraIXP = InfraIXP
     InfraIXPConnection = InfraIXPConnection

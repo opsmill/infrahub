@@ -1,113 +1,6 @@
-import operator
-import re
-from typing import Any, List, Optional, Union
+from typing import Any, Optional
 
 import requests
-from asteval import Interpreter
-from netutils.ip import is_ip_within as netutils_is_ip_within
-
-
-def is_ip_within_filter(ip: str, ip_compare: Union[str, List[str]]) -> bool:
-    """Check if an IP address is within a given subnet."""
-    return netutils_is_ip_within(ip=ip, ip_compare=ip_compare)
-
-
-def convert_to_int(value: Any) -> int:
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        raise ValueError(f"Cannot convert '{value}' to int")
-
-
-def regex_filter(field_value: str, pattern: str) -> bool:
-    return bool(re.match(pattern, field_value))
-
-
-# Operations mapping
-OPERATIONS = {
-    "==": operator.eq,
-    "!=": operator.ne,
-    ">": lambda x, y: operator.gt(convert_to_int(x), convert_to_int(y)),
-    "<": lambda x, y: operator.lt(convert_to_int(x), convert_to_int(y)),
-    ">=": lambda x, y: operator.ge(convert_to_int(x), convert_to_int(y)),
-    "<=": lambda x, y: operator.le(convert_to_int(x), convert_to_int(y)),
-    "in": lambda x, y: y and x in y,
-    "not in": lambda x, y: x not in y,
-    "contains": lambda x, y: x and y in x,
-    "not contains": lambda x, y: x and y not in x,
-    "regex": lambda x, pattern: re.match(pattern, x) is not None,
-    "is_empty": lambda x: x is None or not x,
-    "is_not_empty": lambda x: x is not None and x,
-    "is_ip_within": is_ip_within_filter,
-}
-
-STRING_METHODS = {
-    "upper": str.upper,
-    "lower": str.lower,
-    "capitalize": str.capitalize,
-    "title": str.title,
-    "replace": str.replace,
-    "join": str.join,
-    "strip": str.strip,
-    "lstrip": str.lstrip,
-    "rstrip": str.rstrip,
-    "format": str.format,
-}
-
-
-def apply_filter(field_value: Any, operation: str, value: Any) -> bool:
-    """Apply a specified operation to a field value."""
-    operation_func = OPERATIONS.get(operation)
-    if operation_func is None:
-        raise ValueError(f"Unsupported operation: {operation}")
-
-    # Handle is_empty and is_not_empty which do not use the value argument
-    if operation in {"is_empty", "is_not_empty"}:
-        return operation_func(field_value)
-
-    return operation_func(field_value, value)
-
-
-def apply_filters(item: dict[str, Any], filters: List[dict[str, Any]]) -> bool:
-    """Apply filters to an item and return True if it passes all filters."""
-    for filter_obj in filters:
-        field_value = get_value(obj=item, name=filter_obj["field"])
-        if not apply_filter(field_value, filter_obj["operation"], filter_obj["value"]):
-            return False
-    return True
-
-
-def apply_transform(item: dict[str, Any], transform_expr: str, field: str) -> None:
-    """Apply a transformation expression to a specified field in the item."""
-    try:
-        # Initialize asteval interpreter
-        aeval = Interpreter()
-        aeval.symtable.update(STRING_METHODS)
-        context = {k: v for k, v in item.items() if isinstance(v, (str, int, float, dict, list))}
-        aeval.symtable.update(context)
-
-        # Safely evaluate the expression using asteval
-        transformed_value = aeval.eval(expr=transform_expr)
-        # If the result is a set, convert it to a string or extract the first element
-        if isinstance(transformed_value, set):
-            if len(transformed_value) == 1:
-                transformed_value = next(iter(transformed_value))
-            else:
-                transformed_value = ", ".join(transformed_value)
-
-        # Assign the result back to the item
-        item[field] = transformed_value
-    except Exception as e:
-        raise ValueError(f"Failed to transform '{field}' with '{transform_expr}': {e}")
-
-
-def apply_transforms(item: dict[str, Any], transforms: List[dict[str, str]]) -> dict[str, Any]:
-    """Apply a list of structured transformations to an item."""
-    for transform_obj in transforms:
-        field = transform_obj["field"]
-        expr = transform_obj["expression"]
-        apply_transform(item, expr, field)
-    return item
 
 
 def get_value(obj, name: str):
@@ -133,15 +26,16 @@ def get_value(obj, name: str):
 
 def derive_identifier_key(obj: dict[str, Any]) -> Optional[str]:
     """Try to get obj.id, and if it doesn't exist, try to get a key ending with _id"""
-    obj_id = str(obj.get("id", None))
-
-    if not obj_id:
+    obj_id = obj.get("id", None)
+    if obj_id is None:
         for key, value in obj.items():
             if key.endswith("_id"):
-                obj_id = value
+                if value:
+                    obj_id = value
+                    break
 
     # If we still didn't find any id, raise ValueError
-    if not obj_id:
+    if obj_id is None:
         raise ValueError("No suitable identifier key found in object")
     return obj_id
 
@@ -163,8 +57,19 @@ class RestApiClient:
         }
 
         # Determine authentication method
+        # -> Peering Manager
         if auth_method == "token" and api_token:
             self.headers["Authorization"] = f"Token {api_token}"
+        # -> LibreNMS
+        elif auth_method == "x-auth-token" and api_token:
+            self.headers["X-Auth-Token"] = api_token
+        # -> Peering DB
+        elif auth_method == "api-key" and api_token:
+            self.headers["Authorization"] = f"Api-Key {api_token}"
+        # -> RIPE API
+        elif auth_method == "key" and api_token:
+            self.headers["Authorization"] = f"Key {api_token}"
+        # -> Observium
         elif auth_method == "basic" and username and password:
             self.auth = (username, password)
         else:
@@ -198,12 +103,12 @@ class RestApiClient:
 
             try:
                 return response.json()
-            except requests.exceptions.JSONDecodeError:
+            except requests.exceptions.JSONDecodeError as exc:
                 print("Response content is not valid JSON:", response.text)  # Print the response content
-                raise ValueError("Response content is not valid JSON.")
+                raise ValueError("Response content is not valid JSON.") from exc
 
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"API request failed: {str(e)}")
+        except requests.exceptions.RequestException as exc:
+            raise ConnectionError(f"API request failed: {str(exc)}") from exc
 
     def get(self, endpoint: str, params: Optional[dict[str, Any]] = None) -> Any:
         return self.request("GET", endpoint, params=params)

@@ -33,13 +33,13 @@ order: [
   "InfraCircuit",
   "NautobotNamespace",
   "InfraRouteTarget",
-  "InfraVRF",
-  "InfraDevice",
   "InfraVLAN",
-  # "InfraPrefix",
+  "InfraVRF",
+  # "InfraDevice",
+  "InfraPrefix",
   # "InfraInterfaceL2L3",
-  # "InfraRearPort",
-  # "InfraFrontPort",
+  "InfraRearPort",
+  "InfraFrontPort",
   # "InfraIPAddress",
 ]
 
@@ -72,16 +72,17 @@ schema_mapping:
     identifiers: ["name"]
     fields:
       - name: name
-        mapping: name
+        mapping: new_name
       - name: description
         mapping: description
       - name: label
-        mapping: display
-    # Filter the "fake" Null Status from Nautobot v2
-    filters:
-      - field: name
-        operation: "!="
-        value: "'NULL'"
+        mapping: new_label
+    # Transform the "fake" Null Status from Nautobot v2
+    transforms:
+      - field: new_name
+        expression: "{{ 'default' if name == 'NULL' else name }}"
+      - field: new_label
+        expression: "{{ 'Default' if display == 'NULL' else display }}"
 
   # Tenancy (tenants, tenant groups)
   - name: CoreStandardGroup
@@ -280,12 +281,12 @@ schema_mapping:
     identifiers: ["circuit_id"]
     # Showcase of the filters on the Circuits, it will import the ones starting with a CID starting with ntt
     filters:
-      - field: circuit_id
+      - field: cid
         operation: "contains"
-        value: "'ntt'"
+        value: "ntt"
     transforms:
       - field: circuit_id
-        expression: "{circuit_id.upper()}"
+        expression: "{{ cid.upper() }}"
     fields:
       - name: circuit_id
         mapping: cid
@@ -346,7 +347,7 @@ schema_mapping:
         reference: OrganizationGeneric
   - name: InfraVRF
     mapping: ipam.vrfs
-    identifiers: ["name", "nautobot_namespace"]
+    identifiers: ["name", "ip_namespace"]
     fields:
       - name: name
         mapping: name
@@ -355,7 +356,7 @@ schema_mapping:
       - name: organization
         mapping: tenant
         reference: OrganizationGeneric
-      - name: nautobot_namespace
+      - name: ip_namespace
         mapping: namespace
         reference: NautobotNamespace
       - name: vrf_rd
@@ -379,7 +380,7 @@ schema_mapping:
       #   reference: LocationGeneric
   - name: InfraVLAN
     mapping: ipam.vlans
-    identifiers: ["name", "vlan_id", "locations", "organization"]
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
@@ -404,7 +405,7 @@ schema_mapping:
         reference: CoreStandardGroup
   - name: InfraPrefix
     mapping: ipam.prefixes
-    identifiers: ["prefix", "nautobot_namespace"]
+    identifiers: ["prefix", "ip_namespace"]
     fields:
       - name: prefix
         mapping: prefix
@@ -413,7 +414,7 @@ schema_mapping:
       - name: organization
         mapping: tenant
         reference: OrganizationGeneric
-      - name: nautobot_namespace
+      - name: ip_namespace
         mapping: namespace
         reference: NautobotNamespace
       - name: role
@@ -428,9 +429,10 @@ schema_mapping:
       - name: locations
         mapping: locations
         reference: LocationGeneric
+
   - name: InfraIPAddress
     mapping: ipam.ip-addresses
-    identifiers: ["address", "prefix"]
+    identifiers: ["address", "ip_prefix"]
     fields:
       - name: address
         mapping: address
@@ -439,7 +441,7 @@ schema_mapping:
       - name: organization
         mapping: tenant
         reference: OrganizationGeneric
-      - name: prefix
+      - name: ip_prefix
         mapping: parent
         reference: InfraPrefix
       - name: interfaces

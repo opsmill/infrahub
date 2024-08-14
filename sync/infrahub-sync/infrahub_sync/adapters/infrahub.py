@@ -13,7 +13,13 @@ from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.utils import compare_lists
 
 from diffsync import Adapter, DiffSyncModel
-from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
+from infrahub_sync import (
+    DiffSyncMixin,
+    DiffSyncModelMixin,
+    SchemaMappingModel,
+    SyncAdapter,
+    SyncConfig,
+)
 from infrahub_sync.generator import has_field
 
 
@@ -24,21 +30,29 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
             attr.value = attr_value
 
         if attr_name in node._schema.relationship_names:
-            for rel in node._schema.relationships:
-                if attr_name == rel.name and rel.cardinality == "one":
+            for rel_schema in node._schema.relationships:
+                if attr_name == rel_schema.name and rel_schema.cardinality == "one":
                     if attr_value:
-                        peer = node._client.store.get(key=attr_value, kind=rel.peer, raise_when_missing=False)
+                        if rel_schema.kind != "Generic":
+                            peer = node._client.store.get(
+                                key=attr_value, kind=rel_schema.peer, raise_when_missing=False
+                            )
+                        else:
+                            peer = node._client.store.get(key=attr_value, raise_when_missing=False)
                         if not peer:
-                            peer = node._client.get(id=attr_value, kind=rel.peer)
+                            print(f"Unable to find {rel_schema.peer} [{attr_value}] in the Store - Ignored")
+                            continue
                         setattr(node, attr_name, peer)
                     else:
                         # TODO: Do we want to delete old relationship here ?
                         pass
 
-                if attr_name == rel.name and rel.cardinality == "many":
+                if attr_name == rel_schema.name and rel_schema.cardinality == "many":
                     attr = getattr(node, attr_name)
                     existing_peer_ids = attr.peer_ids
-                    new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
+                    new_peer_ids = [
+                        node._client.store.get(key=value, kind=rel_schema.peer).id for value in list(attr_value)
+                    ]
                     _, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)  # noqa: F841
 
                     for existing_id in existing_only:
@@ -48,6 +62,36 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
                         attr.add(new_id)
 
     return node
+
+
+def diffsync_to_infrahub(ids: Mapping[Any, Any], attrs: Mapping[Any, Any], store: NodeStoreSync, schema: NodeSchema):
+    data = copy.deepcopy(dict(ids))
+    data.update(dict(attrs))
+
+    for key in list(data.keys()):
+        if key in schema.relationship_names:
+            for rel_schema in schema.relationships:
+                if key == rel_schema.name and rel_schema.cardinality == "one":
+                    if data[key] is None:
+                        del data[key]
+                        continue
+                    if rel_schema.kind != "Generic":
+                        peer = store.get(key=data[key], kind=rel_schema.peer, raise_when_missing=False)
+                    else:
+                        peer = store.get(key=data[key], raise_when_missing=False)
+                    if not peer:
+                        print(f"Unable to find {rel_schema.peer} [{data[key]}] in the Store - Ignored")
+                        continue
+
+                    data[key] = peer.id
+                if key == rel_schema.name and rel_schema.cardinality == "many":
+                    if data[key] is None:
+                        del data[key]
+                        continue
+                    new_values = [store.get(key=value, kind=rel_schema.peer).id for value in list(data[key])]
+                    data[key] = new_values
+
+    return data
 
 
 class InfrahubAdapter(DiffSyncMixin, Adapter):
@@ -79,49 +123,42 @@ class InfrahubAdapter(DiffSyncMixin, Adapter):
         except NodeNotFoundError:
             self.account = None
 
-    def model_loader(self, model_name: str, model):
-        nodes = self.client.all(kind=model.__name__, populate_store=True)
-        total = len(nodes)
+    def model_loader(self, model_name: str, model: "InfrahubModel"):
+        """
+        Load and process models using schema mapping filters and transformations.
 
-        # objs = []
-        # for node in nodes:
-        #     data = self.infrahub_node_to_diffsync(node)
-        #     item = model(**data)
-        #     unique_id = item.get_unique_id()
-        #     data["unique_id"] = unique_id
-        #     objs.append(data)
-        #     self.client.store.set(key=unique_id, node=node)
+        This method retrieves data from Infrahub, applies filters and transformations
+        as specified in the schema mapping, and loads the processed data into the adapter.
+        """
+        element = next((el for el in self.config.schema_mapping if el.name == model_name), None)
+        if element:
+            # Retrieve all nodes corresponding to model_name (list of InfrahubNodeSync)
+            nodes = self.client.all(kind=model_name, populate_store=True)
 
-        # filtered_objs = model.filter_records(objs)
-        # print(f"{self.type}: Loading {len(filtered_objs)}/{total} {model_name}")
-        # transformed_objs = model.transform_records(filtered_objs)
+            # Transform the list of InfrahubNodeSync into a list of (node, dict) tuples
+            node_dict_pairs = [(node, self.infrahub_node_to_diffsync(node=node)) for node in nodes]
+            total = len(node_dict_pairs)
 
-        # for obj in transformed_objs:
-        #     if "unique_id" not in obj:
-        #         raise ValueError("Unique ID missing in object data")
-        #     item = model(**obj)
-        #     self.update_or_add_model_instance(item)
+            # Extract the list of dicts for filtering and transforming
+            list_obj = [pair[1] for pair in node_dict_pairs]
 
-        objs = []
-        # Convert nodes into a list of dictionaries for filtering
-        for node in nodes:
-            data = self.infrahub_node_to_diffsync(node)
-            objs.append(data)
+            if self.config.source.name.title() == self.type.title():
+                # Filter records
+                filtered_objs = model.filter_records(records=list_obj, schema_mapping=element)
+                print(f"{self.type}: Loading {len(filtered_objs)}/{total} {model_name}")
+                # Transform records
+                transformed_objs = model.transform_records(records=filtered_objs, schema_mapping=element)
+            else:
+                print(f"{self.type}: Loading all {total} {model_name}")
+                transformed_objs = list_obj
 
-        # Filter records
-        filtered_objs = model.filter_records(objs)
-        print(f"{self.type}: Loading {len(filtered_objs)}/{total} {model_name}")
-
-        # Transform records
-        transformed_objs = model.transform_records(filtered_objs)
-
-        # Create model instances after filtering and transforming
-        for obj in transformed_objs:
-            item = model(**obj)
-            unique_id = item.get_unique_id()
-            obj["unique_id"] = unique_id
-            self.client.store.set(key=unique_id, node=node)
-            self.update_or_add_model_instance(item)
+            # Create model instances after filtering and transforming
+            for transformed_obj in transformed_objs:
+                original_node = next(node for node, obj in node_dict_pairs if obj == transformed_obj)
+                item = model(**transformed_obj)
+                unique_id = item.get_unique_id()
+                self.client.store.set(key=unique_id, node=original_node)
+                self.update_or_add_model_instance(item)
 
     def infrahub_node_to_diffsync(self, node: InfrahubNodeSync) -> dict:
         """Convert an InfrahubNode into a dict that will be used to create a DiffSyncModel."""
@@ -145,10 +182,21 @@ class InfrahubAdapter(DiffSyncMixin, Adapter):
                 rel = getattr(node, rel_schema.name)
                 if not rel.id:
                     continue
-                peer = self.client.store.get(key=rel.id, kind=rel_schema.peer)
+                if rel_schema.kind != "Generic":
+                    peer_node = self.client.store.get(key=rel.id, kind=rel_schema.peer, raise_when_missing=False)
+                else:
+                    peer_node = self.client.store.get(key=rel.id, raise_when_missing=False)
+                if not peer_node:
+                    # I am not sure if we should end up here "normaly"
+                    print(f"Debug Unable to find {rel_schema.peer} [{rel.id}] in the Store - Pulling from Infrahub")
+                    peer_node = self.client.get(id=rel.id, kind=rel_schema.peer, populate_store=True)
+                    if not peer_node:
+                        print(f"Unable to find {rel_schema.peer} [{rel.id}]")
+                        continue
 
-                peer_data = self.infrahub_node_to_diffsync(peer)
-                peer_model = getattr(self, rel_schema.peer)
+                peer_data = self.infrahub_node_to_diffsync(node=peer_node)
+                peer_kind = f"{peer_node._schema.namespace}{peer_node._schema.name}"
+                peer_model = getattr(self, peer_kind)
                 peer_item = peer_model(**peer_data)
 
                 data[rel_schema.name] = peer_item.get_unique_id()
@@ -158,7 +206,7 @@ class InfrahubAdapter(DiffSyncMixin, Adapter):
                 rel_manager = getattr(node, rel_schema.name)
                 for peer in rel_manager:
                     peer_node = self.client.store.get(key=peer.id, kind=rel_schema.peer)
-                    peer_data = self.infrahub_node_to_diffsync(peer_node)
+                    peer_data = self.infrahub_node_to_diffsync(node=peer_node)
                     peer_model = getattr(self, rel_schema.peer)
                     peer_item = peer_model(**peer_data)
 
@@ -169,36 +217,13 @@ class InfrahubAdapter(DiffSyncMixin, Adapter):
         return data
 
 
-def diffsync_to_infrahub(ids: Mapping[Any, Any], attrs: Mapping[Any, Any], store: NodeStoreSync, schema: NodeSchema):
-    data = copy.deepcopy(dict(ids))
-    data.update(dict(attrs))
-
-    for key in list(data.keys()):
-        if key in schema.relationship_names:
-            for rel in schema.relationships:
-                if key == rel.name and rel.cardinality == "one":
-                    if data[key] is None:
-                        del data[key]
-                        continue
-                    peer = store.get(key=data[key], kind=rel.peer)
-                    data[key] = peer.id
-                if key == rel.name and rel.cardinality == "many":
-                    if data[key] is None:
-                        del data[key]
-                        continue
-                    new_values = [store.get(key=value, kind=rel.peer).id for value in list(data[key])]
-                    data[key] = new_values
-
-    return data
-
-
 class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
     @classmethod
     def create(
         cls,
+        adapter: Adapter,
         ids: Mapping[Any, Any],
         attrs: Mapping[Any, Any],
-        adapter: Adapter,
     ):
         schema = adapter.client.schema.get(kind=cls.__name__)
         data = diffsync_to_infrahub(ids=ids, attrs=attrs, schema=schema, store=adapter.client.store)
@@ -213,32 +238,39 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         node.save(allow_upsert=True)
         adapter.client.store.set(key=unique_id, node=node)
 
-        return super().create(adapter, ids=ids, attrs=attrs)
+        return super().create(adapter=adapter, ids=ids, attrs=attrs)
 
     def update(self, attrs):
         node = self.adapter.client.get(id=self.local_id, kind=self.__class__.__name__)
-
         node = update_node(node=node, attrs=attrs)
         node.save(allow_upsert=True)
 
         return super().update(attrs)
 
     @classmethod
-    def filter_records(cls, records: list[Any]) -> list[Any]:
+    def filter_records(cls, records: list[dict], schema_mapping: SchemaMappingModel) -> list[dict]:
         """
-        Placeholder method for filtering records.
-
-        This method can be overridden in specific models generated by the template to apply
-        specific filtering logic based on filters defined in the configuration.
+        Apply filters to the records based on the schema mapping configuration.
         """
-        return records
+        filters = schema_mapping.filters or []
+        if not filters:
+            return records
+        filtered_records = []
+        for record in records:
+            if cls.apply_filters(item=record, filters=filters):
+                filtered_records.append(record)
+        return filtered_records
 
     @classmethod
-    def transform_records(cls, records: list[Any]) -> list[Any]:
+    def transform_records(cls, records: list[dict], schema_mapping: SchemaMappingModel) -> list[dict]:
         """
-        Placeholder method for transforming records.
-
-        This method can be overridden in specific models generated by the template to apply
-        specific transforming logic based on transformations defined in the configuration.
+        Apply transformations to the records based on the schema mapping configuration.
         """
-        return records
+        transforms = schema_mapping.transforms or []
+        if not transforms:
+            return records
+        transformed_records = []
+        for record in records:
+            transformed_record = cls.apply_transforms(item=record, transforms=transforms)
+            transformed_records.append(transformed_record)
+        return transformed_records

@@ -77,6 +77,25 @@ class InfraIPAddress(InfrahubModel):
     local_data: Optional[Any] = None
 
 
+class InfraInterfaceL2L3(InfrahubModel):
+    _modelname = "InfraInterfaceL2L3"
+    _identifiers = ("device", "name")
+    _attributes = ("tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
+    l2_mode: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    mgmt_only: Optional[bool] = False
+    mac_address: Optional[str] = None
+    interface_type: Optional[str] = None
+    untagged_vlan: Optional[str] = None
+    tagged_vlan: Optional[List[str]] = []
+    device: str
+    tags: Optional[List[str]] = []
+
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+
 class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
     _identifiers = ("prefix", "vrf")

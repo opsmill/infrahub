@@ -1,7 +1,6 @@
 from typing import Any, List, Optional
 
 from infrahub_sync.adapters.netbox import NetboxModel
-from infrahub_sync.adapters.utils import apply_filters, apply_transforms
 
 
 # -------------------------------------------------------
@@ -64,26 +63,6 @@ class InfraDevice(NetboxModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        """Filter records based on the defined filters."""
-        filters = [
-            {"field": "name", "operation": "contains", "value": "dmi01"},
-            {"field": "name", "operation": "not contains", "value": "pdu"},
-        ]
-        return [record for record in records if apply_filters(record, filters)]
-
-    @classmethod
-    def transform_records(cls, records: List[Any]) -> List[Any]:
-        """Transform records based on the defined transforms."""
-        transforms = [
-            {"field": "name", "expression": "{name.lower()}"},
-            {"field": "serial_number", "expression": "{serial_number.lower() if serial_number is not None else ''}"},
-        ]
-        for record in records:
-            apply_transforms(record, transforms)
-        return records
-
 
 class InfraIPAddress(NetboxModel):
     _modelname = "InfraIPAddress"
@@ -93,6 +72,25 @@ class InfraIPAddress(NetboxModel):
     description: Optional[str] = None
     organization: Optional[str] = None
     vrf: Optional[str] = None
+
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+
+class InfraInterfaceL2L3(NetboxModel):
+    _modelname = "InfraInterfaceL2L3"
+    _identifiers = ("device", "name")
+    _attributes = ("tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
+    l2_mode: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    mgmt_only: Optional[bool] = False
+    mac_address: Optional[str] = None
+    interface_type: Optional[str] = None
+    untagged_vlan: Optional[str] = None
+    tagged_vlan: Optional[List[str]] = []
+    device: str
+    tags: Optional[List[str]] = []
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None

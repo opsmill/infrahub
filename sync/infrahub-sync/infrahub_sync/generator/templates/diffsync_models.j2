@@ -1,7 +1,6 @@
 from typing import Any, List, Optional
 
 from infrahub_sync.adapters.{{ adapter.name }} import {{ adapter.name.title() }}Model
-from infrahub_sync.adapters.utils import apply_filter, apply_filters, apply_transform, apply_transforms
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY
@@ -28,30 +27,5 @@ class {{ nodekind }}({{ adapter.name.title() }}Model):
 
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
-
-{%-      if direction == "source"  and config.schema_mapping | get_filters(nodekind) %}
-    @classmethod
-    def filter_records(cls, records: List[Any]) -> List[Any]:
-        """Filter records based on the defined filters."""
-        filters = [
-{%-         for filter_obj in config.schema_mapping | get_filters(nodekind) %}
-            {'field': '{{ filter_obj.field }}', 'operation': '{{ filter_obj.operation }}', 'value': {{ filter_obj.value }}},
-{%-         endfor %}
-        ]
-        return [record for record in records if apply_filters(record, filters)]
-{%-      endif %}
-{%-      if direction == "source"  and config.schema_mapping | get_transforms(nodekind) %}
-    @classmethod
-    def transform_records(cls, records: List[Any]) -> List[Any]:
-        """Transform records based on the defined transforms."""
-        transforms = [
-{%-         for transform_obj in config.schema_mapping | get_transforms(nodekind) %}
-            {'field': '{{ transform_obj.field }}', 'expression': "{{ transform_obj.expression | replace('"', '\\"') }}"},
-{%-         endfor %}
-        ]
-        for record in records:
-            apply_transforms(record, transforms)
-        return records
-{%-      endif %}
 {%  endif %}
 {%- endfor %}

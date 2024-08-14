@@ -42,13 +42,13 @@ schema_mapping:
     filters:
       - field: hostname
         operation: regex
-        value: "'^pe-[0-9]{3}$'"
+        value: "^pe-[0-9]{3}$"
       - field: ip
         operation: is_ip_within
-        value: "'10.0.0.0/8'"
+        value: "10.0.0.0/8"
     transforms:
       - field: new_description
-        expression: "{hostname.upper().replace('.', '-')}"
+        expression: "{{ hostname | upper | replace('.', '-') }}"
 
   - name: InfraDevice
     mapping: devices
@@ -58,8 +58,8 @@ schema_mapping:
         mapping: hostname
       - name: description
         mapping: description
-      - name: serial_number
-        mapping: serial
+      - name: description
+        mapping: upper_serial
       # /!\ Platform need to exist beforehand !
       - name: platform
         mapping: os
@@ -69,7 +69,7 @@ schema_mapping:
         mapping: vendor
         reference: OrganizationManufacturer
       - name: type
-        mapping: hardware
+        mapping: unknown_hardware
       - name: primary_address
         mapping: ip
         reference: IpamIPAddress
@@ -82,4 +82,9 @@ schema_mapping:
         value: 200
       - field: hostname
         operation: regex
-        value: "'^pe-[0-9]{3}$'"
+        value: "^pe-[0-9]{3}$"
+    transforms:
+      - field: upper_serial
+        expression: "{{ serial.upper() if serial else '' }}"
+      - field: unknown_hardware
+        expression: "{{ hardware if hardware else 'unknown' }}"
