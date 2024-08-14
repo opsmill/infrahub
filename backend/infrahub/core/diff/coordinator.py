@@ -189,15 +189,3 @@ class DiffCoordinator:
         if time_ranges[-1].to_time < to_time:
             missing_time_ranges.append(TimeRange(from_time=time_ranges[-1].to_time, to_time=to_time))
         return missing_time_ranges
-
-
-# CalculatedDiffs includes all changes on main during this time period
-# for both the branch diff and the main diff:
-#   get the existing enriched diff(s) for this timeframe
-#   get the calculated diff(s) for to update this timeframe
-#   enrich the calculated diff(s)
-#   sum all the now-enriched diffs
-#
-# determine and set the conflicts on the enriched diff for the branch
-# add counts and conflict flags
-# save the enriched diffs for both main and the branch
