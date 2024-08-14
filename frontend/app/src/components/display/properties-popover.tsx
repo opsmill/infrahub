@@ -1,14 +1,12 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { usePermission } from "@/hooks/usePermission";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { Icon } from "@iconify-icon/react";
-import { useAtom, useAtomValue } from "jotai/index";
+import { useAtom } from "jotai/index";
 import { useState } from "react";
 import MetaDetailsTooltip from "./meta-details-tooltips";
-import SlideOver from "./slide-over";
+import SlideOver, { SlideOverTitle } from "./slide-over";
 
 interface PropertiesEditTriggerProps {
   type: "attribute" | "relationship";
@@ -30,7 +28,6 @@ const PropertiesPopover = ({
   hideHeader,
 }: PropertiesEditTriggerProps) => {
   const permission = usePermission();
-  const branch = useAtomValue(currentBranchAtom);
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
@@ -72,17 +69,12 @@ const PropertiesPopover = ({
 
       <SlideOver
         title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon="mdi:layers-triple" />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-            <div className="text-gray-500">Metadata</div>
-          </div>
+          <SlideOverTitle
+            schema={schema}
+            currentObjectLabel={data?.display_label}
+            title={`${metaEditFieldDetails?.label} properties`}
+            subtitle={`Update the properties of ${metaEditFieldDetails?.label}`}
+          />
         }
         open={showMetaEditModal}
         setOpen={setShowMetaEditModal}>
