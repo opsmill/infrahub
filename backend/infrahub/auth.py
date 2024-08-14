@@ -51,6 +51,10 @@ class AccountPermissions(BaseModel):
     global_permissions: list[str] = Field(default_factory=list)
     object_permissions: list[str] = Field(default_factory=list)
 
+    @classmethod
+    def infer_object_permission_string(cls, namespace: str, kind: str, action: str) -> str:
+        return f"object:{namespace}:{kind}:{action}"
+
     def has_permission(self, permission: str) -> bool:
         return permission in self.global_permissions or permission in self.object_permissions
 
