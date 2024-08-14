@@ -5,8 +5,10 @@ import { useSchema } from "@/hooks/useSchema";
 import { GenericObjectForm } from "@/components/form/generic-object-form";
 import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 import { NodeForm, NodeFormSubmitParams } from "@/components/form/node-form";
-import { NUMBER_POOL_OBJECT } from "@/config/constants";
+import { NUMBER_POOL_OBJECT, READONLY_REPOSITORY_KIND, REPOSITORY_KIND } from "@/config/constants";
 import { NumberPoolForm } from "@/screens/resource-manager/number-pool-form";
+import { lazy, Suspense } from "react";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
@@ -14,6 +16,8 @@ export type ProfileData = {
   id: string;
   __typename: string;
 };
+
+const RepositoryForm = lazy(() => import("@/screens/repository/repository-form"));
 
 export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   kind: string;
@@ -38,6 +42,14 @@ const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFor
 
   if (isFilterForm) {
     return <NodeForm schema={schema} isFilterForm={isFilterForm} {...props} />;
+  }
+
+  if ([REPOSITORY_KIND, READONLY_REPOSITORY_KIND].includes(kind)) {
+    return (
+      <Suspense fallback={<LoadingScreen hideText className="mt-4" />}>
+        <RepositoryForm schema={schema} {...props} />
+      </Suspense>
+    );
   }
 
   if (kind === NUMBER_POOL_OBJECT) {

@@ -1,15 +1,15 @@
 import { classNames } from "@/utils/common";
 import { forwardRef, HTMLAttributes } from "react";
 
-export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={classNames("bg-custom-white rounded-lg border p-3", className)}
-      {...props}
-    />
-  )
-);
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {}
+
+export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={classNames("bg-custom-white rounded-lg border p-3", className)}
+    {...props}
+  />
+));
 
 interface CardWithBorderRootProps extends HTMLAttributes<HTMLDivElement> {
   contentClassName?: string;
