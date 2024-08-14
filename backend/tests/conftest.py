@@ -248,6 +248,7 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                 "relationships": [
                     {
                         "name": "owner",
+                        "label": "Commander of Car",
                         "peer": "TestPerson",
                         "optional": False,
                         "cardinality": "one",

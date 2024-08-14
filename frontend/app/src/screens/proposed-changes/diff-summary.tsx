@@ -15,13 +15,7 @@ export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSumma
     ${getProposedChangesDiffSummary}
   `;
 
-  const {
-    loading,
-    error,
-    data = {},
-  } = useQuery(query, {
-    branch,
-  });
+  const { loading, error, data = {} } = useQuery(query, { variables: { branch } });
 
   if (error) {
     return <ErrorScreen message="An error occured while fetching diff summary." />;
@@ -44,10 +38,10 @@ export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSumma
         {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_updated}
       </Badge>
 
-      <Badge className="rounded-full" variant="yellow">
+      {/* <Badge className="rounded-full" variant="yellow">
         <Icon icon="mdi:warning-outline" className="text-xs mr-1" />
         {loading ? <LoadingScreen size={8} hideText /> : data.DiffTree.num_conflicts}
-      </Badge>
+      </Badge> */}
     </div>
   );
 };

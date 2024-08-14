@@ -32,6 +32,7 @@ import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { Filter } from "@/hooks/useFilters";
 import { getRelationshipParent } from "@/components/form/utils/getRelationshipParent";
+import { isRequired } from "@/components/form/utils/validation";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
@@ -83,10 +84,10 @@ export const getFormFieldsFromSchema = ({
       rules: {
         required: !isFilterForm && !attribute.optional,
         validate: {
-          required: ({ value }: FormFieldValue) => {
+          required: (formFieldValue: FormFieldValue) => {
             if (isFilterForm || attribute.optional) return true;
 
-            return (value !== null && value !== undefined) || "Required";
+            return isRequired(formFieldValue);
           },
         },
       },

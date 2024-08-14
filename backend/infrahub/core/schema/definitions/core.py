@@ -377,6 +377,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "icon": "mdi:source-repository",
             "branch": BranchSupportType.AGNOSTIC.value,
             "documentation": "/topics/repository",
             "attributes": [
@@ -828,12 +829,13 @@ core_models: dict[str, Any] = {
         {
             "name": "Credential",
             "namespace": "Core",
-            "description": "Credential",
+            "description": "A credential that could be referenced to access external services.",
             "include_in_menu": False,
             "label": "Credential",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
+            "icon": "mdi:key-variant",
             "human_friendly_id": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "documentation": "/topics/auth",
