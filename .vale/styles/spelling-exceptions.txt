@@ -18,9 +18,11 @@ cypher
 Dagster
 datastore
 default_branch
+default_filter
 dev
 devcontainer
 direnv
+display_labels
 docker
 dockerfile
 docusaurus
@@ -40,6 +42,7 @@ graphiql
 graphql
 greymatter
 hfid
+human_friendly_id
 Human Friendly Identifier
 idempotency
 include_in_menu
@@ -51,6 +54,9 @@ IPAddress
 IPHost
 IPNetwork
 IPAM
+is_empty
+is_ip_within
+is_not_empty
 isort
 jinja
 Jotai
@@ -70,6 +76,7 @@ npm
 o'brian
 openconfig
 opentelemetry
+order_by
 PyPI
 rebase
 rebased
@@ -82,6 +89,7 @@ subnet
 template_path
 toml
 uncheck
+uniqueness_constraints
 validator
 upsert
 validators
