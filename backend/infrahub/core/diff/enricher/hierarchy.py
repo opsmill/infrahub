@@ -88,7 +88,6 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
                 node = enriched_diff_root.get_node(node_uuid=node_id)
 
-                parent_rel = hierarchy_schema.get_relationship(name="parent")
                 parent_side_rel = hierarchy_schema.get_relationship(name="children")
 
                 current_node = node
@@ -98,7 +97,6 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                         node=current_node,
                         parent_id=str(ancestor.uuid),
                         parent_kind=ancestor.kind,
-                        node_side_rel=parent_rel,
                         parent_side_rel=parent_side_rel,
                     )
                     current_node = parent
@@ -161,7 +159,6 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                 node=node,
                 parent_id=str(peer_parent.peer_id),
                 parent_kind=peer_parent.peer_kind,
-                node_side_rel=parent_rel,
                 parent_side_rel=parent_side_rel,
             )
 
@@ -176,7 +173,6 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         node: EnrichedDiffNode,
         parent_id: str,
         parent_kind: str,
-        node_side_rel: RelationshipSchema,
         parent_side_rel: RelationshipSchema | None = None,
     ) -> EnrichedDiffNode:
         if not enriched_diff_root.has_node(node_uuid=parent_id):
@@ -187,36 +183,19 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                 action=DiffAction.UNCHANGED,
                 changed_at=Timestamp(),
             )
-
-            if parent_side_rel:
-                parent.relationships.add(
-                    EnrichedDiffRelationship(
-                        name=parent_side_rel.name,
-                        label=parent_side_rel.label or "",
-                        changed_at=Timestamp(),
-                        action=DiffAction.UNCHANGED,
-                        nodes={node},
-                    )
-                )
-
             enriched_diff_root.nodes.add(parent)
 
         else:
             parent = enriched_diff_root.get_node(node_uuid=parent_id)
 
-        # Add the relationship to the parent
-        if node.has_relationship(name=node_side_rel.name):
-            rel = node.get_relationship(name=node_side_rel.name)
-            if not rel.nodes:
-                rel.nodes.add(parent)
-        else:
-            node.relationships.add(
+        if parent_side_rel:
+            parent.relationships.add(
                 EnrichedDiffRelationship(
-                    name=node_side_rel.name,
-                    label=node_side_rel.label or "",
+                    name=parent_side_rel.name,
+                    label=parent_side_rel.label or "",
                     changed_at=Timestamp(),
                     action=DiffAction.UNCHANGED,
-                    nodes={parent},
+                    nodes={node},
                 )
             )
 
