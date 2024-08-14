@@ -58,7 +58,6 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         await self._enrich_nodes_with_parent(enriched_diff_root=enriched_diff_root, node_map=node_rel_parent_map)
         await self._enrich_hierarchical_nodes(enriched_diff_root=enriched_diff_root, node_map=node_hierarchy_map)
 
-    # pylint: disable=unused-argument
     async def _enrich_hierarchical_nodes(
         self,
         enriched_diff_root: EnrichedDiffRoot,
