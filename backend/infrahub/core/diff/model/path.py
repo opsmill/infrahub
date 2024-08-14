@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Self
 from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipStatus
@@ -158,6 +158,20 @@ class EnrichedDiffRelationship(BaseSummary):
             nodes=set(),
         )
 
+    @classmethod
+    def from_graph(cls, node: Neo4jNode) -> Self:
+        return cls(
+            name=node.get("name"),
+            label=node.get("label"),
+            changed_at=Timestamp(node.get("changed_at")),
+            action=node.get("action"),
+            num_added=int(node.get("num_added")),
+            num_conflicts=int(node.get("num_conflicts")),
+            num_removed=int(node.get("num_removed")),
+            num_updated=int(node.get("num_updated")),
+            contains_conflict=str(node.get("contains_conflict")).lower() == "true",
+        )
+
 
 @dataclass
 class EnrichedDiffNode(BaseSummary):
@@ -222,6 +236,14 @@ class EnrichedDiffNode(BaseSummary):
                 for rel in calculated_node.relationships
             },
         )
+
+    def add_relationship_from_DiffRelationship(self, diff_rel: Neo4jNode) -> bool:
+        if self.has_relationship(name=diff_rel.get("name")):
+            return False
+
+        rel = EnrichedDiffRelationship.from_graph(node=diff_rel)
+        self.relationships.add(rel)
+        return True
 
 
 @dataclass
