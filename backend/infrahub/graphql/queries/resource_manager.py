@@ -277,11 +277,7 @@ async def resolve_number_pool_allocation(
 
 
 async def resolve_number_pool_utilization(db: InfrahubDatabase, context: GraphqlContext, pool: CoreNode) -> dict:
-    number_pool = NumberUtilizationGetter(
-        db=db,
-        pool=pool,
-        at=context.at,
-    )
+    number_pool = NumberUtilizationGetter(db=db, pool=pool, at=context.at)
     await number_pool.load_data()
 
     return {
@@ -316,7 +312,5 @@ InfrahubResourcePoolAllocated = Field(
 
 
 InfrahubResourcePoolUtilization = Field(
-    PoolUtilization,
-    pool_id=String(required=True),
-    resolver=PoolUtilization.resolve,
+    PoolUtilization, pool_id=String(required=True), resolver=PoolUtilization.resolve
 )

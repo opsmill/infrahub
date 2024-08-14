@@ -210,7 +210,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             number_pool = await registry.manager.get_one_by_id_or_default_filter(
                 db=db, id=attribute.from_pool, kind=InfrahubKind.NUMBERPOOL
             )
-
         except NodeNotFoundError:
             errors.append(
                 ValidationError(
@@ -221,12 +220,38 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if number_pool:
             if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
                 existing_nodes = await registry.manager.query(db=db, schema=self._schema, branch_agnostic=True)
-                used_numbers = [getattr(existing_node, attribute.name).value for existing_node in existing_nodes]
+
+                used_number_lookup_key: Optional[str] = None
+                used_numbers: dict[str, list[int]] = {}
+
+                if not number_pool.unique_for.value:
+                    # No uniqueness constraints so this should be a unique list
+                    # None is used as key to make follow up code generic
+                    used_numbers[None] = [
+                        getattr(existing_node, attribute.name).value for existing_node in existing_nodes
+                    ]
+                else:
+                    # Lookup existing values and sort them given the uniqueness field
+                    for existing_node in existing_nodes:
+                        # Get the relationship peer and use the peer ID as key
+                        unique_for_value_peer = await getattr(existing_node, number_pool.unique_for.value).get_peer(
+                            db=db
+                        )
+                        used_number_set: list[int] = used_numbers.setdefault(
+                            unique_for_value_peer.id if unique_for_value_peer else None, []
+                        )
+                        used_number_set.append(getattr(existing_node, attribute.name).value)
+
+                    unique_for_peer = await getattr(self, number_pool.unique_for.value).get_peer(db=db)
+                    if unique_for_peer:
+                        used_number_lookup_key = unique_for_peer.id
+
                 next_free = find_next_free(
                     start=number_pool.start_range.value,
                     end=number_pool.end_range.value,
-                    used_numbers=used_numbers,
+                    used_numbers=used_numbers.get(used_number_lookup_key, []),
                 )
+
                 if next_free:
                     attribute.value = next_free
                 else:
@@ -235,7 +260,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                             {f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."}
                         )
                     )
-
             else:
                 errors.append(
                     ValidationError(
@@ -280,35 +304,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # -------------------------------------------
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
-        for attr_schema in self._schema.attributes:
-            self._attributes.append(attr_schema.name)
-
-            # Check if there is a more specific generator present
-            # Otherwise use the default generator
-            generator_method_name = "_generate_attribute_default"
-            if hasattr(self, f"generate_{attr_schema.name}"):
-                generator_method_name = f"generate_{attr_schema.name}"
-
-            generator_method = getattr(self, generator_method_name)
-            try:
-                setattr(
-                    self,
-                    attr_schema.name,
-                    await generator_method(
-                        db=db,
-                        name=attr_schema.name,
-                        schema=attr_schema,
-                        data=fields.get(attr_schema.name, None),
-                    ),
-                )
-                if not self.id:
-                    attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self._process_pool(db=db, attribute=attribute, errors=errors)
-
-                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
-            except ValidationError as exc:
-                errors.append(exc)
-
         for rel_schema in self._schema.relationships:
             self._relationships.append(rel_schema.name)
 
@@ -327,6 +322,32 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name, None)
                     ),
                 )
+            except ValidationError as exc:
+                errors.append(exc)
+
+        for attr_schema in self._schema.attributes:
+            self._attributes.append(attr_schema.name)
+
+            # Check if there is a more specific generator present
+            # Otherwise use the default generator
+            generator_method_name = "_generate_attribute_default"
+            if hasattr(self, f"generate_{attr_schema.name}"):
+                generator_method_name = f"generate_{attr_schema.name}"
+
+            generator_method = getattr(self, generator_method_name)
+            try:
+                setattr(
+                    self,
+                    attr_schema.name,
+                    await generator_method(
+                        db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name, None)
+                    ),
+                )
+                if not self.id:
+                    attribute: BaseAttribute = getattr(self, attr_schema.name)
+                    await self._process_pool(db=db, attribute=attribute, errors=errors)
+
+                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:
                 errors.append(exc)
 
