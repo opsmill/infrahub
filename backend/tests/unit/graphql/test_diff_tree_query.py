@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
 
+import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
@@ -262,3 +264,118 @@ async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: 
 
     assert result.errors is None
     assert len(result.data["DiffTree"]["nodes"]) == 4
+
+
+@pytest.mark.parametrize(
+    "filters,nbr_results",
+    [
+        pytest.param({"kind": {"includes": ["TestThing"]}}, 1, id="kind-includes"),
+        pytest.param({"kind": {"excludes": ["TestThing"]}}, 4, id="kind-excludes"),
+        pytest.param({"namespace": {"includes": ["Test"]}}, 1, id="namespace-includes"),
+        pytest.param({"namespace": {"excludes": ["Location"]}}, 1, id="namespace-excludes"),
+    ],
+)
+async def test_diff_filters(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, nbr_results
+):
+    rack1_main = hierarchical_location_data["paris-r1"]
+    rack2_main = hierarchical_location_data["paris-r2"]
+
+    thing1_main = await Node.init(db=db, schema="TestThing")
+    await thing1_main.new(db=db, name="thing1", location=rack1_main)
+    await thing1_main.save(db=db)
+
+    thing2_main = await Node.init(db=db, schema="TestThing")
+    await thing2_main.new(db=db, name="thing2", location=rack2_main)
+    await thing2_main.save(db=db)
+
+    diff_branch = await create_branch(db=db, branch_name="diff")
+
+    # rprint(hierarchical_location_data)
+    rack1_main = hierarchical_location_data["paris-r1"]
+    rack2_main = hierarchical_location_data["paris-r2"]
+    rack1_branch = await NodeManager.get_one(db=db, id=rack1_main.id, branch=diff_branch)
+    rack1_branch.status.value = "offline"
+    rack2_branch = await NodeManager.get_one(db=db, id=rack2_main.id, branch=diff_branch)
+    rack2_branch.name.value = "paris rack2"
+
+    await rack1_branch.save(db=db)
+    await rack2_branch.save(db=db)
+
+    thing1_branch = await NodeManager.get_one(db=db, id=thing1_main.id, branch=diff_branch)
+    thing1_branch.name.value = "THISTHING1"
+    await thing1_branch.save(db=db)
+
+    query = """
+    query ($branch: String, $filters: DiffTreeQueryFilters){
+        DiffTree (branch: $branch, filters: $filters) {
+            nodes {
+                uuid
+                kind
+                label
+            }
+        }
+    }
+    """
+
+    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+
+    # KIND INCLUDE
+    # filters = {"kind": {"includes": ["TestThing"]}}
+    result = await graphql(
+        schema=params.schema,
+        source=query,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "filters": filters},
+    )
+
+    assert result.errors is None
+    assert len(result.data["DiffTree"]["nodes"]) == nbr_results
+    # node_ids = [ node["uuid"] for node in result.data["DiffTree"]["nodes"] ]
+    # assert node_ids == [thing1_main.id]
+
+    # # KIND EXCLUDE
+    # filters = {"kind": {"excludes": ["TestThing"]}}
+    # result = await graphql(
+    #     schema=params.schema,
+    #     source=query,
+    #     context_value=params.context,
+    #     root_value=None,
+    #     variable_values={"branch": diff_branch.name, "filters": filters}
+    # )
+
+    # assert result.errors is None
+    # assert len(result.data["DiffTree"]["nodes"]) == 4
+    # node_ids = [ node["uuid"] for node in result.data["DiffTree"]["nodes"] ]
+    # assert thing1_main.id not in node_ids
+
+    # # NAMESPACE INCLUDE
+    # filters = {"namespace": {"includes": ["Location"]}}
+    # result = await graphql(
+    #     schema=params.schema,
+    #     source=query,
+    #     context_value=params.context,
+    #     root_value=None,
+    #     variable_values={"branch": diff_branch.name, "filters": filters}
+    # )
+
+    # assert result.errors is None
+    # assert len(result.data["DiffTree"]["nodes"]) == 4
+    # node_ids = [ node["uuid"] for node in result.data["DiffTree"]["nodes"] ]
+    # assert thing1_main.id not in node_ids
+
+    # # NAMESPACE EXCLUDE
+    # filters = {"namespace": {"excludes": ["Location"]}}
+    # result = await graphql(
+    #     schema=params.schema,
+    #     source=query,
+    #     context_value=params.context,
+    #     root_value=None,
+    #     variable_values={"branch": diff_branch.name, "filters": filters}
+    # )
+
+    # assert result.errors is None
+    # assert len(result.data["DiffTree"]["nodes"]) == 1
+    # node_ids = [ node["uuid"] for node in result.data["DiffTree"]["nodes"] ]
+    # assert node_ids == [thing1_main.id]

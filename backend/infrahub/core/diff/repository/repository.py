@@ -3,7 +3,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 from ..model.path import EnrichedDiffRoot, TimeRange
-from .get_query import EnrichedDiffGetQuery
+from .get_query import EnrichedDiffGetQuery, EnrichedDiffGetQueryFilters
 from .save_query import EnrichedDiffSaveQuery
 from .time_range_query import EnrichedDiffTimeRangeQuery
 
@@ -19,6 +19,7 @@ class DiffRepository:
         from_time: Timestamp,
         to_time: Timestamp,
         root_node_uuids: list[str] | None = None,
+        filters: dict | None = None,
         max_depth: int | None = None,
         limit: int | None = None,
         offset: int | None = None,
@@ -32,6 +33,7 @@ class DiffRepository:
             from_time=from_time,
             to_time=to_time,
             root_node_uuids=root_node_uuids,
+            filters=EnrichedDiffGetQueryFilters(**dict(filters or {})),
             max_depth=final_max_depth,
             limit=final_limit,
             offset=offset,

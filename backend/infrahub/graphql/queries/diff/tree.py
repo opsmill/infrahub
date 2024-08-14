@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
+from graphene import Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
 from infrahub_sdk.utils import extract_fields
 
@@ -261,6 +261,7 @@ class DiffTreeResolver:
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         root_node_uuids: list[str] | None = None,
+        filters: dict | None = None,
         max_depth: int | None = None,
         limit: int | None = None,
         offset: int | None = None,
@@ -294,6 +295,7 @@ class DiffTreeResolver:
             to_time=to_timestamp,
             root_node_uuids=root_node_uuids,
             max_depth=max_depth,
+            filters=filters,
             limit=limit,
             offset=offset,
         )
@@ -304,14 +306,27 @@ class DiffTreeResolver:
         return self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
 
+class IncExclFilterOptions(InputObjectType):
+    includes = List(String)
+    excludes = List(String)
+
+
+class DiffTreeQueryFilters(InputObjectType):
+    ids = List(String)
+    action = IncExclFilterOptions()
+    kind = IncExclFilterOptions()
+    namespace = IncExclFilterOptions()
+
+
 DiffTreeQuery = Field(
     DiffTree,
-    name=String(),
     resolver=DiffTreeResolver().resolve,
+    name=String(),
     branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
     root_node_uuids=List(String),
+    filters=DiffTreeQueryFilters(),
     max_depth=Int(),
     limit=Int(),
     offset=Int(),

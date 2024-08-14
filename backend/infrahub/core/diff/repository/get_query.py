@@ -1,6 +1,7 @@
 from typing import Any, Iterable
 
 from neo4j.graph import Node as Neo4jNode
+from pydantic import BaseModel, Field
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -21,6 +22,44 @@ from ..model.path import (
 )
 
 
+def filter_and(items: list[str]) -> str:
+    filter_str = " AND ".join(items)
+    if len(items) > 1:
+        return f" ( {filter_str} ) "
+    return filter_str
+
+
+def filter_or(items: list[str]) -> str:
+    filter_str = " OR ".join(items)
+    if len(items) > 1:
+        return f" ( {filter_str} ) "
+    return filter_str
+
+
+class IncExclFilterOptions(BaseModel):
+    includes: list[str] = Field(default_factory=list)
+    excludes: list[str] = Field(default_factory=list)
+
+    @property
+    def is_empty(self) -> bool:
+        if not self.includes and not self.excludes:
+            return True
+        return False
+
+
+class EnrichedDiffGetQueryFilters(BaseModel):
+    ids: list[str] = Field(default_factory=list)
+    kind: IncExclFilterOptions = IncExclFilterOptions()
+    namespace: IncExclFilterOptions = IncExclFilterOptions()
+    action: IncExclFilterOptions = IncExclFilterOptions()
+
+    @property
+    def is_empty(self) -> bool:
+        if not self.ids and self.kind.is_empty and self.namespace.is_empty and self.action.is_empty:
+            return True
+        return False
+
+
 class EnrichedDiffGetQuery(Query):
     """Get all EnrichedDiffRoots for the given branches that are within the given timeframe in chronological order"""
 
@@ -34,8 +73,9 @@ class EnrichedDiffGetQuery(Query):
         diff_branch_names: list[str],
         from_time: Timestamp,
         to_time: Timestamp,
-        root_node_uuids: list[str] | None,
         max_depth: int,
+        root_node_uuids: list[str] | None = None,
+        filters: EnrichedDiffGetQueryFilters | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -45,6 +85,7 @@ class EnrichedDiffGetQuery(Query):
         self.to_time = to_time
         self.root_node_uuids = root_node_uuids
         self.max_depth = max_depth
+        self.filters = filters or EnrichedDiffGetQueryFilters()
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params = {
@@ -56,14 +97,49 @@ class EnrichedDiffGetQuery(Query):
             "limit": self.limit,
             "offset": self.offset,
         }
+
+        filters_list = []
+        default_filter = "$root_node_uuids IS NULL AND NOT exists((:DiffRelationship)-[:DIFF_HAS_NODE]->(diff_node))"
+        if not self.filters.is_empty:
+            if self.filters.ids:
+                self.params["ids"] = self.filters.ids
+                filters_list.append("diff_node.uuid in $ids")
+            if self.filters.kind.includes or self.filters.kind.excludes:
+                filter_kind = []
+                if self.filters.kind.includes:
+                    filter_kind.append("diff_node.kind IN $kind_includes")
+                    self.params["kind_includes"] = self.filters.kind.includes
+
+                if self.filters.kind.excludes:
+                    filter_kind.append("NOT(diff_node.kind IN $kind_excludes)")
+                    self.params["kind_excludes"] = self.filters.kind.excludes
+
+                filters_list.append(filter_and(filter_kind))
+            if self.filters.namespace.includes or self.filters.namespace.excludes:
+                filter_namespace = []
+                if self.filters.namespace.includes:
+                    filter_namespace.append(
+                        filter_or([f'diff_node.kind STARTS WITH "{ns}"' for ns in self.filters.namespace.includes])
+                    )
+                if self.filters.namespace.excludes:
+                    filter_namespace.append(
+                        filter_and(
+                            [f'NOT(diff_node.kind STARTS WITH "{ns}")' for ns in self.filters.namespace.excludes]
+                        )
+                    )
+                filters_list.append(filter_and(filter_namespace))
+
+        if not filters_list:
+            filters_list.append(default_filter)
+
         # ruff: noqa: E501
         query_1 = """
         // get the roots of all diffs in the query
         MATCH (diff_root:DiffRoot)
         WHERE diff_root.base_branch = $base_branch
-        AND diff_root.diff_branch IN $diff_branches
-        AND diff_root.from_time >= $from_time
-        AND diff_root.to_time <= $to_time
+            AND diff_root.diff_branch IN $diff_branches
+            AND diff_root.from_time >= $from_time
+            AND diff_root.to_time <= $to_time
         WITH diff_root
         ORDER BY diff_root.base_branch, diff_root.diff_branch, diff_root.from_time, diff_root.to_time
         WITH diff_root.base_branch AS bb, diff_root.diff_branch AS db, collect(diff_root) AS same_branch_diff_roots
@@ -77,18 +153,19 @@ class EnrichedDiffGetQuery(Query):
             END
         ) AS non_overlapping_diff_roots
         UNWIND non_overlapping_diff_roots AS diff_root
-        // get all the nodes attached to the diffs
+        // -------------------------------------------
+        // Get all the nodes attached to the diffs
+        // Apply filters as required
+        //  Group nodes by uuid for pagination
+        // -------------------------------------------
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
-        // if root_node_uuids, filter on uuids
         WHERE (
-            // only parent-less nodes if no root node uuids
-            ($root_node_uuids IS NULL AND NOT exists((:DiffRelationship)-[:DIFF_HAS_NODE]->(diff_node)))
-            // filter on uuids if included
-            OR diff_node.uuid in $root_node_uuids
+            %(filters)s
         )
-        // group by diff node uuid for pagination
         WITH diff_node.uuid AS diff_node_uuid, diff_node.kind AS diff_node_kind, collect([diff_root, diff_node]) AS node_root_tuples
+        // -------------------------------------------
         // order by kind and latest label for each diff_node uuid
+        // -------------------------------------------
         CALL {
             WITH node_root_tuples
             UNWIND node_root_tuples AS nrt
@@ -105,7 +182,8 @@ class EnrichedDiffGetQuery(Query):
         WITH nrt[0] AS diff_root, nrt[1] AS diff_node
         WITH diff_root, diff_node
         // if depth limit, make sure not to exceed it when traversing linked nodes
-        """
+        """ % {"filters": filter_and(filters_list)}
+
         self.add_to_query(query=query_1)
 
         if db.db_type is DatabaseType.NEO4J:
