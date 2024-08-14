@@ -310,8 +310,8 @@ class AttributeDBNodeType(InfrahubStringEnum):
 
 class PermissionAction(InfrahubStringEnum):
     ALL = "all"
-    ADD = "add"
-    CHANGE = "change"
+    ADD = "create"
+    CHANGE = "update"
     DELETE = "delete"
     VIEW = "view"
 
