@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
@@ -23,12 +24,46 @@ class TimeRange:
 
 
 @dataclass
+class BaseSummary:
+    num_added: int = field(default=0, kw_only=True)
+    num_updated: int = field(default=0, kw_only=True)
+    num_removed: int = field(default=0, kw_only=True)
+    num_conflicts: int = field(default=0, kw_only=True)
+    contains_conflict: bool = field(default=False, kw_only=True)
+
+    def reset_summaries(self) -> None:
+        self.num_added = 0
+        self.num_updated = 0
+        self.num_removed = 0
+        self.num_conflicts = 0
+        self.contains_conflict = False
+
+
+class ConflictSelection(Enum):
+    BASE_BRANCH = "base"
+    DIFF_BRANCH = "diff"
+
+
+@dataclass
+class EnrichedDiffConflict:
+    uuid: str
+    base_branch_action: DiffAction
+    base_branch_value: Any
+    base_branch_changed_at: Timestamp
+    diff_branch_action: DiffAction
+    diff_branch_value: Any
+    diff_branch_changed_at: Timestamp
+    selected_branch: ConflictSelection | None = field(default=None)
+
+
+@dataclass
 class EnrichedDiffProperty:
     property_type: DatabaseEdgeType
     changed_at: Timestamp
     previous_value: Any
     new_value: Any
     action: DiffAction
+    conflict: EnrichedDiffConflict | None = field(default=None)
 
     def __hash__(self) -> int:
         return hash(self.property_type)
@@ -45,7 +80,7 @@ class EnrichedDiffProperty:
 
 
 @dataclass
-class EnrichedDiffAttribute:
+class EnrichedDiffAttribute(BaseSummary):
     name: str
     changed_at: Timestamp
     action: DiffAction
@@ -68,10 +103,11 @@ class EnrichedDiffAttribute:
 
 
 @dataclass
-class EnrichedDiffSingleRelationship:
+class EnrichedDiffSingleRelationship(BaseSummary):
     changed_at: Timestamp
     action: DiffAction
     peer_id: str
+    conflict: EnrichedDiffConflict | None = field(default=None)
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
 
     def __hash__(self) -> int:
@@ -97,7 +133,7 @@ class EnrichedDiffSingleRelationship:
 
 
 @dataclass
-class EnrichedDiffRelationship:
+class EnrichedDiffRelationship(BaseSummary):
     name: str
     label: str
     changed_at: Timestamp
@@ -124,12 +160,13 @@ class EnrichedDiffRelationship:
 
 
 @dataclass
-class EnrichedDiffNode:
+class EnrichedDiffNode(BaseSummary):
     uuid: str
     kind: str
     label: str
     changed_at: Timestamp
     action: DiffAction
+    conflict: EnrichedDiffConflict | None = field(default=None)
     attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
     relationships: set[EnrichedDiffRelationship] = field(default_factory=set)
 
@@ -181,7 +218,7 @@ class EnrichedDiffNode:
 
 
 @dataclass
-class EnrichedDiffRoot:
+class EnrichedDiffRoot(BaseSummary):
     base_branch_name: str
     diff_branch_name: str
     from_time: Timestamp
@@ -206,17 +243,37 @@ class EnrichedDiffRoot:
         raise ValueError(f"No node {node_uuid} in diff root")
 
     @classmethod
-    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffRoot:
+    def from_calculated_diff(cls, calculated_diff: DiffRoot, base_branch_name: str) -> EnrichedDiffRoot:
         return EnrichedDiffRoot(
+            base_branch_name=base_branch_name,
+            diff_branch_name=calculated_diff.branch,
+            from_time=calculated_diff.from_time,
+            to_time=calculated_diff.to_time,
+            uuid=str(uuid4()),
+            nodes={EnrichedDiffNode.from_calculated_node(calculated_node=n) for n in calculated_diff.nodes},
+        )
+
+
+@dataclass
+class EnrichedDiffs:
+    base_branch_name: str
+    diff_branch_name: str
+    base_branch_diff: EnrichedDiffRoot
+    diff_branch_diff: EnrichedDiffRoot
+
+    @classmethod
+    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffs:
+        base_branch_diff = EnrichedDiffRoot.from_calculated_diff(
+            calculated_diff=calculated_diffs.base_branch_diff, base_branch_name=calculated_diffs.base_branch_name
+        )
+        diff_branch_diff = EnrichedDiffRoot.from_calculated_diff(
+            calculated_diff=calculated_diffs.diff_branch_diff, base_branch_name=calculated_diffs.base_branch_name
+        )
+        return EnrichedDiffs(
             base_branch_name=calculated_diffs.base_branch_name,
             diff_branch_name=calculated_diffs.diff_branch_name,
-            from_time=calculated_diffs.diff_branch_diff.from_time,
-            to_time=calculated_diffs.diff_branch_diff.to_time,
-            uuid=str(uuid4()),
-            nodes={
-                EnrichedDiffNode.from_calculated_node(calculated_node=n)
-                for n in calculated_diffs.diff_branch_diff.nodes
-            },
+            base_branch_diff=base_branch_diff,
+            diff_branch_diff=diff_branch_diff,
         )
 
 
