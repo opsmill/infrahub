@@ -12,7 +12,7 @@ export const GraphqlViewer = ({ value, limitHeight = false }: GraphqlViewerProps
   useCodeMirror(codeMirrorRef.current, {
     lang: "graphql",
     readOnly: true,
-    defaultValue: value,
+    value,
   });
 
   if (limitHeight) {
