@@ -5,4 +5,4 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 class DiffHierarchyEnricherDependency(DependencyBuilder[DiffHierarchyEnricher]):
     @classmethod
     def build(cls, context: DependencyBuilderContext) -> DiffHierarchyEnricher:
-        return DiffHierarchyEnricher()
+        return DiffHierarchyEnricher(db=context.db)

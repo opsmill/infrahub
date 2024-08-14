@@ -251,6 +251,7 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                         "label": "Commander of Car",
                         "peer": "TestPerson",
                         "optional": False,
+                        "kind": "Parent",
                         "cardinality": "one",
                         "direction": "outbound",
                     },
