@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Counter, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
@@ -9,6 +9,7 @@ from infrahub_sdk.utils import extract_fields
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.diff.model.path import (
         EnrichedDiffAttribute,
+        EnrichedDiffConflict,
         EnrichedDiffNode,
         EnrichedDiffProperty,
         EnrichedDiffRelationship,
@@ -94,6 +96,7 @@ class DiffNode(DiffSummaryCounts):
     kind = String(required=True)
     label = String(required=True)
     status = Field(GrapheneDiffActionEnum, required=True)
+    conflict = Field(ConflictDetails, required=False)
     contains_conflict = Boolean(required=True)
     last_changed_at = DateTime(required=False)
     attributes = List(DiffAttribute, required=True)
@@ -114,26 +117,24 @@ class DiffTreeResolver:
         for e_node in enriched_diff_root.nodes:
             all_nodes += list(e_node.get_all_child_nodes())
         tree_nodes = [self.to_diff_node(enriched_node=e_node) for e_node in all_nodes]
-        summary_counter = Counter((n.status for n in tree_nodes))
         return DiffTree(
             base_branch=enriched_diff_root.base_branch_name,
             diff_branch=enriched_diff_root.diff_branch_name,
             from_time=enriched_diff_root.from_time.to_graphql(),
             to_time=enriched_diff_root.to_time.to_graphql(),
             nodes=tree_nodes,
-            num_added=summary_counter[DiffAction.ADDED],
-            num_updated=summary_counter[DiffAction.UPDATED],
-            num_removed=summary_counter[DiffAction.REMOVED],
-            num_conflicts=0,
+            num_added=enriched_diff_root.num_added,
+            num_updated=enriched_diff_root.num_updated,
+            num_removed=enriched_diff_root.num_removed,
+            num_conflicts=enriched_diff_root.num_conflicts,
         )
 
     def to_diff_node(self, enriched_node: EnrichedDiffNode) -> DiffNode:
         diff_attributes = [self.to_diff_attribute(e_attr) for e_attr in enriched_node.attributes]
         diff_relationships = [self.to_diff_relationship(e_rel) for e_rel in enriched_node.relationships]
-        summary_counter = Counter((field.action for field in (enriched_node.attributes | enriched_node.relationships)))
-        num_conflicts = 0
-        contains_conflict = any(a.contains_conflict for a in diff_attributes)
-        contains_conflict |= any(r.contains_conflict for r in diff_relationships)
+        conflict = None
+        if enriched_node.conflict:
+            conflict = self.to_diff_conflict(enriched_conflict=enriched_node.conflict)
         return DiffNode(
             uuid=enriched_node.uuid,
             kind=enriched_node.kind,
@@ -142,38 +143,31 @@ class DiffTreeResolver:
             last_changed_at=enriched_node.changed_at.obj,
             attributes=diff_attributes,
             relationships=diff_relationships,
-            contains_conflict=contains_conflict,
-            num_added=summary_counter[DiffAction.ADDED],
-            num_updated=summary_counter[DiffAction.UPDATED],
-            num_removed=summary_counter[DiffAction.REMOVED],
-            num_conflicts=num_conflicts,
+            contains_conflict=enriched_node.contains_conflict,
+            conflict=conflict,
+            num_added=enriched_node.num_added,
+            num_updated=enriched_node.num_updated,
+            num_removed=enriched_node.num_removed,
+            num_conflicts=enriched_node.num_conflicts,
         )
 
     def to_diff_attribute(self, enriched_attribute: EnrichedDiffAttribute) -> DiffAttribute:
         diff_properties = [self.to_diff_property(e_prop) for e_prop in enriched_attribute.properties]
-        summary_counter = Counter((prop.action for prop in enriched_attribute.properties))
-        num_conflicts = 0
-        contains_conflict = any(p.conflict is not None for p in diff_properties)
         return DiffAttribute(
             name=enriched_attribute.name,
             last_changed_at=enriched_attribute.changed_at.obj,
             status=enriched_attribute.action,
             properties=diff_properties,
-            contains_conflict=contains_conflict,
-            num_added=summary_counter[DiffAction.ADDED],
-            num_updated=summary_counter[DiffAction.UPDATED],
-            num_removed=summary_counter[DiffAction.REMOVED],
-            num_conflicts=num_conflicts,
+            contains_conflict=enriched_attribute.contains_conflict,
+            num_added=enriched_attribute.num_added,
+            num_updated=enriched_attribute.num_updated,
+            num_removed=enriched_attribute.num_removed,
+            num_conflicts=enriched_attribute.num_conflicts,
         )
 
     def to_diff_relationship(self, enriched_relationship: EnrichedDiffRelationship) -> DiffRelationship:
         diff_elements = [self.to_diff_relationship_element(element) for element in enriched_relationship.relationships]
         node_uuids = [n.uuid for n in enriched_relationship.nodes]
-        num_conflicts = 0
-        contains_conflict = any(element.contains_conflict for element in diff_elements)
-        summary_counter = Counter(
-            (element.action for element in (enriched_relationship.relationships | enriched_relationship.nodes))
-        )
         return DiffRelationship(
             name=enriched_relationship.name,
             label=enriched_relationship.label,
@@ -181,39 +175,54 @@ class DiffTreeResolver:
             status=enriched_relationship.action,
             elements=diff_elements,
             node_uuids=node_uuids,
-            contains_conflict=contains_conflict,
-            num_added=summary_counter[DiffAction.ADDED],
-            num_updated=summary_counter[DiffAction.UPDATED],
-            num_removed=summary_counter[DiffAction.REMOVED],
-            num_conflicts=num_conflicts,
+            contains_conflict=enriched_relationship.contains_conflict,
+            num_added=enriched_relationship.num_added,
+            num_updated=enriched_relationship.num_updated,
+            num_removed=enriched_relationship.num_removed,
+            num_conflicts=enriched_relationship.num_conflicts,
         )
 
     def to_diff_relationship_element(self, enriched_element: EnrichedDiffSingleRelationship) -> DiffSingleRelationship:
         diff_properties = [self.to_diff_property(e_prop) for e_prop in enriched_element.properties]
-        num_conflicts = 0
-        contains_conflict = any(p.conflict is not None for p in diff_properties)
-        summary_counter = Counter((prop.action for prop in enriched_element.properties))
+        conflict = None
+        if enriched_element.conflict:
+            conflict = self.to_diff_conflict(enriched_conflict=enriched_element.conflict)
         return DiffSingleRelationship(
             last_changed_at=enriched_element.changed_at.obj,
             status=enriched_element.action,
             peer_id=enriched_element.peer_id,
-            contains_conflict=contains_conflict,
-            conflict=None,
+            conflict=conflict,
             properties=diff_properties,
-            num_added=summary_counter[DiffAction.ADDED],
-            num_updated=summary_counter[DiffAction.UPDATED],
-            num_removed=summary_counter[DiffAction.REMOVED],
-            num_conflicts=num_conflicts,
+            contains_conflict=enriched_element.contains_conflict,
+            num_added=enriched_element.num_added,
+            num_updated=enriched_element.num_updated,
+            num_removed=enriched_element.num_removed,
+            num_conflicts=enriched_element.num_conflicts,
         )
 
     def to_diff_property(self, enriched_property: EnrichedDiffProperty) -> DiffProperty:
+        conflict = None
+        if enriched_property.conflict:
+            conflict = self.to_diff_conflict(enriched_conflict=enriched_property.conflict)
         return DiffProperty(
             property_type=enriched_property.property_type.value,
             last_changed_at=enriched_property.changed_at.obj,
             previous_value=enriched_property.previous_value,
             new_value=enriched_property.new_value,
             status=enriched_property.action,
-            conflict=None,
+            conflict=conflict,
+        )
+
+    def to_diff_conflict(self, enriched_conflict: EnrichedDiffConflict) -> ConflictDetails:
+        return ConflictDetails(
+            uuid=enriched_conflict.uuid,
+            base_branch_action=enriched_conflict.base_branch_action,
+            base_branch_value=enriched_conflict.base_branch_value,
+            base_branch_changed_at=enriched_conflict.base_branch_changed_at,
+            diff_branch_action=enriched_conflict.diff_branch_action,
+            diff_branch_value=enriched_conflict.diff_branch_value,
+            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at,
+            selected_branch=enriched_conflict.selected_branch,
         )
 
     def to_graphql(
@@ -260,18 +269,26 @@ class DiffTreeResolver:
         base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=context.db, branch=branch)
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=context.db, branch=diff_branch)
+        diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
+        branch_start_timestamp = Timestamp(diff_branch.get_created_at())
         if from_time:
             from_timestamp = Timestamp(from_time.isoformat())
         else:
-            from_timestamp = Timestamp(diff_branch.get_created_at())
+            from_timestamp = branch_start_timestamp
         if to_time:
             to_timestamp = Timestamp(to_time.isoformat())
         else:
             to_timestamp = context.at or Timestamp()
 
-        enriched_diff = await diff_coordinator.get_diff(
+        await diff_coordinator.update_diffs(
             base_branch=base_branch,
             diff_branch=diff_branch,
+            from_time=from_timestamp,
+            to_time=to_timestamp,
+        )
+        enriched_diffs = await diff_repo.get(
+            base_branch_name=base_branch.name,
+            diff_branch_names=[diff_branch.name],
             from_time=from_timestamp,
             to_time=to_timestamp,
             root_node_uuids=root_node_uuids,
@@ -279,6 +296,7 @@ class DiffTreeResolver:
             limit=limit,
             offset=offset,
         )
+        enriched_diff = enriched_diffs[0]
 
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
         diff_tree = self.to_diff_tree(enriched_diff_root=enriched_diff)
