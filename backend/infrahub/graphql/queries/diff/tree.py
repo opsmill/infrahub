@@ -250,7 +250,8 @@ class DiffTreeResolver:
             return response_list
         return response_list[0]
 
-    async def resolve(  # pylint: disable=unused-argument
+    # pylint: disable=unused-argument
+    async def resolve(
         self,
         root: dict,
         info: GraphQLResolveInfo,
