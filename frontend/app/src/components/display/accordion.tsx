@@ -25,7 +25,7 @@ export default function Accordion({
         <div
           className="flex flex-1 w-full items-center cursor-pointer"
           onClick={() => setIsOpen(!isOpen)}>
-          <span className="flex h-7 items-center mx-2 relative">
+          <span className="flex items-center mx-2 relative">
             {isOpen ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
           </span>
           <span className="flex-1 font-semibold text-left justify-start">{title}</span>
@@ -42,7 +42,7 @@ export const EmptyAccordion = ({ title, className, iconClassName, ...props }: Ac
     <div className={className} {...props}>
       <div className="flex">
         <div className="flex flex-1 w-full items-center">
-          <span className="flex h-7 items-center mx-2 relative">
+          <span className="flex items-center mx-2 relative">
             <Icon icon={"mdi:minus"} className={iconClassName} />
           </span>
           <span className="flex-1 font-semibold text-left justify-start">{title}</span>

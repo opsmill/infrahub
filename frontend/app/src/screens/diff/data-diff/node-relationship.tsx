@@ -1,7 +1,7 @@
 import Accordion from "@/components/display/accordion";
 import { classNames } from "@/utils/common";
-import { BadgeConflict } from "../ui/badge";
 import { DiffNodeElement } from "./node-element";
+import { DiffDisplay, DiffTitle } from "./utils";
 
 type DiffNodeRelationshipProps = {
   relationship: any;
@@ -9,10 +9,18 @@ type DiffNodeRelationshipProps = {
 
 export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps) => {
   const title = (
-    <div className="flex items-center gap-2">
-      {relationship.contains_conflict && <BadgeConflict />}
-      <span className="text-xs">{relationship.name}</span>
-    </div>
+    <DiffTitle
+      id={relationship.id}
+      containsConflict={relationship.contains_conflict}
+      status={relationship.status}>
+      <div className="flex flex-1 items-center">
+        <span className="flex-1 font-normal text-xs">{relationship.name}</span>
+
+        <div className="flex-1">
+          <DiffDisplay />
+        </div>
+      </div>
+    </DiffTitle>
   );
 
   return (

@@ -32,10 +32,10 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
           </div>
 
           <div className="flex w-2/3 items-center">
-            <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-green-700/10">
+            <span className="pl-2 flex items-center w-1/2 font-semibold bg-green-700/10">
               {branch === "main" && diffContent[action](property)}
             </span>
-            <span className="h-7 pl-2 flex items-center w-1/2 font-semibold bg-custom-blue-700/10">
+            <span className="pl-2 flex items-center w-1/2 font-semibold bg-custom-blue-700/10">
               {branch !== "main" && diffContent[action](property)}
             </span>
           </div>

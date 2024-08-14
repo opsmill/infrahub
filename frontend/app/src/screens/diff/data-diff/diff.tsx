@@ -243,7 +243,7 @@ export const DataDiff = () => {
         </div>
       </div>
 
-      {loading && <LoadingScreen />}
+      {loading && <LoadingScreen message="Loading diff..." />}
 
       {nodes?.length && nodes.map((node, index) => <DiffNode key={index} node={node} />)}
     </>
