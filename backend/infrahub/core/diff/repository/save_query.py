@@ -5,6 +5,7 @@ from infrahub.database import InfrahubDatabase
 
 from ..model.path import (
     EnrichedDiffAttribute,
+    EnrichedDiffConflict,
     EnrichedDiffNode,
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
@@ -30,12 +31,22 @@ class EnrichedDiffSaveQuery(Query):
             diff_branch: $diff_root_props.diff_branch,
             from_time: $diff_root_props.from_time,
             to_time: $diff_root_props.to_time,
-            uuid: $diff_root_props.uuid
+            uuid: $diff_root_props.uuid,
+            num_added: $diff_root_props.num_added,
+            num_updated: $diff_root_props.num_updated,
+            num_removed: $diff_root_props.num_removed,
+            num_conflicts: $diff_root_props.num_conflicts,
+            contains_conflict: $diff_root_props.contains_conflict
         })
         WITH diff_root
         UNWIND $node_maps AS node_map
         CREATE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
         SET diff_node = node_map.node_properties
+        // node conflict
+        FOREACH (i in CASE WHEN node_map.conflict_params IS NOT NULL THEN [1] ELSE [] END |
+            CREATE (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
+            SET diff_node_conflict = node_map.conflict_params
+        )
 
         // attributes
         WITH diff_root, diff_node, node_map
@@ -50,6 +61,11 @@ class EnrichedDiffSaveQuery(Query):
             UNWIND node_attribute.properties AS attr_property
             CREATE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty)
             SET diff_attr_prop = attr_property.node_properties
+            // attribute property conflict
+            FOREACH (i in CASE WHEN attr_property.conflict_params IS NOT NULL THEN [1] ELSE [] END |
+                CREATE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attribute_property_conflict:DiffConflict)
+                SET diff_attribute_property_conflict = attr_property.conflict_params
+            )
         }
 
         // relationships
@@ -65,12 +81,22 @@ class EnrichedDiffSaveQuery(Query):
             UNWIND node_relationship.relationships as node_single_relationship
             CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_relationship_element:DiffRelationshipElement)
             SET diff_relationship_element = node_single_relationship.node_properties
+            // single relationship conflict
+            FOREACH (i in CASE WHEN node_single_relationship.conflict_params IS NOT NULL THEN [1] ELSE [] END |
+                CREATE (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(diff_relationship_conflict:DiffConflict)
+                SET diff_relationship_conflict = node_single_relationship.conflict_params
+            )
 
             // node relationship properties
             WITH diff_relationship_element, node_single_relationship
             UNWIND node_single_relationship.properties as node_relationship_property
             CREATE (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(diff_relationship_property:DiffProperty)
             SET diff_relationship_property = node_relationship_property.node_properties
+            // relationship property conflict
+            FOREACH (i in CASE WHEN node_relationship_property.conflict_params IS NOT NULL THEN [1] ELSE [] END |
+                CREATE (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(diff_relationship_property_conflict:DiffConflict)
+                SET diff_relationship_property_conflict = node_relationship_property.conflict_params
+            )
         }
         WITH diff_root
         UNWIND $node_parent_links AS node_parent_link
@@ -84,7 +110,22 @@ class EnrichedDiffSaveQuery(Query):
         self.add_to_query(query=query)
         self.return_labels = ["diff_root.uuid"]
 
+    def _build_conflict_params(self, enriched_conflict: EnrichedDiffConflict) -> dict[str, Any]:
+        return {
+            "uuid": enriched_conflict.uuid,
+            "base_branch_action": enriched_conflict.base_branch_action.value,
+            "base_branch_value": enriched_conflict.base_branch_value,
+            "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string(),
+            "diff_branch_action": enriched_conflict.diff_branch_action.value,
+            "diff_branch_value": enriched_conflict.diff_branch_value,
+            "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string(),
+            "selected_branch": enriched_conflict.selected_branch.value if enriched_conflict.selected_branch else None,
+        }
+
     def _build_diff_property_params(self, enriched_property: EnrichedDiffProperty) -> dict[str, Any]:
+        conflict_params = None
+        if enriched_property.conflict:
+            conflict_params = self._build_conflict_params(enriched_conflict=enriched_property.conflict)
         return {
             "node_properties": {
                 "property_type": enriched_property.property_type.value,
@@ -93,6 +134,7 @@ class EnrichedDiffSaveQuery(Query):
                 "new_value": enriched_property.new_value,
                 "action": enriched_property.action,
             },
+            "conflict_params": conflict_params,
         }
 
     def _build_diff_attribute_params(self, enriched_attribute: EnrichedDiffAttribute) -> dict[str, Any]:
@@ -104,6 +146,11 @@ class EnrichedDiffSaveQuery(Query):
                 "name": enriched_attribute.name,
                 "changed_at": enriched_attribute.changed_at.to_string(),
                 "action": enriched_attribute.action.value,
+                "num_added": enriched_attribute.num_added,
+                "num_updated": enriched_attribute.num_updated,
+                "num_removed": enriched_attribute.num_removed,
+                "num_conflicts": enriched_attribute.num_conflicts,
+                "contains_conflict": enriched_attribute.contains_conflict,
             },
             "properties": property_props,
         }
@@ -114,12 +161,21 @@ class EnrichedDiffSaveQuery(Query):
         property_props = [
             self._build_diff_property_params(enriched_property=prop) for prop in enriched_single_relationship.properties
         ]
+        conflict_params = None
+        if enriched_single_relationship.conflict:
+            conflict_params = self._build_conflict_params(enriched_conflict=enriched_single_relationship.conflict)
         return {
             "node_properties": {
                 "changed_at": enriched_single_relationship.changed_at.to_string(),
                 "action": enriched_single_relationship.action,
                 "peer_id": enriched_single_relationship.peer_id,
+                "num_added": enriched_single_relationship.num_added,
+                "num_updated": enriched_single_relationship.num_updated,
+                "num_removed": enriched_single_relationship.num_removed,
+                "num_conflicts": enriched_single_relationship.num_conflicts,
+                "contains_conflict": enriched_single_relationship.contains_conflict,
             },
+            "conflict_params": conflict_params,
             "properties": property_props,
         }
 
@@ -134,6 +190,11 @@ class EnrichedDiffSaveQuery(Query):
                 "label": enriched_relationship.label,
                 "changed_at": enriched_relationship.changed_at.to_string(),
                 "action": enriched_relationship.action,
+                "num_added": enriched_relationship.num_added,
+                "num_updated": enriched_relationship.num_updated,
+                "num_removed": enriched_relationship.num_removed,
+                "num_conflicts": enriched_relationship.num_conflicts,
+                "contains_conflict": enriched_relationship.contains_conflict,
             },
             "relationships": single_relationship_props,
         }
@@ -145,6 +206,9 @@ class EnrichedDiffSaveQuery(Query):
         relationship_props = [
             self._build_diff_relationship_params(relationship) for relationship in enriched_node.relationships
         ]
+        conflict_params = None
+        if enriched_node.conflict:
+            conflict_params = self._build_conflict_params(enriched_conflict=enriched_node.conflict)
         return {
             "node_properties": {
                 "uuid": enriched_node.uuid,
@@ -152,7 +216,13 @@ class EnrichedDiffSaveQuery(Query):
                 "label": enriched_node.label,
                 "changed_at": enriched_node.changed_at.to_string(),
                 "action": enriched_node.action.value,
+                "num_added": enriched_node.num_added,
+                "num_updated": enriched_node.num_updated,
+                "num_removed": enriched_node.num_removed,
+                "num_conflicts": enriched_node.num_conflicts,
+                "contains_conflict": enriched_node.contains_conflict,
             },
+            "conflict_params": conflict_params,
             "attributes": attribute_props,
             "relationships": relationship_props,
         }
@@ -181,6 +251,11 @@ class EnrichedDiffSaveQuery(Query):
             "from_time": enriched_diff.from_time.to_string(),
             "to_time": enriched_diff.to_time.to_string(),
             "uuid": enriched_diff.uuid,
+            "num_added": enriched_diff.num_added,
+            "num_updated": enriched_diff.num_updated,
+            "num_removed": enriched_diff.num_removed,
+            "num_conflicts": enriched_diff.num_conflicts,
+            "contains_conflict": enriched_diff.contains_conflict,
         }
         node_maps = []
         node_parent_links = []
