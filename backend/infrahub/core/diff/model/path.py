@@ -198,6 +198,13 @@ class EnrichedDiffNode(BaseSummary):
                 return rel
         raise ValueError(f"No relationship {name} found")
 
+    def has_relationship(self, name: str) -> bool:
+        try:
+            self.get_relationship(name=name)
+            return True
+        except ValueError:
+            return False
+
     @classmethod
     def from_calculated_node(cls, calculated_node: DiffNode) -> EnrichedDiffNode:
         return EnrichedDiffNode(
@@ -241,6 +248,13 @@ class EnrichedDiffRoot(BaseSummary):
             if n.uuid == node_uuid:
                 return n
         raise ValueError(f"No node {node_uuid} in diff root")
+
+    def has_node(self, node_uuid: str) -> bool:
+        try:
+            self.get_node(node_uuid=node_uuid)
+            return True
+        except ValueError:
+            return False
 
     @classmethod
     def from_calculated_diff(cls, calculated_diff: DiffRoot, base_branch_name: str) -> EnrichedDiffRoot:
