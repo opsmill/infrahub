@@ -673,7 +673,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
           open={open}
           setOpen={setOpen}
           offset={1}>
-          <ObjectForm kind={peer} onSuccess={handleCreate} onCancel={() => setOpen(false)} />
+          <ObjectForm
+            kind={peer}
+            onSuccess={handleCreate}
+            onCancel={() => setOpen(false)}
+            data-testid="new-object-form"
+          />
         </SlideOver>
       );
     }

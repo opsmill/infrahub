@@ -48,11 +48,8 @@ test.describe("object dropdown creation", () => {
     await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
 
     // Create a new tag
-    await page.getByLabel("Create TagmainStandard Tag").getByLabel("Name").fill("new-tag");
-    await page
-      .getByLabel("Create TagmainStandard Tag")
-      .getByLabel("Description")
-      .fill("New tag description");
+    await page.getByTestId("new-object-form").getByLabel("Name").fill("new-tag");
+    await page.getByTestId("new-object-form").getByLabel("Description").fill("New tag description");
 
     // Submit
     await page.getByRole("button", { name: "Save" }).click();
