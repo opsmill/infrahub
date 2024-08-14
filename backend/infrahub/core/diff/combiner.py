@@ -198,6 +198,7 @@ class DiffCombiner:
                 changed_at=later_element.changed_at,
                 action=self._combine_actions(earlier=earlier_element.action, later=later_element.action),
                 peer_id=later_element.peer_id,
+                peer_label=later_element.peer_label,
                 properties=self._combine_properties(
                     earlier_properties=earlier_element.properties, later_properties=later_element.properties
                 ),

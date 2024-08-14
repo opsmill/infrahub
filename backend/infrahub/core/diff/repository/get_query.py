@@ -396,10 +396,12 @@ class EnrichedDiffDeserializer:
         if rel_element_key in self._diff_node_rel_element_map:
             return self._diff_node_rel_element_map[rel_element_key]
 
+        peer_label = self._get_str_or_none_property_value(node=relationship_element_node, property_name="peer_label")
         enriched_rel_element = EnrichedDiffSingleRelationship(
             changed_at=Timestamp(str(relationship_element_node.get("changed_at"))),
             action=DiffAction(str(relationship_element_node.get("action"))),
             peer_id=diff_element_peer_id,
+            peer_label=peer_label,
             num_added=int(relationship_element_node.get("num_added")),
             num_updated=int(relationship_element_node.get("num_updated")),
             num_removed=int(relationship_element_node.get("num_removed")),

@@ -76,6 +76,7 @@ class DiffSingleRelationship(DiffSummaryCounts):
     last_changed_at = DateTime(required=False)
     status = Field(GrapheneDiffActionEnum, required=True)
     peer_id = String(required=True)
+    peer_label = String(required=False)
     contains_conflict = Boolean(required=True)
     conflict = Field(ConflictDetails, required=False)
     properties = List(DiffProperty)
@@ -189,6 +190,7 @@ class DiffTreeResolver:
             last_changed_at=enriched_element.changed_at.obj,
             status=enriched_element.action,
             peer_id=enriched_element.peer_id,
+            peer_label=enriched_element.peer_label,
             conflict=conflict,
             properties=diff_properties,
             contains_conflict=enriched_element.contains_conflict,
