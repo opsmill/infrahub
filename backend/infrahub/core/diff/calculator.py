@@ -19,6 +19,8 @@ class DiffCalculator:
             db=self.db,
             branch=diff_branch,
             base_branch=base_branch,
+            diff_from=from_time,
+            diff_to=to_time,
         )
         await diff_query.execute(db=self.db)
         diff_parser = DiffQueryParser(

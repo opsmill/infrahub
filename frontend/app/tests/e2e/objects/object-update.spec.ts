@@ -40,7 +40,7 @@ test.describe("Object update", () => {
 
       await page.getByRole("option", { name: "blue" }).click(); // Removes blue
       await page.getByRole("option", { name: "green" }).click(); // Adds green
-      await page.getByRole("option", { name: "red" }).click(); // Adds red
+      await page.getByRole("option", { name: "red", exact: true }).click(); // Adds red
 
       await page.getByTestId("side-panel-container").getByLabel("Tags").click();
 
@@ -59,7 +59,7 @@ test.describe("Object update", () => {
       await expect(page.getByText("Active")).toBeVisible();
       await expect(page.getByText("Edge Router")).toBeVisible();
       await expect(page.getByRole("link", { name: "green" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "red" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "red", exact: true })).toBeVisible();
       await expect(page.getByRole("link", { name: "blue" })).not.toBeVisible();
 
       // Verify updates in form

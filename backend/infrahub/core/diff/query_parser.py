@@ -325,7 +325,6 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
     kind: str
     attributes_by_name: dict[str, DiffAttributeIntermediate] = field(default_factory=dict)
     relationships_by_name: dict[str, DiffRelationshipIntermediate] = field(default_factory=dict)
-    # many_relationships_by_name: dict[str, DiffRelationshipManyIntermediate] = field(default_factory=dict)
 
     def to_diff_node(self, from_time: Timestamp) -> DiffNode:
         attributes = [attr.to_diff_attribute(from_time=from_time) for attr in self.attributes_by_name.values()]
@@ -340,6 +339,10 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
             relationships=relationships,
         )
 
+    @property
+    def is_empty(self) -> bool:
+        return len(self.attributes_by_name) == 0 and len(self.relationships_by_name) == 0
+
 
 @dataclass
 class DiffRootIntermediate:
@@ -348,7 +351,10 @@ class DiffRootIntermediate:
     nodes_by_id: dict[str, DiffNodeIntermediate] = field(default_factory=dict)
 
     def to_diff_root(self, from_time: Timestamp, to_time: Timestamp) -> DiffRoot:
-        nodes = [node.to_diff_node(from_time=from_time) for node in self.nodes_by_id.values()]
+        nodes = []
+        for node in self.nodes_by_id.values():
+            if not node.is_empty:
+                nodes.append(node.to_diff_node(from_time=from_time))
         return DiffRoot(uuid=self.uuid, branch=self.branch, nodes=nodes, from_time=from_time, to_time=to_time)
 
 

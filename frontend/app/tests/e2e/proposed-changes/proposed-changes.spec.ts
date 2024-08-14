@@ -108,6 +108,23 @@ test.describe("/proposed-changes", () => {
         });
       });
 
+      test("add a comment on overview tab", async ({ page }) => {
+        await page.goto("/proposed-changes");
+        await page.getByText(pcNameEdit, { exact: true }).first().click();
+
+        await page
+          .getByTestId("codemirror-editor")
+          .getByRole("textbox")
+          .fill("comment on overview tab");
+        await page.getByRole("button", { name: "Comment", exact: true }).click();
+        await expect(
+          page.getByTestId("comment").getByText("comment on overview tab")
+        ).toBeVisible();
+        await expect(page.getByTestId("codemirror-editor").getByRole("textbox")).toContainText(
+          "Add your comment here..."
+        );
+      });
+
       test.fixme("merged proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page.getByText(pcNameEdit, { exact: true }).first().click();

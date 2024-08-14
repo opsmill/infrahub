@@ -37,7 +37,7 @@ import { Icon } from "@iconify-icon/react";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import DynamicForm from "@/components/form/dynamic-form";
@@ -46,6 +46,7 @@ import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { Button } from "@/components/buttons/button-primitive";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
+import { FormRef } from "@/components/ui/form";
 
 type tConversations = {
   refetch?: Function;
@@ -64,6 +65,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
+  const formRef = useRef<FormRef>(null);
   const queryString = getProposedChangesThreads({
     id: proposedchange,
     kind: PROPOSED_CHANGES_THREAD_OBJECT,
@@ -177,6 +179,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
+      formRef.current?.reset();
       await refetch();
     } catch (error: any) {
       if (threadId) {
@@ -476,7 +479,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         </div>
 
         <div className="bg-custom-white p-4 m-4 rounded-lg relative">
-          <AddComment onSubmit={handleSubmit} />
+          <AddComment ref={formRef} onSubmit={handleSubmit} />
         </div>
       </div>
 

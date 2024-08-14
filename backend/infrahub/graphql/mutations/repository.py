@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from graphene import Boolean, InputObjectType, Mutation, String
@@ -53,6 +54,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     ):
         context: GraphqlContext = info.context
 
+        cleanup_payload(data)
         # Create the object in the database
         obj, result = await super().mutate_create(root, info, data, branch, at)
         obj = cast(CoreGenericRepository, obj)
@@ -127,6 +129,8 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         node: Optional[Node] = None,
     ):
         context: GraphqlContext = info.context
+
+        cleanup_payload(data)
         if not node:
             node: CoreReadOnlyRepository | CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
                 db=context.db,
@@ -175,6 +179,17 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if context.service:
             await context.service.send(message=message)
         return obj, result
+
+
+def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:
+    """If the input payload contains an http URL that doesn't end in .git it will be added to the payload"""
+    http_without_dotgit = r"^(https?://)(?!.*\.git$).*"
+    if (
+        data.get("location")
+        and data["location"].get("value")
+        and re.match(http_without_dotgit, data["location"]["value"])
+    ):
+        data["location"]["value"] = f'{data["location"]["value"]}.git'
 
 
 class ProcessRepository(Mutation):
