@@ -68,6 +68,7 @@ export function useCodeMirror(
 
   useEffect(() => {
     if (!view) return;
+    if (value === undefined) return;
 
     const currentValue = view.state.doc.toString();
     const newValue = value ?? "";
