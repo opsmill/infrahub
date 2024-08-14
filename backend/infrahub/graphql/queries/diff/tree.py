@@ -114,8 +114,6 @@ class DiffTree(DiffSummaryCounts):
 class DiffTreeResolver:
     def to_diff_tree(self, enriched_diff_root: EnrichedDiffRoot) -> DiffTree:
         all_nodes = list(enriched_diff_root.nodes)
-        for e_node in enriched_diff_root.nodes:
-            all_nodes += list(e_node.get_all_child_nodes())
         tree_nodes = [self.to_diff_node(enriched_node=e_node) for e_node in all_nodes]
         return DiffTree(
             base_branch=enriched_diff_root.base_branch_name,
@@ -252,7 +250,8 @@ class DiffTreeResolver:
             return response_list
         return response_list[0]
 
-    async def resolve(  # pylint: disable=unused-argument
+    # pylint: disable=unused-argument
+    async def resolve(
         self,
         root: dict,
         info: GraphQLResolveInfo,

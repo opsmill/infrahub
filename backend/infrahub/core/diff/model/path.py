@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Self
 from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipStatus
@@ -158,6 +158,20 @@ class EnrichedDiffRelationship(BaseSummary):
             nodes=set(),
         )
 
+    @classmethod
+    def from_graph(cls, node: Neo4jNode) -> Self:
+        return cls(
+            name=node.get("name"),
+            label=node.get("label"),
+            changed_at=Timestamp(node.get("changed_at")),
+            action=node.get("action"),
+            num_added=int(node.get("num_added")),
+            num_conflicts=int(node.get("num_conflicts")),
+            num_removed=int(node.get("num_removed")),
+            num_updated=int(node.get("num_updated")),
+            contains_conflict=str(node.get("contains_conflict")).lower() == "true",
+        )
+
 
 @dataclass
 class EnrichedDiffNode(BaseSummary):
@@ -198,6 +212,13 @@ class EnrichedDiffNode(BaseSummary):
                 return rel
         raise ValueError(f"No relationship {name} found")
 
+    def has_relationship(self, name: str) -> bool:
+        try:
+            self.get_relationship(name=name)
+            return True
+        except ValueError:
+            return False
+
     @classmethod
     def from_calculated_node(cls, calculated_node: DiffNode) -> EnrichedDiffNode:
         return EnrichedDiffNode(
@@ -215,6 +236,14 @@ class EnrichedDiffNode(BaseSummary):
                 for rel in calculated_node.relationships
             },
         )
+
+    def add_relationship_from_DiffRelationship(self, diff_rel: Neo4jNode) -> bool:
+        if self.has_relationship(name=diff_rel.get("name")):
+            return False
+
+        rel = EnrichedDiffRelationship.from_graph(node=diff_rel)
+        self.relationships.add(rel)
+        return True
 
 
 @dataclass
@@ -241,6 +270,13 @@ class EnrichedDiffRoot(BaseSummary):
             if n.uuid == node_uuid:
                 return n
         raise ValueError(f"No node {node_uuid} in diff root")
+
+    def has_node(self, node_uuid: str) -> bool:
+        try:
+            self.get_node(node_uuid=node_uuid)
+            return True
+        except ValueError:
+            return False
 
     @classmethod
     def from_calculated_diff(cls, calculated_diff: DiffRoot, base_branch_name: str) -> EnrichedDiffRoot:

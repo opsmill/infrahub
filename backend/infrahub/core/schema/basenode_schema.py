@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Un
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
 
+from infrahub.core.constants import RelationshipKind
 from infrahub.core.models import HashableModelDiff
 
 from .attribute_schema import AttributeSchema  # noqa: TCH001
@@ -19,7 +20,6 @@ from .relationship_schema import RelationshipSchema  # noqa: TCH001
 if TYPE_CHECKING:
     from typing_extensions import Self
 
-    from infrahub.core.constants import RelationshipKind
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaBranch
 
@@ -287,6 +287,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         for rel in self.relationships:
             name_id_map[rel.name] = rel.id
         return name_id_map
+
+    @property
+    def has_parent_relationship(self) -> bool:
+        for rel in self.relationships:
+            if rel.kind == RelationshipKind.PARENT:
+                return True
+        return False
 
     def get_filter_name_id_map(self) -> dict[str, str]:
         name_id_map = {}

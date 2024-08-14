@@ -82,6 +82,12 @@ class NodeAttributesFromDB:
     attrs: dict[str, AttributeFromDB] = dataclass_field(default_factory=dict)
 
 
+@dataclass
+class PeerInfo:
+    uuid: str
+    kind: str
+
+
 class NodeQuery(Query):
     def __init__(
         self,
@@ -1258,3 +1264,11 @@ class NodeGetHierarchyQuery(Query):
         for result in self.get_results_group_by(("peer", "uuid")):
             data = result.get("peer").get("uuid")
             yield data
+
+    def get_relatives(self) -> Generator[PeerInfo, None, None]:
+        for result in self.get_results_group_by(("peer", "uuid")):
+            peer_node = result.get("peer")
+            yield PeerInfo(
+                uuid=peer_node.get("uuid"),
+                kind=peer_node.get("kind"),
+            )
