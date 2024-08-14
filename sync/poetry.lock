@@ -34,23 +34,6 @@ test = ["anyio[trio]", "coverage[toml] (>=7)", "exceptiongroup (>=1.2.0)", "hypo
 trio = ["trio (>=0.23)"]
 
 [[package]]
-name = "asteval"
-version = "1.0.2"
-description = "Safe, minimalistic evaluator of python expression using ast module"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "asteval-1.0.2-py3-none-any.whl", hash = "sha256:2ece3179809185598d054289e089b8e7706c1a5afa5f7e7c236b3cdae0cf8290"},
-    {file = "asteval-1.0.2.tar.gz", hash = "sha256:00e27d9dc565858056d04ebf741f9db4dc4ba319ac3517d094b1608e7f73fa6a"},
-]
-
-[package.extras]
-all = ["asteval[dev,doc,test]"]
-dev = ["build", "twine"]
-doc = ["Sphinx"]
-test = ["coverage", "pytest", "pytest-cov"]
-
-[[package]]
 name = "astroid"
 version = "3.2.2"
 description = "An abstract syntax tree for Python with inference support."
@@ -2099,4 +2082,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9, < 3.13"
-content-hash = "077c97637facf7f7c22a4c876cf09d56bd20e7a794c67fc7c11ad821f3a737e0"
+content-hash = "83deb599bdfd22feb32ca5971f96380738a59ac5df19f4e11c6688d7080b3616"
