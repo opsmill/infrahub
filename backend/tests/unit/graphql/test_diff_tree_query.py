@@ -235,3 +235,30 @@ async def test_diff_tree_one_attr_change(
             }
         ],
     }
+
+
+async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data):
+    diff_branch = await create_branch(db=db, branch_name="diff")
+
+    # rprint(hierarchical_location_data)
+    rack1_main = hierarchical_location_data["paris-r1"]
+    rack2_main = hierarchical_location_data["paris-r2"]
+    rack1_branch = await NodeManager.get_one(db=db, id=rack1_main.id, branch=diff_branch)
+    rack1_branch.status.value = "offline"
+    rack2_branch = await NodeManager.get_one(db=db, id=rack2_main.id, branch=diff_branch)
+    rack2_branch.name.value = "paris rack2"
+
+    await rack1_branch.save(db=db)
+    await rack2_branch.save(db=db)
+
+    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+
+    assert result.errors is None
+    assert len(result.data["DiffTree"]["nodes"]) == 4

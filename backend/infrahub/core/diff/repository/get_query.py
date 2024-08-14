@@ -209,11 +209,11 @@ class EnrichedDiffDeserializer:
     async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
         for result in database_results:
             enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
-            node_node = result.get("diff_node")
+            node_node = result.get_node(label="diff_node")
             if not isinstance(node_node, Neo4jNode):
                 continue
             enriched_node = self._deserialize_diff_node(node_node=node_node, enriched_root=enriched_root)
-            node_conflict_node = result.get("diff_node_conflict")
+            node_conflict_node = result.get(label="diff_node_conflict")
             if isinstance(node_conflict_node, Neo4jNode) and not enriched_node.conflict:
                 self._deserialize_conflict(diff_conflict_node=node_conflict_node, linked_node=enriched_node)
             self._deserialize_attributes(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
@@ -250,8 +250,12 @@ class EnrichedDiffDeserializer:
     ) -> None:
         for relationship_result in result.get_nested_node_collection("diff_relationships"):
             group_node, element_node, element_conflict, property_node, property_conflict = relationship_result
+            if group_node is not None and element_node is None and property_node is None:
+                enriched_node.add_relationship_from_DiffRelationship(diff_rel=group_node)
+                continue
             if group_node is None or element_node is None or property_node is None:
                 continue
+
             enriched_relationship_group = self._deserialize_diff_relationship_group(
                 relationship_group_node=group_node, enriched_root=enriched_root, enriched_node=enriched_node
             )
@@ -370,17 +374,7 @@ class EnrichedDiffDeserializer:
         if rel_key in self._diff_node_rel_group_map:
             return self._diff_node_rel_group_map[rel_key]
 
-        enriched_relationship = EnrichedDiffRelationship(
-            name=diff_rel_name,
-            label=str(relationship_group_node.get("label")),
-            changed_at=Timestamp(str(relationship_group_node.get("changed_at"))),
-            action=DiffAction(str(relationship_group_node.get("action"))),
-            num_added=int(relationship_group_node.get("num_added")),
-            num_updated=int(relationship_group_node.get("num_updated")),
-            num_removed=int(relationship_group_node.get("num_removed")),
-            num_conflicts=int(relationship_group_node.get("num_conflicts")),
-            contains_conflict=str(relationship_group_node.get("contains_conflict")).lower() == "true",
-        )
+        enriched_relationship = EnrichedDiffRelationship.from_graph(node=relationship_group_node)
         self._diff_node_rel_group_map[rel_key] = enriched_relationship
         enriched_node.relationships.add(enriched_relationship)
         return enriched_relationship
