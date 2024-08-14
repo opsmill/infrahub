@@ -29,7 +29,7 @@ async def test_node_no_parent_no_rel(db: InfrahubDatabase, default_branch, perso
     assert len(yaris_rel.nodes) == 1
 
     assert jane_node.action == DiffAction.UNCHANGED
-    assert len(jane_node.relationships) == 0
+    assert len(jane_node.relationships) == 1
 
 
 async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_jane_main, car_yaris_main):
@@ -56,4 +56,27 @@ async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_j
     assert len(yaris_rel.nodes) == 1
 
     assert jane_node.action == DiffAction.UNCHANGED
-    assert len(jane_node.relationships) == 0
+    assert len(jane_node.relationships) == 1
+
+
+async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical_location_data):
+    branch = await create_branch(db=db, branch_name="branch")
+
+    rack1 = hierarchical_location_data["paris-r1"]
+
+    diff_node = EnrichedNodeFactory.build(uuid=rack1.get_id(), kind=rack1.get_kind(), relationships=set())
+    diff_root = EnrichedRootFactory.build(
+        base_branch_name=default_branch.name, diff_branch_name=branch.name, nodes={diff_node}
+    )
+    enricher = DiffHierarchyEnricher(db=db)
+    await enricher.enrich(enriched_diff_root=diff_root, calculated_diffs=None)
+
+    assert len(diff_root.nodes) == 3
+
+    rack1_node = diff_root.get_node(node_uuid=rack1.get_id())
+
+    assert len(rack1_node.relationships) == 1
+    rack1_rel = rack1_node.relationships.pop()
+    assert rack1_rel.name == "parent"
+    assert rack1_rel.action == DiffAction.UNCHANGED
+    assert len(rack1_rel.nodes) == 1
