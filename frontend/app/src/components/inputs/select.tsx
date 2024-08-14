@@ -135,6 +135,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
         )
       : localOptions?.find((option) => option?.id === value || option.name === value);
   };
+
   const [selectedOption, setSelectedOption] = useState(findSelectedOption());
 
   const namespaceData = namespaces.find((n) => n.name === schema?.namespace);

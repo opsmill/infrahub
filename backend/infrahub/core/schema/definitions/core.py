@@ -1978,7 +1978,7 @@ core_models: dict[str, Any] = {
         {
             "name": "NumberPool",
             "namespace": "Core",
-            "description": "A pool of integer resources",
+            "description": "A pool of number resources",
             "label": "Number Pool",
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
