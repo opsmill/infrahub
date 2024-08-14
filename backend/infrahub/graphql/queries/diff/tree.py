@@ -218,10 +218,10 @@ class DiffTreeResolver:
             uuid=enriched_conflict.uuid,
             base_branch_action=enriched_conflict.base_branch_action,
             base_branch_value=enriched_conflict.base_branch_value,
-            base_branch_changed_at=enriched_conflict.base_branch_changed_at,
+            base_branch_changed_at=enriched_conflict.base_branch_changed_at.obj,
             diff_branch_action=enriched_conflict.diff_branch_action,
             diff_branch_value=enriched_conflict.diff_branch_value,
-            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at,
+            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.obj,
             selected_branch=enriched_conflict.selected_branch,
         )
 

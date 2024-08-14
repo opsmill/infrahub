@@ -31,6 +31,13 @@ class BaseSummary:
     num_conflicts: int = field(default=0, kw_only=True)
     contains_conflict: bool = field(default=False, kw_only=True)
 
+    def reset_summaries(self) -> None:
+        self.num_added = 0
+        self.num_updated = 0
+        self.num_removed = 0
+        self.num_conflicts = 0
+        self.contains_conflict = False
+
 
 class ConflictSelection(Enum):
     BASE_BRANCH = "base"

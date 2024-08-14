@@ -57,6 +57,11 @@ class TestDiffCombiner:
             from_time=self.diff_from_1,
             to_time=self.diff_to_2,
             nodes=set(),
+            num_added=0,
+            num_updated=0,
+            num_removed=0,
+            num_conflicts=0,
+            contains_conflict=False,
         )
         self.schema_manager = AsyncMock(spec=SchemaManager)
         registry.schema = self.schema_manager
@@ -593,7 +598,15 @@ class TestDiffCombiner:
         child_node_2 = EnrichedNodeFactory.build(uuid=child_node_uuid, action=DiffAction.UPDATED, relationships=set())
         parent_element_1 = EnrichedRelationshipElementFactory.build()
         parent_rel_1 = EnrichedRelationshipGroupFactory.build(
-            name=relationship_name, relationships=parent_element_1, nodes={child_node_1}, action=DiffAction.UPDATED
+            name=relationship_name,
+            relationships=parent_element_1,
+            nodes={child_node_1},
+            action=DiffAction.UPDATED,
+            num_added=0,
+            num_updated=0,
+            num_removed=0,
+            num_conflicts=0,
+            contains_conflict=False,
         )
         parent_rel_2 = EnrichedRelationshipGroupFactory.build(
             name=relationship_name, relationships=set(), nodes={child_node_2}, action=DiffAction.UNCHANGED
