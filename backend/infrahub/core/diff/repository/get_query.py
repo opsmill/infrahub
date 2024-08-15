@@ -334,6 +334,7 @@ class EnrichedDiffDeserializer:
             label=str(node_node.get("label")),
             changed_at=Timestamp(node_node.get("changed_at")),
             action=DiffAction(str(node_node.get("action"))),
+            path_identifier=str(node_node.get("path_identifier")),
             num_added=int(node_node.get("num_added")),
             num_updated=int(node_node.get("num_updated")),
             num_removed=int(node_node.get("num_removed")),
@@ -355,6 +356,7 @@ class EnrichedDiffDeserializer:
         enriched_attr = EnrichedDiffAttribute(
             name=str(diff_attr_node.get("name")),
             changed_at=Timestamp(str(diff_attr_node.get("changed_at"))),
+            path_identifier=str(diff_attr_node.get("path_identifier")),
             action=DiffAction(str(diff_attr_node.get("action"))),
             num_added=int(diff_attr_node.get("num_added")),
             num_updated=int(diff_attr_node.get("num_updated")),
@@ -402,6 +404,7 @@ class EnrichedDiffDeserializer:
             action=DiffAction(str(relationship_element_node.get("action"))),
             peer_id=diff_element_peer_id,
             peer_label=peer_label,
+            path_identifier=str(relationship_element_node.get("path_identifier")),
             num_added=int(relationship_element_node.get("num_added")),
             num_updated=int(relationship_element_node.get("num_updated")),
             num_removed=int(relationship_element_node.get("num_removed")),
@@ -421,6 +424,7 @@ class EnrichedDiffDeserializer:
             previous_value=previous_value,
             new_value=new_value,
             action=DiffAction(str(property_node.get("action"))),
+            path_identifier=str(property_node.get("path_identifier")),
         )
 
     def _deserialize_diff_attr_property(
