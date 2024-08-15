@@ -88,7 +88,7 @@ class DiffRelationship(DiffSummaryCounts):
     last_changed_at = DateTime(required=False)
     status = Field(GrapheneDiffActionEnum, required=True)
     elements = List(DiffSingleRelationship, required=True)
-    node_uuids = List(String, required=True)
+    node_uuids = List(String, required=True)  # NOTE Can we remove this one now ?
     contains_conflict = Boolean(required=True)
 
 
@@ -100,6 +100,7 @@ class DiffNode(DiffSummaryCounts):
     conflict = Field(ConflictDetails, required=False)
     contains_conflict = Boolean(required=True)
     last_changed_at = DateTime(required=False)
+    parent_node = String(required=False)
     attributes = List(DiffAttribute, required=True)
     relationships = List(DiffRelationship, required=True)
 
@@ -130,15 +131,21 @@ class DiffTreeResolver:
 
     def to_diff_node(self, enriched_node: EnrichedDiffNode) -> DiffNode:
         diff_attributes = [self.to_diff_attribute(e_attr) for e_attr in enriched_node.attributes]
-        diff_relationships = [self.to_diff_relationship(e_rel) for e_rel in enriched_node.relationships]
+        diff_relationships = [
+            self.to_diff_relationship(e_rel) for e_rel in enriched_node.relationships if e_rel.include_in_response
+        ]
         conflict = None
         if enriched_node.conflict:
             conflict = self.to_diff_conflict(enriched_conflict=enriched_node.conflict)
+
+        parent_node = enriched_node.get_parent_node()
+
         return DiffNode(
             uuid=enriched_node.uuid,
             kind=enriched_node.kind,
             label=enriched_node.label,
             status=enriched_node.action,
+            parent_node=parent_node.uuid if parent_node else None,
             last_changed_at=enriched_node.changed_at.obj,
             attributes=diff_attributes,
             relationships=diff_relationships,
