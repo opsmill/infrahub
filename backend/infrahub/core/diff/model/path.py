@@ -107,6 +107,7 @@ class EnrichedDiffSingleRelationship(BaseSummary):
     changed_at: Timestamp
     action: DiffAction
     peer_id: str
+    peer_label: str | None = field(default=None, kw_only=True)
     conflict: EnrichedDiffConflict | None = field(default=None)
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
 

@@ -169,6 +169,7 @@ class EnrichedDiffSaveQuery(Query):
                 "changed_at": enriched_single_relationship.changed_at.to_string(),
                 "action": enriched_single_relationship.action,
                 "peer_id": enriched_single_relationship.peer_id,
+                "peer_label": enriched_single_relationship.peer_label,
                 "num_added": enriched_single_relationship.num_added,
                 "num_updated": enriched_single_relationship.num_updated,
                 "num_removed": enriched_single_relationship.num_removed,
