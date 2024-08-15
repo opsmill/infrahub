@@ -309,14 +309,20 @@ class EnrichedDiffRoot(BaseSummary):
         )
 
     def add_parent(
-        self, node_id: str, parent_id: str, parent_kind: str, parent_rel_name: str, parent_rel_label: str = ""
+        self,
+        node_id: str,
+        parent_id: str,
+        parent_kind: str,
+        parent_label: str,
+        parent_rel_name: str,
+        parent_rel_label: str = "",
     ) -> EnrichedDiffNode:
         node = self.get_node(node_uuid=node_id)
         if not self.has_node(node_uuid=parent_id):
             parent = EnrichedDiffNode(
                 uuid=parent_id,
                 kind=parent_kind,
-                label="",
+                label=parent_label,
                 action=DiffAction.UNCHANGED,
                 changed_at=Timestamp(),
             )

@@ -250,73 +250,73 @@ class TestDiffRepositorySaveAndLoad:
         )
         assert len(retrieved) == 0
 
-    # async def test_filter_root_node_uuids(self, diff_repository: DiffRepository, reset_database):
-    #     enriched_diffs: list[EnrichedDiffRoot] = []
-    #     for i in range(5):
-    #         nodes = self._build_nodes(num_nodes=4, num_sub_fields=3)
-    #         enriched_diff = EnrichedRootFactory.build(
-    #             base_branch_name=self.base_branch_name,
-    #             diff_branch_name=f"branch{i}",
-    #             from_time=Timestamp(self.diff_from_time),
-    #             to_time=Timestamp(self.diff_to_time),
-    #             nodes=nodes,
-    #         )
-    #         enriched_diffs.append(enriched_diff)
-    #         await diff_repository.save(enriched_diff=enriched_diff)
+    async def test_filter_root_node_uuids(self, diff_repository: DiffRepository, reset_database):
+        enriched_diffs: list[EnrichedDiffRoot] = []
+        for i in range(5):
+            nodes = self._build_nodes(num_nodes=4, num_sub_fields=3)
+            enriched_diff = EnrichedRootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=f"branch{i}",
+                from_time=Timestamp(self.diff_from_time),
+                to_time=Timestamp(self.diff_to_time),
+                nodes=nodes,
+            )
+            enriched_diffs.append(enriched_diff)
+            await diff_repository.save(enriched_diff=enriched_diff)
 
-    #     one_diff = enriched_diffs[0]
-    #     nodes_without_parents = one_diff.get_nodes_without_parents()
-    #     nodes_without_children = set()
-    #     for node in one_diff.nodes:
-    #         if any(rel.nodes for rel in node.relationships):
-    #             continue
-    #         nodes_without_children.add(node)
-    #     nodes_with_parents_and_children = one_diff.nodes - nodes_without_parents - nodes_without_children
+        one_diff = enriched_diffs[0]
+        nodes_without_parents = one_diff.get_nodes_without_parents()
+        nodes_without_children = set()
+        for node in one_diff.nodes:
+            if any(rel.nodes for rel in node.relationships):
+                continue
+            nodes_without_children.add(node)
+        nodes_with_parents_and_children = one_diff.nodes - nodes_without_parents - nodes_without_children
 
-    #     # just root nodes
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         root_node_uuids=[n.uuid for n in nodes_without_parents],
-    #     )
-    #     assert len(retrieved) == 1
-    #     assert retrieved[0] == one_diff
-    #     # just leaf nodes
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         root_node_uuids=[n.uuid for n in nodes_without_children],
-    #     )
-    #     assert len(retrieved) == 1
-    #     assert retrieved[0].nodes == nodes_without_children
-    #     # just middle nodes
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         root_node_uuids=[n.uuid for n in nodes_with_parents_and_children],
-    #     )
-    #     assert len(retrieved) == 1
-    #     assert retrieved[0].nodes == one_diff.nodes - nodes_without_parents
-    #     # one node from each diff
-    #     first_nodes_map = {diff.uuid: diff.nodes.pop() for diff in enriched_diffs}
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         root_node_uuids=[n.uuid for n in first_nodes_map.values()],
-    #     )
-    #     assert len(retrieved) == 5
-    #     for retrieved_root in retrieved:
-    #         expected_first_node = first_nodes_map[retrieved_root.uuid]
-    #         node_with_children = expected_first_node.get_all_child_nodes() | {expected_first_node}
-    #         assert retrieved_root.nodes == node_with_children
+        # just root nodes
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            filters={"ids": [n.uuid for n in nodes_without_parents]},
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0] == one_diff
+        # just leaf nodes
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            filters={"ids": [n.uuid for n in nodes_without_children]},
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0].nodes == nodes_without_children
+        # just middle nodes
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            filters={"ids": [n.uuid for n in nodes_with_parents_and_children]},
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0].nodes == one_diff.nodes - nodes_without_parents
+        # one node from each diff
+        first_nodes_map = {diff.uuid: diff.nodes.pop() for diff in enriched_diffs}
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[rd.diff_branch_name for rd in enriched_diffs],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            filters={"ids": [n.uuid for n in first_nodes_map.values()]},
+        )
+        assert len(retrieved) == 5
+        for retrieved_root in retrieved:
+            expected_first_node = first_nodes_map[retrieved_root.uuid]
+            node_with_children = expected_first_node.get_all_child_nodes() | {expected_first_node}
+            assert retrieved_root.nodes == node_with_children
 
     # async def test_filter_limit_and_offset_flat(self, diff_repository: DiffRepository, reset_database):
     #     ordered_nodes = []

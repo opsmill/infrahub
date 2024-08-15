@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from graphene import Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
+from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
 from infrahub_sdk.utils import extract_fields
 
@@ -282,6 +282,7 @@ class DiffTreeResolver:
         branch: str | None = None,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
+        filters: dict | None = None,
         root_node_uuids: list[str] | None = None,
         limit: int | None = None,
         offset: int | None = None,
@@ -302,6 +303,13 @@ class DiffTreeResolver:
         else:
             to_timestamp = context.at or Timestamp()
 
+        # Convert filters to dict and merge root_node_uuids for compatibility
+        filters_dict = dict(filters or {})
+        if root_node_uuids and "ids" in filters_dict and isinstance(filters_dict["ids"], list):
+            filters_dict["ids"].extend(root_node_uuids)
+        elif root_node_uuids:
+            filters_dict["ids"] = root_node_uuids
+
         await diff_coordinator.update_diffs(
             base_branch=base_branch,
             diff_branch=diff_branch,
@@ -313,7 +321,7 @@ class DiffTreeResolver:
             diff_branch_names=[diff_branch.name],
             from_time=from_timestamp,
             to_time=to_timestamp,
-            root_node_uuids=root_node_uuids,
+            filters=filters_dict,
             limit=limit,
             offset=offset,
         )
@@ -398,7 +406,8 @@ DiffTreeQuery = Field(
     branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
-    root_node_uuids=List(String),
+    root_node_uuids=Argument(List(String), deprecation_reason="replaced by filters"),
+    filters=DiffTreeQueryFilters(),
     limit=Int(),
     offset=Int(),
 )

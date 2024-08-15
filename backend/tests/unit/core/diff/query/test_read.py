@@ -18,13 +18,14 @@ from tests.helpers.test_app import TestInfrahub
 
 class TestDiffReadQuery(TestInfrahub):
     @pytest.fixture(scope="class")
-    async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+    async def hierarchical_location_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         SCHEMA: dict[str, Any] = {
             "generics": [
                 {
                     "name": "Generic",
                     "namespace": "Location",
                     "default_filter": "name__value",
+                    "display_labels": ["name__value"],
                     "hierarchical": True,
                     "attributes": [
                         {"name": "name", "kind": "Text", "unique": True},
@@ -65,6 +66,7 @@ class TestDiffReadQuery(TestInfrahub):
                     "name": "Thing",
                     "namespace": "Test",
                     "default_filter": "name__value",
+                    "display_labels": ["name__value"],
                     "attributes": [
                         {"name": "name", "kind": "Text", "unique": True},
                     ],

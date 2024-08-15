@@ -82,7 +82,6 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                     continue
 
                 node = enriched_diff_root.get_node(node_uuid=node_id)
-
                 parent_rel = hierarchy_schema.get_relationship(name="parent")
 
                 current_node = node
@@ -91,6 +90,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                         node_id=current_node.uuid,
                         parent_id=str(ancestor.uuid),
                         parent_kind=ancestor.kind,
+                        parent_label="",
                         parent_rel_name=parent_rel.name,
                         parent_rel_label=parent_rel.label or "",
                     )
@@ -147,6 +147,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                 node_id=node.uuid,
                 parent_id=str(peer_parent.peer_id),
                 parent_kind=peer_parent.peer_kind,
+                parent_label="",
                 parent_rel_name=parent_rel.name,
                 parent_rel_label=parent_rel.label or "",
             )

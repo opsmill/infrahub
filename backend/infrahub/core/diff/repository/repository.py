@@ -3,9 +3,9 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 from ..model.path import EnrichedDiffRoot, TimeRange
+from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.filters import EnrichedDiffQueryFilters
-from .get_query import EnrichedDiffGetQuery
 from .save_query import EnrichedDiffSaveQuery
 from .time_range_query import EnrichedDiffTimeRangeQuery
 
@@ -20,7 +20,7 @@ class DiffRepository:
         diff_branch_names: list[str],
         from_time: Timestamp,
         to_time: Timestamp,
-        root_node_uuids: list[str] | None = None,
+        filters: dict | None = None,
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[EnrichedDiffRoot]:
@@ -32,15 +32,14 @@ class DiffRepository:
             diff_branch_names=diff_branch_names,
             from_time=from_time,
             to_time=to_time,
-            root_node_uuids=root_node_uuids,
+            filters=EnrichedDiffQueryFilters(**dict(filters or {})),
             max_depth=final_max_depth,
             limit=final_limit,
             offset=offset,
         )
         await query.execute(db=self.db)
         diff_roots = await query.get_enriched_diff_roots()
-        if root_node_uuids:
-            diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
+        diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
         return diff_roots
 
     async def save(self, enriched_diff: EnrichedDiffRoot) -> None:
