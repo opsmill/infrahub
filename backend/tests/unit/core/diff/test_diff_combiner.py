@@ -496,18 +496,21 @@ class TestDiffCombiner:
             changed_at=removed_element_2.changed_at,
             action=DiffAction.REMOVED,
             peer_id=removed_element_peer_id,
+            peer_label=removed_element_2.peer_label,
             properties=expected_removed_props,
         )
         expected_added_element = EnrichedDiffSingleRelationship(
             changed_at=added_element_2.changed_at,
             action=DiffAction.ADDED,
             peer_id=added_element_peer_id,
+            peer_label=added_element_2.peer_label,
             properties=expected_added_props,
         )
         expected_updated_element = EnrichedDiffSingleRelationship(
             changed_at=updated_element_2.changed_at,
             action=DiffAction.UPDATED,
             peer_id=updated_element_peer_id,
+            peer_label=updated_element_2.peer_label,
             properties={
                 EnrichedDiffProperty(
                     property_type=DatabaseEdgeType.HAS_OWNER,
