@@ -18,7 +18,6 @@ class DiffRepository:
         diff_branch_names: list[str],
         from_time: Timestamp,
         to_time: Timestamp,
-        root_node_uuids: list[str] | None = None,
         filters: dict | None = None,
         max_depth: int | None = None,
         limit: int | None = None,
@@ -32,7 +31,6 @@ class DiffRepository:
             diff_branch_names=diff_branch_names,
             from_time=from_time,
             to_time=to_time,
-            root_node_uuids=root_node_uuids,
             filters=EnrichedDiffGetQueryFilters(**dict(filters or {})),
             max_depth=final_max_depth,
             limit=final_limit,
@@ -40,8 +38,7 @@ class DiffRepository:
         )
         await query.execute(db=self.db)
         diff_roots = await query.get_enriched_diff_roots()
-        if root_node_uuids:
-            diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
+        diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
         return diff_roots
 
     async def save(self, enriched_diff: EnrichedDiffRoot) -> None:

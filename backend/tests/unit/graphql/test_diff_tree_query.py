@@ -110,6 +110,19 @@ query GetDiffTree($branch: String){
 }
 """
 
+DIFF_TREE_QUERY_FILTERS = """
+query ($branch: String, $filters: DiffTreeQueryFilters){
+    DiffTree (branch: $branch, filters: $filters) {
+        nodes {
+            uuid
+            kind
+            label
+            status
+        }
+    }
+}
+"""
+
 
 async def test_diff_tree_empty_diff(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     diff_branch = await create_branch(db=db, branch_name="diff")
@@ -267,17 +280,31 @@ async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: 
 
 
 @pytest.mark.parametrize(
-    "filters,nbr_results",
+    "filters,labels",
     [
-        pytest.param({"kind": {"includes": ["TestThing"]}}, 1, id="kind-includes"),
-        pytest.param({"kind": {"excludes": ["TestThing"]}}, 4, id="kind-excludes"),
-        pytest.param({"namespace": {"includes": ["Test"]}}, 1, id="namespace-includes"),
-        pytest.param({"namespace": {"excludes": ["Location"]}}, 1, id="namespace-excludes"),
+        pytest.param({}, ["THING1", "europe", "paris", "paris rack2", "paris-r1", "thing3"], id="no-filters"),
+        pytest.param({"kind": {"includes": ["TestThing"]}}, ["THING1", "thing3"], id="kind-includes"),
+        pytest.param(
+            {"kind": {"excludes": ["TestThing"]}}, ["europe", "paris", "paris rack2", "paris-r1"], id="kind-excludes"
+        ),
+        pytest.param({"namespace": {"includes": ["Test"]}}, ["THING1", "thing3"], id="namespace-includes"),
+        pytest.param({"namespace": {"excludes": ["Location"]}}, ["THING1", "thing3"], id="namespace-excludes"),
+        pytest.param(
+            {"status": {"includes": ["UPDATED"]}}, ["THING1", "paris rack2", "paris-r1"], id="status-includes"
+        ),
+        pytest.param(
+            {"status": {"excludes": ["UNCHANGED"]}},
+            ["THING1", "paris rack2", "paris-r1", "thing3"],
+            id="status-excludes",
+        ),
+        pytest.param(
+            {"kind": {"includes": ["TestThing"]}, "status": {"excludes": ["ADDED"]}},
+            ["THING1"],
+            id="kind-includes-status-excludes",
+        ),
     ],
 )
-async def test_diff_filters(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, nbr_results
-):
+async def test_diff_filters(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, labels):
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
 
@@ -291,6 +318,10 @@ async def test_diff_filters(
 
     diff_branch = await create_branch(db=db, branch_name="diff")
 
+    thing3_branch = await Node.init(db=db, schema="TestThing", branch=diff_branch)
+    await thing3_branch.new(db=db, name="thing3", location=rack1_main)
+    await thing3_branch.save(db=db)
+
     # rprint(hierarchical_location_data)
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
@@ -303,79 +334,21 @@ async def test_diff_filters(
     await rack2_branch.save(db=db)
 
     thing1_branch = await NodeManager.get_one(db=db, id=thing1_main.id, branch=diff_branch)
-    thing1_branch.name.value = "THISTHING1"
+    thing1_branch.name.value = "THING1"
     await thing1_branch.save(db=db)
 
-    query = """
-    query ($branch: String, $filters: DiffTreeQueryFilters){
-        DiffTree (branch: $branch, filters: $filters) {
-            nodes {
-                uuid
-                kind
-                label
-            }
-        }
-    }
-    """
+    thing2_branch = await NodeManager.get_one(db=db, id=thing2_main.id, branch=diff_branch)
+    await thing2_branch.delete(db=db)
 
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
 
-    # KIND INCLUDE
-    # filters = {"kind": {"includes": ["TestThing"]}}
     result = await graphql(
         schema=params.schema,
-        source=query,
+        source=DIFF_TREE_QUERY_FILTERS,
         context_value=params.context,
         root_value=None,
         variable_values={"branch": diff_branch.name, "filters": filters},
     )
 
     assert result.errors is None
-    assert len(result.data["DiffTree"]["nodes"]) == nbr_results
-    # node_ids = [ node["uuid"] for node in result.data["DiffTree"]["nodes"] ]
-    # assert node_ids == [thing1_main.id]
-
-    # # KIND EXCLUDE
-    # filters = {"kind": {"excludes": ["TestThing"]}}
-    # result = await graphql(
-    #     schema=params.schema,
-    #     source=query,
-    #     context_value=params.context,
-    #     root_value=None,
-    #     variable_values={"branch": diff_branch.name, "filters": filters}
-    # )
-
-    # assert result.errors is None
-    # assert len(result.data["DiffTree"]["nodes"]) == 4
-    # node_ids = [ node["uuid"] for node in result.data["DiffTree"]["nodes"] ]
-    # assert thing1_main.id not in node_ids
-
-    # # NAMESPACE INCLUDE
-    # filters = {"namespace": {"includes": ["Location"]}}
-    # result = await graphql(
-    #     schema=params.schema,
-    #     source=query,
-    #     context_value=params.context,
-    #     root_value=None,
-    #     variable_values={"branch": diff_branch.name, "filters": filters}
-    # )
-
-    # assert result.errors is None
-    # assert len(result.data["DiffTree"]["nodes"]) == 4
-    # node_ids = [ node["uuid"] for node in result.data["DiffTree"]["nodes"] ]
-    # assert thing1_main.id not in node_ids
-
-    # # NAMESPACE EXCLUDE
-    # filters = {"namespace": {"excludes": ["Location"]}}
-    # result = await graphql(
-    #     schema=params.schema,
-    #     source=query,
-    #     context_value=params.context,
-    #     root_value=None,
-    #     variable_values={"branch": diff_branch.name, "filters": filters}
-    # )
-
-    # assert result.errors is None
-    # assert len(result.data["DiffTree"]["nodes"]) == 1
-    # node_ids = [ node["uuid"] for node in result.data["DiffTree"]["nodes"] ]
-    # assert node_ids == [thing1_main.id]
+    assert set([node["label"] for node in result.data["DiffTree"]["nodes"]]) == set(labels)

@@ -288,14 +288,21 @@ class DiffTreeResolver:
             from_time=from_timestamp,
             to_time=to_timestamp,
         )
+
+        # Convert filters to dict and merge root_node_uuids for compatibility
+        filters_dict = dict(filters or {})
+        if root_node_uuids and "ids" in filters_dict and isinstance(filters_dict["ids"], list):
+            filters_dict["ids"].extend(root_node_uuids)
+        elif root_node_uuids:
+            filters_dict["ids"] = root_node_uuids
+
         enriched_diffs = await diff_repo.get(
             base_branch_name=base_branch.name,
             diff_branch_names=[diff_branch.name],
             from_time=from_timestamp,
             to_time=to_timestamp,
-            root_node_uuids=root_node_uuids,
             max_depth=max_depth,
-            filters=filters,
+            filters=filters_dict,
             limit=limit,
             offset=offset,
         )
@@ -311,9 +318,14 @@ class IncExclFilterOptions(InputObjectType):
     excludes = List(String)
 
 
+class IncExclFilterStatusOptions(InputObjectType):
+    includes = List(GrapheneDiffActionEnum)
+    excludes = List(GrapheneDiffActionEnum)
+
+
 class DiffTreeQueryFilters(InputObjectType):
     ids = List(String)
-    action = IncExclFilterOptions()
+    status = IncExclFilterStatusOptions()
     kind = IncExclFilterOptions()
     namespace = IncExclFilterOptions()
 

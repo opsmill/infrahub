@@ -47,15 +47,26 @@ class IncExclFilterOptions(BaseModel):
         return False
 
 
+class IncExclActionFilterOptions(BaseModel):
+    includes: set[DiffAction] = Field(default_factory=list)
+    excludes: set[DiffAction] = Field(default_factory=list)
+
+    @property
+    def is_empty(self) -> bool:
+        if not self.includes and not self.excludes:
+            return True
+        return False
+
+
 class EnrichedDiffGetQueryFilters(BaseModel):
     ids: list[str] = Field(default_factory=list)
     kind: IncExclFilterOptions = IncExclFilterOptions()
     namespace: IncExclFilterOptions = IncExclFilterOptions()
-    action: IncExclFilterOptions = IncExclFilterOptions()
+    status: IncExclActionFilterOptions = IncExclActionFilterOptions()
 
     @property
     def is_empty(self) -> bool:
-        if not self.ids and self.kind.is_empty and self.namespace.is_empty and self.action.is_empty:
+        if not self.ids and self.kind.is_empty and self.namespace.is_empty and self.status.is_empty:
             return True
         return False
 
@@ -74,7 +85,6 @@ class EnrichedDiffGetQuery(Query):
         from_time: Timestamp,
         to_time: Timestamp,
         max_depth: int,
-        root_node_uuids: list[str] | None = None,
         filters: EnrichedDiffGetQueryFilters | None = None,
         **kwargs: Any,
     ) -> None:
@@ -83,7 +93,6 @@ class EnrichedDiffGetQuery(Query):
         self.diff_branch_names = diff_branch_names
         self.from_time = from_time
         self.to_time = to_time
-        self.root_node_uuids = root_node_uuids
         self.max_depth = max_depth
         self.filters = filters or EnrichedDiffGetQueryFilters()
 
@@ -93,44 +102,11 @@ class EnrichedDiffGetQuery(Query):
             "diff_branches": self.diff_branch_names,
             "from_time": self.from_time.to_string(),
             "to_time": self.to_time.to_string(),
-            "root_node_uuids": self.root_node_uuids,
             "limit": self.limit,
             "offset": self.offset,
         }
 
-        filters_list = []
-        default_filter = "$root_node_uuids IS NULL AND NOT exists((:DiffRelationship)-[:DIFF_HAS_NODE]->(diff_node))"
-        if not self.filters.is_empty:
-            if self.filters.ids:
-                self.params["ids"] = self.filters.ids
-                filters_list.append("diff_node.uuid in $ids")
-            if self.filters.kind.includes or self.filters.kind.excludes:
-                filter_kind = []
-                if self.filters.kind.includes:
-                    filter_kind.append("diff_node.kind IN $kind_includes")
-                    self.params["kind_includes"] = self.filters.kind.includes
-
-                if self.filters.kind.excludes:
-                    filter_kind.append("NOT(diff_node.kind IN $kind_excludes)")
-                    self.params["kind_excludes"] = self.filters.kind.excludes
-
-                filters_list.append(filter_and(filter_kind))
-            if self.filters.namespace.includes or self.filters.namespace.excludes:
-                filter_namespace = []
-                if self.filters.namespace.includes:
-                    filter_namespace.append(
-                        filter_or([f'diff_node.kind STARTS WITH "{ns}"' for ns in self.filters.namespace.includes])
-                    )
-                if self.filters.namespace.excludes:
-                    filter_namespace.append(
-                        filter_and(
-                            [f'NOT(diff_node.kind STARTS WITH "{ns}")' for ns in self.filters.namespace.excludes]
-                        )
-                    )
-                filters_list.append(filter_and(filter_namespace))
-
-        if not filters_list:
-            filters_list.append(default_filter)
+        filters = self.build_filters()
 
         # ruff: noqa: E501
         query_1 = """
@@ -182,7 +158,7 @@ class EnrichedDiffGetQuery(Query):
         WITH nrt[0] AS diff_root, nrt[1] AS diff_node
         WITH diff_root, diff_node
         // if depth limit, make sure not to exceed it when traversing linked nodes
-        """ % {"filters": filter_and(filters_list)}
+        """ % {"filters": filter_and(filters)}
 
         self.add_to_query(query=query_1)
 
@@ -266,6 +242,63 @@ class EnrichedDiffGetQuery(Query):
             "diff_relationships",
         ]
         self.order_by = ["diff_root.diff_branch_name ASC", "diff_root.from_time ASC", "diff_node.label ASC"]
+
+    def build_filters(self) -> list[str]:
+        default_filter = "NOT exists((:DiffRelationship)-[:DIFF_HAS_NODE]->(diff_node))"
+
+        if self.filters.ids:
+            self.params["ids"] = self.filters.ids
+            return ["diff_node.uuid in $ids"]
+
+        filters_list = []
+
+        if self.filters.is_empty:
+            return [default_filter]
+
+        # KIND, Pass the list directly
+        if not self.filters.kind.is_empty:
+            filter_kind = []
+            if self.filters.kind.includes:
+                filter_kind.append("diff_node.kind IN $filter_kind_includes")
+                self.params["filter_kind_includes"] = self.filters.kind.includes
+
+            if self.filters.kind.excludes:
+                filter_kind.append("NOT(diff_node.kind IN $filter_kind_excludes)")
+                self.params["filter_kind_excludes"] = self.filters.kind.excludes
+
+            filters_list.append(filter_and(filter_kind))
+
+        # NAMESPACE, match on the start of the kind
+        if not self.filters.namespace.is_empty:
+            filter_namespace = []
+            if self.filters.namespace.includes:
+                filter_namespace.append(
+                    filter_or([f'diff_node.kind STARTS WITH "{ns}"' for ns in self.filters.namespace.includes])
+                )
+            if self.filters.namespace.excludes:
+                filter_namespace.append(
+                    filter_and([f'NOT(diff_node.kind STARTS WITH "{ns}")' for ns in self.filters.namespace.excludes])
+                )
+            filters_list.append(filter_and(filter_namespace))
+
+        # STATUS, Pass the list directly
+        if not self.filters.status.is_empty:
+            filter_action = []
+            if self.filters.status.includes:
+                filter_action.append("diff_node.action IN $filter_status_includes")
+                self.params["filter_status_includes"] = [
+                    str(item.value).lower() for item in self.filters.status.includes
+                ]
+
+            if self.filters.status.excludes:
+                filter_action.append("NOT(diff_node.action IN $filter_status_excludes)")
+                self.params["filter_status_excludes"] = [
+                    str(item.value).lower() for item in self.filters.status.excludes
+                ]
+
+            filters_list.append(filter_and(filter_action))
+
+        return filters_list
 
     async def get_enriched_diff_roots(self) -> list[EnrichedDiffRoot]:
         deserializer = EnrichedDiffDeserializer()
