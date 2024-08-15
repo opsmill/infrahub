@@ -8,7 +8,7 @@ from .interface import DiffEnricherInterface
 class DiffPathIdentifierEnricher(DiffEnricherInterface):
     """Add path identifiers to every element in the diff"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._diff_branch_name: str | None = None
 
     @property
