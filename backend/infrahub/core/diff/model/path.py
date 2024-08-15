@@ -63,6 +63,7 @@ class EnrichedDiffProperty:
     previous_value: Any
     new_value: Any
     action: DiffAction
+    path_identifier: str = field(default="", kw_only=True)
     conflict: EnrichedDiffConflict | None = field(default=None)
 
     def __hash__(self) -> int:
@@ -82,6 +83,7 @@ class EnrichedDiffProperty:
 @dataclass
 class EnrichedDiffAttribute(BaseSummary):
     name: str
+    path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp
     action: DiffAction
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
@@ -108,6 +110,7 @@ class EnrichedDiffSingleRelationship(BaseSummary):
     action: DiffAction
     peer_id: str
     peer_label: str | None = field(default=None, kw_only=True)
+    path_identifier: str = field(default="", kw_only=True)
     conflict: EnrichedDiffConflict | None = field(default=None)
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
 
@@ -137,6 +140,7 @@ class EnrichedDiffSingleRelationship(BaseSummary):
 class EnrichedDiffRelationship(BaseSummary):
     name: str
     label: str
+    path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp
     action: DiffAction
     relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)
@@ -172,6 +176,7 @@ class EnrichedDiffRelationship(BaseSummary):
             label=node.get("label"),
             changed_at=Timestamp(node.get("changed_at")),
             action=node.get("action"),
+            path_identifier=str(node.get("path_identifier")),
             num_added=int(node.get("num_added")),
             num_conflicts=int(node.get("num_conflicts")),
             num_removed=int(node.get("num_removed")),
@@ -185,6 +190,7 @@ class EnrichedDiffNode(BaseSummary):
     uuid: str
     kind: str
     label: str
+    path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp
     action: DiffAction
     conflict: EnrichedDiffConflict | None = field(default=None)

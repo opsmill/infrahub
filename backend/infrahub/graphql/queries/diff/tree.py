@@ -61,6 +61,7 @@ class DiffProperty(ObjectType):
     previous_value = String(required=False)
     new_value = String(required=False)
     status = Field(GrapheneDiffActionEnum, required=True)
+    path_identifier = String(required=True)
     conflict = Field(ConflictDetails, required=False)
 
 
@@ -68,6 +69,7 @@ class DiffAttribute(DiffSummaryCounts):
     name = String(required=True)
     last_changed_at = DateTime(required=True)
     status = Field(GrapheneDiffActionEnum, required=True)
+    path_identifier = String(required=True)
     properties = List(DiffProperty)
     contains_conflict = Boolean(required=True)
 
@@ -77,6 +79,7 @@ class DiffSingleRelationship(DiffSummaryCounts):
     status = Field(GrapheneDiffActionEnum, required=True)
     peer_id = String(required=True)
     peer_label = String(required=False)
+    path_identifier = String(required=True)
     contains_conflict = Boolean(required=True)
     conflict = Field(ConflictDetails, required=False)
     properties = List(DiffProperty)
@@ -87,6 +90,7 @@ class DiffRelationship(DiffSummaryCounts):
     label = String(required=False)
     last_changed_at = DateTime(required=False)
     status = Field(GrapheneDiffActionEnum, required=True)
+    path_identifier = String(required=True)
     elements = List(DiffSingleRelationship, required=True)
     contains_conflict = Boolean(required=True)
 
@@ -96,6 +100,7 @@ class DiffNode(DiffSummaryCounts):
     kind = String(required=True)
     label = String(required=True)
     status = Field(GrapheneDiffActionEnum, required=True)
+    path_identifier = String(required=True)
     conflict = Field(ConflictDetails, required=False)
     contains_conflict = Boolean(required=True)
     last_changed_at = DateTime(required=False)
@@ -146,6 +151,7 @@ class DiffTreeResolver:
             status=enriched_node.action,
             parent_node=parent_node.uuid if parent_node else None,
             last_changed_at=enriched_node.changed_at.obj,
+            path_identifier=enriched_node.path_identifier,
             attributes=diff_attributes,
             relationships=diff_relationships,
             contains_conflict=enriched_node.contains_conflict,
@@ -162,6 +168,7 @@ class DiffTreeResolver:
             name=enriched_attribute.name,
             last_changed_at=enriched_attribute.changed_at.obj,
             status=enriched_attribute.action,
+            path_identifier=enriched_attribute.path_identifier,
             properties=diff_properties,
             contains_conflict=enriched_attribute.contains_conflict,
             num_added=enriched_attribute.num_added,
@@ -177,6 +184,7 @@ class DiffTreeResolver:
             label=enriched_relationship.label,
             last_changed_at=enriched_relationship.changed_at.obj,
             status=enriched_relationship.action,
+            path_identifier=enriched_relationship.path_identifier,
             elements=diff_elements,
             contains_conflict=enriched_relationship.contains_conflict,
             num_added=enriched_relationship.num_added,
@@ -195,6 +203,7 @@ class DiffTreeResolver:
             status=enriched_element.action,
             peer_id=enriched_element.peer_id,
             peer_label=enriched_element.peer_label,
+            path_identifier=enriched_element.path_identifier,
             conflict=conflict,
             properties=diff_properties,
             contains_conflict=enriched_element.contains_conflict,
@@ -214,6 +223,7 @@ class DiffTreeResolver:
             previous_value=enriched_property.previous_value,
             new_value=enriched_property.new_value,
             status=enriched_property.action,
+            path_identifier=enriched_property.path_identifier,
             conflict=conflict,
         )
 

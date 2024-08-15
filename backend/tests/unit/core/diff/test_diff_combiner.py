@@ -139,6 +139,7 @@ class TestDiffCombiner:
                 label=diff_node_2.label,
                 changed_at=diff_node_2.changed_at,
                 action=expected_action,
+                path_identifier=diff_node_2.path_identifier,
                 attributes=set(),
                 relationships=set(),
             )
@@ -264,6 +265,7 @@ class TestDiffCombiner:
             changed_at=added_attr_owner_property_2.changed_at,
             previous_value=added_attr_owner_property_1.previous_value,
             new_value=added_attr_owner_property_2.new_value,
+            path_identifier=added_attr_owner_property_2.path_identifier,
             action=DiffAction.ADDED,
         )
         expected_updated_combined_property = EnrichedDiffProperty(
@@ -271,18 +273,21 @@ class TestDiffCombiner:
             changed_at=updated_attr_value_property_2.changed_at,
             previous_value=updated_attr_value_property_1.previous_value,
             new_value=updated_attr_value_property_2.new_value,
+            path_identifier=updated_attr_value_property_2.path_identifier,
             action=DiffAction.UPDATED,
         )
         expected_added_combined_attr = EnrichedDiffAttribute(
             name=added_attr_name,
             changed_at=added_attribute_2.changed_at,
             action=DiffAction.ADDED,
+            path_identifier=added_attribute_2.path_identifier,
             properties={earlier_only_property, later_only_property, expected_added_combined_property},
         )
         expected_updated_combined_attr = EnrichedDiffAttribute(
             name=updated_attr_name,
             changed_at=updated_attribute_2.changed_at,
             action=DiffAction.UPDATED,
+            path_identifier=updated_attribute_2.path_identifier,
             properties={expected_updated_combined_property},
         )
         expected_nodes = {
@@ -292,6 +297,7 @@ class TestDiffCombiner:
                 label=later_node_1.label,
                 changed_at=later_node_1.changed_at,
                 action=DiffAction.ADDED,
+                path_identifier=later_node_1.path_identifier,
                 attributes={attr_earlier_only, attr_later_only, expected_added_combined_attr},
             ),
             EnrichedDiffNode(
@@ -300,6 +306,7 @@ class TestDiffCombiner:
                 label=later_node_2.label,
                 changed_at=later_node_2.changed_at,
                 action=DiffAction.UPDATED,
+                path_identifier=later_node_2.path_identifier,
                 attributes={expected_updated_combined_attr},
             ),
         }
@@ -364,12 +371,15 @@ class TestDiffCombiner:
             changed_at=later_peer_property.changed_at,
             previous_value=old_peer_id,
             new_value=new_peer_id,
+            path_identifier=later_peer_property.path_identifier,
             action=DiffAction.UPDATED,
         )
         expected_relationship_element = EnrichedDiffSingleRelationship(
             changed_at=later_element.changed_at,
             action=DiffAction.UPDATED,
             peer_id=new_peer_id,
+            peer_label=later_element.peer_label,
+            path_identifier=later_element.path_identifier,
             properties={early_only_property, later_only_property, expected_peer_property},
         )
         expected_relationship = EnrichedDiffRelationship(
@@ -377,6 +387,7 @@ class TestDiffCombiner:
             label=later_relationship.label,
             changed_at=later_relationship.changed_at,
             action=DiffAction.ADDED,
+            path_identifier=later_relationship.path_identifier,
             relationships={expected_relationship_element},
         )
         expected_node = EnrichedDiffNode(
@@ -385,6 +396,7 @@ class TestDiffCombiner:
             label=later_node.label,
             changed_at=later_node.changed_at,
             action=DiffAction.UPDATED,
+            path_identifier=later_node.path_identifier,
             relationships={expected_relationship},
             attributes=(early_node.attributes | later_node.attributes),
         )
@@ -418,6 +430,7 @@ class TestDiffCombiner:
                     changed_at=r2.changed_at,
                     previous_value=r1.previous_value,
                     new_value=None,
+                    path_identifier=r2.path_identifier,
                     action=DiffAction.REMOVED,
                 )
             )
@@ -442,6 +455,7 @@ class TestDiffCombiner:
                     changed_at=a2.changed_at,
                     previous_value=None,
                     new_value=a2.new_value,
+                    path_identifier=a2.path_identifier,
                     action=DiffAction.ADDED,
                 )
             )
@@ -497,6 +511,7 @@ class TestDiffCombiner:
             action=DiffAction.REMOVED,
             peer_id=removed_element_peer_id,
             peer_label=removed_element_2.peer_label,
+            path_identifier=removed_element_2.path_identifier,
             properties=expected_removed_props,
         )
         expected_added_element = EnrichedDiffSingleRelationship(
@@ -504,6 +519,7 @@ class TestDiffCombiner:
             action=DiffAction.ADDED,
             peer_id=added_element_peer_id,
             peer_label=added_element_2.peer_label,
+            path_identifier=added_element_2.path_identifier,
             properties=expected_added_props,
         )
         expected_updated_element = EnrichedDiffSingleRelationship(
@@ -511,12 +527,14 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED,
             peer_id=updated_element_peer_id,
             peer_label=updated_element_2.peer_label,
+            path_identifier=updated_element_2.path_identifier,
             properties={
                 EnrichedDiffProperty(
                     property_type=DatabaseEdgeType.HAS_OWNER,
                     changed_at=updated_property_2.changed_at,
                     previous_value=updated_property_1.previous_value,
                     new_value=updated_property_2.new_value,
+                    path_identifier=updated_property_2.path_identifier,
                     action=DiffAction.UPDATED,
                 )
             },
@@ -526,6 +544,7 @@ class TestDiffCombiner:
             label=relationship_group_2.label,
             changed_at=relationship_group_2.changed_at,
             action=DiffAction.UPDATED,
+            path_identifier=relationship_group_2.path_identifier,
             relationships={expected_added_element, expected_removed_element, expected_updated_element},
         )
         expected_node = EnrichedDiffNode(
@@ -534,6 +553,7 @@ class TestDiffCombiner:
             label=node_2.label,
             changed_at=node_2.changed_at,
             action=DiffAction.UPDATED,
+            path_identifier=node_2.path_identifier,
             relationships={expected_relationship},
             attributes=(node_1.attributes | node_2.attributes),
         )
@@ -577,6 +597,7 @@ class TestDiffCombiner:
             label=child_node_2.label,
             changed_at=child_node_2.changed_at,
             action=DiffAction.UPDATED,
+            path_identifier=child_node_2.path_identifier,
             attributes=child_node_1.attributes | child_node_2.attributes,
             relationships=set(),
         )
@@ -585,6 +606,7 @@ class TestDiffCombiner:
             label=parent_rel_2.label,
             changed_at=parent_rel_2.changed_at,
             action=DiffAction.UNCHANGED,
+            path_identifier=parent_rel_2.path_identifier,
             relationships=set(),
             nodes={expected_child_node},
         )
@@ -629,6 +651,7 @@ class TestDiffCombiner:
             label=child_node_2.label,
             changed_at=child_node_2.changed_at,
             action=DiffAction.UPDATED,
+            path_identifier=child_node_2.path_identifier,
             attributes=child_node_1.attributes | child_node_2.attributes,
             relationships=set(),
         )
@@ -637,6 +660,7 @@ class TestDiffCombiner:
             label=parent_rel_2.label,
             changed_at=parent_rel_2.changed_at,
             action=DiffAction.UNCHANGED,
+            path_identifier=parent_rel_2.path_identifier,
             relationships=set(),
             nodes={expected_child_node},
         )
