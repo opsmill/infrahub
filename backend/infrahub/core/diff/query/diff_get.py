@@ -329,11 +329,12 @@ class EnrichedDiffDeserializer:
         if node_key in self._diff_node_map:
             return self._diff_node_map[node_key]
 
+        timestamp_str = self._get_str_or_none_property_value(node=node_node, property_name="changed_at")
         enriched_node = EnrichedDiffNode(
             uuid=node_uuid,
             kind=str(node_node.get("kind")),
             label=str(node_node.get("label")),
-            changed_at=Timestamp(node_node.get("changed_at")),
+            changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(node_node.get("action"))),
             path_identifier=str(node_node.get("path_identifier")),
             num_added=int(node_node.get("num_added")),
@@ -480,15 +481,21 @@ class EnrichedDiffDeserializer:
         diff_branch_value = self._get_str_or_none_property_value(
             node=diff_conflict_node, property_name="diff_branch_value"
         )
+        base_timestamp_str = self._get_str_or_none_property_value(
+            node=diff_conflict_node, property_name="base_branch_changed_at"
+        )
+        diff_timestamp_str = self._get_str_or_none_property_value(
+            node=diff_conflict_node, property_name="diff_branch_changed_at"
+        )
         selected_branch = self._get_str_or_none_property_value(node=diff_conflict_node, property_name="selected_branch")
         conflict = EnrichedDiffConflict(
             uuid=str(diff_conflict_node.get("uuid")),
             base_branch_action=DiffAction(str(diff_conflict_node.get("base_branch_action"))),
             base_branch_value=base_branch_value,
-            base_branch_changed_at=Timestamp(str(diff_conflict_node.get("base_branch_changed_at"))),
+            base_branch_changed_at=Timestamp(base_timestamp_str) if base_timestamp_str else None,
             diff_branch_action=DiffAction(str(diff_conflict_node.get("diff_branch_action"))),
             diff_branch_value=diff_branch_value,
-            diff_branch_changed_at=Timestamp(str(diff_conflict_node.get("diff_branch_changed_at"))),
+            diff_branch_changed_at=Timestamp(diff_timestamp_str) if diff_timestamp_str else None,
             selected_branch=ConflictSelection(selected_branch) if selected_branch else None,
         )
 

@@ -49,10 +49,10 @@ class EnrichedDiffConflict:
     uuid: str
     base_branch_action: DiffAction
     base_branch_value: Any
-    base_branch_changed_at: Timestamp
     diff_branch_action: DiffAction
     diff_branch_value: Any
-    diff_branch_changed_at: Timestamp
+    base_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
+    diff_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     selected_branch: ConflictSelection | None = field(default=None)
 
 
@@ -141,7 +141,7 @@ class EnrichedDiffRelationship(BaseSummary):
     name: str
     label: str
     path_identifier: str = field(default="", kw_only=True)
-    changed_at: Timestamp
+    changed_at: Timestamp | None = field(default=None, kw_only=True)
     action: DiffAction
     relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
@@ -171,10 +171,11 @@ class EnrichedDiffRelationship(BaseSummary):
 
     @classmethod
     def from_graph(cls, node: Neo4jNode) -> Self:
+        timestamp_str = node.get("changed_at")
         return cls(
             name=node.get("name"),
             label=node.get("label"),
-            changed_at=Timestamp(node.get("changed_at")),
+            changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(node.get("action"))),
             path_identifier=str(node.get("path_identifier")),
             num_added=int(node.get("num_added")),
@@ -191,7 +192,7 @@ class EnrichedDiffNode(BaseSummary):
     kind: str
     label: str
     path_identifier: str = field(default="", kw_only=True)
-    changed_at: Timestamp
+    changed_at: Timestamp | None = field(default=None, kw_only=True)
     action: DiffAction
     conflict: EnrichedDiffConflict | None = field(default=None)
     attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
@@ -324,7 +325,7 @@ class EnrichedDiffRoot(BaseSummary):
                 kind=parent_kind,
                 label=parent_label,
                 action=DiffAction.UNCHANGED,
-                changed_at=Timestamp(),
+                changed_at=None,
             )
             self.nodes.add(parent)
 
@@ -339,7 +340,7 @@ class EnrichedDiffRoot(BaseSummary):
                 EnrichedDiffRelationship(
                     name=parent_rel_name,
                     label=parent_rel_label,
-                    changed_at=Timestamp(),
+                    changed_at=None,
                     action=DiffAction.UNCHANGED,
                     nodes={parent},
                 )

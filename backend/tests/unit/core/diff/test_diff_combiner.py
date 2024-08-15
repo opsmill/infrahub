@@ -124,7 +124,12 @@ class TestDiffCombiner:
     async def test_node_action_addition(self, action_1, action_2, expected_action):
         diff_node_1 = EnrichedNodeFactory.build(action=action_1, attributes=set(), relationships=set())
         diff_node_2 = EnrichedNodeFactory.build(
-            uuid=diff_node_1.uuid, kind=diff_node_1.kind, action=action_2, attributes=set(), relationships=set()
+            uuid=diff_node_1.uuid,
+            kind=diff_node_1.kind,
+            action=action_2,
+            attributes=set(),
+            relationships=set(),
+            changed_at=Timestamp(),
         )
         self.diff_root_1.nodes = {diff_node_1}
         self.diff_root_2.nodes = {diff_node_2}
@@ -255,6 +260,7 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED,
             attributes={updated_attribute_2},
             relationships=set(),
+            changed_at=Timestamp(),
         )
 
         self.diff_root_1.nodes = {earlier_node_1, earlier_node_2}
@@ -355,13 +361,21 @@ class TestDiffCombiner:
             name=relationship_name, action=DiffAction.ADDED, relationships={early_element}, nodes=set()
         )
         later_relationship = EnrichedRelationshipGroupFactory.build(
-            name=relationship_name, action=DiffAction.UPDATED, relationships={later_element}, nodes=set()
+            name=relationship_name,
+            action=DiffAction.UPDATED,
+            relationships={later_element},
+            nodes=set(),
+            changed_at=Timestamp(),
         )
         early_node = EnrichedNodeFactory.build(
             kind="TestCar", action=DiffAction.UPDATED, relationships={early_relationship}
         )
         later_node = EnrichedNodeFactory.build(
-            uuid=early_node.uuid, kind="TestCar", action=DiffAction.UPDATED, relationships={later_relationship}
+            uuid=early_node.uuid,
+            kind="TestCar",
+            action=DiffAction.UPDATED,
+            relationships={later_relationship},
+            changed_at=Timestamp(),
         )
         self.diff_root_1.nodes = {early_node}
         self.diff_root_2.nodes = {later_node}
@@ -495,13 +509,18 @@ class TestDiffCombiner:
             name=relationship_name,
             action=DiffAction.UPDATED,
             relationships={added_element_2, removed_element_2, updated_element_2, canceled_element_2},
+            changed_at=Timestamp(),
             nodes=set(),
         )
         node_1 = EnrichedNodeFactory.build(
             kind="TestPerson", action=DiffAction.UPDATED, relationships={relationship_group_1}
         )
         node_2 = EnrichedNodeFactory.build(
-            uuid=node_1.uuid, kind=node_1.kind, action=DiffAction.UPDATED, relationships={relationship_group_2}
+            uuid=node_1.uuid,
+            kind=node_1.kind,
+            action=DiffAction.UPDATED,
+            relationships={relationship_group_2},
+            changed_at=Timestamp(),
         )
         self.diff_root_1.nodes = {node_1}
         self.diff_root_2.nodes = {node_2}
@@ -572,7 +591,11 @@ class TestDiffCombiner:
             uuid=child_node_uuid, kind="ThisKind", action=DiffAction.UPDATED, relationships=set()
         )
         child_node_2 = EnrichedNodeFactory.build(
-            uuid=child_node_uuid, kind="ThisKind", action=DiffAction.UPDATED, relationships=set()
+            uuid=child_node_uuid,
+            kind="ThisKind",
+            action=DiffAction.UPDATED,
+            relationships=set(),
+            changed_at=Timestamp(),
         )
         parent_rel_1 = EnrichedRelationshipGroupFactory.build(
             name=relationship_name, relationships=set(), nodes={child_node_1}, action=DiffAction.UNCHANGED
@@ -584,7 +607,7 @@ class TestDiffCombiner:
             action=DiffAction.UNCHANGED, attributes=set(), relationships={parent_rel_1}
         )
         parent_node_2 = EnrichedNodeFactory.build(
-            action=DiffAction.UNCHANGED, attributes=set(), relationships={parent_rel_2}
+            action=DiffAction.UNCHANGED, attributes=set(), relationships={parent_rel_2}, changed_at=Timestamp()
         )
         self.diff_root_1.nodes = {parent_node_1, child_node_1}
         self.diff_root_2.nodes = {parent_node_2, child_node_2}
@@ -620,7 +643,9 @@ class TestDiffCombiner:
         child_node_uuid = str(uuid4())
         relationship_name = "related-things"
         child_node_1 = EnrichedNodeFactory.build(uuid=child_node_uuid, action=DiffAction.UPDATED, relationships=set())
-        child_node_2 = EnrichedNodeFactory.build(uuid=child_node_uuid, action=DiffAction.UPDATED, relationships=set())
+        child_node_2 = EnrichedNodeFactory.build(
+            uuid=child_node_uuid, action=DiffAction.UPDATED, relationships=set(), changed_at=Timestamp()
+        )
         parent_element_1 = EnrichedRelationshipElementFactory.build()
         parent_rel_1 = EnrichedRelationshipGroupFactory.build(
             name=relationship_name,
@@ -638,7 +663,7 @@ class TestDiffCombiner:
         )
         parent_node_1 = EnrichedNodeFactory.build(action=DiffAction.UPDATED, relationships={parent_rel_1})
         parent_node_2 = EnrichedNodeFactory.build(
-            action=DiffAction.UNCHANGED, attributes=set(), relationships={parent_rel_2}
+            action=DiffAction.UNCHANGED, attributes=set(), relationships={parent_rel_2}, changed_at=Timestamp()
         )
         self.diff_root_1.nodes = {parent_node_1, child_node_1}
         self.diff_root_2.nodes = {parent_node_2, child_node_2}

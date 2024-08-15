@@ -35,6 +35,7 @@ class EnrichedRelationshipGroupFactory(DataclassFactory[EnrichedDiffRelationship
     num_updated = 0
     num_removed = 0
     num_conflicts = 0
+    nodes = set()
     contains_conflict = False
 
 

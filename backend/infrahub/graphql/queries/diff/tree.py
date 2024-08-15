@@ -158,7 +158,7 @@ class DiffTreeResolver:
             label=enriched_node.label,
             status=enriched_node.action,
             parent_node=parent_node.uuid if parent_node else None,
-            last_changed_at=enriched_node.changed_at.obj,
+            last_changed_at=enriched_node.changed_at.obj if enriched_node.changed_at else None,
             path_identifier=enriched_node.path_identifier,
             attributes=diff_attributes,
             relationships=diff_relationships,
@@ -190,7 +190,7 @@ class DiffTreeResolver:
         return DiffRelationship(
             name=enriched_relationship.name,
             label=enriched_relationship.label,
-            last_changed_at=enriched_relationship.changed_at.obj,
+            last_changed_at=enriched_relationship.changed_at.obj if enriched_relationship.changed_at else None,
             status=enriched_relationship.action,
             path_identifier=enriched_relationship.path_identifier,
             elements=diff_elements,
@@ -240,10 +240,14 @@ class DiffTreeResolver:
             uuid=enriched_conflict.uuid,
             base_branch_action=enriched_conflict.base_branch_action,
             base_branch_value=enriched_conflict.base_branch_value,
-            base_branch_changed_at=enriched_conflict.base_branch_changed_at.obj,
+            base_branch_changed_at=enriched_conflict.base_branch_changed_at.obj
+            if enriched_conflict.base_branch_changed_at
+            else None,
             diff_branch_action=enriched_conflict.diff_branch_action,
             diff_branch_value=enriched_conflict.diff_branch_value,
-            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.obj,
+            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.obj
+            if enriched_conflict.diff_branch_changed_at
+            else None,
             selected_branch=enriched_conflict.selected_branch,
         )
 

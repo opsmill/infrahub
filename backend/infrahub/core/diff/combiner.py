@@ -247,7 +247,7 @@ class DiffCombiner:
             combined_relationship = EnrichedDiffRelationship(
                 name=later_relationship.name,
                 label=later_relationship.label,
-                changed_at=later_relationship.changed_at,
+                changed_at=later_relationship.changed_at or earlier_relationship.changed_at,
                 action=self._combine_actions(earlier=earlier_relationship.action, later=later_relationship.action),
                 path_identifier=later_relationship.path_identifier,
                 relationships=combined_relationship_elements,
@@ -295,7 +295,7 @@ class DiffCombiner:
                     uuid=node_pair.later.uuid,
                     kind=node_pair.later.kind,
                     label=node_pair.later.label,
-                    changed_at=node_pair.later.changed_at,
+                    changed_at=node_pair.later.changed_at or node_pair.earlier.changed_at,
                     action=combined_action,
                     path_identifier=node_pair.later.path_identifier,
                     attributes=combined_attributes,
