@@ -5,6 +5,7 @@ import pytest
 from git import Repo
 from infrahub_sdk import UUIDT, Config, InfrahubClient, InfrahubNode
 from infrahub_sdk.branch import BranchData
+from pytest_httpx._httpx_mock import HTTPXMock
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import (
@@ -378,16 +379,22 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository):
     assert True
 
 
-async def test_sync_new_branch(client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query):
+async def test_sync_new_branch(client, git_repo_03: InfrahubRepository, httpx_mock: HTTPXMock, mock_add_branch01_query):
     repo = git_repo_03
 
     await repo.fetch()
     # Mock update_commit_value query
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
-    response = {"data": {"repository_update": {"ok": True, "object": {"commit": {"value": str(commit)}}}}}
+    commit_response = {"data": {"repository_update": {"ok": True, "object": {"commit": {"value": str(commit)}}}}}
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-repository-update-commit"}
+        method="POST", json=commit_response, match_headers={"X-Infrahub-Tracker": "mutation-repository-update-commit"}
+    )
+    admin_response = {"data": {"CoreGenericRepositoryUpdate": {"ok": True}}}
+    httpx_mock.add_response(
+        method="POST",
+        json=admin_response,
+        match_headers={"X-Infrahub-Tracker": "mutation-repository-update-admin-status"},
     )
 
     repo.client = client
