@@ -192,8 +192,10 @@ async def validate_jwt_access_token(db: InfrahubDatabase, token: str) -> Account
         account_id = payload["sub"]
         role = payload["user_claims"]["role"]
         session_id = payload["session_id"]
+        recorded_permissions = await fetch_permissions(db=db, account_id=account_id)
         permissions = AccountPermissions(
-            global_permissions=[str(p) for p in await fetch_permissions(db=db, account_id=account_id)]
+            global_permissions=[str(p) for p in recorded_permissions.get("global_permissions", [])],
+            object_permissions=[str(p) for p in recorded_permissions.get("object_permissions", [])],
         )
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
