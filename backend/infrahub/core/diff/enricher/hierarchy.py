@@ -5,15 +5,11 @@ from infrahub.core.constants import RelationshipHierarchyDirection, Relationship
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.query.relationship import RelationshipGetPeerQuery, RelationshipPeerData
-from infrahub.core.schema import ProfileSchema, RelationshipSchema
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.schema import ProfileSchema
 from infrahub.database import InfrahubDatabase
 
 from ..model.path import (
     CalculatedDiffs,
-    DiffAction,
-    EnrichedDiffNode,
-    EnrichedDiffRelationship,
     EnrichedDiffRoot,
 )
 from .interface import DiffEnricherInterface
@@ -87,17 +83,18 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
                 node = enriched_diff_root.get_node(node_uuid=node_id)
 
-                parent_side_rel = hierarchy_schema.get_relationship(name="children")
+                parent_rel = hierarchy_schema.get_relationship(name="parent")
 
                 current_node = node
                 for ancestor in reversed(ancestors):
-                    parent = await self._add_parent(
-                        enriched_diff_root=enriched_diff_root,
-                        node=current_node,
+                    parent = enriched_diff_root.add_parent(
+                        node_id=current_node.uuid,
                         parent_id=str(ancestor.uuid),
                         parent_kind=ancestor.kind,
-                        parent_side_rel=parent_side_rel,
+                        parent_rel_name=parent_rel.name,
+                        parent_rel_label=parent_rel.label or "",
                     )
+
                     current_node = parent
 
     async def _enrich_nodes_with_parent(
@@ -146,56 +143,15 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
             )
             parent_rel = [rel for rel in schema_node.relationships if rel.kind == RelationshipKind.PARENT][0]
 
-            schema_parent = self.db.schema.get(
-                name=peer_parent.peer_kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
-            )
-            parent_side_rel = schema_parent.get_relationship_by_identifier(
-                id=parent_rel.get_identifier(), raise_on_error=False
-            )
-
-            await self._add_parent(
-                enriched_diff_root=enriched_diff_root,
-                node=node,
+            enriched_diff_root.add_parent(
+                node_id=node.uuid,
                 parent_id=str(peer_parent.peer_id),
                 parent_kind=peer_parent.peer_kind,
-                parent_side_rel=parent_side_rel,
+                parent_rel_name=parent_rel.name,
+                parent_rel_label=parent_rel.label or "",
             )
 
         if node_parent_with_parent_map:
             await self._enrich_nodes_with_parent(
                 enriched_diff_root=enriched_diff_root, node_map=node_parent_with_parent_map
             )
-
-    async def _add_parent(
-        self,
-        enriched_diff_root: EnrichedDiffRoot,
-        node: EnrichedDiffNode,
-        parent_id: str,
-        parent_kind: str,
-        parent_side_rel: RelationshipSchema | None = None,
-    ) -> EnrichedDiffNode:
-        if not enriched_diff_root.has_node(node_uuid=parent_id):
-            parent = EnrichedDiffNode(
-                uuid=parent_id,
-                kind=parent_kind,
-                label="",
-                action=DiffAction.UNCHANGED,
-                changed_at=Timestamp(),
-            )
-            enriched_diff_root.nodes.add(parent)
-
-        else:
-            parent = enriched_diff_root.get_node(node_uuid=parent_id)
-
-        if parent_side_rel:
-            parent.relationships.add(
-                EnrichedDiffRelationship(
-                    name=parent_side_rel.name,
-                    label=parent_side_rel.label or "",
-                    changed_at=Timestamp(),
-                    action=DiffAction.UNCHANGED,
-                    nodes={node},
-                )
-            )
-
-        return parent

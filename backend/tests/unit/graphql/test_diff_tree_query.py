@@ -31,6 +31,7 @@ query GetDiffTree($branch: String){
             label
             last_changed_at
             status
+            parent_node
             contains_conflict
             num_added
             num_removed
@@ -68,7 +69,6 @@ query GetDiffTree($branch: String){
                 last_changed_at
                 status
                 contains_conflict
-                node_uuids
                 elements {
                     status
                     peer_id
@@ -206,6 +206,7 @@ async def test_diff_tree_one_attr_change(
                 "num_added": 0,
                 "num_removed": 0,
                 "num_updated": 1,
+                "parent_node": None,
                 "num_conflicts": 0,
                 "status": UPDATED_ACTION,
                 "contains_conflict": False,
@@ -241,6 +242,9 @@ async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: 
     diff_branch = await create_branch(db=db, branch_name="diff")
 
     # rprint(hierarchical_location_data)
+    europe_main = hierarchical_location_data["europe"]
+    paris_main = hierarchical_location_data["paris"]
+    rack1_main = hierarchical_location_data["paris-r1"]
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
     rack1_branch = await NodeManager.get_one(db=db, id=rack1_main.id, branch=diff_branch)
@@ -262,3 +266,12 @@ async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: 
 
     assert result.errors is None
     assert len(result.data["DiffTree"]["nodes"]) == 4
+
+    nodes_parent = {node["label"]: node["parent_node"] for node in result.data["DiffTree"]["nodes"]}
+    expected_nodes_parent = {
+        "paris": europe_main.id,
+        "paris rack2": paris_main.id,
+        "paris-r1": paris_main.id,
+        "europe": None,
+    }
+    assert nodes_parent == expected_nodes_parent

@@ -88,7 +88,6 @@ class DiffRelationship(DiffSummaryCounts):
     last_changed_at = DateTime(required=False)
     status = Field(GrapheneDiffActionEnum, required=True)
     elements = List(DiffSingleRelationship, required=True)
-    node_uuids = List(String, required=True)
     contains_conflict = Boolean(required=True)
 
 
@@ -100,6 +99,7 @@ class DiffNode(DiffSummaryCounts):
     conflict = Field(ConflictDetails, required=False)
     contains_conflict = Boolean(required=True)
     last_changed_at = DateTime(required=False)
+    parent_node = String(required=False)
     attributes = List(DiffAttribute, required=True)
     relationships = List(DiffRelationship, required=True)
 
@@ -130,15 +130,21 @@ class DiffTreeResolver:
 
     def to_diff_node(self, enriched_node: EnrichedDiffNode) -> DiffNode:
         diff_attributes = [self.to_diff_attribute(e_attr) for e_attr in enriched_node.attributes]
-        diff_relationships = [self.to_diff_relationship(e_rel) for e_rel in enriched_node.relationships]
+        diff_relationships = [
+            self.to_diff_relationship(e_rel) for e_rel in enriched_node.relationships if e_rel.include_in_response
+        ]
         conflict = None
         if enriched_node.conflict:
             conflict = self.to_diff_conflict(enriched_conflict=enriched_node.conflict)
+
+        parent_node = enriched_node.get_parent_node()
+
         return DiffNode(
             uuid=enriched_node.uuid,
             kind=enriched_node.kind,
             label=enriched_node.label,
             status=enriched_node.action,
+            parent_node=parent_node.uuid if parent_node else None,
             last_changed_at=enriched_node.changed_at.obj,
             attributes=diff_attributes,
             relationships=diff_relationships,
@@ -166,14 +172,12 @@ class DiffTreeResolver:
 
     def to_diff_relationship(self, enriched_relationship: EnrichedDiffRelationship) -> DiffRelationship:
         diff_elements = [self.to_diff_relationship_element(element) for element in enriched_relationship.relationships]
-        node_uuids = [n.uuid for n in enriched_relationship.nodes]
         return DiffRelationship(
             name=enriched_relationship.name,
             label=enriched_relationship.label,
             last_changed_at=enriched_relationship.changed_at.obj,
             status=enriched_relationship.action,
             elements=diff_elements,
-            node_uuids=node_uuids,
             contains_conflict=enriched_relationship.contains_conflict,
             num_added=enriched_relationship.num_added,
             num_updated=enriched_relationship.num_updated,
@@ -261,7 +265,6 @@ class DiffTreeResolver:
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         root_node_uuids: list[str] | None = None,
-        max_depth: int | None = None,
         limit: int | None = None,
         offset: int | None = None,
     ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
@@ -293,7 +296,6 @@ class DiffTreeResolver:
             from_time=from_timestamp,
             to_time=to_timestamp,
             root_node_uuids=root_node_uuids,
-            max_depth=max_depth,
             limit=limit,
             offset=offset,
         )
@@ -312,7 +314,6 @@ DiffTreeQuery = Field(
     from_time=DateTime(),
     to_time=DateTime(),
     root_node_uuids=List(String),
-    max_depth=Int(),
     limit=Int(),
     offset=Int(),
 )

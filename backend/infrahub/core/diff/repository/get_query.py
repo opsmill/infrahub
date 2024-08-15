@@ -1,13 +1,13 @@
 from typing import Any, Iterable
 
 from neo4j.graph import Node as Neo4jNode
+from neo4j.graph import Path as Neo4jPath
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.database.constants import DatabaseType
 
 from ..model.path import (
     ConflictSelection,
@@ -79,13 +79,7 @@ class EnrichedDiffGetQuery(Query):
         UNWIND non_overlapping_diff_roots AS diff_root
         // get all the nodes attached to the diffs
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
-        // if root_node_uuids, filter on uuids
-        WHERE (
-            // only parent-less nodes if no root node uuids
-            ($root_node_uuids IS NULL AND NOT exists((:DiffRelationship)-[:DIFF_HAS_NODE]->(diff_node)))
-            // filter on uuids if included
-            OR diff_node.uuid in $root_node_uuids
-        )
+        // TODO :: ADD FILTERS
         // group by diff node uuid for pagination
         WITH diff_node.uuid AS diff_node_uuid, diff_node.kind AS diff_node_kind, collect([diff_root, diff_node]) AS node_root_tuples
         // order by kind and latest label for each diff_node uuid
@@ -105,39 +99,26 @@ class EnrichedDiffGetQuery(Query):
         WITH nrt[0] AS diff_root, nrt[1] AS diff_node
         WITH diff_root, diff_node
         // if depth limit, make sure not to exceed it when traversing linked nodes
-        """
-        self.add_to_query(query=query_1)
-
-        if db.db_type is DatabaseType.NEO4J:
-            children_query = """
-            WITH diff_root, diff_node
-            CALL {
-                WITH diff_node
-                OPTIONAL MATCH descendant_path = (diff_node) ((parents:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(rel_nodes:DiffRelationship)-[:DIFF_HAS_NODE]->(children:DiffNode)){0, %(max_depth)s}
-                // turn them into a nested list of the form [[parent node, relationship node, child node], ...]
-                RETURN reduce(acc = [], i IN range(0, size(parents)- 1) | acc + [[parents[i], rel_nodes[i], children[i]]]) AS parent_child_tuples
-            }
-            """ % {"max_depth": self.max_depth}
-        elif db.db_type is DatabaseType.MEMGRAPH:
-            children_query = """
-            CALL {
-                WITH diff_node
-                OPTIONAL MATCH descendant_path = (diff_node)-[:DIFF_HAS_RELATIONSHIP | :DIFF_HAS_NODE * ..%(max_depth)s]->(children:DiffNode)
-                WITH nodes(descendant_path)[-3] AS parent_node, nodes(descendant_path)[-2] AS rel_node, nodes(descendant_path)[-1] AS child_node
-                RETURN collect([parent_node, rel_node, child_node]) AS parent_child_tuples
-            }
-            """ % {"max_depth": self.max_depth * 2}
-
-        self.add_to_query(query=children_query)
-
-        query_2 = """
-        WITH diff_root, diff_node, parent_child_tuples
-        WITH diff_root, ([[NULL, NULL, diff_node]] + parent_child_tuples) AS parent_child_tuples
-        UNWIND parent_child_tuples AS parent_child_tuple
-        WITH diff_root, (parent_child_tuple[0]).uuid AS parent_node_uuid, (parent_child_tuple[1]).name AS parent_rel_name, parent_child_tuple[2] AS diff_node
+        WITH diff_root, diff_node
+        // -------------------------------------
+        // Retrieve Parents
+        // -------------------------------------
+        CALL {
+            WITH diff_node
+            OPTIONAL MATCH parents_path = (diff_node)-[:DIFF_HAS_RELATIONSHIP|DIFF_HAS_NODE*1..%(max_depth)s]->(:DiffNode)
+            RETURN parents_path
+            ORDER BY size(nodes(parents_path)) DESC
+            LIMIT 1
+        }
+        WITH diff_root, diff_node, parents_path
+        // -------------------------------------
+        // Retrieve conflicts
+        // -------------------------------------
         OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
-        WITH diff_root, parent_node_uuid, parent_rel_name, diff_node, diff_node_conflict
-        // attributes
+        WITH diff_root, diff_node, parents_path, diff_node_conflict
+        // -------------------------------------
+        // Retrieve Attributes
+        // -------------------------------------
         CALL {
             WITH diff_node
             OPTIONAL MATCH (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
@@ -148,9 +129,10 @@ class EnrichedDiffGetQuery(Query):
             RETURN diff_attribute, diff_attr_property, diff_attr_property_conflict
             ORDER BY diff_attribute.name, diff_attr_property.property_type
         }
-        WITH diff_root, parent_node_uuid, parent_rel_name, diff_node, diff_node_conflict, collect([diff_attribute, diff_attr_property, diff_attr_property_conflict]) as diff_attributes
-
-        // relationships
+        WITH diff_root, diff_node, parents_path, diff_node_conflict, collect([diff_attribute, diff_attr_property, diff_attr_property_conflict]) as diff_attributes
+        // -------------------------------------
+        // Retrieve Relationships
+        // -------------------------------------
         CALL {
             WITH diff_node
             OPTIONAL MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
@@ -163,27 +145,25 @@ class EnrichedDiffGetQuery(Query):
             WITH diff_relationship, diff_rel_element, diff_rel_conflict, diff_rel_property
             OPTIONAL MATCH (diff_rel_property)-[:DIFF_HAS_CONFLICT]->(diff_rel_property_conflict:DiffConflict)
 
-
             RETURN diff_relationship, diff_rel_element, diff_rel_conflict, diff_rel_property, diff_rel_property_conflict
             ORDER BY diff_relationship.name, diff_rel_element.peer_id, diff_rel_property.property_type
         }
         WITH
             diff_root,
-            parent_node_uuid,
-            parent_rel_name,
             diff_node,
+            parents_path,
             diff_node_conflict,
             diff_attributes,
             collect([diff_relationship, diff_rel_element, diff_rel_conflict, diff_rel_property, diff_rel_property_conflict]) AS diff_relationships
-        """
-        self.add_to_query(query=query_2)
+        """ % {"max_depth": self.max_depth * 2}
+
+        self.add_to_query(query=query_1)
 
         self.return_labels = [
             "diff_root",
             "diff_node",
+            "parents_path",
             "diff_node_conflict",
-            "parent_node_uuid",
-            "parent_rel_name",
             "diff_attributes",
             "diff_relationships",
         ]
@@ -203,11 +183,10 @@ class EnrichedDiffDeserializer:
         self._diff_node_rel_group_map: dict[tuple[str, str, str], EnrichedDiffRelationship] = {}
         self._diff_node_rel_element_map: dict[tuple[str, str, str, str], EnrichedDiffSingleRelationship] = {}
         self._diff_prop_map: dict[tuple[str, str, str, str] | tuple[str, str, str, str, str], EnrichedDiffProperty] = {}
-        # {(root uuid, node uuid): (parent node uuid, parent relationship name)}
-        self._node_parent_map: dict[tuple[str, str], tuple[str, str]] = {}
 
     async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
-        for result in database_results:
+        results = list(database_results)
+        for result in results:
             enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
             node_node = result.get(label="diff_node")
             if not isinstance(node_node, Neo4jNode):
@@ -218,9 +197,10 @@ class EnrichedDiffDeserializer:
                 self._deserialize_conflict(diff_conflict_node=node_conflict_node, linked_node=enriched_node)
             self._deserialize_attributes(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
             self._deserialize_relationships(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
-            self._track_child_nodes(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
 
-        self._apply_child_nodes()
+        for result in results:
+            enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
+            self._deserialize_parents(result=result, enriched_root=enriched_root)
 
         return list(self._diff_root_map.values())
 
@@ -279,22 +259,27 @@ class EnrichedDiffDeserializer:
             if property_conflict:
                 self._deserialize_conflict(diff_conflict_node=property_conflict, linked_node=element_property)
 
-    def _track_child_nodes(
-        self, result: QueryResult, enriched_root: EnrichedDiffRoot, enriched_node: EnrichedDiffNode
-    ) -> None:
-        parent_node_uuid = result.get_as_str("parent_node_uuid")
-        parent_rel_name = result.get_as_str("parent_rel_name")
-        if parent_node_uuid is None or parent_rel_name is None:
+    def _deserialize_parents(self, result: QueryResult, enriched_root: EnrichedDiffRoot) -> None:
+        parents_path = result.get("parents_path")
+        if not parents_path or not isinstance(parents_path, Neo4jPath):
             return
-        self._node_parent_map[(enriched_root.uuid, enriched_node.uuid)] = (parent_node_uuid, parent_rel_name)
 
-    def _apply_child_nodes(self) -> None:
-        for (enriched_root_uuid, child_node_uuid), (parent_node_uuid, parent_rel_name) in self._node_parent_map.items():
-            enriched_root = self._diff_root_map[enriched_root_uuid]
-            child_node = enriched_root.get_node(node_uuid=child_node_uuid)
-            parent_node = enriched_root.get_node(node_uuid=parent_node_uuid)
-            parent_relationship = parent_node.get_relationship(name=parent_rel_name)
-            parent_relationship.nodes.add(child_node)
+        node_uuid = result.get(label="diff_node").get("uuid")
+
+        # Remove the node itself from the path
+        parents_path = parents_path.nodes[1:]  # type: ignore[union-attr]
+
+        # TODO Ensure the list is even
+        current_node_uuid = node_uuid
+        for rel, parent in zip(parents_path[::2], parents_path[1::2]):
+            enriched_root.add_parent(
+                node_id=current_node_uuid,
+                parent_id=parent.get("uuid"),
+                parent_kind=parent.get("kind"),
+                parent_rel_name=rel.get("name"),
+                parent_rel_label=rel.get("label"),
+            )
+            current_node_uuid = parent.get("uuid")
 
     def _get_str_or_none_property_value(self, node: Neo4jNode, property_name: str) -> str | None:
         value_raw = node.get(property_name)

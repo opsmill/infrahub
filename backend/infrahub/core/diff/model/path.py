@@ -145,6 +145,12 @@ class EnrichedDiffRelationship(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.name)
 
+    @property
+    def include_in_response(self) -> bool:
+        if self.action == DiffAction.UNCHANGED and not self.relationships:
+            return False
+        return True
+
     @classmethod
     def from_calculated_relationship(cls, calculated_relationship: DiffRelationship) -> EnrichedDiffRelationship:
         return EnrichedDiffRelationship(
@@ -187,6 +193,12 @@ class EnrichedDiffNode(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.uuid)
+
+    def get_parent_node(self) -> EnrichedDiffNode | None:
+        for r in self.relationships:
+            for n in r.nodes:
+                return n
+        return None
 
     def get_all_child_nodes(self) -> set[EnrichedDiffNode]:
         all_children = set()
@@ -289,6 +301,39 @@ class EnrichedDiffRoot(BaseSummary):
             uuid=str(uuid4()),
             nodes={EnrichedDiffNode.from_calculated_node(calculated_node=n) for n in calculated_diff.nodes},
         )
+
+    def add_parent(
+        self, node_id: str, parent_id: str, parent_kind: str, parent_rel_name: str, parent_rel_label: str = ""
+    ) -> EnrichedDiffNode:
+        node = self.get_node(node_uuid=node_id)
+        if not self.has_node(node_uuid=parent_id):
+            parent = EnrichedDiffNode(
+                uuid=parent_id,
+                kind=parent_kind,
+                label="",
+                action=DiffAction.UNCHANGED,
+                changed_at=Timestamp(),
+            )
+            self.nodes.add(parent)
+
+        else:
+            parent = self.get_node(node_uuid=parent_id)
+
+        if node.has_relationship(name=parent_rel_name):
+            rel = node.get_relationship(name=parent_rel_name)
+            rel.nodes.add(parent)
+        else:
+            node.relationships.add(
+                EnrichedDiffRelationship(
+                    name=parent_rel_name,
+                    label=parent_rel_label,
+                    changed_at=Timestamp(),
+                    action=DiffAction.UNCHANGED,
+                    nodes={parent},
+                )
+            )
+
+        return parent
 
 
 @dataclass

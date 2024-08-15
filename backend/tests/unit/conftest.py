@@ -1977,6 +1977,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
                 "name": "Generic",
                 "namespace": "Location",
                 "default_filter": "name__value",
+                "display_labels": ["name__value"],
                 "hierarchical": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
