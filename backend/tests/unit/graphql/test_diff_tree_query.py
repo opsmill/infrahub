@@ -69,7 +69,6 @@ query GetDiffTree($branch: String){
                 last_changed_at
                 status
                 contains_conflict
-                node_uuids
                 elements {
                     status
                     peer_id

@@ -19,11 +19,10 @@ class DiffRepository:
         from_time: Timestamp,
         to_time: Timestamp,
         root_node_uuids: list[str] | None = None,
-        max_depth: int | None = None,
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[EnrichedDiffRoot]:
-        final_max_depth = max_depth or config.SETTINGS.database.max_depth_search_hierarchy
+        final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
         final_limit = limit or config.SETTINGS.database.query_size_limit
         query = await EnrichedDiffGetQuery.init(
             db=self.db,
