@@ -1,14 +1,16 @@
-from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.diff.model.diff import ModifiedPathType
+from infrahub.core.constants import PathType, RelationshipCardinality
+from infrahub.core.path import DataPath
+from infrahub.database import InfrahubDatabase
 
-from ..model.path import CalculatedDiffs, EnrichedDiffProperty, EnrichedDiffRoot
+from ..model.path import CalculatedDiffs, EnrichedDiffRoot
 from .interface import DiffEnricherInterface
 
 
 class DiffPathIdentifierEnricher(DiffEnricherInterface):
     """Add path identifiers to every element in the diff"""
 
-    def __init__(self) -> None:
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
         self._diff_branch_name: str | None = None
 
     @property
@@ -20,33 +22,49 @@ class DiffPathIdentifierEnricher(DiffEnricherInterface):
     async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:
         self._diff_branch_name = enriched_diff_root.diff_branch_name
         for node in enriched_diff_root.nodes:
-            node_path = f"{ModifiedPathType.DATA.value}/{node.uuid}"
-            node.path_identifier = node_path
+            node_path = DataPath(
+                branch=enriched_diff_root.diff_branch_name,
+                path_type=PathType.NODE,
+                node_id=node.uuid,
+                kind=node.kind,
+            )
+            node.path_identifier = node_path.get_path()
             for attribute in node.attributes:
-                attribute_path = f"{node_path}/{attribute.name}"
-                attribute.path_identifier = attribute_path
+                attribute_path = DataPath(
+                    branch=enriched_diff_root.diff_branch_name,
+                    path_type=PathType.ATTRIBUTE,
+                    node_id=node.uuid,
+                    kind=node.kind,
+                    field_name=attribute.name,
+                )
+                attribute.path_identifier = attribute_path.get_path()
                 for attribute_property in attribute.properties:
-                    attribute_property_path = self._get_property_path(
-                        base_path=attribute_path, diff_property=attribute_property
-                    )
-                    attribute_property.path_identifier = attribute_property_path
+                    property_path = attribute_path.model_copy()
+                    property_path.property_name = attribute_property.property_type.value
+                    attribute_property.path_identifier = property_path.get_path()
             if not node.relationships:
                 continue
+            node_schema = self.db.schema.get(name=node.kind, branch=self.diff_branch_name, duplicate=False)
             for relationship in node.relationships:
-                relationship_path = f"{node_path}/{relationship.name}"
-                relationship.path_identifier = relationship_path
-                if not relationship.relationships:
-                    continue
+                relationship_schema = node_schema.get_relationship(name=relationship.name)
+                path_type = (
+                    PathType.RELATIONSHIP_ONE
+                    if relationship_schema.cardinality is RelationshipCardinality.ONE
+                    else PathType.RELATIONSHIP_MANY
+                )
+                relationship_path = DataPath(
+                    branch=enriched_diff_root.diff_branch_name,
+                    path_type=path_type,
+                    node_id=node.uuid,
+                    kind=node.kind,
+                    field_name=relationship.name,
+                )
+                relationship.path_identifier = relationship_path.get_path()
                 for relationship_element in relationship.relationships:
-                    relationship_element_path = f"{relationship_path}/{relationship_element.peer_id}"
-                    relationship_element.path_identifier = relationship_element_path
+                    relationship_element_path = relationship_path.model_copy()
+                    relationship_element_path.peer_id = relationship_element.peer_id
+                    relationship_element.path_identifier = relationship_element_path.get_path()
                     for relationship_property in relationship_element.properties:
-                        relationship_property_path = self._get_property_path(
-                            base_path=relationship_element_path, diff_property=relationship_property
-                        )
-                        relationship_property.path_identifier = relationship_property_path
-
-    def _get_property_path(self, base_path: str, diff_property: EnrichedDiffProperty) -> str:
-        if diff_property.property_type is DatabaseEdgeType.HAS_VALUE:
-            return f"{base_path}/value"
-        return f"{base_path}/property/{diff_property.property_type.value}"
+                        relationship_property_path = relationship_element_path.model_copy()
+                        relationship_property_path.property_name = relationship_property.property_type.value
+                        relationship_property.path_identifier = relationship_property_path.get_path()

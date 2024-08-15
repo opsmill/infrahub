@@ -1,6 +1,8 @@
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.enricher.path_identifier import DiffPathIdentifierEnricher
 from infrahub.core.diff.model.diff import ModifiedPathType
+from infrahub.core.initialization import create_branch
+from infrahub.database import InfrahubDatabase
 
 from .factories import (
     EnrichedAttributeFactory,
@@ -13,7 +15,8 @@ from .factories import (
 
 
 class TestPathIdentifierEnricher:
-    async def test_path_identifiers_added(self):
+    async def test_path_identifiers_added(self, db: InfrahubDatabase, car_person_schema):
+        branch = await create_branch(db=db, branch_name="branch")
         diff_attribute_value_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_VALUE)
         diff_attribute_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_OWNER)
         diff_attribute = EnrichedAttributeFactory.build(
@@ -24,10 +27,14 @@ class TestPathIdentifierEnricher:
         diff_relationship_element = EnrichedRelationshipElementFactory.build(
             properties={diff_relationship_property, diff_relationship_value_property}
         )
-        diff_relationship = EnrichedRelationshipGroupFactory.build(relationships={diff_relationship_element})
-        diff_node = EnrichedNodeFactory.build(relationships={diff_relationship}, attributes={diff_attribute})
-        diff_root = EnrichedRootFactory.build(nodes={diff_node})
-        enricher = DiffPathIdentifierEnricher()
+        diff_relationship = EnrichedRelationshipGroupFactory.build(
+            relationships={diff_relationship_element}, name="cars"
+        )
+        diff_node = EnrichedNodeFactory.build(
+            relationships={diff_relationship}, attributes={diff_attribute}, kind="TestPerson"
+        )
+        diff_root = EnrichedRootFactory.build(nodes={diff_node}, diff_branch_name=branch.name)
+        enricher = DiffPathIdentifierEnricher(db)
 
         await enricher.enrich(enriched_diff_root=diff_root, calculated_diffs=None)
 

@@ -5,4 +5,4 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 class DiffPathIdentifierEnricherDependency(DependencyBuilder[DiffPathIdentifierEnricher]):
     @classmethod
     def build(cls, context: DependencyBuilderContext) -> DiffPathIdentifierEnricher:
-        return DiffPathIdentifierEnricher()
+        return DiffPathIdentifierEnricher(db=context.db)
