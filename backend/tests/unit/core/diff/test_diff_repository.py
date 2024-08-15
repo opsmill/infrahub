@@ -132,7 +132,7 @@ class TestDiffRepositorySaveAndLoad:
                 from_time=Timestamp(self.diff_from_time),
                 to_time=Timestamp(self.diff_to_time),
                 uuid=root_uuid,
-                nodes=[],
+                nodes={EnrichedNodeFactory.build(relationships={})},
             )
             await diff_repository.save(enriched_diff=enriched_diff)
 
@@ -162,7 +162,7 @@ class TestDiffRepositorySaveAndLoad:
                     from_time=Timestamp(start_time),
                     to_time=Timestamp(end_time),
                     uuid=root_uuid,
-                    nodes=[],
+                    nodes={EnrichedNodeFactory.build(relationships={})},
                 )
                 await diff_repository.save(enriched_diff=enriched_diff)
 
@@ -196,7 +196,7 @@ class TestDiffRepositorySaveAndLoad:
             from_time=Timestamp(self.diff_from_time),
             to_time=Timestamp(self.diff_to_time),
             uuid=root_uuid,
-            nodes=set(),
+            nodes={EnrichedNodeFactory.build(relationships={})},
         )
         await diff_repository.save(enriched_diff=enriched_diff)
 

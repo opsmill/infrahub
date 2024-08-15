@@ -175,7 +175,7 @@ class EnrichedDiffRelationship(BaseSummary):
             name=node.get("name"),
             label=node.get("label"),
             changed_at=Timestamp(node.get("changed_at")),
-            action=node.get("action"),
+            action=DiffAction(str(node.get("action"))),
             path_identifier=str(node.get("path_identifier")),
             num_added=int(node.get("num_added")),
             num_conflicts=int(node.get("num_conflicts")),
