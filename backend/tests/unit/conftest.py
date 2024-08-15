@@ -1978,6 +1978,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
                 "namespace": "Location",
                 "default_filter": "name__value",
                 "hierarchical": True,
+                "display_labels": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "status", "kind": "Text", "enum": ["online", "offline"], "default_value": "online"},
@@ -2017,6 +2018,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
                 "name": "Thing",
                 "namespace": "Test",
                 "default_filter": "name__value",
+                "display_labels": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                 ],
