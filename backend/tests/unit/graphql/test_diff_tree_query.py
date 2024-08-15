@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
 
+import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
@@ -104,6 +106,21 @@ query GetDiffTree($branch: String){
                 }
             }
         }
+    }
+}
+"""
+
+DIFF_TREE_QUERY_SUMMARY = """
+query GetDiffTreeSummary($branch: String, $filters: DiffTreeQueryFilters){
+    DiffTreeSummary (branch: $branch, filters: $filters) {
+        base_branch
+        diff_branch
+        from_time
+        to_time
+        num_added
+        num_removed
+        num_updated
+        num_conflicts
     }
 }
 """
@@ -275,3 +292,62 @@ async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: 
         "europe": None,
     }
     assert nodes_parent == expected_nodes_parent
+
+@pytest.mark.parametrize(
+    "filters,counters",
+    [
+        pytest.param({}, ["THING1", "europe", "paris", "paris rack2", "paris-r1", "thing3"], id="no-filters"),
+        pytest.param({"kind": {"includes": ["TestThing"]}}, ["THING1", "thing3"], id="kind-includes"),
+    ],
+)
+async def test_diff_summary_filters(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, counters
+):
+    rack1_main = hierarchical_location_data["paris-r1"]
+    rack2_main = hierarchical_location_data["paris-r2"]
+
+    thing1_main = await Node.init(db=db, schema="TestThing")
+    await thing1_main.new(db=db, name="thing1", location=rack1_main)
+    await thing1_main.save(db=db)
+
+    thing2_main = await Node.init(db=db, schema="TestThing")
+    await thing2_main.new(db=db, name="thing2", location=rack2_main)
+    await thing2_main.save(db=db)
+
+    diff_branch = await create_branch(db=db, branch_name="diff")
+
+    thing3_branch = await Node.init(db=db, schema="TestThing", branch=diff_branch)
+    await thing3_branch.new(db=db, name="thing3", location=rack1_main)
+    await thing3_branch.save(db=db)
+
+    # rprint(hierarchical_location_data)
+    rack1_main = hierarchical_location_data["paris-r1"]
+    rack2_main = hierarchical_location_data["paris-r2"]
+    rack1_branch = await NodeManager.get_one(db=db, id=rack1_main.id, branch=diff_branch)
+    rack1_branch.status.value = "offline"
+    rack2_branch = await NodeManager.get_one(db=db, id=rack2_main.id, branch=diff_branch)
+    rack2_branch.name.value = "paris rack2"
+
+    await rack1_branch.save(db=db)
+    await rack2_branch.save(db=db)
+
+    thing1_branch = await NodeManager.get_one(db=db, id=thing1_main.id, branch=diff_branch)
+    thing1_branch.name.value = "THING1"
+    await thing1_branch.save(db=db)
+
+    # FIXME, there is an issue related to label for deleted nodes right now that makes it complicated to use REMOVED nodes in this test
+    # thing2_branch = await NodeManager.get_one(db=db, id=thing2_main.id, branch=diff_branch)
+    # await thing2_branch.delete(db=db)
+
+    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_SUMMARY,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "filters": filters},
+    )
+
+    assert result.errors is None
+    # TODO add

@@ -141,4 +141,5 @@ DiffSummary = Field(
     time_to=String(required=False),
     branch_only=Boolean(required=False, default_value=False),
     resolver=DiffSummaryEntry.resolve,
+    deprecation_reason="Please use DiffTree instead",
 )

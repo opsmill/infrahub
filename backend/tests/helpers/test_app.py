@@ -24,11 +24,7 @@ from tests.adapters.message_bus import BusSimulator
 from .test_client import InfrahubTestClient
 
 
-class TestInfrahubApp:
-    @pytest.fixture(scope="class")
-    def api_token(self) -> str:
-        return str(UUIDT())
-
+class TestInfrahub:
     @pytest.fixture(scope="class")
     def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> str:
         storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
@@ -41,14 +37,6 @@ class TestInfrahubApp:
         return storage_dir
 
     @pytest.fixture(scope="class")
-    def bus_simulator(self, db: InfrahubDatabase) -> Generator[BusSimulator, None, None]:
-        bus = BusSimulator(database=db)
-        original = config.OVERRIDE.message_bus
-        config.OVERRIDE.message_bus = bus
-        yield bus
-        config.OVERRIDE.message_bus = original
-
-    @pytest.fixture(scope="class")
     async def default_branch(self, local_storage_dir: str, db: InfrahubDatabase) -> Branch:
         registry.delete_all()
         await delete_all_nodes(db=db)
@@ -57,6 +45,20 @@ class TestInfrahubApp:
         await create_global_branch(db=db)
         registry.schema = SchemaManager()
         return branch
+
+
+class TestInfrahubApp(TestInfrahub):
+    @pytest.fixture(scope="class")
+    def api_token(self) -> str:
+        return str(UUIDT())
+
+    @pytest.fixture(scope="class")
+    def bus_simulator(self, db: InfrahubDatabase) -> Generator[BusSimulator, None, None]:
+        bus = BusSimulator(database=db)
+        original = config.OVERRIDE.message_bus
+        config.OVERRIDE.message_bus = bus
+        yield bus
+        config.OVERRIDE.message_bus = original
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:

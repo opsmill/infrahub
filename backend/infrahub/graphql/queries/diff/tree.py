@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
+from graphene import Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
 from infrahub_sdk.utils import extract_fields
 
@@ -115,6 +115,14 @@ class DiffTree(DiffSummaryCounts):
     from_time = DateTime(required=True)
     to_time = DateTime(required=True)
     nodes = List(DiffNode)
+
+
+class DiffTreeSummary(DiffSummaryCounts):
+    base_branch = String(required=True)
+    diff_branch = String(required=True)
+    from_time = DateTime(required=True)
+    to_time = DateTime(required=True)
+    num_unchanged = Int(required=False)
 
 
 class DiffTreeResolver:
@@ -315,6 +323,73 @@ class DiffTreeResolver:
         diff_tree = self.to_diff_tree(enriched_diff_root=enriched_diff)
         return self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
+    # pylint: disable=unused-argument
+    async def summary(
+        self,
+        root: dict,
+        info: GraphQLResolveInfo,
+        branch: str | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        filters: dict | None = None,
+    ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
+        component_registry = get_component_registry()
+        context: GraphqlContext = info.context
+        base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
+        diff_branch = await registry.get_branch(db=context.db, branch=branch)
+        # diff_coordinator = await component_registry.get_component(DiffCoordinator, db=context.db, branch=diff_branch)
+        diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
+        branch_start_timestamp = Timestamp(diff_branch.get_created_at())
+        if from_time:
+            from_timestamp = Timestamp(from_time.isoformat())
+        else:
+            from_timestamp = branch_start_timestamp
+        if to_time:
+            to_timestamp = Timestamp(to_time.isoformat())
+        else:
+            to_timestamp = context.at or Timestamp()
+
+        filters_dict = dict(filters or {})
+
+        # await diff_coordinator.update_diffs(
+        #     base_branch=base_branch,
+        #     diff_branch=diff_branch,
+        #     from_time=from_timestamp,
+        #     to_time=to_timestamp,
+        # )
+        summary = await diff_repo.summary(
+            base_branch_name=base_branch.name,
+            diff_branch_names=[diff_branch.name],
+            from_time=from_timestamp,
+            to_time=to_timestamp,
+            filters=filters_dict,
+        )
+
+        return DiffTreeSummary(
+            base_branch=base_branch.name,
+            diff_branch=diff_branch.name,
+            from_time=from_timestamp.to_graphql(),
+            to_time=to_timestamp.to_graphql(),
+            **summary.model_dump(),
+        )
+
+
+class IncExclFilterOptions(InputObjectType):
+    includes = List(String)
+    excludes = List(String)
+
+
+class IncExclFilterStatusOptions(InputObjectType):
+    includes = List(GrapheneDiffActionEnum)
+    excludes = List(GrapheneDiffActionEnum)
+
+
+class DiffTreeQueryFilters(InputObjectType):
+    ids = List(String)
+    status = IncExclFilterStatusOptions()
+    kind = IncExclFilterOptions()
+    namespace = IncExclFilterOptions()
+
 
 DiffTreeQuery = Field(
     DiffTree,
@@ -326,4 +401,14 @@ DiffTreeQuery = Field(
     root_node_uuids=List(String),
     limit=Int(),
     offset=Int(),
+)
+
+DiffTreeSummaryQuery = Field(
+    DiffTreeSummary,
+    name=String(),
+    resolver=DiffTreeResolver().summary,
+    branch=String(),
+    from_time=DateTime(),
+    to_time=DateTime(),
+    filters=DiffTreeQueryFilters(),
 )

@@ -3,6 +3,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 from ..model.path import EnrichedDiffRoot, TimeRange
+from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
+from ..query.filters import EnrichedDiffQueryFilters
 from .get_query import EnrichedDiffGetQuery
 from .save_query import EnrichedDiffSaveQuery
 from .time_range_query import EnrichedDiffTimeRangeQuery
@@ -44,6 +46,25 @@ class DiffRepository:
     async def save(self, enriched_diff: EnrichedDiffRoot) -> None:
         query = await EnrichedDiffSaveQuery.init(db=self.db, enriched_diff_root=enriched_diff)
         await query.execute(db=self.db)
+
+    async def summary(
+        self,
+        base_branch_name: str,
+        diff_branch_names: list[str],
+        from_time: Timestamp,
+        to_time: Timestamp,
+        filters: dict | None = None,
+    ) -> DiffSummaryCounters:
+        query = await DiffSummaryQuery.init(
+            db=self.db,
+            base_branch_name=base_branch_name,
+            diff_branch_names=diff_branch_names,
+            from_time=from_time,
+            to_time=to_time,
+            filters=EnrichedDiffQueryFilters(**dict(filters or {})),
+        )
+        await query.execute(db=self.db)
+        return query.get_summary()
 
     async def get_time_ranges(
         self,
