@@ -479,7 +479,7 @@ class RelationshipManager(RelationshipManagerBase):
         super().__init__(name=name, schema=schema, branch=branch)
 
         self.initialized = data is not None
-        self._has_update = data is not None
+        self._has_update = False
 
         if data is None:
             return
@@ -574,7 +574,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
         super().__init__(name=name, schema=schema, branch=branch)
 
         self.initialized = data is not None
-        self._has_update = data is not None
+        self._has_update = False
 
         if data is None:
             return
