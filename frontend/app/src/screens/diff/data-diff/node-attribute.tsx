@@ -16,11 +16,13 @@ export const DiffNodeAttribute = ({ attribute }: DiffNodeAttributeProps) => {
   const title = (
     <DiffTitle containsConflict={attribute.contains_conflict} status={attribute.status}>
       <div className="flex flex-1 items-center">
-        <span className="w-1/3 font-normal text-xs">{attribute.name}</span>
+        <div className="flex items-center w-1/3 font-normal text-xs">
+          {attribute.name}
 
-        {!branchName && attribute.path_identifier && (
-          <DiffThread path={attribute.path_identifier} />
-        )}
+          {!branchName && attribute.path_identifier && (
+            <DiffThread path={attribute.path_identifier} />
+          )}
+        </div>
 
         <div className="w-2/3">
           <DiffDisplay />

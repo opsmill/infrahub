@@ -4,25 +4,50 @@ import { DiffDisplay, DiffTitle } from "./utils";
 import { Badge } from "@/components/ui/badge";
 import { useParams } from "react-router-dom";
 import { DiffThread } from "./thread";
+import { Icon } from "@iconify-icon/react";
 
 type DiffNodePropertyProps = {
   property: any;
 };
 
+const getPreviousValue = (property) => {
+  if (!property.conflict) {
+    return <Badge variant={"green-outline"}>{property.previous_value}</Badge>;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Badge variant={"green-outline"}>{property.previous_value}</Badge>
+
+      <Icon icon={"mdi:chevron-right"} />
+
+      <Badge variant={"green-outline"}>{property.conflict.base_branch_value}</Badge>
+    </div>
+  );
+};
+
+const getNewValue = (property) => {
+  if (!property.conflict) {
+    return <Badge variant={"green-outline"}>{property.new_value}</Badge>;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Badge variant={"blue-outline"}>{property.previous_value}</Badge>
+
+      <Icon icon={"mdi:chevron-right"} />
+
+      <Badge variant={"blue-outline"}>{property.conflict.diff_branch_value}</Badge>
+    </div>
+  );
+};
+
 export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
   const { "*": branchName } = useParams();
   console.log("property: ", property);
-  if (property.status === "UNCHANGED") return;
-
-  const previousValue = property.previous_value && (
-    <Badge variant={"green-outline"}>{property.previous_value}</Badge>
-  );
-  const newValue = property.new_value && (
-    <Badge variant={"blue-outline"}>{property.new_value}</Badge>
-  );
 
   const title = (
-    <DiffTitle status={property.status}>
+    <DiffTitle status={property.status} containsConflict={property.conflict}>
       <div className="flex flex-1 items-center group">
         <div className="flex items-center w-1/3 font-normal text-xs">
           {property.property_type}
@@ -33,7 +58,7 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
         </div>
 
         <div className="w-2/3">
-          <DiffDisplay left={previousValue} right={newValue} />
+          <DiffDisplay left={getPreviousValue(property)} right={getNewValue(property)} />
         </div>
       </div>
     </DiffTitle>
