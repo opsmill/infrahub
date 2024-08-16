@@ -63,6 +63,7 @@ class EnrichedDiffProperty:
     previous_value: Any
     new_value: Any
     action: DiffAction
+    path_identifier: str = field(default="", kw_only=True)
     conflict: EnrichedDiffConflict | None = field(default=None)
 
     def __hash__(self) -> int:
@@ -82,6 +83,7 @@ class EnrichedDiffProperty:
 @dataclass
 class EnrichedDiffAttribute(BaseSummary):
     name: str
+    path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp
     action: DiffAction
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
@@ -107,6 +109,8 @@ class EnrichedDiffSingleRelationship(BaseSummary):
     changed_at: Timestamp
     action: DiffAction
     peer_id: str
+    peer_label: str | None = field(default=None, kw_only=True)
+    path_identifier: str = field(default="", kw_only=True)
     conflict: EnrichedDiffConflict | None = field(default=None)
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
 
@@ -136,6 +140,7 @@ class EnrichedDiffSingleRelationship(BaseSummary):
 class EnrichedDiffRelationship(BaseSummary):
     name: str
     label: str
+    path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp
     action: DiffAction
     relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)
@@ -143,6 +148,12 @@ class EnrichedDiffRelationship(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    @property
+    def include_in_response(self) -> bool:
+        if self.action == DiffAction.UNCHANGED and not self.relationships:
+            return False
+        return True
 
     @classmethod
     def from_calculated_relationship(cls, calculated_relationship: DiffRelationship) -> EnrichedDiffRelationship:
@@ -165,6 +176,7 @@ class EnrichedDiffRelationship(BaseSummary):
             label=node.get("label"),
             changed_at=Timestamp(node.get("changed_at")),
             action=node.get("action"),
+            path_identifier=str(node.get("path_identifier")),
             num_added=int(node.get("num_added")),
             num_conflicts=int(node.get("num_conflicts")),
             num_removed=int(node.get("num_removed")),
@@ -178,6 +190,7 @@ class EnrichedDiffNode(BaseSummary):
     uuid: str
     kind: str
     label: str
+    path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp
     action: DiffAction
     conflict: EnrichedDiffConflict | None = field(default=None)
@@ -186,6 +199,12 @@ class EnrichedDiffNode(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.uuid)
+
+    def get_parent_node(self) -> EnrichedDiffNode | None:
+        for r in self.relationships:
+            for n in r.nodes:
+                return n
+        return None
 
     def get_all_child_nodes(self) -> set[EnrichedDiffNode]:
         all_children = set()
@@ -288,6 +307,39 @@ class EnrichedDiffRoot(BaseSummary):
             uuid=str(uuid4()),
             nodes={EnrichedDiffNode.from_calculated_node(calculated_node=n) for n in calculated_diff.nodes},
         )
+
+    def add_parent(
+        self, node_id: str, parent_id: str, parent_kind: str, parent_rel_name: str, parent_rel_label: str = ""
+    ) -> EnrichedDiffNode:
+        node = self.get_node(node_uuid=node_id)
+        if not self.has_node(node_uuid=parent_id):
+            parent = EnrichedDiffNode(
+                uuid=parent_id,
+                kind=parent_kind,
+                label="",
+                action=DiffAction.UNCHANGED,
+                changed_at=Timestamp(),
+            )
+            self.nodes.add(parent)
+
+        else:
+            parent = self.get_node(node_uuid=parent_id)
+
+        if node.has_relationship(name=parent_rel_name):
+            rel = node.get_relationship(name=parent_rel_name)
+            rel.nodes.add(parent)
+        else:
+            node.relationships.add(
+                EnrichedDiffRelationship(
+                    name=parent_rel_name,
+                    label=parent_rel_label,
+                    changed_at=Timestamp(),
+                    action=DiffAction.UNCHANGED,
+                    nodes={parent},
+                )
+            )
+
+        return parent
 
 
 @dataclass

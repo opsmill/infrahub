@@ -5,4 +5,4 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 class DiffCardinalityOneEnricherDependency(DependencyBuilder[DiffCardinalityOneEnricher]):
     @classmethod
     def build(cls, context: DependencyBuilderContext) -> DiffCardinalityOneEnricher:
-        return DiffCardinalityOneEnricher()
+        return DiffCardinalityOneEnricher(db=context.db)

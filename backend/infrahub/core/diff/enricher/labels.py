@@ -18,6 +18,16 @@ class DiffLabelsEnricher(DiffEnricherInterface):
         diff_branch_name = enriched_diff_root.diff_branch_name
         for node in enriched_diff_root.nodes:
             node_kind_map[node.kind].append(node.uuid)
+            if not node.relationships:
+                continue
+            node_schema = self.db.schema.get(name=node.kind, branch=diff_branch_name, duplicate=False)
+            for relationship_diff in node.relationships:
+                relationship_schema = node_schema.get_relationship(name=relationship_diff.name)
+                relationship_diff.label = relationship_schema.label or ""
+                peer_kind = relationship_schema.peer
+                for element in relationship_diff.relationships:
+                    node_kind_map[peer_kind].append(element.peer_id)
+
         display_label_map = await get_display_labels(db=self.db, nodes={diff_branch_name: node_kind_map})
         for node in enriched_diff_root.nodes:
             try:
@@ -27,11 +37,9 @@ class DiffLabelsEnricher(DiffEnricherInterface):
             if display_label:
                 node.label = display_label
 
-            if not node.relationships:
-                continue
-            node_schema = self.db.schema.get(
-                name=node.kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
-            )
             for relationship_diff in node.relationships:
-                relationship_schema = node_schema.get_relationship(name=relationship_diff.name)
-                relationship_diff.label = relationship_schema.label or ""
+                for element in relationship_diff.relationships:
+                    try:
+                        element.peer_label = display_label_map[diff_branch_name][element.peer_id]
+                    except KeyError:
+                        pass

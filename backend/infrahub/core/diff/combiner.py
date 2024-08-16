@@ -122,6 +122,7 @@ class DiffCombiner:
                 changed_at=later_property.changed_at,
                 previous_value=earlier_property.previous_value,
                 new_value=later_property.new_value,
+                path_identifier=later_property.path_identifier,
                 action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
             )
             combined_properties.add(combined_property)
@@ -149,6 +150,7 @@ class DiffCombiner:
                 name=later_attribute.name,
                 changed_at=later_attribute.changed_at,
                 action=combined_action,
+                path_identifier=later_attribute.path_identifier,
                 properties=self._combine_properties(
                     earlier_properties=earlier_attribute.properties, later_properties=later_attribute.properties
                 ),
@@ -177,6 +179,8 @@ class DiffCombiner:
             changed_at=final_element.changed_at,
             action=combined_action,
             peer_id=final_element.peer_id,
+            peer_label=final_element.peer_label,
+            path_identifier=final_element.path_identifier,
             properties=combined_properties,
         )
 
@@ -198,6 +202,8 @@ class DiffCombiner:
                 changed_at=later_element.changed_at,
                 action=self._combine_actions(earlier=earlier_element.action, later=later_element.action),
                 peer_id=later_element.peer_id,
+                peer_label=later_element.peer_label,
+                path_identifier=later_element.path_identifier,
                 properties=self._combine_properties(
                     earlier_properties=earlier_element.properties, later_properties=later_element.properties
                 ),
@@ -243,6 +249,7 @@ class DiffCombiner:
                 label=later_relationship.label,
                 changed_at=later_relationship.changed_at,
                 action=self._combine_actions(earlier=earlier_relationship.action, later=later_relationship.action),
+                path_identifier=later_relationship.path_identifier,
                 relationships=combined_relationship_elements,
                 nodes=set(),
             )
@@ -290,6 +297,7 @@ class DiffCombiner:
                     label=node_pair.later.label,
                     changed_at=node_pair.later.changed_at,
                     action=combined_action,
+                    path_identifier=node_pair.later.path_identifier,
                     attributes=combined_attributes,
                     relationships=combined_relationships,
                 )
