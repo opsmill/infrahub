@@ -22,10 +22,6 @@ export const getProposedChangesDiffTree = gql`
             }
             last_changed_at
             contains_conflict
-            num_added
-            num_conflicts
-            num_removed
-            num_updated
             peer_id
             properties {
               conflict {
@@ -51,10 +47,6 @@ export const getProposedChangesDiffTree = gql`
           }
           last_changed_at
           name
-          num_added
-          num_conflicts
-          num_removed
-          num_updated
           path_identifier
         }
         conflict {
@@ -71,10 +63,6 @@ export const getProposedChangesDiffTree = gql`
           contains_conflict
           last_changed_at
           name
-          num_added
-          num_conflicts
-          num_removed
-          num_updated
           properties {
             conflict {
               base_branch_action
@@ -100,10 +88,6 @@ export const getProposedChangesDiffTree = gql`
         contains_conflict
         label
         last_changed_at
-        num_added
-        num_conflicts
-        num_removed
-        num_updated
         status
         parent_node
         path_identifier
