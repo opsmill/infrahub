@@ -5,11 +5,14 @@ type DiffNodeElementProps = {
 };
 
 export const DiffNodeElement = ({ element }: DiffNodeElementProps) => {
+  console.log("element: ", element);
   return (
     <div>
-      {element.properties.map((property, index) => (
-        <DiffNodeProperty key={index} property={property} />
-      ))}
+      {element.properties
+        .filter((property) => property.status !== "UNCHANGED")
+        .map((property, index) => (
+          <DiffNodeProperty key={index} property={property} />
+        ))}
     </div>
   );
 };

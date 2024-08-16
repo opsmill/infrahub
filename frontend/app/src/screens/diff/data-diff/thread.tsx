@@ -65,7 +65,13 @@ export const DiffThread = (props: tDiffThread) => {
     <div className="ml-2">
       <div className="flex items-center cursor-pointer ">
         {thread?.comments?.count && (
-          <Badge variant={"dark-gray"} className="rounded-full mr-2">
+          <Badge
+            variant={"dark-gray"}
+            className="rounded-full mr-2"
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowThread(true);
+            }}>
             <Icon icon="mdi:chat-outline" className="mr-1" />
             {thread?.comments?.count}
           </Badge>
@@ -74,7 +80,8 @@ export const DiffThread = (props: tDiffThread) => {
           <Tooltip enabled content={"Add comment"}>
             <Button
               disabled={!auth?.permissions?.write}
-              onClick={() => {
+              onClick={(event) => {
+                event.stopPropagation();
                 setShowThread(true);
               }}
               className="p-0 h-6"
