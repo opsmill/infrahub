@@ -334,6 +334,7 @@ class EnrichedDiffDeserializer:
             diff_branch_name=str(root_node.get("diff_branch")),
             from_time=from_time,
             to_time=to_time,
+            uuid=str(root_uuid),
             name=self._get_str_or_none_property_value(node=root_node, property_name="name"),
             persist=bool(root_node.get("persist")),
             uuid=str(root_uuid),
