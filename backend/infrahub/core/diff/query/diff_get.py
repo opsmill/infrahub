@@ -319,6 +319,7 @@ class EnrichedDiffDeserializer:
             from_time=from_time,
             to_time=to_time,
             name=self._get_str_or_none_property_value(node=root_node, property_name="name"),
+            persist=bool(root_node.get("persist")),
             uuid=str(root_uuid),
             num_added=int(root_node.get("num_added")),
             num_updated=int(root_node.get("num_updated")),

@@ -307,6 +307,7 @@ class EnrichedDiffRoot(BaseSummary):
     from_time: Timestamp
     to_time: Timestamp
     uuid: str
+    persist: bool = field(default=False, kw_only=True)
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
     def __hash__(self) -> int:
