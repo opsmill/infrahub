@@ -275,7 +275,11 @@ class DiffRelationshipIntermediate:
     _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
 
     def add_path(self, database_path: DatabasePath) -> None:
-        if database_path.property_type == DatabaseEdgeType.IS_RELATED:
+        if database_path.property_type in [
+            DatabaseEdgeType.IS_RELATED,
+            DatabaseEdgeType.HAS_OWNER,
+            DatabaseEdgeType.HAS_SOURCE,
+        ]:
             value = database_path.peer_id
         else:
             value = database_path.property_value
@@ -553,7 +557,7 @@ class DiffQueryParser:
             for relationship_diff in node_diff.relationships_by_name.values():
                 for diff_relationship_property_list in relationship_diff.properties_by_db_id.values():
                     for diff_relationship_property in diff_relationship_property_list:
-                        if diff_relationship_property.changed_at <= self.from_time:
+                        if diff_relationship_property.changed_at >= self.from_time:
                             return
         del self._diff_root_by_branch[self.base_branch_name]
 

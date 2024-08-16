@@ -590,3 +590,134 @@ async def test_add_node_branch(
         (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, False, None),
         (DatabaseEdgeType.IS_RELATED, DiffAction.ADDED, person_jane_main.id, None),
     }
+
+
+async def test_agnostic_source_relationship_update(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_global,
+):
+    person_1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person_1.new(db=db, name="Herb", height=165)
+    await person_1.save(db=db)
+    new_car = await Node.init(db=db, branch=default_branch, schema="TestCar")
+    await new_car.new(db=db, name="Batmobile", color="#000000", nbr_seats=1, is_electric=False, owner=person_1)
+    await new_car.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    branch_car = await NodeManager.get_one(db=db, branch=branch, id=new_car.id)
+    await branch_car.owner.update(db=db, data={"id": person_1.id, "_relation__source": person_1.id})
+    await branch_car.save(db=db)
+
+    diff_query = await DiffAllPathsQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+    )
+    await diff_query.execute(db=db)
+
+    diff_parser = DiffQueryParser(
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
+    )
+    diff_parser.parse()
+
+    assert diff_parser.get_branches() == {branch.name}
+    root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
+    assert root_path.branch == branch.name
+    assert len(root_path.nodes) == 1
+    diff_node = root_path.nodes.pop()
+    assert diff_node.uuid == new_car.get_id()
+    assert diff_node.action is DiffAction.UPDATED
+    assert diff_node.attributes == []
+    assert len(diff_node.relationships) == 1
+    diff_relationship = diff_node.relationships.pop()
+    assert diff_relationship.name == "owner"
+    assert diff_relationship.action is DiffAction.UPDATED
+    assert len(diff_relationship.relationships) == 1
+    diff_element = diff_relationship.relationships.pop()
+    assert diff_element.peer_id == person_1.get_id()
+    assert diff_element.action is DiffAction.UPDATED
+    diff_props_by_type = {p.property_type: p for p in diff_element.properties}
+    assert set(diff_props_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.HAS_SOURCE}
+    diff_prop_is_related = diff_props_by_type[DatabaseEdgeType.IS_RELATED]
+    assert diff_prop_is_related.previous_value == person_1.get_id()
+    assert diff_prop_is_related.new_value == person_1.get_id()
+    assert diff_prop_is_related.action is DiffAction.UNCHANGED
+    diff_prop_has_source = diff_props_by_type[DatabaseEdgeType.HAS_SOURCE]
+    assert diff_prop_has_source.previous_value is None
+    assert diff_prop_has_source.new_value == person_1.get_id()
+    assert diff_prop_has_source.action is DiffAction.ADDED
+
+
+async def test_agnostic_owner_relationship_added(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_global,
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    person_1 = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person_1.new(db=db, name="Herb", height=165)
+    await person_1.save(db=db)
+    new_car = await Node.init(db=db, branch=branch, schema="TestCar")
+    await new_car.new(db=db, name="Batmobile", color="#000000", nbr_seats=1, is_electric=False, owner=person_1)
+    await new_car.owner.update(db=db, data={"id": person_1.id, "_relation__owner": person_1.id})
+    await new_car.save(db=db)
+
+    diff_query = await DiffAllPathsQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+    )
+    await diff_query.execute(db=db)
+
+    diff_parser = DiffQueryParser(
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
+    )
+    diff_parser.parse()
+
+    assert diff_parser.get_branches() == {branch.name}
+    root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
+    assert root_path.branch == branch.name
+    diff_nodes_by_id = {n.uuid: n for n in root_path.nodes}
+    assert set(diff_nodes_by_id.keys()) == {new_car.get_id()}
+    diff_node_car = diff_nodes_by_id[new_car.get_id()]
+    assert diff_node_car.action is DiffAction.ADDED
+    assert {(attr.name, attr.action) for attr in diff_node_car.attributes} == {
+        ("name", DiffAction.ADDED),
+        ("color", DiffAction.ADDED),
+        ("is_electric", DiffAction.ADDED),
+    }
+    assert len(diff_node_car.relationships) == 1
+    diff_relationship = diff_node_car.relationships.pop()
+    assert diff_relationship.name == "owner"
+    assert diff_relationship.action is DiffAction.ADDED
+    assert len(diff_relationship.relationships) == 1
+    diff_element = diff_relationship.relationships.pop()
+    assert diff_element.peer_id == person_1.get_id()
+    assert diff_element.action is DiffAction.ADDED
+    diff_props_by_type = {p.property_type: p for p in diff_element.properties}
+    assert set(diff_props_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.HAS_OWNER,
+        DatabaseEdgeType.IS_PROTECTED,
+        DatabaseEdgeType.IS_VISIBLE,
+    }
+    diff_prop_tuples = {
+        (diff_prop.property_type, diff_prop.action, diff_prop.previous_value, diff_prop.new_value)
+        for diff_prop in diff_props_by_type.values()
+    }
+    assert diff_prop_tuples == {
+        (DatabaseEdgeType.IS_RELATED, DiffAction.ADDED, None, person_1.get_id()),
+        (DatabaseEdgeType.HAS_OWNER, DiffAction.ADDED, None, person_1.get_id()),
+        (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, None, False),
+        (DatabaseEdgeType.IS_VISIBLE, DiffAction.ADDED, None, True),
+    }
