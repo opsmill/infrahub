@@ -31,8 +31,6 @@ class EnrichedDiffSaveQuery(Query):
             diff_branch: $diff_root_props.diff_branch,
             from_time: $diff_root_props.from_time,
             to_time: $diff_root_props.to_time,
-            persist: $diff_root_props.persist,
-            tracks_branch: $diff_root_props.tracks_branch,
             uuid: $diff_root_props.uuid,
             num_added: $diff_root_props.num_added,
             num_updated: $diff_root_props.num_updated,
@@ -40,7 +38,7 @@ class EnrichedDiffSaveQuery(Query):
             num_conflicts: $diff_root_props.num_conflicts,
             contains_conflict: $diff_root_props.contains_conflict
         })
-        SET diff_root.name = $diff_root_props.name
+        SET diff_root.tracking_id = $diff_root_props.tracking_id
         WITH diff_root
         UNWIND $node_maps AS node_map
         CREATE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
@@ -266,9 +264,7 @@ class EnrichedDiffSaveQuery(Query):
             "from_time": enriched_diff.from_time.to_string(),
             "to_time": enriched_diff.to_time.to_string(),
             "uuid": enriched_diff.uuid,
-            "name": enriched_diff.name,
-            "persist": enriched_diff.persist,
-            "tracks_branch": enriched_diff.tracks_branch,
+            "tracking_id": enriched_diff.tracking_id,
             "num_added": enriched_diff.num_added,
             "num_updated": enriched_diff.num_updated,
             "num_removed": enriched_diff.num_removed,

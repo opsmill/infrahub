@@ -303,12 +303,10 @@ class EnrichedDiffNode(BaseSummary):
 class EnrichedDiffRoot(BaseSummary):
     base_branch_name: str
     diff_branch_name: str
-    name: str | None = field(default=None, kw_only=True)
     from_time: Timestamp
     to_time: Timestamp
     uuid: str
-    persist: bool = field(default=False, kw_only=True)
-    tracks_branch: str | None = field(default=None, kw_only=True)
+    tracking_id: str | None = field(default=None, kw_only=True)
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
     def __hash__(self) -> int:

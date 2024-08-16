@@ -631,9 +631,9 @@ class TestDiffRepositorySaveAndLoad:
             diffs.append(enriched_diff)
 
         diff_to_delete = diffs.pop()
-        await diff_repository.delete_diff_root(diff_root_uuids=[diff_to_delete.uuid])
+        await diff_repository.delete_diff_roots(diff_root_uuids=[diff_to_delete.uuid])
         diffs_to_delete = [diffs.pop(), diffs.pop()]
-        await diff_repository.delete_diff_root(diff_root_uuids=[diff.uuid for diff in diffs_to_delete])
+        await diff_repository.delete_diff_roots(diff_root_uuids=[diff.uuid for diff in diffs_to_delete])
 
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
