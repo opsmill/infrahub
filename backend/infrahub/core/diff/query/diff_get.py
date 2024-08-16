@@ -318,6 +318,7 @@ class EnrichedDiffDeserializer:
             diff_branch_name=str(root_node.get("diff_branch")),
             from_time=from_time,
             to_time=to_time,
+            name=self._get_str_or_none_property_value(node=root_node, property_name="name"),
             uuid=str(root_uuid),
             num_added=int(root_node.get("num_added")),
             num_updated=int(root_node.get("num_updated")),

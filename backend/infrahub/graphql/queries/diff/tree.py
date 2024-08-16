@@ -120,6 +120,7 @@ class DiffTree(DiffSummaryCounts):
     diff_branch = String(required=True)
     from_time = DateTime(required=True)
     to_time = DateTime(required=True)
+    name = String(required=False)
     nodes = List(DiffNode)
 
 
@@ -142,6 +143,7 @@ class DiffTreeResolver:
             diff_branch=enriched_diff_root.diff_branch_name,
             from_time=await enriched_diff_root.from_time.to_graphql(),
             to_time=await enriched_diff_root.to_time.to_graphql(),
+            name=enriched_diff_root.name,
             nodes=tree_nodes,
             num_added=enriched_diff_root.num_added,
             num_updated=enriched_diff_root.num_updated,
