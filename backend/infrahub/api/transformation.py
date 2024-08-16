@@ -57,7 +57,7 @@ async def transform_python(
     query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
     repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
 
-    if repository.commit.value is None:
+    if repository.commit.value is None:  # type: ignore[attr-defined]
         raise TransformError(
             repository_name=repository.name.value,
             location=repository.location.value,
@@ -83,7 +83,7 @@ async def transform_python(
         repository_id=repository.id,
         repository_name=repository.name.value,
         repository_kind=repository.get_kind(),
-        commit=repository.commit.value,
+        commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         transform_location=f"{transform.file_path.value}::{transform.class_name.value}",
         data=data,
@@ -114,7 +114,7 @@ async def transform_jinja2(
     query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
     repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
 
-    if repository.commit.value is None:
+    if repository.commit.value is None:  # type: ignore[attr-defined]
         raise TransformError(
             repository_name=repository.name.value,
             location=repository.location.value,
@@ -140,7 +140,7 @@ async def transform_jinja2(
         repository_id=repository.id,
         repository_name=repository.name.value,
         repository_kind=repository.get_kind(),
-        commit=repository.commit.value,
+        commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         template_location=transform.template_path.value,
         data=data,
