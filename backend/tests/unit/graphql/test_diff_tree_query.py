@@ -155,22 +155,9 @@ async def test_diff_tree_empty_diff(db: InfrahubDatabase, default_branch: Branch
         root_value=None,
         variable_values={"branch": diff_branch.name},
     )
-    from_time = datetime.fromisoformat(diff_branch.created_at)
-    to_time = datetime.fromisoformat(params.context.at.to_string())
 
     assert result.errors is None
-
-    assert result.data["DiffTree"] == {
-        "base_branch": "main",
-        "diff_branch": "diff",
-        "from_time": from_time.isoformat(),
-        "to_time": to_time.isoformat(),
-        "num_added": 0,
-        "num_removed": 0,
-        "num_updated": 0,
-        "num_conflicts": 0,
-        "nodes": [],
-    }
+    assert result.data["DiffTree"] is None
 
 
 async def test_diff_tree_no_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):

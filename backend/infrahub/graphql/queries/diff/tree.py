@@ -126,14 +126,14 @@ class DiffTreeSummary(DiffSummaryCounts):
 
 
 class DiffTreeResolver:
-    def to_diff_tree(self, enriched_diff_root: EnrichedDiffRoot) -> DiffTree:
+    async def to_diff_tree(self, enriched_diff_root: EnrichedDiffRoot) -> DiffTree:
         all_nodes = list(enriched_diff_root.nodes)
         tree_nodes = [self.to_diff_node(enriched_node=e_node) for e_node in all_nodes]
         return DiffTree(
             base_branch=enriched_diff_root.base_branch_name,
             diff_branch=enriched_diff_root.diff_branch_name,
-            from_time=enriched_diff_root.from_time.to_graphql(),
-            to_time=enriched_diff_root.to_time.to_graphql(),
+            from_time=await enriched_diff_root.from_time.to_graphql(),
+            to_time=await enriched_diff_root.to_time.to_graphql(),
             nodes=tree_nodes,
             num_added=enriched_diff_root.num_added,
             num_updated=enriched_diff_root.num_updated,
@@ -251,7 +251,7 @@ class DiffTreeResolver:
             selected_branch=enriched_conflict.selected_branch,
         )
 
-    def to_graphql(
+    async def to_graphql(
         self, fields: dict[str, dict], diff_object: Optional[Any]
     ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
         if diff_object is None:
@@ -270,7 +270,9 @@ class DiffTreeResolver:
                 if sub_fields is None:
                     element_response[field_name] = getattr(diff_object_element, field_name, None)
                 elif hasattr(diff_object_element, field_name):
-                    element_response[field_name] = self.to_graphql(sub_fields, getattr(diff_object_element, field_name))
+                    element_response[field_name] = await self.to_graphql(
+                        sub_fields, getattr(diff_object_element, field_name)
+                    )
                 else:
                     continue
             response_list.append(element_response)
@@ -329,11 +331,13 @@ class DiffTreeResolver:
             limit=limit,
             offset=offset,
         )
+        if not enriched_diffs:
+            return None
         enriched_diff = enriched_diffs[0]
 
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
-        diff_tree = self.to_diff_tree(enriched_diff_root=enriched_diff)
-        return self.to_graphql(fields=full_fields, diff_object=diff_tree)
+        diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff)
+        return await self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
     # pylint: disable=unused-argument
     async def summary(
