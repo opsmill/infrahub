@@ -42,13 +42,11 @@ export const DataDiff = () => {
   const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const oldApproversId = approvers.map((a: any) => a.id);
 
-  const query = gql`
-    ${getProposedChangesDiffTree}
-  `;
+  const filters = { namespace: { excludes: ["Schema", "Profile"] } };
 
-  const { loading, data } = useQuery(query, {
+  const { loading, data } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,
-    variables: { branch },
+    variables: { branch, filters },
   });
 
   const handleApprove = async () => {
@@ -192,10 +190,6 @@ export const DataDiff = () => {
     setIsLoadingClose(false);
   };
 
-  const nodes = data?.DiffTree?.nodes
-    ?.filter((node) => node.status !== "UNCHANGED")
-    ?.filter((node) => node.__typename === "DiffNode");
-
   return (
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
@@ -245,7 +239,8 @@ export const DataDiff = () => {
 
       {loading && <LoadingScreen message="Loading diff..." />}
 
-      {nodes?.length && nodes.map((node, index) => <DiffNode key={index} node={node} />)}
+      {data?.DiffTree?.nodes?.length &&
+        data?.DiffTree?.nodes.map((node, index) => <DiffNode key={index} node={node} />)}
     </>
   );
 };
