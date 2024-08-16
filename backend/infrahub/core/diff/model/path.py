@@ -338,7 +338,6 @@ class EnrichedDiffNode(BaseSummary):
 class EnrichedDiffRoot(BaseSummary):
     base_branch_name: str
     diff_branch_name: str
-    name: str | None = field(default=None, kw_only=True)
     from_time: Timestamp
     to_time: Timestamp
     uuid: str
