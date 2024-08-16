@@ -9,6 +9,7 @@ from typing import (
     Iterable,
     Iterator,
     Literal,
+    Mapping,
     Optional,
     Sequence,
     TypeVar,
@@ -248,12 +249,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             self.peer_id = value.get_id()
 
     @overload
-    async def get_peer(self, db: InfrahubDatabase) -> Node: ...
-
-    @overload
     async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType]) -> PeerType: ...
 
-    async def get_peer(self, db: InfrahubDatabase, peer_type: Optional[type[PeerType]] = None) -> Any:
+    @overload
+    async def get_peer(self, db: InfrahubDatabase, peer_type: Literal[None] = ...) -> Node: ...
+
+    async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType] | None = None) -> Any:  # pylint: disable=unused-argument
         """Return the peer of the relationship."""
         if self._peer is None:
             await self._get_peer(db=db)
@@ -769,36 +770,54 @@ class RelationshipManager:
     async def get_peer(
         self,
         db: InfrahubDatabase,
-        raise_on_error: Literal[False] = False,
-    ) -> Node | None: ...
-
-    @overload
-    async def get_peer(
-        self,
-        db: InfrahubDatabase,
-        raise_on_error: Literal[True] = True,
-    ) -> Node: ...
-
-    @overload
-    async def get_peer(
-        self,
-        db: InfrahubDatabase,
-        peer_type: PeerType,
-        raise_on_error: Literal[False] = False,
+        peer_type: type[PeerType],
+        raise_on_error: Literal[False] = ...,
     ) -> PeerType | None: ...
 
     @overload
     async def get_peer(
         self,
         db: InfrahubDatabase,
-        peer_type: PeerType,
-        raise_on_error: Literal[True] = True,
+        peer_type: type[PeerType],
+        raise_on_error: Literal[True],
     ) -> PeerType: ...
+
+    @overload
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        peer_type: type[PeerType],
+        raise_on_error: bool,
+    ) -> PeerType: ...
+
+    @overload
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        peer_type: Literal[None] = ...,
+        raise_on_error: Literal[False] = ...,
+    ) -> Node | None: ...
+
+    @overload
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        peer_type: Literal[None] = ...,
+        raise_on_error: Literal[True] = ...,
+    ) -> Node: ...
+
+    @overload
+    async def get_peer(
+        self,
+        db: InfrahubDatabase,
+        peer_type: Literal[None] = ...,
+        raise_on_error: bool = ...,
+    ) -> Node: ...
 
     async def get_peer(
         self,
         db: InfrahubDatabase,
-        peer_type: Optional[type[PeerType]] = None,
+        peer_type: type[PeerType] | None = None,  # pylint: disable=unused-argument
         raise_on_error: bool = False,
     ) -> Node | PeerType | None:
         if self.schema.cardinality == "many":
@@ -814,19 +833,27 @@ class RelationshipManager:
         return peer
 
     @overload
-    async def get_peers(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> dict[str, Node]: ...
+    async def get_peers(
+        self,
+        db: InfrahubDatabase,
+        branch_agnostic: bool,
+        peer_type: type[PeerType],
+    ) -> Mapping[str, PeerType]: ...
 
     @overload
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        peer_type: PeerType,
-        branch_agnostic: bool = False,
-    ) -> dict[str, PeerType]: ...
+        branch_agnostic: bool,
+        peer_type: Literal[None] = None,
+    ) -> Mapping[str, Node]: ...
 
-    async def get_peers(  # type: ignore[misc]
-        self, db: InfrahubDatabase, branch_agnostic: bool = False, peer_type: Optional[PeerType] = None
-    ) -> dict[str, Node | PeerType]:
+    async def get_peers(
+        self,
+        db: InfrahubDatabase,
+        branch_agnostic: bool = False,
+        peer_type: type[PeerType] | None = None,  # pylint: disable=unused-argument
+    ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
         nodes = await registry.manager.get_many(

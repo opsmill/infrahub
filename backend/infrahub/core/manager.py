@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 SchemaProtocol = TypeVar("SchemaProtocol")
 
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin,too-many-lines
 
 
 def identify_node_class(node: NodeToProcess) -> type[Node]:
