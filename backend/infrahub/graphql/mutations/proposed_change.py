@@ -69,13 +69,19 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                 )
 
         if context.service:
-            message = messages.RequestProposedChangePipeline(
-                proposed_change=proposed_change.id,
-                source_branch=source_branch.name,
-                source_branch_sync_with_git=source_branch.sync_with_git,
-                destination_branch=destination_branch,
-            )
-            await context.service.send(message=message)
+            message_list = [
+                messages.RequestDiffUpdate(branch_name=source_branch.name),
+                messages.RequestProposedChangePipeline(
+                    proposed_change=proposed_change.id,
+                    source_branch=source_branch.name,
+                    source_branch_sync_with_git=source_branch.sync_with_git,
+                    destination_branch=destination_branch,
+                ),
+            ]
+            message = messages.RequestDiffUpdate(branch_name=source_branch.name)
+
+            for message in message_list:
+                await context.service.send(message=message)
 
         return proposed_change, result
 

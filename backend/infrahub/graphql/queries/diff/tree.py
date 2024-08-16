@@ -404,12 +404,6 @@ class DiffTreeResolver:
 
         filters_dict = dict(filters or {})
 
-        # await diff_coordinator.update_diffs(
-        #     base_branch=base_branch,
-        #     diff_branch=diff_branch,
-        #     from_time=from_timestamp,
-        #     to_time=to_timestamp,
-        # )
         summary = await diff_repo.summary(
             base_branch_name=base_branch.name,
             diff_branch_names=[diff_branch.name],

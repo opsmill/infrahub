@@ -16,6 +16,7 @@ from .mutations import (
     BranchRebase,
     BranchUpdate,
     BranchValidate,
+    DiffUpdateMutation,
     InfrahubAccountSelfUpdate,
     InfrahubAccountTokenCreate,
     InfrahubAccountTokenDelete,
@@ -121,6 +122,9 @@ class InfrahubBaseMutation(ObjectType):
     BranchMerge = BranchMerge.Field()
     BranchUpdate = BranchUpdate.Field()
     BranchValidate = BranchValidate.Field()
+
+    DiffUpdate = DiffUpdateMutation.Field()
+
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubTaskCreate = TaskCreate.Field()
