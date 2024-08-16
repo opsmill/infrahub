@@ -20,10 +20,12 @@ export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSumma
 
   return (
     <div className="flex gap-2">
-      <BadgeAdd loading={!branch || loading}>{data?.DiffTree?.num_added}</BadgeAdd>
-      <BadgeRemove loading={!branch || loading}>{data?.DiffTree?.num_removed}</BadgeRemove>
-      <BadgeUpdate loading={!branch || loading}>{data?.DiffTree?.num_updated}</BadgeUpdate>
-      <BadgeConflict loading={!branch || loading}>{data?.DiffTree?.num_conflicts}</BadgeConflict>
+      <BadgeAdd loading={!branch || loading}>{data?.DiffTreeSummary?.num_added}</BadgeAdd>
+      <BadgeRemove loading={!branch || loading}>{data?.DiffTreeSummary?.num_removed}</BadgeRemove>
+      <BadgeUpdate loading={!branch || loading}>{data?.DiffTreeSummary?.num_updated}</BadgeUpdate>
+      <BadgeConflict loading={!branch || loading}>
+        {data?.DiffTreeSummary?.num_conflicts}
+      </BadgeConflict>
     </div>
   );
 };
