@@ -48,7 +48,7 @@ from .queries import (
     Relationship,
     Task,
 )
-from .queries.diff.tree import DiffTreeQuery
+from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -88,6 +88,7 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubAccountToken = AccountToken
 
     DiffTree = DiffTreeQuery
+    DiffTreeSummary = DiffTreeSummaryQuery
     DiffSummary = DiffSummary
 
     Relationship = Relationship

@@ -21,3 +21,17 @@ def find_node_schema(
                 return schema
 
     return None
+
+
+def filter_and(items: list[str]) -> str:
+    filter_str = " AND ".join(items)
+    if len(items) > 1:
+        return f" ( {filter_str} ) "
+    return filter_str
+
+
+def filter_or(items: list[str]) -> str:
+    filter_str = " OR ".join(items)
+    if len(items) > 1:
+        return f" ( {filter_str} ) "
+    return filter_str

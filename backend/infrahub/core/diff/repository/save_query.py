@@ -115,10 +115,14 @@ class EnrichedDiffSaveQuery(Query):
             "uuid": enriched_conflict.uuid,
             "base_branch_action": enriched_conflict.base_branch_action.value,
             "base_branch_value": enriched_conflict.base_branch_value,
-            "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string(),
+            "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string()
+            if enriched_conflict.base_branch_changed_at
+            else None,
             "diff_branch_action": enriched_conflict.diff_branch_action.value,
             "diff_branch_value": enriched_conflict.diff_branch_value,
-            "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string(),
+            "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string()
+            if enriched_conflict.diff_branch_changed_at
+            else None,
             "selected_branch": enriched_conflict.selected_branch.value if enriched_conflict.selected_branch else None,
         }
 
@@ -192,7 +196,9 @@ class EnrichedDiffSaveQuery(Query):
             "node_properties": {
                 "name": enriched_relationship.name,
                 "label": enriched_relationship.label,
-                "changed_at": enriched_relationship.changed_at.to_string(),
+                "changed_at": enriched_relationship.changed_at.to_string()
+                if enriched_relationship.changed_at
+                else None,
                 "action": enriched_relationship.action,
                 "path_identifier": enriched_relationship.path_identifier,
                 "num_added": enriched_relationship.num_added,
@@ -219,7 +225,7 @@ class EnrichedDiffSaveQuery(Query):
                 "uuid": enriched_node.uuid,
                 "kind": enriched_node.kind,
                 "label": enriched_node.label,
-                "changed_at": enriched_node.changed_at.to_string(),
+                "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
                 "action": enriched_node.action.value,
                 "path_identifier": enriched_node.path_identifier,
                 "num_added": enriched_node.num_added,

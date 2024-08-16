@@ -19,6 +19,31 @@ from ..model.path import (
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
 )
+from .filters import EnrichedDiffQueryFilters
+
+QUERY_MATCH_NODES = """
+    // get the roots of all diffs in the query
+    MATCH (diff_root:DiffRoot)
+    WHERE diff_root.base_branch = $base_branch
+    AND diff_root.diff_branch IN $diff_branches
+    AND diff_root.from_time >= $from_time
+    AND diff_root.to_time <= $to_time
+    WITH diff_root
+    ORDER BY diff_root.base_branch, diff_root.diff_branch, diff_root.from_time, diff_root.to_time
+    WITH diff_root.base_branch AS bb, diff_root.diff_branch AS db, collect(diff_root) AS same_branch_diff_roots
+    WITH reduce(
+        non_overlapping = [], dr in same_branch_diff_roots |
+        CASE
+            WHEN size(non_overlapping) = 0 THEN [dr]
+            WHEN dr.from_time >= (non_overlapping[-1]).from_time AND dr.to_time <= (non_overlapping[-1]).to_time THEN non_overlapping
+            WHEN (non_overlapping[-1]).from_time >= dr.from_time AND (non_overlapping[-1]).to_time <= dr.to_time THEN non_overlapping[..-1] + [dr]
+            ELSE non_overlapping + [dr]
+        END
+    ) AS non_overlapping_diff_roots
+    UNWIND non_overlapping_diff_roots AS diff_root
+    // get all the nodes attached to the diffs
+    OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
+    """
 
 
 class EnrichedDiffGetQuery(Query):
@@ -34,7 +59,7 @@ class EnrichedDiffGetQuery(Query):
         diff_branch_names: list[str],
         from_time: Timestamp,
         to_time: Timestamp,
-        root_node_uuids: list[str] | None,
+        filters: EnrichedDiffQueryFilters,
         max_depth: int,
         **kwargs: Any,
     ) -> None:
@@ -43,8 +68,8 @@ class EnrichedDiffGetQuery(Query):
         self.diff_branch_names = diff_branch_names
         self.from_time = from_time
         self.to_time = to_time
-        self.root_node_uuids = root_node_uuids
         self.max_depth = max_depth
+        self.filters = filters or EnrichedDiffQueryFilters()
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params = {
@@ -52,34 +77,24 @@ class EnrichedDiffGetQuery(Query):
             "diff_branches": self.diff_branch_names,
             "from_time": self.from_time.to_string(),
             "to_time": self.to_time.to_string(),
-            "root_node_uuids": self.root_node_uuids,
             "limit": self.limit,
             "offset": self.offset,
         }
         # ruff: noqa: E501
-        query_1 = """
-        // get the roots of all diffs in the query
-        MATCH (diff_root:DiffRoot)
-        WHERE diff_root.base_branch = $base_branch
-        AND diff_root.diff_branch IN $diff_branches
-        AND diff_root.from_time >= $from_time
-        AND diff_root.to_time <= $to_time
-        WITH diff_root
-        ORDER BY diff_root.base_branch, diff_root.diff_branch, diff_root.from_time, diff_root.to_time
-        WITH diff_root.base_branch AS bb, diff_root.diff_branch AS db, collect(diff_root) AS same_branch_diff_roots
-        WITH reduce(
-            non_overlapping = [], dr in same_branch_diff_roots |
-            CASE
-                WHEN size(non_overlapping) = 0 THEN [dr]
-                WHEN dr.from_time >= (non_overlapping[-1]).from_time AND dr.to_time <= (non_overlapping[-1]).to_time THEN non_overlapping
-                WHEN (non_overlapping[-1]).from_time >= dr.from_time AND (non_overlapping[-1]).to_time <= dr.to_time THEN non_overlapping[..-1] + [dr]
-                ELSE non_overlapping + [dr]
-            END
-        ) AS non_overlapping_diff_roots
-        UNWIND non_overlapping_diff_roots AS diff_root
-        // get all the nodes attached to the diffs
-        OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
-        // TODO :: ADD FILTERS
+        self.add_to_query(query=QUERY_MATCH_NODES)
+
+        if not self.filters.is_empty:
+            filters, filter_params = self.filters.generate()
+            self.params.update(filter_params)
+
+            query_filters = """
+            WHERE (
+                %(filters)s
+            )
+            """ % {"filters": filters}
+            self.add_to_query(query=query_filters)
+
+        query_2 = """
         // group by diff node uuid for pagination
         WITH diff_node.uuid AS diff_node_uuid, diff_node.kind AS diff_node_kind, collect([diff_root, diff_node]) AS node_root_tuples
         // order by kind and latest label for each diff_node uuid
@@ -157,7 +172,7 @@ class EnrichedDiffGetQuery(Query):
             collect([diff_relationship, diff_rel_element, diff_rel_conflict, diff_rel_property, diff_rel_property_conflict]) AS diff_relationships
         """ % {"max_depth": self.max_depth * 2}
 
-        self.add_to_query(query=query_1)
+        self.add_to_query(query=query_2)
 
         self.return_labels = [
             "diff_root",
@@ -276,6 +291,7 @@ class EnrichedDiffDeserializer:
                 node_id=current_node_uuid,
                 parent_id=parent.get("uuid"),
                 parent_kind=parent.get("kind"),
+                parent_label=parent.get("label"),
                 parent_rel_name=rel.get("name"),
                 parent_rel_label=rel.get("label"),
             )
@@ -313,11 +329,12 @@ class EnrichedDiffDeserializer:
         if node_key in self._diff_node_map:
             return self._diff_node_map[node_key]
 
+        timestamp_str = self._get_str_or_none_property_value(node=node_node, property_name="changed_at")
         enriched_node = EnrichedDiffNode(
             uuid=node_uuid,
             kind=str(node_node.get("kind")),
             label=str(node_node.get("label")),
-            changed_at=Timestamp(node_node.get("changed_at")),
+            changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(node_node.get("action"))),
             path_identifier=str(node_node.get("path_identifier")),
             num_added=int(node_node.get("num_added")),
@@ -464,15 +481,21 @@ class EnrichedDiffDeserializer:
         diff_branch_value = self._get_str_or_none_property_value(
             node=diff_conflict_node, property_name="diff_branch_value"
         )
+        base_timestamp_str = self._get_str_or_none_property_value(
+            node=diff_conflict_node, property_name="base_branch_changed_at"
+        )
+        diff_timestamp_str = self._get_str_or_none_property_value(
+            node=diff_conflict_node, property_name="diff_branch_changed_at"
+        )
         selected_branch = self._get_str_or_none_property_value(node=diff_conflict_node, property_name="selected_branch")
         conflict = EnrichedDiffConflict(
             uuid=str(diff_conflict_node.get("uuid")),
             base_branch_action=DiffAction(str(diff_conflict_node.get("base_branch_action"))),
             base_branch_value=base_branch_value,
-            base_branch_changed_at=Timestamp(str(diff_conflict_node.get("base_branch_changed_at"))),
+            base_branch_changed_at=Timestamp(base_timestamp_str) if base_timestamp_str else None,
             diff_branch_action=DiffAction(str(diff_conflict_node.get("diff_branch_action"))),
             diff_branch_value=diff_branch_value,
-            diff_branch_changed_at=Timestamp(str(diff_conflict_node.get("diff_branch_changed_at"))),
+            diff_branch_changed_at=Timestamp(diff_timestamp_str) if diff_timestamp_str else None,
             selected_branch=ConflictSelection(selected_branch) if selected_branch else None,
         )
 
