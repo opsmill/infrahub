@@ -289,6 +289,7 @@ class DiffTreeResolver:
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         filters: dict | None = None,
+        include_parents: bool = True,
         root_node_uuids: list[str] | None = None,
         limit: int | None = None,
         offset: int | None = None,
@@ -328,6 +329,7 @@ class DiffTreeResolver:
             from_time=from_timestamp,
             to_time=to_timestamp,
             filters=filters_dict,
+            include_parents=include_parents,
             limit=limit,
             offset=offset,
         )
@@ -415,6 +417,7 @@ DiffTreeQuery = Field(
     from_time=DateTime(),
     to_time=DateTime(),
     root_node_uuids=Argument(List(String), deprecation_reason="replaced by filters"),
+    include_parents=Boolean(),
     filters=DiffTreeQueryFilters(),
     limit=Int(),
     offset=Int(),
