@@ -1325,13 +1325,14 @@ class InfrahubNode(InfrahubNodeBase):
             setattr(self, rel_name, related_node)
 
     async def create(self, allow_upsert: bool = False) -> None:
-        input_data = self._generate_input_data(exclude_hfid=True)
         mutation_query = self._generate_mutation_query()
 
         if allow_upsert:
+            input_data = self._generate_input_data(exclude_hfid=False)
             mutation_name = f"{self._schema.kind}Upsert"
             tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
         else:
+            input_data = self._generate_input_data(exclude_hfid=True)
             mutation_name = f"{self._schema.kind}Create"
             tracker = f"mutation-{str(self._schema.kind).lower()}-create"
         query = Mutation(
@@ -1785,13 +1786,14 @@ class InfrahubNodeSync(InfrahubNodeBase):
             setattr(self, rel_name, related_node)
 
     def create(self, allow_upsert: bool = False) -> None:
-        input_data = self._generate_input_data(exclude_hfid=True)
         mutation_query = self._generate_mutation_query()
 
         if allow_upsert:
+            input_data = self._generate_input_data(exclude_hfid=False)
             mutation_name = f"{self._schema.kind}Upsert"
             tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
         else:
+            input_data = self._generate_input_data(exclude_hfid=True)
             mutation_name = f"{self._schema.kind}Create"
             tracker = f"mutation-{str(self._schema.kind).lower()}-create"
         query = Mutation(
