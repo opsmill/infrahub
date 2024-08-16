@@ -614,3 +614,32 @@ class TestDiffRepositorySaveAndLoad:
         )
         assert len(retrieved) == 1
         assert retrieved[0] == super_enriched_diff
+
+    async def test_delete_diff_by_uuid(self, diff_repository: DiffRepository, reset_database):
+        diffs: list[EnrichedDiffRoot] = []
+        start_time = self.diff_from_time.add(seconds=1)
+        for i in range(5):
+            nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
+            enriched_diff = EnrichedRootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=self.diff_branch_name,
+                from_time=Timestamp(start_time.add(minutes=i * 30)),
+                to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
+                nodes=nodes,
+            )
+            await diff_repository.save(enriched_diff=enriched_diff)
+            diffs.append(enriched_diff)
+
+        diff_to_delete = diffs.pop()
+        await diff_repository.delete_diff_root(diff_root_uuids=[diff_to_delete.uuid])
+        diffs_to_delete = [diffs.pop(), diffs.pop()]
+        await diff_repository.delete_diff_root(diff_root_uuids=[diff.uuid for diff in diffs_to_delete])
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_from_time.add(minutes=(4 * 30) + 29)),
+        )
+        assert len(retrieved) == len(diffs)
+        assert set(retrieved) == set(diffs)

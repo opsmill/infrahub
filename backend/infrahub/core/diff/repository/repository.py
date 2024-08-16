@@ -6,6 +6,7 @@ from ..model.path import EnrichedDiffRoot, TimeRange
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.filters import EnrichedDiffQueryFilters
+from .delete_query import EnrichedDiffDeleteQuery
 from .save_query import EnrichedDiffSaveQuery
 from .time_range_query import EnrichedDiffTimeRangeQuery
 
@@ -65,6 +66,10 @@ class DiffRepository:
         )
         await query.execute(db=self.db)
         return query.get_summary()
+
+    async def delete_diff_root(self, diff_root_uuids: list[str]) -> None:
+        query = await EnrichedDiffDeleteQuery.init(db=self.db, enriched_diff_root_uuids=diff_root_uuids)
+        await query.execute(db=self.db)
 
     async def get_time_ranges(
         self,
