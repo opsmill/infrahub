@@ -17,7 +17,7 @@ import { useFormValues } from "@/hooks/useFormValues";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
@@ -26,7 +26,7 @@ import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
-  currentObject?: Record<string, AttributeType>;
+  currentObject?: Record<string, AttributeType | RelationshipType>;
   onCancel?: () => void;
   onUpdateComplete?: () => void;
 }
