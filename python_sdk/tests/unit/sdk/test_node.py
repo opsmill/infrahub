@@ -1073,7 +1073,38 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_create_input_data_with_relationships_03_for_update(clients, rfile_schema, client_type):
+async def test_create_input_data_with_relationships_03_for_update_include_unmodified(clients, rfile_schema, client_type):
+    data = {
+        "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
+        "template_path": {"value": "mytemplate.j2"},
+        "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff", "is_protected": True},
+        "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
+        "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
+    }
+
+    if client_type == "standard":
+        node = InfrahubNode(client=clients.standard, schema=rfile_schema, data=data)
+    else:
+        node = InfrahubNodeSync(client=clients.sync, schema=rfile_schema, data=data)
+
+    node.template_path.value = "my-changed-template.j2"
+    assert node._generate_input_data(exclude_unmodified=False)["data"] == {
+        "data": {
+            "query": {
+                "id": "qqqqqqqq",
+                "_relation__is_protected": True,
+                "_relation__owner": "ffffffff",
+                "_relation__source": "ffffffff",
+            },
+            "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
+            "template_path": {"value": "my-changed-template.j2"},
+            "repository": {"id": "rrrrrrrr", "_relation__owner": "ffffffff", "_relation__source": "ffffffff"},
+        }
+    }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_create_input_data_with_relationships_03_for_update_exclude_unmodified(clients, rfile_schema, client_type):
     data = {
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
@@ -1096,7 +1127,6 @@ async def test_create_input_data_with_relationships_03_for_update(clients, rfile
                 "_relation__owner": "ffffffff",
                 "_relation__source": "ffffffff",
             },
-            "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
             "template_path": {"value": "my-changed-template.j2"},
             "repository": {"id": "rrrrrrrr", "_relation__owner": "ffffffff", "_relation__source": "ffffffff"},
         }
