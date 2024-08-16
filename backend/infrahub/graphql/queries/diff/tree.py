@@ -95,6 +95,12 @@ class DiffRelationship(DiffSummaryCounts):
     contains_conflict = Boolean(required=True)
 
 
+class DiffNodeParent(ObjectType):
+    uuid = String(required=True)
+    kind = String(required=False)
+    relationship_name = String(required=False)
+
+
 class DiffNode(DiffSummaryCounts):
     uuid = String(required=True)
     kind = String(required=True)
@@ -104,7 +110,7 @@ class DiffNode(DiffSummaryCounts):
     conflict = Field(ConflictDetails, required=False)
     contains_conflict = Boolean(required=True)
     last_changed_at = DateTime(required=False)
-    parent_node = String(required=False)
+    parent = Field(DiffNodeParent, required=False)
     attributes = List(DiffAttribute, required=True)
     relationships = List(DiffRelationship, required=True)
 
@@ -126,9 +132,11 @@ class DiffTreeSummary(DiffSummaryCounts):
 
 
 class DiffTreeResolver:
-    async def to_diff_tree(self, enriched_diff_root: EnrichedDiffRoot) -> DiffTree:
+    async def to_diff_tree(
+        self, enriched_diff_root: EnrichedDiffRoot, context: GraphqlContext | None = None
+    ) -> DiffTree:
         all_nodes = list(enriched_diff_root.nodes)
-        tree_nodes = [self.to_diff_node(enriched_node=e_node) for e_node in all_nodes]
+        tree_nodes = [self.to_diff_node(enriched_node=e_node, context=context) for e_node in all_nodes]
         return DiffTree(
             base_branch=enriched_diff_root.base_branch_name,
             diff_branch=enriched_diff_root.diff_branch_name,
@@ -141,23 +149,33 @@ class DiffTreeResolver:
             num_conflicts=enriched_diff_root.num_conflicts,
         )
 
-    def to_diff_node(self, enriched_node: EnrichedDiffNode) -> DiffNode:
-        diff_attributes = [self.to_diff_attribute(e_attr) for e_attr in enriched_node.attributes]
+    def to_diff_node(self, enriched_node: EnrichedDiffNode, context: GraphqlContext | None = None) -> DiffNode:
+        diff_attributes = [
+            self.to_diff_attribute(enriched_attribute=e_attr, context=context) for e_attr in enriched_node.attributes
+        ]
         diff_relationships = [
-            self.to_diff_relationship(e_rel) for e_rel in enriched_node.relationships if e_rel.include_in_response
+            self.to_diff_relationship(enriched_relationship=e_rel, context=context)
+            for e_rel in enriched_node.relationships
+            if e_rel.include_in_response
         ]
         conflict = None
         if enriched_node.conflict:
-            conflict = self.to_diff_conflict(enriched_conflict=enriched_node.conflict)
+            conflict = self.to_diff_conflict(enriched_conflict=enriched_node.conflict, context=context)
 
-        parent_node = enriched_node.get_parent_node()
+        parent = None
+        if parent_info := enriched_node.get_parent_info(context=context):
+            parent = DiffNodeParent(
+                uuid=parent_info.node.uuid,
+                kind=parent_info.node.kind,
+                relationship_name=parent_info.relationship_name,
+            )
 
         return DiffNode(
             uuid=enriched_node.uuid,
             kind=enriched_node.kind,
             label=enriched_node.label,
             status=enriched_node.action,
-            parent_node=parent_node.uuid if parent_node else None,
+            parent=parent,
             last_changed_at=enriched_node.changed_at.obj if enriched_node.changed_at else None,
             path_identifier=enriched_node.path_identifier,
             attributes=diff_attributes,
@@ -170,8 +188,12 @@ class DiffTreeResolver:
             num_conflicts=enriched_node.num_conflicts,
         )
 
-    def to_diff_attribute(self, enriched_attribute: EnrichedDiffAttribute) -> DiffAttribute:
-        diff_properties = [self.to_diff_property(e_prop) for e_prop in enriched_attribute.properties]
+    def to_diff_attribute(
+        self, enriched_attribute: EnrichedDiffAttribute, context: GraphqlContext | None = None
+    ) -> DiffAttribute:
+        diff_properties = [
+            self.to_diff_property(enriched_property=e_prop, context=context) for e_prop in enriched_attribute.properties
+        ]
         return DiffAttribute(
             name=enriched_attribute.name,
             last_changed_at=enriched_attribute.changed_at.obj,
@@ -185,8 +207,13 @@ class DiffTreeResolver:
             num_conflicts=enriched_attribute.num_conflicts,
         )
 
-    def to_diff_relationship(self, enriched_relationship: EnrichedDiffRelationship) -> DiffRelationship:
-        diff_elements = [self.to_diff_relationship_element(element) for element in enriched_relationship.relationships]
+    def to_diff_relationship(
+        self, enriched_relationship: EnrichedDiffRelationship, context: GraphqlContext | None = None
+    ) -> DiffRelationship:
+        diff_elements = [
+            self.to_diff_relationship_element(enriched_element=element, context=context)
+            for element in enriched_relationship.relationships
+        ]
         return DiffRelationship(
             name=enriched_relationship.name,
             label=enriched_relationship.label,
@@ -201,11 +228,13 @@ class DiffTreeResolver:
             num_conflicts=enriched_relationship.num_conflicts,
         )
 
-    def to_diff_relationship_element(self, enriched_element: EnrichedDiffSingleRelationship) -> DiffSingleRelationship:
+    def to_diff_relationship_element(
+        self, enriched_element: EnrichedDiffSingleRelationship, context: GraphqlContext | None = None
+    ) -> DiffSingleRelationship:
         diff_properties = [self.to_diff_property(e_prop) for e_prop in enriched_element.properties]
         conflict = None
         if enriched_element.conflict:
-            conflict = self.to_diff_conflict(enriched_conflict=enriched_element.conflict)
+            conflict = self.to_diff_conflict(enriched_conflict=enriched_element.conflict, context=context)
         return DiffSingleRelationship(
             last_changed_at=enriched_element.changed_at.obj,
             status=enriched_element.action,
@@ -221,10 +250,12 @@ class DiffTreeResolver:
             num_conflicts=enriched_element.num_conflicts,
         )
 
-    def to_diff_property(self, enriched_property: EnrichedDiffProperty) -> DiffProperty:
+    def to_diff_property(
+        self, enriched_property: EnrichedDiffProperty, context: GraphqlContext | None = None
+    ) -> DiffProperty:
         conflict = None
         if enriched_property.conflict:
-            conflict = self.to_diff_conflict(enriched_conflict=enriched_property.conflict)
+            conflict = self.to_diff_conflict(enriched_conflict=enriched_property.conflict, context=context)
         return DiffProperty(
             property_type=enriched_property.property_type.value,
             last_changed_at=enriched_property.changed_at.obj,
@@ -235,7 +266,11 @@ class DiffTreeResolver:
             conflict=conflict,
         )
 
-    def to_diff_conflict(self, enriched_conflict: EnrichedDiffConflict) -> ConflictDetails:
+    def to_diff_conflict(
+        self,
+        enriched_conflict: EnrichedDiffConflict,
+        context: GraphqlContext | None = None,  # pylint: disable=unused-argument
+    ) -> ConflictDetails:
         return ConflictDetails(
             uuid=enriched_conflict.uuid,
             base_branch_action=enriched_conflict.base_branch_action,
@@ -252,7 +287,7 @@ class DiffTreeResolver:
         )
 
     async def to_graphql(
-        self, fields: dict[str, dict], diff_object: Optional[Any]
+        self, fields: dict[str, dict], diff_object: Any | None
     ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
         if diff_object is None:
             return None
@@ -336,7 +371,7 @@ class DiffTreeResolver:
         enriched_diff = enriched_diffs[0]
 
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
-        diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff)
+        diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, context=context)
         return await self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
     # pylint: disable=unused-argument

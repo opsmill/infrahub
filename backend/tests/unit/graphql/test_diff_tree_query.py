@@ -37,7 +37,11 @@ query GetDiffTree($branch: String){
             label
             last_changed_at
             status
-            parent_node
+            parent {
+              uuid
+              kind
+              relationship_name
+            }
             contains_conflict
             num_added
             num_removed
@@ -228,7 +232,7 @@ async def test_diff_tree_one_attr_change(
                 "num_added": 0,
                 "num_removed": 0,
                 "num_updated": 1,
-                "parent_node": None,
+                "parent": None,
                 "num_conflicts": 0,
                 "status": UPDATED_ACTION,
                 "contains_conflict": False,
@@ -290,11 +294,11 @@ async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: 
     assert result.errors is None
     assert len(result.data["DiffTree"]["nodes"]) == 4
 
-    nodes_parent = {node["label"]: node["parent_node"] for node in result.data["DiffTree"]["nodes"]}
+    nodes_parent = {node["label"]: node["parent"] for node in result.data["DiffTree"]["nodes"]}
     expected_nodes_parent = {
-        "paris": europe_main.id,
-        "paris rack2": paris_main.id,
-        "paris-r1": paris_main.id,
+        "paris": {"uuid": europe_main.id, "kind": "LocationRegion", "relationship_name": "children"},
+        "paris rack2": {"uuid": paris_main.id, "kind": "LocationSite", "relationship_name": "children"},
+        "paris-r1": {"uuid": paris_main.id, "kind": "LocationSite", "relationship_name": "children"},
         "europe": None,
     }
     assert nodes_parent == expected_nodes_parent
