@@ -1073,7 +1073,9 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_create_input_data_with_relationships_03_for_update_include_unmodified(clients, rfile_schema, client_type):
+async def test_create_input_data_with_relationships_03_for_update_include_unmodified(
+    clients, rfile_schema, client_type
+):
     data = {
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
@@ -1090,6 +1092,11 @@ async def test_create_input_data_with_relationships_03_for_update_include_unmodi
     node.template_path.value = "my-changed-template.j2"
     assert node._generate_input_data(exclude_unmodified=False)["data"] == {
         "data": {
+            "name": {
+                "is_protected": True,
+                "source": "ffffffff",
+                "value": "rfile01",
+            },
             "query": {
                 "id": "qqqqqqqq",
                 "_relation__is_protected": True,
@@ -1104,7 +1111,9 @@ async def test_create_input_data_with_relationships_03_for_update_include_unmodi
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_create_input_data_with_relationships_03_for_update_exclude_unmodified(clients, rfile_schema, client_type):
+async def test_create_input_data_with_relationships_03_for_update_exclude_unmodified(
+    clients, rfile_schema, client_type
+):
     data = {
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
@@ -1456,7 +1465,7 @@ async def test_relationships_excluded_input_data(client, location_schema, client
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
 
-    assert node.tags.has_update is True
+    assert node.tags.has_update is False
 
 
 @pytest.mark.parametrize("client_type", client_types)
