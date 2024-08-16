@@ -303,6 +303,7 @@ class TestDiffRepositorySaveAndLoad:
             relationships=set(),
             action=DiffAction.UNCHANGED,
             changed_at=None,
+            path_identifier="",
         )
         expected_middle_parent_rel = replace(middle_parent_rel, nodes={thin_parent_node})
         expected_middle_node = replace(middle_node, relationships=other_middle_rels | {expected_middle_parent_rel})
@@ -323,6 +324,7 @@ class TestDiffRepositorySaveAndLoad:
             relationships=set(),
             changed_at=None,
             action=DiffAction.UNCHANGED,
+            path_identifier="",
         )
         thin_middle_node = replace(
             middle_node,
@@ -331,6 +333,7 @@ class TestDiffRepositorySaveAndLoad:
             relationships={thin_middle_parent_rel},
             action=DiffAction.UNCHANGED,
             changed_at=None,
+            path_identifier="",
         )
         expected_leaf_middle_rel = replace(leaf_middle_rel, nodes={thin_middle_node})
         expected_leaf_node = replace(leaf_node, relationships=other_leaf_rels | {expected_leaf_middle_rel})
@@ -357,7 +360,12 @@ class TestDiffRepositorySaveAndLoad:
 
         # get leaf and parent nodes
         thin_middle_parent_rel = replace(
-            middle_parent_rel, nodes={parent_node}, relationships=set(), changed_at=None, action=DiffAction.UNCHANGED
+            middle_parent_rel,
+            nodes={parent_node},
+            relationships=set(),
+            changed_at=None,
+            action=DiffAction.UNCHANGED,
+            path_identifier="",
         )
         thin_middle_node = replace(
             middle_node,
@@ -366,6 +374,7 @@ class TestDiffRepositorySaveAndLoad:
             relationships={thin_middle_parent_rel},
             action=DiffAction.UNCHANGED,
             changed_at=None,
+            path_identifier="",
         )
         expected_leaf_middle_rel = replace(leaf_middle_rel, nodes={thin_middle_node})
         expected_leaf_node = replace(leaf_node, relationships=other_leaf_rels | {expected_leaf_middle_rel})
