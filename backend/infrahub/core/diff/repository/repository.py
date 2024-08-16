@@ -21,6 +21,7 @@ class DiffRepository:
         from_time: Timestamp,
         to_time: Timestamp,
         filters: dict | None = None,
+        include_parents: bool = True,
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[EnrichedDiffRoot]:
@@ -38,7 +39,7 @@ class DiffRepository:
             offset=offset,
         )
         await query.execute(db=self.db)
-        diff_roots = await query.get_enriched_diff_roots()
+        diff_roots = await query.get_enriched_diff_roots(include_parents=include_parents)
         diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
         return diff_roots
 
