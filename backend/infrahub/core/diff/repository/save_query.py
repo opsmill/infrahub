@@ -263,6 +263,7 @@ class EnrichedDiffSaveQuery(Query):
             "diff_branch": enriched_diff.diff_branch_name,
             "from_time": enriched_diff.from_time.to_string(),
             "to_time": enriched_diff.to_time.to_string(),
+            "name": enriched_diff.name,
             "uuid": enriched_diff.uuid,
             "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
             "num_added": enriched_diff.num_added,
