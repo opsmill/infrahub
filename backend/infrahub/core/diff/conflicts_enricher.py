@@ -109,6 +109,8 @@ class ConflictsEnricher:
         relationship_schema = node_schema.get_relationship(name=branch_relationship.name)
         is_cardinality_one = relationship_schema.cardinality is RelationshipCardinality.ONE
         if is_cardinality_one:
+            if not base_relationship.relationships or not branch_relationship.relationships:
+                return
             base_element = next(iter(base_relationship.relationships))
             branch_element = next(iter(branch_relationship.relationships))
             element_tuples = [(base_element, branch_element)]
