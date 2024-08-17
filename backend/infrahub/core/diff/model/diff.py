@@ -250,6 +250,10 @@ class ObjectConflict(BaseModel):
     kind: str
     id: str
 
+    @property
+    def label(self) -> str:
+        return f"{self.name} ({self.id})"
+
     def to_conflict_dict(self) -> dict[str, Any]:
         return self.model_dump()
 
@@ -275,6 +279,10 @@ class SchemaConflict(ObjectConflict):
     path: str
     branch: str
     value: str
+
+    @property
+    def label(self) -> str:
+        return self.value
 
 
 class DiffElementType(str, Enum):

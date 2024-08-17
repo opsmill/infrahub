@@ -175,14 +175,35 @@ def migrate(context: Context, database: str = INFRAHUB_DATABASE):
     update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
 
 
-@task
-def update_docker_compose(context: Context, docker_file: Optional[str] = "docker-compose.yml"):
-    """Update docker-compose.yml with the current version from pyproject.toml."""
-    import re
-
+def get_version_from_pyproject() -> str:
+    """Retrieve the current version from the pyproject.toml file."""
     import toml
 
-    version = toml.load("pyproject.toml")["tool"]["poetry"]["version"]
+    return toml.load("pyproject.toml")["tool"]["poetry"]["version"]
+
+
+@task
+def update_helm_chart(context, chart_file: Optional[str] = "helm/Chart.yaml"):
+    """Update helm/Chart.yaml with the current version from pyproject.toml."""
+    version = get_version_from_pyproject()
+    version_pattern = r"^appVersion:\s*[\d\.\-a-zA-Z]+"
+
+    def replace_version(match):
+        return f"appVersion: {version}"
+
+    chart_path = Path(chart_file)
+    chart_yaml = chart_path.read_text(encoding="utf-8")
+
+    updated_chart_yaml = re.sub(version_pattern, replace_version, chart_yaml, flags=re.MULTILINE)
+    chart_path.write_text(updated_chart_yaml, encoding="utf-8")
+
+    print(f"{chart_file} updated with appVersion {version}")
+
+
+@task
+def update_docker_compose(context, docker_file: Optional[str] = "docker-compose.yml"):
+    """Update docker-compose.yml with the current version from pyproject.toml."""
+    version = get_version_from_pyproject()
     version_pattern = r"registry.opsmill.io/opsmill/infrahub:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
 
     def replace_version(match):

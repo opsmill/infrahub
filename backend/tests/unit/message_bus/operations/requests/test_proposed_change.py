@@ -295,6 +295,7 @@ async def test_schema_integrity(
     assert len(checks) == 1
     check = checks[0]
     assert check.conclusion.value.value == "failure"
+
     assert check.conflicts.value == [
         {
             "branch": "placeholder",
@@ -303,6 +304,7 @@ async def test_schema_integrity(
             "name": "schema/TestPerson/name/regex",
             "path": "schema/TestPerson/name/regex",
             "type": "attribute.regex.update",
-            "value": "NA",
+            # ruff: noqa: E501
+            "value": f"Node (TestPerson: {person_john_main.id}) is not compatible with the constraint 'attribute.regex.update' at 'schema/TestPerson/name/regex'",
         }
     ]

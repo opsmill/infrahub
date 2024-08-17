@@ -1,6 +1,6 @@
 ---
 # yamllint disable rule:truthy
-name: Update Docker Compose on Pyproject update in Stable
+name: Update Docker Compose & helm chart on Pyproject update in Stable
 
 # This will bump the infrahub docker image in the docker-compose.yml
 # when pyproject.toml is change in the stable branch
@@ -46,6 +46,8 @@ jobs:
         run: "poetry run invoke dev.gen-config-env -u"
       - name: "Update Infrahub Image Version in docker-compose.yml file"
         run: "poetry run invoke dev.update-docker-compose"
+      - name: "Update AppVersion in helm/chart.yaml file"
+        run: "poetry run invoke dev.update-helm-chart"
       - name: Commit docker-compose.yml
         uses: github-actions-x/commit@v2.9
         with:

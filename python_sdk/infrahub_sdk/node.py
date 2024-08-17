@@ -1064,7 +1064,7 @@ class InfrahubNode(InfrahubNodeBase):
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
             if not node_kind:
                 raise ValueError("Unable to determine the type of the node, __typename not present in data")
-            schema = await client.schema.get(kind=node_kind)
+            schema = await client.schema.get(kind=node_kind, branch=branch)
 
         return cls(client=client, schema=schema, branch=branch, data=cls._strip_alias(data))
 
@@ -1264,7 +1264,7 @@ class InfrahubNode(InfrahubNodeBase):
 
             peer_data: dict[str, Any] = {}
             if rel_schema and prefetch_relationships:
-                peer_schema = await self._client.schema.get(kind=rel_schema.peer)
+                peer_schema = await self._client.schema.get(kind=rel_schema.peer, branch=self._branch)
                 peer_node = InfrahubNode(client=self._client, schema=peer_schema, branch=self._branch)
                 peer_data = await peer_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
 
@@ -1529,7 +1529,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
             if not node_kind:
                 raise ValueError("Unable to determine the type of the node, __typename not present in data")
-            schema = client.schema.get(kind=node_kind)
+            schema = client.schema.get(kind=node_kind, branch=branch)
 
         return cls(client=client, schema=schema, branch=branch, data=cls._strip_alias(data))
 
@@ -1721,7 +1721,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
             peer_data: dict[str, Any] = {}
             if rel_schema and prefetch_relationships:
-                peer_schema = self._client.schema.get(kind=rel_schema.peer)
+                peer_schema = self._client.schema.get(kind=rel_schema.peer, branch=self._branch)
                 peer_node = InfrahubNodeSync(client=self._client, schema=peer_schema, branch=self._branch)
                 peer_data = peer_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
 
