@@ -11,7 +11,6 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from tests.helpers.test_app import TestInfrahub
@@ -159,20 +158,15 @@ class TestDiffReadQuery(TestInfrahub):
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
         # diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
 
-        from_timestamp = Timestamp(diff_branch.get_created_at())
-        to_timestamp = Timestamp()
-
-        await diff_coordinator.update_diffs(
+        enriched_diff = await diff_coordinator.update_branch_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
-            from_time=from_timestamp,
-            to_time=to_timestamp,
         )
 
         return {
             "diff_branch": diff_branch,
-            "from_time": from_timestamp,
-            "to_time": to_timestamp,
+            "from_time": enriched_diff.from_time,
+            "to_time": enriched_diff.to_time,
         }
 
     @pytest.mark.parametrize(

@@ -10,7 +10,6 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql import prepare_graphql_params
@@ -148,9 +147,21 @@ query GetDiffTreeSummary($branch: String, $filters: DiffTreeQueryFilters){
 """
 
 
-async def test_diff_tree_empty_diff(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
-    diff_branch = await create_branch(db=db, branch_name="diff")
+@pytest.fixture
+async def diff_branch(db: InfrahubDatabase, default_branch: Branch) -> Branch:
+    return await create_branch(db=db, branch_name="branch")
 
+
+@pytest.fixture
+async def diff_coordinator(db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
+    # Validate if the diff has been updated properly
+    component_registry = get_component_registry()
+    return await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+
+
+async def test_diff_tree_empty_diff(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, diff_branch: Branch
+):
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=params.schema,
@@ -179,15 +190,20 @@ async def test_diff_tree_no_branch(db: InfrahubDatabase, default_branch: Branch,
 
 
 async def test_diff_tree_one_attr_change(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, criticality_low
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low,
+    diff_branch: Branch,
+    diff_coordinator: DiffCoordinator,
 ):
-    diff_branch = await create_branch(db=db, branch_name="diff")
     branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
     branch_crit.color.value = "#abcdef"
     before_change_datetime = datetime.now(tz=UTC)
     await branch_crit.save(db=db)
     after_change_datetime = datetime.now(tz=UTC)
 
+    enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=params.schema,
@@ -197,7 +213,7 @@ async def test_diff_tree_one_attr_change(
         variable_values={"branch": diff_branch.name},
     )
     from_time = datetime.fromisoformat(diff_branch.created_at)
-    to_time = datetime.fromisoformat(params.context.at.to_string())
+    to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     assert result.errors is None
 
@@ -264,16 +280,19 @@ async def test_diff_tree_one_attr_change(
     }
 
 
-async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data):
-    diff_branch = await create_branch(db=db, branch_name="diff")
-
+async def test_diff_tree_hierarchy_change(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data,
+    diff_branch: Branch,
+    diff_coordinator: DiffCoordinator,
+):
     europe_main = hierarchical_location_data["europe"]
     paris_main = hierarchical_location_data["paris"]
     rack1_main = hierarchical_location_data["paris-r1"]
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
 
-    # rprint(hierarchical_location_data)
     rack1_branch = await NodeManager.get_one(db=db, id=rack1_main.id, branch=diff_branch)
     rack1_branch.status.value = "offline"
     rack2_branch = await NodeManager.get_one(db=db, id=rack2_main.id, branch=diff_branch)
@@ -282,6 +301,7 @@ async def test_diff_tree_hierarchy_change(db: InfrahubDatabase, default_branch: 
     await rack1_branch.save(db=db)
     await rack2_branch.save(db=db)
 
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=params.schema,
@@ -333,7 +353,6 @@ async def test_diff_summary_filters(
     await thing3_branch.new(db=db, name="thing3", location=rack1_main)
     await thing3_branch.save(db=db)
 
-    # rprint(hierarchical_location_data)
     rack1_branch = await NodeManager.get_one(db=db, id=rack1_main.id, branch=diff_branch)
     rack1_branch.status.value = "offline"
     rack2_branch = await NodeManager.get_one(db=db, id=rack2_main.id, branch=diff_branch)
@@ -355,17 +374,7 @@ async def test_diff_summary_filters(
     # ----------------------------
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
-
-    from_timestamp = Timestamp(diff_branch.get_created_at())
-    to_timestamp = Timestamp()
-
-    await diff_coordinator.update_diffs(
-        base_branch=default_branch,
-        diff_branch=diff_branch,
-        from_time=from_timestamp,
-        to_time=to_timestamp,
-    )
-
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
 
     result = await graphql(
@@ -435,7 +444,6 @@ async def test_diff_get_filters(
     await thing3_branch.new(db=db, name="thing3", location=rack1_main)
     await thing3_branch.save(db=db)
 
-    # rprint(hierarchical_location_data)
     rack1_branch = await NodeManager.get_one(db=db, id=rack1_main.id, branch=diff_branch)
     rack1_branch.status.value = "offline"
     rack2_branch = await NodeManager.get_one(db=db, id=rack2_main.id, branch=diff_branch)
@@ -452,6 +460,9 @@ async def test_diff_get_filters(
     # thing2_branch = await NodeManager.get_one(db=db, id=thing2_main.id, branch=diff_branch)
     # await thing2_branch.delete(db=db)
 
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
 
     result = await graphql(
@@ -463,5 +474,4 @@ async def test_diff_get_filters(
     )
 
     assert result.errors is None
-    # breakpoint()
     assert set([node["label"] for node in result.data["DiffTree"]["nodes"]]) == set(labels)

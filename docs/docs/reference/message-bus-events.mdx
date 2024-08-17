@@ -660,6 +660,31 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 
 <!-- vale off -->
+### Request Diff
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event request.diff.update
+<!-- vale on -->
+
+**Description**: Request diff to be updated.
+
+    If the message only include a branch_name, it is assumed to be for updating the diff that tracks
+    the lifetime changes of a branch
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **branch_name** | The branch associated with the diff | string | None |
+| **name** | N/A | N/A | None |
+| **from_time** | N/A | N/A | None |
+| **to_time** | N/A | N/A | None |
+<!-- vale on -->
+
+<!-- vale off -->
 ### Request Generator
 <!-- vale on -->
 
@@ -1858,6 +1883,32 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **artifact_definition** | The unique ID of the Artifact Definition | string | None |
 | **branch** | The branch to target | string | None |
 | **limit** | List of targets to limit the scope of the generation, if populated only the included artifacts will be regenerated | array | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Request Diff
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event request.diff.update
+<!-- vale on -->
+
+**Description**: Request diff to be updated.
+
+    If the message only include a branch_name, it is assumed to be for updating the diff that tracks
+    the lifetime changes of a branch
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **branch_name** | The branch associated with the diff | string | None |
+| **name** | N/A | N/A | None |
+| **from_time** | N/A | N/A | None |
+| **to_time** | N/A | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
