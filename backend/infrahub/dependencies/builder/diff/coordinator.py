@@ -5,6 +5,7 @@ from .calculator import DiffCalculatorDependency
 from .combiner import DiffCombinerDependency
 from .conflicts_enricher import DiffConflictsEnricherDependency
 from .enricher.aggregated import DiffAggregatedEnricherDependency
+from .enricher.summary_counts import DiffSummaryCountsEnricherDependency
 from .repository import DiffRepositoryDependency
 
 
@@ -17,4 +18,5 @@ class DiffCoordinatorDependency(DependencyBuilder[DiffCoordinator]):
             diff_combiner=DiffCombinerDependency.build(context=context),
             diff_enricher=DiffAggregatedEnricherDependency.build(context=context),
             conflicts_enricher=DiffConflictsEnricherDependency.build(context=context),
+            summary_counts_enricher=DiffSummaryCountsEnricherDependency.build(context=context),
         )

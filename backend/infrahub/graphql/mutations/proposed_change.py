@@ -78,7 +78,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     destination_branch=destination_branch,
                 ),
             ]
-            message = messages.RequestDiffUpdate(branch_name=source_branch.name)
 
             for message in message_list:
                 await context.service.send(message=message)

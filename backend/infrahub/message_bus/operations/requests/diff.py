@@ -16,19 +16,23 @@ async def update(message: messages.RequestDiffUpdate, service: InfrahubServices)
 
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=diff_branch)
 
-    branch_start_timestamp = Timestamp(diff_branch.get_created_at())
+    # we are updating a diff that tracks the full lifetime of a branch
+    if not message.name and not message.from_time and not message.to_time:
+        await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+        return
+
     if message.from_time:
         from_timestamp = Timestamp(message.from_time)
     else:
-        from_timestamp = branch_start_timestamp
+        from_timestamp = Timestamp(diff_branch.get_created_at())
     if message.to_time:
         to_timestamp = Timestamp(message.to_time)
     else:
         to_timestamp = Timestamp()
-
-    await diff_coordinator.update_diffs(
+    await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
         base_branch=base_branch,
         diff_branch=diff_branch,
         from_time=from_timestamp,
         to_time=to_timestamp,
+        name=message.name,
     )
