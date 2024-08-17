@@ -66,7 +66,6 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
   const navigate = useNavigate();
   const formRef = useRef<FormRef>(null);
 
-  const formRef = useRef<FormRef>(null);
   const queryString = getProposedChangesThreads({
     id: proposedchange,
     kind: PROPOSED_CHANGES_THREAD_OBJECT,
