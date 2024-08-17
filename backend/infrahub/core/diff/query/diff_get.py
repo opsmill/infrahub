@@ -10,6 +10,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 from ..model.path import (
+    BranchTrackingId,
     ConflictSelection,
     EnrichedDiffAttribute,
     EnrichedDiffConflict,
@@ -18,6 +19,7 @@ from ..model.path import (
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
+    NameTrackingId,
 )
 from .filters import EnrichedDiffQueryFilters
 
@@ -313,13 +315,22 @@ class EnrichedDiffDeserializer:
 
         from_time = Timestamp(str(root_node.get("from_time")))
         to_time = Timestamp(str(root_node.get("to_time")))
+        tracking_id_str = self._get_str_or_none_property_value(node=root_node, property_name="tracking_id")
+        tracking_id = None
+        if tracking_id_str:
+            for tracking_id_class in (BranchTrackingId, NameTrackingId):
+                try:
+                    tracking_id = tracking_id_class.deserialize(id_string=tracking_id_str)
+                    break
+                except ValueError:
+                    ...
         enriched_root = EnrichedDiffRoot(
             base_branch_name=str(root_node.get("base_branch")),
             diff_branch_name=str(root_node.get("diff_branch")),
             from_time=from_time,
             to_time=to_time,
             uuid=str(root_uuid),
-            tracking_id=self._get_str_or_none_property_value(node=root_node, property_name="tracking_id"),
+            tracking_id=tracking_id,
             num_added=int(root_node.get("num_added")),
             num_updated=int(root_node.get("num_updated")),
             num_removed=int(root_node.get("num_removed")),

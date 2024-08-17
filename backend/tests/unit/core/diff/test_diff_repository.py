@@ -12,6 +12,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import (
     EnrichedDiffNode,
     EnrichedDiffRoot,
+    NameTrackingId,
 )
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
@@ -111,6 +112,7 @@ class TestDiffRepositorySaveAndLoad:
             from_time=Timestamp(self.diff_from_time),
             to_time=Timestamp(self.diff_to_time),
             nodes=self._build_nodes(num_nodes=5, num_sub_fields=2),
+            tracking_id=NameTrackingId(name="the-best-diff"),
         )
 
         await diff_repository.save(enriched_diff=enriched_diff)

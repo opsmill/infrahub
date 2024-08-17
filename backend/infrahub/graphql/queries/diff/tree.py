@@ -9,6 +9,7 @@ from infrahub_sdk.utils import extract_fields
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
@@ -138,12 +139,15 @@ class DiffTreeResolver:
     ) -> DiffTree:
         all_nodes = list(enriched_diff_root.nodes)
         tree_nodes = [self.to_diff_node(enriched_node=e_node, context=context) for e_node in all_nodes]
+        name = None
+        if enriched_diff_root.tracking_id and isinstance(enriched_diff_root.tracking_id, NameTrackingId):
+            name = enriched_diff_root.tracking_id.name
         return DiffTree(
             base_branch=enriched_diff_root.base_branch_name,
             diff_branch=enriched_diff_root.diff_branch_name,
             from_time=await enriched_diff_root.from_time.to_graphql(),
             to_time=await enriched_diff_root.to_time.to_graphql(),
-            name=enriched_diff_root.name,
+            name=name,
             nodes=tree_nodes,
             num_added=enriched_diff_root.num_added,
             num_updated=enriched_diff_root.num_updated,

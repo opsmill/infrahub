@@ -264,7 +264,7 @@ class EnrichedDiffSaveQuery(Query):
             "from_time": enriched_diff.from_time.to_string(),
             "to_time": enriched_diff.to_time.to_string(),
             "uuid": enriched_diff.uuid,
-            "tracking_id": enriched_diff.tracking_id,
+            "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
             "num_added": enriched_diff.num_added,
             "num_updated": enriched_diff.num_updated,
             "num_removed": enriched_diff.num_removed,
