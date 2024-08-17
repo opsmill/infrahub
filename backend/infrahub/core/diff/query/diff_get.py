@@ -20,6 +20,7 @@ from ..model.path import (
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
     NameTrackingId,
+    TrackingId,
 )
 from .filters import EnrichedDiffQueryFilters
 
@@ -30,6 +31,7 @@ QUERY_MATCH_NODES = """
     AND diff_root.diff_branch IN $diff_branches
     AND diff_root.from_time >= $from_time
     AND diff_root.to_time <= $to_time
+    AND ($tracking_id IS NULL OR diff_root.tracking_id = $tracking_id)
     WITH diff_root
     ORDER BY diff_root.base_branch, diff_root.diff_branch, diff_root.from_time, diff_root.to_time
     WITH diff_root.base_branch AS bb, diff_root.diff_branch AS db, collect(diff_root) AS same_branch_diff_roots
@@ -59,18 +61,20 @@ class EnrichedDiffGetQuery(Query):
         self,
         base_branch_name: str,
         diff_branch_names: list[str],
-        from_time: Timestamp,
-        to_time: Timestamp,
         filters: EnrichedDiffQueryFilters,
         max_depth: int,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.base_branch_name = base_branch_name
         self.diff_branch_names = diff_branch_names
-        self.from_time = from_time
-        self.to_time = to_time
+        self.from_time: Timestamp = from_time or Timestamp("2000-01-01T00:00:01Z")
+        self.to_time: Timestamp = to_time or Timestamp()
         self.max_depth = max_depth
+        self.tracking_id = tracking_id
         self.filters = filters or EnrichedDiffQueryFilters()
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
@@ -79,6 +83,7 @@ class EnrichedDiffGetQuery(Query):
             "diff_branches": self.diff_branch_names,
             "from_time": self.from_time.to_string(),
             "to_time": self.to_time.to_string(),
+            "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
             "limit": self.limit,
             "offset": self.offset,
         }

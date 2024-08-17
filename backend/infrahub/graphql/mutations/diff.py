@@ -34,8 +34,8 @@ class DiffUpdateMutation(Mutation):
         message = messages.RequestDiffUpdate(
             branch_name=str(data.branch),
             name=data.name,
-            from_time=data.from_time,
-            to_time=data.to_time,
+            from_time=DateTime.serialize(data.from_time) if data.from_time else None,
+            to_time=DateTime.serialize(data.to_time) if data.to_time else None,
         )
         if context.service:
             await context.service.send(message=message)

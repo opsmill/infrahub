@@ -10,6 +10,7 @@ from infrahub import config
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import (
+    BranchTrackingId,
     EnrichedDiffNode,
     EnrichedDiffRoot,
     NameTrackingId,
@@ -18,6 +19,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ResourceNotFoundError
 
 from .factories import (
     EnrichedAttributeFactory,
@@ -31,7 +33,7 @@ from .factories import (
 
 class TestDiffRepositorySaveAndLoad:
     @pytest.fixture
-    async def reset_database(self, db: InfrahubDatabase):
+    async def reset_database(self, db: InfrahubDatabase, default_branch):
         await delete_all_nodes(db=db)
 
     @pytest.fixture
@@ -645,3 +647,54 @@ class TestDiffRepositorySaveAndLoad:
         )
         assert len(retrieved) == len(diffs)
         assert set(retrieved) == set(diffs)
+
+    async def test_get_by_tracking_id(self, diff_repository: DiffRepository, reset_database):
+        branch_tracking_id = BranchTrackingId(name=self.diff_branch_name)
+        name_tracking_id = NameTrackingId(name="an very cool diff")
+        end_time = self.diff_from_time.add(minutes=5)
+        for i in range(4):
+            nodes = self._build_nodes(num_nodes=2, num_sub_fields=2)
+            enriched_diff = EnrichedRootFactory.build(
+                base_branch_name=self.base_branch_name,
+                diff_branch_name=self.diff_branch_name,
+                from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
+                to_time=Timestamp(end_time.add(minutes=(i * 30) + 29)),
+                nodes=nodes,
+            )
+            await diff_repository.save(enriched_diff=enriched_diff)
+        nodes = self._build_nodes(num_nodes=2, num_sub_fields=2)
+        branch_tracked_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
+            to_time=Timestamp(end_time.add(minutes=(i * 30) + 29)),
+            nodes=nodes,
+            tracking_id=branch_tracking_id,
+        )
+        await diff_repository.save(enriched_diff=branch_tracked_diff)
+        name_tracked_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
+            to_time=Timestamp(end_time.add(minutes=(i * 30) + 29)),
+            nodes=nodes,
+            tracking_id=name_tracking_id,
+        )
+        await diff_repository.save(enriched_diff=name_tracked_diff)
+
+        retrieved_branch_diff = await diff_repository.get_one(
+            tracking_id=branch_tracking_id,
+            diff_branch_name=self.diff_branch_name,
+        )
+        assert retrieved_branch_diff == branch_tracked_diff
+        retrieved_name_diff = await diff_repository.get_one(
+            tracking_id=name_tracking_id,
+            diff_branch_name=self.diff_branch_name,
+        )
+        assert retrieved_name_diff == name_tracked_diff
+
+        with pytest.raises(ResourceNotFoundError):
+            await diff_repository.get_one(
+                tracking_id=BranchTrackingId(name="not a branch"),
+                diff_branch_name=self.diff_branch_name,
+            )
