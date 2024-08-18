@@ -2,6 +2,10 @@ import importlib
 from typing import Optional
 from uuid import uuid4
 
+from prefect.client.orchestration import get_client
+from prefect.client.schemas.actions import WorkPoolCreate
+from prefect.exceptions import ObjectAlreadyExists
+
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -110,6 +114,35 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.permission_backends = initialize_permission_backends()
 
 
+async def initialize_tasks() -> None:
+    WORKER_POOL = "infrahub-internal"
+
+    deployments = [
+        {
+            "name": "webhook-send",
+            "work_pool_name": WORKER_POOL,
+            "entrypoint": "backend/infrahub/message_bus/operations/send/webhook.py::send_webhook",
+        }
+    ]
+
+    async with get_client(sync_client=False) as client:
+        wp = WorkPoolCreate(
+            name=WORKER_POOL,
+            type="infrahub",
+            description="Pool for internal tasks",
+        )
+        try:
+            await client.create_work_pool(work_pool=wp)
+            log.info(f"work pool {WORKER_POOL} created successfully ... ")
+        except ObjectAlreadyExists:
+            log.info(f"work pool {WORKER_POOL} already present ")
+
+        # Create deployment
+        for deployment in deployments:
+            flow_id = await client.create_flow_from_name(deployment["name"])
+            await client.create_deployment(flow_id=flow_id, **deployment)
+
+
 async def initialization(db: InfrahubDatabase) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
@@ -130,6 +163,8 @@ async def initialization(db: InfrahubDatabase) -> None:
             await db.manager.index.add()
         else:
             log.warning("The database index manager hasn't been initialized.")
+
+        await initialize_tasks()
 
     # ---------------------------------------------------
     # Load all schema in the database into the registry

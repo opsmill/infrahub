@@ -111,6 +111,8 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
+      task-manager:
+        condition: service_healthy
     environment:
       <<: *infrahub_config
       INFRAHUB_CONFIG: /source/development/infrahub.toml
@@ -119,6 +121,7 @@ services:
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      PREFECT_API_URL: "http://task-manager:4200/api"
     volumes:
       - "storage_data:/opt/infrahub/storage"
     tty: true
@@ -155,6 +158,39 @@ services:
       INFRAHUB_TIMEOUT: 20
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+    volumes:
+      - "git_data:/opt/infrahub/git"
+      - "git_remote_data:/remote"
+    tty: true
+    labels:
+      com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
+      com.github.job: "${JOB_NAME:-unknown}"
+  task-runner-internal:
+    deploy:
+      mode: replicated
+      replicas: 1
+    build:
+      context: ../
+      dockerfile: development/Dockerfile
+      target: backend
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
+    pull_policy: always
+    command: prefect worker start --type infrahubasync --pool infrahub-internal --with-healthcheck
+    restart: unless-stopped
+    depends_on:
+      - infrahub-server
+    environment:
+      <<: *infrahub_config
+      INFRAHUB_CONFIG: /source/development/infrahub.toml
+      INFRAHUB_ADDRESS: http://infrahub-server:8000
+      INFRAHUB_INTERNAL_ADDRESS: "http://infrahub-server:8000"
+      INFRAHUB_DB_ADDRESS: "database"
+      INFRAHUB_PRODUCTION: false
+      INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      INFRAHUB_TIMEOUT: 20
+      INFRAHUB_BROKER_ADDRESS: message-queue
+      INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      PREFECT_API_URL: "http://task-manager:4200/api"
     volumes:
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
