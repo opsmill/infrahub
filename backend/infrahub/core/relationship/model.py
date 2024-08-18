@@ -289,14 +289,21 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     def compare_properties_with_data(self, data: RelationshipPeerData) -> list[str]:
         different_properties = []
 
-        for prop_name, prop in data.properties.items():
-            if hasattr(self, "_flag_properties") and prop_name in self._flag_properties:
-                if prop.value != getattr(self, prop_name):
-                    different_properties.append(prop_name)
+        if hasattr(self, "_flag_properties"):
+            for property_name in self._flag_properties:
+                memory_value = getattr(self, property_name, None)
+                database_prop = data.properties.get(property_name)
+                database_value = database_prop.value if database_prop else None
+                if memory_value != database_value:
+                    different_properties.append(property_name)
 
-            elif hasattr(self, "_node_properties") and prop_name in self._node_properties:
-                if prop.value != getattr(self, f"{prop_name}_id"):
-                    different_properties.append(prop_name)
+        if hasattr(self, "_node_properties"):
+            for property_name in self._node_properties:
+                memory_value = getattr(self, f"{property_name}_id", None)
+                database_prop = data.properties.get(property_name)
+                database_value = database_prop.value if database_prop else None
+                if memory_value != database_value:
+                    different_properties.append(property_name)
 
         return different_properties
 
