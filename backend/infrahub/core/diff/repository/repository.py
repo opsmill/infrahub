@@ -1,21 +1,24 @@
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.diff.repository.get_conflict_query import EnrichedDiffConflictQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ResourceNotFoundError
 
-from ..model.path import EnrichedDiffRoot, TimeRange, TrackingId
+from ..model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot, TimeRange, TrackingId
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from .delete_query import EnrichedDiffDeleteQuery
+from .deserializer import EnrichedDiffDeserializer
 from .save_query import EnrichedDiffSaveQuery
 from .time_range_query import EnrichedDiffTimeRangeQuery
 
 
 class DiffRepository:
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer):
         self.db = db
+        self.deserializer = deserializer
 
     async def get(
         self,
@@ -33,6 +36,7 @@ class DiffRepository:
         final_limit = limit or config.SETTINGS.database.query_size_limit
         query = await EnrichedDiffGetQuery.init(
             db=self.db,
+            serializer=EnrichedDiffDeserializer(),
             base_branch_name=base_branch_name,
             diff_branch_names=diff_branch_names,
             from_time=from_time,

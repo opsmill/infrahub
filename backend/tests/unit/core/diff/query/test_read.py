@@ -7,6 +7,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.query.diff_get import EnrichedDiffGetQuery
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters, DiffSummaryQuery, EnrichedDiffQueryFilters
+from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -221,6 +222,7 @@ class TestDiffReadQuery(TestInfrahub):
     async def test_get_without_parent(self, db: InfrahubDatabase, default_branch: Branch, load_data):
         query = await EnrichedDiffGetQuery.init(
             db=db,
+            deserializer=EnrichedDiffDeserializer(),
             base_branch_name=default_branch.name,
             diff_branch_names=[load_data["diff_branch"].name],
             from_time=load_data["from_time"],
