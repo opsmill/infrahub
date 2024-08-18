@@ -10,6 +10,7 @@ from infrahub.auth import AuthType
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreAccount, CoreNode
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
@@ -63,7 +64,7 @@ class AccountMixin:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
         results = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, db=context.db
+            schema=CoreAccount, filters={"ids": [context.account_session.account_id]}, db=context.db
         )
         if not results:
             raise NodeNotFoundError(node_type=InfrahubKind.ACCOUNT, identifier=context.account_session.account_id)
@@ -85,7 +86,7 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_token_create")
     async def create_token(
-        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
         token = str(UUIDT())
@@ -106,33 +107,33 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_token_delete")
     async def delete_token(
-        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         token_id = str(data.get("id"))
 
         results = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNTTOKEN, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
+            schema=CoreAccount, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
         )
 
         if not results:
             raise NodeNotFoundError(node_type="AccountToken", identifier=token_id)
 
         async with db.start_transaction() as dbt:
-            await results[0].delete(db=dbt)
+            await results[0].delete(db=dbt)  # type: ignore[arg-type]
 
         return cls(ok=True)  # type: ignore[call-arg]
 
     @classmethod
     @retry_db_transaction(name="account_update_self")
     async def update_self(
-        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         for field in ("password", "description"):
             if value := data.get(field):
                 getattr(account, field).value = value
 
         async with db.start_transaction() as dbt:
-            await account.save(db=dbt)
+            await account.save(db=dbt)  # type: ignore[arg-type]
 
         return cls(ok=True)  # type: ignore[call-arg]
 

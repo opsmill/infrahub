@@ -278,12 +278,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     db=db,
                     hfid=self.peer_hfid,
                     kind=self.schema.peer,
-                    branch=self.branch,
-                    at=self.at,
-                    include_owner=True,
-                    include_source=True,
-                    branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                     raise_on_error=True,
+                    at=self.at,
+                    branch=self.branch,
+                    include_source=True,
+                    include_owner=True,
+                    prefetch_relationships=False,
+                    branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
             else:
                 peer = await registry.manager.get_one_by_id_or_default_filter(
