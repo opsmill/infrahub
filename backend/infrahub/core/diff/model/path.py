@@ -5,7 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Self
 from uuid import uuid4
 
-from infrahub.core.constants import DiffAction, RelationshipStatus
+from infrahub.core.constants import DiffAction, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 
@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
     from neo4j.graph import Path as Neo4jPath
     from neo4j.graph import Relationship as Neo4jRelationship
+
+    from infrahub.graphql import GraphqlContext
 
 
 @dataclass
@@ -187,6 +189,12 @@ class EnrichedDiffRelationship(BaseSummary):
 
 
 @dataclass
+class ParentNodeInfo:
+    node: EnrichedDiffNode
+    relationship_name: str = "undefined"
+
+
+@dataclass
 class EnrichedDiffNode(BaseSummary):
     uuid: str
     kind: str
@@ -201,10 +209,35 @@ class EnrichedDiffNode(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.uuid)
 
-    def get_parent_node(self) -> EnrichedDiffNode | None:
+    def get_parent_info(self, context: GraphqlContext | None = None) -> ParentNodeInfo | None:
         for r in self.relationships:
             for n in r.nodes:
-                return n
+                relationship_name: str = "undefined"
+
+                if not context:
+                    return ParentNodeInfo(node=n, relationship_name=relationship_name)
+
+                node_schema = context.db.schema.get(name=self.kind)
+                rel_schema = node_schema.get_relationship(name=r.name)
+
+                parent_schema = context.db.schema.get(name=n.kind)
+                rels_parent = parent_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
+
+                if rels_parent and len(rels_parent) == 1:
+                    relationship_name = rels_parent[0].name
+                elif rels_parent and len(rels_parent) > 1:
+                    for rel_parent in rels_parent:
+                        if (
+                            rel_schema.direction == RelationshipDirection.INBOUND
+                            and rel_parent.direction == RelationshipDirection.OUTBOUND
+                        ) or (
+                            rel_schema.direction == RelationshipDirection.OUTBOUND
+                            and rel_parent.direction == RelationshipDirection.INBOUND
+                        ):
+                            relationship_name = rel_parent.name
+                            break
+
+                return ParentNodeInfo(node=n, relationship_name=relationship_name)
         return None
 
     def get_all_child_nodes(self) -> set[EnrichedDiffNode]:
