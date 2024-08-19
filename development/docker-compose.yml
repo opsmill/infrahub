@@ -103,7 +103,7 @@ services:
     image: "${IMAGE_NAME}:${IMAGE_VER}"
     pull_policy: always
     command: >
-      gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py -w ${WEB_CONCURRENCY:-4} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
     depends_on:
       database:
         condition: service_healthy
