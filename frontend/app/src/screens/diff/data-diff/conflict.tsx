@@ -1,17 +1,15 @@
 import { ToggleButtons } from "@/components/buttons/toggle-buttons";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { DATA_CHECK_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { resolveConflict } from "@/graphql/mutations/diff/resolveConflict";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-export const Conflict = ({ conflict, id }: any) => {
+export const Conflict = ({ conflict }: any) => {
   const currentBranch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,24 +20,16 @@ export const Conflict = ({ conflict, id }: any) => {
 
       const newValue = conflictValue === conflict.selected_branch ? null : conflictValue;
 
-      const newData = {
-        id,
-        keep_branch: {
-          value: newValue,
-        },
-      };
-
-      const mustationString = updateObjectWithId({
-        kind: DATA_CHECK_OBJECT,
-        data: stringifyWithoutQuotes(newData),
-      });
-
       const mutation = gql`
-        ${mustationString}
+        ${resolveConflict}
       `;
 
       await graphqlClient.mutate({
         mutation,
+        variables: {
+          uuid: conflict.uuid,
+          conflict_selection: newValue,
+        },
         context: {
           branch: currentBranch?.name,
           date,
@@ -57,14 +47,14 @@ export const Conflict = ({ conflict, id }: any) => {
 
   const tabs = [
     {
-      label: "target",
-      isActive: conflict.selected_branch === "target",
-      onClick: () => handleAccept("target"),
+      label: "Base",
+      isActive: conflict.selected_branch === "Base",
+      onClick: () => handleAccept("Base"),
     },
     {
-      label: "source",
-      isActive: conflict.selected_branch === "source",
-      onClick: () => handleAccept("source"),
+      label: "Branch",
+      isActive: conflict.selected_branch === "Branch",
+      onClick: () => handleAccept("Branch"),
     },
   ];
 
