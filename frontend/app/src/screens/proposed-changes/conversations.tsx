@@ -64,8 +64,8 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
   const [isLoadingClose, setIsLoadingClose] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
-
   const formRef = useRef<FormRef>(null);
+
   const queryString = getProposedChangesThreads({
     id: proposedchange,
     kind: PROPOSED_CHANGES_THREAD_OBJECT,
@@ -181,6 +181,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
 
       formRef.current?.reset();
       await refetch();
+      formRef.current?.reset();
     } catch (error: any) {
       if (threadId) {
         const mutationString = deleteObject({

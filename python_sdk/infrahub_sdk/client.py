@@ -476,7 +476,7 @@ class InfrahubClient(BaseClient):
         Returns:
             list[InfrahubNodeSync]: List of Nodes that match the given filters.
         """
-        schema = await self.schema.get(kind=kind)
+        schema = await self.schema.get(kind=kind, branch=branch)
 
         branch = branch or self.default_branch
         if at:
@@ -1262,7 +1262,7 @@ class InfrahubClientSync(BaseClient):
         Returns:
             list[InfrahubNodeSync]: List of Nodes that match the given filters.
         """
-        schema = self.schema.get(kind=kind)
+        schema = self.schema.get(kind=kind, branch=branch)
 
         branch = branch or self.default_branch
         if at:

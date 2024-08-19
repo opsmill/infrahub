@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, Union
 
-from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNode
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
@@ -15,12 +14,7 @@ class UsedNumber:
 
 
 class NumberUtilizationGetter:
-    def __init__(
-        self,
-        db: InfrahubDatabase,
-        pool: CoreNode,
-        at: Optional[Union[Timestamp, str]] = None,
-    ) -> None:
+    def __init__(self, db: InfrahubDatabase, pool: CoreNode, at: Optional[Union[Timestamp, str]] = None) -> None:
         self.db = db
         self.at = at
         self.pool = pool
@@ -68,12 +62,3 @@ class NumberUtilizationGetter:
     @property
     def total_pool_size(self) -> int:
         return self.end_range - self.start_range + 1
-
-
-class NumberUtilizationGettera:
-    def __init__(
-        self, db: InfrahubDatabase, ip_prefixes: list[Node], at: Optional[Union[Timestamp, str]] = None
-    ) -> None:
-        self.db = db
-        self.ip_prefixes = ip_prefixes
-        self.at = at

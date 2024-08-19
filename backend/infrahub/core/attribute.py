@@ -589,6 +589,10 @@ class AnyAttribute(BaseAttribute):
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         pass
 
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        return value_as_string
+
 
 class AnyAttributeOptional(AnyAttribute):
     @classmethod

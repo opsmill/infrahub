@@ -1,6 +1,11 @@
 from typing import NoReturn
 
 from fastapi import APIRouter
+from fastapi.openapi.docs import (
+    get_redoc_html,
+    get_swagger_ui_html,
+)
+from starlette.responses import HTMLResponse
 
 from infrahub.api import (
     artifact,
@@ -28,6 +33,25 @@ router.include_router(query.router)
 router.include_router(schema.router)
 router.include_router(storage.router)
 router.include_router(transformation.router)
+
+
+@router.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html() -> HTMLResponse:
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title="Infrahub - Swagger UI",
+        swagger_js_url="/api-static/swagger-ui-bundle.js",
+        swagger_css_url="/api-static/swagger-ui.css",
+    )
+
+
+@router.get("/redoc", include_in_schema=False)
+async def redoc_html() -> HTMLResponse:
+    return get_redoc_html(
+        openapi_url="/api/openapi.json",
+        title="Infrahub - ReDoc",
+        redoc_js_url="/api-static/redoc.standalone.js",
+    )
 
 
 @router.api_route(

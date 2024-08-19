@@ -45,7 +45,7 @@ Branch names are fairly permissive, but must conform to [git ref format](https:/
   ```graphql
   # Endpoint : http://127.0.0.1:8000/graphql/main
   mutation {
-    BranchCreate(data: { name: "cr1234", sync_with_git: true}) {
+    BranchCreate(data: { name: "cr1234" }) {
       ok
       object {
         id
@@ -71,9 +71,9 @@ The name of the active branch in the top right corner should now be `cr1234`.
 
 ![Access the organizations](../../media/tutorial_1_organizations.png)
 
-2. Select the `my-first-org` organization (created in the [previous step](./creating-an-object.mdx)).
+2. Select the `my-first-tenant` organization (created in the [previous step](./creating-an-object.mdx)).
 
-![Select the my-first-org organization](../../media/tutorial_1_organization_details.png)
+![Select the my-first-tenant organization](../../media/tutorial_1_organization_details.png)
 
 3. Select the `edit` button on the top right corner.
 4. Update the description attribute of the organization, for example with `Changes from branch cr1234`.
@@ -84,7 +84,7 @@ The name of the active branch in the top right corner should now be `cr1234`.
 
 :::success Validate that everything is correct
 
-Go back to the detailed page for the Organization `my-first-org` and try to switch branches with the branch selection menu at the top.
+Go back to the detailed page for the Organization `my-first-tenant` and try to switch branches with the branch selection menu at the top.
 
 **You should be able to see the value of the label change when you change the branch.**
 
@@ -157,7 +157,7 @@ To view changes and merge a branch you need to:
 
 :::success Validate that everything is correct
 
-Go back to the detailed page for the Organization `my-first-org`.
+Go back to the detailed page for the Organization `my-first-tenant`.
 
 **The object should now have the value previously defined in the branch. Try switching between the `main` branch and `cr1234`.**
 

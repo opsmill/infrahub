@@ -8,9 +8,7 @@ license = "Apache-2.0"
 homepage = "https://opsmill.com"
 repository = "https://github.com/opsmill/infrahub"
 documentation = "https://docs.infrahub.app/python-sdk/"
-packages = [
-    {include = "infrahub_sdk"}
-]
+packages = [{ include = "infrahub_sdk" }]
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
@@ -26,19 +24,19 @@ pydantic = ">=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
 pydantic-settings = ">=2.0"
 graphql-core = ">=3.1,<3.3"
 httpx = [
-    { version = ">=0.20", python = ">=3.9,<3.11"},
-    { version = ">=0.23", python = ">=3.11"}
+    { version = ">=0.20", python = ">=3.9,<3.11" },
+    { version = ">=0.23", python = ">=3.11" },
 ]
 pendulum = [
     { version = ">=2", python = ">=3.9,<3.12" },
-    { version = ">=3", python = ">=3.12" }
+    { version = ">=3", python = ">=3.12" },
 ]
 gitpython = "^3"
 ujson = "^5"
 Jinja2 = { version = "^3", optional = true }
 numpy = [
-    { version = "^1.24.2", optional = true,  python = ">=3.9,<3.12" },
-    { version = "^1.26.2", optional = true,  python = ">=3.12" }
+    { version = "^1.24.2", optional = true, python = ">=3.9,<3.12" },
+    { version = "^1.26.2", optional = true, python = ">=3.12" },
 ]
 pyarrow = { version = "^14", optional = true }
 rich = { version = "^13", optional = true }
@@ -67,21 +65,8 @@ pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
 [tool.poetry.extras]
-ctl = [
-    "Jinja2",
-    "numpy",
-    "pyarrow",
-    "pyyaml",
-    "rich",
-    "toml",
-    "typer",
-]
-tests = [
-    "Jinja2",
-    "pytest",
-    "pyyaml",
-    "rich"
-]
+ctl = ["Jinja2", "numpy", "pyarrow", "pyyaml", "rich", "toml", "typer"]
+tests = ["Jinja2", "pytest", "pyyaml", "rich"]
 all = [
     "Jinja2",
     "numpy",
@@ -97,29 +82,23 @@ all = [
 infrahubctl = "infrahub_sdk.ctl.cli:app"
 
 [tool.poetry.plugins."pytest11"]
-"pytest-infrahub"="infrahub_sdk.pytest_plugin.plugin"
+"pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
 
 [tool.coverage.run]
 branch = true
 
 [tool.coverage.report]
-exclude_lines = [
-    "if TYPE_CHECKING:",
-    "raise NotImplementedError()"
-]
+exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 
 [tool.pylint.general]
-extension-pkg-whitelist = [
-    "pydantic",
-    "ujson",
-]
+extension-pkg-whitelist = ["pydantic", "ujson"]
 
 [tool.pylint.format]
 disable = "logging-fstring-interpolation"
 
 [tool.pylint.basic]
 # No docstrings required for private methods (Pylint default), or for test_ functions.
-no-docstring-rgx="^(_|test_)"
+no-docstring-rgx = "^(_|test_)"
 
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
@@ -158,9 +137,7 @@ min-similarity-lines = 20
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = [
-    "tests"
-]
+testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
     "ignore:Deprecated call to",
@@ -222,11 +199,7 @@ exclude = [
 [tool.ruff.lint]
 preview = true
 
-task-tags = [
-    "FIXME",
-    "TODO",
-    "XXX",
-]
+task-tags = ["FIXME", "TODO", "XXX"]
 
 select = [
     "ASYNC", # flake8-async
@@ -258,11 +231,11 @@ select = [
 ]
 
 ignore = [
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one. Alternatively ignored after further       #
-# investigation if they are deemed to not make sense.                                            #
-##################################################################################################
+    ##################################################################################################
+    # The ignored rules below should be removed once the code has been updated, they are included    #
+    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
+    # investigation if they are deemed to not make sense.                                            #
+    ##################################################################################################
     "B007",    # Loop control variable `result` not used within loop body
     "B008",    #  Do not perform function call `typer.Option` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
     "B904",    # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
@@ -325,6 +298,47 @@ max-complexity = 17
 "tests/unit/sdk/test_client.py" = [
     "W293", # Blank line contains whitespace (used within output check)
 ]
+
+[tool.towncrier]
+
+package = "infrahub-sdk"
+directory = "changelog"
+filename = "CHANGELOG.md"
+start_string = "<!-- towncrier release notes start -->\n"
+underlines = ["", "", ""]
+title_format = "## [{version}](https://github.com/opsmill/infrahub/tree/v{version}) - {project_date}"
+issue_format = "[#{issue}](https://github.com/opsmill/infrahub/issues/{issue})"
+orphan_prefix = "+"
+
+[[tool.towncrier.type]]
+directory = "security"
+name = "Security"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "removed"
+name = "Removed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "deprecated"
+name = "Deprecated"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "added"
+name = "Added"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "changed"
+name = "Changed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fixed"
+name = "Fixed"
+showcontent = true
 
 [build-system]
 requires = ["poetry-core"]
