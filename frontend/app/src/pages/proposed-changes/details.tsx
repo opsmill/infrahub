@@ -10,7 +10,6 @@ import { Checks } from "@/screens/diff/checks/checks";
 import { DataDiff } from "@/screens/diff/node-diff";
 import { DIFF_TABS } from "@/screens/diff/diff";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
-import { SchemaDiff } from "@/screens/diff/schema-diff";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
@@ -139,9 +138,9 @@ const ProposedChangesDetailsPage = () => {
       case DIFF_TABS.ARTIFACTS:
         return <ArtifactsDiff ref={refetchRef} />;
       case DIFF_TABS.SCHEMA:
-        return <SchemaDiff ref={refetchRef} />;
+        return <DataDiff excludes={["Node", "Profile"]} />;
       case DIFF_TABS.DATA:
-        return <DataDiff ref={refetchRef} />;
+        return <DataDiff excludes={["Schema", "Profile"]} />;
       case DIFF_TABS.CHECKS:
         return <Checks ref={refetchRef} />;
       case TASK_TAB:
