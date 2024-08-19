@@ -14,6 +14,8 @@ export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
 export const ACCOUNT_OBJECT = "CoreGenericAccount";
 
+export const GENERIC_REPOSITORY_KIND = "CoreGenericRepository";
+
 export const REPOSITORY_KIND = "CoreRepository";
 
 export const READONLY_REPOSITORY_KIND = "CoreReadOnlyRepository";
