@@ -68,7 +68,7 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
 
   return (
     <Accordion title={title}>
-      <Conflict conflict={property.conflict} id={property.path_identifier} />
+      <Conflict conflict={property.conflict} />
     </Accordion>
   );
 };

@@ -219,6 +219,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
     setIsLoadingClose(false);
   };
 
+  // Manually filter conflicts items since it's not available yet in the backend filters
   const nodes = data?.DiffTree?.nodes.filter((node) => {
     if (qsp === diffActions.CONFLICT) return node.contains_conflict;
 
