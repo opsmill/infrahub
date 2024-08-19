@@ -351,6 +351,7 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
 class CoreNumberPool(CoreResourcePool, LineageSource):
     node: String
     node_attribute: String
+    unique_for: StringOptional
     start_range: Integer
     end_range: Integer
 
@@ -766,6 +767,7 @@ class CoreIPPrefixPoolSync(CoreResourcePoolSync, LineageSourceSync):
 class CoreNumberPoolSync(CoreResourcePoolSync, LineageSourceSync):
     node: String
     node_attribute: String
+    unique_for: StringOptional
     start_range: Integer
     end_range: Integer
 
