@@ -17,7 +17,7 @@ export const ProposedChangesChecksTab = () => {
     ${queryString}
   `;
 
-  const { loading, data } = useQuery(query, { pollInterval: 15000 });
+  const { loading, data } = useQuery(query);
 
   const result = data ? data[PROPOSED_CHANGES_OBJECT]?.edges[0]?.node : {};
 
