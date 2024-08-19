@@ -243,32 +243,34 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
           </Badge>
         </div>
 
-        <div className="flex gap-2">
-          <Button
-            size={"sm"}
-            variant={"outline"}
-            onClick={handleApprove}
-            isLoading={isLoadingApprove}
-            disabled={oldApproversId.includes(approverId)}>
-            Approve
-          </Button>
-          <Button
-            size={"sm"}
-            variant={"active"}
-            onClick={handleMerge}
-            isLoading={isLoadingMerge}
-            disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}>
-            Merge
-          </Button>
-          <Button
-            size={"sm"}
-            variant={"danger"}
-            onClick={handleClose}
-            isLoading={isLoadingClose}
-            disabled={!auth?.permissions?.write || state === "merged"}>
-            {state === "closed" ? "Re-open" : "Close"}
-          </Button>
-        </div>
+        {!branchName && (
+          <div className="flex gap-2">
+            <Button
+              size={"sm"}
+              variant={"outline"}
+              onClick={handleApprove}
+              isLoading={isLoadingApprove}
+              disabled={oldApproversId.includes(approverId)}>
+              Approve
+            </Button>
+            <Button
+              size={"sm"}
+              variant={"active"}
+              onClick={handleMerge}
+              isLoading={isLoadingMerge}
+              disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}>
+              Merge
+            </Button>
+            <Button
+              size={"sm"}
+              variant={"danger"}
+              onClick={handleClose}
+              isLoading={isLoadingClose}
+              disabled={!auth?.permissions?.write || state === "merged"}>
+              {state === "closed" ? "Re-open" : "Close"}
+            </Button>
+          </div>
+        )}
       </div>
 
       {loading && <LoadingScreen message="Loading diff..." />}

@@ -13,7 +13,6 @@ import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BranchDetails } from "@/screens/branches/branch-details";
-import { Status } from "@/screens/proposed-changes/diff-summary";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -65,7 +64,7 @@ const ProposedChangesDetailsPage = () => {
           <NodeDiff
             filters={{
               namespace: { excludes: ["Schema", "Profile"] },
-              status: { excludes: [Status.UNCHANGED] },
+              status: { excludes: ["UNCHANGED"] },
             }}
           />
         );
