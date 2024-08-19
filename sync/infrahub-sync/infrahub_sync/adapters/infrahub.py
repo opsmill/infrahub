@@ -16,7 +16,6 @@ from diffsync import Adapter, DiffSyncModel
 from infrahub_sync import (
     DiffSyncMixin,
     DiffSyncModelMixin,
-    SchemaMappingModel,
     SyncAdapter,
     SyncConfig,
 )
@@ -246,31 +245,3 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         node.save(allow_upsert=True)
 
         return super().update(attrs)
-
-    @classmethod
-    def filter_records(cls, records: list[dict], schema_mapping: SchemaMappingModel) -> list[dict]:
-        """
-        Apply filters to the records based on the schema mapping configuration.
-        """
-        filters = schema_mapping.filters or []
-        if not filters:
-            return records
-        filtered_records = []
-        for record in records:
-            if cls.apply_filters(item=record, filters=filters):
-                filtered_records.append(record)
-        return filtered_records
-
-    @classmethod
-    def transform_records(cls, records: list[dict], schema_mapping: SchemaMappingModel) -> list[dict]:
-        """
-        Apply transformations to the records based on the schema mapping configuration.
-        """
-        transforms = schema_mapping.transforms or []
-        if not transforms:
-            return records
-        transformed_records = []
-        for record in records:
-            transformed_record = cls.apply_transforms(item=record, transforms=transforms)
-            transformed_records.append(transformed_record)
-        return transformed_records

@@ -14,7 +14,8 @@ from infrahub_sync import (
     SyncConfig,
 )
 
-from .utils import RestApiClient, derive_identifier_key, get_value
+from .rest_api_client import RestApiClient
+from .utils import derive_identifier_key, get_value
 
 
 class PeeringmanagerAdapter(DiffSyncMixin, Adapter):
@@ -202,31 +203,3 @@ class PeeringmanagerModel(DiffSyncModelMixin, DiffSyncModel):
             return super().update(attrs)
         except (requests.exceptions.HTTPError, ConnectionError) as exc:
             raise ValueError(f"Error during update: {str(exc)}") from exc
-
-    @classmethod
-    def filter_records(cls, records: list[dict], schema_mapping: SchemaMappingModel) -> list[dict]:
-        """
-        Apply filters to the records based on the schema mapping configuration.
-        """
-        filters = schema_mapping.filters or []
-        if not filters:
-            return records
-        filtered_records = []
-        for record in records:
-            if cls.apply_filters(item=record, filters=filters):
-                filtered_records.append(record)
-        return filtered_records
-
-    @classmethod
-    def transform_records(cls, records: list[dict], schema_mapping: SchemaMappingModel) -> list[dict]:
-        """
-        Apply transformations to the records based on the schema mapping configuration.
-        """
-        transforms = schema_mapping.transforms or []
-        if not transforms:
-            return records
-        transformed_records = []
-        for record in records:
-            transformed_record = cls.apply_transforms(item=record, transforms=transforms)
-            transformed_records.append(transformed_record)
-        return transformed_records

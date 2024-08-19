@@ -107,8 +107,8 @@ class DiffSyncMixin:
 
 
 class DiffSyncModelMixin:
-    @staticmethod
-    def apply_filter(field_value: Any, operation: str, value: Any) -> bool:
+    @classmethod
+    def apply_filter(cls, field_value: Any, operation: str, value: Any) -> bool:
         """Apply a specified operation to a field value."""
         operation_func = FILTERS_OPERATIONS.get(operation)
         if operation_func is None:
@@ -120,20 +120,18 @@ class DiffSyncModelMixin:
 
         return operation_func(field_value, value)
 
-    @staticmethod
-    def apply_filters(item: dict[str, Any], filters: List[SchemaMappingFilter]) -> bool:
+    @classmethod
+    def apply_filters(cls, item: dict[str, Any], filters: List[SchemaMappingFilter]) -> bool:
         """Apply filters to an item and return True if it passes all filters."""
         for filter_obj in filters:
             # Use dot notation to access attributes
             field_value = get_value(obj=item, name=filter_obj.field)
-            if not DiffSyncModelMixin.apply_filter(
-                field_value=field_value, operation=filter_obj.operation, value=filter_obj.value
-            ):
+            if not cls.apply_filter(field_value=field_value, operation=filter_obj.operation, value=filter_obj.value):
                 return False
         return True
 
-    @staticmethod
-    def apply_transform(item: dict[str, Any], transform_expr: str, field: str) -> None:
+    @classmethod
+    def apply_transform(cls, item: dict[str, Any], transform_expr: str, field: str) -> None:
         """Apply a transformation expression using Jinja2 to a specified field in the item."""
         try:
             # Create a Jinja2 template from the transformation expression
@@ -147,14 +145,42 @@ class DiffSyncModelMixin:
         except Exception as exc:
             raise ValueError(f"Failed to transform '{field}' with '{transform_expr}': {exc}") from exc
 
-    @staticmethod
-    def apply_transforms(item: dict[str, Any], transforms: List[SchemaMappingTransform]) -> dict[str, Any]:
+    @classmethod
+    def apply_transforms(cls, item: dict[str, Any], transforms: List[SchemaMappingTransform]) -> dict[str, Any]:
         """Apply a list of structured transformations to an item."""
         for transform_obj in transforms:
             field = transform_obj.field
             expr = transform_obj.expression
-            DiffSyncModelMixin.apply_transform(item=item, transform_expr=expr, field=field)
+            cls.apply_transform(item=item, transform_expr=expr, field=field)
         return item
+
+    @classmethod
+    def filter_records(cls, records: list[dict], schema_mapping: SchemaMappingModel) -> list[dict]:
+        """
+        Apply filters to the records based on the schema mapping configuration.
+        """
+        filters = schema_mapping.filters or []
+        if not filters:
+            return records
+        filtered_records = []
+        for record in records:
+            if cls.apply_filters(item=record, filters=filters):
+                filtered_records.append(record)
+        return filtered_records
+
+    @classmethod
+    def transform_records(cls, records: list[dict], schema_mapping: SchemaMappingModel) -> list[dict]:
+        """
+        Apply transformations to the records based on the schema mapping configuration.
+        """
+        transforms = schema_mapping.transforms or []
+        if not transforms:
+            return records
+        transformed_records = []
+        for record in records:
+            transformed_record = cls.apply_transforms(item=record, transforms=transforms)
+            transformed_records.append(transformed_record)
+        return transformed_records
 
     @classmethod
     def get_resource_name(cls, schema_mapping: List[SchemaMappingModel]) -> str:
