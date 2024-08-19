@@ -83,10 +83,22 @@ export const FormLabel = ({ ...props }: LabelProps) => {
 export const FormInput = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => {
-  const { id } = useContext(FormFieldContext);
+>(({ className, ...props }, ref) => {
+  const { getFieldState, formState } = useFormContext();
+  const { id, name } = useContext(FormFieldContext);
+  const { error } = getFieldState(name, formState);
 
-  return <Slot ref={ref} id={id} {...props} />;
+  return (
+    <Slot
+      ref={ref}
+      id={id}
+      className={classNames(
+        error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500",
+        className
+      )}
+      {...props}
+    />
+  );
 });
 
 export const FormMessage = ({
@@ -100,15 +112,12 @@ export const FormMessage = ({
   const { error } = getFieldState(name, formState);
 
   const message = error?.message?.toString() ?? children;
+
   if (!message) return null;
 
   return (
     <p
-      className={classNames(
-        "absolute -bottom-4 left-2 text-xs mt-1 italic text-gray-600",
-        error && "text-red-600",
-        className
-      )}
+      className={classNames("text-sm text-gray-600", error && "text-red-600", className)}
       data-cy={error && "field-error-message"}
       {...props}>
       {message}

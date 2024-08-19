@@ -34,7 +34,7 @@ const DatetimeField = ({
         };
 
         return (
-          <div className="flex flex-col items-start">
+          <div className="space-y-2">
             <LabelFormField
               label={label}
               unique={unique}
@@ -51,6 +51,7 @@ const DatetimeField = ({
                 {...props}
               />
             </FormInput>
+
             <FormMessage />
           </div>
         );

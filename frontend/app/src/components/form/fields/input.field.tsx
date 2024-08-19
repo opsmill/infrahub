@@ -27,7 +27,7 @@ const InputField = ({
         const fieldData: FormAttributeValue = field.value;
 
         return (
-          <div className="relative mb-2 flex flex-col">
+          <div className="space-y-2">
             <LabelFormField
               label={label}
               unique={unique}
@@ -46,6 +46,7 @@ const InputField = ({
                 {...props}
               />
             </FormInput>
+
             <FormMessage />
           </div>
         );
