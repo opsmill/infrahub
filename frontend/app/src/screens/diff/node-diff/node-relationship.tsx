@@ -11,7 +11,6 @@ type DiffNodeRelationshipProps = {
 
 export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps) => {
   const { "*": branchName } = useParams();
-  console.log("relationship: ", relationship);
 
   const title = (
     <DiffTitle containsConflict={relationship.contains_conflict} status={relationship.status}>

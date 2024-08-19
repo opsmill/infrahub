@@ -290,8 +290,6 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
     } catch (error: any) {
-      console.log("error: ", error);
-
       toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}

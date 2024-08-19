@@ -45,7 +45,6 @@ const getNewValue = (property) => {
 
 export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
   const { "*": branchName } = useParams();
-  console.log("property: ", property);
 
   const title = (
     <DiffTitle status={property.status} containsConflict={property.conflict}>

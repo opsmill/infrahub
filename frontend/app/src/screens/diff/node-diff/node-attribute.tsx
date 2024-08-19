@@ -11,7 +11,6 @@ type DiffNodeAttributeProps = {
 
 export const DiffNodeAttribute = ({ attribute }: DiffNodeAttributeProps) => {
   const { "*": branchName } = useParams();
-  console.log("attribute: ", attribute);
 
   const title = (
     <DiffTitle containsConflict={attribute.contains_conflict} status={attribute.status}>

@@ -5,7 +5,6 @@ type DiffNodeElementProps = {
 };
 
 export const DiffNodeElement = ({ element }: DiffNodeElementProps) => {
-  console.log("element: ", element);
   return (
     <div>
       {element.properties

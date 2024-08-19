@@ -15,7 +15,7 @@ type DiffNodeProps = {
 
 export const DiffNode = ({ node }: DiffNodeProps) => {
   const { "*": branchName } = useParams();
-  console.log("node: ", node);
+
   const title = (
     <DiffTitle containsConflict={node.contains_conflict} status={node.status}>
       <div className="flex items-center">
@@ -36,7 +36,7 @@ export const DiffNode = ({ node }: DiffNodeProps) => {
   return (
     <Card className="m-4">
       <div className="bg-gray-100 rounded-md border overflow-hidden">
-        {(node.attributes?.length || node.relationships?.length) && (
+        {(!!node.attributes?.length || !!node.relationships?.length) && (
           <Accordion title={title}>
             <div className="bg-custom-white">
               {node.attributes.map((attribute: any, index: number) => (
