@@ -15,6 +15,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffRoot,
     NameTrackingId,
 )
+from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
@@ -39,7 +40,7 @@ class TestDiffRepositorySaveAndLoad:
     @pytest.fixture
     def diff_repository(self, db: InfrahubDatabase) -> DiffRepository:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
-        return DiffRepository(db=db)
+        return DiffRepository(deserializer=EnrichedDiffDeserializer(), db=db)
 
     def build_diff_node(self, num_sub_fields=2) -> EnrichedDiffNode:
         enriched_node = EnrichedNodeFactory.build(

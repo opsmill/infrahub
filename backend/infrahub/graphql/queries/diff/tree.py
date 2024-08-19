@@ -12,6 +12,7 @@ from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.graphql.enums import ConflictSelection
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -30,11 +31,6 @@ if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
-
-
-class ConflictSelection(GrapheneEnum):
-    BASE_BRANCH = "base"
-    DIFF_BRANCH = "diff"
 
 
 class ConflictDetails(ObjectType):

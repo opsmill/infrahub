@@ -8,6 +8,7 @@ from infrahub.core.constants import DiffAction, RelationshipCardinality
 
 from .model.path import (
     EnrichedDiffAttribute,
+    EnrichedDiffConflict,
     EnrichedDiffNode,
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
@@ -102,6 +103,10 @@ class DiffCombiner:
         elif actions == {DiffAction.UNCHANGED}:
             combined_action = DiffAction.UNCHANGED
         return combined_action
+
+    def _combined_conflicts(self, earlier: EnrichedDiffConflict, later: EnrichedDiffConflict) -> EnrichedDiffConflict:
+        # TODO
+        raise NotImplementedError()
 
     def _combine_properties(
         self, earlier_properties: set[EnrichedDiffProperty], later_properties: set[EnrichedDiffProperty]

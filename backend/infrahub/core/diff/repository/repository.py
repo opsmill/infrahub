@@ -13,6 +13,7 @@ from .delete_query import EnrichedDiffDeleteQuery
 from .deserializer import EnrichedDiffDeserializer
 from .save_query import EnrichedDiffSaveQuery
 from .time_range_query import EnrichedDiffTimeRangeQuery
+from .update_conflict_query import EnrichedDiffConflictUpdateQuery
 
 
 class DiffRepository:
@@ -36,7 +37,7 @@ class DiffRepository:
         final_limit = limit or config.SETTINGS.database.query_size_limit
         query = await EnrichedDiffGetQuery.init(
             db=self.db,
-            serializer=EnrichedDiffDeserializer(),
+            deserializer=self.deserializer,
             base_branch_name=base_branch_name,
             diff_branch_names=diff_branch_names,
             from_time=from_time,
@@ -115,3 +116,25 @@ class DiffRepository:
         )
         await query.execute(db=self.db)
         return await query.get_time_ranges()
+
+    async def get_conflict_by_id(self, conflict_id: str) -> EnrichedDiffConflict:
+        query = await EnrichedDiffConflictQuery.init(
+            db=self.db, deserializer=self.deserializer, conflict_id=conflict_id
+        )
+        await query.execute(db=self.db)
+        conflict = await query.get_conflict()
+        if not conflict:
+            raise ResourceNotFoundError(f"No conflict with id {conflict_id}")
+        return conflict
+
+    async def update_conflict_by_id(
+        self, conflict_id: str, selection: ConflictSelection | None
+    ) -> EnrichedDiffConflict:
+        query = await EnrichedDiffConflictUpdateQuery.init(
+            db=self.db, deserializer=self.deserializer, conflict_id=conflict_id, selection=selection
+        )
+        await query.execute(db=self.db)
+        conflict = await query.get_conflict()
+        if not conflict:
+            raise ResourceNotFoundError(f"No conflict with id {conflict_id}")
+        return conflict
