@@ -138,9 +138,11 @@ const ProposedChangesDetailsPage = () => {
       case DIFF_TABS.ARTIFACTS:
         return <ArtifactsDiff ref={refetchRef} />;
       case DIFF_TABS.SCHEMA:
-        return <NodeDiff excludes={["Node", "Profile"]} />;
+        return (
+          <NodeDiff filters={{ namespace: { includes: ["Schema"], excludes: ["Profile"] } }} />
+        );
       case DIFF_TABS.DATA:
-        return <NodeDiff excludes={["Schema", "Profile"]} />;
+        return <NodeDiff filters={{ namespace: { excludes: ["Schema", "Profile"] } }} />;
       case DIFF_TABS.CHECKS:
         return <Checks ref={refetchRef} />;
       case TASK_TAB:

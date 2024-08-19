@@ -34,9 +34,9 @@ const renderContent = (tab: string | null | undefined) => {
     case DIFF_TABS.ARTIFACTS:
       return <ArtifactsDiff />;
     case DIFF_TABS.SCHEMA:
-      return <NodeDiff excludes={["Node", "Profile"]} />;
+      return <NodeDiff filters={{ namespace: { includes: ["Schema"], excludes: ["Profile"] } }} />;
     default:
-      return <NodeDiff excludes={["Schema", "Profile"]} />;
+      return <NodeDiff filters={{ namespace: { excludes: ["Schema", "Profile"] } }} />;
   }
 };
 

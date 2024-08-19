@@ -3,16 +3,24 @@ import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "../errors/error-screen";
 import { BadgeAdd, BadgeConflict, BadgeRemove, BadgeUpdate } from "../diff/ui/badge";
 
-type tProposedChangesDiffSummary = {
-  branch: string;
+export type DiffFilter = {
+  namespace?: {
+    excludes?: String[];
+    includes?: String[];
+  };
 };
 
-export const ProposedChangesDiffSummary = ({ branch }: tProposedChangesDiffSummary) => {
+type tProposedChangesDiffSummary = {
+  branch: string;
+  filters: DiffFilter;
+};
+
+export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChangesDiffSummary) => {
   const {
     loading,
     error,
     data = {},
-  } = useQuery(getProposedChangesDiffSummary, { skip: !branch, variables: { branch } });
+  } = useQuery(getProposedChangesDiffSummary, { skip: !branch, variables: { branch, filters } });
 
   if (error) {
     return <ErrorScreen message="An error occured while fetching diff summary." />;

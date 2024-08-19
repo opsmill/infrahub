@@ -9,7 +9,7 @@ import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ProposedChangesDiffSummary } from "../../proposed-changes/diff-summary";
+import { DiffFilter, ProposedChangesDiffSummary } from "../../proposed-changes/diff-summary";
 import { Button } from "@/components/buttons/button-primitive";
 import { useAuth } from "@/hooks/useAuth";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
@@ -23,11 +23,11 @@ import { DiffNode } from "./node";
 
 export const DiffContext = createContext({});
 
-type DataDiffProps = {
-  excludes: String[];
+type NodeDiffProps = {
+  filters: DiffFilter;
 };
 
-export const NodeDiff = ({ excludes }: DataDiffProps) => {
+export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const { "*": branchName, proposedchange } = useParams();
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -45,8 +45,6 @@ export const NodeDiff = ({ excludes }: DataDiffProps) => {
   const approverId = auth?.data?.sub;
   const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const oldApproversId = approvers.map((a: any) => a.id);
-
-  const filters = { namespace: { excludes } };
 
   const { loading, data } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,
@@ -199,7 +197,7 @@ export const NodeDiff = ({ excludes }: DataDiffProps) => {
       <div className="flex items-center justify-between p-2 bg-custom-white">
         <div className="flex gap-2">
           <div className="mr-4">
-            <ProposedChangesDiffSummary branch={branch} />
+            <ProposedChangesDiffSummary branch={branch} filters={filters} />
           </div>
 
           <Badge variant={"green"}>
