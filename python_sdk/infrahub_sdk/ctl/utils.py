@@ -80,7 +80,7 @@ def catch_exception(  # noqa: C901
             async def async_wrapper(*args: Any, **kwargs: Any):
                 try:
                     return await func(*args, **kwargs)
-                except (Error, Exception) as exc:   # noqa: W0718
+                except (Error, Exception) as exc:  # noqa: W0718
                     return handle_exception(exc=exc, console=console, exit_code=exit_code)
 
             return async_wrapper
