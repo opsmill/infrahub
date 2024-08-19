@@ -15,7 +15,7 @@ import { useParams } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/buttons/button-primitive";
-import { DiffContext } from "./diff";
+import { DiffContext } from "./node-diff";
 import { DiffComments } from "./comments";
 
 type tDiffThread = {

@@ -2,7 +2,7 @@ import { Tabs } from "@/components/tabs";
 import { QSP } from "@/config/qsp";
 import { DateTimeParam, StringParam, useQueryParam } from "use-query-params";
 import { ArtifactsDiff } from "./artifact-diff/artifacts-diff";
-import { DataDiff } from "./node-diff/diff";
+import { DataDiff } from "./node-diff/node-diff";
 import { FilesDiff } from "./file-diff/files-diff";
 import { SchemaDiff } from "./schema-diff";
 import { Form, FormSubmit } from "@/components/ui/form";
