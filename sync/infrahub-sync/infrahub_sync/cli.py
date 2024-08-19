@@ -6,7 +6,13 @@ from infrahub_sdk import InfrahubClientSync
 from infrahub_sdk.exceptions import ServerNotResponsiveError
 from rich.console import Console
 
-from infrahub_sync.utils import get_all_sync, get_instance, get_potenda_from_instance, render_adapter
+from infrahub_sync.utils import (
+    find_missing_schema_model,
+    get_all_sync,
+    get_instance,
+    get_potenda_from_instance,
+    render_adapter,
+)
 
 app = typer.Typer()
 console = Console()
@@ -38,15 +44,21 @@ def diff_cmd(
 ):
     """Calculate and print the differences between the source and the destination systems for a given project."""
     if sum([bool(name), bool(config_file)]) != 1:
-        print_error_and_abort("Please specify exactly one of 'name' or 'config_file'.")
+        print_error_and_abort("Please specify exactly one of 'name' or 'config-file'.")
 
     sync_instance = get_instance(name=name, config_file=config_file, directory=directory)
     if not sync_instance:
         print_error_and_abort("Failed to load sync instance.")
 
-    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
-    ptd.source_load()
-    ptd.destination_load()
+    try:
+        ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
+    except ValueError as exc:
+        print_error_and_abort(f"Failed to initialize the Sync Instance: {exc}")
+    try:
+        ptd.source_load()
+        ptd.destination_load()
+    except ValueError as exc:
+        print_error_and_abort(exc)
 
     mydiff = ptd.diff()
 
@@ -66,15 +78,21 @@ def sync_cmd(
 ):
     """Synchronize the data between source and the destination systems for a given project or configuration file."""
     if sum([bool(name), bool(config_file)]) != 1:
-        print_error_and_abort("Please specify exactly one of 'name' or 'config_file'.")
+        print_error_and_abort("Please specify exactly one of 'name' or 'config-file'.")
 
     sync_instance = get_instance(name=name, config_file=config_file, directory=directory)
     if not sync_instance:
         print_error_and_abort("Failed to load sync instance.")
 
-    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
-    ptd.source_load()
-    ptd.destination_load()
+    try:
+        ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
+    except ValueError as exc:
+        print_error_and_abort(f"Failed to initialize the Sync Instance: {exc}")
+    try:
+        ptd.source_load()
+        ptd.destination_load()
+    except ValueError as exc:
+        print_error_and_abort(exc)
 
     mydiff = ptd.diff()
 
@@ -86,7 +104,7 @@ def sync_cmd(
         end_synctime = timer()
         console.print(f"Sync: Completed in {end_synctime - start_synctime} sec")
     else:
-        console.print("No diffence found. Nothing to sync")
+        console.print("No difference found. Nothing to sync")
 
 
 @app.command(name="generate")
@@ -121,6 +139,10 @@ def generate(
         schema = client.schema.all()
     except ServerNotResponsiveError as exc:
         print_error_and_abort(str(exc))
+
+    missing_schema_models = find_missing_schema_model(sync_instance=sync_instance, schema=schema)
+    if missing_schema_models:
+        print_error_and_abort(f"One or more model model are not present in the Schema - {missing_schema_models}")
 
     rendered_files = render_adapter(sync_instance=sync_instance, schema=schema)
     for template, output_path in rendered_files:

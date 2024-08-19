@@ -532,13 +532,13 @@ files = [
 
 [[package]]
 name = "infrahub-sdk"
-version = "0.11.1"
+version = "0.12.2"
 description = "Python Client to interact with Infrahub"
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "infrahub_sdk-0.11.1-py3-none-any.whl", hash = "sha256:7589e8ab19d965b333bd28c0120dba3dcac83eb5f1a8dae8064776ea6b6b5d52"},
-    {file = "infrahub_sdk-0.11.1.tar.gz", hash = "sha256:2f2b9a96c9c28f60d03890d547af69bac0f1e9dd31af96a38564c2c8f8732814"},
+    {file = "infrahub_sdk-0.12.2-py3-none-any.whl", hash = "sha256:d5469f96d0ed6260266f74cbe0ae2dc62b28d37635862f0a0825d90be8836afe"},
+    {file = "infrahub_sdk-0.12.2.tar.gz", hash = "sha256:627cb26ec619824ccc44aded3853c8514245e81dc62ae336ea219d8371e1064a"},
 ]
 
 [package.dependencies]
@@ -558,7 +558,8 @@ pendulum = [
     {version = ">=3", markers = "python_version >= \"3.12\""},
 ]
 pyarrow = {version = ">=14,<15", optional = true, markers = "extra == \"ctl\" or extra == \"all\""}
-pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0 || >2.0.0,<2.0.1 || >2.0.1,<2.1.0 || >2.1.0,<3.0.0"
+pydantic = ">=2.0.0,<2.0.1 || >2.0.1,<2.1.0 || >2.1.0,<3.0.0"
+pydantic-settings = ">=2.0"
 pytest = {version = "*", optional = true, markers = "extra == \"tests\" or extra == \"all\""}
 pyyaml = {version = ">=6,<7", optional = true, markers = "extra == \"ctl\" or extra == \"tests\" or extra == \"all\""}
 rich = {version = ">=13,<14", optional = true, markers = "extra == \"ctl\" or extra == \"tests\" or extra == \"all\""}
@@ -855,6 +856,20 @@ files = [
     {file = "mypy_extensions-1.0.0-py3-none-any.whl", hash = "sha256:4392f6c0eb8a5668a69e23d168ffa70f0be9ccfd32b5cc2d26a34ae5b844552d"},
     {file = "mypy_extensions-1.0.0.tar.gz", hash = "sha256:75dbf8955dc00442a438fc4d0666508a9a97b6bd41aa2f0ffe9d2f2725af0782"},
 ]
+
+[[package]]
+name = "netutils"
+version = "1.9.1"
+description = "Common helper functions useful in network automation."
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "netutils-1.9.1-py3-none-any.whl", hash = "sha256:0d6e9026cc529f365a63377159aed07769baee0bf7a7138fa86fce37b64dd9d4"},
+    {file = "netutils-1.9.1.tar.gz", hash = "sha256:8ad8b5e02eb9d6692d0aaaf9c0f36da1a81f520f426a79d0e08e56cf7dbb3476"},
+]
+
+[package.extras]
+optionals = ["jsonschema (>=4.17.3,<5.0.0)", "napalm (>=4.0.0,<5.0.0)"]
 
 [[package]]
 name = "nodeenv"
@@ -1320,6 +1335,26 @@ files = [
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
+name = "pydantic-settings"
+version = "2.4.0"
+description = "Settings management using Pydantic"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pydantic_settings-2.4.0-py3-none-any.whl", hash = "sha256:bb6849dc067f1687574c12a639e231f3a6feeed0a12d710c1382045c5db1c315"},
+    {file = "pydantic_settings-2.4.0.tar.gz", hash = "sha256:ed81c3a0f46392b4d7c0a565c05884e6e54b3456e6f0fe4d8814981172dc9a88"},
+]
+
+[package.dependencies]
+pydantic = ">=2.7.0"
+python-dotenv = ">=0.21.0"
+
+[package.extras]
+azure-key-vault = ["azure-identity (>=1.16.0)", "azure-keyvault-secrets (>=4.8.0)"]
+toml = ["tomli (>=2.0.1)"]
+yaml = ["pyyaml (>=6.0.1)"]
+
+[[package]]
 name = "pygments"
 version = "2.18.0"
 description = "Pygments is a syntax highlighting package written in Python."
@@ -1489,6 +1524,20 @@ files = [
 six = ">=1.5"
 
 [[package]]
+name = "python-dotenv"
+version = "1.0.1"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca"},
+    {file = "python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"},
+]
+
+[package.extras]
+cli = ["click (>=5.0)"]
+
+[[package]]
 name = "pyyaml"
 version = "6.0.1"
 description = "YAML parser and emitter for Python"
@@ -1513,6 +1562,7 @@ files = [
     {file = "PyYAML-6.0.1-cp311-cp311-win_amd64.whl", hash = "sha256:bf07ee2fef7014951eeb99f56f39c9bb4af143d8aa3c21b1677805985307da34"},
     {file = "PyYAML-6.0.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:855fb52b0dc35af121542a76b9a84f8d1cd886ea97c84703eaa6d88e37a2ad28"},
     {file = "PyYAML-6.0.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:40df9b996c2b73138957fe23a16a4f0ba614f4c0efce1e9406a184b6d07fa3a9"},
+    {file = "PyYAML-6.0.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a08c6f0fe150303c1c6b71ebcd7213c2858041a7e01975da3a99aed1e7a378ef"},
     {file = "PyYAML-6.0.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6c22bec3fbe2524cde73d7ada88f6566758a8f7227bfbf93a408a9d86bcc12a0"},
     {file = "PyYAML-6.0.1-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:8d4e9c88387b0f5c7d5f281e55304de64cf7f9c0021a3525bd3b1c542da3b0e4"},
     {file = "PyYAML-6.0.1-cp312-cp312-win32.whl", hash = "sha256:d483d2cdf104e7c9fa60c544d92981f12ad66a457afae824d146093b8c294c54"},
@@ -1743,6 +1793,26 @@ files = [
     {file = "tomlkit-0.12.5-py3-none-any.whl", hash = "sha256:af914f5a9c59ed9d0762c7b64d3b5d5df007448eb9cd2edc8a46b1eafead172f"},
     {file = "tomlkit-0.12.5.tar.gz", hash = "sha256:eef34fba39834d4d6b73c9ba7f3e4d1c417a4e56f89a7e96e090dd0d24b8fb3c"},
 ]
+
+[[package]]
+name = "tqdm"
+version = "4.66.5"
+description = "Fast, Extensible Progress Meter"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tqdm-4.66.5-py3-none-any.whl", hash = "sha256:90279a3770753eafc9194a0364852159802111925aa30eb3f9d85b0e805ac7cd"},
+    {file = "tqdm-4.66.5.tar.gz", hash = "sha256:e1020aef2e5096702d8a025ac7d16b1577279c9d63f8375b63083e9a5f0fcbad"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+dev = ["pytest (>=6)", "pytest-cov", "pytest-timeout", "pytest-xdist"]
+notebook = ["ipywidgets (>=6)"]
+slack = ["slack-sdk"]
+telegram = ["requests"]
 
 [[package]]
 name = "traitlets"
@@ -2012,4 +2082,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9, < 3.13"
-content-hash = "09fc408104517313040372697f4d8ac79a952458475d4de5a06b7c52a5f8a9e7"
+content-hash = "83deb599bdfd22feb32ca5971f96380738a59ac5df19f4e11c6688d7080b3616"

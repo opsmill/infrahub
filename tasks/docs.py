@@ -219,7 +219,7 @@ def _generate_infrahubsync_documentation(context: Context):
 
     print(" - Generate infrahub-sync CLI documentation")
     exec_cmd = 'poetry run typer infrahub_sync.cli utils docs --name "infrahub-sync"'
-    exec_cmd += " --output docs/docs/sync/reference/cli.mdx"
+    exec_cmd += " --output docs/docs/integrations/sync/reference/cli.mdx"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
