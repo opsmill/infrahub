@@ -195,3 +195,45 @@ When a [Proposed Change](/topics/proposed-change) is merged, if the source and d
 <!-- vale on -->
 
 No changes to objects owned by a Read-only Repository are ever pushed to the external Git repository.
+
+## Installing custom CA certificates
+
+If the git server hosting your external git repository is using a server certificate that is signed by a certificate authority that is not part of trust store, then you will have to add the CA certificate using the following process.
+
+:::info
+
+In this process we will have to build a custom docker image. This docker image will have to be rebuild every time you want to use a new release.
+
+:::
+
+First you will have to gather the CA certificate (and any intermediate CA certificates) in PEM format and store it on you local disk.
+This guide makes the assumption that you have saved the CA certificate file as `mycacertificate.crt`
+
+Next we will have to create a Dockerfile. The file should be saved as `Dockerfile` in the same directory as the directory containing the CA certificate you want to install.
+
+    ```dockerfile
+    ARG INFRAHUB_VERSION=0.15.3
+    FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
+    
+    COPY mycacertificate.crt /usr/local/share/ca-certificates/
+    RUN update-ca-certificates
+    ```
+
+We then have to build a Docker image from the Dockerfile. We can do this by executing this command
+
+    ```bash
+    INFRAHUB_VERSION=0.15.3 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
+    ```
+
+This will build a custom docker image and tag it as `custom/infrahub:0.15.3`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
+
+As a last step we have to create a `docker-compose.override.yml` file with the following contents in the `development` directory of your clone of the Infrahub repository.
+
+    ```yaml
+    ---
+    services:
+      infrahub-git:
+        image: custom/infrahub:0.15.3
+    ```
+
+A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](/guides/installation).
