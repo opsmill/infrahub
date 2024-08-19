@@ -24,7 +24,7 @@ async def resolver_graphql_query(
     name: str,
     params: dict[str, Any] | None = None,
     interval: int = 10,
-) -> AsyncGenerator[dict[str, Any]]:
+) -> AsyncGenerator[dict[str, Any], None]:
     context: GraphqlContext = info.context
     at = Timestamp()
 
