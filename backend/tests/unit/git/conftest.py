@@ -641,7 +641,9 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
         encoding="UTF-8"
     )
 
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(
+        method="GET", url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"), json=ujson.loads(response_text)
+    )
     return httpx_mock
 
 

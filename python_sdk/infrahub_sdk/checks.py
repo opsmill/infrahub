@@ -36,7 +36,7 @@ class InfrahubCheck:
 
     def __init__(
         self,
-        branch: str = "",
+        branch: Optional[str] = None,
         root_directory: str = "",
         output: Optional[str] = None,
         initializer: Optional[InfrahubCheckInitializer] = None,

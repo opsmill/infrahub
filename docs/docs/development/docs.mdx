@@ -127,6 +127,8 @@ Here are questions to ask when deciding where to place a new document:
 
 If you're unsure where something goes, diátaxis offers a [map](https://diataxis.fr/needs/) and [compass](https://diataxis.fr/compass/) to help.
 
+When creating a new page in the documentation, in addition to creating the `.mdx` file containing the documentation itself, you must also add the page to the relvant section of the `sidebars.ts` file.
+
 ### Tutorials
 
 Tutorials are an opportunity to guide users through a repeatable process. The purpose is to **provide basic competence** in Infrahub or a feature-set.
@@ -194,11 +196,11 @@ await saveScreenshotForDocs(page, "my-screenshot-name");
 To update all documentation screenshots, run:
 
 ```bash
-cd frontend
+cd frontend/app
 npm run test:e2e:screenshots
 ```
 
-The screenshots will be saved in `docs/media`. You can then use them in our documentation:
+The screenshots will be saved in `docs/docs/media`. You can then use them in our documentation:
 
 ```markdown
 ![optional caption](../../media/my-screenshot-name.png)

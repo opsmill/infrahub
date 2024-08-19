@@ -135,7 +135,10 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v16
         with:
           config: .markdownlint.yaml
-          globs: '**/*.{md,mdx}'
+          globs: |
+            **/*.{md,mdx}
+            !changelog/*.md
+            !python_sdk/changelog/*.md
 
   action-lint:
     if: needs.files-changed.outputs.github_workflows == 'true'
@@ -512,7 +515,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: docs/media/*
+          path: docs/docs/media/*
       - name: Upload cypress videos
         if: failure()
         uses: actions/upload-artifact@v4

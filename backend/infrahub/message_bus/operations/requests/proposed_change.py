@@ -275,7 +275,7 @@ async def schema_integrity(
                         kind=violation.node_kind,
                         id=violation.node_id,
                         path=response.data.schema_path.get_path(),
-                        value="NA",
+                        value=violation.message,
                         branch="placeholder",
                     )
                 )

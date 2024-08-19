@@ -19,7 +19,7 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_unique_validator"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         self.params["node_kind"] = self.node_schema.kind
@@ -106,6 +106,10 @@ class AttributeUniquenessChecker(ConstraintCheckerInterface):
         grouped_data_paths_list = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
+        if request.node_schema.namespace == "Schema":
+            # We don't need to run uniqueness constraints for attributes within the Schema nodes
+            return []
+
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
         if attribute_schema.unique is False:
             return []
