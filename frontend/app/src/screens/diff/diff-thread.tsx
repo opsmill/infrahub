@@ -11,7 +11,7 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
-import { DiffContext } from "./data-diff/diff";
+import { DiffContext } from "./node-diff/diff";
 import { DataDiffComments } from "./diff-comments";
 import { Icon } from "@iconify-icon/react";
 import { Badge } from "@/components/ui/badge";
