@@ -7,7 +7,7 @@ import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/screens/diff/checks/checks";
-import { DataDiff } from "@/screens/diff/node-diff/diff";
+import { DataDiff } from "@/screens/diff/node-diff";
 import { DIFF_TABS } from "@/screens/diff/diff";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import { SchemaDiff } from "@/screens/diff/schema-diff";
