@@ -51,7 +51,7 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
   }
 );
 
-const DynamicInput = (props: DynamicFieldProps) => {
+export const DynamicInput = (props: DynamicFieldProps) => {
   switch (props.type) {
     case SCHEMA_ATTRIBUTE_KIND.DATETIME: {
       const { type, ...otherProps } = props;

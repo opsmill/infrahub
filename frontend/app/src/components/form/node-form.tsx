@@ -32,7 +32,6 @@ export type NodeFormSubmitParams = {
 };
 
 export type NodeFormProps = {
-  operation?: "create" | "update";
   className?: string;
   schema: iNodeSchema | IProfileSchema;
   profiles?: ProfileData[];

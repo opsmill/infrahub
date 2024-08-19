@@ -519,7 +519,7 @@ class DiffAllPathsQuery(DiffQuery):
             MATCH (p)-[diff_rel]-(q)
             WHERE any(l in labels(p) WHERE l in ["Node", "Attribute", "Relationship"])
             AND %(diff_rel_filter)s
-            AND p.branch_support IN $branch_support
+            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
             AND %(p_node_where)s
             // subqueries to get full paths associated with the above update edges
             WITH p, diff_rel, q
@@ -604,7 +604,7 @@ class DiffAllPathsQuery(DiffQuery):
                     WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
                     AND r.branch IN $branch_names
                 )
-                AND ID(inner_p) <> ID(prop)
+                AND [ID(inner_p), type(inner_diff_rel)] <> [ID(prop), type(r_prop)]
                 WITH path, prop, r_prop, r_root
                 ORDER BY
                     ID(prop),
@@ -635,7 +635,7 @@ class DiffAllPathsQuery(DiffQuery):
                     WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
                     AND r.branch IN $branch_names
                 )
-                AND ID(inner_p) <> ID(prop)
+                AND [ID(inner_p), type(r_node)] <> [ID(prop), type(r_prop)]
                 WITH path, node, prop, r_prop, r_node
                 ORDER BY
                     ID(node),
@@ -644,7 +644,7 @@ class DiffAllPathsQuery(DiffQuery):
                     r_node.branch = diff_rel.branch DESC,
                     r_prop.from DESC,
                     r_node.from DESC
-                WITH node, prop, head(collect(path)) AS latest_path
+                WITH node, prop, type(r_prop) AS r_prop_type, type(r_node) AS r_node_type, head(collect(path)) AS latest_path
                 RETURN latest_path
             }
             WITH p, q, diff_rel, full_diff_paths, collect(latest_path) AS latest_paths

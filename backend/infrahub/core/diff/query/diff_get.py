@@ -184,9 +184,11 @@ class EnrichedDiffGetQuery(Query):
         ]
         self.order_by = ["diff_root.diff_branch_name ASC", "diff_root.from_time ASC", "diff_node.label ASC"]
 
-    async def get_enriched_diff_roots(self) -> list[EnrichedDiffRoot]:
+    async def get_enriched_diff_roots(self, include_parents: bool) -> list[EnrichedDiffRoot]:
         deserializer = EnrichedDiffDeserializer()
-        enriched_diffs = await deserializer.deserialize(database_results=self.get_results())
+        enriched_diffs = await deserializer.deserialize(
+            database_results=self.get_results(), include_parents=include_parents
+        )
         return enriched_diffs
 
 
@@ -199,7 +201,9 @@ class EnrichedDiffDeserializer:
         self._diff_node_rel_element_map: dict[tuple[str, str, str, str], EnrichedDiffSingleRelationship] = {}
         self._diff_prop_map: dict[tuple[str, str, str, str] | tuple[str, str, str, str, str], EnrichedDiffProperty] = {}
 
-    async def deserialize(self, database_results: Iterable[QueryResult]) -> list[EnrichedDiffRoot]:
+    async def deserialize(
+        self, database_results: Iterable[QueryResult], include_parents: bool
+    ) -> list[EnrichedDiffRoot]:
         results = list(database_results)
         for result in results:
             enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
@@ -213,9 +217,10 @@ class EnrichedDiffDeserializer:
             self._deserialize_attributes(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
             self._deserialize_relationships(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
 
-        for result in results:
-            enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
-            self._deserialize_parents(result=result, enriched_root=enriched_root)
+        if include_parents:
+            for result in results:
+                enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
+                self._deserialize_parents(result=result, enriched_root=enriched_root)
 
         return list(self._diff_root_map.values())
 
