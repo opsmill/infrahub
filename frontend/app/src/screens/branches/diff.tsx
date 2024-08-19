@@ -6,16 +6,7 @@ import { DataDiff } from "../diff/node-diff";
 import { FilesDiff } from "../diff/file-diff/files-diff";
 import { Form, FormSubmit } from "@/components/ui/form";
 import DatetimeField from "@/components/form/fields/datetime.field";
-
-export const DIFF_TABS = {
-  CONVERSATIONS: "conversation",
-  STATUS: "status",
-  DATA: "data",
-  FILES: "files",
-  CHECKS: "checks",
-  ARTIFACTS: "artifacts",
-  SCHEMA: "schema",
-};
+import { DIFF_TABS } from "@/config/constants";
 
 const tabs = [
   {

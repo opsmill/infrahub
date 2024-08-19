@@ -208,3 +208,13 @@ export const SEARCH_ANY_FILTER = "any__value";
 export const SEARCH_PARTIAL_MATCH = "partial_match";
 
 export const SEARCH_FILTERS = [SEARCH_ANY_FILTER, SEARCH_PARTIAL_MATCH];
+
+export const DIFF_TABS = {
+  CONVERSATIONS: "conversation",
+  STATUS: "status",
+  DATA: "data",
+  FILES: "files",
+  CHECKS: "checks",
+  ARTIFACTS: "artifacts",
+  SCHEMA: "schema",
+};

@@ -1,6 +1,6 @@
 import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
-import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "@/config/constants";
+import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getProposedChanges } from "@/graphql/queries/proposed-changes/getProposedChangesDetails";
 import useQuery from "@/hooks/useQuery";
@@ -8,7 +8,7 @@ import { useTitle } from "@/hooks/useTitle";
 import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/screens/diff/checks/checks";
 import { DataDiff } from "@/screens/diff/node-diff";
-import { DIFF_TABS } from "@/screens/diff/diff";
+
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
