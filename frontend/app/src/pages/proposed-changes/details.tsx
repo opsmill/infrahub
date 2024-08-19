@@ -7,7 +7,7 @@ import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/screens/diff/checks/checks";
-import { DataDiff } from "@/screens/diff/node-diff";
+import { NodeDiff } from "@/screens/diff/node-diff";
 
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import ErrorScreen from "@/screens/errors/error-screen";
@@ -138,9 +138,9 @@ const ProposedChangesDetailsPage = () => {
       case DIFF_TABS.ARTIFACTS:
         return <ArtifactsDiff ref={refetchRef} />;
       case DIFF_TABS.SCHEMA:
-        return <DataDiff excludes={["Node", "Profile"]} />;
+        return <NodeDiff excludes={["Node", "Profile"]} />;
       case DIFF_TABS.DATA:
-        return <DataDiff excludes={["Schema", "Profile"]} />;
+        return <NodeDiff excludes={["Schema", "Profile"]} />;
       case DIFF_TABS.CHECKS:
         return <Checks ref={refetchRef} />;
       case TASK_TAB:

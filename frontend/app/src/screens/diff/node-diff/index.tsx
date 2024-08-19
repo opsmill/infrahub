@@ -27,7 +27,7 @@ type DataDiffProps = {
   excludes: String[];
 };
 
-export const DataDiff = ({ excludes }: DataDiffProps) => {
+export const NodeDiff = ({ excludes }: DataDiffProps) => {
   const { "*": branchName, proposedchange } = useParams();
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);

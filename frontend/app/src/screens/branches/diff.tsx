@@ -2,7 +2,7 @@ import { Tabs } from "@/components/tabs";
 import { QSP } from "@/config/qsp";
 import { DateTimeParam, StringParam, useQueryParam } from "use-query-params";
 import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
-import { DataDiff } from "../diff/node-diff";
+import { NodeDiff } from "../diff/node-diff";
 import { FilesDiff } from "../diff/file-diff/files-diff";
 import { Form, FormSubmit } from "@/components/ui/form";
 import DatetimeField from "@/components/form/fields/datetime.field";
@@ -34,9 +34,9 @@ const renderContent = (tab: string | null | undefined) => {
     case DIFF_TABS.ARTIFACTS:
       return <ArtifactsDiff />;
     case DIFF_TABS.SCHEMA:
-      return <DataDiff excludes={["Node", "Profile"]} />;
+      return <NodeDiff excludes={["Node", "Profile"]} />;
     default:
-      return <DataDiff excludes={["Schema", "Profile"]} />;
+      return <NodeDiff excludes={["Schema", "Profile"]} />;
   }
 };
 
