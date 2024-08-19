@@ -586,6 +586,64 @@ class TestDiffCombiner:
 
         assert combined == self.expected_combined
 
+    async def test_relationship_with_only_nodes(self, with_schema_manager):
+        relationship_name = "owner"
+        early_parent_node = EnrichedNodeFactory.build(
+            action=DiffAction.UNCHANGED, relationships=set(), attributes=set()
+        )
+        early_relationship = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name, action=DiffAction.ADDED, relationships=set(), nodes={early_parent_node}
+        )
+        later_parent_node = EnrichedNodeFactory.build(
+            action=DiffAction.UNCHANGED, relationships=set(), attributes=set()
+        )
+        later_relationship = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name,
+            action=DiffAction.UPDATED,
+            relationships=set(),
+            nodes={later_parent_node},
+            changed_at=Timestamp(),
+        )
+        early_node = EnrichedNodeFactory.build(
+            kind="TestCar", action=DiffAction.UPDATED, relationships={early_relationship}
+        )
+        later_node = EnrichedNodeFactory.build(
+            uuid=early_node.uuid,
+            kind="TestCar",
+            action=DiffAction.UPDATED,
+            relationships={later_relationship},
+            changed_at=Timestamp(),
+        )
+        self.diff_root_1.nodes = {early_node, early_parent_node}
+        self.diff_root_2.nodes = {later_node, later_parent_node}
+
+        expected_relationship = EnrichedDiffRelationship(
+            name=relationship_name,
+            label=later_relationship.label,
+            changed_at=later_relationship.changed_at,
+            action=DiffAction.ADDED,
+            path_identifier=later_relationship.path_identifier,
+            relationships=set(),
+            nodes={later_parent_node},
+        )
+        expected_node = EnrichedDiffNode(
+            uuid=later_node.uuid,
+            kind="TestCar",
+            label=later_node.label,
+            changed_at=later_node.changed_at,
+            action=DiffAction.UPDATED,
+            path_identifier=later_node.path_identifier,
+            relationships={expected_relationship},
+            attributes=(early_node.attributes | later_node.attributes),
+        )
+        self.expected_combined.nodes = {expected_node, later_parent_node}
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        self.expected_combined.uuid = combined.uuid
+
+        assert combined == self.expected_combined
+
     async def test_unchanged_parents_correctly_updated(self):
         child_node_uuid = str(uuid4())
         relationship_name = "related-things"

@@ -8,7 +8,7 @@ from infrahub_sdk.utils import extract_fields
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction
-from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
@@ -120,6 +120,7 @@ class DiffTree(DiffSummaryCounts):
     diff_branch = String(required=True)
     from_time = DateTime(required=True)
     to_time = DateTime(required=True)
+    name = String(required=False)
     nodes = List(DiffNode)
 
 
@@ -137,11 +138,15 @@ class DiffTreeResolver:
     ) -> DiffTree:
         all_nodes = list(enriched_diff_root.nodes)
         tree_nodes = [self.to_diff_node(enriched_node=e_node, context=context) for e_node in all_nodes]
+        name = None
+        if enriched_diff_root.tracking_id and isinstance(enriched_diff_root.tracking_id, NameTrackingId):
+            name = enriched_diff_root.tracking_id.name
         return DiffTree(
             base_branch=enriched_diff_root.base_branch_name,
             diff_branch=enriched_diff_root.diff_branch_name,
             from_time=await enriched_diff_root.from_time.to_graphql(),
             to_time=await enriched_diff_root.to_time.to_graphql(),
+            name=name,
             nodes=tree_nodes,
             num_added=enriched_diff_root.num_added,
             num_updated=enriched_diff_root.num_updated,
@@ -333,7 +338,6 @@ class DiffTreeResolver:
         context: GraphqlContext = info.context
         base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=context.db, branch=branch)
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=context.db, branch=diff_branch)
         diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
         branch_start_timestamp = Timestamp(diff_branch.get_created_at())
         if from_time:
@@ -352,12 +356,6 @@ class DiffTreeResolver:
         elif root_node_uuids:
             filters_dict["ids"] = root_node_uuids
 
-        await diff_coordinator.update_diffs(
-            base_branch=base_branch,
-            diff_branch=diff_branch,
-            from_time=from_timestamp,
-            to_time=to_timestamp,
-        )
         enriched_diffs = await diff_repo.get(
             base_branch_name=base_branch.name,
             diff_branch_names=[diff_branch.name],
@@ -404,12 +402,6 @@ class DiffTreeResolver:
 
         filters_dict = dict(filters or {})
 
-        # await diff_coordinator.update_diffs(
-        #     base_branch=base_branch,
-        #     diff_branch=diff_branch,
-        #     from_time=from_timestamp,
-        #     to_time=to_timestamp,
-        # )
         summary = await diff_repo.summary(
             base_branch_name=base_branch.name,
             diff_branch_names=[diff_branch.name],

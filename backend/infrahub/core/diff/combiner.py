@@ -234,7 +234,9 @@ class DiffCombiner:
             relationship_schema = node_schema.get_relationship(name=earlier_relationship.name)
             is_cardinality_one = relationship_schema.cardinality is RelationshipCardinality.ONE
             later_relationship = later_rels_by_name[earlier_relationship.name]
-            if is_cardinality_one:
+            if len(earlier_relationship.relationships) == 0 and len(later_relationship.relationships) == 0:
+                combined_relationship_elements = set()
+            elif is_cardinality_one:
                 combined_relationship_elements = {
                     self._combine_cardinality_one_relationship_elements(
                         elements=(earlier_relationship.relationships | later_relationship.relationships)

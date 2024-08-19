@@ -7,6 +7,7 @@ from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
+from ..model.path import TrackingId
 from .diff_get import QUERY_MATCH_NODES
 from .filters import EnrichedDiffQueryFilters
 
@@ -44,6 +45,7 @@ class DiffSummaryQuery(Query):
         from_time: Timestamp,
         to_time: Timestamp,
         filters: EnrichedDiffQueryFilters,
+        tracking_id: TrackingId | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -52,6 +54,7 @@ class DiffSummaryQuery(Query):
         self.from_time = from_time
         self.to_time = to_time
         self.filters = filters or EnrichedDiffQueryFilters()
+        self.tracking_id = tracking_id
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params = {
@@ -59,6 +62,7 @@ class DiffSummaryQuery(Query):
             "diff_branches": self.diff_branch_names,
             "from_time": self.from_time.to_string(),
             "to_time": self.to_time.to_string(),
+            "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
         }
 
         # ruff: noqa: E501

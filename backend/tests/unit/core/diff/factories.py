@@ -58,6 +58,7 @@ class EnrichedNodeFactory(DataclassFactory[EnrichedDiffNode]):
 
 
 class EnrichedRootFactory(DataclassFactory[EnrichedDiffRoot]):
+    tracking_id = None
     num_added = 0
     num_updated = 0
     num_removed = 0
