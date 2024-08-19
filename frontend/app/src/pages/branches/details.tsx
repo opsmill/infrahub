@@ -1,34 +1,27 @@
-import { TabsButtons } from "@/components/buttons/tabs-buttons";
+import { Tabs } from "@/components/tabs";
+import { Link } from "@/components/ui/link";
+import { DIFF_TABS } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { useTitle } from "@/hooks/useTitle";
-import { BranchDetails } from "@/screens/branches/branch-details";
-import { Diff } from "@/screens/diff/diff";
+import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
+import { NodeDiff } from "@/screens/diff/node-diff";
+
+import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import Content from "@/screens/layout/content";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { BranchDetails } from "@/screens/branches/branch-details";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
   DIFF: "diff",
 };
 
-const renderContent = (tab: string | null | undefined) => {
-  switch (tab) {
-    case BRANCH_TABS.DIFF: {
-      return <Diff />;
-    }
-    default: {
-      return <BranchDetails />;
-    }
-  }
-};
-
-const BranchDetailsPage = () => {
+const ProposedChangesDetailsPage = () => {
   const { "*": branchName } = useParams();
-
-  const [qspTab, setQspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
+  const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   useTitle(`${branchName} details`);
 
   const tabs = [
@@ -37,16 +30,37 @@ const BranchDetailsPage = () => {
       name: BRANCH_TABS.DETAILS,
     },
     {
-      label: "Diff",
-      name: BRANCH_TABS.DIFF,
-      disabled: branchName === "main",
+      label: "Data",
+      name: DIFF_TABS.DATA,
+    },
+    {
+      label: "Files",
+      name: DIFF_TABS.FILES,
+    },
+
+    {
+      label: "Schema",
+      name: DIFF_TABS.SCHEMA,
     },
   ];
 
-  if (qspTab === BRANCH_TABS.DIFF && branchName === "main") {
-    // Prevent dif access for main branch, when loading the url
-    setQspTab(undefined);
-  }
+  const renderContent = () => {
+    switch (qspTab) {
+      case DIFF_TABS.FILES:
+        return <FilesDiff />;
+      case DIFF_TABS.ARTIFACTS:
+        return <ArtifactsDiff />;
+      case DIFF_TABS.SCHEMA:
+        return (
+          <NodeDiff filters={{ namespace: { includes: ["Schema"], excludes: ["Profile"] } }} />
+        );
+      case DIFF_TABS.DATA:
+        return <NodeDiff filters={{ namespace: { excludes: ["Schema", "Profile"] } }} />;
+      default: {
+        return <BranchDetails />;
+      }
+    }
+  };
 
   return (
     <Content>
@@ -62,13 +76,13 @@ const BranchDetailsPage = () => {
         }
       />
 
-      <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
+      <Tabs tabs={tabs} qsp={QSP.BRANCH_TAB} />
 
-      <div>{renderContent(qspTab)}</div>
+      <div>{renderContent()}</div>
     </Content>
   );
 };
 
 export function Component() {
-  return <BranchDetailsPage />;
+  return <ProposedChangesDetailsPage />;
 }
