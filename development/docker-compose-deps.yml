@@ -1,6 +1,7 @@
 ---
 services:
   message-queue:
+    user: rabbitmq
     image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:latest}"
     environment:
       - "RABBITMQ_DEFAULT_USER=infrahub"
