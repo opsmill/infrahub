@@ -89,7 +89,6 @@ export const getProposedChangesDiffTree = gql`
         label
         last_changed_at
         status
-        parent_node
         path_identifier
       }
       to_time
