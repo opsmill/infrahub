@@ -9,7 +9,11 @@ import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { DiffFilter, ProposedChangesDiffSummary } from "../../proposed-changes/diff-summary";
+import {
+  diffActions,
+  DiffFilter,
+  ProposedChangesDiffSummary,
+} from "../../proposed-changes/diff-summary";
 import { Button } from "@/components/buttons/button-primitive";
 import { useAuth } from "@/hooks/useAuth";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
@@ -20,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/getProposedChangesDiffTree";
 import { DiffNode } from "./node";
+import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "@/config/qsp";
 
 export const DiffContext = createContext({});
 
@@ -27,8 +33,24 @@ type NodeDiffProps = {
   filters: DiffFilter;
 };
 
+// Handle QSP to filter from the status
+const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
+  const statusFilter = {
+    ...filters?.status,
+    includes: Array.from(
+      new Set([...(filters?.status?.includes ?? []), qsp !== diffActions.CONFLICT && qsp])
+    ).filter((value) => !!value),
+  };
+
+  return {
+    ...filters,
+    status: statusFilter,
+  };
+};
+
 export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const { "*": branchName, proposedchange } = useParams();
+  const [qsp] = useQueryParam(QSP.STATUS, StringParam);
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const schemaList = useAtomValue(schemaState);
@@ -46,9 +68,12 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const oldApproversId = approvers.map((a: any) => a.id);
 
+  // Get filters merged with status filter
+  const finalFilters = buildFilters(filters, qsp);
+
   const { loading, data } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,
-    variables: { branch, filters },
+    variables: { branch, filters: finalFilters },
   });
 
   const handleApprove = async () => {
@@ -192,6 +217,12 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
     setIsLoadingClose(false);
   };
 
+  const nodes = data?.DiffTree?.nodes.filter((node) => {
+    if (qsp === diffActions.CONFLICT) return node.contains_conflict;
+
+    return node;
+  });
+
   return (
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
@@ -241,8 +272,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
       {loading && <LoadingScreen message="Loading diff..." />}
 
-      {data?.DiffTree?.nodes?.length &&
-        data?.DiffTree?.nodes.map((node, index) => <DiffNode key={index} node={node} />)}
+      {nodes?.length && nodes.map((node, index) => <DiffNode key={index} node={node} />)}
     </>
   );
 };

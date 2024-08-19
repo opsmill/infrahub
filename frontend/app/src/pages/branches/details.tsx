@@ -13,6 +13,7 @@ import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BranchDetails } from "@/screens/branches/branch-details";
+import { Status } from "@/screens/proposed-changes/diff-summary";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -52,10 +53,22 @@ const ProposedChangesDetailsPage = () => {
         return <ArtifactsDiff />;
       case DIFF_TABS.SCHEMA:
         return (
-          <NodeDiff filters={{ namespace: { includes: ["Schema"], excludes: ["Profile"] } }} />
+          <NodeDiff
+            filters={{
+              namespace: { includes: ["Schema"], excludes: ["Profile"] },
+              status: { excludes: ["UNCHANGED"] },
+            }}
+          />
         );
       case DIFF_TABS.DATA:
-        return <NodeDiff filters={{ namespace: { excludes: ["Schema", "Profile"] } }} />;
+        return (
+          <NodeDiff
+            filters={{
+              namespace: { excludes: ["Schema", "Profile"] },
+              status: { excludes: [Status.UNCHANGED] },
+            }}
+          />
+        );
       default: {
         return <BranchDetails />;
       }
