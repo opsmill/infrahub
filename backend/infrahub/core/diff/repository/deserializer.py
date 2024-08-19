@@ -31,9 +31,18 @@ class EnrichedDiffDeserializer:
         self._diff_node_rel_element_map: dict[tuple[str, str, str, str], EnrichedDiffSingleRelationship] = {}
         self._diff_prop_map: dict[tuple[str, str, str, str] | tuple[str, str, str, str, str], EnrichedDiffProperty] = {}
 
+    def _initialize(self) -> None:
+        self._diff_root_map = {}
+        self._diff_node_map = {}
+        self._diff_node_attr_map = {}
+        self._diff_node_rel_group_map = {}
+        self._diff_node_rel_element_map = {}
+        self._diff_prop_map = {}
+
     async def deserialize(
         self, database_results: Iterable[QueryResult], include_parents: bool
     ) -> list[EnrichedDiffRoot]:
+        self._initialize()
         results = list(database_results)
         for result in results:
             enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
