@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from enum import Enum
-from pathlib import Path  # noqa: TCH003
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, MutableMapping, Optional, TypedDict, TypeVar, Union
 from urllib.parse import urlencode
 
@@ -121,12 +121,24 @@ class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     class_name: str = Field(default="Transform", description="The name of the transform class to run.")
 
 
+class InfrahubRepositoryGraphQLConfig(InfrahubRepositoryConfigElement):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(..., description="The name of the GraphQL Query")
+    file_path: Path = Field(..., description="The file within the repository with the query code.")
+
+    def load_query(self, relative_path: str = ".") -> str:
+        file_name = Path(f"{relative_path}/{self.file_path}")
+        with file_name.open("r", encoding="UTF-8") as file:
+            return file.read()
+
+
 RESOURCE_MAP: dict[Any, str] = {
     InfrahubJinja2TransformConfig: "jinja2_transforms",
     InfrahubCheckDefinitionConfig: "check_definitions",
     InfrahubRepositoryArtifactDefinitionConfig: "artifact_definitions",
     InfrahubPythonTransformConfig: "python_transforms",
     InfrahubGeneratorDefinitionConfig: "generator_definitions",
+    InfrahubRepositoryGraphQLConfig: "queries",
 }
 
 
@@ -148,9 +160,15 @@ class InfrahubRepositoryConfig(BaseModel):
     generator_definitions: list[InfrahubGeneratorDefinitionConfig] = Field(
         default_factory=list, description="Generator definitions"
     )
+    queries: list[InfrahubRepositoryGraphQLConfig] = Field(default_factory=list, description="GraphQL Queries")
 
     @field_validator(
-        "check_definitions", "jinja2_transforms", "artifact_definitions", "python_transforms", "generator_definitions"
+        "check_definitions",
+        "jinja2_transforms",
+        "artifact_definitions",
+        "python_transforms",
+        "generator_definitions",
+        "queries",
     )
     @classmethod
     def unique_items(cls, v: list[Any]) -> list[Any]:
@@ -202,6 +220,12 @@ class InfrahubRepositoryConfig(BaseModel):
 
     def get_python_transform(self, name: str) -> InfrahubPythonTransformConfig:
         return self._get_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
+
+    def has_query(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubRepositoryGraphQLConfig)
+
+    def get_query(self, name: str) -> InfrahubRepositoryGraphQLConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubRepositoryGraphQLConfig)
 
 
 # ---------------------------------------------------------------------------------

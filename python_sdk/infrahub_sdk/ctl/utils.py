@@ -20,6 +20,7 @@ from infrahub_sdk.exceptions import (
     ServerNotReachableError,
     ServerNotResponsiveError,
 )
+from infrahub_sdk.schema import InfrahubRepositoryConfig
 
 from .client import initialize_client_sync
 
@@ -101,10 +102,15 @@ def catch_exception(  # noqa: C901
 
 
 def execute_graphql_query(
-    query: str, variables_dict: dict[str, Any], branch: Optional[str] = None, debug: bool = False
+    query: str,
+    variables_dict: dict[str, Any],
+    repository_config: InfrahubRepositoryConfig,
+    branch: Optional[str] = None,
+    debug: bool = False,
 ) -> dict:
     console = Console()
-    query_str = find_graphql_query(query)
+    query_object = repository_config.get_query(name=query)
+    query_str = query_object.load_query()
 
     client = initialize_client_sync()
     response = client.execute_graphql(

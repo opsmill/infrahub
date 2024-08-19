@@ -40,3 +40,13 @@ generator_definitions:
     convert_query_response: true
     parameters:
       name: "name__value"
+
+queries:
+  - name: car_overview
+    file_path: "checks/car_overview.gql"
+  - name: car_owner_age
+    file_path: "checks/car_owner_age.gql"
+  - name: cartags
+    file_path: "generators/cartags.gql"
+  - name: person_with_cars
+    file_path: "templates/person_with_cars.gql"
