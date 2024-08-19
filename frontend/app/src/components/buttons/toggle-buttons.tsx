@@ -1,9 +1,10 @@
-import { BUTTON_TYPES, Button } from "./button";
+import { MouseEventHandler } from "react";
+import { Button } from "./button-primitive";
 
 type Tab = {
   label?: string;
   isActive?: boolean;
-  onClick: Function;
+  onClick: MouseEventHandler;
 };
 
 type TabsProps = {
@@ -16,12 +17,12 @@ export const ToggleButtons = (props: TabsProps) => {
 
   return (
     <div className="flex items-center">
-      <div className="isolate inline-flex rounded-md shadow-sm border border-gray-300 m-4 overflow-hidden">
+      <div className="isolate inline-flex rounded-md shadow-sm border border-gray-300 overflow-hidden">
         {tabs.map((tab: Tab) => (
           <Button
             key={tab.label}
             onClick={tab.onClick}
-            buttonType={tab.isActive ? BUTTON_TYPES.ACTIVE : undefined}
+            variant={tab.isActive ? "active" : "outline"}
             className={"cursor-pointer border-0 px-4 py-2 rounded-none"}
             isLoading={isLoading}>
             {tab.label}

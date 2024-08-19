@@ -1,10 +1,11 @@
-import { EmptyAccordion } from "@/components/display/accordion";
+import Accordion, { EmptyAccordion } from "@/components/display/accordion";
 import { DiffDisplay, DiffTitle } from "./utils";
 
 import { Badge } from "@/components/ui/badge";
 import { useParams } from "react-router-dom";
 import { DiffThread } from "./thread";
 import { Icon } from "@iconify-icon/react";
+import { Conflict } from "./conflict";
 
 type DiffNodePropertyProps = {
   property: any;
@@ -64,5 +65,11 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
     </DiffTitle>
   );
 
-  return <EmptyAccordion title={title} iconClassName="text-transparent" />;
+  if (!property.conflict) return <EmptyAccordion title={title} iconClassName="text-transparent" />;
+
+  return (
+    <Accordion title={title}>
+      <Conflict conflict={property.conflict} id={property.path_identifier} />
+    </Accordion>
+  );
 };
