@@ -38,6 +38,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
   const statusFilter = {
     ...filters?.status,
     includes: Array.from(
+      // CONFLICT should not be part of the status filters
       new Set([...(filters?.status?.includes ?? []), qsp !== diffActions.CONFLICT && qsp])
     ).filter((value) => !!value),
   };
