@@ -23,7 +23,11 @@ import { DiffNode } from "./node";
 
 export const DiffContext = createContext({});
 
-export const DataDiff = () => {
+type DataDiffProps = {
+  excludes: String[];
+};
+
+export const DataDiff = ({ excludes }: DataDiffProps) => {
   const { "*": branchName, proposedchange } = useParams();
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -42,7 +46,7 @@ export const DataDiff = () => {
   const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const oldApproversId = approvers.map((a: any) => a.id);
 
-  const filters = { namespace: { excludes: ["Schema", "Profile"] } };
+  const filters = { namespace: { excludes } };
 
   const { loading, data } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,

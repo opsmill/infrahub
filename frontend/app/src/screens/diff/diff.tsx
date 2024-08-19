@@ -4,7 +4,6 @@ import { DateTimeParam, StringParam, useQueryParam } from "use-query-params";
 import { ArtifactsDiff } from "./artifact-diff/artifacts-diff";
 import { DataDiff } from "./node-diff";
 import { FilesDiff } from "./file-diff/files-diff";
-import { SchemaDiff } from "./schema-diff";
 import { Form, FormSubmit } from "@/components/ui/form";
 import DatetimeField from "@/components/form/fields/datetime.field";
 
@@ -41,12 +40,12 @@ const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
     case DIFF_TABS.FILES:
       return <FilesDiff />;
-    case DIFF_TABS.SCHEMA:
-      return <SchemaDiff />;
     case DIFF_TABS.ARTIFACTS:
       return <ArtifactsDiff />;
+    case DIFF_TABS.SCHEMA:
+      return <DataDiff excludes={["Node", "Profile"]} />;
     default:
-      return <DataDiff />;
+      return <DataDiff excludes={["Schema", "Profile"]} />;
   }
 };
 
