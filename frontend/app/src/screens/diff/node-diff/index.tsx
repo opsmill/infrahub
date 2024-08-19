@@ -26,6 +26,7 @@ import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/g
 import { DiffNode } from "./node";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
+import NoDataFound from "@/screens/errors/no-data-found";
 
 export const DiffContext = createContext({});
 
@@ -276,6 +277,8 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
       {loading && <LoadingScreen message="Loading diff..." />}
 
       {nodes?.length && nodes.map((node, index) => <DiffNode key={index} node={node} />)}
+
+      {!nodes?.length && <NoDataFound message="No diff to display." />}
     </>
   );
 };
