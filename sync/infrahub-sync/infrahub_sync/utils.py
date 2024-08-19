@@ -13,6 +13,19 @@ from infrahub_sync.generator import render_template
 from potenda import Potenda
 
 
+def find_missing_schema_model(
+    sync_instance: SyncInstance, schema: MutableMapping[str, Union[NodeSchema, GenericSchema]]
+) -> List[str]:
+    missing_schema_models = []
+    for item in sync_instance.schema_mapping:
+        match_found = any(item.name == node.kind for node in schema.values())
+
+        if not match_found:
+            missing_schema_models.append(item.name)
+
+    return missing_schema_models
+
+
 def render_adapter(
     sync_instance: SyncInstance, schema: MutableMapping[str, Union[NodeSchema, GenericSchema]]
 ) -> List[Tuple[str, str]]:
@@ -86,12 +99,17 @@ def get_instance(
         for item in all_sync_instances:
             if item.name == name:
                 return item
+        return None
 
     config_file_path = None
-    if Path(config_file).is_absolute() or directory is None:
-        config_file_path = Path(config_file)
-    elif directory:
-        config_file_path = Path(directory, config_file)
+    try:
+        if Path(config_file).is_absolute() or directory is None:
+            config_file_path = Path(config_file)
+        elif directory:
+            config_file_path = Path(directory, config_file)
+    except TypeError:
+        # TODO Log or raise an Error/Warning
+        return None
 
     if config_file_path:
         directory_path = config_file_path.parent
@@ -122,36 +140,42 @@ def get_potenda_from_instance(
                 source_store = RedisStore(name=sync_instance.source.name)
                 destination_store = RedisStore(name=sync_instance.destination.name)
 
-    if sync_instance.source.name == "infrahub" and branch:
-        src = source(
-            config=sync_instance,
-            target="source",
-            adapter=sync_instance.source,
-            branch=branch,
-            internal_storage_engine=source_store,
-        )
-    else:
-        src = source(
-            config=sync_instance,
-            target="source",
-            adapter=sync_instance.source,
-            internal_storage_engine=source_store,
-        )
-    if sync_instance.destination.name == "infrahub" and branch:
-        dst = destination(
-            config=sync_instance,
-            target="destination",
-            adapter=sync_instance.destination,
-            branch=branch,
-            internal_storage_engine=destination_store,
-        )
-    else:
-        dst = destination(
-            config=sync_instance,
-            target="destination",
-            adapter=sync_instance.destination,
-            internal_storage_engine=destination_store,
-        )
+    try:
+        if sync_instance.source.name == "infrahub" and branch:
+            src = source(
+                config=sync_instance,
+                target="source",
+                adapter=sync_instance.source,
+                branch=branch,
+                internal_storage_engine=source_store,
+            )
+        else:
+            src = source(
+                config=sync_instance,
+                target="source",
+                adapter=sync_instance.source,
+                internal_storage_engine=source_store,
+            )
+    except ValueError as exc:
+        raise ValueError(f"{sync_instance.source.name.title()}Adapter - {exc}") from exc
+    try:
+        if sync_instance.destination.name == "infrahub" and branch:
+            dst = destination(
+                config=sync_instance,
+                target="destination",
+                adapter=sync_instance.destination,
+                branch=branch,
+                internal_storage_engine=destination_store,
+            )
+        else:
+            dst = destination(
+                config=sync_instance,
+                target="destination",
+                adapter=sync_instance.destination,
+                internal_storage_engine=destination_store,
+            )
+    except ValueError as exc:
+        raise ValueError(f"{sync_instance.destination.name.title()}Adapter - {exc}") from exc
 
     ptd = Potenda(
         destination=dst,

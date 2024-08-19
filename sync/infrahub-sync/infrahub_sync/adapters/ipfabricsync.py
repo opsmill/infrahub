@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 try:
     from ipfabric import IPFClient
-except Exception as e:
+except ImportError as e:
     print(e)
 
 from diffsync import Adapter, DiffSyncModel
@@ -67,6 +67,11 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
         return unique_id
 
     def model_loader(self, model_name, model):
+        """
+        Load and process models using schema mapping filters and transformations.
+
+        This method retrieves data from IP Fabric, and loads the processed data into the adapter.
+        """
         for element in self.config.schema_mapping:
             if not element.name == model_name:
                 continue
@@ -74,6 +79,8 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
             table = self.client.fetch_all(element.mapping, filters=ipf_filters.get(element.mapping))
             print(f"{self.type}: Loading {len(table)} from `{element.mapping}`")
 
+            # TODO Filter records
+            # TODO Transform records
             for obj in table:
                 data = self.ipfabric_dict_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
@@ -112,7 +119,7 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
                 if not field_is_list:
                     if node := obj[field.mapping]:
                         matching_nodes = []
-                        node_id = self.build_mapping(field.reference, obj)
+                        node_id = self.build_mapping(reference=field.reference, obj=obj)
                         matching_nodes = [item for item in nodes if str(item) == node_id]
                         if len(matching_nodes) == 0:
                             data[field.name] = None
@@ -124,4 +131,16 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
 
 
 class IpfabricsyncModel(DiffSyncModelMixin, DiffSyncModel):
-    pass
+    @classmethod
+    def create(
+        cls,
+        adapter: Adapter,
+        ids: Mapping[Any, Any],
+        attrs: Mapping[Any, Any],
+    ):
+        # TODO
+        return super().create(adapter=adapter, ids=ids, attrs=attrs)
+
+    def update(self, attrs):
+        # TODO
+        return super().update(attrs)

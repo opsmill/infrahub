@@ -8,6 +8,7 @@ from infrahub_sync.adapters.nautobot import NautobotModel
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 
+
 class CoreStandardGroup(NautobotModel):
     _modelname = "CoreStandardGroup"
     _identifiers = ("name",)
@@ -17,6 +18,7 @@ class CoreStandardGroup(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class BuiltinTag(NautobotModel):
     _modelname = "BuiltinTag"
     _identifiers = ("name",)
@@ -25,6 +27,7 @@ class BuiltinTag(NautobotModel):
     description: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraAutonomousSystem(NautobotModel):
     _modelname = "InfraAutonomousSystem"
@@ -36,6 +39,7 @@ class InfraAutonomousSystem(NautobotModel):
     organization: str
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraCircuit(NautobotModel):
     _modelname = "InfraCircuit"
@@ -49,6 +53,7 @@ class InfraCircuit(NautobotModel):
     tags: Optional[List[str]] = []
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraDevice(NautobotModel):
     _modelname = "InfraDevice"
@@ -67,6 +72,7 @@ class InfraDevice(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraFrontPort(NautobotModel):
     _modelname = "InfraFrontPort"
     _identifiers = ("name", "device")
@@ -79,6 +85,7 @@ class InfraFrontPort(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraIPAddress(NautobotModel):
     _modelname = "InfraIPAddress"
     _identifiers = ("address", "vrf")
@@ -90,6 +97,7 @@ class InfraIPAddress(NautobotModel):
     role: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraInterfaceL2L3(NautobotModel):
     _modelname = "InfraInterfaceL2L3"
@@ -108,6 +116,7 @@ class InfraInterfaceL2L3(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraPlatform(NautobotModel):
     _modelname = "InfraPlatform"
     _identifiers = ("name", "manufacturer")
@@ -118,6 +127,7 @@ class InfraPlatform(NautobotModel):
     manufacturer: str
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraPrefix(NautobotModel):
     _modelname = "InfraPrefix"
@@ -132,6 +142,7 @@ class InfraPrefix(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraProviderNetwork(NautobotModel):
     _modelname = "InfraProviderNetwork"
     _identifiers = ("name",)
@@ -143,6 +154,7 @@ class InfraProviderNetwork(NautobotModel):
     tags: Optional[List[str]] = []
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraRack(NautobotModel):
     _modelname = "InfraRack"
@@ -159,6 +171,7 @@ class InfraRack(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraRearPort(NautobotModel):
     _modelname = "InfraRearPort"
     _identifiers = ("name", "device")
@@ -170,6 +183,7 @@ class InfraRearPort(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraRouteTarget(NautobotModel):
     _modelname = "InfraRouteTarget"
     _identifiers = ("name", "organization")
@@ -179,6 +193,7 @@ class InfraRouteTarget(NautobotModel):
     organization: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class InfraVLAN(NautobotModel):
     _modelname = "InfraVLAN"
@@ -193,6 +208,7 @@ class InfraVLAN(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class InfraVRF(NautobotModel):
     _modelname = "InfraVRF"
     _identifiers = ("name",)
@@ -206,6 +222,7 @@ class InfraVRF(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class LocationGeneric(NautobotModel):
     _modelname = "LocationGeneric"
     _identifiers = ("name",)
@@ -218,6 +235,7 @@ class LocationGeneric(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class RoleGeneric(NautobotModel):
     _modelname = "RoleGeneric"
     _identifiers = ("name",)
@@ -226,6 +244,7 @@ class RoleGeneric(NautobotModel):
     description: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class StatusGeneric(NautobotModel):
     _modelname = "StatusGeneric"
@@ -237,6 +256,7 @@ class StatusGeneric(NautobotModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+
 class TemplateCircuitType(NautobotModel):
     _modelname = "TemplateCircuitType"
     _identifiers = ("name",)
@@ -245,6 +265,7 @@ class TemplateCircuitType(NautobotModel):
     description: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class TemplateDeviceType(NautobotModel):
     _modelname = "TemplateDeviceType"
@@ -258,6 +279,7 @@ class TemplateDeviceType(NautobotModel):
     tags: Optional[List[str]] = []
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
+
 
 class TemplateLocationType(NautobotModel):
     _modelname = "TemplateLocationType"

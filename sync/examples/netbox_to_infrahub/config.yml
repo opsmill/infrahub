@@ -1,5 +1,6 @@
 ---
 name: from-netbox
+
 source:
   name: netbox
   settings:
@@ -27,8 +28,8 @@ order: [
   "InfraDevice",
   "InfraVLAN",
   "InfraPrefix",
-  "InfraIPAddress",
-  "InfraInterfaceL2L3",
+  # "InfraIPAddress",
+  # "InfraInterfaceL2L3",
 ]
 
 schema_mapping:
@@ -189,13 +190,16 @@ schema_mapping:
       - name: full_depth
         mapping: is_full_depth
       - name: height
-        mapping: u_height
+        mapping: integer_height
       - name: tags
         mapping: tags
         reference: BuiltinTag
       - name: manufacturer
         mapping: manufacturer
         reference: OrganizationGeneric
+    transforms:
+      - field: integer_height
+        expression: "{{ u_height|float|round(0, 'ceil') }}"
   # -> The netbox constraint is `dcim_device_unique_name_site_tenant`
   # Reusing device_name + site + Organization as identifiers
   # /!\ Seem like Netbox allowed device to have the same name if there is a virtual-chassis
@@ -232,6 +236,21 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: BuiltinTag
+    # Showcase Filters
+    # It will import the ones with dmu01 in their name *AND* without pdu
+    filters:
+      - field: name
+        operation: "contains"
+        value: "dmi01"
+      - field: name
+        operation: "not contains"
+        value: "pdu"
+    # Showcase Transforms
+    transforms:
+      - field: name
+        expression: "{{ name.lower() }}"
+      - field: serial_number
+        expression: "{{ serial_number.lower() if serial_number else '' }}}"
 
   # Interfaces (interfaces, rear port, front port)
   - name: InfraInterfaceL2L3
@@ -267,7 +286,11 @@ schema_mapping:
         reference: BuiltinTag
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
+    filters:
+      - field: device.name
+        operation: "contains"
+        value: "dmi01"
 
   # Circuits (Provider, Provider Network, Circuits Types, Circuits)
   - name: OrganizationGeneric

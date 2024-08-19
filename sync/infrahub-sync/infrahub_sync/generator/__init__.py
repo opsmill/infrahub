@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import jinja2
 from infrahub_sdk import (
@@ -10,7 +10,6 @@ from infrahub_sdk import (
 )
 
 from infrahub_sync import SyncConfig
-from infrahub_sync.generator.utils import list_to_set, list_to_str
 
 ATTRIBUTE_KIND_MAP = {
     "Text": "str",
@@ -22,6 +21,23 @@ ATTRIBUTE_KIND_MAP = {
     "Integer": "int",
     "Boolean": "bool",
 }
+
+
+def list_to_set(items: List[str]) -> str:
+    """Convert a list in a string representation of a Set."""
+    if not items:
+        return "()"
+
+    response = '"' + '", "'.join(items) + '"'
+    if len(items) == 1:
+        response += ","
+
+    return "(" + response + ")"
+
+
+def list_to_str(items: List[str]) -> str:
+    """Convert a list into a string separated with comma"""
+    return ", ".join(items)
 
 
 def has_node(config: SyncConfig, name: str) -> bool:
@@ -62,9 +78,7 @@ def get_identifiers(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]
 
 def get_attributes(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]:
     """Return the attributes that should be used by DiffSync."""
-    attrs_attributes = [
-        attr.name for attr in node.attributes if not attr.unique and has_field(config, name=node.kind, field=attr.name)
-    ]
+    attrs_attributes = [attr.name for attr in node.attributes if has_field(config, name=node.kind, field=attr.name)]
     rels_identifiers = [
         rel.name
         for rel in node.relationships
@@ -107,7 +121,13 @@ def get_kind(item: Union[RelationshipSchema, AttributeSchema]) -> str:
         if item.optional:
             kind = f"Optional[{kind}]"
             if item.default_value is not None:
-                kind += f" = {item.default_value}"
+                # Format the default value based on its type
+                if isinstance(item.default_value, str):
+                    kind += f' = "{item.default_value}"'
+                elif isinstance(item.default_value, (int, float, bool)):
+                    kind += f" = {item.default_value}"
+                else:
+                    kind += f" = {repr(item.default_value)}"
             else:
                 kind += " = None"
 
@@ -130,11 +150,12 @@ def has_children(node: NodeSchema, config: SyncConfig) -> bool:
     return False
 
 
-def render_template(template_file: Path, output_dir: Path, output_file: Path, context: Dict[str, Any]):
+def render_template(template_file: Path, output_dir: Path, output_file: Path, context: dict[str, Any]):
     template_loader = jinja2.PackageLoader("infrahub_sync", "generator/templates")
     template_env = jinja2.Environment(
         loader=template_loader,
     )
+    # Add custom filters to Jinja2
     template_env.filters["get_identifiers"] = get_identifiers
     template_env.filters["get_attributes"] = get_attributes
     template_env.filters["get_children"] = get_children

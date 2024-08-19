@@ -7,8 +7,8 @@ from .sync_models import (
     InfraCircuit,
     InfraDevice,
     InfraFrontPort,
-    InfraIPAddress,
     InfraInterfaceL2L3,
+    InfraIPAddress,
     InfraPlatform,
     InfraPrefix,
     InfraProviderNetwork,
@@ -21,6 +21,7 @@ from .sync_models import (
     NautobotNamespace,
     OrganizationGeneric,
     RoleGeneric,
+    StatusGeneric,
     TemplateCircuitType,
     TemplateDeviceType,
     TemplateLocationType,
@@ -53,6 +54,7 @@ class InfrahubSync(InfrahubAdapter):
     NautobotNamespace = NautobotNamespace
     OrganizationGeneric = OrganizationGeneric
     RoleGeneric = RoleGeneric
+    StatusGeneric = StatusGeneric
     TemplateCircuitType = TemplateCircuitType
     TemplateDeviceType = TemplateDeviceType
     TemplateLocationType = TemplateLocationType
