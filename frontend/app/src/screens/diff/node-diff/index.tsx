@@ -278,7 +278,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
       {nodes?.length && nodes.map((node, index) => <DiffNode key={index} node={node} />)}
 
-      {!nodes?.length && <NoDataFound message="No diff to display." />}
+      {!loading && !nodes?.length && <NoDataFound message="No diff to display." />}
     </>
   );
 };
