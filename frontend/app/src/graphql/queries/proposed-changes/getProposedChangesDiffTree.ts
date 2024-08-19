@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 
 export const getProposedChangesDiffTree = gql`
   query GET_PROPOSED_CHANGES_DIFF_TREE($branch: String, $filters: DiffTreeQueryFilters) {
-    DiffTree(branch: $branch, filters: $filters) {
+    DiffTree(branch: $branch, filters: $filters, include_parents: false) {
       nodes {
         uuid
         relationships {
