@@ -31,7 +31,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/branches/*",
-            lazy: () => import("@/pages/branches/branch-details"),
+            lazy: () => import("@/pages/branches/details"),
           },
           {
             path: "/branches",
