@@ -6,6 +6,7 @@ import { Link } from "@/components/ui/link";
 import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,
+  GENERIC_REPOSITORY_KIND,
   MENU_EXCLUDELIST,
   TASK_TAB,
   TASK_TARGET,
@@ -44,6 +45,8 @@ import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
+import { isGeneric } from "@/utils/common";
+import RepositoryActionMenu from "@/screens/repository/repository-action-menu";
 
 type ObjectDetailsProps = {
   schema: IModelSchema;
@@ -131,7 +134,7 @@ export default function ObjectItemDetails({
         <Tabs
           tabs={tabs}
           rightItems={
-            <>
+            <div className="flex items-center gap-1">
               {schema.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
               <ButtonWithTooltip
@@ -139,7 +142,7 @@ export default function ObjectItemDetails({
                 tooltipEnabled
                 tooltipContent={permission.write.message ?? "Edit object"}
                 onClick={() => setShowEditDrawer(true)}
-                className="mr-4 rounded-full text-custom-blue-600 p-4"
+                className="rounded-full text-custom-blue-600 p-4"
                 variant={"outline"}
                 size={"icon"}
                 data-testid="edit-button">
@@ -153,7 +156,11 @@ export default function ObjectItemDetails({
                   className="text-custom-blue-600 p-4"
                 />
               )}
-            </>
+
+              {!isGeneric(schema) && schema.inherit_from?.includes(GENERIC_REPOSITORY_KIND) && (
+                <RepositoryActionMenu repositoryId={objectDetailsData.id} />
+              )}
+            </div>
           }
         />
       )}
