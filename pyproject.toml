@@ -451,6 +451,7 @@ preview = true
 task-tags = ["FIXME", "TODO", "XXX"]
 
 select = [
+    "ANN",   # flake8-annotations
     "ASYNC", # flake8-async
     "B",     # flake8-bugbear
     "C4",    # flake8-comprehensions
@@ -568,6 +569,20 @@ max-complexity = 33
 
 [tool.ruff.lint.per-file-ignores]
 
+"backend/infrahub/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001", # Missing type annotation for function argument
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+    "ANN204", # Missing return type annotation for special method
+    "ANN206", # Missing return type annotation for classmethod
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+]
+
 "backend/infrahub/git/repository.py" = [
     "TCH003", # Pydantic needs UUID import to not only be available under TYPE_CHECKING clause
 ]
@@ -576,6 +591,18 @@ max-complexity = 33
     "S101", # Use of assert detected
     "S105", #  Possible hardcoded password assigned to variable
     "S106", #  Possible hardcoded password assigned to argument
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001", # Missing type annotation for function argument
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+    "ANN204", # Missing return type annotation for special method
+    "ANN205", # Missing return type annotation for staticmethod
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+
 ]
 
 "models/infrastructure_edge.py" = [
@@ -585,8 +612,30 @@ max-complexity = 33
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "C901", # `generate_site` is too complex (34 > 33)"
-    "E501", # Line too long
+    "ANN001", # Missing type annotation for function argument
+    "ANN201", # Missing return type annotation for public function
+    "C901",   # `generate_site` is too complex (34 > 33)"
+    "E501",   # Line too long
+]
+
+"tasks/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001", # Missing type annotation for function argument
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+]
+
+
+"utilities/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN201", # Missing return type annotation for public function
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
 ]
 
 [tool.towncrier]
