@@ -27,16 +27,16 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
           <ButtonWithTooltip
             tooltipContent="More"
             tooltipEnabled
-            variant="outline"
-            size="icon"
+            variant="ghost"
+            size="square"
             className="p-4">
-            <Icon icon="mdi:dots-vertical" className="text-custom-blue-800 text-lg p-4" />
+            <Icon icon="mdi:dots-vertical" className="text-custom-blue-900 text-lg p-4" />
           </ButtonWithTooltip>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent>
+        <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setIsOpen(true)}>
-            <Icon icon="mdi:wifi-check" className="text-lg mr-2" />
+            <Icon icon="mdi:access-point" className="text-lg mr-2" />
             Check connectivity
           </DropdownMenuItem>
 
@@ -152,7 +152,7 @@ const ReimportLastCommitAction = ({ repositoryId }: { repositoryId: string }) =>
 
   return (
     <DropdownMenuItem onClick={() => reimportLastCommit()}>
-      <Icon icon="mdi:replay" className="text-lg mr-2" />
+      <Icon icon="mdi:reload" className="text-lg mr-2" />
       Reimport last commit
     </DropdownMenuItem>
   );

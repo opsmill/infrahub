@@ -17,7 +17,7 @@ export function Tooltip({
 }: TooltipProps) {
   return (
     <TooltipPrimitives.Provider>
-      <TooltipPrimitives.Root delayDuration={0}>
+      <TooltipPrimitives.Root delayDuration={300}>
         <TooltipPrimitives.Trigger asChild>{children}</TooltipPrimitives.Trigger>
         <TooltipPrimitives.Content
           side={side}

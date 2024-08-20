@@ -183,9 +183,8 @@ export default function ObjectItems({
                 data-cy="create"
                 data-testid="create-object-button"
                 disabled={!permission.write.allow}
-                onClick={() => setShowCreateDrawer(true)}
-                size="sm">
-                <Icon icon="mdi:plus" className="text-sm" />
+                onClick={() => setShowCreateDrawer(true)}>
+                <Icon icon="mdi:plus" className="text-sm mr-1.5" />
                 Add {schema?.label}
               </Button>
             </Tooltip>

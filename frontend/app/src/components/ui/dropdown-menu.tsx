@@ -15,10 +15,10 @@ export const DropdownMenuContent = forwardRef<
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        sideOffset={4}
         ref={ref}
         className={classNames(
-          "border rounded-md bg-custom-white shadow-md",
-          "min-w-32 overflow-hidden p-1 divide-y",
+          " p-2 bg-white rounded-xl shadow-lg min-w-32 overflow-hidden space-y-1",
           className
         )}
         {...props}
@@ -34,9 +34,10 @@ export const DropdownMenuItem = forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={classNames(
-      "rounded-sm px-2 py-1.5 text-sm",
+      "rounded-lg p-2",
+      "text-neutral-800",
       "relative flex items-center",
-      "cursor-pointer outline-none focus:bg-gray-100",
+      "cursor-pointer outline-none focus:bg-neutral-100",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       className
     )}
