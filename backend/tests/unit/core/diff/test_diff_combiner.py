@@ -11,6 +11,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.combiner import DiffCombiner
 from infrahub.core.diff.model.path import (
+    ConflictSelection,
     EnrichedDiffAttribute,
     EnrichedDiffNode,
     EnrichedDiffProperty,
@@ -23,6 +24,7 @@ from infrahub.core.timestamp import Timestamp
 
 from .factories import (
     EnrichedAttributeFactory,
+    EnrichedConflictFactory,
     EnrichedNodeFactory,
     EnrichedPropertyFactory,
     EnrichedRelationshipElementFactory,
@@ -122,13 +124,18 @@ class TestDiffCombiner:
         ],
     )
     async def test_node_action_addition(self, action_1, action_2, expected_action):
-        diff_node_1 = EnrichedNodeFactory.build(action=action_1, attributes=set(), relationships=set())
+        node_1_conflict = EnrichedConflictFactory.build()
+        node_2_conflict = replace(node_1_conflict, selected_branch=ConflictSelection.DIFF_BRANCH)
+        diff_node_1 = EnrichedNodeFactory.build(
+            action=action_1, attributes=set(), relationships=set(), conflict=node_1_conflict
+        )
         diff_node_2 = EnrichedNodeFactory.build(
             uuid=diff_node_1.uuid,
             kind=diff_node_1.kind,
             action=action_2,
             attributes=set(),
             relationships=set(),
+            conflict=node_2_conflict,
             changed_at=Timestamp(),
         )
         self.diff_root_1.nodes = {diff_node_1}
@@ -147,6 +154,7 @@ class TestDiffCombiner:
                 path_identifier=diff_node_2.path_identifier,
                 attributes=set(),
                 relationships=set(),
+                conflict=node_2_conflict,
             )
         }
         assert combined == self.expected_combined
@@ -333,17 +341,21 @@ class TestDiffCombiner:
         early_only_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_OWNER, action=DiffAction.UPDATED
         )
+        early_peer_conflict = EnrichedConflictFactory.build(selected_branch=ConflictSelection.BASE_BRANCH)
         early_peer_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_RELATED,
             action=DiffAction.UPDATED,
             previous_value=old_peer_id,
             new_value=intermediate_peer_id,
+            conflict=early_peer_conflict,
         )
+        later_peer_conflict = replace(early_peer_conflict, uuid=str(uuid4()), selected_branch=None)
         later_peer_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_RELATED,
             action=DiffAction.UPDATED,
             previous_value=intermediate_peer_id,
             new_value=new_peer_id,
+            conflict=later_peer_conflict,
         )
         later_only_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_SOURCE, action=DiffAction.UPDATED
@@ -358,6 +370,7 @@ class TestDiffCombiner:
             peer_id=new_peer_id,
             changed_at=early_element.changed_at.add_delta(minutes=1),
             properties={later_only_property, later_peer_property},
+            conflict=EnrichedConflictFactory.build(),
         )
         early_relationship = EnrichedRelationshipGroupFactory.build(
             name=relationship_name, action=DiffAction.ADDED, relationships={early_element}, nodes=set()
@@ -389,6 +402,9 @@ class TestDiffCombiner:
             new_value=new_peer_id,
             path_identifier=later_peer_property.path_identifier,
             action=DiffAction.UPDATED,
+            conflict=replace(
+                later_peer_conflict, uuid=early_peer_conflict.uuid, selected_branch=early_peer_conflict.selected_branch
+            ),
         )
         expected_relationship_element = EnrichedDiffSingleRelationship(
             changed_at=later_element.changed_at,
@@ -397,6 +413,7 @@ class TestDiffCombiner:
             peer_label=later_element.peer_label,
             path_identifier=later_element.path_identifier,
             properties={early_only_property, later_only_property, expected_peer_property},
+            conflict=later_element.conflict,
         )
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
@@ -643,6 +660,105 @@ class TestDiffCombiner:
         self.expected_combined.uuid = combined.uuid
 
         assert combined == self.expected_combined
+
+    async def test_early_conflict_removed(self):
+        node_uuid = str(uuid4())
+        early_conflict = EnrichedConflictFactory.build()
+        later_conflict = None
+        early_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=early_conflict)
+        later_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=later_conflict)
+        self.diff_root_1.nodes = {early_node}
+        self.diff_root_2.nodes = {later_node}
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        combined_node = combined.nodes.pop()
+        assert combined_node.uuid == node_uuid
+        assert combined_node.conflict is None
+
+    async def test_later_conflict_added(self):
+        node_uuid = str(uuid4())
+        early_conflict = None
+        later_conflict = EnrichedConflictFactory.build()
+        early_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=early_conflict)
+        later_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=later_conflict)
+        self.diff_root_1.nodes = {early_node}
+        self.diff_root_2.nodes = {later_node}
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        combined_node = combined.nodes.pop()
+        assert combined_node.uuid == node_uuid
+        assert combined_node.conflict == later_conflict
+
+    @pytest.mark.parametrize(
+        "early_values,later_values,selections",
+        [
+            (("abc", "def"), ("abc", "def"), (None, None, None)),
+            (
+                ("abc", "def"),
+                ("abc", "def"),
+                (None, ConflictSelection.BASE_BRANCH, ConflictSelection.BASE_BRANCH),
+            ),
+            (
+                ("abc", "def"),
+                ("abc", "def"),
+                (ConflictSelection.DIFF_BRANCH, None, ConflictSelection.DIFF_BRANCH),
+            ),
+            (
+                ("abc", "def"),
+                ("abc", "def"),
+                (ConflictSelection.DIFF_BRANCH, ConflictSelection.BASE_BRANCH, ConflictSelection.BASE_BRANCH),
+            ),
+            (("abc", "def"), ("abc", "xyz"), (None, None, None)),
+            (("abc", "def"), ("abc", "xyz"), (ConflictSelection.DIFF_BRANCH, None, None)),
+            (
+                ("abc", "def"),
+                ("abc", "xyz"),
+                (None, ConflictSelection.BASE_BRANCH, ConflictSelection.BASE_BRANCH),
+            ),
+            (
+                ("abc", "def"),
+                ("abc", "xyz"),
+                (ConflictSelection.DIFF_BRANCH, ConflictSelection.BASE_BRANCH, ConflictSelection.BASE_BRANCH),
+            ),
+            (
+                ("abc", "def"),
+                ("abc", "xyz"),
+                (ConflictSelection.DIFF_BRANCH, ConflictSelection.DIFF_BRANCH, ConflictSelection.DIFF_BRANCH),
+            ),
+        ],
+    )
+    async def test_conflict_value_and_selection_update(self, early_values, later_values, selections):
+        node_uuid = str(uuid4())
+        early_conflict_uuid = str(uuid4())
+        early_base_value, early_diff_value = early_values
+        later_base_value, later_diff_value = later_values
+        early_selection, later_selection, expected_selection = selections
+        early_conflict = EnrichedConflictFactory.build(
+            uuid=early_conflict_uuid,
+            base_branch_value=early_base_value,
+            diff_branch_value=early_diff_value,
+            selected_branch=early_selection,
+        )
+        later_conflict = EnrichedConflictFactory.build(
+            uuid=str(uuid4()),
+            base_branch_value=later_base_value,
+            diff_branch_value=later_diff_value,
+            selected_branch=later_selection,
+        )
+        early_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=early_conflict)
+        later_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=later_conflict)
+        self.diff_root_1.nodes = {early_node}
+        self.diff_root_2.nodes = {later_node}
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        combined_node = combined.nodes.pop()
+        assert combined_node.uuid == node_uuid
+        assert combined_node.conflict == replace(
+            later_conflict, uuid=early_conflict_uuid, selected_branch=expected_selection
+        )
 
     async def test_unchanged_parents_correctly_updated(self):
         child_node_uuid = str(uuid4())

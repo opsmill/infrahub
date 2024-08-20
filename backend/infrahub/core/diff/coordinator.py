@@ -88,7 +88,7 @@ class DiffCoordinator:
         tracking_id: TrackingId | None = None,
     ) -> EnrichedDiffRoot:
         requested_diff_branches = {base_branch.name: base_branch, diff_branch.name: diff_branch}
-        aggregated_diffs_by_branch_name = {}
+        aggregated_diffs_by_branch_name: dict[str, EnrichedDiffRoot] = {}
         diff_uuids_to_delete = []
         for branch in requested_diff_branches.values():
             retrieved_enriched_diffs = await self.diff_repo.get(
