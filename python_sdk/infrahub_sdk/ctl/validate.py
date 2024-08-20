@@ -38,7 +38,7 @@ async def validate_schema(schema: Path, _: str = CONFIG_PARAM) -> None:
         schema_data = yaml.safe_load(schema.read_text()) or {}
     except JSONDecodeError as exc:
         console.print("[red]Invalid JSON file")
-        raise typer.Exit(2) from exc
+        raise typer.Exit(1) from exc
 
     client = await initialize_client()
 
@@ -49,7 +49,7 @@ async def validate_schema(schema: Path, _: str = CONFIG_PARAM) -> None:
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]
             console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
-        raise typer.Exit(2)
+        raise typer.Exit(1)
 
     console.print("[green]Schema is valid !!")
 
