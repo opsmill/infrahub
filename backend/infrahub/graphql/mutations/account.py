@@ -10,7 +10,7 @@ from infrahub.auth import AuthType
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreAccount, CoreNode
+from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
@@ -112,7 +112,7 @@ class AccountMixin:
         token_id = str(data.get("id"))
 
         results = await NodeManager.query(
-            schema=CoreAccount, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
+            schema=InternalAccountToken, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
         )
 
         if not results:

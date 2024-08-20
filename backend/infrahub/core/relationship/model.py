@@ -266,8 +266,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             raise NodeNotFoundError(
                 branch_name=self.branch.name, node_type=self.schema.peer, identifier=self.get_peer_id()
             )
-        # if peer_type:
-        #     return cast(peer_type, self._peer)
         return self._peer
 
     async def _get_peer(self, db: InfrahubDatabase) -> None:
