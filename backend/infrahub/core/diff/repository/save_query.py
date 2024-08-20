@@ -38,6 +38,7 @@ class EnrichedDiffSaveQuery(Query):
             num_conflicts: $diff_root_props.num_conflicts,
             contains_conflict: $diff_root_props.contains_conflict
         })
+        SET diff_root.tracking_id = $diff_root_props.tracking_id
         WITH diff_root
         UNWIND $node_maps AS node_map
         CREATE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
@@ -263,6 +264,7 @@ class EnrichedDiffSaveQuery(Query):
             "from_time": enriched_diff.from_time.to_string(),
             "to_time": enriched_diff.to_time.to_string(),
             "uuid": enriched_diff.uuid,
+            "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
             "num_added": enriched_diff.num_added,
             "num_updated": enriched_diff.num_updated,
             "num_removed": enriched_diff.num_removed,

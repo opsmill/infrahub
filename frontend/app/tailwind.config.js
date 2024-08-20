@@ -31,6 +31,7 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     minHeight: {
+      4: "1rem", // 16px
       7: "1.75rem", // 28px
       10: "40px",
       full: "100%",

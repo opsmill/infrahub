@@ -49,7 +49,9 @@ def test_init_with_invalid_address():
     assert "The configured address is not a valid url" in str(exc.value)
 
 
-async def test_get_repositories(client, mock_branches_list_query, mock_schema_query_02, mock_repositories_query):  # pylint: disable=unused-argument
+async def test_get_repositories(
+    client: InfrahubClient, mock_branches_list_query, mock_schema_query_02, mock_repositories_query
+):  # pylint: disable=unused-argument
     repos = await client.get_list_repositories()
 
     assert len(repos) == 2

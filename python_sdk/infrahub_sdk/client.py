@@ -21,7 +21,7 @@ from infrahub_sdk.branch import (
 )
 from infrahub_sdk.config import Config
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.data import RepositoryData
+from infrahub_sdk.data import RepositoryBranchInfo, RepositoryData
 from infrahub_sdk.exceptions import (
     AuthenticationError,
     Error,
@@ -963,28 +963,26 @@ class InfrahubClient(BaseClient):
     async def get_list_repositories(
         self, branches: Optional[dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
     ) -> dict[str, RepositoryData]:
-        if not branches:
-            branches = await self.branch.all()
-
-        branch_names = sorted(branches.keys())
+        branches = branches or await self.branch.all()
 
         batch = await self.create_batch()
-        for branch_name in branch_names:
+        for branch_name, branch in branches.items():
             batch.add(
                 task=self.all,
+                node=branch,  # type: ignore[arg-type]
                 kind=kind,
                 branch=branch_name,
                 fragment=True,
                 include=["id", "name", "location", "commit", "ref", "admin_status"],
             )
 
-        responses = []
-        async for _, response in batch.execute():
-            responses.append(response)
+        responses: dict[str, Any] = {}
+        async for branch, response in batch.execute():
+            responses[branch.name] = response
 
-        repositories = {}
+        repositories: dict[str, RepositoryData] = {}
 
-        for branch_name, response in zip(branch_names, responses):
+        for branch_name, response in responses.items():
             for repository in response:
                 repo_name = repository.name.value
                 if repo_name not in repositories:
@@ -994,6 +992,9 @@ class InfrahubClient(BaseClient):
                     )
 
                 repositories[repo_name].branches[branch_name] = repository.commit.value
+                repositories[repo_name].branch_info[branch_name] = RepositoryBranchInfo(
+                    admin_status=repository.admin_status.value
+                )
 
         return repositories
 

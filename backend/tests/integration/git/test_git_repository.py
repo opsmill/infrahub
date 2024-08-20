@@ -124,14 +124,17 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ):
         commit = repo.get_commit_value(branch_name="main")
-        await repo.import_all_graphql_query(branch_name="main", commit=commit)
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)
+        assert config_file
+
+        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)
 
         queries = await client.all(kind=InfrahubKind.GRAPHQLQUERY)
         assert len(queries) == 5
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_all_graphql_query(branch_name="main", commit=commit)
+        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -149,7 +152,7 @@ class TestInfrahubClient:
         )
         await obj.save(db=db)
 
-        await repo.import_all_graphql_query(branch_name="main", commit=commit)
+        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)
 
         modified_query = await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=queries[0].id)
         assert modified_query.query.value == value_before_change

@@ -106,7 +106,8 @@ class CoreGenericRepository(CoreNode):
     description: StringOptional
     location: String
     admin_status: Dropdown
-    status: Dropdown
+    operational_status: Dropdown
+    sync_status: Dropdown
     credential: RelationshipManager
     tags: RelationshipManager
     transformations: RelationshipManager

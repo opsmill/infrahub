@@ -46,7 +46,7 @@ const NumberField = ({
         );
 
         return (
-          <div className="relative mb-2 flex flex-col">
+          <div className="space-y-2">
             <LabelFormField
               label={label}
               unique={unique}
@@ -72,6 +72,7 @@ const NumberField = ({
                 numberInput
               )}
             </FormInput>
+
             <FormMessage />
           </div>
         );

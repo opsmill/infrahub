@@ -75,7 +75,14 @@ def run(
 
     check_modules = get_modules(check_definitions=check_definitions)
     aiorun(
-        run_checks(check_modules=check_modules, format_json=format_json, path=path, variables=variables, branch=branch)
+        run_checks(
+            check_modules=check_modules,
+            format_json=format_json,
+            path=path,
+            variables=variables,
+            branch=branch,
+            repository_config=repository_config,
+        )
     )
 
 
@@ -84,6 +91,7 @@ async def run_check(
     client: InfrahubClient,
     format_json: bool,
     path: str,
+    repository_config: InfrahubRepositoryConfig,
     branch: Optional[str] = None,
     params: Optional[dict] = None,
 ) -> bool:
@@ -95,7 +103,13 @@ async def run_check(
     check = await check_class.init(client=client, params=params, output=output, root_directory=path, branch=branch)
     param_log = f" - {params}" if params else ""
     try:
-        data = execute_graphql_query(query=check.query, variables_dict=check.params, branch=branch, debug=False)
+        data = execute_graphql_query(
+            query=check.query,
+            variables_dict=check.params,
+            repository_config=repository_config,
+            branch=branch,
+            debug=False,
+        )
         passed = await check.run(data)
         if passed:
             if not format_json:
@@ -123,6 +137,7 @@ async def run_targeted_check(
     client: InfrahubClient,
     format_json: bool,
     path: str,
+    repository_config: InfrahubRepositoryConfig,
     variables: dict[str, str],
     branch: Optional[str] = None,
 ) -> bool:
@@ -145,6 +160,7 @@ async def run_targeted_check(
             path=path,
             branch=branch,
             params=variables,
+            repository_config=repository_config,
         )
         check_summary.append(result)
     else:
@@ -162,6 +178,7 @@ async def run_targeted_check(
                 path=path,
                 branch=branch,
                 params=check_parameter,
+                repository_config=repository_config,
             )
             check_summary.append(result)
 
@@ -173,6 +190,7 @@ async def run_checks(
     format_json: bool,
     path: str,
     variables: dict[str, str],
+    repository_config: InfrahubRepositoryConfig,
     branch: Optional[str] = None,
 ) -> None:
     log = logging.getLogger("infrahub")
@@ -184,6 +202,7 @@ async def run_checks(
             result = await run_targeted_check(
                 check_module=check_module,
                 client=client,
+                repository_config=repository_config,
                 format_json=format_json,
                 path=path,
                 variables=variables,
@@ -192,7 +211,12 @@ async def run_checks(
             check_summary.append(result)
         else:
             result = await run_check(
-                check_module=check_module, client=client, format_json=format_json, path=path, branch=branch
+                check_module=check_module,
+                client=client,
+                format_json=format_json,
+                path=path,
+                branch=branch,
+                repository_config=repository_config,
             )
             check_summary.append(result)
 

@@ -25,6 +25,41 @@ class TimeRange:
     to_time: Timestamp
 
 
+class TrackingId:
+    prefix = ""
+    delimiter = "."
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def serialize(self) -> str:
+        return f"{self.prefix}{self.delimiter}{self.name}"
+
+    @classmethod
+    def deserialize(cls, id_string: str) -> TrackingId:
+        if not id_string.startswith(cls.prefix):
+            raise ValueError(
+                f"Cannot deserialize TrackingId with incorrect prefix '{id_string}', expected prefix '{cls.prefix}{cls.delimiter}'"
+            )
+        return cls(id_string.split(cls.delimiter)[1])
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, type(self)):
+            return False
+        return self.name == other.name
+
+    def __hash__(self) -> int:
+        return hash(self.serialize())
+
+
+class BranchTrackingId(TrackingId):
+    prefix = "branch"
+
+
+class NameTrackingId(TrackingId):
+    prefix = "name"
+
+
 @dataclass
 class BaseSummary:
     num_added: int = field(default=0, kw_only=True)
@@ -306,6 +341,7 @@ class EnrichedDiffRoot(BaseSummary):
     from_time: Timestamp
     to_time: Timestamp
     uuid: str
+    tracking_id: TrackingId | None = field(default=None, kw_only=True)
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
     def __hash__(self) -> int:
