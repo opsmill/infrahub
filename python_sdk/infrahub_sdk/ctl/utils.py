@@ -41,37 +41,35 @@ def init_logging(debug: bool = False) -> None:
     logging.getLogger("infrahubctl")
 
 
-# pylint: disable=W0718
-def catch_exception(  # noqa: C901
-    console: Optional[Console] = None,
-    exit_code: int = 1,
-):
+def handle_exception(exc: Exception, console: Console, exit_code: int):
+    """Handle exeception in a different fashion based on its type."""
+    if isinstance(exc, Exit):
+        raise typer.Exit(code=exc.exit_code)
+    if isinstance(exc, AuthenticationError):
+        console.print(f"[red]Authentication failure: {str(exc)}")
+        raise typer.Exit(code=exit_code)
+    if isinstance(exc, (ServerNotReachableError, ServerNotResponsiveError)):
+        console.print(f"[red]{str(exc)}")
+        raise typer.Exit(code=exit_code)
+    if isinstance(exc, HTTPError):
+        console.print(f"[red]HTTP communication failure: {str(exc)} on {exc.request.method} to {exc.request.url}")
+        raise typer.Exit(code=exit_code)
+    if isinstance(exc, GraphQLError):
+        print_graphql_errors(console=console, errors=exc.errors)
+        raise typer.Exit(code=exit_code)
+    if isinstance(exc, (SchemaNotFoundError, NodeNotFoundError, FilterNotFoundError)):
+        console.print(f"[red]Error: {str(exc)}")
+        raise typer.Exit(code=exit_code)
+
+    console.print(f"[red]Error: {str(exc)}")
+    console.print(traceback.format_exc())
+    raise typer.Exit(code=exit_code)
+
+
+def catch_exception(console: Optional[Console] = None, exit_code: int = 1):
     """Decorator to handle exception for commands."""
     if not console:
         console = Console()
-
-    def handle_exception(exc: Exception, console: Console, exit_code: int):  # noqa: W0718
-        if isinstance(exc, Exit):
-            raise typer.Exit(code=exc.exit_code)
-        if isinstance(exc, AuthenticationError):
-            console.print(f"[red]Authentication failure: {str(exc)}")
-            raise typer.Exit(code=exit_code)
-        if isinstance(exc, (ServerNotReachableError, ServerNotResponsiveError)):
-            console.print(f"[red]{str(exc)}")
-            raise typer.Exit(code=exit_code)
-        if isinstance(exc, HTTPError):
-            console.print(f"[red]HTTP communication failure: {str(exc)} on {exc.request.method} to {exc.request.url}")
-            raise typer.Exit(code=exit_code)
-        if isinstance(exc, GraphQLError):
-            print_graphql_errors(console=console, errors=exc.errors)
-            raise typer.Exit(code=exit_code)
-        if isinstance(exc, (SchemaNotFoundError, NodeNotFoundError, FilterNotFoundError)):
-            console.print(f"[red]Error: {str(exc)}")
-            raise typer.Exit(code=exit_code)
-
-        console.print(f"[red]Error: {str(exc)}")
-        console.print(traceback.format_exc())
-        raise typer.Exit(code=exit_code)
 
     def decorator(func: Callable):
         if asyncio.iscoroutinefunction(func):
@@ -80,7 +78,7 @@ def catch_exception(  # noqa: C901
             async def async_wrapper(*args: Any, **kwargs: Any):
                 try:
                     return await func(*args, **kwargs)
-                except (Error, Exception) as exc:  # noqa: W0718
+                except (Error, Exception) as exc:  # pylint: disable=broad-exception-caught
                     return handle_exception(exc=exc, console=console, exit_code=exit_code)
 
             return async_wrapper
@@ -89,7 +87,7 @@ def catch_exception(  # noqa: C901
         def wrapper(*args: Any, **kwargs: Any):
             try:
                 return func(*args, **kwargs)
-            except (Error, Exception) as exc:  # noqa: W0718
+            except (Error, Exception) as exc:  # pylint: disable=broad-exception-caught
                 return handle_exception(exc=exc, console=console, exit_code=exit_code)
 
         return wrapper
