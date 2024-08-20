@@ -134,7 +134,7 @@ export default function ObjectItemDetails({
         <Tabs
           tabs={tabs}
           rightItems={
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {schema.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
               <ButtonWithTooltip
