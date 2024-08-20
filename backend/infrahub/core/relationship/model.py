@@ -231,7 +231,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         node: Node = await registry.manager.get_one_by_id_or_default_filter(
             db=db,
             id=self.node_id,
-            kind=str(self.schema.kind.value),
+            kind=self.schema.kind.value,
             branch=self.branch,
             at=self.at,
             include_owner=True,

@@ -21,7 +21,7 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import GenericSchema, NodeSchema, ProfileSchema, RelationshipSchema
+from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
 
@@ -51,6 +51,19 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
                 return registry.node[parent]
 
     return Node
+
+
+def get_schema(
+    db: InfrahubDatabase, branch: Branch, node_schema: type[SchemaProtocol] | MainSchemaTypes | str
+) -> MainSchemaTypes:
+    if isinstance(node_schema, str):
+        return db.schema.get(name=node_schema, branch=branch.name)
+    if hasattr(node_schema, "_is_runtime_protocol") and getattr(node_schema, "_is_runtime_protocol"):
+        return db.schema.get(name=node_schema.__name__, branch=branch.name)
+    if not isinstance(node_schema, (MainSchemaTypes)):
+        raise ValueError(f"Invalid schema provided {node_schema}")
+
+    raise SchemaNotFoundError(branch_name=branch.name, identifier=str(node_schema))
 
 
 class ProfileAttributeIndex:
@@ -152,7 +165,7 @@ class NodeManager:
     async def query(
         cls,
         db: InfrahubDatabase,
-        schema: Union[type[SchemaProtocol], NodeSchema, GenericSchema, ProfileSchema, str],
+        schema: type[SchemaProtocol] | MainSchemaTypes | str,
         filters: dict | None = None,
         fields: dict | None = None,
         offset: int | None = None,
@@ -183,17 +196,12 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        if isinstance(schema, str):
-            schema = db.schema.get(name=schema, branch=branch.name)
-        elif hasattr(schema, "_is_runtime_protocol") and getattr(schema, "_is_runtime_protocol"):
-            schema = db.schema.get(name=schema.__name__, branch=branch.name)
-        elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
-            raise ValueError(f"Invalid schema provided {schema}")
+        node_schema = get_schema(db=db, branch=branch, node_schema=schema)
 
         # Query the list of nodes matching this Query
         query = await NodeGetListQuery.init(
             db=db,
-            schema=schema,
+            schema=node_schema,
             branch=branch,
             offset=offset,
             limit=limit,
@@ -208,12 +216,12 @@ class NodeManager:
         # if display_label or hfid has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
             schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=schema.kind)
+            display_label_fields = schema_branch.generate_fields_for_display_label(name=node_schema.kind)
             if display_label_fields:
                 fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
-        if fields and "hfid" in fields and schema.human_friendly_id:
-            hfid_fields = schema.generate_fields_for_hfid()
+        if fields and "hfid" in fields and node_schema.human_friendly_id:
+            hfid_fields = node_schema.generate_fields_for_hfid()
             if hfid_fields:
                 fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
 
@@ -259,16 +267,11 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        if isinstance(schema, str):
-            schema = db.schema.get(name=schema, branch=branch.name)
-        elif hasattr(schema, "_is_runtime_protocol") and getattr(schema, "_is_runtime_protocol"):
-            schema = db.schema.get(name=schema.__name__, branch=branch.name)
-        elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
-            raise ValueError(f"Invalid schema provided {schema}")
+        node_schema = get_schema(db=db, branch=branch, node_schema=schema)
 
         query = await NodeGetListQuery.init(
             db=db,
-            schema=schema,
+            schema=node_schema,
             branch=branch,
             filters=filters,
             at=at,
@@ -611,13 +614,9 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        kind_str = ""
-        if hasattr(kind, "_is_runtime_protocol") and getattr(kind, "_is_runtime_protocol"):
-            kind_str = kind.__name__
-        elif isinstance(kind, str):
-            kind_str = kind
+        node_schema = get_schema(db=db, branch=branch, node_schema=kind)
+        kind_str = node_schema.kind
 
-        node_schema = db.schema.get(name=kind_str, branch=branch)
         if not node_schema.default_filter:
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=id)
 
@@ -763,13 +762,10 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        if hasattr(kind, "_is_runtime_protocol") and getattr(kind, "_is_runtime_protocol"):
-            kind_str = kind.__name__
-        else:
-            kind_str = kind
+        node_schema = get_schema(db=db, branch=branch, node_schema=kind)
+        kind_str = node_schema.kind
 
         hfid_str = " :: ".join(hfid)
-        node_schema = db.schema.get(name=kind_str, branch=branch)
 
         if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
