@@ -4,8 +4,7 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
-from ..model.path import EnrichedDiffRoot, TrackingId
-from ..repository.deserializer import EnrichedDiffDeserializer
+from ..model.path import TrackingId
 from .filters import EnrichedDiffQueryFilters
 
 QUERY_MATCH_NODES = """
@@ -43,7 +42,6 @@ class EnrichedDiffGetQuery(Query):
 
     def __init__(
         self,
-        deserializer: EnrichedDiffDeserializer,
         base_branch_name: str,
         diff_branch_names: list[str],
         filters: EnrichedDiffQueryFilters,
@@ -54,7 +52,6 @@ class EnrichedDiffGetQuery(Query):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.deserializer = deserializer
         self.base_branch_name = base_branch_name
         self.diff_branch_names = diff_branch_names
         self.from_time: Timestamp = from_time or Timestamp("2000-01-01T00:00:01Z")
@@ -176,9 +173,3 @@ class EnrichedDiffGetQuery(Query):
             "diff_relationships",
         ]
         self.order_by = ["diff_root.diff_branch_name ASC", "diff_root.from_time ASC", "diff_node.label ASC"]
-
-    async def get_enriched_diff_roots(self, include_parents: bool) -> list[EnrichedDiffRoot]:
-        enriched_diffs = await self.deserializer.deserialize(
-            database_results=self.get_results(), include_parents=include_parents
-        )
-        return enriched_diffs

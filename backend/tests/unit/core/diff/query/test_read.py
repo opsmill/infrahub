@@ -5,9 +5,9 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.query.diff_get import EnrichedDiffGetQuery
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters, DiffSummaryQuery, EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -220,22 +220,27 @@ class TestDiffReadQuery(TestInfrahub):
         assert summary == counters
 
     async def test_get_without_parent(self, db: InfrahubDatabase, default_branch: Branch, load_data):
-        query = await EnrichedDiffGetQuery.init(
-            db=db,
-            deserializer=EnrichedDiffDeserializer(),
+        repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        diffs_without = await repository.get(
             base_branch_name=default_branch.name,
             diff_branch_names=[load_data["diff_branch"].name],
             from_time=load_data["from_time"],
             to_time=load_data["to_time"],
             filters=EnrichedDiffQueryFilters(status={"includes": ["updated"]}),
-            max_depth=10,
             limit=1000,
             offset=0,
+            include_parents=False,
         )
-        await query.execute(db=db)
-
-        diffs_without = await query.get_enriched_diff_roots(include_parents=False)
-        diffs_with = await query.get_enriched_diff_roots(include_parents=True)
+        diffs_with = await repository.get(
+            base_branch_name=default_branch.name,
+            diff_branch_names=[load_data["diff_branch"].name],
+            from_time=load_data["from_time"],
+            to_time=load_data["to_time"],
+            filters=EnrichedDiffQueryFilters(status={"includes": ["updated"]}),
+            limit=1000,
+            offset=0,
+            include_parents=True,
+        )
 
         assert set([node.label for node in diffs_without[0].nodes]) == {"paris-r1", "paris rack2", "THING1"}
         assert set([node.label for node in diffs_with[0].nodes]) == {

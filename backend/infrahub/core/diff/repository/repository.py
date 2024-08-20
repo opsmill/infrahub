@@ -1,19 +1,19 @@
 from infrahub import config
 from infrahub.core import registry
-from infrahub.core.diff.repository.get_conflict_query import EnrichedDiffConflictQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ResourceNotFoundError
 
 from ..model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot, TimeRange, TrackingId
+from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.filters import EnrichedDiffQueryFilters
-from .delete_query import EnrichedDiffDeleteQuery
+from ..query.get_conflict_query import EnrichedDiffConflictQuery
+from ..query.save_query import EnrichedDiffSaveQuery
+from ..query.time_range_query import EnrichedDiffTimeRangeQuery
+from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
-from .save_query import EnrichedDiffSaveQuery
-from .time_range_query import EnrichedDiffTimeRangeQuery
-from .update_conflict_query import EnrichedDiffConflictUpdateQuery
 
 
 class DiffRepository:
@@ -37,7 +37,6 @@ class DiffRepository:
         final_limit = limit or config.SETTINGS.database.query_size_limit
         query = await EnrichedDiffGetQuery.init(
             db=self.db,
-            deserializer=self.deserializer,
             base_branch_name=base_branch_name,
             diff_branch_names=diff_branch_names,
             from_time=from_time,
@@ -49,7 +48,9 @@ class DiffRepository:
             tracking_id=tracking_id,
         )
         await query.execute(db=self.db)
-        diff_roots = await query.get_enriched_diff_roots(include_parents=include_parents)
+        diff_roots = await self.deserializer.deserialize(
+            database_results=query.get_results(), include_parents=include_parents
+        )
         diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
         return diff_roots
 
@@ -118,23 +119,19 @@ class DiffRepository:
         return await query.get_time_ranges()
 
     async def get_conflict_by_id(self, conflict_id: str) -> EnrichedDiffConflict:
-        query = await EnrichedDiffConflictQuery.init(
-            db=self.db, deserializer=self.deserializer, conflict_id=conflict_id
-        )
+        query = await EnrichedDiffConflictQuery.init(db=self.db, conflict_id=conflict_id)
         await query.execute(db=self.db)
-        conflict = await query.get_conflict()
-        if not conflict:
+        conflict_node = await query.get_conflict_node()
+        if not conflict_node:
             raise ResourceNotFoundError(f"No conflict with id {conflict_id}")
-        return conflict
+        return self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node)
 
     async def update_conflict_by_id(
         self, conflict_id: str, selection: ConflictSelection | None
     ) -> EnrichedDiffConflict:
-        query = await EnrichedDiffConflictUpdateQuery.init(
-            db=self.db, deserializer=self.deserializer, conflict_id=conflict_id, selection=selection
-        )
+        query = await EnrichedDiffConflictUpdateQuery.init(db=self.db, conflict_id=conflict_id, selection=selection)
         await query.execute(db=self.db)
-        conflict = await query.get_conflict()
-        if not conflict:
+        conflict_node = await query.get_conflict_node()
+        if not conflict_node:
             raise ResourceNotFoundError(f"No conflict with id {conflict_id}")
-        return conflict
+        return self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node)
