@@ -10,12 +10,12 @@ import jwt
 from pydantic import BaseModel, Field
 
 from infrahub import config, models
-from infrahub.core.account import fetch_permissions, validate_token
-from infrahub.core.constants import AccountStatus, InfrahubKind
+from infrahub.core.account import validate_token
+from infrahub.core.constants import AccountStatus, InfrahubKind, PermissionAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
-from infrahub.exceptions import AuthorizationError, NodeNotFoundError
+from infrahub.exceptions import AuthorizationError, NodeNotFoundError, ProcessingError
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreGenericAccount
@@ -46,14 +46,19 @@ class AccountSession(BaseModel):
     def authenticated_by_jwt(self) -> bool:
         return self.auth_type == AuthType.JWT
 
+    async def load_permissions(self, db: InfrahubDatabase) -> None:
+        if not registry.permission_backends:
+            raise ProcessingError(message="Unable to load permissions: no permission backends configured")
+
+        for permission_backend in registry.permission_backends:
+            if permissions := await permission_backend.load_permissions(db=db, account_id=self.account_id):
+                self.permissions = AccountPermissions(**permissions)
+                return
+
 
 class AccountPermissions(BaseModel):
     global_permissions: list[str] = Field(default_factory=list)
     object_permissions: list[str] = Field(default_factory=list)
-
-    @classmethod
-    def infer_object_permission_string(cls, namespace: str, kind: str, action: str) -> str:
-        return f"object:{namespace}:{kind}:{action}"
 
     def has_permission(self, permission: str) -> bool:
         return permission in self.global_permissions or permission in self.object_permissions
@@ -192,20 +197,17 @@ async def validate_jwt_access_token(db: InfrahubDatabase, token: str) -> Account
         account_id = payload["sub"]
         role = payload["user_claims"]["role"]
         session_id = payload["session_id"]
-        recorded_permissions = await fetch_permissions(db=db, account_id=account_id)
-        permissions = AccountPermissions(
-            global_permissions=[str(p) for p in recorded_permissions.get("global_permissions", [])],
-            object_permissions=[str(p) for p in recorded_permissions.get("object_permissions", [])],
-        )
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
     except Exception:
         raise AuthorizationError("Invalid token") from None
 
     if payload["type"] == "access":
-        return AccountSession(
-            account_id=account_id, role=role, session_id=session_id, permissions=permissions, auth_type=AuthType.JWT
+        account_session = AccountSession(
+            account_id=account_id, role=role, session_id=session_id, auth_type=AuthType.JWT
         )
+        await account_session.load_permissions(db=db)
+        return account_session
 
     raise AuthorizationError("Invalid token, current token is not an access token")
 

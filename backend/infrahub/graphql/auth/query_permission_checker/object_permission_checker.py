@@ -1,6 +1,5 @@
-from typing import Optional
-
-from infrahub.auth import AccountPermissions, AccountSession
+from infrahub.auth import AccountSession
+from infrahub.core.account import ObjectPermission
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -10,12 +9,11 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
-    def __init__(self) -> None:
-        self.permissions: Optional[AccountPermissions] = None
+    account_session: AccountSession
 
     async def supports(self, account_session: AccountSession) -> bool:
-        self.permissions = account_session.permissions
-        return account_session.authenticated
+        self.account_session = account_session
+        return self.account_session.authenticated
 
     async def check(
         self, analyzed_query: InfrahubGraphQLQueryAnalyzer, query_parameters: GraphqlParams
@@ -35,12 +33,20 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         for kind, action in kind_action_map.items():
             extracted_words = extract_camelcase_words(kind)
             permissions.append(
-                AccountPermissions.infer_object_permission_string(
-                    namespace=extracted_words[0].lower(), kind="".join(extracted_words[1:]).lower(), action=action
+                str(
+                    # Create a object permission instance just to get its string representation
+                    ObjectPermission(
+                        id="",
+                        namespace=extracted_words[0].lower(),
+                        kind="".join(extracted_words[1:]).lower(),
+                        action=action,
+                    )
                 )
             )
 
-        if not self.permissions or not self.permissions.has_permissions(permissions=permissions):
+        if not self.account_session.permissions or not self.account_session.permissions.has_permissions(
+            permissions=permissions
+        ):
             # raise PermissionDeniedError(f"You are not allowed to perform: {kind_action_map}")
             ...
 

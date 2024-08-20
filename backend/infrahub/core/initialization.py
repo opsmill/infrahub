@@ -1,4 +1,5 @@
-from typing import Optional
+import importlib
+from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from infrahub import config, lock
@@ -24,6 +25,9 @@ from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.storage import InfrahubObjectStorage
 from infrahub.utils import format_label
+
+if TYPE_CHECKING:
+    from infrahub.permissions.backends import PermissionBackend
 
 log = get_logger()
 
@@ -87,6 +91,19 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
     registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
 
+    # ---------------------------------------------------
+    # Instantiate permission backends
+    # ---------------------------------------------------
+    permission_backends: list[PermissionBackend] = []
+    for backend_module_path in config.SETTINGS.main.permission_backends:
+        log.info("Loading permission backend", backend=backend_module_path)
+
+        module, class_name = backend_module_path.rsplit(".", maxsplit=1)
+        Backend = getattr(importlib.import_module(module), class_name)
+        permission_backends.append(Backend())
+
+    registry.permission_backends = permission_backends
+
 
 async def initialization(db: InfrahubDatabase) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
@@ -142,7 +159,7 @@ async def initialization(db: InfrahubDatabase) -> None:
 
             if branch.update_schema_hash():
                 log.warning(
-                    f"New schema detected after pulling the schema from the db :"
+                    "New schema detected after pulling the schema from the db :"
                     f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
                     branch=branch.name,
                 )

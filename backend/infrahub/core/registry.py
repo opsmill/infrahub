@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
     from infrahub.graphql.types import InfrahubObject
+    from infrahub.permissions.backends import PermissionBackend
     from infrahub.storage import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
 
@@ -45,6 +46,7 @@ class Registry:
     _branch_object: Optional[type[Branch]] = None
     _manager: Optional[type[NodeManager]] = None
     _storage: Optional[InfrahubObjectStorage] = None
+    permission_backends: Optional[list[PermissionBackend]] = None
 
     @property
     def branch_object(self) -> type[Branch]:
