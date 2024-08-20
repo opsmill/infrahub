@@ -63,7 +63,7 @@ def get_schema(
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
 
-    raise SchemaNotFoundError(branch_name=branch.name, identifier=str(node_schema))
+    return node_schema
 
 
 class ProfileAttributeIndex:
