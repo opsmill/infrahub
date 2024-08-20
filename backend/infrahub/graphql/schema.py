@@ -26,6 +26,7 @@ from .mutations import (
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
+    ResolveDiffConflict,
     SchemaDropdownAdd,
     SchemaDropdownRemove,
     SchemaEnumAdd,
@@ -136,3 +137,4 @@ class InfrahubBaseMutation(ObjectType):
     SchemaDropdownRemove = SchemaDropdownRemove.Field()
     SchemaEnumAdd = SchemaEnumAdd.Field()
     SchemaEnumRemove = SchemaEnumRemove.Field()
+    ResolveDiffConflict = ResolveDiffConflict.Field()
