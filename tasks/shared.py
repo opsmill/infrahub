@@ -220,9 +220,9 @@ def build_compose_files_cmd(database: str, namespace: str = "") -> str:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
-        COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH
+        COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH.copy()
     elif database == DatabaseType.NEO4J.value:
-        COMPOSE_FILES = COMPOSE_FILES_NEO4J
+        COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
 
     if os.path.exists(OVERRIDE_FILE_NAME):
         print("!! Found an override file for docker-compose !!")
@@ -244,9 +244,9 @@ def build_dev_compose_files_cmd(database: str) -> str:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
-        DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH
+        DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH.copy()
     elif database == DatabaseType.NEO4J.value:
-        DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J
+        DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
 
     if os.path.exists(DEV_OVERRIDE_FILE_NAME):
         print("!! Found a dev override file for docker-compose !!")
@@ -265,9 +265,9 @@ def build_test_compose_files_cmd(
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
-        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH
+        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH.copy()
     elif database == DatabaseType.NEO4J.value:
-        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J
+        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J.copy()
 
     # if os.path.exists(DEV_OVERRIDE_FILE_NAME):
     #     print("!! Found a dev override file for docker-compose !!")
@@ -283,9 +283,9 @@ def build_test_scale_compose_files_cmd(
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
-        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH
+        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH.copy()
     elif database == DatabaseType.NEO4J.value:
-        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_NEO4J
+        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_NEO4J.copy()
 
     if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
         print("!! Found a test scale override file for docker-compose !!")
