@@ -1,8 +1,6 @@
 import { Tabs } from "@/components/tabs";
-import { Link } from "@/components/ui/link";
 import { DIFF_TABS } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { useTitle } from "@/hooks/useTitle";
 import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { NodeDiff } from "@/screens/diff/node-diff";
 
@@ -10,20 +8,89 @@ import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import Content from "@/screens/layout/content";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router-dom";
-import { StringParam, useQueryParam } from "use-query-params";
 import { BranchDetails } from "@/screens/branches/branch-details";
+import { Link, Navigate, useParams } from "react-router-dom";
+import { StringParam, useQueryParam } from "use-query-params";
+import { useTitle } from "@/hooks/useTitle";
+import { Button } from "@/components/buttons/button-primitive";
+import React from "react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+} from "@/components/breadcrumb/breadcrumb";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAtomValue } from "jotai";
+import { branchesState } from "@/state/atoms/branches.atom";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
   DIFF: "diff",
 };
 
-const ProposedChangesDetailsPage = () => {
+export function BranchDetailsPage() {
   const { "*": branchName } = useParams();
-  const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   useTitle(`${branchName} details`);
 
+  if (!branchName) {
+    return <Navigate to={constructPath("/branches")} />;
+  }
+
+  return (
+    <Content>
+      <Content.Title
+        title={
+          <Breadcrumb className="text-base">
+            <BreadcrumbLink to={constructPath("/branches")}>Branches</BreadcrumbLink>
+
+            <BreadcrumbSeparator />
+
+            <BreadcrumbItem>
+              <BranchSelectorBreadcrumb branchName={branchName} />
+            </BreadcrumbItem>
+          </Breadcrumb>
+        }
+      />
+
+      <BranchTab />
+
+      <BranchContent branchName={branchName} />
+    </Content>
+  );
+}
+
+const BranchSelectorBreadcrumb = ({ branchName }: { branchName: string }) => {
+  const branches = useAtomValue(branchesState);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="inline-flex gap-2 justify-between -ml-2">
+          {branchName}
+          <Icon icon="mdi:unfold-more-horizontal" className="text-gray-300" />
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent>
+        {branches.map((branch) => (
+          <DropdownMenuItem key={branch.name} asChild>
+            <Link to={constructPath(`/branches/${branch.name}`, undefined, [QSP.BRANCH_TAB])}>
+              {branch.name}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+const BranchTab = () => {
   const tabs = [
     {
       label: "Details",
@@ -44,57 +111,43 @@ const ProposedChangesDetailsPage = () => {
     },
   ];
 
-  const renderContent = () => {
-    switch (qspTab) {
-      case DIFF_TABS.FILES:
-        return <FilesDiff />;
-      case DIFF_TABS.ARTIFACTS:
-        return <ArtifactsDiff />;
-      case DIFF_TABS.SCHEMA:
-        return (
-          <NodeDiff
-            filters={{
-              namespace: { includes: ["Schema"], excludes: ["Profile"] },
-              status: { excludes: ["UNCHANGED"] },
-            }}
-          />
-        );
-      case DIFF_TABS.DATA:
-        return (
-          <NodeDiff
-            filters={{
-              namespace: { excludes: ["Schema", "Profile"] },
-              status: { excludes: ["UNCHANGED"] },
-            }}
-          />
-        );
-      default: {
-        return <BranchDetails />;
-      }
-    }
-  };
-
-  return (
-    <Content>
-      <Content.Title
-        title={
-          <div className="flex items-center gap-1">
-            <Link to={constructPath("/branches")} className="hover:underline">
-              Branches
-            </Link>
-            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
-            <p className="max-w-2xl text-sm text-gray-500 font-normal">{branchName}</p>
-          </div>
-        }
-      />
-
-      <Tabs tabs={tabs} qsp={QSP.BRANCH_TAB} />
-
-      <div>{renderContent()}</div>
-    </Content>
-  );
+  return <Tabs tabs={tabs} qsp={QSP.BRANCH_TAB} />;
 };
 
-export function Component() {
-  return <ProposedChangesDetailsPage />;
-}
+const BranchContent = ({ branchName }: { branchName: string }) => {
+  const [currentTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
+
+  switch (currentTab) {
+    case DIFF_TABS.FILES: {
+      return <FilesDiff />;
+    }
+    case DIFF_TABS.ARTIFACTS: {
+      return <ArtifactsDiff />;
+    }
+    case DIFF_TABS.SCHEMA: {
+      return (
+        <NodeDiff
+          filters={{
+            namespace: { includes: ["Schema"], excludes: ["Profile"] },
+            status: { excludes: ["UNCHANGED"] },
+          }}
+        />
+      );
+    }
+    case DIFF_TABS.DATA: {
+      return (
+        <NodeDiff
+          filters={{
+            namespace: { excludes: ["Schema", "Profile"] },
+            status: { excludes: ["UNCHANGED"] },
+          }}
+        />
+      );
+    }
+    default: {
+      return <BranchDetails />;
+    }
+  }
+};
+
+export const Component = BranchDetailsPage;
