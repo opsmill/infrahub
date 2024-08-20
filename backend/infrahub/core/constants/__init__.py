@@ -113,13 +113,19 @@ class RepositoryAdminStatus(InfrahubStringEnum):
     STAGING = "staging"
 
 
-class RepositoryStatus(InfrahubStringEnum):
+class RepositorySyncStatus(InfrahubStringEnum):
     UNKNOWN = "unknown"
-    SYNCING = "syncing"
-    INSYNC = "in-sync"
-    ERROR_CRED = "error-cred"
+    IN_SYNC = "in-sync"
     ERROR_IMPORT = "error-import"
+    SYNCING = "syncing"
+
+
+class RepositoryOperationalStatus(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    ERROR_CRED = "error-cred"
+    ERROR_CONNECTION = "error-connection"
     ERROR = "error"
+    ONLINE = "online"
 
 
 class DiffAction(InfrahubStringEnum):

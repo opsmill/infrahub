@@ -28,7 +28,7 @@ from infrahub_sdk.yaml import SchemaFile
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
 from infrahub.exceptions import CheckError, TransformError
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
 from infrahub.log import get_logger
@@ -136,21 +136,61 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             commit = self.get_commit_value(branch_name=git_branch_name or infrahub_branch_name)
 
         self.create_commit_worktree(commit)
+        await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
+
         config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)
+        sync_status = RepositorySyncStatus.IN_SYNC if config_file else RepositorySyncStatus.ERROR_IMPORT
+        error: Exception | None = None
 
-        if config_file:
-            await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
+        try:
+            if config_file:
+                await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
 
-        await self.import_all_graphql_query(branch_name=infrahub_branch_name, commit=commit)
+            await self.import_all_graphql_query(branch_name=infrahub_branch_name, commit=commit)
 
-        if config_file:
-            await self.import_all_python_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
-            await self.import_jinja2_transforms(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )
-            await self.import_artifact_definitions(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )
+            if config_file:
+                await self.import_all_python_files(
+                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+                )
+                await self.import_jinja2_transforms(
+                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+                )
+                await self.import_artifact_definitions(
+                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+                )
+
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            sync_status = RepositorySyncStatus.ERROR_IMPORT
+            error = exc
+
+        await self._update_sync_status(branch_name=infrahub_branch_name, status=sync_status)
+
+        if error:
+            raise error
+
+    async def _update_sync_status(self, branch_name: str, status: RepositorySyncStatus) -> None:
+        update_status = """
+        mutation UpdateRepositoryStatus(
+            $repo_id: String!,
+            $status: String!,
+            ) {
+            CoreGenericRepositoryUpdate(
+                data: {
+                    id: $repo_id,
+                    sync_status: { value: $status },
+                }
+            ) {
+                ok
+            }
+        }
+        """
+
+        await self.sdk.execute_graphql(
+            branch_name=branch_name,
+            query=update_status,
+            variables={"repo_id": str(self.id), "status": status.value},
+            tracker="mutation-repository-update-admin-status",
+        )
 
     async def import_jinja2_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig

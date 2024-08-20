@@ -1419,6 +1419,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                            "admin_status": {"value": "active"},
                         }
                     },
                     {
@@ -1428,6 +1429,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge-read-only"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
                             "commit": {"value": "cccccccccccccccccccc"},
+                            "admin_status": {"value": "active"},
                         }
                     },
                 ],
@@ -1446,6 +1448,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                            "admin_status": {"value": "active"},
                         }
                     },
                     {
@@ -1455,6 +1458,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge-read-only"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
                             "commit": {"value": "dddddddddddddddddddd"},
+                            "admin_status": {"value": "active"},
                         }
                     },
                 ],
@@ -1659,7 +1663,6 @@ async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 @pytest.fixture
 async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (get_fixtures_dir() / "schema_02.json").read_text(encoding="UTF-8")
-
     httpx_mock.add_response(
         method="GET", url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"), json=ujson.loads(response_text)
     )
