@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from infrahub import config, models
 from infrahub.core.account import validate_token
-from infrahub.core.constants import AccountStatus, InfrahubKind, PermissionAction
+from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry

@@ -1,6 +1,5 @@
 from infrahub.auth import AccountSession
 from infrahub.core.account import ObjectPermission
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.utils import extract_camelcase_words
