@@ -77,12 +77,10 @@ def show_service_status(context: Context, database: str, namespace: str) -> None
         execute_command(context=context, command=command)
 
 
-def start_services(context: Context, database: str, namespace: str) -> None:
+def start_services(context: Context, database: str, namespace: str, wait: bool) -> None:
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-        command = (
-            f"{get_env_vars(context, namespace=namespace)} docker compose {compose_files_cmd} -p {BUILD_NAME} up -d"
-        )
+        command = f"{get_env_vars(context, namespace=namespace)} docker compose {compose_files_cmd} -p {BUILD_NAME} up -d{" --wait" if wait else ""}"
         execute_command(context=context, command=command)
 
 
