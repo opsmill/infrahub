@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DynamicInput } from "@/components/form/dynamic-form";
 import { NodeFormProps } from "@/components/form/node-form";
 import { createObject } from "@/graphql/mutations/objects/createObject";
+import RelationshipField from "@/components/form/fields/relationship.field";
 
 const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
@@ -58,17 +59,26 @@ const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeForm
         {gitUrlFieldProps && (
           <DynamicInput
             {...gitUrlFieldProps}
-            label="URL of a Git repository"
+            label="Repository location"
             placeholder="https://github.com/organization/project.git"
           />
         )}
 
-        {credentialFieldProps && <DynamicInput {...credentialFieldProps} />}
+        <RelationshipField
+          name="credential"
+          type="relationship"
+          label="Authentification"
+          placeholder="Select your credential"
+          relationship={{ peer: "CorePasswordCredential", name: "credential", cardinality: "one" }}
+          schema={schema}
+        />
       </FormGroup>
 
       <FormGroup>
-        {nameFieldProps && <DynamicInput {...nameFieldProps} />}
-        {descriptionFieldProps && <DynamicInput {...descriptionFieldProps} />}
+        {nameFieldProps && <DynamicInput {...nameFieldProps} placeholder="example-name" />}
+        {descriptionFieldProps && (
+          <DynamicInput {...descriptionFieldProps} placeholder="Add your description here..." />
+        )}
       </FormGroup>
 
       {tagsFieldProps && (
