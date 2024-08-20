@@ -24,7 +24,6 @@ from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NA
 from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
-    GraphQLQueryInformation,
 )
 from infrahub.git.worktree import Worktree
 from infrahub.utils import find_first_file_in_directory
@@ -703,16 +702,6 @@ async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository):
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name=commit)
     assert len(yaml_files) == 4
-
-
-async def test_find_graphql_queries(git_repo_10: InfrahubRepository):
-    repo = git_repo_10
-
-    commit = repo.get_commit_value(branch_name="main")
-
-    queries = await repo.find_graphql_queries(commit=commit)
-    assert len(queries) == 5
-    assert isinstance(queries[0], GraphQLQueryInformation)
 
 
 async def test_calculate_diff_between_commits(

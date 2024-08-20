@@ -86,17 +86,6 @@ class CheckDefinitionInformation(BaseModel):
     targets: Optional[str] = Field(default=None, description="Targets if not a global check")
 
 
-class GraphQLQueryInformation(BaseModel):
-    name: str
-    """Name of the query"""
-
-    filename: str
-    """Name of the file. Example: myquery.gql"""
-
-    query: str
-    """Query in string format"""
-
-
 class TransformPythonInformation(BaseModel):
     name: str
     """Name of the Transform"""
@@ -146,9 +135,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             if config_file:
                 await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
 
-            await self.import_all_graphql_query(branch_name=infrahub_branch_name, commit=commit)
+                await self.import_all_graphql_query(
+                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+                )
 
-            if config_file:
                 await self.import_all_python_files(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
                 )
@@ -527,12 +517,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 f"schema '{schema_file.identifier}' loaded successfully!", repository=self.name, commit=commit
             )
 
-    async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
+    async def import_all_graphql_query(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> None:
         """Search for all .gql file and import them as GraphQL query."""
 
         log.debug("Importing all GraphQL Queries", repository=self.name, branch=branch_name, commit=commit)
+        commit_wt = self.get_worktree(identifier=commit)
+        local_queries = {
+            query.name: query.load_query(relative_path=commit_wt.directory) for query in config_file.queries
+        }
 
-        local_queries = {query.name: query for query in await self.find_graphql_queries(commit=commit)}
         if not local_queries:
             return
 
@@ -555,19 +550,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 branch=branch_name,
                 commit=commit,
             )
-            await self.create_graphql_query(branch_name=branch_name, name=query_name, query_string=query.query)
+            await self.create_graphql_query(branch_name=branch_name, name=query_name, query_string=query)
 
         for query_name in present_in_both:
             local_query = local_queries[query_name]
             graph_query = queries_in_graph[query_name]
-            if local_query.query != graph_query.query.value:
+            if local_query != graph_query.query.value:
                 await self.log.info(
                     f"New version of the Graphql Query {query_name!r} found, updating",
                     repository=self.name,
                     branch=branch_name,
                     commit=commit,
                 )
-                graph_query.query.value = local_query.query
+                graph_query.query.value = local_query
                 await graph_query.save()
 
         for query_name in only_graph:
@@ -1096,19 +1091,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
-
-    async def find_graphql_queries(self, commit: str) -> list[GraphQLQueryInformation]:
-        """Return the information about all GraphQL Queries present in a specific commit."""
-        queries: list[GraphQLQueryInformation] = []
-        query_files = await self.find_files(extension=["gql"], commit=commit)
-
-        for query_file in query_files:
-            queries.append(
-                GraphQLQueryInformation(
-                    name=query_file.stem, filename=query_file.name, query=query_file.read_text(encoding="UTF-8")
-                )
-            )
-        return queries
 
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
         commit_worktree = self.get_commit_worktree(commit=commit)
