@@ -28,7 +28,7 @@ export const GroupsManagerTriggerButton = ({
         tooltipContent={permission.write.message ?? "Manage groups"}
         onClick={() => setIsManageGroupsDrawerOpen(true)}
         variant="outline"
-        size="icon"
+        size="square"
         data-testid="manage-groups"
         {...props}>
         {props.children ?? <Icon icon="mdi:group" aria-hidden="true" />}
