@@ -55,7 +55,7 @@ def load_schemas_from_disk_and_exit(schemas: list[Path]):
         schemas_data = load_schemas_from_disk(schemas=schemas)
     except FileNotValidError as exc:
         console.print(f"[red]{exc.message}")
-        raise typer.Exit(2) from exc
+        raise typer.Exit(1) from exc
 
     for schema_file in schemas_data:
         if schema_file.valid and schema_file.content:
@@ -64,7 +64,7 @@ def load_schemas_from_disk_and_exit(schemas: list[Path]):
         has_error = True
 
     if has_error:
-        raise typer.Exit(2)
+        raise typer.Exit(1)
 
     return schemas_data
 
@@ -82,7 +82,7 @@ def validate_schema_content_and_exit(client: InfrahubClient, schemas: list[Schem
                 console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
 
     if has_error:
-        raise typer.Exit(2)
+        raise typer.Exit(1)
 
 
 def display_schema_load_errors(response: dict[str, Any], schemas_data: list[dict]) -> None:
