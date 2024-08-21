@@ -35,21 +35,21 @@ async def validate_schema(schema: Path, _: str = CONFIG_PARAM) -> None:
     """Validate the format of a schema file either in JSON or YAML"""
 
     try:
-        schema_data = yaml.safe_load(schema.read_text())
+        schema_data = yaml.safe_load(schema.read_text()) or {}
     except JSONDecodeError as exc:
         console.print("[red]Invalid JSON file")
-        raise typer.Exit(2) from exc
+        raise typer.Exit(1) from exc
 
     client = await initialize_client()
 
     try:
         client.schema.validate(schema_data)
     except ValidationError as exc:
-        console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s)")
+        console.print(f"[red]Schema not valid, found {len(exc.errors())} error(s)")
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]
             console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
-        raise typer.Exit(2)
+        raise typer.Exit(1)
 
     console.print("[green]Schema is valid !!")
 
