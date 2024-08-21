@@ -11,8 +11,6 @@ import {
   DiffFilter,
   ProposedChangesDiffSummary,
 } from "../../proposed-changes/diff-summary";
-import { Badge } from "@/components/ui/badge";
-import { Icon } from "@iconify-icon/react";
 import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/getProposedChangesDiffTree";
 import { DiffNode } from "./node";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -83,21 +81,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   return (
     <>
       <div className="flex items-center justify-between p-2 bg-custom-white">
-        <div className="flex gap-2">
-          <div className="mr-4">
-            <ProposedChangesDiffSummary branch={branch} filters={filters} />
-          </div>
-
-          <Badge variant={"green"}>
-            <Icon icon="mdi:layers-triple" className="mr-1" />
-            main
-          </Badge>
-
-          <Badge variant={"blue"}>
-            <Icon icon="mdi:layers-triple" className="mr-1" />
-            {branch}
-          </Badge>
-        </div>
+        <ProposedChangesDiffSummary branch={branch} filters={filters} />
 
         {!branchName && (
           <div className="flex gap-2">

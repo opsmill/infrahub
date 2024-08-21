@@ -1,12 +1,18 @@
 import { capitalizeFirstLetter } from "@/utils/string";
-import { BadgeAdd, BadgeRemove, BadgeType, BadgeUnchange, BadgeUpdate } from "../ui/badge";
+import {
+  BadgeAdded,
+  BadgeRemoved,
+  BadgeType,
+  BadgeUnchanged,
+  BadgeUpdated,
+} from "../../proposed-changes/badge";
 import { ReactElement, ReactNode } from "react";
 
 export const diffBadges: { [key: string]: BadgeType } = {
-  ADDED: BadgeAdd,
-  UPDATED: BadgeUpdate,
-  REMOVED: BadgeRemove,
-  UNCHANGED: BadgeUnchange,
+  ADDED: BadgeAdded,
+  UPDATED: BadgeUpdated,
+  REMOVED: BadgeRemoved,
+  UNCHANGED: BadgeUnchanged,
 };
 
 type DiffTitleProps = {

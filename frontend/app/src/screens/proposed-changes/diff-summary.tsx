@@ -1,9 +1,11 @@
 import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "../errors/error-screen";
-import { BadgeAdd, BadgeConflict, BadgeRemove, BadgeUpdate } from "../diff/ui/badge";
+import { BadgeAdded, BadgeConflict, BadgeRemoved, BadgeUpdated } from "./badge";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
+import { classNames } from "@/utils/common";
 
 export type DiffFilter = {
   namespace?: {
@@ -53,31 +55,38 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
   }
 
   return (
-    <div className="flex gap-2">
-      <BadgeAdd
-        loading={!branch || loading}
+    <div className="flex items-center gap-2 shrink-0">
+      <FilterButton
         onClick={() => handleFilter(diffActions.ADDED)}
-        active={qsp === diffActions.ADDED}>
-        {data?.DiffTreeSummary?.num_added}
-      </BadgeAdd>
-      <BadgeRemove
-        loading={!branch || loading}
+        muted={!!qsp && qsp !== diffActions.ADDED}>
+        <BadgeAdded>{data?.DiffTreeSummary?.num_added}</BadgeAdded>
+      </FilterButton>
+
+      <FilterButton
         onClick={() => handleFilter(diffActions.REMOVED)}
-        active={qsp === diffActions.REMOVED}>
-        {data?.DiffTreeSummary?.num_removed}
-      </BadgeRemove>
-      <BadgeUpdate
-        loading={!branch || loading}
+        muted={!!qsp && qsp !== diffActions.REMOVED}>
+        <BadgeRemoved>{data?.DiffTreeSummary?.num_removed}</BadgeRemoved>
+      </FilterButton>
+
+      <FilterButton
         onClick={() => handleFilter(diffActions.UPDATED)}
-        active={qsp === diffActions.UPDATED}>
-        {data?.DiffTreeSummary?.num_updated}
-      </BadgeUpdate>
-      <BadgeConflict
-        loading={!branch || loading}
+        muted={!!qsp && qsp !== diffActions.UPDATED}>
+        <BadgeUpdated>{data?.DiffTreeSummary?.num_updated}</BadgeUpdated>
+      </FilterButton>
+
+      <FilterButton
         onClick={() => handleFilter(diffActions.CONFLICT)}
-        active={qsp === diffActions.CONFLICT}>
-        {data?.DiffTreeSummary?.num_conflicts}
-      </BadgeConflict>
+        muted={!!qsp && qsp !== diffActions.CONFLICT}>
+        <BadgeConflict>{data?.DiffTreeSummary?.num_conflicts}</BadgeConflict>
+      </FilterButton>
     </div>
   );
 };
+
+export const FilterButton = ({ muted, ...props }: ButtonProps & { muted?: boolean }) => (
+  <Button
+    {...props}
+    variant="ghost"
+    className={classNames("rounded-full p-0 h-auto", muted && "opacity-60")}
+  />
+);
