@@ -249,13 +249,14 @@ class ObjectConflict(BaseModel):
     type: str
     kind: str
     id: str
+    conflict_id: str | None = None
 
     @property
     def label(self) -> str:
         return f"{self.name} ({self.id})"
 
     def to_conflict_dict(self) -> dict[str, Any]:
-        return self.model_dump()
+        return self.model_dump(exclude={"conflict_id"})
 
 
 class DataConflict(ObjectConflict):

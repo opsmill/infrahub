@@ -70,7 +70,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
         if context.service:
             message_list = [
-                messages.RequestDiffUpdate(branch_name=source_branch.name),
                 messages.RequestProposedChangePipeline(
                     proposed_change=proposed_change.id,
                     source_branch=source_branch.name,

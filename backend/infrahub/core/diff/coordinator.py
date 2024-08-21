@@ -9,10 +9,12 @@ from .model.path import BranchTrackingId, EnrichedDiffRoot, NameTrackingId, Time
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
 
     from .calculator import DiffCalculator
     from .combiner import DiffCombiner
     from .conflicts_enricher import ConflictsEnricher
+    from .data_check_synchronizer import DiffDataCheckSynchronizer
     from .enricher.aggregated import AggregatedDiffEnricher
     from .enricher.summary_counts import DiffSummaryCountsEnricher
     from .repository.repository import DiffRepository
@@ -39,6 +41,7 @@ class DiffCoordinator:
         diff_combiner: DiffCombiner,
         conflicts_enricher: ConflictsEnricher,
         summary_counts_enricher: DiffSummaryCountsEnricher,
+        data_check_synchronizer: DiffDataCheckSynchronizer,
     ) -> None:
         self.diff_repo = diff_repo
         self.diff_calculator = diff_calculator
@@ -46,6 +49,7 @@ class DiffCoordinator:
         self.diff_combiner = diff_combiner
         self.conflicts_enricher = conflicts_enricher
         self.summary_counts_enricher = summary_counts_enricher
+        self.data_check_synchronizer = data_check_synchronizer
         self._enriched_diff_cache: dict[EnrichedDiffRequest, EnrichedDiffRoot] = {}
 
     async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
@@ -139,7 +143,12 @@ class DiffCoordinator:
         for enriched_diff in aggregated_diffs_by_branch_name.values():
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diff)
             await self.diff_repo.save(enriched_diff=enriched_diff)
-        return aggregated_diffs_by_branch_name[diff_branch.name]
+        branch_enriched_diff = aggregated_diffs_by_branch_name[diff_branch.name]
+        await self._update_core_data_checks(enriched_diff=enriched_diff)
+        return branch_enriched_diff
+
+    async def _update_core_data_checks(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
+        return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
     async def _get_enriched_diff(self, diff_request: EnrichedDiffRequest) -> EnrichedDiffRoot:
         if diff_request in self._enriched_diff_cache:
