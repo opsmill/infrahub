@@ -28,7 +28,7 @@ type tChecksSummaryProps = {
 export const ChecksSummary = (props: tChecksSummaryProps) => {
   const { isLoading, validators, refetch } = props;
 
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const schemaList = useAtomValue(genericsState);
   const auth = useAuth();
@@ -49,7 +49,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
   const handleRetry = async (validator: string) => {
     const runParams = {
-      id: proposedchange,
+      id: proposedChangeId,
       check_type: VALIDATIONS_ENUM_MAP[validator],
     };
 

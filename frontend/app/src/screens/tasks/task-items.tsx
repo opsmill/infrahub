@@ -22,7 +22,7 @@ interface TaskItemsProps {
 }
 
 export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) => {
-  const { objectid, proposedchange } = useParams();
+  const { objectid, proposedChangeId } = useParams();
   const location = useLocation();
   const [pagination] = usePagination();
 
@@ -38,7 +38,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
   const queryString = getTasksItems({
     kind: TASK_OBJECT,
-    relatedNode: objectid || proposedchange,
+    relatedNode: objectid || proposedChangeId,
     filters: filtersString,
   });
 
@@ -87,12 +87,12 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
   ].filter((v): v is tColumn => !!v);
 
   const getUrl = (id: string) => {
-    if (!objectid && !proposedchange) {
+    if (!objectid && !proposedChangeId) {
       return constructPath(`/tasks/${id}`);
     }
 
     const url = constructPath(pathname, [
-      { name: proposedchange ? QSP.PROPOSED_CHANGES_TAB : QSP.TAB, value: TASK_TAB },
+      { name: proposedChangeId ? QSP.PROPOSED_CHANGES_TAB : QSP.TAB, value: TASK_TAB },
       { name: QSP.TASK_ID, value: id },
     ]);
 

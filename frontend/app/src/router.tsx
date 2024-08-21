@@ -68,7 +68,7 @@ export const router = createBrowserRouter([
             lazy: () => import("@/pages/proposed-changes/new"),
           },
           {
-            path: "/proposed-changes/:proposedchange",
+            path: "/proposed-changes/:proposedChangeId",
             lazy: () => import("@/pages/proposed-changes/details"),
           },
           {

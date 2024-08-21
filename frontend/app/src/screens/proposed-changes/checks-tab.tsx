@@ -6,10 +6,10 @@ import { gql } from "@apollo/client";
 import { useParams } from "react-router-dom";
 
 export const ProposedChangesChecksTab = () => {
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
 
   const queryString = getProposedChangesChecks({
-    id: proposedchange,
+    id: proposedChangeId,
     kind: PROPOSED_CHANGES_OBJECT,
   });
 

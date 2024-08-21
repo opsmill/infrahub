@@ -25,7 +25,7 @@ type tDiffThread = {
 export const DiffThread = (props: tDiffThread) => {
   const { path } = props;
 
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
   const [schemaList] = useAtom(schemaState);
   const auth = useAuth();
   const { node, currentBranch } = useContext(DiffContext);
@@ -35,7 +35,7 @@ export const DiffThread = (props: tDiffThread) => {
 
   const queryString = schemaData
     ? getProposedChangesObjectThreads({
-        id: proposedchange,
+        id: proposedChangeId,
         path,
         kind: schemaData.kind,
       })

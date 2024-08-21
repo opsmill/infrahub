@@ -54,7 +54,7 @@ type tConversations = {
 
 export const Conversations = forwardRef((props: tConversations, ref) => {
   const { refetch: detailsRefetch } = props;
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
   const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -67,7 +67,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
   const formRef = useRef<FormRef>(null);
 
   const queryString = getProposedChangesThreads({
-    id: proposedchange,
+    id: proposedChangeId,
     kind: PROPOSED_CHANGES_THREAD_OBJECT,
     accountKind: ACCOUNT_OBJECT,
   });
@@ -113,7 +113,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
 
       const newThread = {
         change: {
-          id: proposedchange,
+          id: proposedChangeId,
         },
         label: {
           value: "Conversation",
@@ -225,7 +225,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       const mutationString = updateObjectWithId({
         kind: PROPOSED_CHANGES_OBJECT,
         data: stringifyWithoutQuotes({
-          id: proposedchange,
+          id: proposedChangeId,
           ...data,
         }),
       });
@@ -270,7 +270,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       const stateMutationString = updateObjectWithId({
         kind: PROPOSED_CHANGES_OBJECT,
         data: stringifyWithoutQuotes({
-          id: proposedchange,
+          id: proposedChangeId,
           ...stateData,
         }),
       });
@@ -316,7 +316,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       const mutationString = updateObjectWithId({
         kind: PROPOSED_CHANGES_OBJECT,
         data: stringifyWithoutQuotes({
-          id: proposedchange,
+          id: proposedChangeId,
           ...data,
         }),
       });
@@ -402,7 +402,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
 
   const row = {
     values: {
-      id: proposedchange,
+      id: proposedChangeId,
       name: proposedChangesDetails?.name?.value,
       description: proposedChangesDetails?.description?.value,
       state: <Badge type={getProposedChangesStateBadgeType(state)}>{state}</Badge>,

@@ -32,9 +32,8 @@ export const PROPOSED_CHANGES_TABS = {
 };
 
 const ProposedChangesDetailsPage = () => {
-  const { proposedchange } = useParams();
-  const location = useLocation();
-  const { pathname } = location;
+  const { proposedChangeId } = useParams();
+  const { pathname } = useLocation();
   const [qspTab, setQspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [schemaList] = useAtom(schemaState);
@@ -51,7 +50,7 @@ const ProposedChangesDetailsPage = () => {
 
   const queryString = schemaData
     ? getProposedChanges({
-        id: proposedchange,
+        id: proposedChangeId,
         kind: schemaData.kind,
         attributes: schemaData.attributes,
         relationships,
@@ -69,8 +68,8 @@ const ProposedChangesDetailsPage = () => {
     skip: !schemaData,
     notifyOnNetworkStatusChange: true,
     variables: {
-      id: proposedchange,
-      nodeId: proposedchange, // Used for tasks, which is a different type
+      id: proposedChangeId,
+      nodeId: proposedChangeId, // Used for tasks, which is a different type
     },
   });
 

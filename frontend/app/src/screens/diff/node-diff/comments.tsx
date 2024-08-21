@@ -33,7 +33,7 @@ type tDiffComments = {
 export const DiffComments = (props: tDiffComments) => {
   const { path, refetch: parentRefetch } = props;
 
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
   const [schemaList] = useAtom(schemaState);
   const auth = useAuth();
   const branch = useAtomValue(currentBranchAtom);
@@ -46,7 +46,7 @@ export const DiffComments = (props: tDiffComments) => {
 
   const queryString = schemaData
     ? getProposedChangesObjectThreadComments({
-        id: proposedchange,
+        id: proposedChangeId,
         path,
         kind: schemaData.kind,
       })
@@ -86,7 +86,7 @@ export const DiffComments = (props: tDiffComments) => {
 
       const newThread = {
         change: {
-          id: proposedchange,
+          id: proposedChangeId,
         },
         label: {
           value: label,

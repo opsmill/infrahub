@@ -51,7 +51,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
 };
 
 export const NodeDiff = ({ filters }: NodeDiffProps) => {
-  const { "*": branchName, proposedchange } = useParams();
+  const { "*": branchName, proposedChangeId } = useParams();
   const [qsp] = useQueryParam(QSP.STATUS, StringParam);
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -97,7 +97,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
       const mutationString = updateObjectWithId({
         kind: PROPOSED_CHANGES_OBJECT,
         data: stringifyWithoutQuotes({
-          id: proposedchange,
+          id: proposedChangeId,
           ...data,
         }),
       });
@@ -141,7 +141,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
       const stateMutationString = updateObjectWithId({
         kind: PROPOSED_CHANGES_OBJECT,
         data: stringifyWithoutQuotes({
-          id: proposedchange,
+          id: proposedChangeId,
           ...stateData,
         }),
       });
@@ -185,7 +185,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
       const mutationString = updateObjectWithId({
         kind: PROPOSED_CHANGES_OBJECT,
         data: stringifyWithoutQuotes({
-          id: proposedchange,
+          id: proposedChangeId,
           ...data,
         }),
       });
