@@ -134,20 +134,8 @@ export default function ObjectItemDetails({
         <Tabs
           tabs={tabs}
           rightItems={
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {schema.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
-
-              <ButtonWithTooltip
-                disabled={!permission.write.allow}
-                tooltipEnabled
-                tooltipContent={permission.write.message ?? "Edit object"}
-                onClick={() => setShowEditDrawer(true)}
-                className="rounded-full text-custom-blue-600 p-4"
-                variant={"outline"}
-                size={"icon"}
-                data-testid="edit-button">
-                <Icon icon="mdi:pencil" className="" aria-hidden="true" />
-              </ButtonWithTooltip>
 
               {!schema.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
                 <GroupsManagerTriggerButton
@@ -156,6 +144,15 @@ export default function ObjectItemDetails({
                   className="text-custom-blue-600 p-4"
                 />
               )}
+
+              <ButtonWithTooltip
+                disabled={!permission.write.allow}
+                tooltipEnabled
+                tooltipContent={permission.write.message ?? "Edit object"}
+                onClick={() => setShowEditDrawer(true)}
+                data-testid="edit-button">
+                <Icon icon="mdi:pencil" className="mr-1.5" aria-hidden="true" /> Edit {schema.label}
+              </ButtonWithTooltip>
 
               {!isGeneric(schema) && schema.inherit_from?.includes(GENERIC_REPOSITORY_KIND) && (
                 <RepositoryActionMenu repositoryId={objectDetailsData.id} />

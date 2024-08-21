@@ -31,10 +31,10 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="z-10">
+      <DropdownMenuContent align="end" className="z-10">
         <DropdownMenuItem disabled={!documentationUrl} asChild>
           <Link to={docFullUrl} target="_blank" className="flex gap-2">
-            <Icon icon="mdi:book-open-variant-outline" className="text-lg text-custom-blue-700" />
+            <Icon icon="mdi:book-open-variant-outline" className="text-lg" />
             Documentation
             <Icon icon="mdi:open-in-new" />
           </Link>
@@ -44,7 +44,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
           <Link
             to={constructPath("/schema", [{ name: "kind", value: kind }])}
             className="flex gap-2">
-            <Icon icon="mdi:code-json" className="text-lg text-custom-blue-700" />
+            <Icon icon="mdi:code-json" className="text-lg" />
             Schema
           </Link>
         </DropdownMenuItem>

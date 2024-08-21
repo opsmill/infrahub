@@ -9,6 +9,7 @@ from infrahub.core.diff.model.path import (
     DiffRoot,
     DiffSingleRelationship,
     EnrichedDiffAttribute,
+    EnrichedDiffConflict,
     EnrichedDiffNode,
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
@@ -17,7 +18,11 @@ from infrahub.core.diff.model.path import (
 )
 
 
-class EnrichedPropertyFactory(DataclassFactory[EnrichedDiffProperty]): ...
+class EnrichedConflictFactory(DataclassFactory[EnrichedDiffConflict]): ...
+
+
+class EnrichedPropertyFactory(DataclassFactory[EnrichedDiffProperty]):
+    conflict = None
 
 
 class EnrichedAttributeFactory(DataclassFactory[EnrichedDiffAttribute]):
@@ -46,6 +51,7 @@ class EnrichedRelationshipElementFactory(DataclassFactory[EnrichedDiffSingleRela
     num_removed = 0
     num_conflicts = 0
     contains_conflict = False
+    conflict = None
 
 
 class EnrichedNodeFactory(DataclassFactory[EnrichedDiffNode]):
@@ -55,6 +61,7 @@ class EnrichedNodeFactory(DataclassFactory[EnrichedDiffNode]):
     num_removed = 0
     num_conflicts = 0
     contains_conflict = False
+    conflict = None
 
 
 class EnrichedRootFactory(DataclassFactory[EnrichedDiffRoot]):

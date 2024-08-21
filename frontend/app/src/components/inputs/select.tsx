@@ -79,6 +79,7 @@ export type SelectProps = {
   isOptional?: boolean;
   isUnique?: boolean;
   isInherited?: boolean;
+  placeholder?: string;
 };
 
 export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
@@ -99,6 +100,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     enum: enumBoolean,
     field,
     schema,
+    placeholder,
     preventEmpty,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     isOptional, // Avoid proving useless props
@@ -882,6 +884,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
               onChange={handleInputChange}
               onFocus={handleFocus}
               disabled={disabled}
+              placeholder={placeholder}
               error={error}
               className={"pr-8"}
               style={getInputStyle()}

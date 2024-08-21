@@ -1,5 +1,5 @@
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Iterable
 from uuid import uuid4
 
@@ -8,6 +8,7 @@ from infrahub.core.constants import DiffAction, RelationshipCardinality
 
 from .model.path import (
     EnrichedDiffAttribute,
+    EnrichedDiffConflict,
     EnrichedDiffNode,
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
@@ -103,6 +104,26 @@ class DiffCombiner:
             combined_action = DiffAction.UNCHANGED
         return combined_action
 
+    def _combine_conflicts(
+        self, earlier: EnrichedDiffConflict | None, later: EnrichedDiffConflict | None
+    ) -> EnrichedDiffConflict | None:
+        if later is None:
+            return None
+        if earlier is None:
+            return deepcopy(later)
+        combined = replace(later, uuid=earlier.uuid, selected_branch=None)
+        # only pass the conflict selection to the combined conflict in this one case
+        if (
+            earlier.diff_branch_value == later.diff_branch_value
+            and earlier.base_branch_value == later.base_branch_value
+            and earlier.selected_branch is not None
+            and later.selected_branch is None
+        ):
+            combined.selected_branch = earlier.selected_branch
+        else:
+            combined.selected_branch = later.selected_branch
+        return combined
+
     def _combine_properties(
         self, earlier_properties: set[EnrichedDiffProperty], later_properties: set[EnrichedDiffProperty]
     ) -> set[EnrichedDiffProperty]:
@@ -117,6 +138,9 @@ class DiffCombiner:
             later_property = later_props_by_type[earlier_property.property_type]
             if not self._should_include(earlier=earlier_property.action, later=later_property.action):
                 continue
+            combined_conflict = self._combine_conflicts(
+                earlier=earlier_property.conflict, later=later_property.conflict
+            )
             combined_property = EnrichedDiffProperty(
                 property_type=later_property.property_type,
                 changed_at=later_property.changed_at,
@@ -124,6 +148,7 @@ class DiffCombiner:
                 new_value=later_property.new_value,
                 path_identifier=later_property.path_identifier,
                 action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
+                conflict=combined_conflict,
             )
             combined_properties.add(combined_property)
         combined_properties |= {
@@ -182,6 +207,7 @@ class DiffCombiner:
             peer_label=final_element.peer_label,
             path_identifier=final_element.path_identifier,
             properties=combined_properties,
+            conflict=self._combine_conflicts(earlier=ordered_elements[0].conflict, later=final_element.conflict),
         )
 
     def _combined_cardinality_many_relationship_elements(
@@ -302,6 +328,9 @@ class DiffCombiner:
                     path_identifier=node_pair.later.path_identifier,
                     attributes=combined_attributes,
                     relationships=combined_relationships,
+                    conflict=self._combine_conflicts(
+                        earlier=node_pair.earlier.conflict, later=node_pair.later.conflict
+                    ),
                 )
             )
         return combined_nodes

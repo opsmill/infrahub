@@ -47,7 +47,7 @@ export function ObjectDetailsPage() {
 
   return (
     <Content>
-      <Card className="pt-0">
+      <Card className="p-2 pt-0">
         <ObjectItemDetails
           schema={schema}
           objectDetailsData={objectDetailsData}

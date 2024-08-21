@@ -12,6 +12,7 @@ from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.graphql.enums import ConflictSelection
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -30,11 +31,6 @@ if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
-
-
-class ConflictSelection(GrapheneEnum):
-    BASE_BRANCH = "base"
-    DIFF_BRANCH = "diff"
 
 
 class ConflictDetails(ObjectType):
@@ -388,7 +384,6 @@ class DiffTreeResolver:
         context: GraphqlContext = info.context
         base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=context.db, branch=branch)
-        # diff_coordinator = await component_registry.get_component(DiffCoordinator, db=context.db, branch=diff_branch)
         diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
         branch_start_timestamp = Timestamp(diff_branch.get_created_at())
         if from_time:
