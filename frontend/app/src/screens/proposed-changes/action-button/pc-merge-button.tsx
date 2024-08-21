@@ -1,4 +1,4 @@
-import { Button } from "@/components/buttons/button-primitive";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -12,13 +12,18 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { usePermission } from "@/hooks/usePermission";
 
-interface PcMergeButtonProps {
+interface PcMergeButtonProps extends ButtonProps {
   proposedChangeId: string;
   state: "closed" | "open" | "merged";
   sourceBranch?: string;
 }
 
-export const PcMergeButton = ({ sourceBranch, proposedChangeId, state }: PcMergeButtonProps) => {
+export const PcMergeButton = ({
+  sourceBranch,
+  proposedChangeId,
+  state,
+  ...props
+}: PcMergeButtonProps) => {
   const [isLoadingMerge, setIsLoadingMerge] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -72,7 +77,8 @@ export const PcMergeButton = ({ sourceBranch, proposedChangeId, state }: PcMerge
       variant="active"
       onClick={handleMerge}
       isLoading={isLoadingMerge}
-      disabled={!permission.write.allow || state === "closed" || state === "merged"}>
+      disabled={!permission.write.allow || state === "closed" || state === "merged"}
+      {...props}>
       Merge
     </Button>
   );

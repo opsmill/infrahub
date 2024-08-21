@@ -1,4 +1,4 @@
-import { Button } from "@/components/buttons/button-primitive";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -12,12 +12,16 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { useAuth } from "@/hooks/useAuth";
 
-interface PcMergeButtonProps {
+interface PcMergeButtonProps extends ButtonProps {
   proposedChangeId: string;
   approvers: Array<any>;
 }
 
-export const PcApproveButton = ({ approvers = [], proposedChangeId }: PcMergeButtonProps) => {
+export const PcApproveButton = ({
+  approvers = [],
+  proposedChangeId,
+  ...props
+}: PcMergeButtonProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
@@ -77,7 +81,8 @@ export const PcApproveButton = ({ approvers = [], proposedChangeId }: PcMergeBut
       variant="outline"
       onClick={handleApprove}
       isLoading={isLoadingApprove}
-      disabled={!auth?.permissions?.write || !approverId || !canApprove}>
+      disabled={!auth?.permissions?.write || !approverId || !canApprove}
+      {...props}>
       Approve
     </Button>
   );

@@ -1,4 +1,4 @@
-import { Button } from "@/components/buttons/button-primitive";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import React, { useState } from "react";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
@@ -12,12 +12,12 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { usePermission } from "@/hooks/usePermission";
 
-interface PcCloseButtonProps {
+interface PcCloseButtonProps extends ButtonProps {
   proposedChangeId: string;
   state: "closed" | "open" | "merged";
 }
 
-export const PcCloseButton = ({ proposedChangeId, state }: PcCloseButtonProps) => {
+export const PcCloseButton = ({ proposedChangeId, state, ...props }: PcCloseButtonProps) => {
   const [isLoadingClose, setIsLoadingClose] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -77,7 +77,8 @@ export const PcCloseButton = ({ proposedChangeId, state }: PcCloseButtonProps) =
       variant="danger"
       onClick={handleClose}
       isLoading={isLoadingClose}
-      disabled={!permission.write.allow || state === "merged"}>
+      disabled={!permission.write.allow || state === "merged"}
+      {...props}>
       {state === "closed" ? "Re-open" : "Close"}
     </Button>
   );
