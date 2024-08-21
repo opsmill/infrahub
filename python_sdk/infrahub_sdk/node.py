@@ -108,6 +108,8 @@ class Attribute:
                 data["value"] = f"${var_name}"
         elif isinstance(self.value, get_args(IP_TYPES)):
             data["value"] = self.value.with_prefixlen
+        elif isinstance(self.value, InfrahubNodeBase) and self.value.is_resource_pool():
+            data["from_pool"] = self.value.id
         else:
             data["value"] = self.value
 
