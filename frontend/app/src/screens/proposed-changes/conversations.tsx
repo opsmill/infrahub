@@ -21,13 +21,14 @@ import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql, NetworkStatus } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
-import { useRef } from "react";
+import { HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FormRef } from "@/components/ui/form";
 import { Card } from "@/components/ui/card";
+import { classNames } from "@/utils/common";
 
-export const Conversations = () => {
+export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -166,7 +167,7 @@ export const Conversations = () => {
   };
 
   return (
-    <div className="flex-grow space-y-4 min-w-[350px]">
+    <div className={classNames("flex-grow space-y-4 min-w-[350px]", className)} {...props}>
       {threads.map((item: any, index: number) => (
         <Thread key={index} thread={item} refetch={refetch} displayContext />
       ))}
