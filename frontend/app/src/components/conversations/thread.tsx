@@ -200,13 +200,13 @@ export const Thread = (props: tThread) => {
     <section
       className={classNames(
         isResolved ? "bg-gray-200" : "bg-custom-white",
-        "p-4 m-4 rounded-lg relative"
+        "p-4 rounded-lg relative"
       )}
       data-testid="thread"
       data-cy="thread">
       {displayContext && getThreadTitle(thread)}
 
-      <div className="">
+      <div>
         {sortedComments.map((comment: any, index: number) => (
           <Comment
             key={index}
