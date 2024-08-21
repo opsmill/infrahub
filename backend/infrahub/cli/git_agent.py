@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import signal
 from typing import TYPE_CHECKING, Any
 
@@ -70,6 +71,9 @@ async def start(
     logging.getLogger("git").setLevel(logging.ERROR)
 
     log.debug(f"Config file : {config_file}")
+    # Prevent git from interactively prompting the user for passwords if the credentials provided
+    # by the credential helper is failing.
+    os.environ["GIT_TERMINAL_PROMPT"] = "0"
 
     context: CliContext = ctx.obj
 
