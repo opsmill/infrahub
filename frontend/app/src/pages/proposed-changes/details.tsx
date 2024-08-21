@@ -96,9 +96,9 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
     default: {
       return (
         <div className="flex flex-wrap p-2 gap-2 items-start">
-          <Conversations />
-
           <ProposedChangeDetails />
+
+          <Conversations />
         </div>
       );
     }
