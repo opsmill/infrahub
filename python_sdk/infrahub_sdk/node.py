@@ -133,6 +133,12 @@ class Attribute:
 
         return data
 
+    def _generate_mutation_query(self) -> dict[str, Any]:
+        if isinstance(self.value, InfrahubNodeBase) and self.value.is_resource_pool():
+            # If it points to a pool, ask for the value of the pool allocated resource
+            return {self.name: {"value": None}}
+        return {}
+
 
 class RelatedNodeBase:
     """Base class for representing a related node in a relationship."""
@@ -1299,6 +1305,10 @@ class InfrahubNode(InfrahubNodeBase):
     def _generate_mutation_query(self) -> dict[str, Any]:
         query_result = {"ok": None, "object": {"id": None}}
 
+        for attr_name in self._attributes:
+            attr = getattr(self, attr_name)
+            query_result["object"].update(attr._generate_mutation_query())  # type: ignore[union-attr]
+
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if not isinstance(rel, RelatedNode):
@@ -1312,6 +1322,18 @@ class InfrahubNode(InfrahubNodeBase):
         object_response: dict[str, Any] = response[mutation_name]["object"]
         self.id = object_response["id"]
         self._existing = True
+
+        for attr_name in self._attributes:
+            attr = getattr(self, attr_name)
+            if (
+                attr_name not in object_response
+                or not isinstance(attr.value, InfrahubNodeBase)
+                or not attr.value.is_resource_pool()
+            ):
+                continue
+
+            # Process allocated resource from a pool and update attribute
+            attr.value = object_response[attr_name]
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
@@ -1760,6 +1782,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
     def _generate_mutation_query(self) -> dict[str, Any]:
         query_result = {"ok": None, "object": {"id": None}}
 
+        for attr_name in self._attributes:
+            attr = getattr(self, attr_name)
+            query_result["object"].update(attr._generate_mutation_query())  # type: ignore[union-attr]
+
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if not isinstance(rel, RelatedNodeSync):
@@ -1773,6 +1799,18 @@ class InfrahubNodeSync(InfrahubNodeBase):
         object_response: dict[str, Any] = response[mutation_name]["object"]
         self.id = object_response["id"]
         self._existing = True
+
+        for attr_name in self._attributes:
+            attr = getattr(self, attr_name)
+            if (
+                attr_name not in object_response
+                or not isinstance(attr.value, InfrahubNodeBase)
+                or not attr.value.is_resource_pool()
+            ):
+                continue
+
+            # Process allocated resource from a pool and update attribute
+            attr.value = object_response[attr_name]["value"]
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
