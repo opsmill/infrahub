@@ -117,14 +117,21 @@ class DiffPropertyIntermediate:
                 previous = lone_value.value
             return (action, lone_value.changed_at, previous, new)
         previous_value = ordered_values[0].value
+        previous_status = ordered_values[0].status
         new_diff_value = ordered_values[-1]
         new_value = new_diff_value.value
+        new_status = new_diff_value.status
         action = DiffAction.UPDATED
         if previous_value in (None, "NULL") and new_value not in (None, "NULL"):
             action = DiffAction.ADDED
-        if previous_value not in (None, "NULL") and new_value in (None, "NULL"):
+        elif (previous_value not in (None, "NULL") and new_value in (None, "NULL")) or (
+            previous_status,
+            new_status,
+        ) == (RelationshipStatus.ACTIVE, RelationshipStatus.DELETED):
             action = DiffAction.REMOVED
-        if previous_value == new_value or {previous_value, new_value} <= {None, "NULL"}:
+            if new_value != "NULL":
+                new_value = None
+        elif previous_value == new_value or {previous_value, new_value} <= {None, "NULL"}:
             action = DiffAction.UNCHANGED
         return (action, new_diff_value.changed_at, previous_value, new_value)
 
@@ -144,6 +151,11 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
     uuid: str
     name: str
     properties_by_type: dict[DatabaseEdgeType, DiffPropertyIntermediate] = field(default_factory=dict)
+
+    def track_database_path(self, database_path: DatabasePath) -> None:
+        if database_path.attribute_changed_at in self.timestamp_status_map:
+            return
+        self.timestamp_status_map[database_path.attribute_changed_at] = database_path.attribute_status
 
     def to_diff_attribute(self, from_time: Timestamp) -> DiffAttribute:
         properties = [prop.to_diff_property(from_time=from_time) for prop in self.properties_by_type.values()]
