@@ -25,15 +25,20 @@ import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab"
 import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-change-details";
 import { Conversations } from "@/screens/proposed-changes/conversations";
 import { NetworkStatus } from "@apollo/client";
+import { CoreProposedChange } from "@/generated/graphql";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
 };
 
-const ProposedChangesDetailsPage = ({ proposedChange: result, taskCount }) => {
+interface ProposedChangesDetailsPageProps {
+  proposedChangeData: CoreProposedChange;
+}
+
+const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDetailsPageProps) => {
   const { pathname } = useLocation();
-  const [qspTab, setQspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
-  const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
+  const [qspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
   useTitle(
     `${
@@ -41,7 +46,7 @@ const ProposedChangesDetailsPage = ({ proposedChange: result, taskCount }) => {
     }Proposed change - Infrahub`
   );
 
-  if (result) setProposedChange(result);
+  if (proposedChangeData) setProposedChange(proposedChangeData);
 
   switch (qspTab) {
     case DIFF_TABS.FILES:
@@ -164,16 +169,14 @@ export function Component() {
     <Content>
       <Content.Title
         title={
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Link className="no-underline hover:underline" to={constructPath("/proposed-changes")}>
               Proposed changes
             </Link>
 
-            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
+            <Icon icon="mdi:chevron-right" />
 
-            <p className="max-w-2xl text-sm text-gray-500 font-normal">
-              {proposedChangesData.display_label}
-            </p>
+            <span>{proposedChangesData.display_label}</span>
           </div>
         }
         reload={() => client.reFetchObservableQueries()}
@@ -181,7 +184,7 @@ export function Component() {
       />
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      <ProposedChangesDetailsPage proposedChange={proposedChangesData} />
+      <ProposedChangeDetailsContent proposedChangeData={proposedChangesData} />
     </Content>
   );
 }
