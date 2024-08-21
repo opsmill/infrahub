@@ -1,12 +1,12 @@
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
-from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager

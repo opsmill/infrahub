@@ -1,12 +1,12 @@
 from typing import Any
 from unittest.mock import AsyncMock
 
-from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters, DiffSummaryQuery, EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
