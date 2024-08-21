@@ -59,6 +59,24 @@ def person_name_node_diff(
                 property_name="unique",
             ),
         ),
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.inherit_from.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind="TestPerson",
+                field_name="inherit_from",
+                property_name="inherit_from",
+            ),
+        ),
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.inherit_from.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind="TestCar",
+                field_name="inherit_from",
+                property_name="inherit_from",
+            ),
+        ),
     }
     return node_diff, schema_updated_constraint_infos
 
