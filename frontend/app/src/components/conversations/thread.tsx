@@ -181,7 +181,7 @@ export const Thread = (props: tThread) => {
       <Checkbox
         id={idForLabel}
         disabled={isResolved}
-        enabled={isResolved || markAsResolved}
+        checked={isResolved || markAsResolved}
         onChange={() => setConfirmModal(true)}
       />
       <label htmlFor={idForLabel} className={isResolved ? "cursor-default" : "cursor-pointer"}>
