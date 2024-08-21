@@ -5,15 +5,13 @@ from typing import TYPE_CHECKING, Any
 from graphene import Field, Int, List, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.registry import registry
+from infrahub.core.protocols import InternalAccountToken
 from infrahub.exceptions import PermissionDeniedError
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.protocols import InternalAccountToken
     from infrahub.graphql import GraphqlContext
 
 
@@ -46,16 +44,15 @@ async def resolve_account_tokens(
     if not context.account_session.authenticated_by_jwt:
         raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
-    node_schema = registry.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
     fields = await extract_fields_first_node(info)
 
     filters = {"account__ids": [context.account_session.account_id]}
     response: dict[str, Any] = {}
     if "count" in fields:
-        response["count"] = await NodeManager.count(db=context.db, schema=node_schema, filters=filters)
+        response["count"] = await NodeManager.count(db=context.db, schema=InternalAccountToken, filters=filters)
     if "edges" in fields:
-        objs: List[InternalAccountToken] = await NodeManager.query(
-            db=context.db, schema=node_schema, filters=filters, limit=limit, offset=offset
+        objs = await NodeManager.query(
+            db=context.db, schema=InternalAccountToken, filters=filters, limit=limit, offset=offset
         )
         response["edges"] = [
             {"node": {"id": obj.id, "name": obj.name.value, "expiration": obj.expiration.value}} for obj in objs

@@ -168,7 +168,11 @@ junit_duration_report = "call"
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
-exclude = ["^backend/tests/scale", "^backend/tests/unit"]
+disable_error_code = ["type-abstract"]
+exclude = [
+    "^backend/tests/scale",
+    "^backend/tests/unit",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"
@@ -307,10 +311,6 @@ module = "infrahub.graphql.mutations.schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.query"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.resolver"
 ignore_errors = true
 
@@ -322,9 +322,6 @@ ignore_errors = true
 module = "infrahub.graphql.subscription"
 ignore_errors = true
 
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.subscription.graphql_query"
-ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.types.attribute"
