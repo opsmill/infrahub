@@ -1055,7 +1055,7 @@ class InfrahubNode(InfrahubNodeBase):
         self._client = client
         self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
 
-        if isinstance(data, dict) and "node" in data:
+        if isinstance(data, dict) and isinstance(data.get("node"), dict):
             data = data.get("node")
 
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
@@ -1536,7 +1536,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client
 
-        if isinstance(data, dict) and "node" in data:
+        if isinstance(data, dict) and isinstance(data.get("node"), dict):
             data = data.get("node")
 
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
