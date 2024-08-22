@@ -1,5 +1,5 @@
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
-import useQuery, { useMutation } from "@/hooks/useQuery";
+import useQuery from "@/hooks/useQuery";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
@@ -19,7 +19,6 @@ import NoDataFound from "@/screens/errors/no-data-found";
 import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
 import { PcMergeButton } from "@/screens/proposed-changes/action-button/pc-merge-button";
 import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";
-import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-update";
 
 export const DiffContext = createContext({});
 
@@ -50,10 +49,6 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const nodeSchemas = useAtomValue(schemaState);
 
   const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
-  const [scheduleDiffTreeUpdate, { called }] = useMutation(DIFF_UPDATE, {
-    variables: { branchName: branch },
-  });
-  if (!called) scheduleDiffTreeUpdate();
 
   const schemaData = nodeSchemas.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
