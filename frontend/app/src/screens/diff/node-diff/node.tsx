@@ -1,16 +1,13 @@
-import Accordion, { EmptyAccordion } from "@/components/display/accordion";
+import Accordion from "@/components/display/accordion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
-import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
 import { DiffNodeRelationship } from "./node-relationship";
-import { diffBadges, DiffTitle } from "./utils";
 import { DiffNodeAttribute } from "./node-attribute";
 import { DiffThread } from "./thread";
-import { capitalizeFirstLetter } from "@/utils/string";
-import { DiffBadgeProps } from "@/screens/diff/diff-badge";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
+import React from "react";
+import { DiffBadge } from "@/screens/diff/node-diff/utils";
 
 type DiffNodeProps = {
   node: any;
@@ -20,23 +17,6 @@ type DiffNodeProps = {
 
 export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProps) => {
   const { "*": branchName } = useParams();
-
-  const title = (
-    <DiffTitle containsConflict={node.contains_conflict} status={node.status}>
-      <div className="flex items-center">
-        <Badge variant="white">{node.kind}</Badge>
-
-        {node.label && (
-          <BadgeCircle type={CIRCLE_BADGE_TYPES.GHOST}>
-            <span className="mr-2 text-sm">{node.label}</span>
-            <CopyToClipboard text={node.label} />
-          </BadgeCircle>
-        )}
-
-        {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
-      </div>
-    </DiffTitle>
-  );
 
   return (
     <Card>
@@ -48,6 +28,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
                 <Badge variant="white">{node.kind}</Badge>
                 <span className="text-gray-800 font-medium px-2">{node.label}</span>
+                {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
               </div>
 
               <span>
@@ -70,18 +51,6 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
           ))}
         </Accordion>
       )}
-
-      {!node.attributes?.length && !node.relationships?.length && <EmptyAccordion title={title} />}
     </Card>
   );
-};
-
-const DiffBadge = ({ status, ...props }: DiffBadgeProps & { status: string }) => {
-  const DiffBadgeComp = diffBadges[status];
-
-  if (!DiffBadgeComp) {
-    return null;
-  }
-
-  return <DiffBadgeComp {...props}>{capitalizeFirstLetter(status)}</DiffBadgeComp>;
 };

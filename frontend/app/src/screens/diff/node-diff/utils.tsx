@@ -1,9 +1,16 @@
-import { capitalizeFirstLetter } from "@/utils/string";
-import { BadgeAdded, BadgeRemoved, BadgeType, BadgeUnchanged, BadgeUpdated } from "../diff-badge";
+import {
+  BadgeAdded,
+  BadgeRemoved,
+  BadgeType,
+  BadgeUnchanged,
+  BadgeUpdated,
+  DiffBadgeProps,
+} from "../diff-badge";
 import { ReactNode } from "react";
 import { DiffProperty } from "@/screens/diff/node-diff/types";
 import { classNames, warnUnexpectedType } from "@/utils/common";
 import Accordion from "@/components/display/accordion";
+import { capitalizeFirstLetter } from "@/utils/string";
 
 export const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdded,
@@ -12,24 +19,14 @@ export const diffBadges: { [key: string]: BadgeType } = {
   UNCHANGED: BadgeUnchanged,
 };
 
-type DiffTitleProps = {
-  status: string;
-  containsConflict?: boolean;
-  children?: ReactNode;
-};
+export const DiffBadge = ({ status, ...props }: DiffBadgeProps & { status: string }) => {
+  const DiffBadgeComp = diffBadges[status];
 
-export const DiffTitle = ({ status, containsConflict, children }: DiffTitleProps) => {
-  const DiffBadge = diffBadges[status];
+  if (!DiffBadgeComp) {
+    return null;
+  }
 
-  return (
-    <div className="flex items-center relative group">
-      <div className="flex min-w-[100px]">
-        <DiffBadge conflicts={containsConflict}>{capitalizeFirstLetter(status)}</DiffBadge>
-      </div>
-
-      {children}
-    </div>
-  );
+  return <DiffBadgeComp {...props}>{capitalizeFirstLetter(status)}</DiffBadgeComp>;
 };
 
 type DiffRowProps = {
