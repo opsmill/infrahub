@@ -71,15 +71,18 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
   return (
     <>
-      <div className="flex items-center justify-between p-2 bg-custom-white">
-        <ProposedChangesDiffSummary branch={branch} filters={filters} />
+      <div className="flex items-center p-2 bg-custom-white">
+        <div className="mr-2">
+          <ProposedChangesDiffSummary branch={branch} filters={filters} />
+        </div>
 
-        <div className="flex gap-2">
+        {!!nodes?.length && (
           <PcDiffUpdateButton
             size="sm"
+            time={data?.DiffTree?.to_time}
             sourceBranch={proposedChangesDetails?.source_branch?.value}
           />
-        </div>
+        )}
       </div>
 
       <div className="p-2.5 space-y-4">
@@ -93,7 +96,13 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
             />
           ))
         ) : (
-          <NoDataFound message="No diff to display." />
+          <div className="flex flex-col items-center justify-center">
+            <NoDataFound message="No diff to display. Try to manually load the latest changes." />
+            <PcDiffUpdateButton
+              size="sm"
+              sourceBranch={proposedChangesDetails?.source_branch?.value}
+            />
+          </div>
         )}
       </div>
     </>

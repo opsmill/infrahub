@@ -6,12 +6,15 @@ import { useMutation } from "@/hooks/useQuery";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { DateDisplay } from "@/components/display/date-display";
 
 interface PcDiffUpdateButtonProps extends ButtonProps {
-  sourceBranch: String;
+  sourceBranch: string;
+  time?: string;
+  hideText?: boolean;
 }
 
-export const PcDiffUpdateButton = ({ sourceBranch, ...props }: PcDiffUpdateButtonProps) => {
+export const PcDiffUpdateButton = ({ sourceBranch, time, ...props }: PcDiffUpdateButtonProps) => {
   const auth = useAuth();
   const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
 
@@ -29,10 +32,15 @@ export const PcDiffUpdateButton = ({ sourceBranch, ...props }: PcDiffUpdateButto
 
   return (
     <div className="flex items-center">
-      {/* <span className=" text-xs mr-1">last diff update</span> */}
+      {!!time && (
+        <div className="flex items-center text-xs mr-2">
+          <span className="mr-1">Updated</span>
+          <DateDisplay date={time} />
+        </div>
+      )}
 
       <Button
-        variant="primary"
+        variant="outline"
         onClick={handleSubmit}
         isLoading={isLoadingUpdate}
         disabled={!auth?.permissions?.write || isLoadingUpdate}
