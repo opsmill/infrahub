@@ -5,6 +5,7 @@ import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-upda
 import { useMutation } from "@/hooks/useQuery";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 
 interface PcDiffUpdateButtonProps extends ButtonProps {
   sourceBranch: String;
@@ -22,6 +23,7 @@ export const PcDiffUpdateButton = ({ sourceBranch, ...props }: PcDiffUpdateButto
     setIsLoadingUpdate(true);
     await scheduleDiffTreeUpdate();
     setIsLoadingUpdate(false);
+    await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
     toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
   };
 
