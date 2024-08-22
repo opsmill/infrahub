@@ -18,7 +18,7 @@ async def test_add_generic_success(db: InfrahubDatabase, default_branch: Branch,
     dog_schema.inherit_from.append("TestXXX")
     request = SchemaConstraintValidatorRequest(
         branch=branch,
-        constraint_name="node.generate_profile.update",
+        constraint_name="node.inherit_from.update",
         node_schema=dog_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestDog"),
     )
@@ -38,7 +38,7 @@ async def test_remove_generic_fail(db: InfrahubDatabase, default_branch: Branch,
     dog_schema.inherit_from = []
     request = SchemaConstraintValidatorRequest(
         branch=branch,
-        constraint_name="node.generate_profile.update",
+        constraint_name="node.inherit_from.update",
         node_schema=dog_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestDog"),
     )
