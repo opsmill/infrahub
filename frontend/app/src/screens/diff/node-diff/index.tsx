@@ -16,9 +16,6 @@ import { DiffNode } from "./node";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
 import NoDataFound from "@/screens/errors/no-data-found";
-import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
-import { PcMergeButton } from "@/screens/proposed-changes/action-button/pc-merge-button";
-import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";
 import { PcDiffUpdateButton } from "@/screens/proposed-changes/action-button/pc-diff-update-button";
 
 export const DiffContext = createContext({});
@@ -44,7 +41,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
 };
 
 export const NodeDiff = ({ filters }: NodeDiffProps) => {
-  const { "*": branchName, proposedChangeId } = useParams();
+  const { "*": branchName } = useParams();
   const [qsp] = useQueryParam(QSP.STATUS, StringParam);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const nodeSchemas = useAtomValue(schemaState);
@@ -52,8 +49,6 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
 
   const schemaData = nodeSchemas.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
-
-  const state = proposedChangesDetails?.state?.value;
 
   // Get filters merged with status filter
   const finalFilters = buildFilters(filters, qsp);
@@ -84,25 +79,6 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
             size="sm"
             sourceBranch={proposedChangesDetails?.source_branch?.value}
           />
-
-          {!branchName && (
-            <>
-              <PcApproveButton
-                size="sm"
-                proposedChangeId={proposedChangeId!}
-                approvers={
-                  proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? []
-                }
-              />
-              <PcMergeButton
-                size="sm"
-                sourceBranch={proposedChangesDetails?.source_branch?.value}
-                proposedChangeId={proposedChangeId!}
-                state={state}
-              />
-              <PcCloseButton size="sm" proposedChangeId={proposedChangeId!} state={state} />
-            </>
-          )}
         </div>
       </div>
 
