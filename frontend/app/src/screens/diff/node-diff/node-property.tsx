@@ -1,5 +1,3 @@
-import Accordion, { EmptyAccordion } from "@/components/display/accordion";
-
 import { Badge } from "@/components/ui/badge";
 import { useParams } from "react-router-dom";
 import { DiffThread } from "./thread";
@@ -44,12 +42,12 @@ const getNewValue = (property: DiffProperty) => {
 export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
   const { "*": branchName } = useParams();
 
-  const title = (
+  return (
     <DiffRow
       title={
-        <div className="flex items-center justify-between pl-8 pr-2">
+        <div className="flex items-center justify-between pr-2">
           <div className="flex items-center gap-2">
-            {formatPropertyName(property.property_type)} {property.status}
+            {formatPropertyName(property.property_type)}
             {property.conflict && <BadgeConflict>Conflict</BadgeConflict>}
           </div>
 
@@ -59,15 +57,8 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
         </div>
       }
       left={getPreviousValue(property)}
-      right={getNewValue(property)}
-    />
-  );
-
-  if (!property.conflict) return <EmptyAccordion title={title} iconClassName="text-transparent" />;
-
-  return (
-    <Accordion title={title}>
-      <Conflict conflict={property.conflict} />
-    </Accordion>
+      right={getNewValue(property)}>
+      {property.conflict && <Conflict conflict={property.conflict} />}
+    </DiffRow>
   );
 };

@@ -1,8 +1,9 @@
 import { capitalizeFirstLetter } from "@/utils/string";
 import { BadgeAdded, BadgeRemoved, BadgeType, BadgeUnchanged, BadgeUpdated } from "../diff-badge";
-import { ReactElement, ReactNode } from "react";
+import { ReactNode } from "react";
 import { DiffProperty } from "@/screens/diff/node-diff/types";
-import { warnUnexpectedType } from "@/utils/common";
+import { classNames, warnUnexpectedType } from "@/utils/common";
+import Accordion from "@/components/display/accordion";
 
 export const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdded,
@@ -31,33 +32,35 @@ export const DiffTitle = ({ status, containsConflict, children }: DiffTitleProps
   );
 };
 
-type DiffDisplayProps = {
-  left?: ReactElement;
-  right?: ReactElement;
-};
-
-export const DiffDisplay = ({ left, right }: DiffDisplayProps) => {
-  return (
-    <div className="flex h-8 bg-custom-white">
-      <div className="flex-1 px-2 bg-green-700/10">{left}</div>
-
-      <div className="flex-1 px-2 bg-custom-blue-700/10 ">{right}</div>
-    </div>
-  );
-};
 type DiffRowProps = {
-  title: ReactElement;
-  left: ReactElement;
-  right: ReactElement;
+  title: ReactNode;
+  left?: ReactNode;
+  right?: ReactNode;
+  hasConflicts?: boolean;
+  children?: ReactNode;
 };
-export const DiffRow = ({ title, left, right }: DiffRowProps) => {
+export const DiffRow = ({ children, hasConflicts, title, left, right }: DiffRowProps) => {
   return (
-    <div className="grid grid-cols-3 text-xs font-normal group">
-      {title}
+    <div className={classNames("bg-custom-white relative", hasConflicts && "bg-yellow-50")}>
+      {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
-      <div className="bg-green-700/10 p-2">{left}</div>
+      <Accordion
+        hideChevron={!children}
+        title={
+          <div
+            className={classNames(
+              "grid grid-cols-3 text-xs font-normal group",
+              !children && "pl-8"
+            )}>
+            {title}
 
-      <div className="bg-custom-blue-700/10 p-2">{right}</div>
+            <div className="bg-green-700/10 p-2">{left}</div>
+
+            <div className="bg-custom-blue-700/10 p-2">{right}</div>
+          </div>
+        }>
+        {children}
+      </Accordion>
     </div>
   );
 };
@@ -80,6 +83,8 @@ export const formatPropertyName = (name: DiffProperty["property_type"]) => {
       return "protected";
     case "IS_VISIBLE":
       return "visible";
+    case "IS_RELATED":
+      return "ID";
     default: {
       warnUnexpectedType(name);
       return name;
