@@ -19,14 +19,18 @@ export const diffBadges: { [key: string]: BadgeType } = {
   UNCHANGED: BadgeUnchanged,
 };
 
-export const DiffBadge = ({ status, ...props }: DiffBadgeProps & { status: string }) => {
+export const DiffBadge = ({
+  status,
+  icon,
+  ...props
+}: DiffBadgeProps & { status: string; icon?: boolean }) => {
   const DiffBadgeComp = diffBadges[status];
 
   if (!DiffBadgeComp) {
     return null;
   }
 
-  return <DiffBadgeComp {...props}>{capitalizeFirstLetter(status)}</DiffBadgeComp>;
+  return <DiffBadgeComp {...props}>{!icon && capitalizeFirstLetter(status)}</DiffBadgeComp>;
 };
 
 type DiffRowProps = {

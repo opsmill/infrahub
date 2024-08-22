@@ -1,6 +1,6 @@
 import { DiffNodeProperty } from "./node-property";
 import { DiffRelationshipElement } from "@/screens/diff/node-diff/types";
-import { DiffRow } from "@/screens/diff/node-diff/utils";
+import { DiffBadge, DiffRow } from "@/screens/diff/node-diff/utils";
 import { BadgeConflict } from "@/screens/diff/diff-badge";
 import { DiffThread } from "@/screens/diff/node-diff/thread";
 import { useParams } from "react-router-dom";
@@ -16,8 +16,8 @@ export const DiffNodeRelationshipElement = ({ element }: DiffNodeElementProps) =
     <DiffRow
       title={
         <div className="flex items-center justify-between pl-8 pr-2">
-          <div className="flex items-center gap-2 py-2">
-            {element.peer_label}
+          <div className="flex gap-1 py-2">
+            <DiffBadge icon status={element.status} className="p-0.5" /> {element.peer_label}
             {element.conflict && <BadgeConflict>Conflict</BadgeConflict>}
           </div>
 

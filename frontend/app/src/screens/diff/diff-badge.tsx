@@ -36,38 +36,42 @@ export const BadgeUnchanged = ({
   );
 };
 
-export const BadgeAdded = ({ ...props }: DiffBadgeProps) => {
+export const BadgeAdded = ({ className, ...props }: DiffBadgeProps) => {
   return (
     <BadgeUnchanged
       {...props}
       icon="mdi:plus-circle-outline"
-      className="bg-green-200 text-green-800"
+      className={classNames("bg-green-200 text-green-800", className)}
     />
   );
 };
 
-export const BadgeRemoved = ({ ...props }: DiffBadgeProps) => {
+export const BadgeRemoved = ({ className, ...props }: DiffBadgeProps) => {
   return (
     <BadgeUnchanged
       {...props}
       icon="mdi:minus-circle-outline"
-      className="bg-red-200 text-red-800"
+      className={classNames("bg-red-200 text-red-800", className)}
     />
   );
 };
 
-export const BadgeConflict = ({ ...props }: DiffBadgeProps) => {
+export const BadgeConflict = ({ className, ...props }: DiffBadgeProps) => {
   return (
     <BadgeUnchanged
       {...props}
       icon="mdi:warning-outline"
-      className="bg-yellow-200 text-yellow-800"
+      className={classNames("bg-yellow-200 text-yellow-800", className)}
     />
   );
 };
 
-export const BadgeUpdated = ({ ...props }: DiffBadgeProps) => {
+export const BadgeUpdated = ({ className, ...props }: DiffBadgeProps) => {
   return (
-    <BadgeUnchanged {...props} icon="mdi:circle-arrows" className="bg-blue-200 text-blue-800" />
+    <BadgeUnchanged
+      {...props}
+      icon="mdi:circle-arrows"
+      className={classNames("bg-blue-200 text-blue-800", className)}
+    />
   );
 };
