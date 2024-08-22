@@ -255,6 +255,56 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
         assert diff_property.action is DiffAction.REMOVED
 
 
+async def test_node_base_delete_branch_update(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp()
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await car_main.delete(db=db)
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    car_branch.nbr_seats.value = 10
+    await car_branch.save(db=db)
+
+    diff_query = await DiffAllPathsQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+        diff_from=from_time,
+    )
+    await diff_query.execute(db=db)
+    diff_parser = DiffQueryParser(
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
+    )
+    diff_parser.parse()
+
+    assert diff_parser.get_branches() == {branch.name, default_branch.name}
+    branch_root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
+    assert branch_root_path.branch == branch.name
+    assert len(branch_root_path.nodes) == 1
+    node_diffs_by_id = {n.uuid: n for n in branch_root_path.nodes}
+    node_diff = node_diffs_by_id[car_accord_main.id]
+    assert node_diff.uuid == car_accord_main.id
+    assert node_diff.kind == "TestCar"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 1
+    assert len(node_diff.relationships) == 0
+    attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
+    assert set(attributes_by_name.keys()) == {"nbr_seats"}
+    attribute_diff = attributes_by_name["nbr_seats"]
+    assert attribute_diff.action is DiffAction.UPDATED
+    properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
+    diff_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
+    assert diff_property.action is DiffAction.UPDATED
+    assert diff_property.previous_value == 5
+    assert diff_property.new_value == 10
+
+
 async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main):
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)

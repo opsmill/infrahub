@@ -541,9 +541,11 @@ class DiffAllPathsQuery(DiffQuery):
                 AND ID(n) <> ID(inner_q)
                 AND ALL(
                     r in [r_root, r_node]
-                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
-                    AND r.branch IN $branch_names
+                    WHERE r.from <= $to_time AND r.branch IN $branch_names
                 )
+                // exclude paths where an active edge is below a deleted edge
+                AND (inner_diff_rel.status = "deleted" OR r_node.status = "active")
+                AND (r_node.status = "deleted" OR r_root.status = "active")
                 WITH path AS diff_rel_path, diff_rel, r_root, n, r_node, p
                 ORDER BY
                     r_node.branch = diff_rel.branch DESC,
@@ -560,9 +562,11 @@ class DiffAllPathsQuery(DiffQuery):
                 AND type(base_diff_rel) = type(diff_rel)
                 AND all(
                     r in relationships(latest_base_path)
-                    WHERE r.branch = $base_branch_name
-                    AND r.from <= $from_time AND (r.to IS NULL or r.to <= $from_time)
+                    WHERE r.branch = $base_branch_name AND r.from <= $from_time
                 )
+                // exclude paths where an active edge is below a deleted edge
+                AND (base_diff_rel.status = "deleted" OR r_node2.status = "active")
+                AND (r_node2.status = "deleted" OR r_root2.status = "active")
                 WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
                 ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
                 LIMIT 1
@@ -576,6 +580,9 @@ class DiffAllPathsQuery(DiffQuery):
                 AND ID(n3) <> ID(base_peer)
                 AND base_r_peer.from <= $from_time
                 AND base_r_peer.branch IN $branch_names
+                // exclude paths where an active edge is below a deleted edge
+                AND (base_r_peer.status = "deleted" OR r_node3.status = "active")
+                AND (r_node3.status = "deleted" OR r_root3.status = "active")
                 WITH diff_rel_path, latest_base_path, base_peer_path, base_r_peer, diff_rel
                 ORDER BY base_r_peer.branch = diff_rel.branch DESC, base_r_peer.from DESC
                 LIMIT 1
@@ -601,10 +608,12 @@ class DiffAllPathsQuery(DiffQuery):
                 AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
                 AND ALL(
                     r in [r_root, r_prop]
-                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
-                    AND r.branch IN $branch_names
+                    WHERE r.from <= $to_time AND r.branch IN $branch_names
                 )
                 AND [ID(inner_p), type(inner_diff_rel)] <> [ID(prop), type(r_prop)]
+                // exclude paths where an active edge is below a deleted edge
+                AND (inner_diff_rel.status = "active" OR (r_prop.status = "deleted" AND inner_diff_rel.branch = r_prop.branch))
+                AND (inner_diff_rel.status = "deleted" OR r_root.status = "active")
                 WITH path, prop, r_prop, r_root
                 ORDER BY
                     ID(prop),
@@ -632,10 +641,17 @@ class DiffAllPathsQuery(DiffQuery):
                 AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
                 AND ALL(
                     r in [r_node, r_prop]
-                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
-                    AND r.branch IN $branch_names
+                    WHERE r.from <= $to_time AND r.branch IN $branch_names
                 )
                 AND [ID(inner_p), type(r_node)] <> [ID(prop), type(r_prop)]
+                // exclude paths where an active edge is below a deleted edge
+                AND (inner_diff_rel.status = "active" OR
+                    (
+                        r_node.status = "deleted" AND inner_diff_rel.branch = r_node.branch
+                        AND r_prop.status = "deleted" AND inner_diff_rel.branch = r_prop.branch
+                    )
+                )
+                AND (r_prop.status = "deleted" OR r_node.status = "active")
                 WITH path, node, prop, r_prop, r_node
                 ORDER BY
                     ID(node),
