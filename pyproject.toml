@@ -609,8 +609,6 @@ max-complexity = 33
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "ANN001", # Missing type annotation for function argument
-    "ANN201", # Missing return type annotation for public function
     "C901",   # `generate_site` is too complex (34 > 33)"
     "E501",   # Line too long
 ]
