@@ -68,22 +68,24 @@ export const DiffRow = ({
             )}>
             {title}
 
-            <div
-              className={classNames(
-                "bg-green-700/10 p-2 flex items-center",
-                leftClassName,
-                hasConflicts && "bg-yellow-50"
-              )}>
-              {left}
+            <div className="bg-custom-white">
+              <div
+                className={classNames(
+                  "bg-green-700/10 p-2 flex items-center h-full",
+                  leftClassName
+                )}>
+                {left}
+              </div>
             </div>
 
-            <div
-              className={classNames(
-                "bg-custom-blue-700/10 p-2 flex items-center",
-                rightClassName,
-                hasConflicts && "bg-yellow-50"
-              )}>
-              {right}
+            <div className="bg-custom-white">
+              <div
+                className={classNames(
+                  "bg-custom-blue-700/10 p-2 flex items-center h-full",
+                  rightClassName
+                )}>
+                {right}
+              </div>
             </div>
           </div>
         }>

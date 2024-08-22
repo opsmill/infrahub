@@ -23,11 +23,11 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
       {(!!node.attributes?.length || !!node.relationships?.length) && (
         <Accordion
           title={
-            <div className="grid grid-cols-3 justify-items-end gap-2 p-1 text-xs">
+            <div className="group grid grid-cols-3 justify-items-end gap-2 p-1 text-xs">
               <div className="flex items-center gap-2 justify-self-start">
                 <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
                 <Badge variant="white">{node.kind}</Badge>
-                <span className="text-gray-800 font-medium px-2">{node.label}</span>
+                <span className="text-gray-800 font-medium px-2 py-1">{node.label}</span>
                 {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
               </div>
 
