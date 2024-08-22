@@ -359,7 +359,7 @@ class DiffPayloadBuilder:
     async def _process_relationships(self) -> None:
         # Check if all nodes associated with a relationship have been accounted for
         # If a node is missing it means its changes are only related to its relationships
-        for branch_name, _ in self.rels_per_node.items():
+        for branch_name in self.rels_per_node.keys():
             for node_in_rel_id, relationship_diffs_by_name in self.rels_per_node[branch_name].items():
                 if node_in_rel_id in self.entries:
                     continue

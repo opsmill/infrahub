@@ -98,7 +98,7 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         ]
         assert set(expected_validators) == set(validators_per_label.keys())
 
-        for _, validator in validators_per_label.items():
+        for validator in validators_per_label.values():
             assert validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
         tags = await client.all(kind="BuiltinTag", branch="branch1")

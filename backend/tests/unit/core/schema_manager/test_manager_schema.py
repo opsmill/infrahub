@@ -340,7 +340,7 @@ async def test_schema_protected_generics(schema_dict, expected_error):
 async def test_schema_branch_generate_weight(schema_all_in_one):
     def extract_weights(schema: SchemaBranch):
         weights = []
-        for _, node in schema.get_all().items():
+        for node in schema.get_all().values():
             if not isinstance(node, (NodeSchema, GenericSchema)):
                 continue
             for item in node.attributes + node.relationships:

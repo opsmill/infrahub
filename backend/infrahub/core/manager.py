@@ -1119,8 +1119,8 @@ class NodeManager:
             peers_per_node = query.get_peers_group_by_node()
             peer_ids = []
 
-            for _, node_data in peers_per_node.items():
-                for _, node_peers in node_data.items():
+            for node_data in peers_per_node.values():
+                for node_peers in node_data.values():
                     peer_ids.extend(node_peers)
 
             peer_ids = list(set(peer_ids))

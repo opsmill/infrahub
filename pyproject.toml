@@ -499,7 +499,6 @@ ignore = [
     "N805",     # First argument of a method should be named self
     "N806",     # Variable in function should be lowercase
     "N812",     # Lowercase imported as non-lowercase
-    "PERF102",  # When using only the values of a dict use the `values()` method
     "PERF203",  # `try`-`except` within a loop incurs performance overhead
     "PERF401",  # Use a list comprehension to create a transformed list
     "PERF402",  # Use `list` or `list.copy` to create a copy of a list
