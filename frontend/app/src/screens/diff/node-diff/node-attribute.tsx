@@ -18,6 +18,7 @@ export const DiffNodeAttribute = ({ attribute }: DiffNodeAttributeProps) => {
 
   return (
     <DiffRow
+      hasConflicts={attribute.contains_conflict}
       title={
         <div className="flex justify-between items-center pr-2">
           <div className="p-2">{attribute.name}</div>

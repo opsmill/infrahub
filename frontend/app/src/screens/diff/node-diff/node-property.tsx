@@ -44,8 +44,9 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
 
   return (
     <DiffRow
+      hasConflicts={!!property.conflict}
       title={
-        <div className="flex items-center justify-between pr-2">
+        <div className="flex items-center justify-between pl-8 pr-2">
           <div className="flex items-center gap-2">
             {formatPropertyName(property.property_type)}
             {property.conflict && <BadgeConflict>Conflict</BadgeConflict>}
