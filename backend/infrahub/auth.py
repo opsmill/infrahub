@@ -237,7 +237,9 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
 
     await validate_active_account(db=db, account_id=str(account_id))
 
-    return AccountSession(account_id=account_id, role=role, auth_type=AuthType.API)
+    account_session = AccountSession(account_id=account_id, role=role, auth_type=AuthType.API)
+    await account_session.load_permissions(db=db)
+    return account_session
 
 
 def _validate_is_admin(account_session: AccountSession) -> None:
