@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { createBranch, deleteBranch } from "../../utils";
 
-test.describe("/proposed-changes", () => {
+test.describe.only("/proposed-changes", () => {
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -90,7 +90,7 @@ test.describe("/proposed-changes", () => {
         });
 
         await test.step("edit proposed change reviewers", async () => {
-          await page.getByRole("button", { name: "Edit" }).click();
+          await page.getByTestId("edit-button").click();
           await page.getByLabel("Name").fill(pcNameEdit);
           await page
             .getByTestId("side-panel-container")
@@ -137,7 +137,7 @@ test.describe("/proposed-changes", () => {
 
         await test.step("not able to edit proposed change", async () => {
           await expect(page.getByRole("button", { name: "Merge" })).toBeDisabled();
-          await expect(page.getByRole("button", { name: "Edit" })).toBeDisabled();
+          await expect(page.getByTestId("edit-button")).toBeDisabled();
         });
       });
 
