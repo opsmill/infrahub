@@ -13,7 +13,6 @@ import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { Icon } from "@iconify-icon/react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/buttons/button-primitive";
 import { DiffContext } from ".";
 import { DiffComments } from "./comments";
@@ -62,19 +61,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
   return (
     <div className="ml-2">
       <div className="flex items-center cursor-pointer ">
-        {thread?.comments?.count && (
-          <Badge
-            variant={"dark-gray"}
-            className="rounded-full mr-2"
-            onClick={(event) => {
-              event.stopPropagation();
-              setShowThread(true);
-            }}>
-            <Icon icon="mdi:chat-outline" className="mr-1" />
-            {thread?.comments?.count}
-          </Badge>
-        )}
-        <div className="hidden group-hover:block">
+        {thread?.comments?.count ? (
           <Tooltip enabled content={"Add comment"}>
             <Button
               disabled={!auth?.permissions?.write}
@@ -82,14 +69,31 @@ export const DiffThread = ({ path }: tDiffThread) => {
                 event.stopPropagation();
                 setShowThread(true);
               }}
-              className="p-0 h-6"
-              variant={"outline"}
-              size={"icon"}
+              className="p-1 h-6 rounded-full"
+              variant={"dark"}
               data-testid="data-diff-add-comment">
-              <Icon icon={"mdi:plus"} />
+              <Icon icon="mdi:chat-outline" className="mr-1" />
+              {thread?.comments?.count}
             </Button>
           </Tooltip>
-        </div>
+        ) : (
+          <div className="hidden group-hover:block">
+            <Tooltip enabled content={"Add comment"}>
+              <Button
+                disabled={!auth?.permissions?.write}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowThread(true);
+                }}
+                className="p-0 h-6 rounded-full"
+                variant={"outline"}
+                size={"icon"}
+                data-testid="data-diff-add-comment">
+                <Icon icon={"mdi:plus"} />
+              </Button>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
       <SlideOver title={title} open={showThread} setOpen={setShowThread}>
