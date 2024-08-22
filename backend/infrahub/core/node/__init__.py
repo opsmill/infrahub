@@ -48,7 +48,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             _meta = BaseNodeOptions(cls)
 
         _meta.default_filter = default_filter
-        super(Node, cls).__init_subclass_with_meta__(_meta=_meta, **options)
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     def get_schema(self) -> Union[NodeSchema, ProfileSchema]:
         return self._schema
