@@ -31,11 +31,9 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
               </div>
 
-              <span>
-                <Badge variant="green" className="bg-transparent">
-                  <Icon icon="mdi:layers-triple" /> {sourceBranch}
-                </Badge>
-              </span>
+              <Badge variant="green" className="bg-transparent">
+                <Icon icon="mdi:layers-triple" /> {sourceBranch}
+              </Badge>
 
               <Badge variant="blue" className="bg-transparent">
                 <Icon icon="mdi:layers-triple" /> {destinationBranch}
