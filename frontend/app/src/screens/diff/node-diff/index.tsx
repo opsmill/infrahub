@@ -19,6 +19,7 @@ import NoDataFound from "@/screens/errors/no-data-found";
 import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
 import { PcMergeButton } from "@/screens/proposed-changes/action-button/pc-merge-button";
 import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";
+import { PcDiffUpdateButton } from "@/screens/proposed-changes/action-button/pc-diff-update-button";
 
 export const DiffContext = createContext({});
 
@@ -78,24 +79,31 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
       <div className="flex items-center justify-between p-2 bg-custom-white">
         <ProposedChangesDiffSummary branch={branch} filters={filters} />
 
-        {!branchName && (
-          <div className="flex gap-2">
-            <PcApproveButton
-              size="sm"
-              proposedChangeId={proposedChangeId!}
-              approvers={
-                proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? []
-              }
-            />
-            <PcMergeButton
-              size="sm"
-              sourceBranch={proposedChangesDetails?.source_branch?.value}
-              proposedChangeId={proposedChangeId!}
-              state={state}
-            />
-            <PcCloseButton size="sm" proposedChangeId={proposedChangeId!} state={state} />
-          </div>
-        )}
+        <div className="flex gap-2">
+          <PcDiffUpdateButton
+            size="sm"
+            sourceBranch={proposedChangesDetails?.source_branch?.value}
+          />
+
+          {!branchName && (
+            <>
+              <PcApproveButton
+                size="sm"
+                proposedChangeId={proposedChangeId!}
+                approvers={
+                  proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? []
+                }
+              />
+              <PcMergeButton
+                size="sm"
+                sourceBranch={proposedChangesDetails?.source_branch?.value}
+                proposedChangeId={proposedChangeId!}
+                state={state}
+              />
+              <PcCloseButton size="sm" proposedChangeId={proposedChangeId!} state={state} />
+            </>
+          )}
+        </div>
       </div>
 
       <div className="p-2.5 space-y-4">
