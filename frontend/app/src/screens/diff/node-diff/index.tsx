@@ -103,11 +103,20 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
         )}
       </div>
 
-      {nodes?.length ? (
-        nodes.map((node, index) => <DiffNode key={index} node={node} />)
-      ) : (
-        <NoDataFound message="No diff to display." />
-      )}
+      <div className="p-2.5 space-y-4">
+        {nodes?.length ? (
+          nodes.map((node) => (
+            <DiffNode
+              key={node.uuid}
+              node={node}
+              sourceBranch={data?.DiffTree?.base_branch}
+              destinationBranch={data?.DiffTree?.diff_branch}
+            />
+          ))
+        ) : (
+          <NoDataFound message="No diff to display." />
+        )}
+      </div>
     </>
   );
 };

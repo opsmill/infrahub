@@ -1,67 +1,61 @@
 import Accordion, { EmptyAccordion } from "@/components/display/accordion";
-import { DiffDisplay, DiffTitle } from "./utils";
 
 import { Badge } from "@/components/ui/badge";
 import { useParams } from "react-router-dom";
 import { DiffThread } from "./thread";
 import { Icon } from "@iconify-icon/react";
 import { Conflict } from "./conflict";
+import { formatValue } from "@/screens/diff/node-diff/utils";
+import { BadgeConflict } from "@/screens/diff/diff-badge";
 
 type DiffNodePropertyProps = {
   property: any;
 };
 
 const getPreviousValue = (property) => {
+  const previousValue = formatValue(property.previous_value);
   if (!property.conflict) {
-    return <Badge variant={"green-outline"}>{property.previous_value}</Badge>;
+    return <Badge variant="green">{previousValue}</Badge>;
   }
 
+  const conflictValue = formatValue(property.conflict.base_branch_value);
   return (
     <div className="flex items-center gap-2">
-      <Badge variant={"green-outline"}>{property.previous_value}</Badge>
-
-      <Icon icon={"mdi:chevron-right"} />
-
-      <Badge variant={"green-outline"}>{property.conflict.base_branch_value}</Badge>
+      <Badge variant="green">{previousValue}</Badge>
+      <Icon icon="mdi:chevron-right" />
+      <Badge variant="yellow">{conflictValue}</Badge>
     </div>
   );
 };
 
 const getNewValue = (property) => {
+  const previousValue = formatValue(property.previous_value);
   if (!property.conflict) {
-    return <Badge variant={"green-outline"}>{property.new_value}</Badge>;
+    return <Badge variant="blue">{previousValue}</Badge>;
   }
 
-  return (
-    <div className="flex items-center gap-2">
-      <Badge variant={"blue-outline"}>{property.previous_value}</Badge>
-
-      <Icon icon={"mdi:chevron-right"} />
-
-      <Badge variant={"blue-outline"}>{property.conflict.diff_branch_value}</Badge>
-    </div>
-  );
+  const conflictValue = formatValue(property.conflict.diff_branch_value);
+  return <Badge variant="yellow">{conflictValue}</Badge>;
 };
 
 export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
   const { "*": branchName } = useParams();
 
   const title = (
-    <DiffTitle status={property.status} containsConflict={property.conflict}>
-      <div className="flex flex-1 items-center group">
-        <div className="flex items-center w-1/3 font-normal text-xs">
+    <div className="grid grid-cols-3 text-xs font-normal group">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           {property.property_type}
-
-          {!branchName && property.path_identifier && (
-            <DiffThread path={property.path_identifier} />
-          )}
+          {property.conflict && <BadgeConflict>Conflict</BadgeConflict>}
         </div>
 
-        <div className="w-2/3">
-          <DiffDisplay left={getPreviousValue(property)} right={getNewValue(property)} />
-        </div>
+        {!branchName && property.path_identifier && <DiffThread path={property.path_identifier} />}
       </div>
-    </DiffTitle>
+
+      <div className="bg-green-700/10 p-2">{getPreviousValue(property)}</div>
+
+      <div className="bg-custom-blue-700/10 p-2">{getNewValue(property)}</div>
+    </div>
   );
 
   if (!property.conflict) return <EmptyAccordion title={title} iconClassName="text-transparent" />;

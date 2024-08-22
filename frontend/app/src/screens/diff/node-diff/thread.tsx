@@ -22,9 +22,7 @@ type tDiffThread = {
   path: string;
 };
 
-export const DiffThread = (props: tDiffThread) => {
-  const { path } = props;
-
+export const DiffThread = ({ path }: tDiffThread) => {
   const { proposedChangeId } = useParams();
   const [schemaList] = useAtom(schemaState);
   const auth = useAuth();

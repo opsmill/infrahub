@@ -1,7 +1,7 @@
 import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "../errors/error-screen";
-import { BadgeAdded, BadgeConflict, BadgeRemoved, BadgeUpdated } from "./badge";
+import { BadgeAdded, BadgeConflict, BadgeRemoved, BadgeUpdated } from "../diff/diff-badge";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
@@ -33,11 +33,7 @@ export const diffActions = {
 export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChangesDiffSummary) => {
   const [qsp, setQsp] = useQueryParam(QSP.STATUS, StringParam);
 
-  const {
-    loading,
-    error,
-    data = {},
-  } = useQuery(getProposedChangesDiffSummary, {
+  const { error, data = {} } = useQuery(getProposedChangesDiffSummary, {
     skip: !branch,
     variables: { branch, filters },
   });

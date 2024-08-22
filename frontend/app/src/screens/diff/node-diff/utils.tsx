@@ -1,11 +1,5 @@
 import { capitalizeFirstLetter } from "@/utils/string";
-import {
-  BadgeAdded,
-  BadgeRemoved,
-  BadgeType,
-  BadgeUnchanged,
-  BadgeUpdated,
-} from "../../proposed-changes/badge";
+import { BadgeAdded, BadgeRemoved, BadgeType, BadgeUnchanged, BadgeUpdated } from "../diff-badge";
 import { ReactElement, ReactNode } from "react";
 
 export const diffBadges: { [key: string]: BadgeType } = {
@@ -25,7 +19,7 @@ export const DiffTitle = ({ status, containsConflict, children }: DiffTitleProps
   const DiffBadge = diffBadges[status];
 
   return (
-    <div className="flex items-center relative group h-8">
+    <div className="flex items-center relative group">
       <div className="flex min-w-[100px]">
         <DiffBadge conflicts={containsConflict}>{capitalizeFirstLetter(status)}</DiffBadge>
       </div>
@@ -48,4 +42,10 @@ export const DiffDisplay = ({ left, right }: DiffDisplayProps) => {
       <div className="flex-1 px-2 bg-custom-blue-700/10 ">{right}</div>
     </div>
   );
+};
+
+export const formatValue = (value: any) => {
+  if (value === "NULL") return "-";
+
+  return value;
 };
