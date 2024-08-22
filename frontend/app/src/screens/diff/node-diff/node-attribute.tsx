@@ -21,7 +21,7 @@ export const DiffNodeAttribute = ({ attribute }: DiffNodeAttributeProps) => {
       hasConflicts={attribute.contains_conflict}
       title={
         <div className="flex justify-between items-center pr-2">
-          <div className="p-2">{attribute.name}</div>
+          <div className="py-3 px-2">{attribute.name}</div>
 
           {!branchName && attribute.path_identifier && (
             <DiffThread path={attribute.path_identifier} />
@@ -34,9 +34,11 @@ export const DiffNodeAttribute = ({ attribute }: DiffNodeAttributeProps) => {
         )
       }
       right={<Badge variant="blue">{formatValue(valueProperty?.new_value)}</Badge>}>
-      {attribute.properties.map((property, index: number) => (
-        <DiffNodeProperty key={index} property={property} />
-      ))}
+      <div className="divide-y border-t">
+        {attribute.properties.map((property, index: number) => (
+          <DiffNodeProperty key={index} property={property} />
+        ))}
+      </div>
     </DiffRow>
   );
 };

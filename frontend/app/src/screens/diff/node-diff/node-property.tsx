@@ -16,13 +16,19 @@ const getPreviousValue = (property: DiffProperty) => {
   if (previousValue === null) return null;
 
   if (!property.conflict) {
-    return <Badge variant="green">{previousValue}</Badge>;
+    return (
+      <Badge variant="green" className="bg-transparent">
+        {previousValue}
+      </Badge>
+    );
   }
 
   const conflictValue = formatValue(property.conflict.base_branch_value);
   return (
     <div className="flex items-center gap-2">
-      <Badge variant="green">{previousValue}</Badge>
+      <Badge variant="green" className="bg-transparent">
+        {previousValue}
+      </Badge>
       <Icon icon="mdi:chevron-right" />
       <Badge variant="yellow">{conflictValue}</Badge>
     </div>
@@ -31,8 +37,14 @@ const getPreviousValue = (property: DiffProperty) => {
 
 const getNewValue = (property: DiffProperty) => {
   const newValue = formatValue(property.new_value);
+  if (newValue === null) return null;
+
   if (!property.conflict) {
-    return <Badge variant="blue">{newValue}</Badge>;
+    return (
+      <Badge variant="blue" className="bg-transparent">
+        {newValue}
+      </Badge>
+    );
   }
 
   const conflictValue = formatValue(property.conflict.diff_branch_value);
@@ -47,7 +59,7 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
       hasConflicts={!!property.conflict}
       title={
         <div className="flex items-center justify-between pl-8 pr-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center py-3 gap-2">
             {formatPropertyName(property.property_type)}
             {property.conflict && <BadgeConflict>Conflict</BadgeConflict>}
           </div>
@@ -58,7 +70,9 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
         </div>
       }
       left={getPreviousValue(property)}
-      right={getNewValue(property)}>
+      leftClassName="bg-green-400/10"
+      right={getNewValue(property)}
+      rightClassName="bg-custom-blue-400/10">
       {property.conflict && <Conflict conflict={property.conflict} />}
     </DiffRow>
   );

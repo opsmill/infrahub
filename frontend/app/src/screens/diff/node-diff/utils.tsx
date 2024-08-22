@@ -32,13 +32,23 @@ export const DiffBadge = ({ status, ...props }: DiffBadgeProps & { status: strin
 type DiffRowProps = {
   title: ReactNode;
   left?: ReactNode;
+  leftClassName?: string;
   right?: ReactNode;
+  rightClassName?: string;
   hasConflicts?: boolean;
   children?: ReactNode;
 };
-export const DiffRow = ({ children, hasConflicts, title, left, right }: DiffRowProps) => {
+export const DiffRow = ({
+  children,
+  hasConflicts,
+  title,
+  left,
+  leftClassName,
+  right,
+  rightClassName,
+}: DiffRowProps) => {
   return (
-    <div className={classNames("bg-custom-white relative", hasConflicts && "bg-yellow-50")}>
+    <div className={classNames("bg-custom-white min-h-9 relative", hasConflicts && "bg-yellow-50")}>
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
       <Accordion
@@ -51,9 +61,23 @@ export const DiffRow = ({ children, hasConflicts, title, left, right }: DiffRowP
             )}>
             {title}
 
-            <div className="bg-green-700/10 p-2">{left}</div>
+            <div
+              className={classNames(
+                "bg-green-700/10 p-2 flex items-center",
+                leftClassName,
+                hasConflicts && "bg-yellow-50"
+              )}>
+              {left}
+            </div>
 
-            <div className="bg-custom-blue-700/10 p-2">{right}</div>
+            <div
+              className={classNames(
+                "bg-custom-blue-700/10 p-2 flex items-center",
+                rightClassName,
+                hasConflicts && "bg-yellow-50"
+              )}>
+              {right}
+            </div>
           </div>
         }>
         {children}
@@ -63,7 +87,7 @@ export const DiffRow = ({ children, hasConflicts, title, left, right }: DiffRowP
 };
 
 export const formatValue = (value: any) => {
-  if (value === "NULL") return "-";
+  if (value === "NULL" || value === null) return "-";
 
   return value;
 };

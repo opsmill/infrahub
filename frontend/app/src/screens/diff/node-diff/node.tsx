@@ -23,8 +23,8 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
       {(!!node.attributes?.length || !!node.relationships?.length) && (
         <Accordion
           title={
-            <div className="grid grid-cols-3 justify-items-start gap-2 p-1 text-xs">
-              <div className="flex items-center gap-1">
+            <div className="grid grid-cols-3 justify-items-end gap-2 p-1 text-xs">
+              <div className="flex items-center gap-2 justify-self-start">
                 <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
                 <Badge variant="white">{node.kind}</Badge>
                 <span className="text-gray-800 font-medium px-2">{node.label}</span>
@@ -32,23 +32,25 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
               </div>
 
               <span>
-                <Badge variant="green">
+                <Badge variant="green" className="bg-transparent">
                   <Icon icon="mdi:layers-triple" /> {sourceBranch}
                 </Badge>
               </span>
 
-              <Badge variant="blue">
+              <Badge variant="blue" className="bg-transparent">
                 <Icon icon="mdi:layers-triple" /> {destinationBranch}
               </Badge>
             </div>
           }
           className="bg-gray-100 border rounded-md">
-          {node.attributes.map((attribute: any, index: number) => (
-            <DiffNodeAttribute key={index} attribute={attribute} />
-          ))}
-          {node.relationships.map((relationship: any, index: number) => (
-            <DiffNodeRelationship key={index} relationship={relationship} />
-          ))}
+          <div className="divide-y border-t">
+            {node.attributes.map((attribute: any, index: number) => (
+              <DiffNodeAttribute key={index} attribute={attribute} />
+            ))}
+            {node.relationships.map((relationship: any, index: number) => (
+              <DiffNodeRelationship key={index} relationship={relationship} />
+            ))}
+          </div>
         </Accordion>
       )}
     </Card>

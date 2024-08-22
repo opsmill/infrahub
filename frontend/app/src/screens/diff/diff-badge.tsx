@@ -29,7 +29,7 @@ export const BadgeUnchanged = ({
         className
       )}
       {...props}>
-      <Icon icon={icon ?? "mdi:check"} />
+      <Icon icon={icon ?? "mdi:check"} className="text-xs" />
       {(children || children === 0) && <span className="font-medium text-xs">{children}</span>}
       {hasConflicts && <BadgeConflict />}
     </Badge>
@@ -37,17 +37,37 @@ export const BadgeUnchanged = ({
 };
 
 export const BadgeAdded = ({ ...props }: DiffBadgeProps) => {
-  return <BadgeUnchanged {...props} icon="mdi:plus-circle-outline" variant="green" />;
+  return (
+    <BadgeUnchanged
+      {...props}
+      icon="mdi:plus-circle-outline"
+      className="bg-green-200 text-green-800"
+    />
+  );
 };
 
 export const BadgeRemoved = ({ ...props }: DiffBadgeProps) => {
-  return <BadgeUnchanged {...props} icon="mdi:minus-circle-outline" variant="red" />;
+  return (
+    <BadgeUnchanged
+      {...props}
+      icon="mdi:minus-circle-outline"
+      className="bg-red-200 text-red-800"
+    />
+  );
 };
 
 export const BadgeConflict = ({ ...props }: DiffBadgeProps) => {
-  return <BadgeUnchanged {...props} icon="mdi:warning-outline" variant="yellow" />;
+  return (
+    <BadgeUnchanged
+      {...props}
+      icon="mdi:warning-outline"
+      className="bg-yellow-200 text-yellow-800"
+    />
+  );
 };
 
 export const BadgeUpdated = ({ ...props }: DiffBadgeProps) => {
-  return <BadgeUnchanged {...props} icon="mdi:circle-arrows" variant="blue" />;
+  return (
+    <BadgeUnchanged {...props} icon="mdi:circle-arrows" className="bg-blue-200 text-blue-800" />
+  );
 };
