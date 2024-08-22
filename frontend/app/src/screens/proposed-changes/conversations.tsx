@@ -167,7 +167,9 @@ export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivEle
   };
 
   return (
-    <div className={classNames("flex-grow space-y-4 min-w-[350px]", className)} {...props}>
+    <div
+      className={classNames("flex-grow space-y-4 min-w-[350px] max-w-2xl", className)}
+      {...props}>
       {threads.map((item: any, index: number) => (
         <Thread key={index} thread={item} refetch={refetch} displayContext />
       ))}
