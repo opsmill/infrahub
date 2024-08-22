@@ -34,6 +34,7 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
                 task_report=git_report,
                 infrahub_branch_name=message.infrahub_branch_name,
                 admin_status=message.admin_status,
+                default_branch_name=message.default_branch_name,
             )
             await repo.import_objects_from_files(
                 infrahub_branch_name=message.infrahub_branch_name, git_branch_name=message.default_branch_name
@@ -156,7 +157,12 @@ async def merge(message: messages.GitRepositoryMerge, service: InfrahubServices)
         destination_branch=message.destination_branch,
     )
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
+    repo = await InfrahubRepository.init(
+        id=message.repository_id,
+        name=message.repository_name,
+        client=service.client,
+        default_branch_name=message.default_branch,
+    )
 
     if message.admin_status == RepositoryAdminStatus.STAGING.value:
         repo_source = await service.client.get(
