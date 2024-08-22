@@ -21,7 +21,7 @@ export const DiffNodeAttribute = ({ attribute }: DiffNodeAttributeProps) => {
       hasConflicts={attribute.contains_conflict}
       title={
         <div className="flex justify-between items-center pr-2">
-          <div className="py-3">{attribute.name}</div>
+          <div className="py-3 font-semibold">{attribute.name}</div>
 
           {!branchName && attribute.path_identifier && (
             <DiffThread path={attribute.path_identifier} />

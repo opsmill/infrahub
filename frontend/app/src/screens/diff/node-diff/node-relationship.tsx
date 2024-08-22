@@ -21,7 +21,7 @@ export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps
       hasConflicts={relationship.contains_conflict}
       title={
         <div className="flex justify-between items-center pr-2">
-          <div className="py-2">{relationship.label}</div>
+          <div className="py-2 font-semibold">{relationship.label}</div>
 
           {!branchName && relationship.path_identifier && (
             <DiffThread path={relationship.path_identifier} />
