@@ -34,29 +34,29 @@ const CheckboxField = ({
         const fieldData: FormAttributeValue = field.value;
 
         return (
-          <div className="relative flex flex-col">
-            <div className="flex items-center">
-              <FormInput>
-                <Checkbox
-                  {...field}
-                  checked={!!fieldData?.value}
-                  onChange={(event) => {
-                    field.onChange(updateFormFieldValue(event.target.checked, defaultValue));
-                  }}
-                  {...props}
-                />
-              </FormInput>
+          <div className="flex gap-2 py-3">
+            <FormInput>
+              <Checkbox
+                {...field}
+                checked={!!fieldData?.value}
+                onChange={(event) => {
+                  field.onChange(updateFormFieldValue(event.target.checked, defaultValue));
+                }}
+                {...props}
+              />
+            </FormInput>
 
+            <div className="flex-grow">
               <LabelFormField
-                className="m-0 ml-2"
                 label={label}
                 unique={unique}
                 required={!!rules?.required}
                 description={description}
                 fieldData={fieldData}
               />
+
+              <FormMessage className="mt-1" />
             </div>
-            <FormMessage />
           </div>
         );
       }}

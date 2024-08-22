@@ -16,6 +16,7 @@ from .mutations import (
     BranchRebase,
     BranchUpdate,
     BranchValidate,
+    DiffUpdateMutation,
     InfrahubAccountSelfUpdate,
     InfrahubAccountTokenCreate,
     InfrahubAccountTokenDelete,
@@ -25,6 +26,7 @@ from .mutations import (
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
+    ResolveDiffConflict,
     SchemaDropdownAdd,
     SchemaDropdownRemove,
     SchemaEnumAdd,
@@ -121,6 +123,9 @@ class InfrahubBaseMutation(ObjectType):
     BranchMerge = BranchMerge.Field()
     BranchUpdate = BranchUpdate.Field()
     BranchValidate = BranchValidate.Field()
+
+    DiffUpdate = DiffUpdateMutation.Field()
+
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubTaskCreate = TaskCreate.Field()
@@ -132,3 +137,4 @@ class InfrahubBaseMutation(ObjectType):
     SchemaDropdownRemove = SchemaDropdownRemove.Field()
     SchemaEnumAdd = SchemaEnumAdd.Field()
     SchemaEnumRemove = SchemaEnumRemove.Field()
+    ResolveDiffConflict = ResolveDiffConflict.Field()

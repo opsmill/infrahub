@@ -42,10 +42,7 @@ if TYPE_CHECKING:
 class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
-        cls,
-        _meta=None,
-        default_filter=None,
-        **options,
+        cls, _meta=None, default_filter=None, **options
     ):
         if not _meta:
             _meta = BaseNodeOptions(cls)
@@ -147,12 +144,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
-    def __init__(
-        self,
-        schema: Union[NodeSchema, ProfileSchema],
-        branch: Branch,
-        at: Timestamp,
-    ):
+    def __init__(self, schema: Union[NodeSchema, ProfileSchema], branch: Branch, at: Timestamp):
         self._schema: Union[NodeSchema, ProfileSchema] = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
@@ -195,14 +187,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def _process_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
+    async def process_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
         """
 
-        if attribute.value or not attribute.from_pool:
+        if not attribute.from_pool:
             return
 
         number_pool: Optional[CoreNumberPool] = None
@@ -345,7 +337,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
                 if not self.id:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self._process_pool(db=db, attribute=attribute, errors=errors)
+                    await self.process_pool(db=db, attribute=attribute, errors=errors)
 
                     attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:
@@ -470,11 +462,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 identifier = f"{rel.schema.identifier}::{rel.peer_id}"
                 rel.id, rel.db_id = new_ids[identifier]
 
-    async def _update(
-        self,
-        db: InfrahubDatabase,
-        at: Optional[Timestamp] = None,
-    ) -> None:
+    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
@@ -489,11 +477,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             rel: RelationshipManager = getattr(self, name)
             await rel.save(at=update_at, db=db)
 
-    async def save(
-        self,
-        db: InfrahubDatabase,
-        at: Optional[Timestamp] = None,
-    ) -> Self:
+    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> Self:
         """Create or Update the Node in the database."""
 
         save_at = Timestamp(at)
@@ -611,7 +595,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
                 attribute = getattr(self, key)
-                changed |= await attribute.from_graphql(value)
+                changed |= await attribute.from_graphql(data=value, db=db)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)

@@ -108,6 +108,8 @@ class Attribute:
                 data["value"] = f"${var_name}"
         elif isinstance(self.value, get_args(IP_TYPES)):
             data["value"] = self.value.with_prefixlen
+        elif isinstance(self.value, InfrahubNodeBase) and self.value.is_resource_pool():
+            data["from_pool"] = self.value.id
         else:
             data["value"] = self.value
 
@@ -130,6 +132,12 @@ class Attribute:
             data[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         return data
+
+    def _generate_mutation_query(self) -> dict[str, Any]:
+        if isinstance(self.value, InfrahubNodeBase) and self.value.is_resource_pool():
+            # If it points to a pool, ask for the value of the pool allocated resource
+            return {self.name: {"value": None}}
+        return {}
 
 
 class RelatedNodeBase:
@@ -479,7 +487,7 @@ class RelationshipManager(RelationshipManagerBase):
         super().__init__(name=name, schema=schema, branch=branch)
 
         self.initialized = data is not None
-        self._has_update = data is not None
+        self._has_update = False
 
         if data is None:
             return
@@ -574,7 +582,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
         super().__init__(name=name, schema=schema, branch=branch)
 
         self.initialized = data is not None
-        self._has_update = data is not None
+        self._has_update = False
 
         if data is None:
             return
@@ -1295,14 +1303,18 @@ class InfrahubNode(InfrahubNodeBase):
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     def _generate_mutation_query(self) -> dict[str, Any]:
-        query_result = {"ok": None, "object": {"id": None}}
+        query_result: dict[str, Any] = {"ok": None, "object": {"id": None}}
+
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            query_result["object"].update(attr._generate_mutation_query())
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if not isinstance(rel, RelatedNode):
                 continue
 
-            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+            query_result["object"].update(rel._generate_mutation_query())
 
         return query_result
 
@@ -1310,6 +1322,18 @@ class InfrahubNode(InfrahubNodeBase):
         object_response: dict[str, Any] = response[mutation_name]["object"]
         self.id = object_response["id"]
         self._existing = True
+
+        for attr_name in self._attributes:
+            attr = getattr(self, attr_name)
+            if (
+                attr_name not in object_response
+                or not isinstance(attr.value, InfrahubNodeBase)
+                or not attr.value.is_resource_pool()
+            ):
+                continue
+
+            # Process allocated resource from a pool and update attribute
+            attr.value = object_response[attr_name]
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
@@ -1756,14 +1780,18 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     def _generate_mutation_query(self) -> dict[str, Any]:
-        query_result = {"ok": None, "object": {"id": None}}
+        query_result: dict[str, Any] = {"ok": None, "object": {"id": None}}
+
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            query_result["object"].update(attr._generate_mutation_query())
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if not isinstance(rel, RelatedNodeSync):
                 continue
 
-            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+            query_result["object"].update(rel._generate_mutation_query())
 
         return query_result
 
@@ -1771,6 +1799,18 @@ class InfrahubNodeSync(InfrahubNodeBase):
         object_response: dict[str, Any] = response[mutation_name]["object"]
         self.id = object_response["id"]
         self._existing = True
+
+        for attr_name in self._attributes:
+            attr = getattr(self, attr_name)
+            if (
+                attr_name not in object_response
+                or not isinstance(attr.value, InfrahubNodeBase)
+                or not attr.value.is_resource_pool()
+            ):
+                continue
+
+            # Process allocated resource from a pool and update attribute
+            attr.value = object_response[attr_name]["value"]
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)

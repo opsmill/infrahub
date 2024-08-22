@@ -505,11 +505,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return value
 
-    async def from_graphql(self, data: dict) -> bool:
+    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
         """Update attr from GraphQL payload"""
 
         changed = False
-
         if "value" in data:
             if self.is_enum:
                 value_to_set = self.schema.convert_value_to_enum(data["value"])
@@ -518,6 +517,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
+        elif "from_pool" in data:
+            self.from_pool = data["from_pool"]
+            await self.node.process_pool(db=db, attribute=self, errors=[])
+            changed = True
 
         if changed and self.is_from_profile:
             self.is_from_profile = False

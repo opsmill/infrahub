@@ -28,6 +28,8 @@ from .branch import (
     BranchUpdate,
     BranchValidate,
 )
+from .diff import DiffUpdateMutation
+from .diff_conflict import ResolveDiffConflict
 from .ipam import InfrahubIPAddressMutation, InfrahubIPNamespaceMutation, InfrahubIPPrefixMutation
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .proposed_change import (
@@ -55,6 +57,7 @@ __all__ = [
     "BranchUpdate",
     "CheckboxAttributeCreate",
     "CheckboxAttributeUpdate",
+    "DiffUpdateMutation",
     "InfrahubAccountSelfUpdate",
     "InfrahubAccountTokenCreate",
     "InfrahubAccountTokenDelete",
@@ -80,6 +83,7 @@ __all__ = [
     "ProcessRepository",
     "RelationshipAdd",
     "RelationshipRemove",
+    "ResolveDiffConflict",
     "StringAttributeCreate",
     "StringAttributeUpdate",
     "TextAttributeCreate",

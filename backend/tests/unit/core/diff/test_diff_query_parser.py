@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
@@ -181,9 +183,13 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     assert before_change < property_diff.changed_at < after_change
 
 
-async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main):
-    branch = await create_branch(db=db, branch_name="branch")
-    from_time = Timestamp(branch.created_at)
+@pytest.mark.parametrize("use_branch", [True, False])
+async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main, use_branch):
+    if use_branch:
+        branch = await create_branch(db=db, branch_name="branch")
+    else:
+        branch = default_branch
+    from_time = Timestamp()
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
     await car_branch.delete(db=db)
 
@@ -191,6 +197,7 @@ async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, 
         db=db,
         branch=branch,
         base_branch=default_branch,
+        diff_from=from_time,
     )
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
@@ -221,7 +228,7 @@ async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, 
         properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
         diff_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
         assert diff_property.action is DiffAction.REMOVED
-        assert diff_property.new_value is None
+        assert diff_property.new_value in (None, "NULL")
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
     assert relationship_diff.name == "owner"

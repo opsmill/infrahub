@@ -13,6 +13,14 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
+from infrahub.core.attribute import (
+    Boolean,
+    IntegerOptional,
+    JSONAttributeOptional,
+    ListAttributeOptional,
+    String,
+    StringOptional,
+)
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
 from infrahub.core.initialization import (
@@ -26,6 +34,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -1735,6 +1744,26 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
     registry.schema.set(name=generic.kind, schema=generic, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
     return registry.schema.get(name=node.kind, branch=default_branch.name)
+
+
+@pytest.fixture
+async def criticality_protocol():
+    class TestCriticality(CoreNode):
+        name: String
+        label: StringOptional
+        levvel: IntegerOptional
+        mylist: ListAttributeOptional
+        json_no_default: JSONAttributeOptional
+        json_default: JSONAttributeOptional
+        time: StringOptional
+        status: StringOptional
+
+        color: String
+        is_true: Boolean
+        is_false: Boolean
+        description: StringOptional
+
+    return TestCriticality
 
 
 @pytest.fixture

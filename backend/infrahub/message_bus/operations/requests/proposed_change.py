@@ -12,12 +12,13 @@ from pydantic import BaseModel
 
 from infrahub import config, lock
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, RepositoryAdminStatus
-from infrahub.core.diff.branch_differ import BranchDiffer
+from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import SchemaConflict
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
@@ -90,20 +91,23 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
     ):
         log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
 
+        destination_branch = await registry.get_branch(db=service.database, branch=message.destination_branch)
         source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
-        diff = await BranchDiffer.init(db=service.database, branch=source_branch, branch_only=False)
-        conflicts = await diff.get_conflicts_graph()
+        component_registry = get_component_registry()
+        async with service.database.start_transaction() as dbt:
+            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+            await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
-        async with service.database.start_transaction() as db:
-            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-                db=db,
-                validator_kind=InfrahubKind.DATAVALIDATOR,
-                validator_label="Data Integrity",
-                check_schema_kind=InfrahubKind.DATACHECK,
-            )
-            await object_conflict_validator_recorder.record_conflicts(
-                proposed_change_id=message.proposed_change, conflicts=conflicts
-            )
+        # async with service.database.start_transaction() as db:
+        #     object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+        #         db=db,
+        #         validator_kind=InfrahubKind.DATAVALIDATOR,
+        #         validator_label="Data Integrity",
+        #         check_schema_kind=InfrahubKind.DATACHECK,
+        #     )
+        #     await object_conflict_validator_recorder.record_conflicts(
+        #         proposed_change_id=message.proposed_change, conflicts=conflicts
+        #     )
 
 
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:

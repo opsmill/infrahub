@@ -70,7 +70,7 @@ const RelationshipField = ({
     }
 
     return (
-      <div>
+      <div className="space-y-2">
         <LabelFormField
           label={label}
           unique={unique}
@@ -84,7 +84,7 @@ const RelationshipField = ({
           defaultValue={defaultValue}
           render={({ field }) => {
             return (
-              <div className="relative flex flex-col">
+              <div className="relative flex flex-col space-y-1">
                 <LabelFormField
                   label={"Kind"}
                   description="Kind of node to use as relationship"
@@ -116,7 +116,7 @@ const RelationshipField = ({
             defaultValue={defaultValue}
             render={({ field }) => {
               return (
-                <div className="relative flex flex-col mt-1">
+                <div className="relative flex flex-col space-y-1">
                   <LabelFormField
                     label={parentRelationship?.label ?? "Parent"}
                     description={parentRelationship?.description}
@@ -153,7 +153,7 @@ const RelationshipField = ({
               const fieldData: FormRelationshipValue = field.value;
 
               return (
-                <div className="relative flex flex-col mt-1">
+                <div className="relative flex flex-col space-y-1">
                   <LabelFormField
                     label={selectedKindOption?.name || "Node"}
                     unique={unique}
@@ -192,7 +192,7 @@ const RelationshipField = ({
   const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
 
   return (
-    <div>
+    <div className="space-y-2">
       {parentRelationship && (
         <LabelFormField
           label={label}
@@ -246,7 +246,7 @@ const RelationshipField = ({
           const fieldData = field.value;
 
           return (
-            <div className="relative flex flex-col mt-1">
+            <div className="relative flex flex-col space-y-2">
               <LabelFormField
                 label={label}
                 unique={unique}

@@ -14,8 +14,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 
-export const InputUniqueTips = () => (
-  <span className="text-xs text-gray-600 italic self-end mb-px">must be unique</span>
+export const InputUniqueTips = ({ className}: {className: string}) => (
+  <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>must be unique</span>
 );
 
 interface LabelFormFieldProps extends LabelProps {
@@ -37,12 +37,12 @@ export const LabelFormField = ({
   fieldData,
 }: LabelFormFieldProps) => {
   return (
-    <div className={classNames("h-5 mb-1 flex items-center gap-1", className)}>
+    <div className={classNames("h-4 flex items-center gap-1", className)}>
       <FormLabel variant={variant}>
         {label} {required && "*"}
       </FormLabel>
-      {unique && <InputUniqueTips />}
-      {description && <QuestionMark message={description} />}
+      {unique && <InputUniqueTips className="self-end mb-px" />}
+      {description && <QuestionMark message={description} className="ml-1" />}
 
       {fieldData?.source?.type === "profile" && (
         <ProfileSourceBadge fieldData={fieldData as AttributeValueFromProfile} />

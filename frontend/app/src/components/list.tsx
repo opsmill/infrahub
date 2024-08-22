@@ -46,7 +46,7 @@ const List = forwardRef<HTMLInputElement, OpsListProps>((props, ref) => {
   };
 
   return (
-    <>
+    <div>
       <Input
         ref={ref}
         id={id}
@@ -59,7 +59,7 @@ const List = forwardRef<HTMLInputElement, OpsListProps>((props, ref) => {
         value={inputValue}
       />
       <MultipleInput value={value} onChange={onChange} disabled={disabled} />
-    </>
+    </div>
   );
 });
 

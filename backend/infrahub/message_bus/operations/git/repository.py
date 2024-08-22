@@ -38,7 +38,8 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
             await repo.import_objects_from_files(
                 infrahub_branch_name=message.infrahub_branch_name, git_branch_name=message.default_branch_name
             )
-            await repo.sync()
+            if message.admin_status == RepositoryAdminStatus.ACTIVE.value:
+                await repo.sync()
 
 
 async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: InfrahubServices) -> None:
@@ -61,7 +62,8 @@ async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: Inf
                 task_report=git_report,
             )
             await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name)
-            await repo.sync_from_remote()
+            if message.admin_status == RepositoryAdminStatus.ACTIVE.value:
+                await repo.sync_from_remote()
 
 
 async def connectivity(message: messages.GitRepositoryConnectivity, service: InfrahubServices) -> None:
@@ -157,8 +159,12 @@ async def merge(message: messages.GitRepositoryMerge, service: InfrahubServices)
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
 
     if message.admin_status == RepositoryAdminStatus.STAGING.value:
+        repo_source = await service.client.get(
+            kind=InfrahubKind.GENERICREPOSITORY, id=message.repository_id, branch=message.source_branch
+        )
         repo_main = await service.client.get(kind=InfrahubKind.GENERICREPOSITORY, id=message.repository_id)
         repo_main.admin_status.value = RepositoryAdminStatus.ACTIVE.value
+        repo_main.sync_status.value = repo_source.sync_status.value
 
         commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
         repo_main.commit.value = commit

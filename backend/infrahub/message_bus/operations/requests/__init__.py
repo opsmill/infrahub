@@ -1,6 +1,7 @@
 from . import (
     artifact,
     artifact_definition,
+    diff,
     generator,
     generator_definition,
     git,
@@ -12,6 +13,7 @@ from . import (
 __all__ = [
     "artifact",
     "artifact_definition",
+    "diff",
     "generator",
     "generator_definition",
     "git",

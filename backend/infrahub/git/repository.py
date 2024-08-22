@@ -89,7 +89,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return True
 
-    async def sync(self) -> None:
+    async def sync(self, staging_branch: str | None = None) -> None:
         """Synchronize the repository with its remote origin and with the database.
 
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
@@ -128,28 +128,42 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 await self.import_objects_from_files(infrahub_branch_name=branch_name, commit=commit)
 
-        for branch_name in updated_branches:
-            if self.admin_status == RepositoryAdminStatus.STAGING.value and branch_name != self.default_branch_name:
-                continue
+            for branch_name in updated_branches:
+                is_valid = await self.validate_remote_branch(branch_name=branch_name)
+                if not is_valid:
+                    continue
 
-            is_valid = await self.validate_remote_branch(branch_name=branch_name)
-            if not is_valid:
-                continue
+                commit_after = await self.pull(branch_name=branch_name)
+                if isinstance(commit_after, str):
+                    await self.import_objects_from_files(infrahub_branch_name=branch_name, commit=commit_after)
 
-            commit_after = await self.pull(branch_name=branch_name)
+                elif commit_after is True:
+                    log.warning(
+                        f"An update was detected but the commit remained the same after pull() ({commit_after}).",
+                        repository=self.name,
+                        branch=branch_name,
+                    )
+
+        await self._sync_staging(staging_branch=staging_branch, updated_branches=updated_branches)
+
+    async def _sync_staging(self, staging_branch: str | None, updated_branches: list[str]) -> None:
+        if (
+            self.admin_status == RepositoryAdminStatus.STAGING.value
+            and staging_branch
+            and self.default_branch in updated_branches
+        ):
+            commit_after = await self.pull(branch_name=self.default_branch)
             if isinstance(commit_after, str):
                 await self.import_objects_from_files(
-                    infrahub_branch_name=self.infrahub_branch_name or branch_name, commit=commit_after
+                    git_branch_name=self.default_branch, infrahub_branch_name=staging_branch, commit=commit_after
                 )
 
             elif commit_after is True:
                 log.warning(
                     f"An update was detected but the commit remained the same after pull() ({commit_after}).",
                     repository=self.name,
-                    branch=branch_name,
+                    branch=self.default_branch,
                 )
-
-        return
 
     async def push(self, branch_name: str) -> bool:
         """Push a given branch to the remote Origin repository"""

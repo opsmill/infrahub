@@ -1,0 +1,420 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+
+generics:
+  - name: RoutingPolicy
+    namespace: Infra
+    icon: carbon:deployment-policy
+    include_in_menu: false
+    description: "A generic template for defining the rules for routing traffic in a network."
+    uniqueness_constraints:
+      - ["name__value"]
+    human_friendly_id:
+      - "name__value"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        description: "The name of the routing policy."
+        unique: true
+        optional: false
+      - name: label
+        kind: Text
+        description: "An optional label for the routing policy."
+        optional: true
+      - name: description
+        kind: Text
+        description: "An optional description of the routing policy."
+        optional: true
+      - name: policy_type
+        label: Type
+        kind: Dropdown
+        description: "The type of routing policy which specifies the direction of route advertisement."
+        choices:
+          - name: import-policy
+            label: Import
+            description: "Policy for incoming routes."
+            color: "#e6e6fa"
+          - name: export-policy
+            label: Export
+            description: "Policy for outgoing routes."
+            color: "#e6e6fa"
+          - name: import-export-policy
+            label: Import + Export
+            description: "Policy for both incoming and outgoing routes."
+            color: "#e6e6fa"
+      - name: weight
+        kind: Number
+        description: "Priority of the routing policy. The higher the number, the higher the priority."
+        optional: true
+        default_value: 1000
+      - name: address_family
+        description: "The address family for the routing policy indicating the type of IP address."
+        kind: Number
+        enum: [0, 4, 6]
+        # Can't use Number into Dropdown, and it's a Int on Peering Manager Side
+        # kind: Dropdown
+        # choices:
+        #   - name: "4"
+        #     label: IPv4
+        #     description: "Policy applies to IPv4 addresses."
+        #     color: "#e6e6fa"
+        #   - name: "6"
+        #     label: IPv6
+        #     description: "Policy applies to IPv6 addresses."
+        #     color: "#e6e6fa"
+        #   - name: "0"
+        #     label: All
+        #     description: "Policy applies to both IPv4 and IPv6 addresses."
+        #     color: "#e6e6fa"
+        # default_value: "0"
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        kind: Attribute
+        optional: true
+        cardinality: many
+
+nodes:
+  - name: BGPRoutingPolicy
+    namespace: Infra
+    label: "BGP Routing Policy"
+    menu_placement: InfraBGPSession
+    description: "Defines the rules for BGP routing traffic in a network."
+    inherit_from:
+      - "InfraRoutingPolicy"
+    relationships:
+      - name: bgp_communities
+        label: BGP Communities
+        peer: InfraBGPCommunity
+        description: "The BGP communities associated with the routing policy."
+        kind: Attribute
+        cardinality: many
+  - name: BGPCommunity
+    namespace: Infra
+    icon: iconoir:community
+    label: "BGP Community"
+    menu_placement: InfraBGPSession
+    description: "Defines a BGP community."
+    uniqueness_constraints:
+      - ["name__value"]
+    human_friendly_id:
+      - "name__value"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        description: "The name of the BGP community."
+        optional: false
+      - name: label
+        kind: Text
+        description: "An optional label for the BGP community."
+        optional: true
+      - name: description
+        kind: Text
+        description: "An optional description of the BGP community."
+        optional: true
+      - name: value
+        kind: Text
+        description: "The value of the BGP community (RFC1997, RFC4360, RFC8092)."
+        optional: false
+      - name: community_type
+        label: Type
+        kind: Dropdown
+        description: "The type of BGP community, indicating the direction of traffic it is associated with."
+        optional: true
+        choices:
+          # It's an empty string and not `None` when it's empty
+          - name: ""
+            label: "None"
+            description: "None"
+            color: "#e6e6fa"
+          - name: ingress
+            label: Ingress
+            description: "Community applies to incoming traffic."
+            color: "#e6e6fa"
+          - name: egress
+            label: Egress
+            description: "Community applies to outgoing traffic."
+            color: "#e6e6fa"
+    relationships:
+      - name: routing_policy
+        label: Routing Policies
+        peer: InfraRoutingPolicy
+        description: "The BGP Policies using this BGP Community."
+        kind: Attribute
+        cardinality: many
+      - name: tags
+        peer: BuiltinTag
+        kind: Attribute
+        optional: true
+        cardinality: many
+  - name: IXP
+    namespace: Infra
+    description: "An Internet Exchange Point (IXP) for peering"
+    label: "Internet Exchange"
+    icon: "mdi:network"
+    uniqueness_constraints:
+      - ["name__value"]
+    human_friendly_id:
+      - "name__value"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        description: "Name of the Internet Exchange"
+      - name: description
+        kind: Text
+        description: "An optional description of the Internet Exchange"
+        optional: true
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: enabled
+            label: Enabled
+            description: "Internet Exchange is active and operational"
+            color: "#a8dadc"
+          - name: disabled
+            label: Disabled
+            description: "Internet Exchange is not operational"
+            color: "#b0bec5"
+        default_value: "enabled"
+    relationships:
+      - name: connections
+        peer: InfraIXPConnection
+        optional: true
+        cardinality: many
+        kind: Component
+        description: "IXP connections associated with this Internet Exchange"
+      - name: local_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: import_policies
+        label: Import Routing Policies
+        peer: InfraBGPRoutingPolicy
+        identifier: ixp__import_bgppolicies
+        optional: true
+        cardinality: many
+        kind: Attribute
+        description: "Import routing policies applied to the session"
+      - name: export_policies
+        label: Export Routing Policies
+        peer: InfraBGPRoutingPolicy
+        identifier: ixp__export_bgppolicies
+        optional: true
+        cardinality: many
+        kind: Attribute
+        description: "Export routing policies applied to the session"
+      - name: bgp_communities
+        label: "BGP Communities"
+        peer: InfraBGPCommunity
+        optional: true
+        cardinality: many
+        kind: Attribute
+        description: "BGP communities associated with the session"
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+  - name: IXPConnection
+    namespace: Infra
+    description: "A connection to an Internet Exchange Point (IXP)"
+    label: "IXP Connection"
+    icon: "mdi:lan-connect"
+    menu_placement: InfraIXP
+    uniqueness_constraints:
+      - ["name__value"]
+    human_friendly_id:
+      - "name__value"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        description: "Name of the IXP Connection"
+      - name: description
+        kind: Text
+        optional: true
+        description: "Description of the IXP Connection"
+      - name: peeringdb_netixlan
+        label: PeeringDB Netixlan
+        kind: Number
+        optional: true
+        description: "PeeringDB ID for the IXP connection"
+      - name: status
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: enabled
+            label: Enabled
+            description: "The system is fully operational and functioning as expected."
+            color: "#a8dadc"
+          - name: pre-maintenance
+            label: Pre-Maintenance
+            description: "Preparation stage before performing maintenance tasks."
+            color: "#f4a261"
+          - name: maintenance
+            label: Maintenance
+            description: "Currently undergoing maintenance tasks."
+            color: "#e9c46a"
+          - name: post-maintenance
+            label: Post-Maintenance
+            description: "Final checks and verifications after maintenance tasks."
+            color: "#f0e5de"
+          - name: disabled
+            label: Disabled
+            description: "The system is not operational and cannot be used."
+            color: "#b0bec5"
+        default_value: "enabled"
+      - name: vlan
+        kind: Number
+        description: "VLAN ID for the connection"
+        optional: true
+      - name: mac_address
+        kind: MacAddress
+        label: MAC Address
+        optional: true
+        description: "MAC address associated with the connection"
+    relationships:
+      - name: ipv6_address
+        label: IPv6 Address
+        description: "IPv6 address assigned to the connection"
+        peer: IpamIPAddress
+        identifier: ixpconn__ipv6_address
+        cardinality: one
+        kind: Attribute
+      - name: ipv4_address
+        label: IPv4 Address
+        description: "IPv4 address assigned to the connection"
+        peer: IpamIPAddress
+        identifier: ixpconn__ipv4_address
+        cardinality: one
+        kind: Attribute
+      - name: internet_exchange_point
+        label: IXP
+        peer: InfraIXP
+        optional: false
+        cardinality: one
+        kind: Attribute
+        description: "The Internet Exchange Point this connection is part of"
+      - name: router
+        peer: InfraDevice
+        cardinality: one
+        kind: Attribute
+        description: "The router this IXP connection is connected to"
+      - name: tags
+        peer: BuiltinTag
+        cardinality: many
+        kind: Attribute
+
+extensions:
+  nodes:
+    - kind: InfraAutonomousSystem
+      attributes:
+        - name: irr_as_set
+          label: IRR AS-SET
+          description: "An AS-SET defines a set of Autonomous Systems (AS)."
+          kind: Text
+          optional: true
+        - name: ipv4_max_prefixes
+          label: IPv4 Max Prefixes
+          kind: Number
+          optional: true
+        - name: ipv6_max_prefixes
+          label: IPv6 Max Prefixes
+          kind: Number
+          optional: true
+        - name: affiliated
+          label: Affiliated
+          description: "Check if you own/manage this AS"
+          kind: Boolean
+          optional: true
+      relationships:
+        - name: import_policies
+          label: Import Routing Policies
+          peer: InfraBGPRoutingPolicy
+          identifier: as__import_bgppolicies
+          cardinality: many
+          kind: Attribute
+        - name: export_policies
+          label: Export Routing Policies
+          peer: InfraBGPRoutingPolicy
+          identifier: as__export_bgppolicies
+          cardinality: many
+          kind: Attribute
+        # Peering Manager doesn't have Organization on the ASN. Changing the relationship to optional
+        - name: organization
+          peer: OrganizationGeneric
+          optional: true
+          cardinality: one
+          kind: Attribute
+    - kind: InfraBGPPeerGroup
+      attributes:
+        - name: status
+          kind: Dropdown
+          optional: true
+          choices:
+            - name: enabled
+              label: Enabled
+              description: "The system is fully operational and functioning as expected."
+              color: "#a8dadc"
+            - name: pre-maintenance
+              label: Pre-Maintenance
+              description: "Preparation stage before performing maintenance tasks."
+              color: "#f4a261"
+            - name: maintenance
+              label: Maintenance
+              description: "Currently undergoing maintenance tasks."
+              color: "#e9c46a"
+            - name: post-maintenance
+              label: Post-Maintenance
+              description: "Final checks and verifications after maintenance tasks."
+              color: "#f0e5de"
+            - name: disabled
+              label: Disabled
+              description: "The system is not operational and cannot be used."
+              color: "#b0bec5"
+        # Removing the existing Attributes as we are replacing it with Relationships
+        - name: import_policies
+          kind: Text
+          state: absent
+        - name: export_policies
+          kind: Text
+          state: absent
+      relationships:
+        - name: import_policies
+          label: Import Routing Policies
+          peer: InfraBGPRoutingPolicy
+          identifier: bgppeergroup__import_bgppolicies
+          cardinality: many
+          kind: Attribute
+        - name: export_policies
+          label: Export Routing Policies
+          peer: InfraBGPRoutingPolicy
+          identifier: bgppeergroup__export_bgppolicies
+          cardinality: many
+          kind: Attribute
+        - name: bgp_communities
+          label: BGP Communities
+          peer: InfraBGPCommunity
+          description: "The BGP communities associated with the BGP Group."
+          kind: Attribute
+          cardinality: many

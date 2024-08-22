@@ -393,7 +393,7 @@ node_schema = SchemaNode(
             default_factory="list",
             description="List of Generic Kind that this node is inheriting from",
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="generate_profile",

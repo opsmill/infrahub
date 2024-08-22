@@ -1,11 +1,13 @@
 import asyncio
 import logging
+import traceback
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import pendulum
 import typer
+from click.exceptions import Exit
 from httpx import HTTPError
 from pendulum.datetime import DateTime
 from rich.console import Console
@@ -16,10 +18,14 @@ from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.exceptions import (
     AuthenticationError,
     Error,
+    FilterNotFoundError,
     GraphQLError,
+    NodeNotFoundError,
+    SchemaNotFoundError,
     ServerNotReachableError,
     ServerNotResponsiveError,
 )
+from infrahub_sdk.schema import InfrahubRepositoryConfig
 
 from .client import initialize_client_sync
 
@@ -35,11 +41,32 @@ def init_logging(debug: bool = False) -> None:
     logging.getLogger("infrahubctl")
 
 
-def catch_exception(  # noqa: C901
-    which_exception: Union[type[Exception], Iterable[type[Exception]]] = Exception,
-    console: Optional[Console] = None,
-    exit_code: int = 1,
-):
+def handle_exception(exc: Exception, console: Console, exit_code: int):
+    """Handle exeception in a different fashion based on its type."""
+    if isinstance(exc, Exit):
+        raise typer.Exit(code=exc.exit_code)
+    if isinstance(exc, AuthenticationError):
+        console.print(f"[red]Authentication failure: {str(exc)}")
+        raise typer.Exit(code=exit_code)
+    if isinstance(exc, (ServerNotReachableError, ServerNotResponsiveError)):
+        console.print(f"[red]{str(exc)}")
+        raise typer.Exit(code=exit_code)
+    if isinstance(exc, HTTPError):
+        console.print(f"[red]HTTP communication failure: {str(exc)} on {exc.request.method} to {exc.request.url}")
+        raise typer.Exit(code=exit_code)
+    if isinstance(exc, GraphQLError):
+        print_graphql_errors(console=console, errors=exc.errors)
+        raise typer.Exit(code=exit_code)
+    if isinstance(exc, (SchemaNotFoundError, NodeNotFoundError, FilterNotFoundError)):
+        console.print(f"[red]Error: {str(exc)}")
+        raise typer.Exit(code=exit_code)
+
+    console.print(f"[red]Error: {str(exc)}")
+    console.print(traceback.format_exc())
+    raise typer.Exit(code=exit_code)
+
+
+def catch_exception(console: Optional[Console] = None, exit_code: int = 1):
     """Decorator to handle exception for commands."""
     if not console:
         console = Console()
@@ -51,24 +78,8 @@ def catch_exception(  # noqa: C901
             async def async_wrapper(*args: Any, **kwargs: Any):
                 try:
                     return await func(*args, **kwargs)
-                except AuthenticationError as exc:
-                    console.print(f"[red]Authentication failure: {str(exc)}")
-                    raise typer.Exit(code=2)
-                except (ServerNotReachableError, ServerNotResponsiveError) as exc:
-                    console.print(f"[red]{str(exc)}")
-                    raise typer.Exit(code=3)
-                except HTTPError as exc:
-                    console.print(f"[red]{str(exc)}")
-                    raise typer.Exit(code=4)
-                except GraphQLError as exc:
-                    print_graphql_errors(console, exc.errors)
-                    raise typer.Exit(code=5)
-                except Error as exc:
-                    console.print(f"[red]{str(exc)}")
-                    raise typer.Exit(code=6)
-                except which_exception as exc:
-                    console.print(f"[red]{str(exc)}")
-                    raise typer.Exit(code=exit_code)
+                except (Error, Exception) as exc:  # pylint: disable=broad-exception-caught
+                    return handle_exception(exc=exc, console=console, exit_code=exit_code)
 
             return async_wrapper
 
@@ -76,24 +87,8 @@ def catch_exception(  # noqa: C901
         def wrapper(*args: Any, **kwargs: Any):
             try:
                 return func(*args, **kwargs)
-            except AuthenticationError as exc:
-                console.print(f"[red]Authentication failure: {str(exc)}")
-                raise typer.Exit(code=2)
-            except (ServerNotReachableError, ServerNotResponsiveError) as exc:
-                console.print(f"[red]{str(exc)}")
-                raise typer.Exit(code=3)
-            except HTTPError as exc:
-                console.print(f"[red]{str(exc)}")
-                raise typer.Exit(code=4)
-            except GraphQLError as exc:
-                print_graphql_errors(console, exc.errors)
-                raise typer.Exit(code=5)
-            except Error as exc:
-                console.print(f"[red]{str(exc)}")
-                raise typer.Exit(code=6)
-            except which_exception as exc:
-                console.print(f"[red]{str(exc)}")
-                raise typer.Exit(code=exit_code)
+            except (Error, Exception) as exc:  # pylint: disable=broad-exception-caught
+                return handle_exception(exc=exc, console=console, exit_code=exit_code)
 
         return wrapper
 
@@ -101,10 +96,15 @@ def catch_exception(  # noqa: C901
 
 
 def execute_graphql_query(
-    query: str, variables_dict: dict[str, Any], branch: Optional[str] = None, debug: bool = False
+    query: str,
+    variables_dict: dict[str, Any],
+    repository_config: InfrahubRepositoryConfig,
+    branch: Optional[str] = None,
+    debug: bool = False,
 ) -> dict:
     console = Console()
-    query_str = find_graphql_query(query)
+    query_object = repository_config.get_query(name=query)
+    query_str = query_object.load_query()
 
     client = initialize_client_sync()
     response = client.execute_graphql(

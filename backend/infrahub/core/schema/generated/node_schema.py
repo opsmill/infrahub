@@ -13,7 +13,7 @@ class GeneratedNodeSchema(BaseNodeSchema):
     inherit_from: list[str] = Field(
         default_factory=list,
         description="List of Generic Kind that this node is inheriting from",
-        json_schema_extra={"update": "not_supported"},
+        json_schema_extra={"update": "validate_constraint"},
     )
     generate_profile: bool = Field(
         default=True,

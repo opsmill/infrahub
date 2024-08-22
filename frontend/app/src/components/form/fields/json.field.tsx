@@ -23,7 +23,7 @@ const JsonField = ({
         const fieldData: FormAttributeValue = field.value;
 
         return (
-          <div className="relative flex flex-col">
+          <div className="space-y-2">
             <LabelFormField
               label={label}
               unique={unique}
@@ -56,6 +56,7 @@ const JsonField = ({
                 }}
               />
             </FormInput>
+
             <FormMessage />
           </div>
         );

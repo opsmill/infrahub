@@ -371,6 +371,18 @@ async def test_query_no_filter(
     assert len(nodes) == 3
 
 
+async def test_query_protocol(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_protocol,
+    criticality_low: Node,
+    criticality_medium: Node,
+    criticality_high: Node,
+):
+    nodes = await NodeManager.query(db=db, schema=criticality_protocol)
+    assert len(nodes) == 3
+
+
 async def test_query_with_filter_string_int(
     db: InfrahubDatabase,
     default_branch: Branch,

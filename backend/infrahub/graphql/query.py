@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import prepare_graphql_params
@@ -21,8 +22,8 @@ async def execute_query(
     name: str,
     db: InfrahubDatabase,
     params: Optional[dict] = None,
-    branch: Union[Branch, str] = None,
-    at: Union[Timestamp, str] = None,
+    branch: Branch | str | None = None,
+    at: Timestamp | str | None = None,
 ) -> ExecutionResult:
     """Helper function to Execute a GraphQL Query."""
 
@@ -31,7 +32,7 @@ async def execute_query(
     at = Timestamp(at)
 
     graphql_query = await NodeManager.get_one_by_default_filter(
-        db=db, id=name, kind=InfrahubKind.GRAPHQLQUERY, branch=branch, at=at
+        db=db, id=name, kind=CoreGraphQLQuery, branch=branch, at=at
     )
     if not graphql_query:
         raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")
