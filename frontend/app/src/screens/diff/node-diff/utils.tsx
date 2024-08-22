@@ -55,7 +55,11 @@ export const DiffRow = ({
   rightClassName,
 }: DiffRowProps) => {
   return (
-    <div className={classNames("bg-custom-white min-h-9 relative", hasConflicts && "bg-yellow-50")}>
+    <div
+      className={classNames(
+        "bg-custom-white min-h-9 relative hover:bg-gray-50",
+        hasConflicts && "bg-yellow-50"
+      )}>
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
       <Accordion

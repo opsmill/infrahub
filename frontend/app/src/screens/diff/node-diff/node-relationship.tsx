@@ -15,6 +15,7 @@ export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps
 
   const AddedCount = relationship.elements.filter(({ status }) => status === "ADDED").length;
   const RemovedCount = relationship.elements.filter(({ status }) => status === "REMOVED").length;
+  const UpdatedCount = relationship.elements.filter(({ status }) => status === "UPDATED").length;
   return (
     <DiffRow
       hasConflicts={relationship.contains_conflict}
@@ -29,14 +30,24 @@ export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps
       }
       right={
         <div className="space-x-1">
-          <Badge variant="red" className="gap-1">
-            <Icon icon="mdi:minus-circle-outline" />
-            {RemovedCount}
-          </Badge>
-          <Badge variant="green" className="gap-1">
-            <Icon icon="mdi:plus-circle-outline" />
-            {AddedCount}
-          </Badge>
+          {AddedCount > 0 && (
+            <Badge variant="green" className="gap-1">
+              <Icon icon="mdi:plus-circle-outline" />
+              {AddedCount}
+            </Badge>
+          )}
+          {UpdatedCount > 0 && (
+            <Badge variant="blue" className="gap-1">
+              <Icon icon="mdi:plus-circle-outline" />
+              {UpdatedCount}
+            </Badge>
+          )}
+          {RemovedCount > 0 && (
+            <Badge variant="red" className="gap-1">
+              <Icon icon="mdi:minus-circle-outline" />
+              {RemovedCount}
+            </Badge>
+          )}
         </div>
       }>
       {relationship.elements.map((element, index: number) => (
