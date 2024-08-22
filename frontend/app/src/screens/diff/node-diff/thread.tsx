@@ -69,7 +69,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
                 event.stopPropagation();
                 setShowThread(true);
               }}
-              className="p-1 h-6 rounded-full"
+              className="px-2 h-6 rounded-full"
               variant={"dark"}
               data-testid="data-diff-add-comment">
               <Icon icon="mdi:chat-outline" className="mr-1" />
