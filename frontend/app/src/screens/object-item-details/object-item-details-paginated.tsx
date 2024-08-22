@@ -166,10 +166,7 @@ export default function ObjectItemDetails({
         <dl className="bg-custom-white divide-y">
           <ObjectAttributeRow name="ID" value={objectDetailsData.id} enableCopyToClipboard />
           {attributes.map((attribute) => {
-            if (
-              !objectDetailsData[attribute.name] ||
-              !objectDetailsData[attribute.name].is_visible
-            ) {
+            if (!objectDetailsData[attribute.name]) {
               return null;
             }
 

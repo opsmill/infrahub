@@ -5,15 +5,18 @@ import { useParams } from "react-router-dom";
 import { DiffThread } from "./thread";
 import { Icon } from "@iconify-icon/react";
 import { Conflict } from "./conflict";
-import { formatValue } from "@/screens/diff/node-diff/utils";
+import { DiffRow, formatPropertyName, formatValue } from "@/screens/diff/node-diff/utils";
 import { BadgeConflict } from "@/screens/diff/diff-badge";
+import { DiffProperty } from "@/screens/diff/node-diff/types";
 
 type DiffNodePropertyProps = {
-  property: any;
+  property: DiffProperty;
 };
 
-const getPreviousValue = (property) => {
+const getPreviousValue = (property: DiffProperty) => {
   const previousValue = formatValue(property.previous_value);
+  if (previousValue === null) return null;
+
   if (!property.conflict) {
     return <Badge variant="green">{previousValue}</Badge>;
   }
@@ -28,10 +31,10 @@ const getPreviousValue = (property) => {
   );
 };
 
-const getNewValue = (property) => {
-  const previousValue = formatValue(property.previous_value);
+const getNewValue = (property: DiffProperty) => {
+  const newValue = formatValue(property.new_value);
   if (!property.conflict) {
-    return <Badge variant="blue">{previousValue}</Badge>;
+    return <Badge variant="blue">{newValue}</Badge>;
   }
 
   const conflictValue = formatValue(property.conflict.diff_branch_value);
@@ -42,20 +45,22 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
   const { "*": branchName } = useParams();
 
   const title = (
-    <div className="grid grid-cols-3 text-xs font-normal group">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {property.property_type}
-          {property.conflict && <BadgeConflict>Conflict</BadgeConflict>}
+    <DiffRow
+      title={
+        <div className="flex items-center justify-between pl-8 pr-2">
+          <div className="flex items-center gap-2">
+            {formatPropertyName(property.property_type)} {property.status}
+            {property.conflict && <BadgeConflict>Conflict</BadgeConflict>}
+          </div>
+
+          {!branchName && property.path_identifier && (
+            <DiffThread path={property.path_identifier} />
+          )}
         </div>
-
-        {!branchName && property.path_identifier && <DiffThread path={property.path_identifier} />}
-      </div>
-
-      <div className="bg-green-700/10 p-2">{getPreviousValue(property)}</div>
-
-      <div className="bg-custom-blue-700/10 p-2">{getNewValue(property)}</div>
-    </div>
+      }
+      left={getPreviousValue(property)}
+      right={getNewValue(property)}
+    />
   );
 
   if (!property.conflict) return <EmptyAccordion title={title} iconClassName="text-transparent" />;

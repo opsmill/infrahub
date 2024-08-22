@@ -1,6 +1,8 @@
 import { capitalizeFirstLetter } from "@/utils/string";
 import { BadgeAdded, BadgeRemoved, BadgeType, BadgeUnchanged, BadgeUpdated } from "../diff-badge";
 import { ReactElement, ReactNode } from "react";
+import { DiffProperty } from "@/screens/diff/node-diff/types";
+import { warnUnexpectedType } from "@/utils/common";
 
 export const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdded,
@@ -43,9 +45,44 @@ export const DiffDisplay = ({ left, right }: DiffDisplayProps) => {
     </div>
   );
 };
+type DiffRowProps = {
+  title: ReactElement;
+  left: ReactElement;
+  right: ReactElement;
+};
+export const DiffRow = ({ title, left, right }: DiffRowProps) => {
+  return (
+    <div className="grid grid-cols-3 text-xs font-normal group">
+      {title}
+
+      <div className="bg-green-700/10 p-2">{left}</div>
+
+      <div className="bg-custom-blue-700/10 p-2">{right}</div>
+    </div>
+  );
+};
 
 export const formatValue = (value: any) => {
   if (value === "NULL") return "-";
 
   return value;
+};
+
+export const formatPropertyName = (name: DiffProperty["property_type"]) => {
+  switch (name) {
+    case "HAS_OWNER":
+      return "owner";
+    case "HAS_SOURCE":
+      return "source";
+    case "HAS_VALUE":
+      return "value";
+    case "IS_PROTECTED":
+      return "protected";
+    case "IS_VISIBLE":
+      return "visible";
+    default: {
+      warnUnexpectedType(name);
+      return name;
+    }
+  }
 };
