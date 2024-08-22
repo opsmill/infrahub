@@ -70,9 +70,7 @@ export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
         </div>
       }
       left={getPreviousValue(property)}
-      leftClassName="bg-green-400/10"
-      right={getNewValue(property)}
-      rightClassName="bg-custom-blue-400/10">
+      right={getNewValue(property)}>
       {property.conflict && <Conflict conflict={property.conflict} />}
     </DiffRow>
   );
