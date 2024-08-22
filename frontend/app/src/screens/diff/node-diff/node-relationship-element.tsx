@@ -40,11 +40,13 @@ export const DiffNodeRelationshipElement = ({ element }: DiffNodeElementProps) =
           </Badge>
         )
       }>
-      {element.properties
-        .filter((property) => property.status !== "UNCHANGED")
-        .map((property, index) => (
-          <DiffNodeProperty key={index} property={property} className="pl-8" />
-        ))}
+      <div className="divide-y border-t">
+        {element.properties
+          .filter((property) => property.status !== "UNCHANGED")
+          .map((property, index) => (
+            <DiffNodeProperty key={index} property={property} className="pl-8" />
+          ))}
+      </div>
     </DiffRow>
   );
 };

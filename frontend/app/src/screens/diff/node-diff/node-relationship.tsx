@@ -50,9 +50,11 @@ export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps
           )}
         </div>
       }>
-      {relationship.elements.map((element, index: number) => (
-        <DiffNodeRelationshipElement key={index} element={element} />
-      ))}
+      <div className="divide-y border-t">
+        {relationship.elements.map((element, index: number) => (
+          <DiffNodeRelationshipElement key={index} element={element} />
+        ))}
+      </div>
     </DiffRow>
   );
 };
