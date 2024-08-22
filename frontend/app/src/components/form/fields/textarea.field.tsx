@@ -3,7 +3,7 @@ import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
-import {classNames} from "@/utils/common";
+import { classNames } from "@/utils/common";
 
 const TextareaField = ({
   defaultValue = { source: null, value: null },
@@ -20,9 +20,9 @@ const TextareaField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
-      render={({ field, fieldState}) => {
+      render={({ field, fieldState }) => {
         const fieldData: FormAttributeValue = field.value;
-        const { error } =fieldState;
+        const { error } = fieldState;
 
         return (
           <div>
@@ -35,7 +35,11 @@ const TextareaField = ({
               className="mb-2"
             />
 
-            <FormInput className={classNames("w-full", error && "border-red-500 focus-within:border-red-500 focus-within:outline-red-500")}>
+            <FormInput
+              className={classNames(
+                "w-full",
+                error && "border-red-500 focus-within:border-red-500 focus-within:outline-red-500"
+              )}>
               <MarkdownEditor
                 {...field}
                 {...props}

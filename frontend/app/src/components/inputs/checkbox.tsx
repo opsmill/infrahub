@@ -5,7 +5,7 @@ import { forwardRef, InputHTMLAttributes } from "react";
 interface CheckboxProps extends InputHTMLAttributes<HTMLInputElement> {}
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref) => {
-  const {className, onChange, disabled, ...propsToPass } = props;
+  const { className, onChange, disabled, ...propsToPass } = props;
 
   return (
     <input
