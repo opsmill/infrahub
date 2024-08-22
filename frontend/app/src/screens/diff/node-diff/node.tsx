@@ -32,11 +32,11 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
               </div>
 
               <Badge variant="green" className="bg-transparent">
-                <Icon icon="mdi:layers-triple" /> {sourceBranch}
+                <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}
               </Badge>
 
               <Badge variant="blue" className="bg-transparent">
-                <Icon icon="mdi:layers-triple" /> {destinationBranch}
+                <Icon icon="mdi:layers-triple" className="mr-1" /> {destinationBranch}
               </Badge>
             </div>
           }
