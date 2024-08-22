@@ -1,6 +1,5 @@
 from infrahub.core import registry
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -15,24 +14,10 @@ async def update(message: messages.RequestDiffUpdate, service: InfrahubServices)
     diff_branch = await registry.get_branch(db=service.database, branch=message.branch_name)
 
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=diff_branch)
-
-    # we are updating a diff that tracks the full lifetime of a branch
-    if not message.name and not message.from_time and not message.to_time:
-        await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
-        return
-
-    if message.from_time:
-        from_timestamp = Timestamp(message.from_time)
-    else:
-        from_timestamp = Timestamp(diff_branch.get_created_at())
-    if message.to_time:
-        to_timestamp = Timestamp(message.to_time)
-    else:
-        to_timestamp = Timestamp()
-    await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+    await diff_coordinator.run_update(
         base_branch=base_branch,
         diff_branch=diff_branch,
-        from_time=from_timestamp,
-        to_time=to_timestamp,
+        from_time=message.from_time,
+        to_time=message.to_time,
         name=message.name,
     )

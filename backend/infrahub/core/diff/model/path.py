@@ -128,6 +128,9 @@ class EnrichedDiffAttribute(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.name)
 
+    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
+        return [prop.conflict for prop in self.properties if prop.conflict]
+
     @classmethod
     def from_calculated_attribute(cls, calculated_attribute: DiffAttribute) -> EnrichedDiffAttribute:
         return EnrichedDiffAttribute(
@@ -153,6 +156,13 @@ class EnrichedDiffSingleRelationship(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.peer_id)
+
+    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
+        all_conflicts = []
+        if self.conflict:
+            all_conflicts.append(self.conflict)
+        all_conflicts.extend([prop.conflict for prop in self.properties if prop.conflict])
+        return all_conflicts
 
     def get_property(self, property_type: DatabaseEdgeType) -> EnrichedDiffProperty:
         for prop in self.properties:
@@ -185,6 +195,12 @@ class EnrichedDiffRelationship(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
+        all_conflicts = []
+        for element in self.relationships:
+            all_conflicts.extend(element.get_all_conflicts())
+        return all_conflicts
 
     @property
     def include_in_response(self) -> bool:
@@ -243,6 +259,16 @@ class EnrichedDiffNode(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.uuid)
+
+    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
+        all_conflicts = []
+        if self.conflict:
+            all_conflicts.append(self.conflict)
+        for attribute in self.attributes:
+            all_conflicts.extend(attribute.get_all_conflicts())
+        for relationship in self.relationships:
+            all_conflicts.extend(relationship.get_all_conflicts())
+        return all_conflicts
 
     def get_parent_info(self, context: GraphqlContext | None = None) -> ParentNodeInfo | None:
         for r in self.relationships:
@@ -366,6 +392,12 @@ class EnrichedDiffRoot(BaseSummary):
             return True
         except ValueError:
             return False
+
+    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
+        all_conflicts = []
+        for node in self.nodes:
+            all_conflicts.extend(node.get_all_conflicts())
+        return all_conflicts
 
     @classmethod
     def from_calculated_diff(cls, calculated_diff: DiffRoot, base_branch_name: str) -> EnrichedDiffRoot:

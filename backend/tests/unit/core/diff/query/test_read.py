@@ -1,10 +1,12 @@
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters, DiffSummaryQuery, EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -157,7 +159,8 @@ class TestDiffReadQuery(TestInfrahub):
 
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
-        # diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
+        diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
+        diff_coordinator.data_check_synchronizer.synchronize.return_value = []
 
         enriched_diff = await diff_coordinator.update_branch_diff(
             base_branch=default_branch,

@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 
 import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -154,9 +156,11 @@ async def diff_branch(db: InfrahubDatabase, default_branch: Branch) -> Branch:
 
 @pytest.fixture
 async def diff_coordinator(db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
-    # Validate if the diff has been updated properly
     component_registry = get_component_registry()
-    return await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+    coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
+    coordinator.data_check_synchronizer.synchronize.return_value = []
+    return coordinator
 
 
 async def test_diff_tree_empty_diff(
