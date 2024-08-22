@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { createBranch, deleteBranch } from "../../utils";
 
-test.describe.only("/proposed-changes", () => {
+test.describe("/proposed-changes", () => {
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
