@@ -58,6 +58,7 @@ export const DiffNodeProperty = ({ property, className }: DiffNodePropertyProps)
 
   return (
     <DiffRow
+      iconClassName="left-4"
       hasConflicts={!!property.conflict}
       title={
         <div className={classNames("flex items-center justify-between pl-4 pr-2", className)}>
