@@ -27,6 +27,8 @@ def import_module(
     try:
         module = importlib.import_module(module_name)
     except ModuleNotFoundError as exc:
-        raise ModuleImportError(message=f"Unable to import the specified module in {module_path}") from exc
+        raise ModuleImportError(message=f"{str(exc)} ({module_path})") from exc
+    except SyntaxError as exc:
+        raise ModuleImportError(message=str(exc)) from exc
 
     return module

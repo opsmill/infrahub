@@ -16,7 +16,6 @@ from infrahub_sdk import (
     InfrahubRepositoryConfig,
     ValidationError,
 )
-from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
     InfrahubGeneratorDefinitionConfig,
@@ -199,6 +198,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         local_transforms: dict[str, InfrahubRepositoryJinja2] = {}
 
         # Process the list of local Jinja2 Transforms to organize them by name
+        await self.log.info(f"Found {len(config_file.jinja2_transforms)} Jinja2 transforms in the repository")
+
         for config_transform in config_file.jinja2_transforms:
             try:
                 self.sdk.schema.validate_data_against_schema(
@@ -308,6 +309,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
 
         # Process the list of local Artifact Definitions to organize them by name
+        await self.log.info(f"Found {len(config_file.artifact_definitions)} artifact definitions in the repository")
+
         for artdef in config_file.artifact_definitions:
             try:
                 self.sdk.schema.validate_data_against_schema(schema=schema, data=artdef.model_dump(exclude_none=True))
@@ -600,6 +603,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             sys.path.append(self.directory_root)
 
         checks = []
+        await self.log.info(f"Found {len(config_file.check_definitions)} check definitions in the repository")
         for check in config_file.check_definitions:
             log.debug(self.name, import_type="check_definition", file=check.file_path)
 
@@ -680,22 +684,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         generators = []
+        await self.log.info(f"Found {len(config_file.generator_definitions)} generator definitions in the repository")
+
         for generator in config_file.generator_definitions:
-            log.debug(self.name, import_type="generator_definition", file=generator.file_path)
+            await self.log.info(f"Processing generator {generator.name} ({generator.file_path})")
             file_info = extract_repo_file_information(
                 full_filename=os.path.join(branch_wt.directory, generator.file_path.as_posix()),
                 repo_directory=self.directory_root,
                 worktree_directory=commit_wt.directory,
             )
 
-            try:
-                generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
-                generators.append(generator)
-            except ModuleImportError as exc:
-                await self.log.warning(
-                    self.name, import_type="generator_definition", file=generator.file_path.as_posix(), error=str(exc)
-                )
-                continue
+            generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
+            generators.append(generator)
 
         local_generator_definitions = {generator.name: generator for generator in generators}
         generator_definition_in_graph = {
@@ -787,6 +787,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             sys.path.append(self.directory_root)
 
         transforms = []
+        await self.log.info(f"Found {len(config_file.python_transforms)} Python transforms in the repository")
+
         for transform in config_file.python_transforms:
             log.debug(self.name, import_type="python_transform", file=transform.file_path)
 
@@ -872,10 +874,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         checks = []
         check_class = getattr(module, check_definition.class_name)
-        graphql_query = await self.sdk.get(
-            kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check_class.query), populate_store=True
-        )
+
         try:
+            graphql_query = await self.sdk.get(
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check_class.query), populate_store=True
+            )
             checks.append(
                 CheckDefinitionInformation(
                     name=check_definition.name,

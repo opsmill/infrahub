@@ -760,4 +760,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 message=f"Unable to pull the branch {branch_name} for repository {name}, there is a conflict that must be resolved.",
             ) from error
 
+        if "fatal: could not read Username for" in error.stderr and "terminal prompts disable" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=f"Unable to correctly lookup credentials for repository {name} ({location}).",
+            ) from error
+
         raise RepositoryError(identifier=name, message=error.stderr) from error
