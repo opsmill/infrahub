@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from infrahub_sdk.task_report import TaskLogs, TaskReport
+from infrahub_sdk.task_report import TaskReport
 
 from infrahub.core.constants import RepositoryOperationalStatus
 
@@ -11,16 +11,8 @@ if TYPE_CHECKING:
 
 
 class GitReport(TaskReport):
-    async def update(
-        self, title: Optional[str] = None, conclusion: Optional[str] = None, logs: Optional[TaskLogs] = None
-    ) -> None:
-        await super().update(title=title, conclusion=conclusion, logs=logs)
-        status = RepositoryOperationalStatus.ERROR if self.has_failures else RepositoryOperationalStatus.ONLINE
-        await self.client.execute_graphql(
-            query=UPDATE_STATUS, variables={"repo_id": self.related_node, "status": status.value}
-        )
-
     async def set_status(self, previous_status: str, error: RepositoryError | None = None) -> None:
+        """Sets the operational status for the repository."""
         if error:
             status = RepositoryOperationalStatus.ERROR
         else:

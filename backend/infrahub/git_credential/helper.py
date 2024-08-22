@@ -1,3 +1,4 @@
+import logging
 import sys
 
 import typer
@@ -6,6 +7,7 @@ from infrahub_sdk import Config, InfrahubClientSync
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
 
+logging.getLogger("httpx").setLevel(logging.ERROR)
 app = typer.Typer()
 
 
