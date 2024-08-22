@@ -6,8 +6,9 @@ import { DiffNodeAttribute } from "./node-attribute";
 import { DiffThread } from "./thread";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
-import React from "react";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import { useAtomValue } from "jotai";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 
 type DiffNodeProps = {
   node: any;
@@ -17,6 +18,7 @@ type DiffNodeProps = {
 
 export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProps) => {
   const { "*": branchName } = useParams();
+  const schemaKindName = useAtomValue(schemaKindNameState);
 
   return (
     <Card>
@@ -26,7 +28,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
             <div className="group grid grid-cols-3 justify-items-end gap-2 p-1 text-xs">
               <div className="flex items-center gap-2 justify-self-start">
                 <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
-                <Badge variant="white">{node.kind}</Badge>
+                <Badge variant="white">{schemaKindName[node.kind]}</Badge>
                 <span className="text-gray-800 font-medium px-2 py-1">{node.label}</span>
                 {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
               </div>
