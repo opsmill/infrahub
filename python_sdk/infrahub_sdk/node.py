@@ -1303,18 +1303,18 @@ class InfrahubNode(InfrahubNodeBase):
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     def _generate_mutation_query(self) -> dict[str, Any]:
-        query_result = {"ok": None, "object": {"id": None}}
+        query_result: dict[str, Any] = {"ok": None, "object": {"id": None}}
 
         for attr_name in self._attributes:
-            attr = getattr(self, attr_name)
-            query_result["object"].update(attr._generate_mutation_query())  # type: ignore[union-attr]
+            attr: Attribute = getattr(self, attr_name)
+            query_result["object"].update(attr._generate_mutation_query())
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if not isinstance(rel, RelatedNode):
                 continue
 
-            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+            query_result["object"].update(rel._generate_mutation_query())
 
         return query_result
 
@@ -1780,18 +1780,18 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     def _generate_mutation_query(self) -> dict[str, Any]:
-        query_result = {"ok": None, "object": {"id": None}}
+        query_result: dict[str, Any] = {"ok": None, "object": {"id": None}}
 
         for attr_name in self._attributes:
-            attr = getattr(self, attr_name)
-            query_result["object"].update(attr._generate_mutation_query())  # type: ignore[union-attr]
+            attr: Attribute = getattr(self, attr_name)
+            query_result["object"].update(attr._generate_mutation_query())
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if not isinstance(rel, RelatedNodeSync):
                 continue
 
-            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+            query_result["object"].update(rel._generate_mutation_query())
 
         return query_result
 
