@@ -62,7 +62,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const nodes = data?.DiffTree?.nodes.filter((node) => {
     if (qsp === diffActions.CONFLICT) return node.contains_conflict;
 
-    return node;
+    return true;
   });
 
   if (loading) {
