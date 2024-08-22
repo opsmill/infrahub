@@ -22,6 +22,7 @@ export const diffBadges: { [key: string]: BadgeType } = {
 export const DiffBadge = ({
   status,
   icon,
+  children,
   ...props
 }: DiffBadgeProps & { status: string; icon?: boolean }) => {
   const DiffBadgeComp = diffBadges[status];
@@ -30,7 +31,9 @@ export const DiffBadge = ({
     return null;
   }
 
-  return <DiffBadgeComp {...props}>{!icon && capitalizeFirstLetter(status)}</DiffBadgeComp>;
+  return (
+    <DiffBadgeComp {...props}>{!icon && (children ?? capitalizeFirstLetter(status))}</DiffBadgeComp>
+  );
 };
 
 type DiffRowProps = {
@@ -91,7 +94,7 @@ export const DiffRow = ({
 };
 
 export const formatValue = (value: any) => {
-  if (value === "NULL" || value === null) return "-";
+  if (value === "NULL") return "-";
 
   return value;
 };

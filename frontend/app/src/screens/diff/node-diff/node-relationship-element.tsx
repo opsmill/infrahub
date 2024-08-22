@@ -4,6 +4,7 @@ import { DiffBadge, DiffRow } from "@/screens/diff/node-diff/utils";
 import { BadgeConflict } from "@/screens/diff/diff-badge";
 import { DiffThread } from "@/screens/diff/node-diff/thread";
 import { useParams } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 type DiffNodeElementProps = {
   element: DiffRelationshipElement;
@@ -23,6 +24,20 @@ export const DiffNodeRelationshipElement = ({ element }: DiffNodeElementProps) =
 
           {!branchName && element.path_identifier && <DiffThread path={element.path_identifier} />}
         </div>
+      }
+      right={
+        element.status === "ADDED" && (
+          <Badge variant="blue" className="bg-transparent">
+            {element.peer_label}
+          </Badge>
+        )
+      }
+      left={
+        element.status === "REMOVED" && (
+          <Badge variant="green" className="bg-transparent">
+            {element.peer_label}
+          </Badge>
+        )
       }>
       {element.properties
         .filter((property) => property.status !== "UNCHANGED")
