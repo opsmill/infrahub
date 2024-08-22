@@ -15,8 +15,9 @@ export const DiffNodeRelationshipElement = ({ element }: DiffNodeElementProps) =
 
   return (
     <DiffRow
+      iconClassName="left-4"
       title={
-        <div className="flex items-center justify-between pl-8 pr-2">
+        <div className="flex items-center justify-between pl-4 pr-2">
           <div className="flex gap-1 py-2">
             <DiffBadge icon status={element.status} className="p-0.5" /> {element.peer_label}
             {element.conflict && <BadgeConflict>Conflict</BadgeConflict>}
@@ -42,7 +43,7 @@ export const DiffNodeRelationshipElement = ({ element }: DiffNodeElementProps) =
       {element.properties
         .filter((property) => property.status !== "UNCHANGED")
         .map((property, index) => (
-          <DiffNodeProperty key={index} property={property} />
+          <DiffNodeProperty key={index} property={property} className="pl-8" />
         ))}
     </DiffRow>
   );

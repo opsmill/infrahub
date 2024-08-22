@@ -6,9 +6,11 @@ import { Conflict } from "./conflict";
 import { DiffRow, formatPropertyName, formatValue } from "@/screens/diff/node-diff/utils";
 import { BadgeConflict } from "@/screens/diff/diff-badge";
 import { DiffProperty } from "@/screens/diff/node-diff/types";
+import { classNames } from "@/utils/common";
 
 type DiffNodePropertyProps = {
   property: DiffProperty;
+  className?: string;
 };
 
 const getPreviousValue = (property: DiffProperty) => {
@@ -51,14 +53,14 @@ const getNewValue = (property: DiffProperty) => {
   return <Badge variant="yellow">{conflictValue}</Badge>;
 };
 
-export const DiffNodeProperty = ({ property }: DiffNodePropertyProps) => {
+export const DiffNodeProperty = ({ property, className }: DiffNodePropertyProps) => {
   const { "*": branchName } = useParams();
 
   return (
     <DiffRow
       hasConflicts={!!property.conflict}
       title={
-        <div className="flex items-center justify-between pl-8 pr-2">
+        <div className={classNames("flex items-center justify-between pl-4 pr-2", className)}>
           <div className="flex items-center py-3 gap-2">
             {formatPropertyName(property.property_type)}
             {property.conflict && <BadgeConflict>Conflict</BadgeConflict>}

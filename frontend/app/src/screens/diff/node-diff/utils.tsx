@@ -44,6 +44,7 @@ type DiffRowProps = {
   rightClassName?: string;
   hasConflicts?: boolean;
   children?: ReactNode;
+  iconClassName?: string;
 };
 export const DiffRow = ({
   children,
@@ -53,19 +54,17 @@ export const DiffRow = ({
   leftClassName,
   right,
   rightClassName,
+  iconClassName,
 }: DiffRowProps) => {
   return (
     <div className={classNames("bg-custom-white min-h-9 relative", hasConflicts && "bg-yellow-50")}>
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
       <Accordion
+        iconClassName={classNames("absolute", iconClassName)}
         hideChevron={!children}
         title={
-          <div
-            className={classNames(
-              "grid grid-cols-3 text-xs font-normal group",
-              !children && "pl-8"
-            )}>
+          <div className={classNames("grid grid-cols-3 text-xs font-normal group pl-8")}>
             {title}
 
             <div className="bg-custom-white">

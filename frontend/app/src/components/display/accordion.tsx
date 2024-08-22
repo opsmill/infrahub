@@ -18,6 +18,7 @@ export default function Accordion({
   children,
   className,
   hideChevron,
+  iconClassName,
   ...props
 }: AccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -26,9 +27,14 @@ export default function Accordion({
     <div className={className} {...props}>
       <div className="flex">
         <div
-          className="flex flex-1 w-full items-center cursor-pointer"
+          className="flex flex-1 w-full items-center cursor-pointer relative"
           onClick={() => setIsOpen(!isOpen)}>
-          <span className={classNames("flex items-center mx-2 relative", hideChevron && "hidden")}>
+          <span
+            className={classNames(
+              "flex items-center mx-2 relative",
+              hideChevron && "text-transparent",
+              iconClassName
+            )}>
             {isOpen ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
           </span>
 
