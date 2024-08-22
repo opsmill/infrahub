@@ -54,9 +54,9 @@ class ResolveDiffConflict(Mutation):
         if not core_data_check:
             return cls(ok=True)
         if data.selected_branch is GraphQlConflictSelection.BASE_BRANCH:
-            keep_branch = BranchConflictKeep.SOURCE
-        elif data.selected_branch is GraphQlConflictSelection.DIFF_BRANCH:
             keep_branch = BranchConflictKeep.TARGET
+        elif data.selected_branch is GraphQlConflictSelection.DIFF_BRANCH:
+            keep_branch = BranchConflictKeep.SOURCE
         else:
             keep_branch = None
         core_data_check.keep_branch.value = keep_branch

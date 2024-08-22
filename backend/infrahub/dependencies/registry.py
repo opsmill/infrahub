@@ -12,6 +12,7 @@ from .builder.constraint.schema.uniqueness import SchemaUniquenessConstraintDepe
 from .builder.diff.calculator import DiffCalculatorDependency
 from .builder.diff.combiner import DiffCombinerDependency
 from .builder.diff.coordinator import DiffCoordinatorDependency
+from .builder.diff.data_check_synchronizer import DiffDataCheckSynchronizerDependency
 from .builder.diff.enricher.aggregated import DiffAggregatedEnricherDependency
 from .builder.diff.enricher.cardinality_one import DiffCardinalityOneEnricherDependency
 from .builder.diff.enricher.hierarchy import DiffHierarchyEnricherDependency
@@ -41,6 +42,7 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(DiffCombinerDependency)
     component_registry.track_dependency(DiffRepositoryDependency)
     component_registry.track_dependency(DiffCoordinatorDependency)
+    component_registry.track_dependency(DiffDataCheckSynchronizerDependency)
     return component_registry
 
 
