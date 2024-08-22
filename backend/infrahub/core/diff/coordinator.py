@@ -52,6 +52,34 @@ class DiffCoordinator:
         self.data_check_synchronizer = data_check_synchronizer
         self._enriched_diff_cache: dict[EnrichedDiffRequest, EnrichedDiffRoot] = {}
 
+    async def run_update(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: str | None = None,
+        to_time: str | None = None,
+        name: str | None = None,
+    ) -> EnrichedDiffRoot:
+        # we are updating a diff that tracks the full lifetime of a branch
+        if not name and not from_time and not to_time:
+            return await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+
+        if from_time:
+            from_timestamp = Timestamp(from_time)
+        else:
+            from_timestamp = Timestamp(diff_branch.get_created_at())
+        if to_time:
+            to_timestamp = Timestamp(to_time)
+        else:
+            to_timestamp = Timestamp()
+        return await self.create_or_update_arbitrary_timeframe_diff(
+            base_branch=base_branch,
+            diff_branch=diff_branch,
+            from_time=from_timestamp,
+            to_time=to_timestamp,
+            name=name,
+        )
+
     async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
         from_time = Timestamp(diff_branch.get_created_at())
         to_time = Timestamp()
