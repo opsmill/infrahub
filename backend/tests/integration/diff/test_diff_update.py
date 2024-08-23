@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind, ProposedChangeState
@@ -120,6 +121,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         koenigsegg = await Node.init(schema=TestKind.MANUFACTURER, db=db)
         await koenigsegg.new(db=db, name="Koenigsegg", customers=[john])
         await koenigsegg.save(db=db)
+        omnicorp = await Node.init(schema=TestKind.MANUFACTURER, db=db)
+        await omnicorp.new(db=db, name="Omnicorp")
+        await omnicorp.save(db=db)
+        cyberdyne = await Node.init(schema=TestKind.MANUFACTURER, db=db)
+        await cyberdyne.new(db=db, name="Cyberdyne")
+        await cyberdyne.save(db=db)
         people = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
         await people.new(db=db, name="people", members=[john])
         await people.save(db=db)
@@ -141,6 +148,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             "john": john,
             "kara": kara,
             "koenigsegg": koenigsegg,
+            "omnicorp": omnicorp,
+            "cyberdyne": cyberdyne,
             "people": people,
             "jesko": jesko,
         }
@@ -261,6 +270,59 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             ),
         )
 
+    async def test_add_cardinality_one_peer_conflict(
+        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+    ) -> None:
+        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        jesko_id = initial_dataset["jesko"].get_id()
+        cyberdyne_id = initial_dataset["cyberdyne"].get_id()
+        omnicorp_id = initial_dataset["omnicorp"].get_id()
+        jesko_main = await NodeManager.get_one(db=db, branch=default_branch, id=jesko_id)
+        await jesko_main.manufacturer.update(db=db, data={"id": cyberdyne_id})
+        await jesko_main.save(db=db)
+        jesko_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=jesko_id)
+        await jesko_branch.manufacturer.update(db=db, data={"id": omnicorp_id})
+        await jesko_branch.save(db=db)
+        changes_done_time = Timestamp()
+
+        result = await client.execute_graphql(
+            query=DIFF_UPDATE_QUERY, variables={"branch_name": BRANCH_NAME, "wait_for_completion": True}
+        )
+        assert result["DiffUpdate"]["ok"]
+
+        diff = await self.get_branch_diff(db=db, branch=diff_branch)
+
+        assert diff.to_time > changes_done_time
+        assert len(diff.nodes) == 6
+        nodes_by_id = {n.uuid: n for n in diff.nodes}
+        jesko_node = nodes_by_id[jesko_id]
+        assert jesko_node.action is DiffAction.UPDATED
+        assert len(jesko_node.attributes) == 0
+        assert len(jesko_node.relationships) == 1
+        rels_by_name = {r.name: r for r in jesko_node.relationships}
+        manufacturer_rel = rels_by_name["manufacturer"]
+        assert manufacturer_rel.action is DiffAction.UPDATED
+        assert len(manufacturer_rel.relationships) == 1
+        elements_by_peer_id = {e.peer_id: e for e in manufacturer_rel.relationships}
+        manufacturer_element = elements_by_peer_id[omnicorp_id]
+        assert manufacturer_element.action is DiffAction.UPDATED
+        assert manufacturer_element.conflict
+        assert manufacturer_element.conflict.base_branch_action is DiffAction.UPDATED
+        assert manufacturer_element.conflict.base_branch_value == cyberdyne_id
+        assert manufacturer_element.conflict.diff_branch_action is DiffAction.UPDATED
+        assert manufacturer_element.conflict.diff_branch_value == omnicorp_id
+        assert manufacturer_element.conflict.selected_branch is None
+        self.track_item(
+            "peer_conflict",
+            TrackedConflict(
+                conflict_id=manufacturer_element.conflict.uuid,
+                keep_branch=BranchConflictKeep.TARGET,
+                conflict_selection=ConflictSelection.BASE_BRANCH,
+                expected_value=cyberdyne_id,
+                node_id=jesko_id,
+            ),
+        )
+
     async def test_diff_add_node_conflict(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
     ) -> None:
@@ -281,7 +343,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         assert diff.to_time > changes_done_time
-        assert len(diff.nodes) == 4
+        assert len(diff.nodes) == 7
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         kara_node = nodes_by_id[kara_id]
         assert kara_node.action is DiffAction.UPDATED
@@ -340,7 +402,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
-        assert len(diff.nodes) == 4
+        assert len(diff.nodes) == 7
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         john_node = nodes_by_id[john_main.get_id()]
         assert len(john_node.attributes) == 1
@@ -369,6 +431,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["CoreProposedChangeCreate"]["object"]["id"]
         attribute_value_conflict = self.retrieve_item("attribute_value")
+        peer_conflict = self.retrieve_item("peer_conflict")
         node_removed_conflict = self.retrieve_item("node_removed")
         node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
 
@@ -376,20 +439,99 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         core_data_checks = await data_validator.checks.get_peers(db=db)
         assert set(core_data_checks.keys()) == {
             attribute_value_conflict.conflict_id,
+            peer_conflict.conflict_id,
             node_removed_conflict.conflict_id,
             node_removed_attribute_value_conflict.conflict_id,
         }
         attr_value_data_check = core_data_checks[attribute_value_conflict.conflict_id]
+        peer_data_check = core_data_checks[peer_conflict.conflict_id]
         node_removed_data_check = core_data_checks[node_removed_conflict.conflict_id]
         node_removed_attr_value_data_check = core_data_checks[node_removed_attribute_value_conflict.conflict_id]
         assert attr_value_data_check.keep_branch.value.value == attribute_value_conflict.keep_branch.value
+        assert peer_data_check.keep_branch.value is None
         assert node_removed_attr_value_data_check.keep_branch.value is None
         assert node_removed_data_check.keep_branch.value is None
+
+    async def test_resolve_peer_conflict(
+        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+    ) -> None:
+        attribute_value_conflict = self.retrieve_item("attribute_value")
+        peer_conflict = self.retrieve_item("peer_conflict")
+        node_removed_conflict = self.retrieve_item("node_removed")
+        node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
+        result = await client.execute_graphql(
+            query=CONFLICT_SELECTION_QUERY,
+            variables={
+                "conflict_id": peer_conflict.conflict_id,
+                "selected_branch": peer_conflict.conflict_selection.name,
+            },
+        )
+        assert result["ResolveDiffConflict"]["ok"]
+
+        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        jesko_id = initial_dataset["jesko"].get_id()
+        omnicorp_id = initial_dataset["omnicorp"].get_id()
+        cyberdyne_id = initial_dataset["cyberdyne"].get_id()
+        diff = await self.get_branch_diff(db=db, branch=diff_branch)
+
+        # check EnrichedDiff
+        assert len(diff.nodes) == 7
+        nodes_by_id = {n.uuid: n for n in diff.nodes}
+        jesko_node = nodes_by_id[jesko_id]
+        assert jesko_node.action is DiffAction.UPDATED
+        assert len(jesko_node.attributes) == 0
+        assert len(jesko_node.relationships) == 1
+        rels_by_name = {r.name: r for r in jesko_node.relationships}
+        manufacturer_rel = rels_by_name["manufacturer"]
+        assert manufacturer_rel.action is DiffAction.UPDATED
+        assert len(manufacturer_rel.relationships) == 1
+
+        elements_by_peer_id = {e.peer_id: e for e in manufacturer_rel.relationships}
+        manufacturer_element = elements_by_peer_id[omnicorp_id]
+        assert manufacturer_element.action is DiffAction.UPDATED
+        assert manufacturer_element.conflict
+        assert manufacturer_element.conflict.uuid == peer_conflict.conflict_id
+        assert manufacturer_element.conflict.base_branch_action is DiffAction.UPDATED
+        assert manufacturer_element.conflict.base_branch_value == cyberdyne_id
+        assert manufacturer_element.conflict.diff_branch_action is DiffAction.UPDATED
+        assert manufacturer_element.conflict.diff_branch_value == omnicorp_id
+        assert manufacturer_element.conflict.selected_branch is peer_conflict.conflict_selection
+        # check CoreDataChecks
+        _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
+        core_data_checks = await data_validator.checks.get_peers(db=db)
+        assert set(core_data_checks.keys()) == {
+            attribute_value_conflict.conflict_id,
+            peer_conflict.conflict_id,
+            node_removed_conflict.conflict_id,
+            node_removed_attribute_value_conflict.conflict_id,
+        }
+        attr_value_data_check = core_data_checks[attribute_value_conflict.conflict_id]
+        peer_data_check = core_data_checks[peer_conflict.conflict_id]
+        node_removed_data_check = core_data_checks[node_removed_conflict.conflict_id]
+        node_removed_attr_value_data_check = core_data_checks[node_removed_attribute_value_conflict.conflict_id]
+        assert attr_value_data_check.keep_branch.value.value == attribute_value_conflict.keep_branch.value
+        assert peer_data_check.keep_branch.value.value is peer_conflict.keep_branch.value
+        assert node_removed_data_check.keep_branch.value is None
+        assert node_removed_attr_value_data_check.keep_branch.value is None
+
+    async def test_merge_fails_with_conflicts(
+        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+    ) -> None:
+        pc, _ = await self._get_proposed_change_and_data_validator(db=db)
+        with pytest.raises(GraphQLError, match=r"Data conflicts found"):
+            await client.execute_graphql(
+                query=PROPOSED_CHANGE_UPDATE,
+                variables={
+                    "proposed_change_id": pc.get_id(),
+                    "state": ProposedChangeState.MERGED.value,
+                },
+            )
 
     async def test_diff_resolve_node_removed_conflicts(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
     ) -> None:
         attribute_value_conflict = self.retrieve_item("attribute_value")
+        peer_conflict = self.retrieve_item("peer_conflict")
         node_removed_conflict = self.retrieve_item("node_removed")
         node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
         result = await client.execute_graphql(
@@ -415,7 +557,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         # check EnrichedDiff
-        assert len(diff.nodes) == 4
+        assert len(diff.nodes) == 7
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         kara_node = nodes_by_id[kara_main.get_id()]
         assert kara_node.action is DiffAction.UPDATED
@@ -443,13 +585,16 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         core_data_checks = await data_validator.checks.get_peers(db=db)
         assert set(core_data_checks.keys()) == {
             attribute_value_conflict.conflict_id,
+            peer_conflict.conflict_id,
             node_removed_conflict.conflict_id,
             node_removed_attribute_value_conflict.conflict_id,
         }
         attr_value_data_check = core_data_checks[attribute_value_conflict.conflict_id]
+        peer_data_check = core_data_checks[peer_conflict.conflict_id]
         node_removed_data_check = core_data_checks[node_removed_conflict.conflict_id]
         node_removed_attr_value_data_check = core_data_checks[node_removed_attribute_value_conflict.conflict_id]
         assert attr_value_data_check.keep_branch.value.value == attribute_value_conflict.keep_branch.value
+        assert peer_data_check.keep_branch.value.value == peer_conflict.keep_branch.value
         assert node_removed_data_check.keep_branch.value.value == node_removed_conflict.keep_branch.value
         assert (
             node_removed_attr_value_data_check.keep_branch.value.value
@@ -469,12 +614,26 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["CoreProposedChangeUpdate"]["ok"]
 
+        # validate attribute property conflict
         attribute_value_conflict = self.retrieve_item("attribute_value")
         john_id = initial_dataset["john"].get_id()
         john_main = await NodeManager.get_one(db=db, branch=default_branch, id=john_id)
         assert john_main.age.value == attribute_value_conflict.expected_value
+
+        # validate node removed conflict
         # TODO: node deleted on main is not un-deleted during conflict resolution
         # node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
         # kara_id = initial_dataset["kara"].get_id()
         # kara_main = await NodeManager.get_one(db=db, branch=default_branch, id=kara_id)
         # assert kara_main.height.value == node_removed_attribute_value_conflict.expected_value
+
+        # peer update conflict
+        peer_conflict = self.retrieve_item("peer_conflict")
+        jesko_id = initial_dataset["jesko"].get_id()
+        jesko_main = await NodeManager.get_one(db=db, branch=default_branch, id=jesko_id)
+        manufacturer_peer = await jesko_main.manufacturer.get_peer(db=db)
+        assert manufacturer_peer.get_id() == peer_conflict.expected_value
+
+
+# relationship (cardinality=one) peer property update with conflict
+# relationship (cardinality=many) peer property update with conflict
