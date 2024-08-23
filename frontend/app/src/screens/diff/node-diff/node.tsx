@@ -40,6 +40,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
       className={classNames(isSelectedOnNavigation && "ring-2 ring-custom-blue-500")}>
       {(!!node.attributes?.length || !!node.relationships?.length) && (
         <Accordion
+          defaultOpen={isSelectedOnNavigation}
           title={
             <div className="group grid grid-cols-3 justify-items-end gap-2 py-2 pr-2 text-xs">
               <div className="flex w-full items-center justify-between gap-2 justify-self-start">
