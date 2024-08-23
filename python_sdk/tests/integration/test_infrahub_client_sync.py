@@ -33,11 +33,7 @@ class TestInfrahubClientSync:
 
     @pytest.fixture
     def client(self, test_client: InfrahubTestClient):
-        config = Config(
-            username="admin",
-            password="infrahub",
-            sync_requester=test_client.sync_request,
-        )
+        config = Config(username="admin", password="infrahub", sync_requester=test_client.sync_request)
         return InfrahubClientSync(config=config)
 
     @pytest.fixture(scope="class")
@@ -63,21 +59,13 @@ class TestInfrahubClientSync:
 
         obj2 = await Node.init(schema="CoreRepository", db=db)
         await obj2.new(
-            db=db,
-            name="repository1",
-            description="test repository",
-            location="git@github.com:mock/test.git",
+            db=db, name="repository1", description="test repository", location="git@github.com:mock/test.git"
         )
         await obj2.save(db=db)
 
         obj3 = await Node.init(schema="CoreTransformJinja2", db=db)
         await obj3.new(
-            db=db,
-            name="rfile1",
-            description="test rfile",
-            template_path="mytemplate.j2",
-            repository=obj2,
-            query=obj1,
+            db=db, name="rfile1", description="test rfile", template_path="mytemplate.j2", repository=obj2, query=obj1
         )
         await obj3.save(db=db)
 
@@ -256,10 +244,7 @@ class TestInfrahubClientSync:
         nodes = client.all(kind="CoreRepository")
 
         playback_config = JSONPlayback(directory=str(tmp_path))
-        config = Config(
-            address=client.config.address,
-            sync_requester=playback_config.sync_request,
-        )
+        config = Config(address=client.config.address, sync_requester=playback_config.sync_request)
         playback = InfrahubClientSync(config=config)
         recorded_nodes = playback.all(kind="CoreRepository")
 

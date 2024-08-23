@@ -50,10 +50,7 @@ class TestInfrahubClient:
         await initialization(db=db)
 
     @pytest.fixture(scope="class")
-    async def test_client(
-        self,
-        base_dataset,
-    ) -> InfrahubTestClient:
+    async def test_client(self, base_dataset) -> InfrahubTestClient:
         await app_initialization(app)
         return InfrahubTestClient(app=app)
 
@@ -67,11 +64,7 @@ class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def query_99(self, db: InfrahubDatabase, test_client):
         obj = await Node.init(schema=InfrahubKind.GRAPHQLQUERY, db=db)
-        await obj.new(
-            db=db,
-            name="query99",
-            query="query query99 { CoreRepository { edges { node { id }}}}",
-        )
+        await obj.new(db=db, name="query99", query="query query99 { CoreRepository { edges { node { id }}}}")
         await obj.save(db=db)
         return obj
 

@@ -39,13 +39,7 @@ class InfrahubTestClient(TestClient):
         if payload:
             content = str(ujson.dumps(payload)).encode("UTF-8")
         with self as client:
-            return client.request(
-                method=method.value,
-                url=url,
-                headers=headers,
-                timeout=timeout,
-                content=content,
-            )
+            return client.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
 
     async def async_request(
         self, url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: Optional[dict] = None

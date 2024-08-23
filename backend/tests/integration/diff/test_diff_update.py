@@ -51,11 +51,7 @@ mutation ResolveDiffConflict($conflict_id: String!, $selected_branch: ConflictSe
 class TestDiffUpdateConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def initial_dataset(
-        self,
-        db: InfrahubDatabase,
-        default_branch,
-        client: InfrahubClient,
-        bus_simulator: BusSimulator,
+        self, db: InfrahubDatabase, default_branch, client: InfrahubClient, bus_simulator: BusSimulator
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
         john = await Node.init(schema=TestKind.PERSON, db=db)
