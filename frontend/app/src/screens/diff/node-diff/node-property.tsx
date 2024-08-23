@@ -19,7 +19,7 @@ const getPreviousValue = (property: DiffProperty) => {
 
   if (!property.conflict) {
     return (
-      <Badge variant="green" className="bg-transparent">
+      <Badge variant="green" className="bg-transparent font-medium">
         {previousValue}
       </Badge>
     );
@@ -28,11 +28,13 @@ const getPreviousValue = (property: DiffProperty) => {
   const conflictValue = formatValue(property.conflict.base_branch_value);
   return (
     <div className="flex items-center gap-2">
-      <Badge variant="green" className="bg-transparent">
+      <Badge variant="green" className="bg-transparent font-medium">
         {previousValue}
       </Badge>
       <Icon icon="mdi:chevron-right" />
-      <Badge variant="yellow">{conflictValue}</Badge>
+      <Badge variant="yellow" className="font-medium">
+        {conflictValue}
+      </Badge>
     </div>
   );
 };
@@ -43,14 +45,18 @@ const getNewValue = (property: DiffProperty) => {
 
   if (!property.conflict) {
     return (
-      <Badge variant="blue" className="bg-transparent">
+      <Badge variant="blue" className="bg-transparent font-medium">
         {newValue}
       </Badge>
     );
   }
 
   const conflictValue = formatValue(property.conflict.diff_branch_value);
-  return <Badge variant="yellow">{conflictValue}</Badge>;
+  return (
+    <Badge variant="yellow" className="font-medium">
+      {conflictValue}
+    </Badge>
+  );
 };
 
 export const DiffNodeProperty = ({ property, className }: DiffNodePropertyProps) => {

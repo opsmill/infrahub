@@ -30,10 +30,16 @@ export const DiffNodeAttribute = ({ attribute }: DiffNodeAttributeProps) => {
       }
       left={
         valueProperty?.previous_value && (
-          <Badge variant="green">{formatValue(valueProperty?.previous_value)}</Badge>
+          <Badge variant="green" className="font-medium">
+            {formatValue(valueProperty?.previous_value)}
+          </Badge>
         )
       }
-      right={<Badge variant="blue">{formatValue(valueProperty?.new_value)}</Badge>}>
+      right={
+        <Badge variant="blue" className="font-medium">
+          {formatValue(valueProperty?.new_value)}
+        </Badge>
+      }>
       <div className="divide-y border-t">
         {attribute.properties.map((property, index: number) => (
           <DiffNodeProperty key={index} property={property} />

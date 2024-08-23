@@ -23,30 +23,34 @@ export const PcDiffUpdateButton = ({ sourceBranch, time, ...props }: PcDiffUpdat
   });
 
   const handleSubmit = async () => {
-    setIsLoadingUpdate(true);
-    await scheduleDiffTreeUpdate();
-    setIsLoadingUpdate(false);
-    await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
-    toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
+    try {
+      setIsLoadingUpdate(true);
+      await scheduleDiffTreeUpdate();
+      setIsLoadingUpdate(false);
+      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
+    } catch (error) {
+      setIsLoadingUpdate(false);
+    }
   };
 
   return (
     <div className="flex items-center">
-      {!!time && (
-        <div className="flex items-center text-xs mr-2">
-          <span className="mr-1">Updated</span>
-          <DateDisplay date={time} />
-        </div>
-      )}
-
       <Button
-        variant="outline"
+        variant="primary-outline"
         onClick={handleSubmit}
         isLoading={isLoadingUpdate}
         disabled={!auth?.permissions?.write || isLoadingUpdate}
         {...props}>
-        {isLoadingUpdate ? "Updating diff..." : "Update diff"}
+        {isLoadingUpdate ? "Refreshing diff..." : "Refresh diff"}
       </Button>
+
+      {!!time && (
+        <div className="flex items-center text-xs ml-2">
+          <span className="mr-1">Updated</span>
+          <DateDisplay date={time} />
+        </div>
+      )}
     </div>
   );
 };

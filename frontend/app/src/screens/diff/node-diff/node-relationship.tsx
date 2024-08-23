@@ -31,19 +31,19 @@ export const DiffNodeRelationship = ({ relationship }: DiffNodeRelationshipProps
       right={
         <div className="space-x-1">
           {AddedCount > 0 && (
-            <Badge variant="green" className="gap-1">
+            <Badge variant="green" className="gap-1 font-medium">
               <Icon icon="mdi:plus-circle-outline" />
               {AddedCount}
             </Badge>
           )}
           {UpdatedCount > 0 && (
-            <Badge variant="blue" className="gap-1">
+            <Badge variant="blue" className="gap-1 font-medium">
               <Icon icon="mdi:plus-circle-outline" />
               {UpdatedCount}
             </Badge>
           )}
           {RemovedCount > 0 && (
-            <Badge variant="red" className="gap-1">
+            <Badge variant="red" className="gap-1 font-medium">
               <Icon icon="mdi:minus-circle-outline" />
               {RemovedCount}
             </Badge>

@@ -15,7 +15,9 @@ const buttonVariants = cva(
         danger: "text-white bg-red-500 shadow hover:bg-red-500/90",
         active: "text-white bg-green-600 shadow hover:bg-green-600/90",
         outline: "border bg-custom-white shadow-sm hover:bg-gray-100",
-        dark: "border bg-gray-300 shadow-sm hover:bg-gray-200",
+        "primary-outline":
+          "text-custom-blue-700 border border-custom-blue-700 bg-custom-white shadow-sm hover:bg-gray-100",
+        dark: "border bg-gray-200 shadow-sm hover:bg-gray-300",
         ghost: "hover:bg-gray-100",
       },
       size: {

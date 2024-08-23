@@ -71,17 +71,19 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
   return (
     <>
-      <div className="flex items-center p-2 bg-custom-white">
+      <div className="flex items-center p-2 bg-custom-white divide-x">
         <div className="mr-2">
           <ProposedChangesDiffSummary branch={branch} filters={filters} />
         </div>
 
         {!!nodes?.length && (
-          <PcDiffUpdateButton
-            size="sm"
-            time={data?.DiffTree?.to_time}
-            sourceBranch={proposedChangesDetails?.source_branch?.value}
-          />
+          <div className="pl-2 ">
+            <PcDiffUpdateButton
+              size="sm"
+              time={data?.DiffTree?.to_time}
+              sourceBranch={proposedChangesDetails?.source_branch?.value}
+            />
+          </div>
         )}
       </div>
 
