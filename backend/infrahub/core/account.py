@@ -134,16 +134,15 @@ class AccountObjectPermissionQuery(Query):
 
     def get_permissions(self) -> list[ObjectPermission]:
         permissions: list[ObjectPermission] = []
-        for result in self.get_results():
-            # permissions.append(
-            #     ObjectPermission(
-            #         id=result.get("object_permission").get("uuid"),
-            #         namespace="",
-            #         kind="",
-            #         action=result.get("object_permission_action").get("value"),
-            #     )
-            # )
-            ...
+        # for result in self.get_results():
+        # permissions.append(
+        #     ObjectPermission(
+        #         id=result.get("object_permission").get("uuid"),
+        #         namespace="",
+        #         kind="",
+        #         action=result.get("object_permission_action").get("value"),
+        #     )
+        # )
 
         return permissions
 
