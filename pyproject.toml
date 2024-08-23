@@ -540,7 +540,6 @@ ignore = [
     "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
     "UP007",    # Use X | Y for type annotations
-    "UP008",    # Use super() instead of super(__class__, self)
     "UP012",    # Unnecessary call to encode as UTF-8
     "UP018",    # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",    # Use format specifiers instead of percent format

@@ -19,7 +19,7 @@ class BaseOptions:
 
     def __setattr__(self, name, value):
         if not self._frozen:
-            super(BaseOptions, self).__setattr__(name, value)  # pylint: disable=super-with-arguments
+            super().__setattr__(name, value)
         else:
             raise Exception(f"Can't modify frozen Options {self}")  # pylint: disable=broad-exception-raised
 
@@ -44,7 +44,7 @@ class BaseNode(SubclassWithMeta):
         _meta.description = description
         _meta.freeze()
         cls._meta = _meta
-        super(BaseNode, cls).__init_subclass_with_meta__()
+        super().__init_subclass_with_meta__()
 
 
 class BaseNodeOptions(BaseOptions):
