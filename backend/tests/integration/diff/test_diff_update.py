@@ -614,6 +614,16 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["CoreProposedChangeUpdate"]["ok"]
 
+        # added nodes
+        richard = await NodeManager.get_one_by_id_or_default_filter(db=db, kind="TestingPerson", id="Richard", branch=default_branch)
+        assert richard.name.value == "Richard"
+        assert richard.height.value == 180
+        assert richard.description.value == "The less famous Richard Doe"
+        bob = await NodeManager.get_one_by_id_or_default_filter(db=db, kind="TestingPerson", id="Bob", branch=default_branch)
+        assert bob.name.value == "Bob"
+        assert bob.height.value == 123
+        assert bob.description.value == "The less famous Bob"
+
         # validate attribute property conflict
         attribute_value_conflict = self.retrieve_item("attribute_value")
         john_id = initial_dataset["john"].get_id()
