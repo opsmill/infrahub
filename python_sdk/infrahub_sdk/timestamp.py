@@ -50,8 +50,11 @@ class Timestamp:
     def __repr__(self) -> str:
         return f"Timestamp: {self.to_string()}"
 
-    def to_string(self) -> str:
-        return self.obj.to_iso8601_string()
+    def to_string(self, with_z: bool = True) -> str:
+        iso8601_string = self.obj.to_iso8601_string()
+        if not with_z and iso8601_string[-1] == "Z":
+            iso8601_string = iso8601_string[:-1] + "+00:00"
+        return iso8601_string
 
     def to_timestamp(self) -> int:
         return self.obj.int_timestamp

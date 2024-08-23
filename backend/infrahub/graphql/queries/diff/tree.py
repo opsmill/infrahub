@@ -12,7 +12,7 @@ from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.graphql.enums import ConflictSelection
+from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -41,7 +41,7 @@ class ConflictDetails(ObjectType):
     diff_branch_action = Field(GrapheneDiffActionEnum, required=True)
     diff_branch_value = String()
     diff_branch_changed_at = DateTime(required=True)
-    selected_branch = Field(ConflictSelection)
+    selected_branch = Field(GraphQLConflictSelection)
 
 
 class DiffSummaryCounts(ObjectType):
@@ -284,7 +284,7 @@ class DiffTreeResolver:
             diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.obj
             if enriched_conflict.diff_branch_changed_at
             else None,
-            selected_branch=enriched_conflict.selected_branch,
+            selected_branch=enriched_conflict.selected_branch.value if enriched_conflict.selected_branch else None,
         )
 
     async def to_graphql(
