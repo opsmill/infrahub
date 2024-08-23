@@ -308,16 +308,17 @@ async def create_administrator_role(db: InfrahubDatabase, global_permissions: Op
     return obj
 
 
-async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_account: Node) -> Node:
+async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_accounts: list[Node]) -> Node:
     group_name = "Administrators"
     obj = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
     await obj.new(db=db, name=group_name, roles=[role])
     await obj.save(db=db)
     log.info(f"Created User Group: {group_name}")
 
-    await admin_account.groups.add(db=db, data=obj)  # type: ignore[attr-defined]
-    await admin_account.save(db=db)
-    log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")  # type: ignore[attr-defined]
+    for admin_account in admin_accounts:
+        await admin_account.groups.add(db=db, data=obj)  # type: ignore[attr-defined]
+        await admin_account.save(db=db)
+        log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")  # type: ignore[attr-defined]
 
     return obj
 
@@ -347,22 +348,26 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    admin_account = await create_account(
-        db=db,
-        name="admin",
-        password=config.SETTINGS.initial.admin_password,
-        token_value=config.SETTINGS.initial.admin_token,
+    admin_accounts: list[Node] = []
+    admin_accounts.append(
+        await create_account(
+            db=db,
+            name="admin",
+            password=config.SETTINGS.initial.admin_password,
+            token_value=config.SETTINGS.initial.admin_token,
+        )
     )
 
     if config.SETTINGS.initial.create_agent_user:
         password = config.SETTINGS.initial.agent_password or str(uuid4())
-
-        await create_account(
-            db=db,
-            name="agent",
-            password=password,
-            role=AccountRole.READ_WRITE.value,
-            token_value=config.SETTINGS.initial.agent_token,
+        admin_accounts.append(
+            await create_account(
+                db=db,
+                name="agent",
+                password=password,
+                role=AccountRole.READ_WRITE.value,
+                token_value=config.SETTINGS.initial.agent_token,
+            )
         )
 
     # --------------------------------------------------
@@ -370,7 +375,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     global_permissions = await create_global_permissions(db=db)
     administrator_role = await create_administrator_role(db=db, global_permissions=global_permissions)
-    await create_administrators_group(db=db, role=administrator_role, admin_account=admin_account)
+    await create_administrators_group(db=db, role=administrator_role, admin_accounts=admin_accounts)
 
     # --------------------------------------------------
     # Create Default IPAM Namespace
