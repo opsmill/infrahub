@@ -24,59 +24,61 @@ export default function DiffTree({ branchName, ...props }: DiffTreeProps) {
     },
     skip: !branchName,
     onCompleted: (data) => {
-      const formattedNodes: TreeProps["data"] = data.DiffTree.nodes.flatMap((node: DiffNode) => {
-        const newItem = {
-          id: node.uuid,
-          name: node.label,
-          parent: node.parent?.uuid ?? TREE_ROOT_ID,
-          children: [] as string[],
-          isBranch: node.relationships.length > 0,
-          metadata: {
-            uuid: node.uuid,
-            status: node.status,
-            containsConflicts: node.contains_conflict,
-          },
-        };
-
-        const newItemFromRelationships = node.relationships.flatMap((relationship) => {
-          const relationshipTreeItem = {
-            id: relationship?.name + newItem.id,
-            name: relationship?.label,
-            parent: newItem.id,
-            isBranch: !!relationship?.elements?.length,
+      const formattedNodes: TreeProps["data"] = data.DiffTree.nodes
+        .filter((node: DiffNode) => node.status !== "UNCHANGED")
+        .flatMap((node: DiffNode) => {
+          const newItem = {
+            id: node.uuid,
+            name: node.label,
+            parent: node.parent?.uuid ?? TREE_ROOT_ID,
             children: [] as string[],
+            isBranch: node.relationships.length > 0,
             metadata: {
               uuid: node.uuid,
-              containsConflicts: relationship.contains_conflict,
+              status: node.status,
+              containsConflicts: node.contains_conflict,
             },
           };
 
-          newItem.children.push(relationshipTreeItem.id);
+          const newItemFromRelationships = node.relationships.flatMap((relationship) => {
+            const relationshipTreeItem = {
+              id: relationship?.name + newItem.id,
+              name: relationship?.label,
+              parent: newItem.id,
+              isBranch: !!relationship?.elements?.length,
+              children: [] as string[],
+              metadata: {
+                uuid: node.uuid,
+                containsConflicts: relationship.contains_conflict,
+              },
+            };
 
-          const relationshipChildrenTreeItem =
-            relationship?.elements?.map((element) => {
-              const child = {
-                id: newItem.id + element.peer_label + element?.peer_id,
-                name: element.peer_label,
-                parent: relationshipTreeItem.id,
-                isBranch: false,
-                children: [],
-                metadata: {
-                  uuid: element?.peer_id,
-                  status: element.status,
-                  containsConflicts: element.contains_conflict,
-                },
-              };
-              relationshipTreeItem.children.push(child.id);
+            newItem.children.push(relationshipTreeItem.id);
 
-              return child;
-            }) ?? [];
+            const relationshipChildrenTreeItem =
+              relationship?.elements?.map((element) => {
+                const child = {
+                  id: newItem.id + element.peer_label + element?.peer_id,
+                  name: element.peer_label,
+                  parent: relationshipTreeItem.id,
+                  isBranch: false,
+                  children: [],
+                  metadata: {
+                    uuid: element?.peer_id,
+                    status: element.status,
+                    containsConflicts: element.contains_conflict,
+                  },
+                };
+                relationshipTreeItem.children.push(child.id);
 
-          return [relationshipTreeItem, ...relationshipChildrenTreeItem];
+                return child;
+              }) ?? [];
+
+            return [relationshipTreeItem, ...relationshipChildrenTreeItem];
+          });
+
+          return [newItem, ...newItemFromRelationships];
         });
-
-        return [newItem, ...newItemFromRelationships];
-      });
 
       setTreeData(addItemsToTree(EMPTY_TREE, formattedNodes));
     },
