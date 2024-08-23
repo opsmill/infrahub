@@ -82,7 +82,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   }
 
   return (
-    <>
+    <div className="h-full overflow-hidden flex flex-col">
       <div className="flex items-center p-2 bg-custom-white divide-x">
         <div className="mr-2">
           <ProposedChangesDiffSummary branch={branch} filters={filters} />
@@ -99,12 +99,12 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
         )}
       </div>
 
-      <div className="p-2.5 grid grid-cols-4 gap-2.5">
-        <CardWithBorder className="col-span-1">
+      <div className="flex-grow grid grid-cols-4 overflow-hidden">
+        <CardWithBorder className="col-span-1 my-2.5 ml-2.5">
           <DiffTree branchName={branch} className="p-2 w-full" />
         </CardWithBorder>
 
-        <div className="space-y-4 col-start-2 col-end-5">
+        <div className="space-y-4 p-2.5 col-start-2 col-end-5 overflow-auto">
           {nodes.map((node) => (
             <DiffNode
               key={node.uuid}
@@ -115,6 +115,6 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
           ))}
         </div>
       </div>
-    </>
+    </div>
   );
 };
