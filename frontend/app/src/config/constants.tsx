@@ -210,3 +210,11 @@ export const SEARCH_ANY_FILTER = "any__value";
 export const SEARCH_PARTIAL_MATCH = "partial_match";
 
 export const SEARCH_FILTERS = [SEARCH_ANY_FILTER, SEARCH_PARTIAL_MATCH];
+
+export const DIFF_TABS = {
+  DATA: "data",
+  FILES: "files",
+  ARTIFACTS: "artifacts",
+  SCHEMA: "schema",
+  CHECKS: "checks",
+};

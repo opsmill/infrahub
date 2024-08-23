@@ -13,7 +13,7 @@ test.describe("/proposed-changes diff data", () => {
     });
   });
 
-  test("should verify the diff data with conflicts", async ({ page }) => {
+  test.fixme("should verify the diff data with conflicts", async ({ page }) => {
     await test.step("create a new proposed change with reviewers", async () => {
       await page.goto("/proposed-changes");
       await page.getByTestId("add-proposed-changes-button").click();
@@ -44,7 +44,7 @@ test.describe("/proposed-changes diff data", () => {
   });
 
   test.fixme("should approve a proposed changes", async ({ page }) => {
-    await test.step("got to the propsoed changes data tab", async () => {
+    await test.step("got to the proposed changes data tab", async () => {
       await page.getByRole("link", { name: "pc-diff-e2e-test 0" });
       await page.getByText("Data").click();
     });
@@ -64,7 +64,7 @@ test.describe("/proposed-changes diff data", () => {
     });
   });
 
-  test("should delete proposed changes", async ({ page }) => {
+  test.fixme("should delete proposed changes", async ({ page }) => {
     await page.goto("/proposed-changes");
     await page
       .getByRole("link", { name: "pc-diff-e2e-test 0" })

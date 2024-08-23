@@ -101,7 +101,7 @@ const findThreadByChange = (
 export const FileContentDiff = (props: any) => {
   const { repositoryId, repositoryDisplayName, file, commitFrom, commitTo } = props;
 
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
@@ -117,9 +117,9 @@ export const FileContentDiff = (props: any) => {
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_FILE_THREAD_OBJECT);
 
   const queryString =
-    schemaData && proposedchange
+    schemaData && proposedChangeId
       ? getProposedChangesFilesThreads({
-          id: proposedchange,
+          id: proposedChangeId,
           kind: schemaData.kind,
         })
       : ""; // Empty query to make the gql parsing work
@@ -195,7 +195,7 @@ export const FileContentDiff = (props: any) => {
 
       const newThread = {
         change: {
-          id: proposedchange,
+          id: proposedChangeId,
         },
         label: {
           value: label,
@@ -369,7 +369,7 @@ export const FileContentDiff = (props: any) => {
 
     const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
-    if (thread || !auth?.permissions?.write || !proposedchange) {
+    if (thread || !auth?.permissions?.write || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }

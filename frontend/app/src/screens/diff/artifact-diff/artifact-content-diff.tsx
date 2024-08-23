@@ -94,7 +94,7 @@ const findThreadByChange = (threads: any[], change: any, idFrom?: string, idTo?:
 export const ArtifactContentDiff = (props: any) => {
   const { itemPrevious, itemNew } = props;
 
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
@@ -107,9 +107,9 @@ export const ArtifactContentDiff = (props: any) => {
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
 
   const queryString =
-    schemaData && proposedchange
+    schemaData && proposedChangeId
       ? getProposedChangesArtifactsThreads({
-          id: proposedchange,
+          id: proposedChangeId,
           kind: schemaData?.kind,
         })
       : ""; // Empty query to make the gql parsing work
@@ -174,7 +174,7 @@ export const ArtifactContentDiff = (props: any) => {
 
       const newThread = {
         change: {
-          id: proposedchange,
+          id: proposedChangeId,
         },
         created_at: {
           value: newDate,
@@ -349,7 +349,7 @@ export const ArtifactContentDiff = (props: any) => {
       itemNew?.storage_id
     );
 
-    if (thread || !auth?.permissions?.write || !proposedchange) {
+    if (thread || !auth?.permissions?.write || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }

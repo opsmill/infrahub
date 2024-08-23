@@ -4,6 +4,7 @@ import ModalConfirm from "@/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
+  DIFF_TABS,
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
@@ -28,7 +29,6 @@ import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
-import { DIFF_TABS } from "@/screens/diff/diff";
 
 type tThread = {
   thread: any;
@@ -181,7 +181,7 @@ export const Thread = (props: tThread) => {
       <Checkbox
         id={idForLabel}
         disabled={isResolved}
-        enabled={isResolved || markAsResolved}
+        checked={isResolved || markAsResolved}
         onChange={() => setConfirmModal(true)}
       />
       <label htmlFor={idForLabel} className={isResolved ? "cursor-default" : "cursor-pointer"}>
@@ -200,13 +200,13 @@ export const Thread = (props: tThread) => {
     <section
       className={classNames(
         isResolved ? "bg-gray-200" : "bg-custom-white",
-        "p-4 m-4 rounded-lg relative"
+        "p-4 rounded-lg relative"
       )}
       data-testid="thread"
       data-cy="thread">
       {displayContext && getThreadTitle(thread)}
 
-      <div className="">
+      <div>
         {sortedComments.map((comment: any, index: number) => (
           <Comment
             key={index}

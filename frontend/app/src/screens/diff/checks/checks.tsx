@@ -7,12 +7,12 @@ import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";
 
 export const Checks = forwardRef((props, ref) => {
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
 
   const { loading, error, data, refetch } = useQuery(GET_VALIDATORS, {
     notifyOnNetworkStatusChange: true,
     variables: {
-      ids: [proposedchange],
+      ids: [proposedChangeId],
     },
   });
 

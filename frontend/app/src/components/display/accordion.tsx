@@ -1,12 +1,15 @@
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { CSSProperties, useState } from "react";
+import { classNames } from "@/utils/common";
 
 export type AccordionProps = {
   title?: any;
   children?: any;
   className?: string;
+  iconClassName?: string;
   defaultOpen?: boolean;
   style?: CSSProperties;
+  hideChevron?: boolean;
 };
 
 export default function Accordion({
@@ -14,6 +17,8 @@ export default function Accordion({
   defaultOpen = false,
   children,
   className,
+  hideChevron,
+  iconClassName,
   ...props
 }: AccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -22,15 +27,17 @@ export default function Accordion({
     <div className={className} {...props}>
       <div className="flex">
         <div
-          className="flex flex-1 w-full items-center cursor-pointer"
+          className="flex flex-1 w-full items-center cursor-pointer relative"
           onClick={() => setIsOpen(!isOpen)}>
-          <span className="flex h-7 items-center mx-2 relative">
-            {isOpen ? (
-              <ChevronDownIcon className="w-4 h-4" aria-hidden="true" />
-            ) : (
-              <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
-            )}
+          <span
+            className={classNames(
+              "flex items-center mx-2 relative",
+              hideChevron && "text-transparent",
+              iconClassName
+            )}>
+            {isOpen ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
           </span>
+
           <span className="flex-1 font-semibold text-left justify-start">{title}</span>
         </div>
       </div>

@@ -24,7 +24,7 @@ import { proposedChangesDetails } from "../../mocks/data/proposedChanges";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 const url = `/proposed-changes/${proposedChangesId}&pr_tab=artifacts`;
-const path = "/proposed-changes/:proposedchange";
+const path = "/proposed-changes/:proposedChangeId";
 
 // Mock the apollo query and data
 const mocks = [

@@ -74,7 +74,6 @@ export const BranchDetails = () => {
         toastId: "alert-success",
       });
     } catch (error: any) {
-      console.log("error: ", error);
       setDetailsContent(error);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={errorMessage} />);
@@ -143,7 +142,7 @@ export const BranchDetails = () => {
 
       {!loading && branch?.name && (
         <>
-          <div className="border-t border-b border-gray-200 px-2 py-2 sm:p-0 mb-6">
+          <div className="border-t border-b border-gray-200 px-2 py-2">
             <dl className="divide-y divide-gray-200">
               <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>

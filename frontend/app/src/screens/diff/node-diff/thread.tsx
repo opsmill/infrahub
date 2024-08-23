@@ -11,20 +11,18 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
-import { DiffContext } from "./data-diff";
-import { DataDiffComments } from "./diff-comments";
-import { Icon } from "@iconify-icon/react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/buttons/button-primitive";
 
-type tDataDiffThread = {
+import { Icon } from "@iconify-icon/react";
+import { Button } from "@/components/buttons/button-primitive";
+import { DiffContext } from ".";
+import { DiffComments } from "./comments";
+
+type tDiffThread = {
   path: string;
 };
 
-export const DataDiffThread = (props: tDataDiffThread) => {
-  const { path } = props;
-
-  const { proposedchange } = useParams();
+export const DiffThread = ({ path }: tDiffThread) => {
+  const { proposedChangeId } = useParams();
   const [schemaList] = useAtom(schemaState);
   const auth = useAuth();
   const { node, currentBranch } = useContext(DiffContext);
@@ -34,7 +32,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
 
   const queryString = schemaData
     ? getProposedChangesObjectThreads({
-        id: proposedchange,
+        id: proposedChangeId,
         path,
         kind: schemaData.kind,
       })
@@ -63,31 +61,43 @@ export const DataDiffThread = (props: tDataDiffThread) => {
   return (
     <div className="ml-2">
       <div className="flex items-center cursor-pointer ">
-        {thread?.comments?.count && (
-          <Badge variant={"dark-gray"} className="rounded-full mr-2">
-            <Icon icon="mdi:chat-outline" className="mr-1" />
-            {thread?.comments?.count}
-          </Badge>
-        )}
-        <div className="hidden group-hover:block">
+        {thread?.comments?.count ? (
           <Tooltip enabled content={"Add comment"}>
             <Button
               disabled={!auth?.permissions?.write}
-              onClick={() => {
+              onClick={(event) => {
+                event.stopPropagation();
                 setShowThread(true);
               }}
-              className="p-0 h-6"
-              variant={"outline"}
-              size={"icon"}
+              className="px-2 h-6 rounded-full"
+              variant={"dark"}
               data-testid="data-diff-add-comment">
-              <Icon icon={"mdi:plus"} />
+              <Icon icon="mdi:chat-outline" className="mr-1" />
+              {thread?.comments?.count}
             </Button>
           </Tooltip>
-        </div>
+        ) : (
+          <div className="hidden group-hover:block">
+            <Tooltip enabled content={"Add comment"}>
+              <Button
+                disabled={!auth?.permissions?.write}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowThread(true);
+                }}
+                className="p-0 h-6 rounded-full"
+                variant={"outline"}
+                size={"icon"}
+                data-testid="data-diff-add-comment">
+                <Icon icon={"mdi:plus"} />
+              </Button>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
       <SlideOver title={title} open={showThread} setOpen={setShowThread}>
-        <DataDiffComments path={path} refetch={refetch} />
+        <DiffComments path={path} refetch={refetch} />
 
         <div className="flex items-center justify-end gap-x-6 py-3 pr-3 border-t">
           <Button onClick={() => setShowThread(false)}>Close</Button>

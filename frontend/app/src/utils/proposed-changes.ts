@@ -1,18 +1,20 @@
-import { BADGE_TYPES } from "@/components/display/badge";
+import { BadgeProps } from "@/components/ui/badge";
 
-export const getProposedChangesStateBadgeType = (state: string): BADGE_TYPES | undefined => {
+export const getProposedChangesStateBadgeType = (
+  state: string
+): BadgeProps["variant"] | undefined => {
   switch (state) {
     case "open": {
-      return BADGE_TYPES.VALIDATE;
+      return "green";
     }
     case "closed": {
-      return BADGE_TYPES.CANCEL;
+      return "red";
     }
     case "merged": {
-      return BADGE_TYPES.WARNING;
+      return "yellow";
     }
     case "canceled": {
-      return BADGE_TYPES.DISABLED;
+      return "gray";
     }
     default: {
       return undefined;

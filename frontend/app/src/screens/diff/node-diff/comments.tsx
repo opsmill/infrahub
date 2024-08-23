@@ -23,17 +23,17 @@ import { useAtomValue } from "jotai/index";
 import { useContext } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { DiffContext } from "./data-diff";
+import { DiffContext } from ".";
 
-type tDataDiffComments = {
+type tDiffComments = {
   path: string;
   refetch?: Function;
 };
 
-export const DataDiffComments = (props: tDataDiffComments) => {
+export const DiffComments = (props: tDiffComments) => {
   const { path, refetch: parentRefetch } = props;
 
-  const { proposedchange } = useParams();
+  const { proposedChangeId } = useParams();
   const [schemaList] = useAtom(schemaState);
   const auth = useAuth();
   const branch = useAtomValue(currentBranchAtom);
@@ -46,7 +46,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
 
   const queryString = schemaData
     ? getProposedChangesObjectThreadComments({
-        id: proposedchange,
+        id: proposedChangeId,
         path,
         kind: schemaData.kind,
       })
@@ -86,7 +86,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
 
       const newThread = {
         change: {
-          id: proposedchange,
+          id: proposedChangeId,
         },
         label: {
           value: label,

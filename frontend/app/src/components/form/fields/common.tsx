@@ -14,8 +14,10 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 
-export const InputUniqueTips = ({ className}: {className: string}) => (
-  <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>must be unique</span>
+export const InputUniqueTips = ({ className }: { className: string }) => (
+  <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>
+    must be unique
+  </span>
 );
 
 interface LabelFormFieldProps extends LabelProps {

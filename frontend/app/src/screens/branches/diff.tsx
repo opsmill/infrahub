@@ -1,22 +1,12 @@
 import { Tabs } from "@/components/tabs";
 import { QSP } from "@/config/qsp";
 import { DateTimeParam, StringParam, useQueryParam } from "use-query-params";
-import { ArtifactsDiff } from "./artifact-diff/artifacts-diff";
-import { DataDiff } from "./data-diff";
-import { FilesDiff } from "./file-diff/files-diff";
-import { SchemaDiff } from "./schema-diff";
+import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
+import { NodeDiff } from "../diff/node-diff";
+import { FilesDiff } from "../diff/file-diff/files-diff";
 import { Form, FormSubmit } from "@/components/ui/form";
 import DatetimeField from "@/components/form/fields/datetime.field";
-
-export const DIFF_TABS = {
-  CONVERSATIONS: "conversation",
-  STATUS: "status",
-  DATA: "data",
-  FILES: "files",
-  CHECKS: "checks",
-  ARTIFACTS: "artifacts",
-  SCHEMA: "schema",
-};
+import { DIFF_TABS } from "@/config/constants";
 
 const tabs = [
   {
@@ -41,12 +31,12 @@ const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
     case DIFF_TABS.FILES:
       return <FilesDiff />;
-    case DIFF_TABS.SCHEMA:
-      return <SchemaDiff />;
     case DIFF_TABS.ARTIFACTS:
       return <ArtifactsDiff />;
+    case DIFF_TABS.SCHEMA:
+      return <NodeDiff filters={{ namespace: { includes: ["Schema"], excludes: ["Profile"] } }} />;
     default:
-      return <DataDiff />;
+      return <NodeDiff filters={{ namespace: { excludes: ["Schema", "Profile"] } }} />;
   }
 };
 
