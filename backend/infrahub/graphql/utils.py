@@ -211,7 +211,7 @@ def find_types_implementing_interface(
     interface: GrapheneInterfaceType, root_schema: GraphQLSchema
 ) -> list[GrapheneObjectType]:
     results = []
-    for _, value in root_schema.type_map.items():
+    for value in root_schema.type_map.values():
         if not hasattr(value, "interfaces"):
             continue
 

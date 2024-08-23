@@ -300,7 +300,7 @@ class BranchMerger:
                         if node.rel_id:
                             rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
-                for _, attr in node.attributes.items():
+                for attr in node.attributes.values():
                     if attr.action == DiffAction.ADDED:
                         await add_relationship(
                             src_node_id=node.db_id,
@@ -375,7 +375,7 @@ class BranchMerger:
         branch_relationships = rels.get(self.source_branch.name, {})
 
         for rel_name in branch_relationships.keys():
-            for _, rel_element in branch_relationships[rel_name].items():
+            for rel_element in branch_relationships[rel_name].values():
                 for rel_node in rel_element.nodes.values():
                     matched_conflict_path = [path for path in rel_element.conflict_paths if path in conflict_resolution]
                     conflict_path = None

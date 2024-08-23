@@ -353,7 +353,7 @@ class BranchDiffer:
                 paths[branch_name] = set()
 
             for rel_name, rels in rel_data.items():
-                for _, rel in rels.items():
+                for rel in rels.values():
                     for node_id in rel.nodes:
                         neighbor_id = [neighbor for neighbor in rel.nodes.keys() if neighbor != node_id][0]
                         schema = self.db.schema.get(name=rel.nodes[node_id].kind, branch=branch_name)
@@ -685,7 +685,7 @@ class BranchDiffer:
         for branch_name, items in rels.items():
             for item in items.values():
                 for rel_diff_element in item.values():
-                    for node_id, _ in rel_diff_element.nodes.items():
+                    for node_id in rel_diff_element.nodes.keys():
                         rels_per_node[branch_name][node_id][rel_diff_element.name].append(rel_diff_element)
 
         return rels_per_node
