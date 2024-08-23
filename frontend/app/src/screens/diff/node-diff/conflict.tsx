@@ -27,14 +27,16 @@ export const Conflict = ({ conflict }: any) => {
       await graphqlClient.mutate({
         mutation,
         variables: {
-          uuid: conflict.uuid,
-          conflict_selection: newValue,
+          id: conflict.uuid,
+          selection: newValue,
         },
         context: {
           branch: currentBranch?.name,
           date,
         },
       });
+
+      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Conflict marked as resovled" />);
 
@@ -48,13 +50,13 @@ export const Conflict = ({ conflict }: any) => {
   const tabs = [
     {
       label: "Base",
-      isActive: conflict.selected_branch === "Base",
-      onClick: () => handleAccept("Base"),
+      isActive: conflict.selected_branch === "BASE_BRANCH",
+      onClick: () => handleAccept("BASE_BRANCH"),
     },
     {
       label: "Branch",
-      isActive: conflict.selected_branch === "Branch",
-      onClick: () => handleAccept("Branch"),
+      isActive: conflict.selected_branch === "DIFF_BRANCH",
+      onClick: () => handleAccept("DIFF_BRANCH"),
     },
   ];
 
