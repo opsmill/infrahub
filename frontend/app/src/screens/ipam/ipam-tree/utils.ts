@@ -78,6 +78,21 @@ export const updateTreeData = (
   return [...data, ...children];
 };
 
+export const addItemsToTree = (
+  currentTree: TreeProps["data"],
+  newItems: TreeProps["data"]
+): TreeProps["data"] => {
+  return newItems.reduce((acc, item) => {
+    const parentIndex = acc.findIndex(({ id }) => id === item.parent);
+    if (parentIndex !== -1) {
+      const parent = { ...acc[parentIndex] };
+      parent.children = [...new Set([...parent.children, item.id])];
+      return [...acc.slice(0, parentIndex), parent, ...acc.slice(parentIndex + 1), item];
+    }
+    return [...acc, item];
+  }, currentTree);
+};
+
 export const getTreeItemAncestors = (
   tree: TreeProps["data"],
   treeItemId: TreeProps["data"][0]["id"]

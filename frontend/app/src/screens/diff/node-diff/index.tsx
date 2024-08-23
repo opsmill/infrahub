@@ -17,6 +17,9 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { PcDiffUpdateButton } from "@/screens/proposed-changes/action-button/pc-diff-update-button";
+import { CardWithBorder } from "@/components/ui/card";
+import DiffTree from "@/screens/diff/diff-tree";
+import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
 
 export const DiffContext = createContext({});
 
@@ -59,7 +62,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   });
 
   // Manually filter conflicts items since it's not available yet in the backend filters
-  const nodes = data?.DiffTree?.nodes.filter((node) => {
+  const nodes: Array<DiffNodeType> = data?.DiffTree?.nodes.filter((node: DiffNodeType) => {
     if (qsp === diffActions.CONFLICT) return node.contains_conflict;
 
     return true;
@@ -67,6 +70,15 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
   if (loading) {
     return <LoadingScreen message="Loading diff..." />;
+  }
+
+  if (!nodes?.length) {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <NoDataFound message="No diff to display. Try to manually load the latest changes." />
+        <PcDiffUpdateButton size="sm" sourceBranch={proposedChangesDetails?.source_branch?.value} />
+      </div>
+    );
   }
 
   return (
@@ -87,25 +99,21 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
         )}
       </div>
 
-      <div className="p-2.5 space-y-4">
-        {nodes?.length ? (
-          nodes.map((node) => (
+      <div className="p-2.5 grid grid-cols-4 gap-2.5">
+        <CardWithBorder className="col-span-1">
+          <DiffTree branchName={branch} className="p-2 w-full" />
+        </CardWithBorder>
+
+        <div className="space-y-4 col-start-2 col-end-5">
+          {nodes.map((node) => (
             <DiffNode
               key={node.uuid}
               node={node}
               sourceBranch={data?.DiffTree?.base_branch}
               destinationBranch={data?.DiffTree?.diff_branch}
             />
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center">
-            <NoDataFound message="No diff to display. Try to manually load the latest changes." />
-            <PcDiffUpdateButton
-              size="sm"
-              sourceBranch={proposedChangesDetails?.source_branch?.value}
-            />
-          </div>
-        )}
+          ))}
+        </div>
       </div>
     </>
   );
