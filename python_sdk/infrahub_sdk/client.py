@@ -6,7 +6,18 @@ import logging
 import warnings
 from functools import wraps
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, MutableMapping, Optional, TypedDict, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Coroutine,
+    MutableMapping,
+    Optional,
+    TypedDict,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import httpx
 import ujson
@@ -49,6 +60,8 @@ if TYPE_CHECKING:
 
 # pylint: disable=redefined-builtin  disable=too-many-lines
 
+SchemaType = TypeVar("SchemaType")
+
 
 class NodeDiff(ExtensionTypedDict):
     branch: str
@@ -86,6 +99,16 @@ class ProcessRelationsNode(TypedDict):
 class ProcessRelationsNodeSync(TypedDict):
     nodes: list[InfrahubNodeSync]
     related_nodes: list[InfrahubNodeSync]
+
+
+def get_schema_name(schema: Union[str, type[SchemaType]]) -> str:
+    if hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:  # type: ignore[union-attr]
+        return schema.__name__  # type: ignore[union-attr]
+
+    if isinstance(schema, str):
+        return schema
+
+    raise ValueError("schema must be a protocol or a string")
 
 
 def handle_relogin(func: Callable[..., Coroutine[Any, Any, httpx.Response]]):  # type: ignore[no-untyped-def]
@@ -301,15 +324,35 @@ class InfrahubClient(BaseClient):
         )
         return cls(address=address, config=config)
 
+    @overload
     async def create(
         self,
         kind: str,
+        data: Optional[dict] = ...,
+        branch: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> InfrahubNode: ...
+
+    @overload
+    async def create(
+        self,
+        kind: type[SchemaType],
+        data: Optional[dict] = ...,
+        branch: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> SchemaType: ...
+
+    async def create(
+        self,
+        kind: Union[str, type[SchemaType]],
         data: Optional[dict] = None,
         branch: Optional[str] = None,
         **kwargs: Any,
-    ) -> InfrahubNode:
+    ) -> Union[InfrahubNode, SchemaType]:
         branch = branch or self.default_branch
-        schema = await self.schema.get(kind=kind, branch=branch)
+
+        kind_str = get_schema_name(schema=kind)
+        schema = await self.schema.get(kind=kind_str, branch=branch)
 
         if not data and not kwargs:
             raise ValueError("Either data or a list of keywords but be provided")
@@ -323,9 +366,39 @@ class InfrahubClient(BaseClient):
         node = InfrahubNode(client=self, schema=schema, branch=branch, data={"id": id})
         await node.delete()
 
+    @overload
+    async def get(
+        self,
+        kind: type[SchemaType],
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        id: Optional[str] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        populate_store: bool = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+        **kwargs: Any,
+    ) -> SchemaType: ...
+
+    @overload
     async def get(
         self,
         kind: str,
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        id: Optional[str] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        populate_store: bool = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+        **kwargs: Any,
+    ) -> InfrahubNode: ...
+
+    async def get(
+        self,
+        kind: Union[str, type[SchemaType]],
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
@@ -336,9 +409,10 @@ class InfrahubClient(BaseClient):
         fragment: bool = False,
         prefetch_relationships: bool = False,
         **kwargs: Any,
-    ) -> InfrahubNode:
+    ) -> Union[InfrahubNode, SchemaType]:
         branch = branch or self.default_branch
-        schema = await self.schema.get(kind=kind, branch=branch)
+        kind_str = get_schema_name(schema=kind)
+        schema = await self.schema.get(kind=kind_str, branch=branch)
 
         filters: MutableMapping[str, Any] = {}
 
@@ -370,7 +444,7 @@ class InfrahubClient(BaseClient):
         )
 
         if len(results) == 0:
-            raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
+            raise NodeNotFoundError(branch_name=branch, node_type=kind_str, identifier=filters)
         if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
@@ -405,9 +479,39 @@ class InfrahubClient(BaseClient):
 
         return ProcessRelationsNode(nodes=nodes, related_nodes=related_nodes)
 
+    @overload
+    async def all(
+        self,
+        kind: type[SchemaType],
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        populate_store: bool = ...,
+        offset: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+    ) -> list[SchemaType]: ...
+
+    @overload
     async def all(
         self,
         kind: str,
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        populate_store: bool = ...,
+        offset: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+    ) -> list[InfrahubNode]: ...
+
+    async def all(
+        self,
+        kind: Union[str, type[SchemaType]],
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         populate_store: bool = False,
@@ -417,7 +521,7 @@ class InfrahubClient(BaseClient):
         exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
-    ) -> list[InfrahubNode]:
+    ) -> Union[list[InfrahubNode], list[SchemaType]]:
         """Retrieve all nodes of a given kind
 
         Args:
@@ -448,9 +552,43 @@ class InfrahubClient(BaseClient):
             prefetch_relationships=prefetch_relationships,
         )
 
+    @overload
+    async def filters(
+        self,
+        kind: type[SchemaType],
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        populate_store: bool = ...,
+        offset: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+        partial_match: bool = ...,
+        **kwargs: Any,
+    ) -> list[SchemaType]: ...
+
+    @overload
     async def filters(
         self,
         kind: str,
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        populate_store: bool = ...,
+        offset: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+        partial_match: bool = ...,
+        **kwargs: Any,
+    ) -> list[InfrahubNode]: ...
+
+    async def filters(
+        self,
+        kind: Union[str, type[SchemaType]],
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         populate_store: bool = False,
@@ -462,7 +600,7 @@ class InfrahubClient(BaseClient):
         prefetch_relationships: bool = False,
         partial_match: bool = False,
         **kwargs: Any,
-    ) -> list[InfrahubNode]:
+    ) -> Union[list[InfrahubNode], list[SchemaType]]:
         """Retrieve nodes of a given kind based on provided filters.
 
         Args:
@@ -482,7 +620,8 @@ class InfrahubClient(BaseClient):
         Returns:
             list[InfrahubNodeSync]: List of Nodes that match the given filters.
         """
-        schema = await self.schema.get(kind=kind, branch=branch)
+        kind_str = get_schema_name(schema=kind)
+        schema = await self.schema.get(kind=kind_str, branch=branch)
 
         branch = branch or self.default_branch
         if at:
