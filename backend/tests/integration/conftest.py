@@ -7,6 +7,7 @@ import pytest
 import yaml
 from infrahub_sdk import UUIDT
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization
@@ -16,6 +17,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.utils import get_models_dir
+from tests.helpers.file_repo import FileRepo
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -101,3 +103,35 @@ class IntegrationHelper:
 @pytest.fixture(scope="class")
 def integration_helper(db: InfrahubDatabase) -> IntegrationHelper:
     return IntegrationHelper(db=db)
+
+
+@pytest.fixture
+def git_sources_dir(tmp_path: Path) -> Path:
+    source_dir = tmp_path / "sources"
+    source_dir.mkdir()
+
+    return source_dir
+
+
+@pytest.fixture
+def git_repos_dir(tmp_path: Path) -> Path:
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+
+    config.SETTINGS.git.repositories_directory = str(repos_dir)
+
+    return repos_dir
+
+
+@pytest.fixture
+def git_repo_infrahub_demo_edge(git_sources_dir: Path) -> FileRepo:
+    """Git Repository used as part of the  demo-edge tutorial."""
+
+    return FileRepo(name="infrahub-demo-edge", sources_directory=git_sources_dir)
+
+
+@pytest.fixture
+def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
+    """Simple Git Repository used for testing."""
+
+    return FileRepo(name="car-dealership", sources_directory=git_sources_dir)
