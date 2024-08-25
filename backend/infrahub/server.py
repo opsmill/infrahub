@@ -19,7 +19,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor, Span
 from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
-from infrahub import __version__, config
+from infrahub import __version__, config, workflows
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
@@ -61,6 +61,12 @@ async def app_initialization(application: FastAPI) -> None:
     database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
     build_component_registry()
+
+    workflows.driver = config.OVERRIDE.workflow or (
+        workflows.WorkflowWorkerExecution()
+        if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
+        else workflows.WorkflowLocalExecution()
+    )
 
     message_bus = config.OVERRIDE.message_bus or (
         NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
