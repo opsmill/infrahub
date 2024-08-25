@@ -14,6 +14,30 @@ if TYPE_CHECKING:
     {% else %}
     from infrahub_sdk.node import RelatedNode, RelationshipManager
     {% endif %}
+    from infrahub_sdk.protocols_base import (
+        String,
+        StringOptional,
+        Integer,
+        IntegerOptional,
+        Boolean,
+        BooleanOptional,
+        DateTime,
+        DateTimeOptional,
+        Dropdown,
+        DropdownOptional,
+        HashedPassword,
+        HashedPasswordOptional,
+        IPHost,
+        IPHostOptional,
+        IPNetwork,
+        IPNetworkOptional,
+        JSONAttribute,
+        JSONAttributeOptional,
+        ListAttribute,
+        ListAttributeOptional,
+        URL,
+        URLOptional,
+    )
 
 
 {% for generic in generics %}
@@ -36,6 +60,7 @@ class {{ generic.namespace + generic.name }}(CoreNode):
     children: RelationshipManager
     {% endif %}
     {% endif %}
+
 {% endfor %}
 
 
@@ -59,5 +84,6 @@ class {{ node.namespace + node.name }}({{ node.inherit_from | join(", ") or "Cor
     children: RelationshipManager
     {% endif %}
     {% endif %}
+
 {% endfor %}
 """
