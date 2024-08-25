@@ -514,6 +514,7 @@ class DiffAllPathsQuery(DiffQuery):
         self.params.update(br_params)
         self.params["branch_support"] = [item.value for item in self.branch_support]
 
+        # ruff: noqa: E501
         query = """
             // all updated edges for our branches and time frame
             MATCH (p)-[diff_rel]-(q)
@@ -525,8 +526,8 @@ class DiffAllPathsQuery(DiffQuery):
             WITH p, diff_rel, q
             // -- DEEPEST EDGE SUBQUERY --
             // get full path for every HAS_VALUE, HAS_SOURCE/OWNER, IS_VISIBLE/PROTECTED
-            // explicitly add in base branch path, if it exists to capture previous value
-            // explicitly add in far-side of any relationship to get peer_id for rel properties
+            // can be multiple paths in the case of HAS_SOURCE/OWNER, IS_VISIBLE/PROTECTED to include
+            // both peers in the relationship
             CALL {
                 WITH p, q, diff_rel
                 OPTIONAL MATCH path = (
@@ -548,11 +549,23 @@ class DiffAllPathsQuery(DiffQuery):
                 AND (r_node.status = "deleted" OR r_root.status = "active")
                 WITH path AS diff_rel_path, diff_rel, r_root, n, r_node, p
                 ORDER BY
+                    ID(n) DESC,
+                    ID(p) DESC,
                     r_node.branch = diff_rel.branch DESC,
                     r_root.branch = diff_rel.branch DESC,
                     r_node.from DESC,
                     r_root.from DESC
-                LIMIT 1
+                WITH p, n, head(collect(diff_rel_path)) AS deepest_diff_paths
+                RETURN deepest_diff_paths
+            }
+            UNWIND deepest_diff_paths AS deepest_diff_path
+            WITH p, diff_rel, q, deepest_diff_path
+            // explicitly add in base branch path, if it exists to capture previous value
+            // explicitly add in far-side of any relationship to get peer_id for rel properties
+            CALL {
+                WITH p, diff_rel, deepest_diff_path
+                WITH p, diff_rel, deepest_diff_path AS diff_rel_path, nodes(deepest_diff_path) AS drp_nodes, relationships(deepest_diff_path) AS drp_relationships
+                WITH p, diff_rel, diff_rel_path, drp_relationships[0] AS r_root, drp_nodes[1] AS n, drp_relationships[1] AS r_node
                 // get base branch version of the diff path, if it exists
                 WITH diff_rel_path, diff_rel, r_root, n, r_node, p
                 OPTIONAL MATCH latest_base_path = (:Root)<-[r_root2]-(n2)-[r_node2]-(inner_p2)-[base_diff_rel]->(base_prop)
@@ -578,7 +591,7 @@ class DiffAllPathsQuery(DiffQuery):
                 WHERE ID(r_root3) = ID(r_root) AND ID(n3) = ID(n) AND ID(r_node3) = ID(r_node) AND ID(inner_p3) = ID(p)
                 AND type(diff_rel) <> "IS_RELATED"
                 AND ID(n3) <> ID(base_peer)
-                AND base_r_peer.from <= $from_time
+                AND base_r_peer.from <= $to_time
                 AND base_r_peer.branch IN $branch_names
                 // exclude paths where an active edge is below a deleted edge
                 AND (base_r_peer.status = "deleted" OR r_node3.status = "active")
