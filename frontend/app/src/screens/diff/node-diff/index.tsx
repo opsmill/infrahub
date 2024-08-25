@@ -101,7 +101,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
       <div className="flex-grow grid grid-cols-4 overflow-hidden">
         <CardWithBorder className="col-span-1 my-2.5 ml-2.5">
-          <DiffTree branchName={branch} className="p-2 w-full" />
+          <DiffTree nodes={nodes} className="p-2 w-full" />
         </CardWithBorder>
 
         <div className="space-y-4 p-2.5 col-start-2 col-end-5 overflow-auto">
