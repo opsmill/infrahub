@@ -4,7 +4,7 @@ import importlib
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 import jinja2
 import typer
@@ -14,25 +14,29 @@ from rich.logging import RichHandler
 from rich.traceback import Traceback
 
 from infrahub_sdk import __version__ as sdk_version
-from infrahub_sdk import protocols as sdk_protocols
 from infrahub_sdk.async_typer import AsyncTyper
+from infrahub_sdk.code_generator import CodeGenerator
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
 from infrahub_sdk.ctl.check import run as run_check
 from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
-from infrahub_sdk.ctl.constants import PROTOCOLS_TEMPLATE
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.generator import run as run_generator
 from infrahub_sdk.ctl.render import list_jinja2_transforms
 from infrahub_sdk.ctl.repository import app as repository_app
 from infrahub_sdk.ctl.repository import get_repository_config
-from infrahub_sdk.ctl.schema import app as schema
+from infrahub_sdk.ctl.schema import app as schema_app
+from infrahub_sdk.ctl.schema import load_schemas_from_disk_and_exit
 from infrahub_sdk.ctl.transform import list_transforms
 from infrahub_sdk.ctl.utils import catch_exception, execute_graphql_query, parse_cli_vars
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
 from infrahub_sdk.jinja2 import identify_faulty_jinja_code
-from infrahub_sdk.schema import AttributeSchema, GenericSchema, InfrahubRepositoryConfig, NodeSchema, RelationshipSchema
+from infrahub_sdk.schema import (
+    InfrahubRepositoryConfig,
+    MainSchemaTypes,
+    SchemaRoot,
+)
 from infrahub_sdk.transforms import get_transform_class_instance
 from infrahub_sdk.utils import get_branch, write_to_file
 
@@ -43,7 +47,7 @@ from .parameters import CONFIG_PARAM
 app = AsyncTyper(pretty_exceptions_show_locals=False)
 
 app.add_typer(branch_app, name="branch")
-app.add_typer(schema, name="schema")
+app.add_typer(schema_app, name="schema")
 app.add_typer(validate_app, name="validate")
 app.add_typer(repository_app, name="repository")
 app.command(name="dump")(dump)
@@ -323,114 +327,36 @@ def transform(
 @app.command(name="protocols")
 @catch_exception(console=console)
 def protocols(  # noqa: PLR0915
+    schemas: list[Path] = typer.Option(None, help="List of schemas or directory to load."),
     branch: str = typer.Option(None, help="Branch of schema to export Python protocols for."),
+    sync: bool = typer.Option(False, help="Generate for sync or async."),
     _: str = CONFIG_PARAM,
     out: str = typer.Option("schema_protocols.py", help="Path to a file to save the result."),
 ) -> None:
     """Export Python protocols corresponding to a schema."""
 
-    def _jinja2_filter_inheritance(value: dict[str, Any]) -> str:
-        inherit_from: list[str] = value.get("inherit_from", [])
+    schema: dict[str, MainSchemaTypes] = {}
 
-        if not inherit_from:
-            return "CoreNode"
-        return ", ".join(inherit_from)
+    if schemas:
+        schemas_data = load_schemas_from_disk_and_exit(schemas=schemas)
 
-    def _jinja2_filter_render_attribute(value: AttributeSchema) -> str:
-        attribute_kind_map = {
-            "boolean": "bool",
-            "datetime": "datetime",
-            "dropdown": "str",
-            "hashedpassword": "str",
-            "iphost": "str",
-            "ipnetwork": "str",
-            "json": "dict",
-            "list": "list",
-            "number": "int",
-            "password": "str",
-            "text": "str",
-            "textarea": "str",
-            "url": "str",
-        }
+        for data in schemas_data:
+            data.load_content()
+            schema_root = SchemaRoot(**data.content)
+            schema.update({item.kind: item for item in schema_root.nodes + schema_root.generics})
 
-        name = value.name
-        kind = value.kind
+    else:
+        client = initialize_client_sync()
+        schema.update(client.schema.fetch(branch=branch))
 
-        attribute_kind = attribute_kind_map[kind.lower()]
-        if value.optional:
-            attribute_kind = f"Optional[{attribute_kind}]"
-
-        return f"{name}: {attribute_kind}"
-
-    def _jinja2_filter_render_relationship(value: RelationshipSchema, sync: bool = False) -> str:
-        name = value.name
-        cardinality = value.cardinality
-
-        type_ = "RelatedNode"
-        if cardinality == "many":
-            type_ = "RelationshipManager"
-
-        if sync:
-            type_ += "Sync"
-
-        return f"{name}: {type_}"
-
-    def _sort_and_filter_models(
-        models: dict[str, Union[GenericSchema, NodeSchema]], filters: Optional[list[str]] = None
-    ) -> list[Union[GenericSchema, NodeSchema]]:
-        if filters is None:
-            filters = ["CoreNode"]
-
-        filtered: list[Union[GenericSchema, NodeSchema]] = []
-        for name, model in models.items():
-            if name in filters:
-                continue
-            filtered.append(model)
-
-        return sorted(filtered, key=lambda k: k.name)
-
-    client = initialize_client_sync()
-    current_schema = client.schema.all(branch=branch)
-
-    generics: dict[str, GenericSchema] = {}
-    nodes: dict[str, NodeSchema] = {}
-
-    for name, schema_type in current_schema.items():
-        if isinstance(schema_type, GenericSchema):
-            generics[name] = schema_type
-        if isinstance(schema_type, NodeSchema):
-            nodes[name] = schema_type
-
-    base_protocols = [
-        e
-        for e in dir(sdk_protocols)
-        if not e.startswith("__")
-        and not e.endswith("__")
-        and e not in ("TYPE_CHECKING", "CoreNode", "Optional", "Protocol", "Union", "annotations", "runtime_checkable")
-    ]
-    sorted_generics = _sort_and_filter_models(generics, filters=["CoreNode"] + base_protocols)
-    sorted_nodes = _sort_and_filter_models(nodes, filters=["CoreNode"] + base_protocols)
-
-    jinja2_env = jinja2.Environment(loader=jinja2.BaseLoader, trim_blocks=True, lstrip_blocks=True)
-    jinja2_env.filters["inheritance"] = _jinja2_filter_inheritance
-    jinja2_env.filters["render_attribute"] = _jinja2_filter_render_attribute
-    jinja2_env.filters["render_relationship"] = _jinja2_filter_render_relationship
-
-    template = jinja2_env.from_string(PROTOCOLS_TEMPLATE)
-    rendered = template.render(generics=sorted_generics, nodes=sorted_nodes, base_protocols=base_protocols, sync=False)
-    rendered_sync = template.render(
-        generics=sorted_generics, nodes=sorted_nodes, base_protocols=base_protocols, sync=True
-    )
-    output_file = Path(out)
-    output_file_sync = Path(output_file.stem + "_sync" + output_file.suffix)
+    code_generator = CodeGenerator(schema=schema)
 
     if out:
-        write_to_file(output_file, rendered)
-        write_to_file(output_file_sync, rendered_sync)
-        console.print(f"Python protocols exported in {output_file} and {output_file_sync}")
+        output_file = Path(out)
+        write_to_file(output_file, code_generator.render(sync=sync))
+        console.print(f"Python protocols exported in {output_file}")
     else:
-        console.print(rendered)
-        console.print(rendered_sync)
+        console.print(code_generator.render(sync=sync))
 
 
 @app.command(name="version")
