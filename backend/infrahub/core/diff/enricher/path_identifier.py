@@ -67,4 +67,4 @@ class DiffPathIdentifierEnricher(DiffEnricherInterface):
                     for relationship_property in relationship_element.properties:
                         relationship_property_path = relationship_element_path.model_copy()
                         relationship_property_path.property_name = relationship_property.property_type.value
-                        relationship_property.path_identifier = relationship_property_path.get_path()
+                        relationship_property.path_identifier = relationship_property_path.get_path(with_peer=False)
