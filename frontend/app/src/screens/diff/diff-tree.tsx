@@ -18,16 +18,13 @@ export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let rootModelMap: Record<string, Array<string>> = {};
+    let kindToUUIDsMap: Record<string, Array<string>> = {};
 
     const formattedNodes: TreeProps["data"] = nodes.flatMap((node: DiffNode) => {
-      const currentModel = rootModelMap[node.kind];
-      rootModelMap = {
-        ...rootModelMap,
-        [node.kind]: currentModel ? [...currentModel, node.uuid] : [node.uuid],
-      };
+      const currentUUIDs = kindToUUIDsMap[node.kind];
+      kindToUUIDsMap[node.kind] = currentUUIDs ? [...currentUUIDs, node.uuid] : [node.uuid];
 
-      const newItem = {
+      const newNode = {
         id: node.uuid,
         name: node.label,
         parent: node.kind,
@@ -40,11 +37,11 @@ export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
         },
       };
 
-      const newItemFromRelationships = node.relationships.flatMap((relationship) => {
-        const relationshipTreeItem = {
-          id: relationship?.name + newItem.id,
+      const nodesFromRelationships = node.relationships.flatMap((relationship) => {
+        const relationshipNode = {
+          id: relationship?.name + newNode.id,
           name: relationship?.label,
-          parent: newItem.id,
+          parent: newNode.id,
           isBranch: !!relationship?.elements?.length,
           children: [] as string[],
           metadata: {
@@ -53,14 +50,14 @@ export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
           },
         };
 
-        newItem.children.push(relationshipTreeItem.id);
+        newNode.children.push(relationshipNode.id);
 
-        const relationshipChildrenTreeItem =
+        const relationshipChildNodes =
           relationship?.elements?.map((element) => {
             const child = {
-              id: newItem.id + element.peer_label + element?.peer_id,
+              id: newNode.id + element.peer_label + element?.peer_id,
               name: element.peer_label,
-              parent: relationshipTreeItem.id,
+              parent: relationshipNode.id,
               isBranch: false,
               children: [],
               metadata: {
@@ -69,23 +66,23 @@ export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
                 containsConflicts: element.contains_conflict,
               },
             };
-            relationshipTreeItem.children.push(child.id);
+            relationshipNode.children.push(child.id);
 
             return child;
           }) ?? [];
 
-        return [relationshipTreeItem, ...relationshipChildrenTreeItem];
+        return [relationshipNode, ...relationshipChildNodes];
       });
 
-      return [newItem, ...newItemFromRelationships];
+      return [newNode, ...nodesFromRelationships];
     });
 
-    const parents = Object.entries(rootModelMap).map(([kind, children]) => {
+    const parents = Object.entries(kindToUUIDsMap).map(([kind, uuids]) => {
       return {
         id: kind,
         name: kind,
         parent: TREE_ROOT_ID,
-        children,
+        children: uuids,
         isBranch: true,
         metadata: {
           kind,
