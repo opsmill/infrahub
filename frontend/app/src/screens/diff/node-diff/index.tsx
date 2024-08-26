@@ -20,6 +20,7 @@ import { PcDiffUpdateButton } from "@/screens/proposed-changes/action-button/pc-
 import { CardWithBorder } from "@/components/ui/card";
 import DiffTree from "@/screens/diff/diff-tree";
 import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
+import { Button } from "@/components/buttons/button-primitive";
 
 export const DiffContext = createContext({});
 
@@ -45,7 +46,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
 
 export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const { "*": branchName } = useParams();
-  const [qsp] = useQueryParam(QSP.STATUS, StringParam);
+  const [qspStatus, setQspStatus] = useQueryParam(QSP.STATUS, StringParam);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const nodeSchemas = useAtomValue(schemaState);
 
@@ -54,7 +55,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const schemaData = nodeSchemas.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
   // Get filters merged with status filter
-  const finalFilters = buildFilters(filters, qsp);
+  const finalFilters = buildFilters(filters, qspStatus);
 
   const { loading, data } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,
@@ -63,7 +64,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
   // Manually filter conflicts items since it's not available yet in the backend filters
   const nodes: Array<DiffNodeType> = data?.DiffTree?.nodes.filter((node: DiffNodeType) => {
-    if (qsp === diffActions.CONFLICT) return node.contains_conflict;
+    if (qspStatus === diffActions.CONFLICT) return node.contains_conflict;
 
     return true;
   });
@@ -73,6 +74,19 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   }
 
   if (!nodes?.length) {
+    if (qspStatus) {
+      return (
+        <div className="flex flex-col items-center justify-center">
+          <NoDataFound
+            message={`No diff matches the status: ${qspStatus}. Please adjust your filter settings.`}
+          />
+          <Button size="sm" variant="outline" onClick={() => setQspStatus(undefined)}>
+            Reset Filter
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center">
         <NoDataFound message="No diff to display. Try to manually load the latest changes." />
