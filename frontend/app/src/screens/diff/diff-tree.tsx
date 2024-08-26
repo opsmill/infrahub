@@ -23,7 +23,7 @@ export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
     let kindToUUIDsMap: Record<string, Array<string>> = {};
 
     const formattedNodes: TreeProps["data"] = nodes
-      .filter((node) => node.label.includes(query))
+      .filter((node) => node.label.toLowerCase().includes(query.toLowerCase()))
       .flatMap((node: DiffNode) => {
         const currentUUIDs = kindToUUIDsMap[node.kind];
         kindToUUIDsMap[node.kind] = currentUUIDs ? [...currentUUIDs, node.uuid] : [node.uuid];
