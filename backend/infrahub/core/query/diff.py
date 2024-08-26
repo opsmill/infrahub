@@ -555,10 +555,9 @@ class DiffAllPathsQuery(DiffQuery):
                     r_root.branch = diff_rel.branch DESC,
                     r_node.from DESC,
                     r_root.from DESC
-                WITH p, n, head(collect(diff_rel_path)) AS deepest_diff_paths
-                RETURN deepest_diff_paths
+                WITH p, n, head(collect(diff_rel_path)) AS deepest_diff_path
+                RETURN deepest_diff_path
             }
-            UNWIND deepest_diff_paths AS deepest_diff_path
             WITH p, diff_rel, q, deepest_diff_path
             // explicitly add in base branch path, if it exists to capture previous value
             // explicitly add in far-side of any relationship to get peer_id for rel properties
