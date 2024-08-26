@@ -556,10 +556,11 @@ class DiffQueryParser:
                         and base_diff_property.changed_at >= self.from_time
                     ):
                         continue
-                    if (
-                        base_diff_property_by_type[prop_type] is None
-                        or base_diff_property.changed_at < base_diff_property_by_type[prop_type].changed_at
-                    ):
+                    if base_diff_property_by_type[prop_type] is None:
+                        base_diff_property_by_type[prop_type] = base_diff_property
+                        continue
+                    current_property = base_diff_property_by_type.get(prop_type)
+                    if current_property and base_diff_property.changed_at < current_property.changed_at:
                         base_diff_property_by_type[prop_type] = base_diff_property
                 for diff_property in base_diff_property_by_type.values():
                     if diff_property:

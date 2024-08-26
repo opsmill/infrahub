@@ -93,9 +93,11 @@ class TrackedConflict:
 
 
 class TestDiffUpdateConflict(TestInfrahubApp):
+    _tracked_items: dict[str, TrackedConflict] = {}
+
     @classmethod
     def setup_class(cls) -> None:
-        cls._tracked_items: dict[str, TrackedConflict] = {}
+        cls._tracked_items = {}
 
     def track_item(self, name: str, data: TrackedConflict) -> None:
         self._tracked_items[name] = data
@@ -110,7 +112,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
-    ) -> None:
+    ) -> dict[str, Node]:
         await load_schema(db, schema=CAR_SCHEMA)
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
@@ -458,6 +460,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         kara_node = nodes_by_id[kara_id]
         assert kara_node.action is DiffAction.UPDATED
+        assert kara_node.conflict
         assert kara_node.conflict.base_branch_action is DiffAction.REMOVED
         assert kara_node.conflict.base_branch_value is None
         assert kara_node.conflict.diff_branch_action is DiffAction.UPDATED
@@ -549,7 +552,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
 
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)
+        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
         assert set(core_data_checks.keys()) == {
             attribute_value_conflict.conflict_id,
             peer_conflict.conflict_id,
@@ -614,7 +617,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert manufacturer_element.conflict.selected_branch is peer_conflict.conflict_selection
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)
+        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
         assert peer_conflict.conflict_id in core_data_checks
         peer_data_check = core_data_checks[peer_conflict.conflict_id]
         assert peer_data_check.keep_branch.value.value is peer_conflict.keep_branch.value
@@ -706,7 +709,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)
+        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
         assert cardinality_one_property_conflict_a.conflict_id in core_data_checks
         assert cardinality_one_property_conflict_b.conflict_id in core_data_checks
         data_check_a = core_data_checks[cardinality_one_property_conflict_a.conflict_id]
@@ -759,6 +762,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         kara_node = nodes_by_id[kara_main.get_id()]
         assert kara_node.action is DiffAction.UPDATED
+        assert kara_node.conflict
         assert kara_node.conflict.uuid == node_removed_conflict.conflict_id
         assert kara_node.conflict.base_branch_action is DiffAction.REMOVED
         assert kara_node.conflict.base_branch_value is None
@@ -780,7 +784,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert attr_conflict.selected_branch == node_removed_attribute_value_conflict.conflict_selection
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)
+        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
         assert {
             node_removed_conflict.conflict_id,
             node_removed_attribute_value_conflict.conflict_id,
@@ -813,7 +817,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)
+        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
         assert set(core_data_checks.keys()) == {tc.conflict_id for tc in tracked_conflicts}
         for tracked_conflict in tracked_conflicts:
             data_check = core_data_checks[tracked_conflict.conflict_id]
