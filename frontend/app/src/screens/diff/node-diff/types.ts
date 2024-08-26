@@ -27,6 +27,7 @@ export type DiffProperty = {
 };
 
 export type DiffAttribute = {
+  uuid: string;
   name: string;
   properties: Array<DiffProperty>;
   path_identifier: string | null;
@@ -40,12 +41,36 @@ export type DiffRelationshipElement = {
   status: Status;
   path_identifier: string;
   conflict: DiffConflict | null;
+  contains_conflict: boolean;
 };
 
 export type DiffRelationship = {
+  uuid: string;
   name: string;
   label: string;
   elements: Array<DiffRelationshipElement>;
   path_identifier: string | null;
   contains_conflict: boolean;
+};
+
+export type DiffNode = {
+  attributes: Array<DiffAttribute>;
+  conflict: DiffConflict | null;
+  contains_conflict: boolean;
+  kind: string;
+  label: string;
+  last_changed_at?: string;
+  num_added?: number;
+  num_conflicts?: number;
+  num_removed?: number;
+  num_updated?: number;
+  parent?: {
+    kind?: string;
+    relationship_name?: string;
+    uuid: string;
+  } | null;
+  path_identifier: string;
+  relationships: Array<DiffRelationship>;
+  status: Status;
+  uuid: string;
 };

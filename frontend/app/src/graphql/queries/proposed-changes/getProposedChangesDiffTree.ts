@@ -90,6 +90,11 @@ export const getProposedChangesDiffTree = gql`
         last_changed_at
         status
         path_identifier
+        parent {
+          uuid
+          relationship_name
+          kind
+        }
       }
       to_time
       base_branch

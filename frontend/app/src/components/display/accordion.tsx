@@ -21,27 +21,29 @@ export default function Accordion({
   iconClassName,
   ...props
 }: AccordionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState<boolean>();
+
+  const open = isOpen === undefined ? defaultOpen : isOpen;
 
   return (
     <div className={className} {...props}>
       <div className="flex">
         <div
           className="flex flex-1 w-full items-center cursor-pointer relative"
-          onClick={() => setIsOpen(!isOpen)}>
+          onClick={() => setIsOpen(!open)}>
           <span
             className={classNames(
               "flex items-center mx-2 relative",
               hideChevron && "text-transparent",
               iconClassName
             )}>
-            {isOpen ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
+            {open ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
           </span>
 
           <span className="flex-1 font-semibold text-left justify-start">{title}</span>
         </div>
       </div>
-      {isOpen && children}
+      {open && children}
     </div>
   );
 }

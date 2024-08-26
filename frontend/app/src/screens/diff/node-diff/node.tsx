@@ -5,13 +5,16 @@ import { DiffNodeRelationship } from "./node-relationship";
 import { DiffNodeAttribute } from "./node-attribute";
 import { DiffThread } from "./thread";
 import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
+import { classNames } from "@/utils/common";
+import { useEffect, useRef } from "react";
 
 type DiffNodeProps = {
-  node: any;
+  node: DiffNodeType;
   sourceBranch: string;
   destinationBranch: string;
 };
@@ -19,11 +22,25 @@ type DiffNodeProps = {
 export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProps) => {
   const { "*": branchName } = useParams();
   const schemaKindName = useAtomValue(schemaKindNameState);
+  const { hash } = useLocation();
+  const diffNodeRef = useRef<HTMLDivElement>(null);
+
+  const isSelectedOnNavigation = hash === `#${node.uuid}`;
+
+  useEffect(() => {
+    if (isSelectedOnNavigation && diffNodeRef?.current) {
+      diffNodeRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [hash]);
 
   return (
-    <Card>
+    <Card
+      ref={diffNodeRef}
+      id={node.uuid}
+      className={classNames(isSelectedOnNavigation && "ring-2 ring-custom-blue-500")}>
       {(!!node.attributes?.length || !!node.relationships?.length) && (
         <Accordion
+          defaultOpen={isSelectedOnNavigation}
           title={
             <div className="group grid grid-cols-3 justify-items-end gap-2 py-2 pr-2 text-xs">
               <div className="flex w-full items-center justify-between gap-2 justify-self-start">
