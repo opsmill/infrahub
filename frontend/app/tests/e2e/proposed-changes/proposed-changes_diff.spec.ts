@@ -28,13 +28,13 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByText("Data").click();
     });
 
-    // await test.step("trigger the diff update", async () => {
-    //   await expect(page.getByRole("button", { name: "Refresh diff" })).toBeVisible();
-    //   await expect(page.getByText("No diff to display. Try to")).toBeVisible();
-    //   await page.getByRole("button", { name: "Refresh diff" }).click();
-    //   await expect(page.getByText("Diff updated!")).toBeVisible();
-    //   await expect(page.getByText("Updatedless than a minute agoRefresh diff")).toBeVisible();
-    // });
+    await test.step("trigger the diff update", async () => {
+      await expect(page.getByRole("button", { name: "Refresh diff" })).toBeVisible();
+      await expect(page.getByText("No diff to display. Try to")).toBeVisible();
+      await page.getByRole("button", { name: "Refresh diff" }).click();
+      await expect(page.getByText("Diff updated!")).toBeVisible();
+      await expect(page.getByText("Updatedless than a minute agoRefresh diff")).toBeVisible();
+    });
 
     await test.step("check diff data", async () => {
       await expect(page.getByText("UpdatedDeviceden1-edge1 main")).toBeVisible();
