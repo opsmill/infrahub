@@ -86,11 +86,11 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
             {objectDetailsData?.display_label}
           </span>
 
-          <div className="text-right inline-flex items-center gap-1">
+          <div className="inline-flex items-center gap-1">
             <Badge variant="blue" className="text-xxs py-0">
               {schema.namespace}
             </Badge>
-            <span className="text-xs font-medium">{schema.label}</span>
+            <span className="text-xxs font-medium">{schema.label}</span>
           </div>
         </div>
 
