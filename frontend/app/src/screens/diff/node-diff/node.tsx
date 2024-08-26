@@ -65,10 +65,10 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
           className="bg-gray-100 border rounded-md">
           <div className="divide-y border-t">
             {node.attributes.map((attribute: any, index: number) => (
-              <DiffNodeAttribute key={index} attribute={attribute} />
+              <DiffNodeAttribute key={index} attribute={attribute} status={node.status} />
             ))}
             {node.relationships.map((relationship: any, index: number) => (
-              <DiffNodeRelationship key={index} relationship={relationship} />
+              <DiffNodeRelationship key={index} relationship={relationship} status={node.status} />
             ))}
           </div>
         </Accordion>

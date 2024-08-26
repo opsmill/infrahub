@@ -1,10 +1,10 @@
-type Status = "ADDED" | "UPDATED" | "REMOVED" | "UNCHANGED";
+export type DiffStatus = "ADDED" | "UPDATED" | "REMOVED" | "UNCHANGED";
 
 export type DiffConflict = {
-  base_branch_action: Status;
+  base_branch_action: DiffStatus;
   base_branch_changed_at: string;
   base_branch_value: any;
-  diff_branch_action: Status;
+  diff_branch_action: DiffStatus;
   diff_branch_changed_at: "2024-08-21T19:06:12.429813+00:00";
   diff_branch_value: any;
   uuid: string;
@@ -23,7 +23,7 @@ export type DiffProperty = {
     | "IS_PROTECTED"
     | "IS_RELATED";
   path_identifier: string | null;
-  status: Status;
+  status: DiffStatus;
 };
 
 export type DiffAttribute = {
@@ -38,7 +38,7 @@ export type DiffRelationshipElement = {
   peer_id: string;
   peer_label: string;
   properties: Array<DiffProperty>;
-  status: Status;
+  status: DiffStatus;
   path_identifier: string;
   conflict: DiffConflict | null;
   contains_conflict: boolean;
@@ -71,6 +71,6 @@ export type DiffNode = {
   } | null;
   path_identifier: string;
   relationships: Array<DiffRelationship>;
-  status: Status;
+  status: DiffStatus;
   uuid: string;
 };

@@ -17,7 +17,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { PcDiffUpdateButton } from "@/screens/proposed-changes/action-button/pc-diff-update-button";
-import { CardWithBorder } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import DiffTree from "@/screens/diff/diff-tree";
 import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
 import { Button } from "@/components/buttons/button-primitive";
@@ -114,9 +114,9 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
       </div>
 
       <div className="flex-grow grid grid-cols-4 overflow-hidden">
-        <CardWithBorder className="col-span-1 my-2.5 ml-2.5">
+        <Card className="col-span-1 my-2.5 ml-2.5 overflow-auto">
           <DiffTree nodes={nodes} className="p-2 w-full" />
-        </CardWithBorder>
+        </Card>
 
         <div className="space-y-4 p-2.5 col-start-2 col-end-5 overflow-auto">
           {nodes.map((node) => (
