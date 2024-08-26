@@ -102,7 +102,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("View branch diff", async () => {
-      await page.getByRole("button", { name: "Diff" }).click();
+      await page.getByText("Diff").click();
       await page.getByText("my-first-Tenant").click();
       await expect(page.getByText("Testing Infrahub")).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_diff");
