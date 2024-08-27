@@ -53,10 +53,9 @@ class TestPathIdentifierEnricher:
         relationship_path = f"{node_path}/{enriched_relationship.name}"
         assert enriched_relationship.path_identifier == relationship_path
         enriched_element = enriched_relationship.relationships.pop()
-        element_path = f"{relationship_path}/{enriched_element.peer_id}"
-        assert enriched_element.path_identifier == element_path
+        assert enriched_element.path_identifier == relationship_path
         element_property_paths = {p.path_identifier for p in enriched_element.properties}
         assert element_property_paths == {
-            f"{element_path}/value",
-            f"{element_path}/property/{DatabaseEdgeType.IS_PROTECTED.value}",
+            f"{relationship_path}/value",
+            f"{relationship_path}/property/{DatabaseEdgeType.IS_PROTECTED.value}",
         }

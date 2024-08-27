@@ -1,19 +1,18 @@
 import { Skeleton } from "@/components/skeleton";
-import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
 import { SEARCH } from "@/graphql/queries/objects/search";
 import { useDebounce } from "@/hooks/useDebounce";
-import useQuery, { useLazyQuery } from "@/hooks/useQuery";
-import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { useLazyQuery } from "@/hooks/useQuery";
 import { constructPath } from "@/utils/fetch";
-import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
-import { useAtomValue } from "jotai/index";
 import { ReactElement, useEffect } from "react";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
+import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { useSchema } from "@/hooks/useSchema";
+import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
+import { Badge } from "@/components/ui/badge";
 
 type SearchProps = {
   query: string;
@@ -59,34 +58,15 @@ type NodesOptionsProps = {
 };
 
 const NodesOptions = ({ node }: NodesOptionsProps) => {
-  const schemaList = useAtomValue(schemaState);
-  const genericList = useAtomValue(genericsState);
+  const { schema } = useSchema(node.kind);
+  const { data, loading } = useObjectDetails(schema!, node.id);
 
-  const schema = schemaList.find((s) => s.kind === node.kind);
-  const generic = genericList.find((s) => s.kind === node.kind);
-
-  const schemaData = generic || schema;
-
-  const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true, limit: 7 });
-
-  const queryString = schemaData
-    ? getObjectDetailsPaginated({
-        kind: schemaData.kind,
-        columns,
-        objectid: node.id,
-      })
-    : // Empty query to make the gql parsing work
-      "query { ok }";
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, data } = useQuery(query, { skip: !schemaData });
+  if (!schema) return null;
+  const columns = getSchemaObjectColumns({ schema, forListView: true, limit: 7 });
 
   if (loading) return <SearchResultNodeSkeleton />;
 
-  const objectDetailsData = schemaData && data?.[node.kind]?.edges[0]?.node;
+  const objectDetailsData = schema && data?.[node.kind]?.edges[0]?.node;
   if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
 
   const url = constructPath(
@@ -96,17 +76,23 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
   return (
     <SearchResultItem to={url} className="!items-start">
       <Icon
-        icon={schemaData?.icon || "mdi:code-braces-box"}
+        icon={schema.icon || "mdi:code-braces-box"}
         className="text-lg pr-2 py-0.5 text-custom-blue-700"
       />
 
       <div className="flex-grow text-sm">
-        <span className="mr-1 font-semibold text-custom-blue-700">
-          {objectDetailsData?.display_label}
-        </span>
-        <span className="bg-gray-200 text-gray-800 text-xxs me-1 px-2 align-bottom rounded-full">
-          {schemaData?.label}
-        </span>
+        <div className="flex justify-between">
+          <span className="mr-1 font-semibold text-custom-blue-800">
+            {objectDetailsData?.display_label}
+          </span>
+
+          <div className="inline-flex items-center gap-1">
+            <Badge variant="blue" className="text-xxs py-0">
+              {schema.namespace}
+            </Badge>
+            <span className="text-xxs font-medium">{schema.label}</span>
+          </div>
+        </div>
 
         <div className="mt-1 text-gray-600 flex gap-5">
           {columns
@@ -160,8 +146,8 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
-              className="px-1.5 rounded-full text-gray-700 font-medium text-center"
-              style={{ background: `${color}40`, border: `1px solid ${color}` }}>
+              className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent"
+              style={{ background: `${color}40` }}>
               {value.label}
             </div>
           );
@@ -174,8 +160,8 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
 
   return (
     <div className="flex flex-col text-xxs whitespace-nowrap leading-3">
-      <span className="font-light">{title}</span>
-      <span className="font-medium">{formatValue() || "-"}</span>
+      <span>{title}</span>
+      <span className="font-medium text-gray-800">{formatValue() || "-"}</span>
     </div>
   );
 };

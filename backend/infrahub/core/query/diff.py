@@ -514,6 +514,7 @@ class DiffAllPathsQuery(DiffQuery):
         self.params.update(br_params)
         self.params["branch_support"] = [item.value for item in self.branch_support]
 
+        # ruff: noqa: E501
         query = """
             // all updated edges for our branches and time frame
             MATCH (p)-[diff_rel]-(q)
@@ -525,8 +526,8 @@ class DiffAllPathsQuery(DiffQuery):
             WITH p, diff_rel, q
             // -- DEEPEST EDGE SUBQUERY --
             // get full path for every HAS_VALUE, HAS_SOURCE/OWNER, IS_VISIBLE/PROTECTED
-            // explicitly add in base branch path, if it exists to capture previous value
-            // explicitly add in far-side of any relationship to get peer_id for rel properties
+            // can be multiple paths in the case of HAS_SOURCE/OWNER, IS_VISIBLE/PROTECTED to include
+            // both peers in the relationship
             CALL {
                 WITH p, q, diff_rel
                 OPTIONAL MATCH path = (
@@ -538,19 +539,32 @@ class DiffAllPathsQuery(DiffQuery):
                 AND any(l in labels(inner_q) WHERE l in ["Boolean", "Node", "AttributeValue"])
                 AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
                 AND %(n_node_where)s
-                AND ID(n) <> ID(inner_q)
+                AND [ID(n), type(r_node)] <> [ID(inner_q), type(inner_diff_rel)]
                 AND ALL(
                     r in [r_root, r_node]
-                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
-                    AND r.branch IN $branch_names
+                    WHERE r.from <= $to_time AND r.branch IN $branch_names
                 )
+                // exclude paths where an active edge is below a deleted edge
+                AND (inner_diff_rel.status = "deleted" OR r_node.status = "active")
+                AND (r_node.status = "deleted" OR r_root.status = "active")
                 WITH path AS diff_rel_path, diff_rel, r_root, n, r_node, p
                 ORDER BY
+                    ID(n) DESC,
+                    ID(p) DESC,
                     r_node.branch = diff_rel.branch DESC,
                     r_root.branch = diff_rel.branch DESC,
                     r_node.from DESC,
                     r_root.from DESC
-                LIMIT 1
+                WITH p, n, head(collect(diff_rel_path)) AS deepest_diff_path
+                RETURN deepest_diff_path
+            }
+            WITH p, diff_rel, q, deepest_diff_path
+            // explicitly add in base branch path, if it exists to capture previous value
+            // explicitly add in far-side of any relationship to get peer_id for rel properties
+            CALL {
+                WITH p, diff_rel, deepest_diff_path
+                WITH p, diff_rel, deepest_diff_path AS diff_rel_path, nodes(deepest_diff_path) AS drp_nodes, relationships(deepest_diff_path) AS drp_relationships
+                WITH p, diff_rel, diff_rel_path, drp_relationships[0] AS r_root, drp_nodes[1] AS n, drp_relationships[1] AS r_node
                 // get base branch version of the diff path, if it exists
                 WITH diff_rel_path, diff_rel, r_root, n, r_node, p
                 OPTIONAL MATCH latest_base_path = (:Root)<-[r_root2]-(n2)-[r_node2]-(inner_p2)-[base_diff_rel]->(base_prop)
@@ -560,9 +574,11 @@ class DiffAllPathsQuery(DiffQuery):
                 AND type(base_diff_rel) = type(diff_rel)
                 AND all(
                     r in relationships(latest_base_path)
-                    WHERE r.branch = $base_branch_name
-                    AND r.from <= $from_time AND (r.to IS NULL or r.to <= $from_time)
+                    WHERE r.branch = $base_branch_name AND r.from <= $from_time
                 )
+                // exclude paths where an active edge is below a deleted edge
+                AND (base_diff_rel.status = "deleted" OR r_node2.status = "active")
+                AND (r_node2.status = "deleted" OR r_root2.status = "active")
                 WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
                 ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
                 LIMIT 1
@@ -573,9 +589,12 @@ class DiffAllPathsQuery(DiffQuery):
                 )
                 WHERE ID(r_root3) = ID(r_root) AND ID(n3) = ID(n) AND ID(r_node3) = ID(r_node) AND ID(inner_p3) = ID(p)
                 AND type(diff_rel) <> "IS_RELATED"
-                AND ID(n3) <> ID(base_peer)
-                AND base_r_peer.from <= $from_time
+                AND [ID(n3), type(r_node3)] <> [ID(base_peer), type(base_r_peer)]
+                AND base_r_peer.from <= $to_time
                 AND base_r_peer.branch IN $branch_names
+                // exclude paths where an active edge is below a deleted edge
+                AND (base_r_peer.status = "deleted" OR r_node3.status = "active")
+                AND (r_node3.status = "deleted" OR r_root3.status = "active")
                 WITH diff_rel_path, latest_base_path, base_peer_path, base_r_peer, diff_rel
                 ORDER BY base_r_peer.branch = diff_rel.branch DESC, base_r_peer.from DESC
                 LIMIT 1
@@ -601,10 +620,12 @@ class DiffAllPathsQuery(DiffQuery):
                 AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
                 AND ALL(
                     r in [r_root, r_prop]
-                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
-                    AND r.branch IN $branch_names
+                    WHERE r.from <= $to_time AND r.branch IN $branch_names
                 )
                 AND [ID(inner_p), type(inner_diff_rel)] <> [ID(prop), type(r_prop)]
+                // exclude paths where an active edge is below a deleted edge
+                AND (inner_diff_rel.status = "active" OR (r_prop.status = "deleted" AND inner_diff_rel.branch = r_prop.branch))
+                AND (inner_diff_rel.status = "deleted" OR r_root.status = "active")
                 WITH path, prop, r_prop, r_root
                 ORDER BY
                     ID(prop),
@@ -632,10 +653,17 @@ class DiffAllPathsQuery(DiffQuery):
                 AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
                 AND ALL(
                     r in [r_node, r_prop]
-                    WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
-                    AND r.branch IN $branch_names
+                    WHERE r.from <= $to_time AND r.branch IN $branch_names
                 )
                 AND [ID(inner_p), type(r_node)] <> [ID(prop), type(r_prop)]
+                // exclude paths where an active edge is below a deleted edge
+                AND (inner_diff_rel.status = "active" OR
+                    (
+                        r_node.status = "deleted" AND inner_diff_rel.branch = r_node.branch
+                        AND r_prop.status = "deleted" AND inner_diff_rel.branch = r_prop.branch
+                    )
+                )
+                AND (r_prop.status = "deleted" OR r_node.status = "active")
                 WITH path, node, prop, r_prop, r_node
                 ORDER BY
                     ID(node),
