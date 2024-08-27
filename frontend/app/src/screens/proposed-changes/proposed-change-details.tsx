@@ -113,10 +113,13 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
           <CardWithBorder contentClassName="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
-              Admin
-              <div className="ml-auto text-xs font-normal text-gray-600">
-                <DateDisplay date={proposedChangesDetails.description.updated_at} />
-              </div>
+
+              {proposedChangesDetails?.created_by?.node?.display_label}
+
+              <DateDisplay
+                date={proposedChangesDetails.description.updated_at}
+                className="ml-auto text-xs font-normal text-gray-600"
+              />
             </div>
 
             <MarkdownViewer markdownText={proposedChangesDetails.description.value} />
