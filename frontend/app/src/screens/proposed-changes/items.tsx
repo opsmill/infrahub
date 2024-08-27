@@ -32,6 +32,11 @@ import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { StringParam, useQueryParam } from "use-query-params";
 
+const STATES = {
+  open: ["open"],
+  close: ["closed", "merged", "canceled"],
+};
+
 export const ProposedChangesPage = () => {
   const permission = usePermission();
   const navigate = useNavigate();
@@ -40,10 +45,12 @@ export const ProposedChangesPage = () => {
   const [search, setSearch] = useQueryParam(QSP.SEARCH, StringParam);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<tRow | undefined>();
 
+  const states = qspState ? STATES[qspState] : STATES.open;
+
   const { loading, networkStatus, previousData, error, data, refetch } = useQuery(
     GET_PROPOSED_CHANGES,
     {
-      variables: { state: qspState, search },
+      variables: { states, search },
       notifyOnNetworkStatusChange: true,
     }
   );
