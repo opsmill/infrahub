@@ -6,6 +6,8 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { classNames } from "@/utils/common";
+import { toast } from "react-toastify";
+import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 
 export type DiffFilter = {
   namespace?: {
@@ -36,6 +38,16 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
   const { error, data = {} } = useQuery(getProposedChangesDiffSummary, {
     skip: !branch,
     variables: { branch, filters },
+    context: {
+      processErrorMessage: (message: string) => {
+        // If the branch is not found, then do not display alert
+        if (message.includes("not found")) return;
+
+        toast(<Alert type={ALERT_TYPES.ERROR} message={message} />, {
+          toastId: "alert-error",
+        });
+      },
+    },
   });
 
   const handleFilter = (value: string) => {
@@ -47,7 +59,11 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
   };
 
   if (error) {
-    return <ErrorScreen message="No diff sumary available" hideIcon />;
+    return (
+      <div className="flex justify-start">
+        <ErrorScreen message="No diff summary available." hideIcon className="p-0" />
+      </div>
+    );
   }
 
   return (
