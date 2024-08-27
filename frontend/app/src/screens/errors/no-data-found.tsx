@@ -12,7 +12,7 @@ export default function NoDataFound(props: tNoData) {
   const { message, icon } = props;
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center p-8">
+    <div className="flex flex-col flex-1 items-center justify-center p-8 text-center">
       <div className="bg-custom-white rounded-full flex items-center justify-center p-2 text-custom-blue-green">
         {icon || <Icon icon={"mdi:file-question-outline"} className="" />}
       </div>
