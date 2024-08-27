@@ -46,7 +46,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
               <div className="flex w-full items-center justify-between gap-2 justify-self-start">
                 <div className="flex items-center gap-2">
                   <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
-                  <Badge variant="white">{schemaKindName[node.kind]}</Badge>
+                  <Badge variant="white">{schemaKindName[node.kind] ?? node.kind}</Badge>
                   <span className="text-gray-800 font-medium px-2 py-1">{node.label}</span>
                 </div>
 
