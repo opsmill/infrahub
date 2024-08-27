@@ -46,7 +46,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         type={type}
-        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
+        className={classNames(
+          "disabled:cursor-not-allowed",
+          focusStyle,
+          buttonVariants({ variant, size, className })
+        )}
         ref={ref}
         {...props}>
         {isLoading && <Spinner className="mr-2" />}
