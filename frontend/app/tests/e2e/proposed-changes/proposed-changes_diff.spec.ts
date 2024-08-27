@@ -36,9 +36,9 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("check diff data", async () => {
-      await expect(page.getByText("UpdatedDeviceden1-edge1 main")).toBeVisible();
+      await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
       await expect(page.getByText("UpdatedInterface L3Ethernet1")).toBeVisible();
-      await page.getByText("UpdatedDeviceden1-edge1 main").click();
+      await page.getByText("UpdatedDeviceden1-edge1").click();
       await expect(page.getByText("status")).toBeVisible();
       await expect(page.getByText("active")).toBeVisible();
       await expect(page.getByText("maintenance", { exact: true })).toBeVisible();
@@ -64,15 +64,23 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("filter diff data", async () => {
       await page.getByRole("button", { name: "0" }).first().click();
-      await expect(page.getByText("No diff matches the status")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Reset Filter" })).toBeVisible();
+      await expect(page.getByText("No diff matches the status:")).toBeVisible();
+      await expect(page.getByText("No tree view available for")).toBeVisible();
+      await page.getByRole("button", { name: "Reset Filter" }).click();
+      await expect(page.getByRole("button", { name: "Refresh diff" })).toBeVisible();
+      await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
+      await expect(page.getByRole("treeitem", { name: "den1-edge1" })).toBeVisible();
       await page.getByRole("button", { name: "0" }).nth(1).click();
-      await expect(page.getByText("No diff matches the status")).toBeVisible();
-      await page.getByRole("button", { name: "3" }).click();
-      await expect(page.getByText("UpdatedDeviceden1-edge1 main")).toBeVisible();
-      await expect(page.getByText("UpdatedInterface L3Ethernet1")).toBeVisible();
+      await expect(page.getByText("No diff matches the status:")).toBeVisible();
+      await expect(
+        page
+          .locator("div")
+          .filter({ hasText: /^No tree view available for the diff\.$/ })
+          .nth(1)
+      ).toBeVisible();
       await page.getByRole("button", { name: "1" }).click();
-      await expect(page.getByText("UpdatedDeviceden1-edge1 main")).toBeVisible();
-      await expect(page.getByText("UpdatedInterface L3Ethernet1")).not.toBeVisible();
+      await page.getByText("UpdatedDeviceden1-edge1").click();
     });
   });
 
@@ -99,6 +107,9 @@ test.describe("/proposed-changes diff data", () => {
       await page.goto("/proposed-changes");
       await page.getByRole("link", { name: "conflict-test" }).click();
       await page.getByText("Data").click();
+      await expect(
+        page.locator("header").filter({ hasText: "Proposed changesconflict-test" })
+      ).toBeVisible();
     });
 
     await test.step("comment proposed changes", async () => {
