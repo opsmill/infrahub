@@ -78,16 +78,21 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
         </div>
 
         <div className="pl-2 ">
-          {!!nodes?.length && !qspStatus && (
+          {!qspStatus && (
             <PcDiffUpdateButton
               size="sm"
               time={data?.DiffTree?.to_time}
               sourceBranch={proposedChangesDetails?.source_branch?.value}
+              isLoading={loading}
             />
           )}
 
           {!nodes?.length && qspStatus && (
-            <Button size="sm" variant="outline" onClick={() => setQspStatus(undefined)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setQspStatus(undefined)}
+              isLoading={loading}>
               Reset Filter
             </Button>
           )}

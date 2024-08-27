@@ -128,7 +128,6 @@ export function Component() {
   }
 
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT]?.edges?.[0]?.node;
-  console.log("proposedChangesData: ", proposedChangesData);
 
   if (!proposedChangesData) {
     return <Navigate to={constructPath("/proposed-changes")} />;
