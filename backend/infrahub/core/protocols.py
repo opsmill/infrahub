@@ -432,7 +432,7 @@ class CoreTransformPython(CoreTransformation):
     class_name: String
 
 
-class CoreUserGroup(CoreNode):
+class CoreUserGroup(CoreGroup):
     name: String
     users: RelationshipManager
     roles: RelationshipManager
