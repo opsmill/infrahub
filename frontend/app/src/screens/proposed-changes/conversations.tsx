@@ -1,6 +1,5 @@
 import { AddComment } from "@/components/conversations/add-comment";
 import { Thread } from "@/components/conversations/thread";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import {
   ACCOUNT_OBJECT,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
@@ -23,7 +22,6 @@ import { formatISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import { HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { toast } from "react-toastify";
 import { FormRef } from "@/components/ui/form";
 import { Card } from "@/components/ui/card";
 import { classNames } from "@/utils/common";
@@ -137,8 +135,6 @@ export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivEle
           date,
         },
       });
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
       formRef.current?.reset();
       await refetch();
