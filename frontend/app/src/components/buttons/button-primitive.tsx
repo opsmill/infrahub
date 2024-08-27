@@ -7,7 +7,7 @@ import { Link, LinkProps } from "react-router-dom";
 import { Spinner } from "@/components/ui/spinner";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-disabled",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
@@ -46,11 +46,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         type={type}
-        className={classNames(
-          "disabled:cursor-not-allowed",
-          focusStyle,
-          buttonVariants({ variant, size, className })
-        )}
+        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}>
         {isLoading && <Spinner className="mr-2" />}
