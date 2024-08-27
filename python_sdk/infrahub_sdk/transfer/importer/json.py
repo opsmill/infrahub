@@ -129,6 +129,8 @@ class LineDelimitedJSONImporter(ImporterInterface):
 
                 # Check if we are in a many-many relationship, ignore importing it if it is
                 if relationship_schema.cardinality == "many":
+                    if relationship_schema.peer not in self.schemas_by_kind:
+                        continue
                     for peer_relationship in self.schemas_by_kind[relationship_schema.peer].relationships:
                         if peer_relationship.cardinality == "many" and peer_relationship.peer == node_kind:
                             ignore = True

@@ -2148,6 +2148,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "generate_profile": False,
+            "inherit_from": [InfrahubKind.GENERICGROUP],
             "attributes": [{"name": "name", "kind": "Text", "unique": True}],
             "relationships": [
                 {
