@@ -47,7 +47,7 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
   };
 
   if (error) {
-    return <ErrorScreen message="An error occured while fetching diff summary." />;
+    return <ErrorScreen message="No diff sumary available" hideIcon />;
   }
 
   return (
