@@ -293,17 +293,17 @@ async def create_administrator_role(db: InfrahubDatabase, global_permissions: Op
 
 async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_accounts: list[Node]) -> Node:
     group_name = "Administrators"
-    obj = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
-    await obj.new(db=db, name=group_name, roles=[role])
-    await obj.save(db=db)
+    group = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
+    await group.new(db=db, name=group_name, roles=[role])
+    await group.save(db=db)
     log.info(f"Created User Group: {group_name}")
 
     for admin_account in admin_accounts:
-        await admin_account.groups.add(db=db, data=obj)  # type: ignore[attr-defined]
-        await admin_account.save(db=db)
+        await group.members.add(db=db, data=admin_account)  # type: ignore[attr-defined]
+        await group.members.save(db=db)
         log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")  # type: ignore[attr-defined]
 
-    return obj
+    return group
 
 
 async def first_time_initialization(db: InfrahubDatabase) -> None:

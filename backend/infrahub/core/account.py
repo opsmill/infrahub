@@ -57,7 +57,7 @@ class AccountGlobalPermissionQuery(Query):
         WITH account, r1 as r
         WHERE r.status = "active"
         WITH account
-        MATCH (account)-[]->(:Relationship {name: "usergroup__users"})<-[]-(:CoreUserGroup)-[]->(:Relationship {name: "role__usergroups"})<-[]-(:CoreUserRole)-[]->(:Relationship {name: "role__permissions"})<-[]-(global_permission:CoreGlobalPermission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(global_permission_action:AttributeValue)
+        MATCH (account)-[]->(:Relationship {name: "group_member"})<-[]-(:CoreUserGroup)-[]->(:Relationship {name: "role__usergroups"})<-[]-(:CoreUserRole)-[]->(:Relationship {name: "role__permissions"})<-[]-(global_permission:CoreGlobalPermission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(global_permission_action:AttributeValue)
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)

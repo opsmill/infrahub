@@ -868,14 +868,7 @@ core_models: dict[str, Any] = {
                 },
             ],
             "relationships": [
-                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
-                {
-                    "name": "groups",
-                    "peer": InfrahubKind.USERGROUP,
-                    "optional": True,
-                    "identifier": "usergroup__users",
-                    "cardinality": "many",
-                },
+                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"}
             ],
         },
         {
@@ -2149,16 +2142,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.GENERICGROUP],
-            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
             "relationships": [
-                {
-                    "name": "users",
-                    "peer": InfrahubKind.ACCOUNT,
-                    "optional": True,
-                    "identifier": "usergroup__users",
-                    "cardinality": "many",
-                    "kind": "Attribute",
-                },
                 {
                     "name": "roles",
                     "peer": InfrahubKind.USERROLE,
@@ -2166,7 +2150,7 @@ core_models: dict[str, Any] = {
                     "identifier": "role__usergroups",
                     "cardinality": "many",
                     "kind": "Attribute",
-                },
+                }
             ],
         },
     ],

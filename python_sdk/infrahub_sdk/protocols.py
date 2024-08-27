@@ -109,7 +109,6 @@ class CoreGenericAccount(CoreNode):
     role: Enum
     status: Dropdown
     tokens: RelationshipManager
-    groups: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):
@@ -439,8 +438,6 @@ class CoreTransformPython(CoreTransformation):
 
 
 class CoreUserGroup(CoreGroup):
-    name: String
-    users: RelationshipManager
     roles: RelationshipManager
 
 
@@ -549,7 +546,6 @@ class CoreGenericAccountSync(CoreNodeSync):
     role: Enum
     status: Dropdown
     tokens: RelationshipManagerSync
-    groups: RelationshipManagerSync
 
 
 class CoreGenericRepositorySync(CoreNodeSync):
@@ -879,8 +875,6 @@ class CoreTransformPythonSync(CoreTransformationSync):
 
 
 class CoreUserGroupSync(CoreGroupSync):
-    name: String
-    users: RelationshipManagerSync
     roles: RelationshipManagerSync
 
 

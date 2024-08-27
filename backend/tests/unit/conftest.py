@@ -2508,14 +2508,12 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
 
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(
-        db=db,
-        name="test-admin",
-        account_type="User",
-        password=config.SETTINGS.initial.admin_password,
-        role="admin",
-        groups=[group],
+        db=db, name="test-admin", account_type="User", password=config.SETTINGS.initial.admin_password, role="admin"
     )
     await account.save(db=db)
+
+    await group.members.add(db=db, data=account)
+    await group.members.save(db=db)
 
     token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
     await token.new(db=db, token="admin-security", account=account)
