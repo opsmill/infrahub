@@ -31,7 +31,7 @@ test.describe("/proposed-changes diff data", () => {
     await test.step("trigger the diff update", async () => {
       await expect(page.getByRole("button", { name: "Refresh diff" })).toBeVisible();
       await expect(page.getByText("No diff to display. Try to")).toBeVisible();
-      await page.getByRole("button", { name: "Refresh diff" }).click();
+      await page.getByRole("button", { name: "Refresh diff" }).first().click();
       await expect(page.getByText("Diff updated!")).toBeVisible();
     });
 
