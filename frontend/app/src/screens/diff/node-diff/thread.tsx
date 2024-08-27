@@ -59,7 +59,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
   );
 
   return (
-    <div className="ml-2">
+    <>
       <div className="flex items-center cursor-pointer ">
         {thread?.comments?.count ? (
           <Tooltip enabled content={"Add comment"}>
@@ -103,6 +103,6 @@ export const DiffThread = ({ path }: tDiffThread) => {
           <Button onClick={() => setShowThread(false)}>Close</Button>
         </div>
       </SlideOver>
-    </div>
+    </>
   );
 };
