@@ -475,7 +475,7 @@ async def test_diff_tree_one_relationship_change(
     for property_type, previous_value in [
         (IS_RELATED_TYPE, car_accord_main.id),
         (IS_PROTECTED_TYPE, "False"),
-        (IS_VISIBLE_TYPE, "True")
+        (IS_VISIBLE_TYPE, "True"),
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
@@ -537,7 +537,7 @@ async def test_diff_tree_one_relationship_change(
     for property_type, new_value in [
         (IS_RELATED_TYPE, car_accord_main.id),
         (IS_PROTECTED_TYPE, "False"),
-        (IS_VISIBLE_TYPE, "True")
+        (IS_VISIBLE_TYPE, "True"),
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
