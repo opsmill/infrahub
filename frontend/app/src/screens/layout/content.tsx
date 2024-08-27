@@ -33,7 +33,7 @@ export const ContentTitle = ({
       {...props}>
       <div className="flex flex-col gap-0.5 overflow-hidden pr-2">
         {title && (
-          <div className="font-semibold flex items-center gap-2">
+          <div className="font-semibold flex items-center gap-1">
             <div className="truncate">{title}</div>
             {reload && <Retry isLoading={isReloadLoading} onClick={reload} />}
           </div>

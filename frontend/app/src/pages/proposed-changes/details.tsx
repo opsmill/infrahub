@@ -26,6 +26,7 @@ import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-chang
 import { Conversations } from "@/screens/proposed-changes/conversations";
 import { NetworkStatus } from "@apollo/client";
 import { CoreProposedChange } from "@/generated/graphql";
+import { Badge } from "@/components/ui/badge";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -178,6 +179,11 @@ export function Component() {
             <Icon icon="mdi:chevron-right" />
 
             <span>{proposedChangesData.display_label}</span>
+
+            <Badge variant="blue">
+              <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
+              {proposedChangesData.source_branch?.value}
+            </Badge>
           </div>
         }
         reload={() => client.reFetchObservableQueries()}

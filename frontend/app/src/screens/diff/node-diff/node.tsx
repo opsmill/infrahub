@@ -61,9 +61,11 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 <Icon icon="mdi:layers-triple" className="mr-1" /> {destinationBranch}
               </Badge>
             </div>
+
             {node.attributes.map((attribute: any, index: number) => (
               <DiffNodeAttribute key={index} attribute={attribute} status={node.status} />
             ))}
+
             {node.relationships.map((relationship: any, index: number) => (
               <DiffNodeRelationship key={index} relationship={relationship} status={node.status} />
             ))}
