@@ -110,7 +110,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     <div className={classNames("grid grid-cols-3 gap-2 p-2.5 items-start", className)} {...props}>
       <div className="col-start-1 col-end-3 space-y-4">
         {proposedChangesDetails?.description?.value && (
-          <CardWithBorder contentClassName="p-4">
+          <CardWithBorder contentClassName="p-4" data-testid="pc-description">
             <div className="flex items-center gap-2 mb-2">
               <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
 
