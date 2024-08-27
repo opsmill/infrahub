@@ -37,6 +37,7 @@ from .mutations import (
 )
 from .parser import extract_selection
 from .queries import (
+    AccountPermissions,
     AccountToken,
     BranchQueryList,
     DiffSummary,
@@ -88,6 +89,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
     InfrahubAccountToken = AccountToken
+    InfrahubPermissions = AccountPermissions
 
     DiffTree = DiffTreeQuery
     DiffTreeSummary = DiffTreeSummaryQuery

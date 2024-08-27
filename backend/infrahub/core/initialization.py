@@ -4,7 +4,13 @@ from uuid import uuid4
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DEFAULT_IP_NAMESPACE, GLOBAL_BRANCH_NAME, AccountRole, InfrahubKind
+from infrahub.core.constants import (
+    DEFAULT_IP_NAMESPACE,
+    GLOBAL_BRANCH_NAME,
+    AccountRole,
+    GlobalPermissions,
+    InfrahubKind,
+)
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
@@ -18,6 +24,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.storage import InfrahubObjectStorage
+from infrahub.utils import format_label
 
 log = get_logger()
 
@@ -261,6 +268,44 @@ async def create_ipam_namespace(
     return obj
 
 
+async def create_global_permissions(db: InfrahubDatabase) -> list[Node]:
+    objs: list[Node] = []
+
+    for permission in GlobalPermissions:
+        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        await obj.new(db=db, name=format_label(permission.value), action=permission.value)
+        await obj.save(db=db)
+        objs.append(obj)
+        log.info(f"Created global permission: {permission}")
+
+    return objs
+
+
+async def create_administrator_role(db: InfrahubDatabase, global_permissions: Optional[list[Node]] = None) -> Node:
+    role_name = "Administrator"
+    obj = await Node.init(db=db, schema=InfrahubKind.USERROLE)
+    await obj.new(db=db, name=role_name, permissions=global_permissions)
+    await obj.save(db=db)
+    log.info(f"Created User Role: {role_name}")
+
+    return obj
+
+
+async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_accounts: list[Node]) -> Node:
+    group_name = "Administrators"
+    obj = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
+    await obj.new(db=db, name=group_name, roles=[role])
+    await obj.save(db=db)
+    log.info(f"Created User Group: {group_name}")
+
+    for admin_account in admin_accounts:
+        await admin_account.groups.add(db=db, data=obj)  # type: ignore[attr-defined]
+        await admin_account.save(db=db)
+        log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")  # type: ignore[attr-defined]
+
+    return obj
+
+
 async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
@@ -286,23 +331,35 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    await create_account(
-        db=db,
-        name="admin",
-        password=config.SETTINGS.initial.admin_password,
-        token_value=config.SETTINGS.initial.admin_token,
+    admin_accounts: list[Node] = []
+    admin_accounts.append(
+        await create_account(
+            db=db,
+            name="admin",
+            password=config.SETTINGS.initial.admin_password,
+            token_value=config.SETTINGS.initial.admin_token,
+        )
     )
 
     if config.SETTINGS.initial.create_agent_user:
         password = config.SETTINGS.initial.agent_password or str(uuid4())
 
-        await create_account(
-            db=db,
-            name="agent",
-            password=password,
-            role=AccountRole.READ_WRITE.value,
-            token_value=config.SETTINGS.initial.agent_token,
+        admin_accounts.append(
+            await create_account(
+                db=db,
+                name="agent",
+                password=password,
+                role=AccountRole.READ_WRITE.value,
+                token_value=config.SETTINGS.initial.agent_token,
+            )
         )
+
+    # --------------------------------------------------
+    # Create Global Permissions and assign them
+    # --------------------------------------------------
+    global_permissions = await create_global_permissions(db=db)
+    administrator_role = await create_administrator_role(db=db, global_permissions=global_permissions)
+    await create_administrators_group(db=db, role=administrator_role, admin_accounts=admin_accounts)
 
     # --------------------------------------------------
     # Create Default IPAM Namespace

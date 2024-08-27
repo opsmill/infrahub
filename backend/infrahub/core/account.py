@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.query import Query
@@ -10,6 +11,84 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin
+
+
+@dataclass
+class Permission:
+    id: str
+    action: str
+
+
+@dataclass
+class GlobalPermission(Permission):
+    name: str
+
+    def __str__(self) -> str:
+        return f"global:{self.action}:allow"
+
+
+class AccountGlobalPermissionQuery(Query):
+    name: str = "account_global_permissions"
+
+    def __init__(self, account_id: str, **kwargs: Any):
+        self.account_id = account_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params["account_id"] = self.account_id
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        MATCH (account:CoreGenericAccount)
+        WHERE account.uuid = $account_id
+        CALL {
+            WITH account
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN account as account1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH account, r1 as r
+        WHERE r.status = "active"
+        WITH account
+        MATCH (account)-[]->(:Relationship {name: "usergroup__users"})<-[]-(:CoreUserGroup)-[]->(:Relationship {name: "role__usergroups"})<-[]-(:CoreUserRole)-[]->(:Relationship {name: "role__permissions"})<-[]-(global_permission:CoreGlobalPermission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(global_permission_action:AttributeValue)
+        """ % {"branch_filter": branch_filter}
+
+        self.add_to_query(query)
+
+        self.return_labels = ["global_permission", "global_permission_action"]
+
+    def get_permissions(self) -> list[GlobalPermission]:
+        permissions: list[GlobalPermission] = []
+
+        for result in self.get_results():
+            permissions.append(
+                GlobalPermission(
+                    id=result.get("global_permission").get("uuid"),
+                    name=result.get("global_permission_action").get("value"),
+                    action=result.get("global_permission_action").get("value"),
+                )
+            )
+
+        return permissions
+
+
+async def fetch_permissions(
+    account_id: str, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None
+) -> dict[str, list[GlobalPermission]]:
+    branch = await registry.get_branch(db=db, branch=branch)
+
+    query1 = await AccountGlobalPermissionQuery.init(db=db, branch=branch, account_id=account_id)
+    await query1.execute(db=db)
+    global_permissions = query1.get_permissions()
+
+    return {"global_permissions": global_permissions}
 
 
 class AccountTokenValidateQuery(Query):

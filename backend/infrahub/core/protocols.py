@@ -66,6 +66,10 @@ class CoreArtifactTarget(CoreNode):
     artifacts: RelationshipManager
 
 
+class CoreBasePermission(CoreNode):
+    roles: RelationshipManager
+
+
 class CoreCheck(CoreNode):
     name: StringOptional
     label: StringOptional
@@ -99,6 +103,7 @@ class CoreGenericAccount(CoreNode):
     role: Enum
     status: Dropdown
     tokens: RelationshipManager
+    groups: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):
@@ -311,6 +316,11 @@ class CoreGeneratorValidator(CoreValidator):
     definition: RelationshipManager
 
 
+class CoreGlobalPermission(CoreBasePermission):
+    name: String
+    action: Dropdown
+
+
 class CoreGraphQLQuery(CoreNode):
     name: String
     description: StringOptional
@@ -420,6 +430,18 @@ class CoreTransformJinja2(CoreTransformation):
 class CoreTransformPython(CoreTransformation):
     file_path: String
     class_name: String
+
+
+class CoreUserGroup(CoreNode):
+    name: String
+    users: RelationshipManager
+    roles: RelationshipManager
+
+
+class CoreUserRole(CoreNode):
+    name: String
+    groups: RelationshipManager
+    permissions: RelationshipManager
 
 
 class CoreUserValidator(CoreValidator):

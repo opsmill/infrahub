@@ -50,6 +50,10 @@ class PermissionLevel(enum.Flag):
     DEFAULT = 0
 
 
+class GlobalPermissions(InfrahubStringEnum):
+    EDIT_DEFAULT_BRANCH = "edit_default_branch"
+
+
 class AccountRole(InfrahubStringEnum):
     ADMIN = "admin"
     READ_ONLY = "read-only"

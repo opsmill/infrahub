@@ -72,6 +72,10 @@ class CoreArtifactTarget(CoreNode):
     artifacts: RelationshipManager
 
 
+class CoreBasePermission(CoreNode):
+    roles: RelationshipManager
+
+
 class CoreCheck(CoreNode):
     name: StringOptional
     label: StringOptional
@@ -105,6 +109,7 @@ class CoreGenericAccount(CoreNode):
     role: Enum
     status: Dropdown
     tokens: RelationshipManager
+    groups: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):
@@ -317,6 +322,11 @@ class CoreGeneratorValidator(CoreValidator):
     definition: RelatedNode
 
 
+class CoreGlobalPermission(CoreBasePermission):
+    name: String
+    action: Dropdown
+
+
 class CoreGraphQLQuery(CoreNode):
     name: String
     description: StringOptional
@@ -428,6 +438,18 @@ class CoreTransformPython(CoreTransformation):
     class_name: String
 
 
+class CoreUserGroup(CoreNode):
+    name: String
+    users: RelationshipManager
+    roles: RelationshipManager
+
+
+class CoreUserRole(CoreNode):
+    name: String
+    groups: RelationshipManager
+    permissions: RelationshipManager
+
+
 class CoreUserValidator(CoreValidator):
     check_definition: RelatedNode
     repository: RelatedNode
@@ -490,6 +512,10 @@ class CoreArtifactTargetSync(CoreNodeSync):
     artifacts: RelationshipManagerSync
 
 
+class CoreBasePermissionSync(CoreNodeSync):
+    roles: RelationshipManagerSync
+
+
 class CoreCheckSync(CoreNodeSync):
     name: StringOptional
     label: StringOptional
@@ -523,6 +549,7 @@ class CoreGenericAccountSync(CoreNodeSync):
     role: Enum
     status: Dropdown
     tokens: RelationshipManagerSync
+    groups: RelationshipManagerSync
 
 
 class CoreGenericRepositorySync(CoreNodeSync):
@@ -735,6 +762,11 @@ class CoreGeneratorValidatorSync(CoreValidatorSync):
     definition: RelatedNodeSync
 
 
+class CoreGlobalPermissionSync(CoreBasePermissionSync):
+    name: String
+    action: Dropdown
+
+
 class CoreGraphQLQuerySync(CoreNodeSync):
     name: String
     description: StringOptional
@@ -844,6 +876,18 @@ class CoreTransformJinja2Sync(CoreTransformationSync):
 class CoreTransformPythonSync(CoreTransformationSync):
     file_path: String
     class_name: String
+
+
+class CoreUserGroupSync(CoreNodeSync):
+    name: String
+    users: RelationshipManagerSync
+    roles: RelationshipManagerSync
+
+
+class CoreUserRoleSync(CoreNodeSync):
+    name: String
+    groups: RelationshipManagerSync
+    permissions: RelationshipManagerSync
 
 
 class CoreUserValidatorSync(CoreValidatorSync):

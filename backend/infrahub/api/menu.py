@@ -203,6 +203,21 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
                 icon=_extract_node_icon(full_schema[InfrahubKind.GENERICACCOUNT]),
             ),
             InterfaceMenu(
+                title="User Groups",
+                path=f"/objects/{InfrahubKind.USERGROUP}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.USERGROUP]),
+            ),
+            InterfaceMenu(
+                title="User Roles",
+                path=f"/objects/{InfrahubKind.USERROLE}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.USERROLE]),
+            ),
+            InterfaceMenu(
+                title="Permissions",
+                path=f"/objects/{InfrahubKind.BASEPERMISSION}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.BASEPERMISSION]),
+            ),
+            InterfaceMenu(
                 title="Credentials",
                 path=f"/objects/{InfrahubKind.CREDENTIAL}",
                 icon=_extract_node_icon(full_schema[InfrahubKind.CREDENTIAL]),
