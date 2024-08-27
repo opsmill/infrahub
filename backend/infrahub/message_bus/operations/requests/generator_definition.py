@@ -101,7 +101,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
                         query=message.generator_definition.query_name,
                         variables=member.extract(params=message.generator_definition.parameters),
                         target_id=member.id,
-                        target_name=member.name.value,
+                        target_name=member.display_label,
                         validator_id=validator.id,
                         meta=Meta(validator_execution_id=validator_execution_id, check_execution_id=check_execution_id),
                     )
@@ -177,7 +177,7 @@ async def run(message: messages.RequestGeneratorDefinitionRun, service: Infrahub
                     query=message.generator_definition.query_name,
                     variables=member.extract(params=message.generator_definition.parameters),
                     target_id=member.id,
-                    target_name=member.name.value,
+                    target_name=member.display_label,
                 )
             )
 
