@@ -539,7 +539,7 @@ class DiffAllPathsQuery(DiffQuery):
                 AND any(l in labels(inner_q) WHERE l in ["Boolean", "Node", "AttributeValue"])
                 AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
                 AND %(n_node_where)s
-                AND ID(n) <> ID(inner_q)
+                AND [ID(n), type(r_node)] <> [ID(inner_q), type(inner_diff_rel)]
                 AND ALL(
                     r in [r_root, r_node]
                     WHERE r.from <= $to_time AND r.branch IN $branch_names
@@ -589,7 +589,7 @@ class DiffAllPathsQuery(DiffQuery):
                 )
                 WHERE ID(r_root3) = ID(r_root) AND ID(n3) = ID(n) AND ID(r_node3) = ID(r_node) AND ID(inner_p3) = ID(p)
                 AND type(diff_rel) <> "IS_RELATED"
-                AND ID(n3) <> ID(base_peer)
+                AND [ID(n3), type(r_node3)] <> [ID(base_peer), type(base_r_peer)]
                 AND base_r_peer.from <= $to_time
                 AND base_r_peer.branch IN $branch_names
                 // exclude paths where an active edge is below a deleted edge
