@@ -128,6 +128,7 @@ class DiffCoordinator:
                 diff_branch_names=[branch.name],
                 from_time=from_time,
                 to_time=to_time,
+                tracking_id=tracking_id,
             )
             if tracking_id:
                 diff_uuids_to_delete += [
@@ -199,16 +200,17 @@ class DiffCoordinator:
     ) -> list[TimeRange]:
         if not time_ranges:
             return [TimeRange(from_time=from_time, to_time=to_time)]
+        sorted_time_ranges = sorted(time_ranges, key=lambda tr: tr.from_time)
         missing_time_ranges = []
-        if time_ranges[0].from_time > from_time:
-            missing_time_ranges.append(TimeRange(from_time=from_time, to_time=time_ranges[0].from_time))
+        if sorted_time_ranges[0].from_time > from_time:
+            missing_time_ranges.append(TimeRange(from_time=from_time, to_time=sorted_time_ranges[0].from_time))
         index = 0
-        while index < len(time_ranges) - 1:
-            this_diff = time_ranges[index]
-            next_diff = time_ranges[index + 1]
-            if this_diff.to_time != next_diff.from_time:
+        while index < len(sorted_time_ranges) - 1:
+            this_diff = sorted_time_ranges[index]
+            next_diff = sorted_time_ranges[index + 1]
+            if this_diff.to_time < next_diff.from_time:
                 missing_time_ranges.append(TimeRange(from_time=this_diff.to_time, to_time=next_diff.from_time))
             index += 1
-        if time_ranges[-1].to_time < to_time:
-            missing_time_ranges.append(TimeRange(from_time=time_ranges[-1].to_time, to_time=to_time))
+        if sorted_time_ranges[-1].to_time < to_time:
+            missing_time_ranges.append(TimeRange(from_time=sorted_time_ranges[-1].to_time, to_time=to_time))
         return missing_time_ranges
