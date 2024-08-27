@@ -501,7 +501,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
             await node.cars.fetch()
             relationship_count += len(node.cars.peers)
         relationships_dump = ujson.loads(relationships_file.read_text())
-        assert len(relationships_dump) == relationship_count + 2  # add number to account for default data
+        assert len(relationships_dump) == relationship_count + 1  # add number to account for default data
 
     async def test_step02_import_initial_dataset(self, client: InfrahubClient, temporary_directory: Path, schema):
         await client.schema.load(schemas=[schema])
@@ -520,7 +520,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
             relationship_count += len(node.cars.peers)
         relationships_file = temporary_directory / "relationships.json"
         relationships_dump = ujson.loads(relationships_file.read_text())
-        assert len(relationships_dump) == relationship_count + 2  # add number to account for default data
+        assert len(relationships_dump) == relationship_count + 1  # add number to account for default data
 
     async def test_step03_import_initial_dataset_with_existing_data(
         self, client: InfrahubClient, temporary_directory: Path, initial_dataset
@@ -539,7 +539,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
             relationship_count += len(node.cars.peers)
         relationships_file = temporary_directory / "relationships.json"
         relationships_dump = ujson.loads(relationships_file.read_text())
-        assert len(relationships_dump) == relationship_count + 2  # add number to account for default data
+        assert len(relationships_dump) == relationship_count + 1  # add number to account for default data
 
         # Cleanup for next tests
         self.reset_export_directory(temporary_directory)

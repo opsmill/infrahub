@@ -300,7 +300,7 @@ async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_ac
 
     for admin_account in admin_accounts:
         await group.members.add(db=db, data=admin_account)  # type: ignore[attr-defined]
-        await group.members.save(db=db)
+        await group.members.save(db=db)  # type: ignore[attr-defined]
         log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")  # type: ignore[attr-defined]
 
     return group
