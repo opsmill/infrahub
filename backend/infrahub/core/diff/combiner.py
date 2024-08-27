@@ -3,7 +3,6 @@ from dataclasses import dataclass, field, replace
 from typing import Iterable
 from uuid import uuid4
 
-from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 
 from .model.path import (
@@ -25,7 +24,6 @@ class NodePair:
 
 class DiffCombiner:
     def __init__(self) -> None:
-        self.schema_manager = registry.schema
         # {child_uuid: (parent_uuid, parent_rel_name)}
         self._child_parent_uuid_map: dict[str, tuple[str, str]] = {}
         self._parent_node_uuids: set[str] = set()
@@ -244,9 +242,7 @@ class DiffCombiner:
         self,
         earlier_relationships: set[EnrichedDiffRelationship],
         later_relationships: set[EnrichedDiffRelationship],
-        node_kind: str,
     ) -> set[EnrichedDiffRelationship]:
-        node_schema = self.schema_manager.get_node_schema(name=node_kind, branch=self.diff_branch_name, duplicate=False)
         earlier_rels_by_name = {rel.name: rel for rel in earlier_relationships}
         later_rels_by_name = {rel.name: rel for rel in later_relationships}
         common_rel_names = set(earlier_rels_by_name.keys()) & set(later_rels_by_name.keys())
@@ -257,12 +253,10 @@ class DiffCombiner:
                 copied.nodes = set()
                 combined_relationships.add(copied)
                 continue
-            relationship_schema = node_schema.get_relationship(name=earlier_relationship.name)
-            is_cardinality_one = relationship_schema.cardinality is RelationshipCardinality.ONE
             later_relationship = later_rels_by_name[earlier_relationship.name]
             if len(earlier_relationship.relationships) == 0 and len(later_relationship.relationships) == 0:
                 combined_relationship_elements = set()
-            elif is_cardinality_one:
+            elif earlier_relationship.cardinality is RelationshipCardinality.ONE:
                 combined_relationship_elements = {
                     self._combine_cardinality_one_relationship_elements(
                         elements=(earlier_relationship.relationships | later_relationship.relationships)
@@ -275,6 +269,7 @@ class DiffCombiner:
             combined_relationship = EnrichedDiffRelationship(
                 name=later_relationship.name,
                 label=later_relationship.label,
+                cardinality=later_relationship.cardinality,
                 changed_at=later_relationship.changed_at or earlier_relationship.changed_at,
                 action=self._combine_actions(earlier=earlier_relationship.action, later=later_relationship.action),
                 path_identifier=later_relationship.path_identifier,
@@ -315,7 +310,6 @@ class DiffCombiner:
             combined_relationships = self._combine_relationships(
                 earlier_relationships=node_pair.earlier.relationships,
                 later_relationships=node_pair.later.relationships,
-                node_kind=node_pair.later.kind,
             )
             combined_action = self._combine_actions(earlier=node_pair.earlier.action, later=node_pair.later.action)
             combined_nodes.add(

@@ -339,7 +339,11 @@ class DiffRelationshipIntermediate:
         ):
             action = single_relationships[0].action
         return DiffRelationship(
-            name=self.name, changed_at=last_changed_at, action=action, relationships=single_relationships
+            name=self.name,
+            changed_at=last_changed_at,
+            action=action,
+            relationships=single_relationships,
+            cardinality=self.cardinality,
         )
 
 

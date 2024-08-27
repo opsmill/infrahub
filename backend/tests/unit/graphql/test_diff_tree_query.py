@@ -14,6 +14,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql import prepare_graphql_params
@@ -23,6 +24,11 @@ ADDED_ACTION = "ADDED"
 UPDATED_ACTION = "UPDATED"
 REMOVED_ACTION = "REMOVED"
 UNCHANGED_ACTION = "UNCHANGED"
+CARDINALITY_ONE = "ONE"
+CARDINALITY_MANY = "MANY"
+IS_RELATED_TYPE = "IS_RELATED"
+IS_PROTECTED_TYPE = "IS_PROTECTED"
+IS_VISIBLE_TYPE = "IS_VISIBLE"
 
 DIFF_TREE_QUERY = """
 query GetDiffTree($branch: String){
@@ -82,6 +88,7 @@ query GetDiffTree($branch: String){
                 name
                 last_changed_at
                 status
+                cardinality
                 contains_conflict
                 elements {
                     status
@@ -313,6 +320,236 @@ async def test_diff_tree_one_attr_change(
             }
         ],
     }
+
+
+async def test_diff_tree_one_relationship_change(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    diff_branch: Branch,
+    diff_coordinator: DiffCoordinator,
+    diff_repository: DiffRepository,
+):
+    branch_car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=diff_branch)
+    await branch_car.owner.update(db=db, data=[person_jane_main])
+    before_change_datetime = datetime.now(tz=UTC)
+    await branch_car.save(db=db)
+    after_change_datetime = datetime.now(tz=UTC)
+
+    enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+    from_time = datetime.fromisoformat(diff_branch.created_at)
+    to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
+
+    assert result.errors is None
+
+    assert result.data["DiffTree"]
+    diff_tree_response = result.data["DiffTree"].copy()
+    nodes_response = diff_tree_response.pop("nodes")
+    assert diff_tree_response == {
+        "base_branch": "main",
+        "diff_branch": diff_branch.name,
+        "from_time": from_time.isoformat(),
+        "to_time": to_time.isoformat(),
+        "num_added": 0,
+        "num_removed": 0,
+        "num_updated": 3,
+        "num_conflicts": 0,
+    }
+    assert len(nodes_response) == 3
+    node_response_by_id = {n["uuid"]: n for n in nodes_response}
+    assert set(node_response_by_id.keys()) == {car_accord_main.id, person_john_main.id, person_jane_main.id}
+    # car node
+    car_response = node_response_by_id[car_accord_main.id]
+    car_relationship_response = car_response.pop("relationships")
+    car_changed_at = car_response["last_changed_at"]
+    assert datetime.fromisoformat(car_changed_at) < before_change_datetime
+    assert car_response == {
+        "uuid": car_accord_main.id,
+        "kind": car_accord_main.get_kind(),
+        "label": await car_accord_main.render_display_label(db=db),
+        "last_changed_at": car_changed_at,
+        "num_added": 0,
+        "num_removed": 0,
+        "num_updated": 1,
+        "num_conflicts": 0,
+        "parent": {"kind": person_jane_main.get_kind(), "relationship_name": "cars", "uuid": person_jane_main.get_id()},
+        "status": UPDATED_ACTION,
+        "contains_conflict": False,
+        "attributes": [],
+    }
+    car_relationships_by_name = {r["name"]: r for r in car_relationship_response}
+    assert set(car_relationships_by_name.keys()) == {"owner"}
+    owner_rel = car_relationships_by_name["owner"]
+    owner_changed_at = owner_rel["last_changed_at"]
+    assert before_change_datetime < datetime.fromisoformat(owner_changed_at) < after_change_datetime
+    owner_elements = owner_rel.pop("elements")
+    assert owner_rel == {
+        "name": "owner",
+        "last_changed_at": owner_changed_at,
+        "status": UPDATED_ACTION,
+        "cardinality": "ONE",
+        "contains_conflict": False,
+    }
+    assert len(owner_elements) == 1
+    owner_element = owner_elements[0]
+    owner_element_changed_at = owner_element["last_changed_at"]
+    assert before_change_datetime < datetime.fromisoformat(owner_element_changed_at) < after_change_datetime
+    owner_properties = owner_element.pop("properties")
+    assert owner_element == {
+        "status": UPDATED_ACTION,
+        "peer_id": person_jane_main.id,
+        "last_changed_at": owner_element_changed_at,
+        "contains_conflict": False,
+        "conflict": None,
+    }
+    owner_properties_by_type = {p["property_type"]: p for p in owner_properties}
+    assert set(owner_properties_by_type.keys()) == {IS_RELATED_TYPE}
+    owner_prop = owner_properties_by_type[IS_RELATED_TYPE]
+    owner_prop_changed_at = owner_prop["last_changed_at"]
+    assert before_change_datetime < datetime.fromisoformat(owner_prop_changed_at) < after_change_datetime
+    assert owner_prop == {
+        "property_type": IS_RELATED_TYPE,
+        "last_changed_at": owner_prop_changed_at,
+        "previous_value": person_john_main.id,
+        "new_value": person_jane_main.id,
+        "status": UPDATED_ACTION,
+        "conflict": None,
+    }
+    # john node
+    john_response = node_response_by_id[person_john_main.id]
+    john_relationship_response = john_response.pop("relationships")
+    john_changed_at = john_response["last_changed_at"]
+    assert datetime.fromisoformat(john_changed_at) < before_change_datetime
+    assert john_response == {
+        "uuid": person_john_main.id,
+        "kind": person_john_main.get_kind(),
+        "label": await person_john_main.render_display_label(db=db),
+        "last_changed_at": john_changed_at,
+        "num_added": 0,
+        "num_removed": 0,
+        "num_updated": 1,
+        "num_conflicts": 0,
+        "parent": None,
+        "status": UPDATED_ACTION,
+        "contains_conflict": False,
+        "attributes": [],
+    }
+    john_relationships_by_name = {r["name"]: r for r in john_relationship_response}
+    assert set(john_relationships_by_name.keys()) == {"cars"}
+    cars_rel = john_relationships_by_name["cars"]
+    cars_changed_at = cars_rel["last_changed_at"]
+    assert before_change_datetime < datetime.fromisoformat(cars_changed_at) < after_change_datetime
+    cars_elements = cars_rel.pop("elements")
+    assert cars_rel == {
+        "name": "cars",
+        "last_changed_at": cars_changed_at,
+        "status": UPDATED_ACTION,
+        "cardinality": "MANY",
+        "contains_conflict": False,
+    }
+    assert len(cars_elements) == 1
+    cars_element = cars_elements[0]
+    cars_element_changed_at = cars_element["last_changed_at"]
+    assert before_change_datetime < datetime.fromisoformat(cars_element_changed_at) < after_change_datetime
+    cars_properties = cars_element.pop("properties")
+    assert cars_element == {
+        "status": REMOVED_ACTION,
+        "peer_id": car_accord_main.id,
+        "last_changed_at": cars_element_changed_at,
+        "contains_conflict": False,
+        "conflict": None,
+    }
+    cars_properties_by_type = {p["property_type"]: p for p in cars_properties}
+    assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_VISIBLE_TYPE, IS_PROTECTED_TYPE}
+    for property_type, previous_value in [
+        (IS_RELATED_TYPE, car_accord_main.id),
+        (IS_PROTECTED_TYPE, "False"),
+        (IS_VISIBLE_TYPE, "True")
+    ]:
+        cars_prop = cars_properties_by_type[property_type]
+        cars_prop_changed_at = cars_prop["last_changed_at"]
+        assert before_change_datetime < datetime.fromisoformat(cars_prop_changed_at) < after_change_datetime
+        assert cars_prop == {
+            "property_type": property_type,
+            "last_changed_at": cars_prop_changed_at,
+            "previous_value": previous_value,
+            "new_value": None,
+            "status": REMOVED_ACTION,
+            "conflict": None,
+        }
+    # jane node
+    jane_response = node_response_by_id[person_jane_main.id]
+    jane_relationship_response = jane_response.pop("relationships")
+    jane_changed_at = jane_response["last_changed_at"]
+    assert datetime.fromisoformat(jane_changed_at) < before_change_datetime
+    assert jane_response == {
+        "uuid": person_jane_main.id,
+        "kind": person_jane_main.get_kind(),
+        "label": await person_jane_main.render_display_label(db=db),
+        "last_changed_at": jane_changed_at,
+        "num_added": 0,
+        "num_removed": 0,
+        "num_updated": 1,
+        "num_conflicts": 0,
+        "parent": None,
+        "status": UPDATED_ACTION,
+        "contains_conflict": False,
+        "attributes": [],
+    }
+    jane_relationships_by_name = {r["name"]: r for r in jane_relationship_response}
+    assert set(jane_relationships_by_name.keys()) == {"cars"}
+    cars_rel = jane_relationships_by_name["cars"]
+    cars_changed_at = cars_rel["last_changed_at"]
+    assert before_change_datetime < datetime.fromisoformat(cars_changed_at) < after_change_datetime
+    cars_elements = cars_rel.pop("elements")
+    assert cars_rel == {
+        "name": "cars",
+        "last_changed_at": cars_changed_at,
+        "status": UPDATED_ACTION,
+        "cardinality": "MANY",
+        "contains_conflict": False,
+    }
+    assert len(cars_elements) == 1
+    cars_element = cars_elements[0]
+    cars_element_changed_at = cars_element["last_changed_at"]
+    assert before_change_datetime < datetime.fromisoformat(cars_element_changed_at) < after_change_datetime
+    cars_properties = cars_element.pop("properties")
+    assert cars_element == {
+        "status": ADDED_ACTION,
+        "peer_id": car_accord_main.id,
+        "last_changed_at": cars_element_changed_at,
+        "contains_conflict": False,
+        "conflict": None,
+    }
+    cars_properties_by_type = {p["property_type"]: p for p in cars_properties}
+    assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_VISIBLE_TYPE, IS_PROTECTED_TYPE}
+    for property_type, new_value in [
+        (IS_RELATED_TYPE, car_accord_main.id),
+        (IS_PROTECTED_TYPE, "False"),
+        (IS_VISIBLE_TYPE, "True")
+    ]:
+        cars_prop = cars_properties_by_type[property_type]
+        cars_prop_changed_at = cars_prop["last_changed_at"]
+        assert before_change_datetime < datetime.fromisoformat(cars_prop_changed_at) < after_change_datetime
+        assert cars_prop == {
+            "property_type": property_type,
+            "last_changed_at": cars_prop_changed_at,
+            "previous_value": None,
+            "new_value": new_value,
+            "status": ADDED_ACTION,
+            "conflict": None,
+        }
 
 
 async def test_diff_tree_hierarchy_change(
