@@ -6,7 +6,7 @@ import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import React from "react";
+import React, { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CardWithBorder } from "@/components/ui/card";
 import { Property, PropertyList } from "@/components/table/property-list";
@@ -15,8 +15,11 @@ import { ProposedChangeEditTrigger } from "@/screens/proposed-changes/proposed-c
 import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";
 import { PcMergeButton } from "@/screens/proposed-changes/action-button/pc-merge-button";
 import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
+import { Conversations } from "@/screens/proposed-changes/conversations";
+import { classNames } from "@/utils/common";
+import { MarkdownViewer } from "@/components/editor/markdown-viewer";
 
-export const ProposedChangeDetails = () => {
+export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
@@ -32,14 +35,6 @@ export const ProposedChangeDetails = () => {
     {
       name: "ID",
       value: proposedChangesDetails.id,
-    },
-    {
-      name: "Name",
-      value: proposedChangesDetails?.name?.value,
-    },
-    {
-      name: "Description",
-      value: proposedChangesDetails?.description?.value,
     },
     {
       name: "State",
@@ -112,18 +107,36 @@ export const ProposedChangeDetails = () => {
   ];
 
   return (
-    <CardWithBorder>
-      <CardWithBorder.Title className="flex justify-between items-center">
-        <div
-          onClick={() => navigate(path)}
-          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-          Proposed change
-        </div>
+    <div className={classNames("grid grid-cols-3 gap-2 p-2.5 items-start", className)} {...props}>
+      <div className="col-start-1 col-end-3 space-y-4">
+        {proposedChangesDetails?.description?.value && (
+          <CardWithBorder contentClassName="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
+              Admin
+              <div className="ml-auto text-xs font-normal text-gray-600">About 3 days ago</div>
+            </div>
 
-        <ProposedChangeEditTrigger proposedChangesDetails={proposedChangesDetails} />
-      </CardWithBorder.Title>
+            <MarkdownViewer markdownText={proposedChangesDetails.description.value} />
+          </CardWithBorder>
+        )}
 
-      <PropertyList properties={proposedChangeProperties} />
-    </CardWithBorder>
+        <Conversations />
+      </div>
+
+      <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">
+        <CardWithBorder.Title className="flex justify-between items-center">
+          <div
+            onClick={() => navigate(path)}
+            className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+            Proposed change
+          </div>
+
+          <ProposedChangeEditTrigger proposedChangesDetails={proposedChangesDetails} />
+        </CardWithBorder.Title>
+
+        <PropertyList properties={proposedChangeProperties} />
+      </CardWithBorder>
+    </div>
   );
 };
