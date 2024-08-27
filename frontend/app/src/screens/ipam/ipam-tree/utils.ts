@@ -69,13 +69,33 @@ export const updateTreeData = (
 ) => {
   const data = list.map((node) => {
     if (node.id === id) {
-      node.children = children.map((el) => {
-        return el.id;
-      });
+      return {
+        ...node,
+        children: children.map((el) => {
+          return el.id;
+        }),
+      };
     }
     return node;
   });
   return [...data, ...children];
+};
+
+export const addItemsToTree = (
+  currentTree: TreeProps["data"],
+  newItems: TreeProps["data"]
+): TreeProps["data"] => {
+  return newItems.reduce((acc, item) => {
+    const parentIndex = acc.findIndex(({ id }) => id === item.parent);
+    if (parentIndex !== -1) {
+      const parent = {
+        ...acc[parentIndex],
+        children: [...new Set([...acc[parentIndex].children, item.id])],
+      };
+      return [...acc.slice(0, parentIndex), parent, ...acc.slice(parentIndex + 1), item];
+    }
+    return [...acc, item];
+  }, currentTree);
 };
 
 export const getTreeItemAncestors = (

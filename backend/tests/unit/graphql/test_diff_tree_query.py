@@ -7,7 +7,9 @@ from graphql import graphql
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
+from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -15,6 +17,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.enums import ConflictSelection as GraphQLConfictSelection
 
 ADDED_ACTION = "ADDED"
 UPDATED_ACTION = "UPDATED"
@@ -155,6 +158,13 @@ async def diff_branch(db: InfrahubDatabase, default_branch: Branch) -> Branch:
 
 
 @pytest.fixture
+async def diff_repository(db: InfrahubDatabase, diff_branch: Branch) -> DiffRepository:
+    component_registry = get_component_registry()
+    repository = await component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
+    return repository
+
+
+@pytest.fixture
 async def diff_coordinator(db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
     component_registry = get_component_registry()
     coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
@@ -200,14 +210,22 @@ async def test_diff_tree_one_attr_change(
     criticality_low,
     diff_branch: Branch,
     diff_coordinator: DiffCoordinator,
+    diff_repository: DiffRepository,
 ):
+    main_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
+    main_crit.color.value = "#fedcba"
     branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
     branch_crit.color.value = "#abcdef"
     before_change_datetime = datetime.now(tz=UTC)
+    await main_crit.save(db=db)
     await branch_crit.save(db=db)
     after_change_datetime = datetime.now(tz=UTC)
 
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+    enriched_conflict = enriched_diff.get_all_conflicts()[0]
+    await diff_repository.update_conflict_by_id(
+        conflict_id=enriched_conflict.uuid, selection=ConflictSelection.DIFF_BRANCH
+    )
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=params.schema,
@@ -242,7 +260,7 @@ async def test_diff_tree_one_attr_change(
         "num_added": 0,
         "num_removed": 0,
         "num_updated": 1,
-        "num_conflicts": 0,
+        "num_conflicts": 1,
         "nodes": [
             {
                 "uuid": criticality_low.id,
@@ -252,10 +270,10 @@ async def test_diff_tree_one_attr_change(
                 "num_added": 0,
                 "num_removed": 0,
                 "num_updated": 1,
+                "num_conflicts": 1,
                 "parent": None,
-                "num_conflicts": 0,
                 "status": UPDATED_ACTION,
-                "contains_conflict": False,
+                "contains_conflict": True,
                 "relationships": [],
                 "attributes": [
                     {
@@ -264,9 +282,9 @@ async def test_diff_tree_one_attr_change(
                         "num_added": 0,
                         "num_removed": 0,
                         "num_updated": 1,
-                        "num_conflicts": 0,
+                        "num_conflicts": 1,
                         "status": UPDATED_ACTION,
-                        "contains_conflict": False,
+                        "contains_conflict": True,
                         "properties": [
                             {
                                 "property_type": "HAS_VALUE",
@@ -274,7 +292,20 @@ async def test_diff_tree_one_attr_change(
                                 "previous_value": criticality_low.color.value,
                                 "new_value": branch_crit.color.value,
                                 "status": UPDATED_ACTION,
-                                "conflict": None,
+                                "conflict": {
+                                    "uuid": enriched_conflict.uuid,
+                                    "base_branch_action": UPDATED_ACTION,
+                                    "base_branch_value": "#fedcba",
+                                    "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string(
+                                        with_z=False
+                                    ),
+                                    "diff_branch_action": UPDATED_ACTION,
+                                    "diff_branch_value": "#abcdef",
+                                    "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string(
+                                        with_z=False
+                                    ),
+                                    "selected_branch": GraphQLConfictSelection.DIFF_BRANCH.name,
+                                },
                             }
                         ],
                     }

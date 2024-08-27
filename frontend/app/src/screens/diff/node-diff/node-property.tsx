@@ -5,12 +5,13 @@ import { Icon } from "@iconify-icon/react";
 import { Conflict } from "./conflict";
 import { DiffRow, formatPropertyName, formatValue } from "@/screens/diff/node-diff/utils";
 import { BadgeConflict } from "@/screens/diff/diff-badge";
-import { DiffProperty } from "@/screens/diff/node-diff/types";
+import { DiffProperty, DiffStatus } from "@/screens/diff/node-diff/types";
 import { classNames } from "@/utils/common";
 
 type DiffNodePropertyProps = {
-  property: DiffProperty;
   className?: string;
+  property: DiffProperty;
+  status: DiffStatus;
 };
 
 const getPreviousValue = (property: DiffProperty) => {
@@ -18,19 +19,13 @@ const getPreviousValue = (property: DiffProperty) => {
   if (previousValue === null) return null;
 
   if (!property.conflict) {
-    return (
-      <Badge variant="green" className="bg-transparent font-medium">
-        {previousValue}
-      </Badge>
-    );
+    return previousValue;
   }
 
   const conflictValue = formatValue(property.conflict.base_branch_value);
   return (
     <div className="flex items-center gap-2">
-      <Badge variant="green" className="bg-transparent font-medium">
-        {previousValue}
-      </Badge>
+      {previousValue}
       <Icon icon="mdi:chevron-right" />
       <Badge variant="yellow" className="font-medium">
         {conflictValue}
@@ -44,11 +39,7 @@ const getNewValue = (property: DiffProperty) => {
   if (newValue === null) return null;
 
   if (!property.conflict) {
-    return (
-      <Badge variant="blue" className="bg-transparent font-medium">
-        {newValue}
-      </Badge>
-    );
+    return newValue;
   }
 
   const conflictValue = formatValue(property.conflict.diff_branch_value);
@@ -59,11 +50,12 @@ const getNewValue = (property: DiffProperty) => {
   );
 };
 
-export const DiffNodeProperty = ({ property, className }: DiffNodePropertyProps) => {
+export const DiffNodeProperty = ({ status, property, className }: DiffNodePropertyProps) => {
   const { "*": branchName } = useParams();
 
   return (
     <DiffRow
+      status={status}
       iconClassName="left-4"
       hasConflicts={!!property.conflict}
       title={
@@ -79,6 +71,8 @@ export const DiffNodeProperty = ({ property, className }: DiffNodePropertyProps)
         </div>
       }
       left={getPreviousValue(property)}
+      leftClassName="font-normal"
+      rightClassName="font-normal"
       right={getNewValue(property)}>
       {property.conflict && <Conflict conflict={property.conflict} />}
     </DiffRow>

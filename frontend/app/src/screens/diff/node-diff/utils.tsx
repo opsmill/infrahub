@@ -7,7 +7,7 @@ import {
   DiffBadgeProps,
 } from "../diff-badge";
 import { ReactNode } from "react";
-import { DiffProperty } from "@/screens/diff/node-diff/types";
+import { DiffProperty, DiffStatus } from "@/screens/diff/node-diff/types";
 import { classNames, warnUnexpectedType } from "@/utils/common";
 import Accordion from "@/components/display/accordion";
 import { capitalizeFirstLetter } from "@/utils/string";
@@ -45,6 +45,7 @@ type DiffRowProps = {
   hasConflicts?: boolean;
   children?: ReactNode;
   iconClassName?: string;
+  status: DiffStatus;
 };
 export const DiffRow = ({
   children,
@@ -55,6 +56,7 @@ export const DiffRow = ({
   right,
   rightClassName,
   iconClassName,
+  status,
 }: DiffRowProps) => {
   return (
     <div className={classNames("bg-custom-white min-h-9 relative", hasConflicts && "bg-yellow-50")}>
@@ -68,11 +70,7 @@ export const DiffRow = ({
             {title}
 
             <div className="bg-custom-white">
-              <div
-                className={classNames(
-                  "bg-green-700/10 p-2 flex items-center h-full",
-                  leftClassName
-                )}>
+              <div className={classNames("bg-gray-50 p-2 flex items-center h-full", leftClassName)}>
                 {left}
               </div>
             </div>
@@ -80,7 +78,10 @@ export const DiffRow = ({
             <div className="bg-custom-white">
               <div
                 className={classNames(
-                  "bg-custom-blue-700/10 p-2 flex items-center h-full",
+                  "p-2 flex items-center h-full font-medium",
+                  status === "ADDED" && "bg-green-100 text-green-900",
+                  status === "REMOVED" && "bg-red-100 text-red-900",
+                  status === "UPDATED" && "bg-blue-100 text-blue-900",
                   rightClassName
                 )}>
                 {right}
