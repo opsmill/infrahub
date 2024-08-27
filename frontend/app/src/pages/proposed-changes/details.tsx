@@ -127,6 +127,7 @@ export function Component() {
   }
 
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT]?.edges?.[0]?.node;
+  console.log("proposedChangesData: ", proposedChangesData);
 
   if (!proposedChangesData) {
     return <Navigate to={constructPath("/proposed-changes")} />;
@@ -182,6 +183,7 @@ export function Component() {
         reload={() => client.reFetchObservableQueries()}
         isReloadLoading={loading}
       />
+
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
       <ProposedChangeDetailsContent proposedChangeData={proposedChangesData} />
