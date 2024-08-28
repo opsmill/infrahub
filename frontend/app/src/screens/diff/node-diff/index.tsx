@@ -146,7 +146,8 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
             size="sm"
             variant="outline"
             onClick={() => setQspStatus(undefined)}
-            isLoading={loading}>
+            isLoading={loading}
+            disabled={!qspStatus}>
             Reset Filter
           </Button>
 
