@@ -4,6 +4,7 @@ import { Icon } from "@iconify-icon/react";
 
 export interface DiffBadgeProps extends BadgeProps {
   hasConflicts?: boolean;
+  icon?: string;
 }
 
 export type BadgeType =
@@ -19,7 +20,7 @@ export const BadgeUnchanged = ({
   children,
   hasConflicts = false,
   ...props
-}: DiffBadgeProps & { icon?: string }) => {
+}: DiffBadgeProps) => {
   return (
     <Badge
       className={classNames(
@@ -29,7 +30,7 @@ export const BadgeUnchanged = ({
         className
       )}
       {...props}>
-      <Icon icon={icon ?? "mdi:check"} className="text-xs" />
+      <Icon icon={icon ?? "mdi:dot-outline"} className="text-xs" />
       {(children || children === 0) && <span className="font-medium text-xs">{children}</span>}
       {hasConflicts && <BadgeConflict />}
     </Badge>
