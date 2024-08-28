@@ -16,9 +16,6 @@ backend_files: &backend_files
 sdk_files: &sdk_files
   - "python_sdk/**"
 
-sync_files: &sync_files
-  - "sync/**"
-
 infrahub_poetry_files: &infrahub_poetry_files
   - "pyproject.toml"
   - "poetry.lock"
@@ -26,10 +23,6 @@ infrahub_poetry_files: &infrahub_poetry_files
 python_sdk_poetry_files: &python_sdk_poetry_files
   - "python_sdk/pyproject.toml"
   - "python_sdk/poetry.lock"
-
-sync_poetry_files: &sync_poetry_files
-  - "sync/pyproject.toml"
-  - "sync/poetry.lock"
 
 frontend_files: &frontend_files
   - "frontend/app/**"
@@ -82,14 +75,6 @@ sdk_all:
   - *ci_config
   - *development_files
   - *python_sdk_poetry_files
-
-sync_all:
-  - *sync_files
-  - *sdk_files
-  - *backend_files
-  - *ci_config
-  - *development_files
-  - *sync_poetry_files
 
 frontend_all:
   - *frontend_files

@@ -24,6 +24,7 @@
   description: "Issue related to the Python SDK"
   color: "56e8e1"
 
+# Bkohler: will be remove after I migrate all the issues using it
 - name: "group/sync-engine"
   description: "Issue related to the Synchronization engine"
   color: "05b259"
