@@ -28,6 +28,9 @@ class InitializationError(Error):
     DESCRIPTION: str = "The application hasn't been initialized properly"
 
 
+class NodeIsDeletedError(Error): ...
+
+
 class DatabaseError(Error):
     HTTP_CODE: int = 503
     DESCRIPTION = "Database unavailable"

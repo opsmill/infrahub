@@ -359,6 +359,27 @@ async def test_get_many_branch_agnostic(
     assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
 
 
+async def test_get_many_with_deleted(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
+    crit_low_main = await NodeManager.get_one(db=db, branch=default_branch, id=criticality_low.id)
+    await crit_low_main.delete(db=db)
+    crit_med_main = await NodeManager.get_one(db=db, branch=default_branch, id=criticality_medium.id)
+    await crit_med_main.delete(db=db)
+
+    nodes = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id], ignore_deleted=False)
+
+    assert len(nodes) == 2
+    deleted_crit_low = nodes[criticality_low.get_id()]
+    assert deleted_crit_low.is_deleted
+    assert deleted_crit_low.name.value == criticality_low.name.value
+    assert deleted_crit_low.level.value == criticality_low.level.value
+    assert await deleted_crit_low.render_display_label(db=db) == await criticality_low.render_display_label(db=db)
+    deleted_crit_med = nodes[criticality_medium.get_id()]
+    assert deleted_crit_med.is_deleted
+    assert deleted_crit_med.name.value == criticality_medium.name.value
+    assert deleted_crit_med.level.value == criticality_medium.level.value
+    assert await deleted_crit_med.render_display_label(db=db) == await criticality_medium.render_display_label(db=db)
+
+
 async def test_query_no_filter(
     db: InfrahubDatabase,
     default_branch: Branch,

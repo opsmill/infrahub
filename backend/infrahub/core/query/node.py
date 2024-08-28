@@ -43,6 +43,7 @@ class NodeToProcess:
     branch: str
 
     labels: list[str]
+    is_deleted: bool
 
 
 @dataclass
@@ -70,6 +71,7 @@ class AttributeFromDB:
     branch: str
 
     is_default: bool
+    is_deleted: bool
     is_from_profile: bool = dataclass_field(default=False)
 
     node_properties: dict[str, AttributeNodePropertyFromDB] = dataclass_field(default_factory=dict)
@@ -414,6 +416,7 @@ class NodeListGetAttributeQuery(Query):
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
+        ignore_deleted: bool = True,
         **kwargs,
     ):
         self.account = account
@@ -421,6 +424,7 @@ class NodeListGetAttributeQuery(Query):
         self.fields = fields
         self.include_source = include_source
         self.include_owner = include_owner
+        self.ignore_deleted = ignore_deleted
 
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
@@ -431,6 +435,7 @@ class NodeListGetAttributeQuery(Query):
             at=self.at, branch_agnostic=self.branch_agnostic
         )
         self.params.update(branch_params)
+        self.params["ignore_deleted"] = self.ignore_deleted
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
@@ -452,7 +457,7 @@ class NodeListGetAttributeQuery(Query):
             LIMIT 1
         }
         WITH n1 as n, r1, a1 as a
-        WHERE r1.status = "active"
+        WHERE ($ignore_deleted = FALSE OR r1.status = "active")
         WITH n, r1, a
         MATCH (a)-[:HAS_VALUE]-(av:AttributeValue)
         CALL {
@@ -464,7 +469,7 @@ class NodeListGetAttributeQuery(Query):
             LIMIT 1
         }
         WITH n, r1, a1 as a, r2, av1 as av
-        WHERE r2.status = "active"
+        WHERE ($ignore_deleted = FALSE OR r2.status = "active")
         WITH n, a, av, r1, r2
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
@@ -500,7 +505,7 @@ class NodeListGetAttributeQuery(Query):
     def get_attributes_group_by_node(self) -> dict[str, NodeAttributesFromDB]:
         attrs_by_node: dict[str, NodeAttributesFromDB] = {}
 
-        for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
+        for result in self.get_results_group_by(("n", "uuid"), ("a", "name"), ignore_deleted=self.ignore_deleted):
             node_id: str = result.get_node("n").get("uuid")
             attr_name: str = result.get_node("a").get("name")
 
@@ -523,6 +528,8 @@ class NodeListGetAttributeQuery(Query):
     def _extract_attribute_data(self, result: QueryResult) -> AttributeFromDB:
         attr = result.get_node("a")
         attr_value = result.get_node("av")
+        rels = [result.get_rel("r1"), result.get_rel("r2")]
+        rel_statuses = [str(r.get("status")) for r in rels]
 
         data = AttributeFromDB(
             name=attr.get("name"),
@@ -533,6 +540,7 @@ class NodeListGetAttributeQuery(Query):
             attr_value_uuid=attr_value.get("uuid"),
             updated_at=result.get_rel("r2").get("from"),
             value=attr_value.get("value"),
+            is_deleted="deleted" in rel_statuses,
             is_default=attr_value.get("is_default"),
             content=attr_value._properties,
             branch=self.branch.name,
@@ -623,9 +631,10 @@ class NodeGetKindQuery(Query):
 class NodeListGetInfoQuery(Query):
     name: str = "node_list_get_info"
 
-    def __init__(self, ids: list[str], account=None, **kwargs: Any) -> None:
+    def __init__(self, ids: list[str], account=None, ignore_deleted: bool = True, **kwargs: Any) -> None:
         self.account = account
         self.ids = ids
+        self.ignore_deleted = ignore_deleted
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
@@ -633,6 +642,7 @@ class NodeListGetInfoQuery(Query):
             at=self.at, branch_agnostic=self.branch_agnostic
         )
         self.params.update(branch_params)
+        self.params["ignore_deleted"] = self.ignore_deleted
 
         query = """
         MATCH p = (root:Root)<-[:IS_PART_OF]-(n:Node)
@@ -646,7 +656,7 @@ class NodeListGetInfoQuery(Query):
             LIMIT 1
         }
         WITH n1 as n, r1 as rb
-        WHERE rb.status = "active"
+        WHERE ($ignore_deleted = FALSE OR rb.status = "active")
         OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(profile:Node)-[:IS_PART_OF]->(:Root)
         WHERE profile_r.name = "node__profile"
         AND profile.namespace = "Profile"
@@ -660,8 +670,7 @@ class NodeListGetInfoQuery(Query):
 
     async def get_nodes(self, db: InfrahubDatabase, duplicate: bool = False) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
-
-        for result in self.get_results_group_by(("n", "uuid")):
+        for result in self.get_results_group_by(("n", "uuid"), ignore_deleted=self.ignore_deleted):
             schema = find_node_schema(db=db, node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
             node_branch = self.branch
             if self.branch_agnostic:
@@ -674,6 +683,7 @@ class NodeListGetInfoQuery(Query):
                 updated_at=result.get_rel("rb").get("from"),
                 branch=node_branch,
                 labels=list(result.get_node("n").labels),
+                is_deleted=str(result.get_rel("rb").get("status")).lower() == "deleted",
             )
 
     def get_profile_ids_by_node_id(self) -> dict[str, list[str]]:

@@ -1075,6 +1075,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
+        ignore_deleted: bool = True,
     ) -> dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
@@ -1083,7 +1084,13 @@ class NodeManager:
 
         # Query all nodes
         query = await NodeListGetInfoQuery.init(
-            db=db, ids=ids, branch=branch, account=account, at=at, branch_agnostic=branch_agnostic
+            db=db,
+            ids=ids,
+            branch=branch,
+            account=account,
+            at=at,
+            branch_agnostic=branch_agnostic,
+            ignore_deleted=ignore_deleted,
         )
         await query.execute(db=db)
         nodes_info_by_id: dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
@@ -1109,6 +1116,7 @@ class NodeManager:
             account=account,
             at=at,
             branch_agnostic=branch_agnostic,
+            ignore_deleted=ignore_deleted,
         )
         await query.execute(db=db)
         all_node_attributes = query.get_attributes_group_by_node()
@@ -1192,7 +1200,9 @@ class NodeManager:
             new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
             node_branch = await registry.get_branch(db=db, branch=node.branch)
-            item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
+            item = await node_class.init(
+                schema=node.schema, branch=node_branch, at=at, db=db, is_deleted=node.is_deleted
+            )
             await item.load(**new_node_data_with_profile_overrides, db=db)
 
             nodes[node_id] = item
