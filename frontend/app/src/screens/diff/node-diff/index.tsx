@@ -132,14 +132,16 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
           {!loading &&
             !!nodes.length &&
-            nodes.map((node) => (
-              <DiffNode
-                key={node.uuid}
-                node={node}
-                sourceBranch={data?.DiffTree?.base_branch}
-                destinationBranch={data?.DiffTree?.diff_branch}
-              />
-            ))}
+            nodes
+              .filter(({ status }) => status !== "UNCHANGED")
+              .map((node) => (
+                <DiffNode
+                  key={node.uuid}
+                  node={node}
+                  sourceBranch={data?.DiffTree?.base_branch}
+                  destinationBranch={data?.DiffTree?.diff_branch}
+                />
+              ))}
         </div>
       </div>
     </div>
