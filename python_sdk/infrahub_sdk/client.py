@@ -329,6 +329,7 @@ class InfrahubClient(BaseClient):
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        hfid: Optional[list[str]] = None,
         include: Optional[list[str]] = None,
         exclude: Optional[list[str]] = None,
         populate_store: bool = False,
@@ -346,6 +347,11 @@ class InfrahubClient(BaseClient):
                 filters[schema.default_filter] = id
             else:
                 filters["ids"] = [id]
+        elif hfid:
+            if schema.human_friendly_id:
+                filters["hfids"] = [hfid]
+            else:
+                raise ValueError("Cannot filter by HFID is node schema has not HFID defined")
         elif kwargs:
             filters = kwargs
         else:
@@ -1331,6 +1337,7 @@ class InfrahubClientSync(BaseClient):
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        hfid: Optional[list[str]] = None,
         include: Optional[list[str]] = None,
         exclude: Optional[list[str]] = None,
         populate_store: bool = False,
@@ -1348,6 +1355,11 @@ class InfrahubClientSync(BaseClient):
                 filters[schema.default_filter] = id
             else:
                 filters["ids"] = [id]
+        elif hfid:
+            if schema.human_friendly_id:
+                filters["hfids"] = [hfid]
+            else:
+                raise ValueError("Cannot filter by HFID is node schema has not HFID defined")
         elif kwargs:
             filters = kwargs
         else:
