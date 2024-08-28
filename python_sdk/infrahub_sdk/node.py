@@ -212,8 +212,6 @@ class RelatedNodeBase:
     def hfid(self) -> Optional[list[Any]]:
         if self._peer:
             return self._peer.hfid
-        if self.peer:
-            return self.peer.hfid
         return self._hfid
 
     @property
