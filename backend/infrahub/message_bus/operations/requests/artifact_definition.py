@@ -107,7 +107,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
                         query=message.artifact_definition.query_name,
                         variables=member.extract(params=artifact_definition.parameters.value),
                         target_id=member.id,
-                        target_name=member.name.value,
+                        target_name=member.display_label,
                         timeout=message.artifact_definition.timeout,
                         validator_id=validator.id,
                         meta=Meta(validator_execution_id=validator_execution_id, check_execution_id=check_execution_id),
@@ -203,7 +203,7 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
                 query=query.name.value,
                 variables=member.extract(params=artifact_definition.parameters.value),
                 target_id=member.id,
-                target_name=member.name.value,
+                target_name=member.display_label,
                 timeout=transform.timeout.value,
             )
         )
