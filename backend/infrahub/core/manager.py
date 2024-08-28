@@ -198,6 +198,26 @@ class NodeManager:
 
         node_schema = get_schema(db=db, branch=branch, node_schema=schema)
 
+        if filters and filters.get("hfids"):
+            response = []
+            for hfid in filters["hfids"]:
+                node = await cls.get_one_by_hfid(
+                    db=db,
+                    hfid=hfid,
+                    kind=schema,
+                    fields=fields,
+                    at=at,
+                    branch=branch,
+                    include_source=include_source,
+                    include_owner=include_owner,
+                    prefetch_relationships=prefetch_relationships,
+                    account=account,
+                    branch_agnostic=branch_agnostic,
+                )
+                if node:
+                    response.append(node)
+            return response
+
         # Query the list of nodes matching this Query
         query = await NodeGetListQuery.init(
             db=db,

@@ -14,7 +14,9 @@ class GetListMixin:
     @classmethod
     async def get_list(cls, fields: dict, context: GraphqlContext, **kwargs):
         async with context.db.start_session() as db:
-            filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
+            filters = {
+                key: value for key, value in kwargs.items() if ("__" in key and value) or key in ("ids", "hfids")
+            }
 
             objs = await NodeManager.query(
                 db=db,
@@ -43,17 +45,11 @@ class GetListMixin:
             offset = kwargs.pop("offset", None)
             limit = kwargs.pop("limit", None)
             filters = {
-                key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key == "ids"
+                key: value
+                for key, value in kwargs.items()
+                if ("__" in key and value is not None) or key in ("ids", "hfids")
             }
-            if "count" in fields:
-                response["count"] = await NodeManager.count(
-                    db=db,
-                    schema=cls._meta.schema,
-                    filters=filters,
-                    at=context.at,
-                    branch=context.branch,
-                    partial_match=partial_match,
-                )
+
             edges = fields.get("edges", {})
             node_fields = edges.get("node", {})
 
@@ -71,6 +67,19 @@ class GetListMixin:
                 include_owner=True,
                 partial_match=partial_match,
             )
+
+            if "count" in fields:
+                if filters.get("hfids"):
+                    response["count"] = len(objs)
+                else:
+                    response["count"] = await NodeManager.count(
+                        db=db,
+                        schema=cls._meta.schema,
+                        filters=filters,
+                        at=context.at,
+                        branch=context.branch,
+                        partial_match=partial_match,
+                    )
 
             if objs:
                 objects = [

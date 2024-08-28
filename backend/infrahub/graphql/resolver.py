@@ -65,7 +65,7 @@ async def default_resolver(*args, **kwargs):
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
+        if "__" in key and value or key in ["id", "ids", "hfids"]
     }
 
     async with context.db.start_session() as db:
@@ -120,8 +120,9 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
+        if "__" in key and value or key in ["id", "ids", "hfids"]
     }
+
     response: dict[str, Any] = {"node": None, "properties": {}}
 
     async with context.db.start_session() as db:
@@ -182,7 +183,7 @@ async def many_relationship_resolver(
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
+        if "__" in key and value or key in ["id", "ids", "hfids"]
     }
 
     response: dict[str, Any] = {"edges": [], "count": None}
@@ -292,7 +293,7 @@ async def hierarchy_resolver(
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
+        if "__" in key and value or key in ["id", "ids", "hfids"]
     }
 
     response: dict[str, Any] = {"edges": [], "count": None}
