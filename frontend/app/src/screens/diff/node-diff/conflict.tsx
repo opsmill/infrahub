@@ -2,6 +2,7 @@ import { ToggleButtons } from "@/components/buttons/toggle-buttons";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { resolveConflict } from "@/graphql/mutations/diff/resolveConflict";
+import { usePermission } from "@/hooks/usePermission";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { gql } from "@apollo/client";
@@ -12,6 +13,7 @@ import { toast } from "react-toastify";
 export const Conflict = ({ conflict }: any) => {
   const currentBranch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const permission = usePermission();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleAccept = async (conflictValue: string) => {
@@ -63,7 +65,7 @@ export const Conflict = ({ conflict }: any) => {
   return (
     <div className="flex items-center justify-end p-2">
       <span className="mr-1">Accept:</span>
-      <ToggleButtons tabs={tabs} isLoading={isLoading} />
+      <ToggleButtons tabs={tabs} isLoading={isLoading} disabled={!permission.write.allow} />
     </div>
   );
 };

@@ -7,7 +7,7 @@ import { Link, LinkProps } from "react-router-dom";
 import { Spinner } from "@/components/ui/spinner";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-disabled",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
