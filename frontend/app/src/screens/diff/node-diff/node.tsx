@@ -44,7 +44,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
           title={
             <div className="group flex items-center gap-2 py-2 pr-2 text-xs">
               <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
-              <Badge variant="white">{schemaKindName[node.kind]}</Badge>
+              <Badge variant="white">{schemaKindName[node.kind] ?? node.kind}</Badge>
               <span className="text-gray-800 font-medium px-2 py-1">{node.label}</span>
 
               {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}

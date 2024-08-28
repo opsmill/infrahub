@@ -197,6 +197,7 @@ class EnrichedDiffSaveQuery(Query):
             "node_properties": {
                 "name": enriched_relationship.name,
                 "label": enriched_relationship.label,
+                "cardinality": enriched_relationship.cardinality.value,
                 "changed_at": enriched_relationship.changed_at.to_string()
                 if enriched_relationship.changed_at
                 else None,

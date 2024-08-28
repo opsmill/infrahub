@@ -82,7 +82,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
             <PcDiffUpdateButton
               size="sm"
               time={data?.DiffTree?.to_time}
-              sourceBranch={proposedChangesDetails?.source_branch?.value}
+              sourceBranch={branch}
               isLoading={loading}
             />
           )}

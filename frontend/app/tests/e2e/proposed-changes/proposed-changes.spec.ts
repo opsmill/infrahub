@@ -81,10 +81,9 @@ test.describe("/proposed-changes", () => {
 
       test("display and edit proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
-        await page.getByText(pcName, { exact: true }).first().click();
 
         await test.step("display created proposed change details", async () => {
-          await expect(page.getByText("Name" + pcName)).toBeVisible();
+          await page.getByText(pcName, { exact: true }).click();
           await expect(page.getByText("Source branch" + pcBranchName)).toBeVisible();
           await expect(page.getByText("Stateopen")).toBeVisible();
         });
@@ -102,8 +101,8 @@ test.describe("/proposed-changes", () => {
           await page.getByRole("button", { name: "Save" }).click();
           await expect(page.getByText("ProposedChange updated")).toBeVisible();
 
-          await expect(page.getByText("Name" + pcNameEdit)).toBeVisible();
-          await page.getByText("DescriptionMy description edit").click();
+          await expect(page.locator("header").getByText(pcNameEdit)).toBeVisible();
+          await expect(page.getByTestId("pc-description")).toContainText("My description edit");
           await expect(page.getByText("ReviewersAT")).toBeVisible();
         });
       });
