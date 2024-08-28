@@ -20,64 +20,65 @@ export default function DiffTree({ nodes, loading, emptyMessage, ...props }: Dif
   const navigate = useNavigate();
 
   useEffect(() => {
-    let kindToUUIDsMap: Record<string, Array<string>> = {};
-
-    const formattedNodes: TreeProps["data"] = nodes.flatMap((node: DiffNode) => {
-      const currentUUIDs = kindToUUIDsMap[node.kind];
-      kindToUUIDsMap[node.kind] = currentUUIDs ? [...currentUUIDs, node.uuid] : [node.uuid];
-
+    const formattedNodes = nodes.reduce((acc, node) => {
       const newNode = {
         id: node.uuid,
         name: node.label,
-        parent: node.kind,
-        children: [] as string[],
-        isBranch: node.relationships.length > 0,
+        parent: TREE_ROOT_ID as string,
+        children: acc.filter(({ parent }) => parent === node.uuid).map(({ id }) => id),
         metadata: {
-          uuid: node.uuid,
-          status: node.status,
-          containsConflicts: node.contains_conflict,
+          kind: node.kind, // for icon on tree item
+          uuid: node.uuid, // for url
+          status: node.status, // for icon color
+          containsConflicts: node.contains_conflict, // for icon conflicts
         },
       };
 
-      const nodesFromRelationships = node.relationships.flatMap((relationship) => {
-        const relationshipNode = {
-          id: relationship?.name + newNode.id,
-          name: relationship?.label,
-          parent: newNode.id,
-          isBranch: !!relationship?.elements?.length,
-          children: [] as string[],
+      if (node.parent) {
+        const { uuid: parentUUID, relationship_name: parentRelationshipName } = node.parent;
+
+        const parentNodeId = parentUUID + parentRelationshipName;
+        const newNodeWithParent = {
+          ...newNode,
+          parent: parentNodeId,
+        };
+
+        const parentOfNewNode = acc.find(({ id }) => id === parentNodeId);
+        if (parentOfNewNode) {
+          parentOfNewNode.children.push(newNodeWithParent.id);
+          return [...acc, newNodeWithParent];
+        }
+
+        const newParentNode = {
+          id: parentNodeId,
+          name: parentRelationshipName ?? "",
+          parent: parentUUID,
+          children: [newNode.id],
           metadata: {
-            uuid: node.uuid,
-            containsConflicts: relationship.contains_conflict,
+            kind: node.parent.kind, // for icon on tree item
           },
         };
 
-        newNode.children.push(relationshipNode.id);
+        return [...acc, newNode, newParentNode];
+      }
 
-        const relationshipChildNodes =
-          relationship?.elements?.map((element) => {
-            const child = {
-              id: newNode.id + element.peer_label + element?.peer_id,
-              name: element.peer_label,
-              parent: relationshipNode.id,
-              isBranch: false,
-              children: [],
-              metadata: {
-                uuid: element?.peer_id,
-                status: nodes.find(({ uuid }) => uuid === element.peer_id)?.status,
-                containsConflicts: element.contains_conflict,
-              },
-            };
-            relationshipNode.children.push(child.id);
+      return [...acc, newNode];
+    }, [] as TreeProps["data"]);
 
-            return child;
-          }) ?? [];
+    const rootNodes = formattedNodes.filter(({ parent }) => parent === TREE_ROOT_ID);
 
-        return [relationshipNode, ...relationshipChildNodes];
-      });
+    const kindToUUIDsMap = rootNodes.reduce((acc, node) => {
+      const currentNodeKind = node.metadata?.kind?.toString();
+      if (!currentNodeKind) return acc;
 
-      return [newNode, ...nodesFromRelationships];
-    });
+      const currentUUIDs = acc[currentNodeKind];
+      const nodeId = node.id.toString();
+      node.parent = currentNodeKind;
+      return {
+        ...acc,
+        [currentNodeKind]: currentUUIDs ? [...currentUUIDs, nodeId] : [nodeId],
+      };
+    }, {} as Record<string, Array<string>>);
 
     const parents = Object.entries(kindToUUIDsMap).map(([kind, uuids]) => {
       return {
@@ -92,7 +93,7 @@ export default function DiffTree({ nodes, loading, emptyMessage, ...props }: Dif
       };
     });
     setTreeData(addItemsToTree(EMPTY_TREE, [...parents, ...formattedNodes]));
-  }, [nodes.length]);
+  }, [nodes]);
 
   if (treeData.length <= 1) return <NoDataFound message={emptyMessage ?? "No data to display."} />;
 
@@ -120,7 +121,9 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
   const diffNode = element.metadata as DiffNode | undefined;
   const { schema } = useSchema(diffNode?.kind);
 
-  if (schema) {
+  // On diff tree, root tree item represents the model schema's name,
+  // providing a clear visual representation of the schema in the tree structure.
+  if (schema && element.parent === TREE_ROOT_ID) {
     return (
       <div className={"flex items-center gap-2 text-gray-800"} data-testid="hierarchical-tree-item">
         <Icon icon={schema.icon as string} />
@@ -138,7 +141,7 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
       <DiffBadge
         status={element.metadata?.status as string}
         hasConflicts={!!element.metadata?.containsConflicts}
-        icon
+        icon={schema?.icon ?? undefined}
       />
 
       <span className="whitespace-nowrap">{element.name}</span>
