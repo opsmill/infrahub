@@ -4,7 +4,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai";
-import { createContext } from "react";
+import { createContext, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   diffActions,
@@ -16,11 +16,20 @@ import { DiffNode } from "./node";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
 import NoDataFound from "@/screens/errors/no-data-found";
-import { PcDiffUpdateButton } from "@/screens/proposed-changes/action-button/pc-diff-update-button";
 import { Card } from "@/components/ui/card";
 import DiffTree from "@/screens/diff/diff-tree";
 import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
 import { Button } from "@/components/buttons/button-primitive";
+import { rebaseBranch } from "@/graphql/mutations/branches/rebaseBranch";
+import { objectToString } from "@/utils/common";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { gql, useMutation } from "@apollo/client";
+import { toast } from "react-toastify";
+import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-update";
+import { useAuth } from "@/hooks/useAuth";
+import { DateDisplay } from "@/components/display/date-display";
 
 export const DiffContext = createContext({});
 
@@ -46,11 +55,18 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
 
 export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const { "*": branchName } = useParams();
+  const auth = useAuth();
   const [qspStatus, setQspStatus] = useQueryParam(QSP.STATUS, StringParam);
+  const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const nodeSchemas = useAtomValue(schemaState);
+  const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
 
   const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
+
+  const [scheduleDiffTreeUpdate] = useMutation(DIFF_UPDATE, {
+    variables: { branchName: branch, wait: true },
+  });
 
   const schemaData = nodeSchemas.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
@@ -70,6 +86,54 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
       return true;
     }) ?? [];
 
+  const handleRefresh = async () => {
+    setIsLoadingUpdate(true);
+    try {
+      await scheduleDiffTreeUpdate();
+
+      await graphqlClient.refetchQueries({
+        include: ["GET_PROPOSED_CHANGES_DIFF_TREE", "GET_PROPOSED_CHANGES_DIFF_SUMMARY"],
+      });
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
+    } catch (error: any) {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={error?.message} />);
+    }
+    setIsLoadingUpdate(false);
+  };
+
+  const handleRebase = async () => {
+    setIsLoadingUpdate(true);
+
+    try {
+      const options = {
+        name: branch,
+      };
+
+      const mutationString = rebaseBranch({ data: objectToString(options) });
+
+      const mutation = gql`
+        ${mutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation,
+        context: {
+          branch: branchName,
+          date,
+        },
+      });
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch rebased!" />);
+
+      await handleRefresh();
+    } catch (error: any) {
+      toast(<Alert type={ALERT_TYPES.ERROR} message={error?.message} />);
+    }
+
+    setIsLoadingUpdate(false);
+  };
+
   return (
     <div className="h-full overflow-hidden flex flex-col">
       <div className="flex items-center p-2 bg-custom-white divide-x">
@@ -77,25 +141,41 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
           <ProposedChangesDiffSummary branch={branch} filters={filters} />
         </div>
 
-        <div className="pl-2 ">
-          {!qspStatus && (
-            <PcDiffUpdateButton
-              size="sm"
-              time={data?.DiffTree?.to_time}
-              sourceBranch={branch}
-              isLoading={loading}
-            />
-          )}
+        <div className="flex flex-1 pl-2 items-center justify-between">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setQspStatus(undefined)}
+            isLoading={loading}>
+            Reset Filter
+          </Button>
 
-          {qspStatus && (
+          <div className="flex items-center gap-2 pr-2">
+            {isLoadingUpdate && <LoadingScreen size={22} hideText />}
+
+            <div className="flex items-center">
+              <div className="flex items-center text-xs mr-2">
+                <span className="mr-1">Updated</span>
+                <DateDisplay date={data?.DiffTree?.to_time} />
+              </div>
+
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={handleRefresh}
+                disabled={!auth?.permissions?.write || isLoadingUpdate}>
+                Refresh diff
+              </Button>
+            </div>
+
             <Button
               size="sm"
-              variant="outline"
-              onClick={() => setQspStatus(undefined)}
-              isLoading={loading}>
-              Reset Filter
+              variant="primary-outline"
+              onClick={handleRebase}
+              disabled={isLoadingUpdate}>
+              Rebase
             </Button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -123,10 +203,13 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
           {!loading && !nodes.length && !qspStatus && (
             <div className="flex flex-col items-center justify-center">
               <NoDataFound message="No diff to display. Try to manually load the latest changes." />
-              <PcDiffUpdateButton
-                size="sm"
-                sourceBranch={proposedChangesDetails?.source_branch?.value}
-              />
+              <Button
+                variant="primary-outline"
+                onClick={handleRefresh}
+                isLoading={isLoadingUpdate}
+                disabled={!auth?.permissions?.write || isLoadingUpdate}>
+                {isLoadingUpdate ? "Refreshing diff..." : "Refresh diff"}
+              </Button>
             </div>
           )}
 
