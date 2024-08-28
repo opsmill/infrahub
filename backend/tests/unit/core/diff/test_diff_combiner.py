@@ -7,7 +7,7 @@ import pytest
 from pendulum.datetime import DateTime
 
 from infrahub.core import registry
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.combiner import DiffCombiner
 from infrahub.core.diff.model.path import (
@@ -373,11 +373,16 @@ class TestDiffCombiner:
             conflict=EnrichedConflictFactory.build(),
         )
         early_relationship = EnrichedRelationshipGroupFactory.build(
-            name=relationship_name, action=DiffAction.ADDED, relationships={early_element}, nodes=set()
+            name=relationship_name,
+            action=DiffAction.ADDED,
+            relationships={early_element},
+            nodes=set(),
+            cardinality=RelationshipCardinality.ONE,
         )
         later_relationship = EnrichedRelationshipGroupFactory.build(
             name=relationship_name,
             action=DiffAction.UPDATED,
+            cardinality=RelationshipCardinality.ONE,
             relationships={later_element},
             nodes=set(),
             changed_at=Timestamp(),
@@ -418,6 +423,7 @@ class TestDiffCombiner:
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
             label=later_relationship.label,
+            cardinality=RelationshipCardinality.ONE,
             changed_at=later_relationship.changed_at,
             action=DiffAction.ADDED,
             path_identifier=later_relationship.path_identifier,
@@ -521,12 +527,14 @@ class TestDiffCombiner:
         relationship_group_1 = EnrichedRelationshipGroupFactory.build(
             name=relationship_name,
             action=DiffAction.UPDATED,
+            cardinality=RelationshipCardinality.MANY,
             relationships={added_element_1, removed_element_1, updated_element_1, canceled_element_1},
             nodes=set(),
         )
         relationship_group_2 = EnrichedRelationshipGroupFactory.build(
             name=relationship_name,
             action=DiffAction.UPDATED,
+            cardinality=RelationshipCardinality.MANY,
             relationships={added_element_2, removed_element_2, updated_element_2, canceled_element_2},
             changed_at=Timestamp(),
             nodes=set(),
@@ -580,6 +588,7 @@ class TestDiffCombiner:
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
             label=relationship_group_2.label,
+            cardinality=RelationshipCardinality.MANY,
             changed_at=relationship_group_2.changed_at,
             action=DiffAction.UPDATED,
             path_identifier=relationship_group_2.path_identifier,
@@ -609,7 +618,11 @@ class TestDiffCombiner:
             action=DiffAction.UNCHANGED, relationships=set(), attributes=set()
         )
         early_relationship = EnrichedRelationshipGroupFactory.build(
-            name=relationship_name, action=DiffAction.ADDED, relationships=set(), nodes={early_parent_node}
+            name=relationship_name,
+            action=DiffAction.ADDED,
+            cardinality=RelationshipCardinality.MANY,
+            relationships=set(),
+            nodes={early_parent_node},
         )
         later_parent_node = EnrichedNodeFactory.build(
             action=DiffAction.UNCHANGED, relationships=set(), attributes=set()
@@ -617,6 +630,7 @@ class TestDiffCombiner:
         later_relationship = EnrichedRelationshipGroupFactory.build(
             name=relationship_name,
             action=DiffAction.UPDATED,
+            cardinality=RelationshipCardinality.MANY,
             relationships=set(),
             nodes={later_parent_node},
             changed_at=Timestamp(),
@@ -637,6 +651,7 @@ class TestDiffCombiner:
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
             label=later_relationship.label,
+            cardinality=RelationshipCardinality.MANY,
             changed_at=later_relationship.changed_at,
             action=DiffAction.ADDED,
             path_identifier=later_relationship.path_identifier,
@@ -768,10 +783,15 @@ class TestDiffCombiner:
             action=DiffAction.UNCHANGED, attributes=set(), relationships=set(), changed_at=Timestamp()
         )
         parent_rel_1 = EnrichedRelationshipGroupFactory.build(
-            name=relationship_name, relationships=set(), nodes={parent_node_1}, action=DiffAction.UNCHANGED
+            name=relationship_name,
+            relationships=set(),
+            nodes={parent_node_1},
+            action=DiffAction.UNCHANGED,
+            cardinality=RelationshipCardinality.ONE,
         )
         parent_rel_2 = EnrichedRelationshipGroupFactory.build(
             name=relationship_name,
+            cardinality=RelationshipCardinality.ONE,
             relationships=set(),
             nodes={parent_node_2},
             action=DiffAction.UNCHANGED,
@@ -797,6 +817,7 @@ class TestDiffCombiner:
             name=relationship_name,
             label=parent_rel_2.label,
             changed_at=parent_rel_2.changed_at,
+            cardinality=RelationshipCardinality.ONE,
             path_identifier=parent_rel_2.path_identifier,
             action=DiffAction.UNCHANGED,
             relationships=set(),
@@ -832,6 +853,7 @@ class TestDiffCombiner:
             name=relationship_name,
             relationships={child_element_1},
             nodes={parent_node_1},
+            cardinality=RelationshipCardinality.ONE,
             action=DiffAction.UPDATED,
             num_added=0,
             num_updated=0,
@@ -843,6 +865,7 @@ class TestDiffCombiner:
             name=relationship_name,
             relationships=set(),
             nodes={parent_node_2},
+            cardinality=RelationshipCardinality.ONE,
             action=DiffAction.UNCHANGED,
             changed_at=Timestamp(),
         )
@@ -863,6 +886,7 @@ class TestDiffCombiner:
             name=relationship_name,
             label=child_rel_2.label,
             changed_at=child_rel_2.changed_at,
+            cardinality=RelationshipCardinality.ONE,
             path_identifier=child_rel_2.path_identifier,
             action=DiffAction.UPDATED,
             relationships={child_element_1},

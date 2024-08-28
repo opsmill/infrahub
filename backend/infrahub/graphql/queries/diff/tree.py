@@ -7,7 +7,7 @@ from graphene import Enum as GrapheneEnum
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core import registry
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
+GrapheneCardinalityEnum = GrapheneEnum.from_enum(RelationshipCardinality)
 
 
 class ConflictDetails(ObjectType):
@@ -85,6 +86,7 @@ class DiffRelationship(DiffSummaryCounts):
     name = String(required=True)
     label = String(required=False)
     last_changed_at = DateTime(required=False)
+    cardinality = Field(GrapheneCardinalityEnum, required=True)
     status = Field(GrapheneDiffActionEnum, required=True)
     path_identifier = String(required=True)
     elements = List(DiffSingleRelationship, required=True)
@@ -220,6 +222,7 @@ class DiffTreeResolver:
             label=enriched_relationship.label,
             last_changed_at=enriched_relationship.changed_at.obj if enriched_relationship.changed_at else None,
             status=enriched_relationship.action,
+            cardinality=enriched_relationship.cardinality,
             path_identifier=enriched_relationship.path_identifier,
             elements=diff_elements,
             contains_conflict=enriched_relationship.contains_conflict,
