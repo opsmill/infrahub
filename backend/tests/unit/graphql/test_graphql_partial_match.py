@@ -179,3 +179,44 @@ async def test_query_filter_relationships_with_generic_filter_mutliple_partial_m
     assert result.data
     assert len(result.data["TestCar"]["edges"]) == 1
     assert result.data["TestCar"]["edges"][0]["node"]["id"] == smolt_car.id
+
+
+async def test_query_filter_local_attrs_partial_match_values(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
+    """Ensure that query partial_match filtering works when using arrays/lists as part of the query input."""
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="red", level=1)
+    await obj1.save(db=db)
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="green", level=2)
+    await obj2.save(db=db)
+    obj3 = await Node.init(db=db, schema=criticality_schema)
+    await obj3.new(db=db, name="blue", level=3)
+    await obj3.save(db=db)
+    obj4 = await Node.init(db=db, schema=criticality_schema)
+    await obj4.new(db=db, name="grey", level=4)
+    await obj4.save(db=db)
+
+    query = """
+    query {
+        TestCriticality(name__values: ["red", "green", "grey"], any__value: "gr", partial_match: true) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql_query(query=query, db=db, branch=default_branch)
+
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestCriticality"]["edges"]) == 2
+    assert ["green", "grey"] == sorted(
+        [node["node"]["name"]["value"] for node in result.data["TestCriticality"]["edges"]]
+    )

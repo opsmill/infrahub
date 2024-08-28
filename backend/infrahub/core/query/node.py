@@ -1055,9 +1055,16 @@ class NodeGetListQuery(Query):
             var_name = f"final_attr_value{far.index}"
             self.params[var_name] = far.field_attr_comparison_value
             if self.partial_match:
-                where_parts.append(
-                    f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
-                )
+                if isinstance(far.field_attr_comparison_value, list):
+                    # If the any filter is an array/list
+                    var_array = f"{var_name}_array"
+                    where_parts.append(
+                        f"any({var_array} IN ${var_name} WHERE toLower(toString({far.final_value_query_variable})) CONTAINS toLower({var_array}))"
+                    )
+                else:
+                    where_parts.append(
+                        f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
+                    )
                 continue
 
             where_parts.append(f"{far.final_value_query_variable} {far.comparison_operator} ${var_name}")
