@@ -783,7 +783,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         if not top_level:
             filters["isnull"] = graphene.Boolean()
 
-        filters["hfids"] = graphene.List(graphene.List(graphene.String))
+        if schema.human_friendly_id:
+            filters["hfids"] = graphene.List(graphene.List(graphene.String))
 
         for attr in schema.attributes:
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)

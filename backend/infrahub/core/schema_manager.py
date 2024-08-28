@@ -1586,7 +1586,8 @@ class SchemaBranch:
         filters = []
 
         filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
-        filters.append(FilterSchema(name="hfids", kind=FilterSchemaKind.LIST))
+        if schema.human_friendly_id:
+            filters.append(FilterSchema(name="hfids", kind=FilterSchemaKind.LIST))
 
         for attr in schema.attributes:
             filter_kind = KIND_FILTER_MAP.get(attr.kind, None)

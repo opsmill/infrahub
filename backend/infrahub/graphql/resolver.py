@@ -65,7 +65,7 @@ async def default_resolver(*args, **kwargs):
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids", "hfids"]
+        if "__" in key and value or key in ["id", "ids"]
     }
 
     async with context.db.start_session() as db:
@@ -116,11 +116,12 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
     # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
+
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids", "hfids"]
+        if "__" in key and value or key in ["id", "ids"]
     }
 
     response: dict[str, Any] = {"node": None, "properties": {}}
@@ -183,7 +184,7 @@ async def many_relationship_resolver(
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids", "hfids"]
+        if "__" in key and value or key in ["id", "ids"]
     }
 
     response: dict[str, Any] = {"edges": [], "count": None}
@@ -290,10 +291,11 @@ async def hierarchy_resolver(
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     offset = kwargs.pop("offset", None)
     limit = kwargs.pop("limit", None)
+
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids", "hfids"]
+        if "__" in key and value or key in ["id", "ids"]
     }
 
     response: dict[str, Any] = {"edges": [], "count": None}
