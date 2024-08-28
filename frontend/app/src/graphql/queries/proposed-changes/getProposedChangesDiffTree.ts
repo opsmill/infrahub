@@ -9,6 +9,7 @@ export const getProposedChangesDiffTree = gql`
           label
           status
           contains_conflict
+          cardinality
           elements {
             conflict {
               base_branch_action
