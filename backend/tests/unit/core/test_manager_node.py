@@ -359,7 +359,9 @@ async def test_get_many_branch_agnostic(
     assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
 
 
-async def test_get_many_with_deleted(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium, criticality_high):
+async def test_get_many_with_deleted(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium, criticality_high
+):
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     crit_profile_1 = await Node.init(db=db, schema=profile_schema)
     await crit_profile_1.new(db=db, profile_name="crit_profile_1", color="green", profile_priority=1001)
@@ -375,7 +377,9 @@ async def test_get_many_with_deleted(db: InfrahubDatabase, default_branch: Branc
     crit_high_main = await NodeManager.get_one(db=db, branch=default_branch, id=criticality_high.id)
     await crit_high_main.delete(db=db)
 
-    nodes = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id, criticality_high.id], ignore_deleted=False)
+    nodes = await NodeManager.get_many(
+        db=db, ids=[criticality_low.id, criticality_medium.id, criticality_high.id], ignore_deleted=False
+    )
 
     assert len(nodes) == 3
     for crit in (criticality_low, criticality_medium, criticality_high):

@@ -28,7 +28,9 @@ class DiffLabelsEnricher(DiffEnricherInterface):
                 for element in relationship_diff.relationships:
                     node_kind_map[peer_kind].append(element.peer_id)
 
-        display_label_map = await get_display_labels(db=self.db, nodes={diff_branch_name: node_kind_map})
+        display_label_map = await get_display_labels(
+            db=self.db, nodes={diff_branch_name: node_kind_map}, ignore_deleted=False
+        )
         for node in enriched_diff_root.nodes:
             try:
                 display_label = display_label_map[diff_branch_name][node.uuid]

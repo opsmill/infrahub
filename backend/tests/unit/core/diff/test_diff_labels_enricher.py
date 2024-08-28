@@ -1,5 +1,6 @@
 from infrahub.core.diff.enricher.labels import DiffLabelsEnricher
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 
 from .factories import (
@@ -10,26 +11,34 @@ from .factories import (
 )
 
 
-async def test_labels_added(db: InfrahubDatabase, default_branch, car_yaris_main, person_jane_main):
+async def test_labels_added(db: InfrahubDatabase, default_branch, car_yaris_main, person_jane_main, person_alfred_main):
     branch = await create_branch(db=db, branch_name="branch")
     diff_rel_element = EnrichedRelationshipElementFactory.build(peer_id=person_jane_main.id)
     diff_rel = EnrichedRelationshipGroupFactory.build(name="owner", nodes=set(), relationships={diff_rel_element})
     diff_node = EnrichedNodeFactory.build(
         uuid=car_yaris_main.get_id(), kind=car_yaris_main.get_kind(), relationships={diff_rel}
     )
+    alfred_branch = await NodeManager.get_one(db=db, branch=branch, id=person_alfred_main.get_id())
+    await alfred_branch.delete(db=db)
+    deleted_diff_node = EnrichedNodeFactory.build(
+        uuid=person_alfred_main.get_id(), kind=person_alfred_main.get_kind(), relationships=set(), attributes=set()
+    )
     diff_root = EnrichedRootFactory.build(
-        base_branch_name=default_branch.name, diff_branch_name=branch.name, nodes={diff_node}
+        base_branch_name=default_branch.name, diff_branch_name=branch.name, nodes={diff_node, deleted_diff_node}
     )
     labels_enricher = DiffLabelsEnricher(db=db)
 
     await labels_enricher.enrich(enriched_diff_root=diff_root, calculated_diffs=None)
 
-    updated_node = diff_root.nodes.pop()
+    nodes_by_id = {n.uuid: n for n in diff_root.nodes}
+    updated_node = nodes_by_id[car_yaris_main.get_id()]
     assert updated_node.label == "yaris #444444"
     updated_rel = updated_node.relationships.pop()
     assert updated_rel.label == "Commander of Car"
     updated_element = updated_rel.relationships.pop()
     assert updated_element.peer_label == "Jane"
+    deleted_node = nodes_by_id[person_alfred_main.get_id()]
+    assert deleted_node.label == await person_alfred_main.render_display_label(db=db)
 
 
 async def test_labels_skipped(db: InfrahubDatabase, default_branch, car_person_schema):

@@ -279,6 +279,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         ed_209_node = nodes_by_id[ed_209_id]
         assert ed_209_node.contains_conflict is False
         assert ed_209_node.action is DiffAction.REMOVED
+        assert ed_209_node.label == await ed_209_branch.render_display_label(db=db)
         attributes_by_name = {a.name: a for a in ed_209_node.attributes}
         assert set(attributes_by_name.keys()) == {"name", "color", "description"}
         for attr_node in attributes_by_name.values():
