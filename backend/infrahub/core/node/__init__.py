@@ -246,6 +246,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
                 if next_free:
                     attribute.value = next_free
+                    attribute.source = number_pool.id
                 else:
                     errors.append(
                         ValidationError(
