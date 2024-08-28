@@ -87,7 +87,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
             />
           )}
 
-          {!nodes?.length && qspStatus && (
+          {qspStatus && (
             <Button
               size="sm"
               variant="outline"
