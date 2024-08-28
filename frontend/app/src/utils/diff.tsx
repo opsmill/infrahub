@@ -1,13 +1,7 @@
-import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NODE_PATH_EXCLUDELIST } from "@/config/constants";
-import {
-  tDataDiffNode,
-  tDataDiffNodePeerValue,
-  tDataDiffNodePropertyChange,
-} from "@/screens/diff/data-diff-node";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { tDataDiffNode, tDataDiffNodePropertyChange } from "@/screens/diff/data-diff-node";
 import { Icon } from "@iconify-icon/react";
 
 export const displayValue = (value: any) => {
@@ -81,8 +75,7 @@ export const diffContent: { [key: string]: any } = {
     const { new: newValue, previous: previousValue } = value;
 
     const previousMessage = getValueTooltip(previousValue);
-
-    const newMesage = getValueTooltip(newValue);
+    const newMessage = getValueTooltip(newValue);
 
     return (
       <div className="flex items-center">
@@ -101,8 +94,8 @@ export const diffContent: { [key: string]: any } = {
         </div>
 
         <div className="flex">
-          {newMesage ? (
-            <Tooltip enabled content={newMesage}>
+          {newMessage ? (
+            <Tooltip enabled content={newMessage}>
               <Badge variant="blue-outline">{displayValue(newValue)}</Badge>
             </Tooltip>
           ) : (
@@ -151,71 +144,6 @@ export const diffContent: { [key: string]: any } = {
   },
 };
 
-// Display the values
-// (only new one for "added", only old ones for "deleted", and previous + new for "updated")
-export const diffPeerContent = (
-  peer: tDataDiffNodePeerValue,
-  action?: string,
-  onClick?: Function,
-  branch: string = "main"
-) => {
-  const { new: newPeer, previous: previousPeer, kind, display_label } = peer;
-
-  // From relationship one
-  if (newPeer && !previousPeer) {
-    return (
-      <div className="flex">
-        <Badge>{displayValue(newPeer?.display_label)}</Badge>
-      </div>
-    );
-  }
-
-  // From relationship one
-  if (!newPeer && previousPeer) {
-    return (
-      <div className="flex">
-        <Badge>{displayValue(previousPeer?.display_label)}</Badge>
-      </div>
-    );
-  }
-
-  // From relationship one
-  if (newPeer && previousPeer) {
-    return (
-      <div className="flex items-center">
-        <div className="flex">
-          <Tooltip enabled content="Previous value">
-            <Badge>{displayValue(previousPeer?.display_label)}</Badge>
-          </Tooltip>
-        </div>
-
-        <div>
-          <ChevronRightIcon className="w-4 h-4 mx-2" aria-hidden="true" />
-        </div>
-
-        <div className="flex">
-          <Tooltip enabled content="New value">
-            <Badge>{displayValue(newPeer?.display_label)}</Badge>
-          </Tooltip>
-        </div>
-      </div>
-    );
-  }
-
-  // From relationship many
-  if (kind && display_label && onClick) {
-    return (
-      <div className="flex">
-        <Tooltip enabled content={`Link to ${display_label} ${branch && `(${branch})`}`}>
-          <Badge variant={action === "added" ? "green-outline" : "red-outline"} onClick={onClick}>
-            {displayValue(display_label)}
-          </Badge>
-        </Tooltip>
-      </div>
-    );
-  }
-};
-
 export const getThreadLabel = (node?: tDataDiffNode, currentBranch?: string, path?: string) => {
   // Get main object name
   const objectName = node?.display_label && currentBranch && node?.display_label[currentBranch];
@@ -247,11 +175,7 @@ export const getThreadTitle = (thread?: any, label?: string) => {
 
   return (
     <div className="flex mb-2">
-      {string && (
-        <BadgeCircle type={string === "Conversation" ? null : CIRCLE_BADGE_TYPES.VALIDATE}>
-          {string}
-        </BadgeCircle>
-      )}
+      {string && <Badge variant={string === "Conversation" ? null : "green"}>{string}</Badge>}
     </div>
   );
 };
@@ -266,16 +190,4 @@ export const getBadgeType = (action?: string) => {
   if (!action) return undefined;
 
   return badgeTypes[action];
-};
-
-const badgeIcons: { [key: string]: string } = {
-  added: "mdi:plus-circle-outline",
-  updated: "mdi:circle-arrows",
-  removed: "mdi:minus-circle-outline",
-};
-
-export const getBadgeIcon = (action?: string) => {
-  if (!action) return undefined;
-
-  return <Icon icon={badgeIcons[action]} />;
 };

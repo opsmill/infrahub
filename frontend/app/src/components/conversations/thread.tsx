@@ -29,6 +29,7 @@ import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
+import { Card } from "@/components/ui/card";
 
 type tThread = {
   thread: any;
@@ -197,37 +198,30 @@ export const Thread = (props: tThread) => {
   );
 
   return (
-    <section
-      className={classNames(
-        isResolved ? "bg-gray-200" : "bg-custom-white",
-        "p-4 rounded-lg relative"
-      )}
+    <Card
+      className={classNames("relative", isResolved && "bg-gray-200")}
       data-testid="thread"
       data-cy="thread">
       {displayContext && getThreadTitle(thread)}
 
-      <div>
-        {sortedComments.map((comment: any, index: number) => (
-          <Comment
-            key={index}
-            author={comment?.created_by?.node?.display_label ?? "Anonymous"}
-            createdAt={comment?.created_at?.value}
-            content={comment?.text?.value ?? ""}
-            className={"border border-gray-200"}
-          />
-        ))}
-      </div>
+      {sortedComments.map((comment: any, index: number) => (
+        <Comment
+          key={index}
+          author={comment?.created_by?.node?.display_label ?? "Anonymous"}
+          createdAt={comment?.created_at?.value}
+          content={comment?.text?.value ?? ""}
+          className={"border border-gray-200"}
+        />
+      ))}
 
       {displayAddComment ? (
-        <div className="flex-1">
-          <AddComment
-            onSubmit={handleSubmit}
-            onCancel={() => setDisplayAddComment(false)}
-            additionalButtons={MarkAsResolvedWithTooltip}
-          />
-        </div>
+        <AddComment
+          onSubmit={handleSubmit}
+          onCancel={() => setDisplayAddComment(false)}
+          additionalButtons={MarkAsResolvedWithTooltip}
+        />
       ) : (
-        <div className="flex flex-1 justify-between">
+        <div className="flex justify-between">
           {MarkAsResolved}
 
           <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
@@ -245,6 +239,6 @@ export const Thread = (props: tThread) => {
         setOpen={() => setConfirmModal(false)}
         isLoading={isLoading}
       />
-    </section>
+    </Card>
   );
 };
