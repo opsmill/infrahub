@@ -2582,6 +2582,7 @@ async def test_load_schema_from_db(
                 "namespace": "Test",
                 "name": "Criticality",
                 "default_filter": "name__value",
+                "human_friendly_id": ["name__value"],
                 "label": "Criticality",
                 "include_in_menu": True,
                 "attributes": [
@@ -2614,6 +2615,7 @@ async def test_load_schema_from_db(
                 "label": "Tag",
                 "include_in_menu": False,
                 "default_filter": "name__value",
+                "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
