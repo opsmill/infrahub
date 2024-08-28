@@ -204,7 +204,7 @@
                     "order_weight": 10000
                 }
             ],
-            "label": "Genericrepository",
+            "label": "Generic repository",
             "used_by": [
                 "CoreReadOnlyRepository",
                 "CoreRepository"
