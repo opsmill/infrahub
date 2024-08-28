@@ -90,6 +90,7 @@ class TestAddRepository:
             task_report=self.git_report,
             infrahub_branch_name=self.default_branch_name,
             admin_status="active",
+            default_branch_name=self.default_branch_name,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
             infrahub_branch_name=self.default_branch_name, git_branch_name=self.default_branch_name
@@ -116,6 +117,7 @@ async def test_git_rpc_merge(
         source_branch="branch01",
         destination_branch="main",
         admin_status=RepositoryAdminStatus.ACTIVE.value,
+        default_branch="main",
     )
 
     client_config = Config(requester=dummy_async_request)
