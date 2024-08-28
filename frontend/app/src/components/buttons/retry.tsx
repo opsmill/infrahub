@@ -34,7 +34,7 @@ export const Retry = (props: tRetryProps) => {
       )}
       onClick={handleClick}>
       <Icon
-        icon={"mdi:circle-arrows"}
+        icon={"mdi:reload"}
         className={classNames(isLoading ? "text-gray-300" : "text-gray-400")}
       />
     </div>

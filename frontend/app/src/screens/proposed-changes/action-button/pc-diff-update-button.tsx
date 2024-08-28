@@ -27,7 +27,9 @@ export const PcDiffUpdateButton = ({ sourceBranch, time, ...props }: PcDiffUpdat
       setIsLoadingUpdate(true);
       await scheduleDiffTreeUpdate();
       setIsLoadingUpdate(false);
-      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
+      await graphqlClient.refetchQueries({
+        include: ["GET_PROPOSED_CHANGES_DIFF_TREE", "GET_PROPOSED_CHANGES_DIFF_SUMMARY"],
+      });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
     } catch (error) {
       setIsLoadingUpdate(false);
