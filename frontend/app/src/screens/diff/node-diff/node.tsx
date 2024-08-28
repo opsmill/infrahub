@@ -6,7 +6,7 @@ import { DiffNodeAttribute } from "./node-attribute";
 import { DiffThread } from "./thread";
 import { Icon } from "@iconify-icon/react";
 import { useLocation, useParams } from "react-router-dom";
-import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import { DiffBadge, formatValue } from "@/screens/diff/node-diff/utils";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
@@ -64,12 +64,53 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
           }
           className="bg-gray-100 border rounded-md">
           <div className="divide-y border-t">
-            {node.attributes.map((attribute: any, index: number) => (
-              <DiffNodeAttribute key={index} attribute={attribute} status={node.status} />
-            ))}
-            {node.relationships.map((relationship: any, index: number) => (
-              <DiffNodeRelationship key={index} relationship={relationship} status={node.status} />
-            ))}
+            {node.attributes.map((attribute: any, index: number) => {
+              const valueProperty = attribute.properties.find(
+                ({ property_type }) => property_type === "HAS_VALUE"
+              );
+
+              return (
+                <DiffNodeAttribute
+                  key={index}
+                  attribute={attribute}
+                  status={node.status}
+                  previousValue={
+                    valueProperty?.previous_value && formatValue(valueProperty?.previous_value)
+                  }
+                  newValue={status !== "REMOVED" && formatValue(valueProperty?.new_value)}
+                />
+              );
+            })}
+
+            {node.relationships.map((relationship: any, index: number) => {
+              if (relationship.cardinality === "ONE") {
+                const element = relationship.elements[0];
+
+                const attribute = {
+                  ...relationship,
+                  path_identifier: relationship.path_identifier,
+                  properties: element.properties,
+                };
+
+                return (
+                  <DiffNodeAttribute
+                    key={index}
+                    attribute={attribute}
+                    status={node.status}
+                    previousValue={"-"}
+                    newValue={element.peer_label}
+                  />
+                );
+              }
+
+              return (
+                <DiffNodeRelationship
+                  key={index}
+                  relationship={relationship}
+                  status={node.status}
+                />
+              );
+            })}
           </div>
         </Accordion>
       )}

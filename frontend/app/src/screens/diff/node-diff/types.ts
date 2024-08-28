@@ -32,6 +32,7 @@ export type DiffAttribute = {
   properties: Array<DiffProperty>;
   path_identifier: string | null;
   contains_conflict: boolean;
+  conflict: DiffConflict | null;
 };
 
 export type DiffRelationshipElement = {
