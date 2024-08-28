@@ -61,7 +61,11 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
   if (error) {
     return (
       <div className="flex justify-start">
-        <ErrorScreen message="No diff summary available." hideIcon className="p-0" />
+        <ErrorScreen
+          message={error?.message ?? "No diff summary available."}
+          hideIcon
+          className="p-0"
+        />
       </div>
     );
   }
