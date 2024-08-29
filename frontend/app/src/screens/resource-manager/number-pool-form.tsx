@@ -148,12 +148,22 @@ const NodeAttributesSelects = () => {
   const nodesOptions: SelectOption[] = availableSchemaList.map((schema) => ({
     id: schema.kind as string,
     name: schema.label as string,
+    badge: schema.namespace,
   }));
 
   const attributesOptions: SelectOption[] = selectedNode?.attributes
     ? selectedNode.attributes
         ?.filter((attribute) => attribute.kind === "Number")
         ?.map((attribute) => ({ id: attribute.name as string, name: attribute.label as string }))
+    : [];
+
+  const relationshipsOptions: SelectOption[] = selectedNode?.relationships
+    ? selectedNode.relationships
+        ?.filter((relationship) => relationship.cardinality === "one")
+        ?.map((relationship) => ({
+          id: relationship.name as string,
+          name: relationship.label as string,
+        }))
     : [];
 
   useEffect(() => {
@@ -175,6 +185,12 @@ const NodeAttributesSelects = () => {
         description="The attribute of the selected model"
         rules={{ required: true }}
         items={attributesOptions}
+      />
+      <DropdownField
+        name="unique_for"
+        label="Unique for"
+        description="Relationship to another model adding a uniqueness constraint the allocated integer"
+        items={relationshipsOptions}
       />
     </>
   );

@@ -82,8 +82,12 @@ class DiffSummaryCountsEnricher(DiffEnricherInterface):
         return contains_conflict
 
     def _add_element_summaries(self, diff_element: EnrichedDiffSingleRelationship) -> bool:
-        contains_conflict = False
-        num_conflicts = 0
+        if diff_element.conflict is None:
+            contains_conflict = False
+            num_conflicts = 0
+        else:
+            contains_conflict = True
+            num_conflicts = 1
         for diff_prop in diff_element.properties:
             if diff_prop.conflict:
                 num_conflicts += 1
