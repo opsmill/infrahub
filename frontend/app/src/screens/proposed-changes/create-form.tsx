@@ -29,7 +29,7 @@ import { ACCOUNT_OBJECT } from "@/config/constants";
 export const ProposedChangeCreateForm = () => {
   const { user } = useAuth();
   const branches = useAtomValue(branchesState);
-  const defaultBranch = branches.filter((branch) => branch.is_default);
+  const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
   const navigate = useNavigate();
 
@@ -98,7 +98,7 @@ export const ProposedChangeCreateForm = () => {
 
         <FormField
           name="destination_branch"
-          defaultValue={defaultBranch[0].name}
+          defaultValue={defaultBranch?.name}
           rules={{ required: "Required" }}
           render={({ field }) => (
             <div className="w-full relative mb-2 flex flex-col">
