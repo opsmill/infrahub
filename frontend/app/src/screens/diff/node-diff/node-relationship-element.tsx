@@ -20,7 +20,7 @@ export const DiffNodeRelationshipElement = ({ element, status }: DiffNodeElement
       title={
         <div className="flex items-center justify-between pl-4 pr-2">
           <div className="flex gap-1 py-2">
-            <DiffBadge icon status={element.status} className="p-0.5" /> {element.peer_label}
+            <DiffBadge size="icon" status={element.status} className="p-0.5" /> {element.peer_label}
             {element.conflict && <BadgeConflict>Conflict</BadgeConflict>}
           </div>
 

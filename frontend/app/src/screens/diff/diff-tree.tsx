@@ -70,6 +70,7 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
       <DiffBadge
         status={element.metadata?.status as string}
         hasConflicts={!!element.metadata?.containsConflicts}
+        size="icon"
         icon={schema?.icon ?? undefined}
       />
 

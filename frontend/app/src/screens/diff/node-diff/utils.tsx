@@ -21,7 +21,7 @@ export const diffBadges: { [key: string]: BadgeType } = {
 
 export const DiffBadge = ({
   status,
-  size = "icon",
+  size = "default",
   children,
   ...props
 }: DiffBadgeProps & { status: string; size?: "icon" | "default" }) => {
