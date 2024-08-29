@@ -149,7 +149,8 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
                 size="icon"
                 variant="ghost"
                 onClick={() => setQspStatus(undefined)}
-                disabled={!qspStatus}>
+                disabled={!qspStatus}
+                data-testid="reset-diff-filters">
                 <Icon icon={"mdi:close"} />
               </Button>
             )}
