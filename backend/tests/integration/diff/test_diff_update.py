@@ -275,11 +275,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert len(diff.nodes) == 5
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         ed_209_node = nodes_by_id[ed_209_id]
+        assert ed_209_node.contains_conflict is False
         assert ed_209_node.action is DiffAction.REMOVED
         attributes_by_name = {a.name: a for a in ed_209_node.attributes}
         assert set(attributes_by_name.keys()) == {"name", "color", "description"}
         for attr_node in attributes_by_name.values():
             assert attr_node.action is DiffAction.REMOVED
+            assert attr_node.contains_conflict is False
             properties_by_type = {p.property_type: p for p in attr_node.properties}
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.HAS_VALUE,
@@ -293,9 +295,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(relationships_by_name.keys()) == {"manufacturer", "owner"}
         manufacturer_rel = relationships_by_name["manufacturer"]
         assert manufacturer_rel.action is DiffAction.REMOVED
+        assert manufacturer_rel.contains_conflict is False
         assert len(manufacturer_rel.relationships) == 1
         manufacturer_element = manufacturer_rel.relationships.pop()
         assert manufacturer_element.action is DiffAction.REMOVED
+        assert manufacturer_element.contains_conflict is False
         assert manufacturer_element.peer_id == omnicorp_id
         properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
         assert set(properties_by_type.keys()) == {
@@ -308,9 +312,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             assert prop_diff.new_value is None
         owner_rel = relationships_by_name["owner"]
         assert owner_rel.action is DiffAction.REMOVED
+        assert owner_rel.contains_conflict is False
         assert len(owner_rel.relationships) == 1
         owner_element = owner_rel.relationships.pop()
         assert owner_element.action is DiffAction.REMOVED
+        assert owner_element.contains_conflict is False
         assert owner_element.peer_id == john_id
         properties_by_type = {p.property_type: p for p in owner_element.properties}
         assert set(properties_by_type.keys()) == {
@@ -323,14 +329,17 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             assert prop_diff.new_value is None
         omnicorp_node = nodes_by_id[omnicorp_id]
         assert omnicorp_node.action is DiffAction.UPDATED
+        assert omnicorp_node.contains_conflict is False
         assert len(omnicorp_node.attributes) == 0
         assert len(omnicorp_node.relationships) == 1
         relationship_diff = omnicorp_node.relationships.pop()
         assert relationship_diff.name == "cars"
         assert relationship_diff.action is DiffAction.UPDATED
+        assert relationship_diff.contains_conflict is False
         assert len(relationship_diff.relationships) == 1
         relationship_element = relationship_diff.relationships.pop()
         assert relationship_element.action is DiffAction.REMOVED
+        assert relationship_element.contains_conflict is False
         assert relationship_element.peer_id == ed_209_id
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
@@ -342,13 +351,16 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             assert prop_diff.new_value is None
         john_node = nodes_by_id[john_id]
         assert john_node.action is DiffAction.UPDATED
+        assert john_node.contains_conflict is False
         assert len(john_node.relationships) == 1
         relationship_diff = john_node.relationships.pop()
         assert relationship_diff.name == "cars"
         assert relationship_diff.action is DiffAction.UPDATED
+        assert relationship_diff.contains_conflict is False
         assert len(relationship_diff.relationships) == 1
         relationship_element = relationship_diff.relationships.pop()
         assert relationship_element.action is DiffAction.REMOVED
+        assert relationship_element.contains_conflict is False
         assert relationship_element.peer_id == ed_209_id
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
@@ -381,9 +393,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert len(diff.nodes) == 5
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         john_node = nodes_by_id[john_main.get_id()]
+        assert john_node.contains_conflict
         assert len(john_node.attributes) == 1
         age_attribute = john_node.attributes.pop()
         assert age_attribute.name == "age"
+        assert age_attribute.contains_conflict
         properties_by_type = {p.property_type: p for p in age_attribute.properties}
         value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
         assert value_property.conflict
@@ -430,14 +444,17 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         jesko_node = nodes_by_id[jesko_id]
         assert jesko_node.action is DiffAction.UPDATED
+        assert jesko_node.contains_conflict
         assert len(jesko_node.attributes) == 0
         assert len(jesko_node.relationships) == 1
         rels_by_name = {r.name: r for r in jesko_node.relationships}
         manufacturer_rel = rels_by_name["manufacturer"]
+        assert manufacturer_rel.contains_conflict
         assert manufacturer_rel.action is DiffAction.UPDATED
         assert len(manufacturer_rel.relationships) == 1
         elements_by_peer_id = {e.peer_id: e for e in manufacturer_rel.relationships}
         manufacturer_element = elements_by_peer_id[omnicorp_id]
+        assert manufacturer_element.contains_conflict
         assert manufacturer_element.action is DiffAction.UPDATED
         assert manufacturer_element.conflict
         assert manufacturer_element.conflict.base_branch_action is DiffAction.UPDATED
@@ -484,14 +501,17 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         t_800_node = nodes_by_id[t_800_id]
         assert t_800_node.action is DiffAction.UPDATED
+        assert t_800_node.contains_conflict
         assert len(t_800_node.attributes) == 0
         assert len(t_800_node.relationships) == 1
         rels_by_name = {r.name: r for r in t_800_node.relationships}
         owner_rel = rels_by_name["owner"]
         assert owner_rel.action is DiffAction.UPDATED
+        assert owner_rel.contains_conflict
         assert len(owner_rel.relationships) == 1
         elements_by_peer_id = {e.peer_id: e for e in owner_rel.relationships}
         owner_element = elements_by_peer_id[john_id]
+        assert owner_element.contains_conflict
         properties_by_type = {p.property_type: p for p in owner_element.properties}
         assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.IS_RELATED}
         is_related_property = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -521,13 +541,16 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         john_node = nodes_by_id[john_id]
         assert john_node.action is DiffAction.UPDATED
+        assert john_node.contains_conflict
         assert len(john_node.relationships) == 1
         rels_by_name = {r.name: r for r in john_node.relationships}
         cars_rel = rels_by_name["cars"]
+        assert cars_rel.contains_conflict
         assert cars_rel.action is DiffAction.UPDATED
         assert len(cars_rel.relationships) == 2
         elements_by_peer_id = {e.peer_id: e for e in cars_rel.relationships}
         car_element = elements_by_peer_id[t_800_id]
+        assert car_element.contains_conflict
         properties_by_type = {p.property_type: p for p in car_element.properties}
         assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.IS_RELATED}
         is_related_property = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -585,14 +608,17 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert murphy_id not in nodes_by_id
         omnicorp_node = nodes_by_id[omnicorp_id]
         assert omnicorp_node.action is DiffAction.UPDATED
+        assert omnicorp_node.contains_conflict
         assert len(omnicorp_node.attributes) == 0
         assert len(omnicorp_node.relationships) == 2
         rels_by_name = {r.name: r for r in omnicorp_node.relationships}
         customers_rel = rels_by_name["customers"]
+        assert customers_rel.contains_conflict
         assert customers_rel.action is DiffAction.UPDATED
         assert len(customers_rel.relationships) == 1
         elements_by_peer_id = {e.peer_id: e for e in customers_rel.relationships}
         customer_element = elements_by_peer_id[murphy_id]
+        assert customer_element.contains_conflict
         properties_by_type = {p.property_type: p for p in customer_element.properties}
         assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.IS_RELATED}
         is_related_property = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -645,6 +671,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         kara_node = nodes_by_id[kara_id]
         assert kara_node.action is DiffAction.UPDATED
+        assert kara_node.contains_conflict
         assert kara_node.conflict
         assert kara_node.conflict.base_branch_action is DiffAction.REMOVED
         assert kara_node.conflict.base_branch_value is None
@@ -663,6 +690,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert len(kara_node.attributes) == 1
         height_attribute = kara_node.attributes.pop()
         assert height_attribute.name == "height"
+        assert height_attribute.contains_conflict
         properties_by_type = {p.property_type: p for p in height_attribute.properties}
         value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
         assert value_property.conflict
