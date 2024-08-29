@@ -1,5 +1,5 @@
 import { MouseEventHandler } from "react";
-import { Button } from "./button-primitive";
+import { Button, ButtonProps } from "./button-primitive";
 
 type Tab = {
   label?: string;
@@ -7,14 +7,12 @@ type Tab = {
   onClick: MouseEventHandler;
 };
 
-type TabsProps = {
+interface TabsProps extends ButtonProps {
   tabs: Tab[];
   isLoading?: boolean;
-};
+}
 
-export const ToggleButtons = (props: TabsProps) => {
-  const { tabs, isLoading } = props;
-
+export const ToggleButtons = ({ tabs, ...props }: TabsProps) => {
   return (
     <div className="flex items-center">
       <div className="isolate inline-flex rounded-md shadow-sm border border-gray-300 overflow-hidden">
@@ -24,7 +22,7 @@ export const ToggleButtons = (props: TabsProps) => {
             onClick={tab.onClick}
             variant={tab.isActive ? "active" : "outline"}
             className={"cursor-pointer border-0 px-4 py-2 rounded-none"}
-            isLoading={isLoading}>
+            {...props}>
             {tab.label}
           </Button>
         ))}

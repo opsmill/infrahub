@@ -274,8 +274,6 @@ export const FileContentDiff = (props: any) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
-
       if (refetch) {
         refetch();
       }

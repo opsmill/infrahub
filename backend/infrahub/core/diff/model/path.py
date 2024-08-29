@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Self
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
-from infrahub.core.constants import DiffAction, RelationshipDirection, RelationshipStatus
+from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 
@@ -193,6 +193,7 @@ class EnrichedDiffSingleRelationship(BaseSummary):
 class EnrichedDiffRelationship(BaseSummary):
     name: str
     label: str
+    cardinality: RelationshipCardinality
     path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp | None = field(default=None, kw_only=True)
     action: DiffAction
@@ -219,6 +220,7 @@ class EnrichedDiffRelationship(BaseSummary):
         return EnrichedDiffRelationship(
             name=calculated_relationship.name,
             label="",
+            cardinality=calculated_relationship.cardinality,
             changed_at=calculated_relationship.changed_at,
             action=calculated_relationship.action,
             relationships={
@@ -226,22 +228,6 @@ class EnrichedDiffRelationship(BaseSummary):
                 for element in calculated_relationship.relationships
             },
             nodes=set(),
-        )
-
-    @classmethod
-    def from_graph(cls, node: Neo4jNode) -> Self:
-        timestamp_str = node.get("changed_at")
-        return cls(
-            name=node.get("name"),
-            label=node.get("label"),
-            changed_at=Timestamp(timestamp_str) if timestamp_str else None,
-            action=DiffAction(str(node.get("action"))),
-            path_identifier=str(node.get("path_identifier")),
-            num_added=int(node.get("num_added")),
-            num_conflicts=int(node.get("num_conflicts")),
-            num_removed=int(node.get("num_removed")),
-            num_updated=int(node.get("num_updated")),
-            contains_conflict=str(node.get("contains_conflict")).lower() == "true",
         )
 
 
@@ -357,14 +343,6 @@ class EnrichedDiffNode(BaseSummary):
             },
         )
 
-    def add_relationship_from_DiffRelationship(self, diff_rel: Neo4jNode) -> bool:
-        if self.has_relationship(name=diff_rel.get("name")):
-            return False
-
-        rel = EnrichedDiffRelationship.from_graph(node=diff_rel)
-        self.relationships.add(rel)
-        return True
-
 
 @dataclass
 class EnrichedDiffRoot(BaseSummary):
@@ -423,6 +401,7 @@ class EnrichedDiffRoot(BaseSummary):
         parent_kind: str,
         parent_label: str,
         parent_rel_name: str,
+        parent_rel_cardinality: RelationshipCardinality,
         parent_rel_label: str = "",
     ) -> EnrichedDiffNode:
         node = self.get_node(node_uuid=node_id)
@@ -447,6 +426,7 @@ class EnrichedDiffRoot(BaseSummary):
                 EnrichedDiffRelationship(
                     name=parent_rel_name,
                     label=parent_rel_label,
+                    cardinality=parent_rel_cardinality,
                     changed_at=None,
                     action=DiffAction.UNCHANGED,
                     nodes={parent},
@@ -516,6 +496,7 @@ class DiffSingleRelationship:
 @dataclass
 class DiffRelationship:
     name: str
+    cardinality: RelationshipCardinality
     changed_at: Timestamp
     action: DiffAction
     relationships: list[DiffSingleRelationship] = field(default_factory=list)

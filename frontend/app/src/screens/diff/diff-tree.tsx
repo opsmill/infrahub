@@ -7,12 +7,14 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { useSchema } from "@/hooks/useSchema";
 import { Icon } from "@iconify-icon/react";
+import NoDataFound from "../errors/no-data-found";
 
 interface DiffTreeProps extends Omit<TreeProps, "data"> {
   nodes: Array<DiffNode>;
+  emptyMessage?: string;
 }
 
-export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
+export default function DiffTree({ nodes, loading, emptyMessage, ...props }: DiffTreeProps) {
   const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_TREE);
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,7 +94,7 @@ export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
     setTreeData(addItemsToTree(EMPTY_TREE, [...parents, ...formattedNodes]));
   }, [nodes.length]);
 
-  if (treeData.length <= 1) return null;
+  if (treeData.length <= 1) return <NoDataFound message={emptyMessage ?? "No data to display."} />;
 
   return (
     <Tree

@@ -84,6 +84,7 @@ export const GET_PROPOSED_CHANGE_DETAILS = gql`
           }
           description {
             value
+            updated_at
           }
           source_branch {
             value

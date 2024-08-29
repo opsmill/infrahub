@@ -22,10 +22,13 @@ const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeForm
   const fields = getFormFieldsFromSchema({ auth, schema, initialObject: currentObject });
 
   const gitUrlFieldProps = fields.find(({ name }) => name === "location");
-  const credentialFieldProps = fields.find(({ name }) => name === "credential");
 
   const nameFieldProps = fields.find(({ name }) => name === "name");
   const descriptionFieldProps = fields.find(({ name }) => name === "description");
+
+  // 1 of those 2 fields will be choosen depending on the read only or regular repository
+  const refFieldProps = fields.find(({ name }) => name === "ref");
+  const defaultBranchFieldProps = fields.find(({ name }) => name === "default_branch");
 
   const tagsFieldProps = fields.find(({ name }) => name === "tags");
 
@@ -79,6 +82,11 @@ const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeForm
         {descriptionFieldProps && (
           <DynamicInput {...descriptionFieldProps} placeholder="Add your description here..." />
         )}
+      </FormGroup>
+
+      <FormGroup>
+        {refFieldProps && <DynamicInput {...refFieldProps} />}
+        {defaultBranchFieldProps && <DynamicInput {...defaultBranchFieldProps} />}
       </FormGroup>
 
       {tagsFieldProps && (

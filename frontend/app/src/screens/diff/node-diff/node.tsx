@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { DiffNodeRelationship } from "./node-relationship";
 import { DiffNodeAttribute } from "./node-attribute";
 import { DiffThread } from "./thread";
-import { Icon } from "@iconify-icon/react";
 import { useLocation, useParams } from "react-router-dom";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import { useAtomValue } from "jotai";
@@ -12,6 +11,7 @@ import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
 import { classNames } from "@/utils/common";
 import { useEffect, useRef } from "react";
+import { Icon } from "@iconify-icon/react";
 
 type DiffNodeProps = {
   node: DiffNodeType;
@@ -42,18 +42,18 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
         <Accordion
           defaultOpen={isSelectedOnNavigation}
           title={
-            <div className="group grid grid-cols-3 justify-items-end gap-2 py-2 pr-2 text-xs">
-              <div className="flex w-full items-center justify-between gap-2 justify-self-start">
-                <div className="flex items-center gap-2">
-                  <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
-                  <Badge variant="white">{schemaKindName[node.kind]}</Badge>
-                  <span className="text-gray-800 font-medium px-2 py-1">{node.label}</span>
-                </div>
+            <div className="group flex items-center gap-2 py-2 pr-2 text-xs">
+              <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
+              <Badge variant="white">{schemaKindName[node.kind] ?? node.kind}</Badge>
+              <span className="text-gray-800 font-medium px-2 py-1">{node.label}</span>
 
-                {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
-              </div>
-
-              <Badge variant="green" className="bg-transparent">
+              {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
+            </div>
+          }
+          className="bg-gray-100 border rounded-md">
+          <div className="divide-y border-t">
+            <div className="bg-custom-white grid grid-cols-3 pl-8">
+              <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
                 <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}
               </Badge>
 
@@ -61,12 +61,11 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 <Icon icon="mdi:layers-triple" className="mr-1" /> {destinationBranch}
               </Badge>
             </div>
-          }
-          className="bg-gray-100 border rounded-md">
-          <div className="divide-y border-t">
+
             {node.attributes.map((attribute: any, index: number) => (
               <DiffNodeAttribute key={index} attribute={attribute} status={node.status} />
             ))}
+
             {node.relationships.map((relationship: any, index: number) => (
               <DiffNodeRelationship key={index} relationship={relationship} status={node.status} />
             ))}

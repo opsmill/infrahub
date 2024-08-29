@@ -23,9 +23,9 @@ import { StringParam, useQueryParam } from "use-query-params";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
 import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-change-details";
-import { Conversations } from "@/screens/proposed-changes/conversations";
 import { NetworkStatus } from "@apollo/client";
 import { CoreProposedChange } from "@/generated/graphql";
+import { Badge } from "@/components/ui/badge";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -94,13 +94,7 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
         </div>
       );
     default: {
-      return (
-        <div className="flex flex-wrap p-2 gap-2 items-start">
-          <ProposedChangeDetails />
-
-          <Conversations />
-        </div>
-      );
+      return <ProposedChangeDetails />;
     }
   }
 };
@@ -177,11 +171,17 @@ export function Component() {
             <Icon icon="mdi:chevron-right" />
 
             <span>{proposedChangesData.display_label}</span>
+
+            <Badge variant="blue">
+              <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
+              {proposedChangesData.source_branch?.value}
+            </Badge>
           </div>
         }
         reload={() => client.reFetchObservableQueries()}
         isReloadLoading={loading}
       />
+
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
       <ProposedChangeDetailsContent proposedChangeData={proposedChangesData} />
