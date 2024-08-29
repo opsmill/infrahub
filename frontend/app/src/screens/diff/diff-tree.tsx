@@ -65,34 +65,7 @@ export default function DiffTree({ nodes, loading, emptyMessage, ...props }: Dif
       return [...acc, newNode];
     }, [] as TreeProps["data"]);
 
-    const rootNodes = formattedNodes.filter(({ parent }) => parent === TREE_ROOT_ID);
-
-    const kindToUUIDsMap = rootNodes.reduce((acc, node) => {
-      const currentNodeKind = node.metadata?.kind?.toString();
-      if (!currentNodeKind) return acc;
-
-      const currentUUIDs = acc[currentNodeKind];
-      const nodeId = node.id.toString();
-      node.parent = currentNodeKind;
-      return {
-        ...acc,
-        [currentNodeKind]: currentUUIDs ? [...currentUUIDs, nodeId] : [nodeId],
-      };
-    }, {} as Record<string, Array<string>>);
-
-    const parents = Object.entries(kindToUUIDsMap).map(([kind, uuids]) => {
-      return {
-        id: kind,
-        name: kind,
-        parent: TREE_ROOT_ID,
-        children: uuids,
-        isBranch: true,
-        metadata: {
-          kind,
-        },
-      };
-    });
-    setTreeData(addItemsToTree(EMPTY_TREE, [...parents, ...formattedNodes]));
+    setTreeData(addItemsToTree(EMPTY_TREE, generateRootCategoryNodeForDiffTree(formattedNodes)));
   }, [nodes]);
 
   if (treeData.length <= 1) return <NoDataFound message={emptyMessage ?? "No data to display."} />;
@@ -147,4 +120,44 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
       <span className="whitespace-nowrap">{element.name}</span>
     </a>
   );
+};
+
+export const generateRootCategoryNodeForDiffTree = (
+  diffTreeNodes: TreeProps["data"]
+): TreeProps["data"] => {
+  return diffTreeNodes.reduce((acc, node) => {
+    const nodeKind = node.metadata?.kind as string | undefined;
+    if (node.parent !== TREE_ROOT_ID || !nodeKind) return [...acc, node];
+
+    const nodeUpdated = {
+      ...node,
+      parent: nodeKind,
+    };
+
+    const existingRootCategoryNode = acc.find(({ id }) => id === nodeKind);
+
+    if (existingRootCategoryNode) {
+      const rootCategoryNodeUpdated = {
+        ...existingRootCategoryNode,
+        children: [...existingRootCategoryNode.children, node.id],
+      };
+
+      return acc
+        .map((item) => (item.id === existingRootCategoryNode.id ? rootCategoryNodeUpdated : item))
+        .concat(nodeUpdated);
+    } else {
+      const newRootCategoryNode = {
+        id: nodeKind,
+        name: nodeKind,
+        parent: TREE_ROOT_ID,
+        children: [node.id],
+        isBranch: true,
+        metadata: {
+          kind: nodeKind,
+        },
+      };
+
+      return [...acc, newRootCategoryNode, nodeUpdated];
+    }
+  }, [] as TreeProps["data"]);
 };
