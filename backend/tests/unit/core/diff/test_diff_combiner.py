@@ -282,6 +282,8 @@ class TestDiffCombiner:
             previous_value=added_attr_owner_property_1.previous_value,
             new_value=added_attr_owner_property_2.new_value,
             path_identifier=added_attr_owner_property_2.path_identifier,
+            previous_label=added_attr_owner_property_2.previous_label,
+            new_label=added_attr_owner_property_2.new_label,
             action=DiffAction.ADDED,
         )
         expected_updated_combined_property = EnrichedDiffProperty(
@@ -290,6 +292,8 @@ class TestDiffCombiner:
             previous_value=updated_attr_value_property_1.previous_value,
             new_value=updated_attr_value_property_2.new_value,
             path_identifier=updated_attr_value_property_2.path_identifier,
+            previous_label=updated_attr_value_property_2.previous_label,
+            new_label=updated_attr_value_property_2.new_label,
             action=DiffAction.UPDATED,
         )
         expected_added_combined_attr = EnrichedDiffAttribute(

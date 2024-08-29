@@ -94,6 +94,8 @@ class EnrichedDiffConflict:
     base_branch_value: Any
     diff_branch_action: DiffAction
     diff_branch_value: Any
+    base_branch_label: str | None = field(default=None, kw_only=True)
+    diff_branch_label: str | None = field(default=None, kw_only=True)
     base_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     diff_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     selected_branch: ConflictSelection | None = field(default=None)
@@ -106,6 +108,8 @@ class EnrichedDiffProperty:
     previous_value: Any
     new_value: Any
     action: DiffAction
+    previous_label: str | None = field(default=None, kw_only=True)
+    new_label: str | None = field(default=None, kw_only=True)
     path_identifier: str = field(default="", kw_only=True)
     conflict: EnrichedDiffConflict | None = field(default=None)
 

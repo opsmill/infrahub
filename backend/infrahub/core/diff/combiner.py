@@ -139,16 +139,14 @@ class DiffCombiner:
             combined_conflict = self._combine_conflicts(
                 earlier=earlier_property.conflict, later=later_property.conflict
             )
-            combined_property = EnrichedDiffProperty(
-                property_type=later_property.property_type,
-                changed_at=later_property.changed_at,
-                previous_value=earlier_property.previous_value,
-                new_value=later_property.new_value,
-                path_identifier=later_property.path_identifier,
-                action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
-                conflict=combined_conflict,
+            combined_properties.add(
+                replace(
+                    later_property,
+                    previous_value=earlier_property.previous_value,
+                    action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
+                    conflict=combined_conflict,
+                )
             )
-            combined_properties.add(combined_property)
         combined_properties |= {
             deepcopy(prop) for prop in later_properties if prop.property_type not in common_property_types
         }
