@@ -85,8 +85,10 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 const element = relationship.elements[0];
 
                 const attribute = {
-                  ...relationship,
-                  path_identifier: relationship.path_identifier,
+                  name: relationship.name,
+                  contains_conflict: relationship.contains_conflict,
+                  conflict: element.conflict,
+                  path_identifier: element.path_identifier,
                   properties: element.properties,
                 };
 
@@ -95,7 +97,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                     key={index}
                     attribute={attribute}
                     status={node.status}
-                    previousValue={"-"}
+                    previousValue={element.previous_peer_label}
                     newValue={element.peer_label}
                   />
                 );
