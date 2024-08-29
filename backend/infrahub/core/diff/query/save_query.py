@@ -119,11 +119,13 @@ class EnrichedDiffSaveQuery(Query):
             "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string()
             if enriched_conflict.base_branch_changed_at
             else None,
+            "base_branch_label": enriched_conflict.base_branch_label,
             "diff_branch_action": enriched_conflict.diff_branch_action.value,
             "diff_branch_value": enriched_conflict.diff_branch_value,
             "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string()
             if enriched_conflict.diff_branch_changed_at
             else None,
+            "diff_branch_label": enriched_conflict.diff_branch_label,
             "selected_branch": enriched_conflict.selected_branch.value if enriched_conflict.selected_branch else None,
         }
 
@@ -137,6 +139,8 @@ class EnrichedDiffSaveQuery(Query):
                 "changed_at": enriched_property.changed_at.to_string(),
                 "previous_value": enriched_property.previous_value,
                 "new_value": enriched_property.new_value,
+                "previous_label": enriched_property.previous_label,
+                "new_label": enriched_property.new_label,
                 "action": enriched_property.action,
                 "path_identifier": enriched_property.path_identifier,
             },

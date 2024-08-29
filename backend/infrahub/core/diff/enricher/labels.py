@@ -35,6 +35,7 @@ class DiffLabelsEnricher(DiffEnricherInterface):
         self.db = db
         self._base_branch_name: str | None = None
         self._diff_branch_name: str | None = None
+        self._conflicts_only = False
 
     @property
     def base_branch_name(self) -> str:
@@ -50,9 +51,10 @@ class DiffLabelsEnricher(DiffEnricherInterface):
 
     def _nodes_iterator(self, enriched_diff_root: EnrichedDiffRoot) -> Generator[DisplayLabelRequest, str | None, None]:
         for node in enriched_diff_root.nodes:
-            label = yield DisplayLabelRequest(node_id=node.uuid, branch_name=self.diff_branch_name)
-            if label:
-                node.label = label
+            if not self._conflicts_only:
+                label = yield DisplayLabelRequest(node_id=node.uuid, branch_name=self.diff_branch_name)
+                if label:
+                    node.label = label
             for attribute_diff in node.attributes:
                 for property_diff in attribute_diff.properties:
                     property_iterator = self._property_iterator(property_diff=property_diff)
@@ -77,9 +79,10 @@ class DiffLabelsEnricher(DiffEnricherInterface):
         self, relationship_diff: EnrichedDiffRelationship
     ) -> Generator[DisplayLabelRequest, str | None, None]:
         for element_diff in relationship_diff.relationships:
-            peer_label = yield DisplayLabelRequest(node_id=element_diff.peer_id, branch_name=self.diff_branch_name)
-            if peer_label:
-                element_diff.peer_label = peer_label
+            if not self._conflicts_only:
+                peer_label = yield DisplayLabelRequest(node_id=element_diff.peer_id, branch_name=self.diff_branch_name)
+                if peer_label:
+                    element_diff.peer_label = peer_label
             if element_diff.conflict:
                 conflict_iterator = self._conflict_iterator(conflict_diff=element_diff.conflict)
                 label = None
@@ -103,13 +106,13 @@ class DiffLabelsEnricher(DiffEnricherInterface):
         self, property_diff: EnrichedDiffProperty
     ) -> Generator[DisplayLabelRequest, str | None, None]:
         if property_diff.property_type in PROPERTY_TYPES_WITH_LABELS:
-            if property_diff.previous_value:
+            if property_diff.previous_value and not self._conflicts_only:
                 label = yield DisplayLabelRequest(
                     node_id=property_diff.previous_value, branch_name=self.base_branch_name
                 )
                 if label:
                     property_diff.previous_label = label
-            if property_diff.new_value:
+            if property_diff.new_value and not self._conflicts_only:
                 label = yield DisplayLabelRequest(node_id=property_diff.new_value, branch_name=self.diff_branch_name)
                 if label:
                     property_diff.new_label = label
@@ -167,9 +170,15 @@ class DiffLabelsEnricher(DiffEnricherInterface):
             branch_map[node_kind].append(dlr.node_id)
         return await get_display_labels(db=self.db, nodes=display_label_request_map, ignore_deleted=False)
 
-    async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:
+    async def enrich(
+        self,
+        enriched_diff_root: EnrichedDiffRoot,
+        calculated_diffs: CalculatedDiffs | None = None,
+        conflicts_only: bool = False,
+    ) -> None:
         self._base_branch_name = enriched_diff_root.base_branch_name
         self._diff_branch_name = enriched_diff_root.diff_branch_name
+        self._conflicts_only = conflicts_only
         display_label_requests = set(self._nodes_iterator(enriched_diff_root=enriched_diff_root))
         display_label_map = await self._get_display_label_map(display_label_requests=display_label_requests)
 

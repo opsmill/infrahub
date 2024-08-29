@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .conflicts_enricher import ConflictsEnricher
     from .data_check_synchronizer import DiffDataCheckSynchronizer
     from .enricher.aggregated import AggregatedDiffEnricher
+    from .enricher.labels import DiffLabelsEnricher
     from .enricher.summary_counts import DiffSummaryCountsEnricher
     from .repository.repository import DiffRepository
 
@@ -40,6 +41,7 @@ class DiffCoordinator:
         diff_enricher: AggregatedDiffEnricher,
         diff_combiner: DiffCombiner,
         conflicts_enricher: ConflictsEnricher,
+        labels_enricher: DiffLabelsEnricher,
         summary_counts_enricher: DiffSummaryCountsEnricher,
         data_check_synchronizer: DiffDataCheckSynchronizer,
     ) -> None:
@@ -48,6 +50,7 @@ class DiffCoordinator:
         self.diff_enricher = diff_enricher
         self.diff_combiner = diff_combiner
         self.conflicts_enricher = conflicts_enricher
+        self.labels_enricher = labels_enricher
         self.summary_counts_enricher = summary_counts_enricher
         self.data_check_synchronizer = data_check_synchronizer
         self._enriched_diff_cache: dict[EnrichedDiffRequest, EnrichedDiffRoot] = {}
@@ -161,6 +164,9 @@ class DiffCoordinator:
             await self.conflicts_enricher.add_conflicts_to_branch_diff(
                 base_diff_root=aggregated_diffs_by_branch_name[base_branch.name],
                 branch_diff_root=aggregated_diffs_by_branch_name[diff_branch.name],
+            )
+            await self.labels_enricher.enrich(
+                enriched_diff_root=aggregated_diffs_by_branch_name[diff_branch.name], conflicts_only=True
             )
 
         if tracking_id:

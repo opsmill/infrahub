@@ -71,15 +71,19 @@ query GetDiffTree($branch: String){
                     last_changed_at
                     previous_value
                     new_value
+                    previous_label
+                    new_label
                     status
                     conflict {
                         uuid
                         base_branch_action
                         base_branch_value
                         base_branch_changed_at
+                        base_branch_label
                         diff_branch_action
                         diff_branch_value
                         diff_branch_changed_at
+                        diff_branch_label
                         selected_branch
                     }
                 }
@@ -100,9 +104,11 @@ query GetDiffTree($branch: String){
                         base_branch_action
                         base_branch_changed_at
                         base_branch_value
+                        base_branch_label
                         diff_branch_action
                         diff_branch_value
                         diff_branch_changed_at
+                        diff_branch_label
                         selected_branch
                     }
                     properties {
@@ -110,15 +116,19 @@ query GetDiffTree($branch: String){
                         last_changed_at
                         previous_value
                         new_value
+                        previous_label
+                        new_label
                         status
                         conflict {
                             uuid
                             base_branch_action
                             base_branch_value
                             base_branch_changed_at
+                            base_branch_label
                             diff_branch_action
                             diff_branch_value
                             diff_branch_changed_at
+                            diff_branch_label
                             selected_branch
                         }
                     }
@@ -298,6 +308,8 @@ async def test_diff_tree_one_attr_change(
                                 "last_changed_at": property_changed_at,
                                 "previous_value": criticality_low.color.value,
                                 "new_value": branch_crit.color.value,
+                                "previous_label": None,
+                                "new_label": None,
                                 "status": UPDATED_ACTION,
                                 "conflict": {
                                     "uuid": enriched_conflict.uuid,
@@ -306,11 +318,13 @@ async def test_diff_tree_one_attr_change(
                                     "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string(
                                         with_z=False
                                     ),
+                                    "base_branch_label": None,
                                     "diff_branch_action": UPDATED_ACTION,
                                     "diff_branch_value": "#abcdef",
                                     "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string(
                                         with_z=False
                                     ),
+                                    "diff_branch_label": None,
                                     "selected_branch": GraphQLConfictSelection.DIFF_BRANCH.name,
                                 },
                             }
@@ -338,6 +352,9 @@ async def test_diff_tree_one_relationship_change(
     before_change_datetime = datetime.now(tz=UTC)
     await branch_car.save(db=db)
     after_change_datetime = datetime.now(tz=UTC)
+    accord_label = await branch_car.render_display_label(db=db)
+    john_label = await person_john_main.render_display_label(db=db)
+    jane_label = await person_jane_main.render_display_label(db=db)
 
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
@@ -423,6 +440,8 @@ async def test_diff_tree_one_relationship_change(
         "last_changed_at": owner_prop_changed_at,
         "previous_value": person_john_main.id,
         "new_value": person_jane_main.id,
+        "previous_label": john_label,
+        "new_label": jane_label,
         "status": UPDATED_ACTION,
         "conflict": None,
     }
@@ -472,10 +491,10 @@ async def test_diff_tree_one_relationship_change(
     }
     cars_properties_by_type = {p["property_type"]: p for p in cars_properties}
     assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_VISIBLE_TYPE, IS_PROTECTED_TYPE}
-    for property_type, previous_value in [
-        (IS_RELATED_TYPE, car_accord_main.id),
-        (IS_PROTECTED_TYPE, "False"),
-        (IS_VISIBLE_TYPE, "True"),
+    for property_type, previous_value, previous_label in [
+        (IS_RELATED_TYPE, car_accord_main.id, accord_label),
+        (IS_PROTECTED_TYPE, "False", None),
+        (IS_VISIBLE_TYPE, "True", None),
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
@@ -484,7 +503,9 @@ async def test_diff_tree_one_relationship_change(
             "property_type": property_type,
             "last_changed_at": cars_prop_changed_at,
             "previous_value": previous_value,
+            "previous_label": previous_label,
             "new_value": None,
+            "new_label": None,
             "status": REMOVED_ACTION,
             "conflict": None,
         }
@@ -534,10 +555,10 @@ async def test_diff_tree_one_relationship_change(
     }
     cars_properties_by_type = {p["property_type"]: p for p in cars_properties}
     assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_VISIBLE_TYPE, IS_PROTECTED_TYPE}
-    for property_type, new_value in [
-        (IS_RELATED_TYPE, car_accord_main.id),
-        (IS_PROTECTED_TYPE, "False"),
-        (IS_VISIBLE_TYPE, "True"),
+    for property_type, new_value, new_label in [
+        (IS_RELATED_TYPE, car_accord_main.id, accord_label),
+        (IS_PROTECTED_TYPE, "False", None),
+        (IS_VISIBLE_TYPE, "True", None),
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
@@ -546,7 +567,9 @@ async def test_diff_tree_one_relationship_change(
             "property_type": property_type,
             "last_changed_at": cars_prop_changed_at,
             "previous_value": None,
+            "previous_label": None,
             "new_value": new_value,
+            "new_label": new_label,
             "status": ADDED_ACTION,
             "conflict": None,
         }
