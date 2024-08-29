@@ -30,6 +30,7 @@ import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-update";
 import { useAuth } from "@/hooks/useAuth";
 import { DateDisplay } from "@/components/display/date-display";
+import { Icon } from "@iconify-icon/react";
 
 export const DiffContext = createContext({});
 
@@ -136,20 +137,23 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
-      <div className="flex items-center p-2 bg-custom-white divide-x">
+      <div className="flex items-center p-2 bg-custom-white">
         <div className="mr-2">
           <ProposedChangesDiffSummary branch={branch} filters={filters} />
         </div>
 
-        <div className="flex flex-1 pl-2 items-center justify-between">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setQspStatus(undefined)}
-            isLoading={loading}
-            disabled={!qspStatus}>
-            Reset Filter
-          </Button>
+        <div className="flex flex-1 items-center justify-between">
+          <div>
+            {qspStatus && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setQspStatus(undefined)}
+                disabled={!qspStatus}>
+                <Icon icon={"mdi:close"} />
+              </Button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2 pr-2">
             {isLoadingUpdate && <LoadingScreen size={22} hideText />}
