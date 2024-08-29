@@ -224,7 +224,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
             or (data.get("node_attribute") and data.get("node_attribute").value)
             or (data.get("unique_for") and data.get("unique_for").value)
         ):
-            raise ValidationError(input_value="The fields 'model', 'model_attribute' or 'unique_for' can't be changed.")
+            raise ValidationError(input_value="The fields 'node', 'node_attribute' or 'unique_for' can't be changed.")
         context: GraphqlContext = info.context
 
         async with context.db.start_transaction() as dbt:
