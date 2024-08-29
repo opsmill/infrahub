@@ -783,7 +783,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         if not top_level:
             filters["isnull"] = graphene.Boolean()
 
-        if schema.human_friendly_id:
+        if schema.human_friendly_id and top_level:
+            # HFID filter limited to top level because we can't filter on HFID for relationships (yet)
             filters["hfids"] = graphene.List(graphene.List(graphene.String))
 
         for attr in schema.attributes:
