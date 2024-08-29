@@ -15,7 +15,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         **kwargs: dict[str, Any],
     ) -> Return:
         if workflow:
-            return await run_deployment(name=workflow.name, parameters=kwargs or {})  # type: ignore[return-value]
+            return await run_deployment(name=workflow.name, parameters=kwargs or {})  # type: ignore[return-value, misc]
 
         if function:
             return await function(**kwargs)

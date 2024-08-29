@@ -29,7 +29,6 @@ class TestCreateRepository(TestInfrahubApp):
     async def base_dataset(self, db: InfrahubDatabase):
         await delete_all_nodes(db=db)
         await first_time_initialization(db=db)
-        # await load_infrastructure_schema(db=db)
         await load_schema(db, schema=CAR_SCHEMA)
 
         await initialization(db=db)
