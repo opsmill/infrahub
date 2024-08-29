@@ -7,6 +7,7 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
+from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-    from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
 
     from ..attribute import BaseAttribute
@@ -200,7 +200,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         number_pool: Optional[CoreNumberPool] = None
         try:
             number_pool = await registry.manager.get_one_by_id_or_default_filter(
-                db=db, id=attribute.from_pool, kind=InfrahubKind.NUMBERPOOL
+                db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
             )
         except NodeNotFoundError:
             errors.append(

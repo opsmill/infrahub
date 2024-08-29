@@ -695,12 +695,16 @@ mutation CreateNumberPool(
 
 CREATE_TICKET = """
 mutation CreateTestingTicket(
-    $pool: String,
+    $pool: String!,
     $title: String!
 	) {
   TestingTicketCreate(
     data: {
-        ticket_id: {from_pool: $pool},
+        ticket_id: {
+            from_pool: {
+                id: $pool
+            }
+        },
         title: {value: $title}
       }) {
     object {
