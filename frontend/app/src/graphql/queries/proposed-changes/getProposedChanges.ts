@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const GET_PROPOSED_CHANGES = gql`
-  query GET_PROPOSED_CHANGES($state: String, $search: String) {
-    CoreProposedChange(state__value: $state, any__value: $search, partial_match: true) {
+  query GET_PROPOSED_CHANGES($states: [String], $search: String) {
+    CoreProposedChange(state__values: $states, any__value: $search, partial_match: true) {
       count
       edges {
         node {

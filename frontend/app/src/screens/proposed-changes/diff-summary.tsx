@@ -22,7 +22,7 @@ export type DiffFilter = {
 
 type tProposedChangesDiffSummary = {
   branch: string;
-  filters: DiffFilter;
+  filters?: DiffFilter;
 };
 
 export const diffActions = {
