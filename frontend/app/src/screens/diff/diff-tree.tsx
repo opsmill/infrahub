@@ -20,79 +20,9 @@ export default function DiffTree({ nodes, loading, emptyMessage, ...props }: Dif
   const navigate = useNavigate();
 
   useEffect(() => {
-    let kindToUUIDsMap: Record<string, Array<string>> = {};
-
-    const formattedNodes: TreeProps["data"] = nodes.flatMap((node: DiffNode) => {
-      const currentUUIDs = kindToUUIDsMap[node.kind];
-      kindToUUIDsMap[node.kind] = currentUUIDs ? [...currentUUIDs, node.uuid] : [node.uuid];
-
-      const newNode = {
-        id: node.uuid,
-        name: node.label,
-        parent: node.kind,
-        children: [] as string[],
-        isBranch: node.relationships.length > 0,
-        metadata: {
-          uuid: node.uuid,
-          status: node.status,
-          containsConflicts: node.contains_conflict,
-        },
-      };
-
-      const nodesFromRelationships = node.relationships.flatMap((relationship) => {
-        const relationshipNode = {
-          id: relationship?.name + newNode.id,
-          name: relationship?.label,
-          parent: newNode.id,
-          isBranch: !!relationship?.elements?.length,
-          children: [] as string[],
-          metadata: {
-            uuid: node.uuid,
-            containsConflicts: relationship.contains_conflict,
-          },
-        };
-
-        newNode.children.push(relationshipNode.id);
-
-        const relationshipChildNodes =
-          relationship?.elements?.map((element) => {
-            const child = {
-              id: newNode.id + element.peer_label + element?.peer_id,
-              name: element.peer_label,
-              parent: relationshipNode.id,
-              isBranch: false,
-              children: [],
-              metadata: {
-                uuid: element?.peer_id,
-                status: nodes.find(({ uuid }) => uuid === element.peer_id)?.status,
-                containsConflicts: element.contains_conflict,
-              },
-            };
-            relationshipNode.children.push(child.id);
-
-            return child;
-          }) ?? [];
-
-        return [relationshipNode, ...relationshipChildNodes];
-      });
-
-      return [newNode, ...nodesFromRelationships];
-    });
-
-    const parents = Object.entries(kindToUUIDsMap).map(([kind, uuids]) => {
-      return {
-        id: kind,
-        name: kind,
-        parent: TREE_ROOT_ID,
-        children: uuids,
-        isBranch: true,
-        metadata: {
-          kind,
-        },
-      };
-    });
-    setTreeData(addItemsToTree(EMPTY_TREE, [...parents, ...formattedNodes]));
-  }, [nodes.length]);
+    const formattedNodes = formatDiffNodesToDiffTree(nodes);
+    setTreeData(addItemsToTree(EMPTY_TREE, generateRootCategoryNodeForDiffTree(formattedNodes)));
+  }, [nodes]);
 
   if (treeData.length <= 1) return <NoDataFound message={emptyMessage ?? "No data to display."} />;
 
@@ -120,7 +50,9 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
   const diffNode = element.metadata as DiffNode | undefined;
   const { schema } = useSchema(diffNode?.kind);
 
-  if (schema) {
+  // On diff tree, root tree item represents the model schema's name,
+  // providing a clear visual representation of the schema in the tree structure.
+  if (schema && element.parent === TREE_ROOT_ID) {
     return (
       <div className={"flex items-center gap-2 text-gray-800"} data-testid="hierarchical-tree-item">
         <Icon icon={schema.icon as string} />
@@ -138,10 +70,119 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
       <DiffBadge
         status={element.metadata?.status as string}
         hasConflicts={!!element.metadata?.containsConflicts}
-        icon
+        size="icon"
+        icon={schema?.icon ?? undefined}
       />
 
       <span className="whitespace-nowrap">{element.name}</span>
     </a>
   );
+};
+
+export const formatDiffNodesToDiffTree = (nodes: Array<DiffNode>) => {
+  return nodes.reduce((acc, node) => {
+    const newNode = {
+      id: node.uuid,
+      name: node.label,
+      parent: TREE_ROOT_ID as string,
+      children: acc.filter(({ parent }) => parent === node.uuid).map(({ id }) => id),
+      metadata: {
+        kind: node.kind, // for icon on tree item
+        uuid: node.uuid, // for url
+        status: node.status, // for icon color
+        containsConflicts: node.contains_conflict, // for icon conflicts
+      },
+    };
+
+    if (node.parent) {
+      const { uuid: parentUUID, relationship_name: parentRelationshipName } = node.parent;
+
+      const parentNodeId = parentUUID + parentRelationshipName;
+      const newNodeWithParent = {
+        ...newNode,
+        parent: parentNodeId,
+      };
+
+      const existingParentOfNewNode = acc.find(({ id }) => id === parentNodeId);
+      if (existingParentOfNewNode) {
+        return acc
+          .map((accNode) => {
+            if (accNode.id === parentNodeId) {
+              return {
+                ...accNode,
+                children: [...new Set(accNode.children.concat(newNodeWithParent.id))],
+              };
+            }
+
+            return accNode;
+          })
+          .concat(newNodeWithParent);
+      }
+
+      const newParentNode = {
+        id: parentNodeId,
+        name: parentRelationshipName ?? "",
+        parent: parentUUID,
+        children: [newNode.id],
+        metadata: {
+          kind: node.parent.kind, // for icon on tree item
+        },
+      };
+
+      return acc
+        .map((accNode) => {
+          if (accNode.id === parentUUID) {
+            return {
+              ...accNode,
+              children: [...new Set(accNode.children.concat(newParentNode.id))],
+            };
+          }
+
+          return accNode;
+        })
+        .concat(newParentNode, newNodeWithParent);
+    }
+
+    return [...acc, newNode];
+  }, [] as TreeProps["data"]);
+};
+
+export const generateRootCategoryNodeForDiffTree = (
+  diffTreeNodes: TreeProps["data"]
+): TreeProps["data"] => {
+  return diffTreeNodes.reduce((acc, node) => {
+    const nodeKind = node.metadata?.kind as string | undefined;
+    if (node.parent !== TREE_ROOT_ID || !nodeKind) return [...acc, node];
+
+    const nodeUpdated = {
+      ...node,
+      parent: nodeKind,
+    };
+
+    const existingRootCategoryNode = acc.find(({ id }) => id === nodeKind);
+
+    if (existingRootCategoryNode) {
+      const rootCategoryNodeUpdated = {
+        ...existingRootCategoryNode,
+        children: [...existingRootCategoryNode.children, node.id],
+      };
+
+      return acc
+        .map((item) => (item.id === existingRootCategoryNode.id ? rootCategoryNodeUpdated : item))
+        .concat(nodeUpdated);
+    } else {
+      const newRootCategoryNode = {
+        id: nodeKind,
+        name: nodeKind,
+        parent: TREE_ROOT_ID,
+        children: [node.id],
+        isBranch: true,
+        metadata: {
+          kind: nodeKind,
+        },
+      };
+
+      return [...acc, newRootCategoryNode, nodeUpdated];
+    }
+  }, [] as TreeProps["data"]);
 };
