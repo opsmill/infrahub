@@ -28,7 +28,6 @@ from infrahub.message_bus.messages import (
     TransformPythonDataResponse,
 )
 from infrahub.message_bus.messages.transform_jinja_template import TransformJinjaTemplateData
-from infrahub.workflows import driver
 from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER
 
 if TYPE_CHECKING:
@@ -145,6 +144,8 @@ async def transform_jinja2(
         data=data,
     )
 
-    response: str = await driver.execute(workflow=TRANSFORM_JINJA2_RENDER, message=message)  # type: ignore[arg-type]
+    service: InfrahubServices = request.app.state.service
+
+    response: str = await service.workflow.execute(workflow=TRANSFORM_JINJA2_RENDER, message=message)  # type: ignore[arg-type]
 
     return PlainTextResponse(content=response)

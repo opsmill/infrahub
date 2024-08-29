@@ -16,6 +16,7 @@ from .adapters.cache import InfrahubCache
 from .adapters.http import InfrahubHTTP
 from .adapters.http.httpx import HttpxAdapter
 from .adapters.message_bus import InfrahubMessageBus
+from .adapters.workflow import InfrahubWorkflow
 from .component import InfrahubComponent
 from .protocols import InfrahubLogger
 from .scheduler import InfrahubScheduler
@@ -29,6 +30,7 @@ class InfrahubServices:
         database: Optional[InfrahubDatabase] = None,
         message_bus: Optional[InfrahubMessageBus] = None,
         http: InfrahubHTTP | None = None,
+        workflow: Optional[InfrahubWorkflow] = None,
         log: Optional[InfrahubLogger] = None,
         component_type: Optional[ComponentType] = None,
     ):
@@ -36,6 +38,7 @@ class InfrahubServices:
         self._client = client
         self._database = database
         self.message_bus = message_bus or InfrahubMessageBus()
+        self.workflow = workflow or InfrahubWorkflow()
         self.log = log or get_logger()
         self.component_type = component_type or ComponentType.NONE
         self.http = http or HttpxAdapter()

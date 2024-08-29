@@ -19,7 +19,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor, Span
 from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
-from infrahub import __version__, config, workflows
+from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
@@ -37,6 +37,8 @@ from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
 
@@ -62,10 +64,10 @@ async def app_initialization(application: FastAPI) -> None:
 
     build_component_registry()
 
-    workflows.driver = config.OVERRIDE.workflow or (
-        workflows.WorkflowWorkerExecution()
+    workflow = config.OVERRIDE.workflow or (
+        WorkflowWorkerExecution()
         if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
-        else workflows.WorkflowLocalExecution()
+        else WorkflowLocalExecution()
     )
 
     message_bus = config.OVERRIDE.message_bus or (
@@ -75,7 +77,11 @@ async def app_initialization(application: FastAPI) -> None:
         NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
     )
     service = InfrahubServices(
-        cache=cache, database=database, message_bus=message_bus, component_type=ComponentType.API_SERVER
+        cache=cache,
+        database=database,
+        message_bus=message_bus,
+        workflow=workflow,
+        component_type=ComponentType.API_SERVER,
     )
     await service.initialize()
     initialize_lock(service=service)
