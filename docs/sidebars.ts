@@ -107,6 +107,7 @@ const sidebars: SidebarsConfig = {
         'topics/resources-testing-framework',
         'topics/profiles',
         'topics/resource-manager',
+        'topics/credential',
       ],
     },
     {
