@@ -212,36 +212,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if number_pool:
             if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
                 existing_nodes = await registry.manager.query(db=db, schema=self._schema, branch_agnostic=True)
-
-                used_number_lookup_key: Optional[str] = None
-                used_numbers: dict[str, list[int]] = {}
-
-                if not number_pool.unique_for.value:
-                    # No uniqueness constraints so this should be a unique list
-                    # None is used as key to make follow up code generic
-                    used_numbers[None] = [
-                        getattr(existing_node, attribute.name).value for existing_node in existing_nodes
-                    ]
-                else:
-                    # Lookup existing values and sort them given the uniqueness field
-                    for existing_node in existing_nodes:
-                        # Get the relationship peer and use the peer ID as key
-                        unique_for_value_peer = await getattr(existing_node, number_pool.unique_for.value).get_peer(
-                            db=db
-                        )
-                        used_number_set: list[int] = used_numbers.setdefault(
-                            unique_for_value_peer.id if unique_for_value_peer else None, []
-                        )
-                        used_number_set.append(getattr(existing_node, attribute.name).value)
-
-                    unique_for_peer = await getattr(self, number_pool.unique_for.value).get_peer(db=db)
-                    if unique_for_peer:
-                        used_number_lookup_key = unique_for_peer.id
+                used_numbers = [getattr(existing_node, attribute.name).value for existing_node in existing_nodes]
 
                 next_free = find_next_free(
                     start=number_pool.start_range.value,
                     end=number_pool.end_range.value,
-                    used_numbers=used_numbers.get(used_number_lookup_key, []),
+                    used_numbers=used_numbers,
                 )
 
                 if next_free:
