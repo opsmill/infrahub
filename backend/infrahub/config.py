@@ -20,7 +20,7 @@ from infrahub.exceptions import InitializationError
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
-    from infrahub.workflows import WorkflowExecutionDriver
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
@@ -350,7 +350,7 @@ class TraceSettings(BaseSettings):
 class Override:
     message_bus: Optional[InfrahubMessageBus] = None
     cache: Optional[InfrahubCache] = None
-    workflow: Optional[WorkflowExecutionDriver] = None
+    workflow: Optional[InfrahubWorkflow] = None
 
 
 @dataclass

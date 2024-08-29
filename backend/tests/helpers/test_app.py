@@ -22,6 +22,7 @@ from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.server import app, app_initialization
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusSimulator
 
 from .test_client import InfrahubTestClient
@@ -62,6 +63,14 @@ class TestInfrahubApp(TestInfrahub):
         config.OVERRIDE.message_bus = bus
         yield bus
         config.OVERRIDE.message_bus = original
+
+    @pytest.fixture(scope="class", autouse=True)
+    def workflow_local(self) -> Generator[WorkflowLocalExecution, None, None]:
+        original = config.OVERRIDE.workflow
+        workflow = WorkflowLocalExecution()
+        config.OVERRIDE.workflow = workflow
+        yield workflow
+        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
