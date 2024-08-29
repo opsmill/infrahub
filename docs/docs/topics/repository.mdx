@@ -47,6 +47,8 @@ Read-only Repositories will only pull data from an external repository into Infr
 
 ### CoreRepository {#core-repository}
 
+{/*TODO: Detail all statuses...*/}
+
 When you create a CoreRepository, Infrahub will try to pull every branch defined in the external repository and create an associated Infrahub branch with the same name and matching data according to what is defined in the `.infrahub.yml` configuration file on the particular remote branch. Infrahub will attempt to sync updates from the external repository several times per minute in a background task that runs on the Git agent(s).
 
-Editing a given GraphQL Query, Transform, Artifact Definition, or Schema within Infrahub **will not** result in those changes being pushed to the external repository. Infrahub will only push changes to an external repository when a [Proposed Change](/topics/proposed-change) is merged for which the source and destination branch are both linked to branches on the same external repository. In this case, Infrahub will attempt to create a merge commit and push that commit to the destination branch on the external repository.
+Editing a given GraphQL Query, Transform, Artifact Definition, or Schema within Infrahub **will not** result in those changes being pushed to the external repository and **could potentially be overwritten** when Infrahub pulls new commits from the external repository. Infrahub will only push changes to an external repository when a [Proposed Change](/topics/proposed-change) is merged for which the source and destination branch are both linked to branches on the same external repository. In this case, Infrahub will attempt to create a merge commit and push that commit to the destination branch on the external repository.
