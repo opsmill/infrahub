@@ -30,7 +30,6 @@ import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-update";
 import { useAuth } from "@/hooks/useAuth";
 import { DateDisplay } from "@/components/display/date-display";
-import { Icon } from "@iconify-icon/react";
 
 export const DiffContext = createContext({});
 
@@ -57,7 +56,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
 export const NodeDiff = ({ filters }: NodeDiffProps) => {
   const { "*": branchName } = useParams();
   const auth = useAuth();
-  const [qspStatus, setQspStatus] = useQueryParam(QSP.STATUS, StringParam);
+  const [qspStatus] = useQueryParam(QSP.STATUS, StringParam);
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const nodeSchemas = useAtomValue(schemaState);
@@ -142,46 +141,31 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
           <ProposedChangesDiffSummary branch={branch} filters={filters} />
         </div>
 
-        <div className="flex flex-1 items-center justify-between">
-          <div>
-            {qspStatus && (
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => setQspStatus(undefined)}
-                disabled={!qspStatus}
-                data-testid="reset-diff-filters">
-                <Icon icon={"mdi:close"} />
-              </Button>
-            )}
-          </div>
+        <div className="flex flex-1 items-center gap-2 justify-end pr-2">
+          {isLoadingUpdate && <LoadingScreen size={22} hideText />}
 
-          <div className="flex items-center gap-2 pr-2">
-            {isLoadingUpdate && <LoadingScreen size={22} hideText />}
-
-            <div className="flex items-center">
-              <div className="flex items-center text-xs mr-2">
-                <span className="mr-1">Updated</span>
-                <DateDisplay date={data?.DiffTree?.to_time} />
-              </div>
-
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={handleRefresh}
-                disabled={!auth?.permissions?.write || isLoadingUpdate}>
-                Refresh diff
-              </Button>
+          <div className="flex items-center">
+            <div className="flex items-center text-xs mr-2">
+              <span className="mr-1">Updated</span>
+              <DateDisplay date={data?.DiffTree?.to_time} />
             </div>
 
             <Button
               size="sm"
-              variant="primary-outline"
-              onClick={handleRebase}
-              disabled={isLoadingUpdate}>
-              Rebase
+              variant="primary"
+              onClick={handleRefresh}
+              disabled={!auth?.permissions?.write || isLoadingUpdate}>
+              Refresh diff
             </Button>
           </div>
+
+          <Button
+            size="sm"
+            variant="primary-outline"
+            onClick={handleRebase}
+            disabled={isLoadingUpdate}>
+            Rebase
+          </Button>
         </div>
       </div>
 

@@ -6,6 +6,10 @@ export interface DiffBadgeProps extends BadgeProps {
   hasConflicts?: boolean;
 }
 
+type CloseBadgeProps = {
+  className?: string;
+};
+
 export type BadgeType =
   | typeof BadgeAdded
   | typeof BadgeRemoved
@@ -46,6 +50,18 @@ export const BadgeAdded = ({ className, ...props }: DiffBadgeProps) => {
   );
 };
 
+export const CloseBadgeAdded = ({ className }: CloseBadgeProps) => {
+  return (
+    <div
+      className={classNames(
+        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 bg-green-200 text-green-800 rounded-full",
+        className
+      )}>
+      <Icon icon="mdi:close" size={1} />
+    </div>
+  );
+};
+
 export const BadgeRemoved = ({ className, ...props }: DiffBadgeProps) => {
   return (
     <BadgeUnchanged
@@ -53,6 +69,18 @@ export const BadgeRemoved = ({ className, ...props }: DiffBadgeProps) => {
       icon="mdi:minus-circle-outline"
       className={classNames("bg-red-200 text-red-800", className)}
     />
+  );
+};
+
+export const CloseBadgeRemoved = ({ className }: CloseBadgeProps) => {
+  return (
+    <div
+      className={classNames(
+        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 bg-red-200 text-red-800 rounded-full",
+        className
+      )}>
+      <Icon icon="mdi:close" size={1} />
+    </div>
   );
 };
 
@@ -66,6 +94,18 @@ export const BadgeConflict = ({ className, ...props }: DiffBadgeProps) => {
   );
 };
 
+export const CloseBadgeConflict = ({ className }: CloseBadgeProps) => {
+  return (
+    <div
+      className={classNames(
+        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 bg-yellow-200 text-yellow-800 rounded-full",
+        className
+      )}>
+      <Icon icon="mdi:close" size={1} />
+    </div>
+  );
+};
+
 export const BadgeUpdated = ({ className, ...props }: DiffBadgeProps) => {
   return (
     <BadgeUnchanged
@@ -73,5 +113,17 @@ export const BadgeUpdated = ({ className, ...props }: DiffBadgeProps) => {
       icon="mdi:circle-arrows"
       className={classNames("bg-blue-200 text-blue-800", className)}
     />
+  );
+};
+
+export const CloseBadgeUpdated = ({ className }: CloseBadgeProps) => {
+  return (
+    <div
+      className={classNames(
+        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 bg-blue-200 text-blue-800 rounded-full",
+        className
+      )}>
+      <Icon icon="mdi:close" size={1} />
+    </div>
   );
 };
