@@ -88,7 +88,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.at = at
         self.is_default = is_default
         self.is_from_profile = is_from_profile
-        self.from_pool: Optional[str] = None
+        self.from_pool: Optional[dict] = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
