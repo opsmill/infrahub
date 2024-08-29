@@ -37,7 +37,7 @@ class InfrahubWorkerAsyncResult(BaseWorkerResult):
 
 
 class InfrahubWorkerAsync(BaseWorker):
-    type: str = "infrahub"
+    type: str = "infrahubasync"
     job_configuration = InfrahubWorkerAsyncConfiguration
     job_configuration_variables = InfrahubWorkerAsyncTemplateVariables
     _documentation_url = "https://example.com/docs"

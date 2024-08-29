@@ -69,6 +69,7 @@ async def start(
     logging.getLogger("aio_pika").setLevel(logging.ERROR)
     logging.getLogger("aiormq").setLevel(logging.ERROR)
     logging.getLogger("git").setLevel(logging.ERROR)
+    logging.getLogger("aiosqlite").setLevel(logging.ERROR)
 
     log.debug(f"Config file : {config_file}")
     # Prevent git from interactively prompting the user for passwords if the credentials provided

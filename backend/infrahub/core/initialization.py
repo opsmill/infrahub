@@ -119,9 +119,9 @@ async def initialize_tasks() -> None:
     async with get_client(sync_client=False) as client:
         for worker in worker_pools:
             wp = WorkPoolCreate(
-                name=worker,
-                type="infrahub",
-                description="Pool for internal tasks",
+                name=worker.name,
+                type=worker.worker_type,
+                description=worker.description,
             )
             try:
                 await client.create_work_pool(work_pool=wp)

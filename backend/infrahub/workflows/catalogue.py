@@ -1,21 +1,32 @@
-from .models import WorkflowDefinition
+from .models import WorkerPoolDefinition, WorkflowDefinition
 
-WORKER_POOL = "infrahub-internal"
+WORKER_POOL = WorkerPoolDefinition(
+    name="infrahub-internal", worker_type="infrahubasync", description="Pool for internal tasks"
+)
 
 WEBHOOK_SEND = WorkflowDefinition(
     name="webhook_send",
-    work_pool_name=WORKER_POOL,
+    work_pool=WORKER_POOL,
     module="infrahub.message_bus.operations.send.webhook",
     function="send_webhook",
 )
 
 TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     name="transform_render_jinja2_template",
-    work_pool_name=WORKER_POOL,
+    work_pool=WORKER_POOL,
     module="infrahub.message_bus.operations.transform.jinja",
     function="transform_render_jinja2_template",
 )
 
+ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
+    name="anonymous_telemetry_send",
+    work_pool=WORKER_POOL,
+    cron="0 2 * * *",
+    module="infrahub.message_bus.operations.send.telemetry",
+    function="send_telemetry_push",
+)
+
+
 worker_pools = [WORKER_POOL]
 
-workflows = [WEBHOOK_SEND, TRANSFORM_JINJA2_RENDER]
+workflows = [WEBHOOK_SEND, TRANSFORM_JINJA2_RENDER, ANONYMOUS_TELEMETRY_SEND]
