@@ -50,8 +50,10 @@ class ResolveDiffConflict(Mutation):
         selection = ConflictSelection(data.selected_branch.value) if data.selected_branch else None
         await diff_repo.update_conflict_by_id(conflict_id=data.conflict_id, selection=selection)
 
-        core_data_check = await NodeManager.get_one(db=context.db, id=data.conflict_id, kind=InfrahubKind.DATACHECK)
-        if not core_data_check:
+        core_data_checks = await NodeManager.query(
+            db=context.db, schema=InfrahubKind.DATACHECK, filters={"enriched_conflict_id__value": data.conflict_id}
+        )
+        if not core_data_checks:
             return cls(ok=True)
         if data.selected_branch is GraphQlConflictSelection.BASE_BRANCH:
             keep_branch = BranchConflictKeep.TARGET
@@ -59,6 +61,7 @@ class ResolveDiffConflict(Mutation):
             keep_branch = BranchConflictKeep.SOURCE
         else:
             keep_branch = None
-        core_data_check.keep_branch.value = keep_branch
-        await core_data_check.save(db=context.db)
+        for cdc in core_data_checks:
+            cdc.keep_branch.value = keep_branch
+            await cdc.save(db=context.db)
         return cls(ok=True)

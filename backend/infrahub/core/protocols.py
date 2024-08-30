@@ -261,6 +261,7 @@ class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
 class CoreDataCheck(CoreCheck):
     conflicts: JSONAttribute
     keep_branch: Enum
+    enriched_conflict_id: StringOptional
 
 
 class CoreDataValidator(CoreValidator):
@@ -389,6 +390,7 @@ class CoreRepositoryValidator(CoreValidator):
 
 class CoreSchemaCheck(CoreCheck):
     conflicts: JSONAttribute
+    enriched_conflict_id: StringOptional
 
 
 class CoreSchemaValidator(CoreValidator):
