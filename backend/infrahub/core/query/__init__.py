@@ -592,7 +592,7 @@ class Query(ABC):
         for idx, _ in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
             yield self.results[idx]
 
-    def get_results_group_by(self, *args: Any, ignore_deleted: bool = True) -> Generator[QueryResult, None, None]:
+    def get_results_group_by(self, *args: Any) -> Generator[QueryResult, None, None]:
         """Return results group by the labels and attributes provided and filtered by scored.
 
         Examples:
@@ -623,7 +623,7 @@ class Query(ABC):
             attr_info = sorted(values, key=lambda i: (i["branch_score"], i["time_score"], i["deleted"]), reverse=True)[
                 0
             ]
-            if ignore_deleted and attr_info["deleted"]:
+            if attr_info["deleted"]:
                 continue
 
             yield self.results[attr_info["idx"]]

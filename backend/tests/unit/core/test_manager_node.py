@@ -359,38 +359,6 @@ async def test_get_many_branch_agnostic(
     assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
 
 
-async def test_get_many_with_deleted(
-    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium, criticality_high
-):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    crit_profile_1 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_1.new(db=db, profile_name="crit_profile_1", color="green", profile_priority=1001)
-    await crit_profile_1.save(db=db)
-    crit_low_main = await NodeManager.get_one(db=db, branch=default_branch, id=criticality_low.id)
-    # profiles on deleted nodes are not supported right now
-    await crit_low_main.profiles.update(db=db, data=[crit_profile_1])
-    await crit_low_main.save(db=db)
-    crit_low_main = await NodeManager.get_one(db=db, branch=default_branch, id=criticality_low.id)
-    await crit_low_main.delete(db=db)
-    crit_med_main = await NodeManager.get_one(db=db, branch=default_branch, id=criticality_medium.id)
-    await crit_med_main.delete(db=db)
-    crit_high_main = await NodeManager.get_one(db=db, branch=default_branch, id=criticality_high.id)
-    await crit_high_main.delete(db=db)
-
-    nodes = await NodeManager.get_many(
-        db=db, ids=[criticality_low.id, criticality_medium.id, criticality_high.id], ignore_deleted=False
-    )
-
-    assert len(nodes) == 3
-    for crit in (criticality_low, criticality_medium, criticality_high):
-        deleted_crit = nodes[crit.get_id()]
-        assert deleted_crit.is_deleted
-        assert deleted_crit.name.value == crit.name.value
-        assert deleted_crit.level.value == crit.level.value
-        assert deleted_crit.color.value == crit.color.value
-        assert await deleted_crit.render_display_label(db=db) == await crit.render_display_label(db=db)
-
-
 async def test_query_no_filter(
     db: InfrahubDatabase,
     default_branch: Branch,

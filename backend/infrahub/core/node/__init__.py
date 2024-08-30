@@ -11,7 +11,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import InitializationError, NodeIsDeletedError, NodeNotFoundError, ValidationError
+from infrahub.exceptions import InitializationError, NodeNotFoundError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import find_next_free
 
@@ -144,9 +144,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
-    def __init__(
-        self, schema: Union[NodeSchema, ProfileSchema], branch: Branch, at: Timestamp, is_deleted: bool = False
-    ):
+    def __init__(self, schema: Union[NodeSchema, ProfileSchema], branch: Branch, at: Timestamp):
         self._schema: Union[NodeSchema, ProfileSchema] = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
@@ -159,7 +157,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._source: Optional[Node] = None
         self._owner: Optional[Node] = None
         self._is_protected: bool = None
-        self._is_deleted: bool = is_deleted
 
         # Lists of attributes and relationships names
         self._attributes: list[str] = []
@@ -172,7 +169,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-        is_deleted: bool = False,
     ) -> Self:
         attrs: dict[str, Any] = {}
 
@@ -188,7 +184,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         attrs["branch"] = branch
         attrs["at"] = Timestamp(at)
-        attrs["is_deleted"] = is_deleted
 
         return cls(**attrs)
 
@@ -461,8 +456,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> Self:
         """Create or Update the Node in the database."""
-        if self.is_deleted:
-            raise NodeIsDeletedError(f"Node {self.get_id()} cannot be saved because it has been deleted")
 
         save_at = Timestamp(at)
 
@@ -473,14 +466,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await self._create(at=save_at, db=db)
         return self
 
-    @property
-    def is_deleted(self) -> bool:
-        return self._is_deleted
-
     async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         """Delete the Node in the database."""
-        if self.is_deleted:
-            return
 
         delete_at = Timestamp(at)
 
