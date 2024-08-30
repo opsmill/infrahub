@@ -208,7 +208,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
 
     async def _get_proposed_change_and_data_validator(self, db) -> tuple[Node, Node]:
-        pcs = await NodeManager.query(db=db, schema=InfrahubKind.PROPOSEDCHANGE, filters={"source_branch": BRANCH_NAME})
+        pcs = await NodeManager.query(
+            db=db, schema=InfrahubKind.PROPOSEDCHANGE, filters={"name__value": PROPOSED_CHANGE_NAME}
+        )
         assert len(pcs) == 1
         pc = pcs[0]
         validators = await pc.validations.get_peers(db=db)
@@ -767,7 +769,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert set(core_data_checks.keys()) == {
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert set(data_checks_by_conflict_id.keys()) == {
             attribute_value_conflict.conflict_id,
             peer_conflict.conflict_id,
             cardinality_one_property_conflict_a.conflict_id,
@@ -776,13 +779,21 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             node_removed_conflict.conflict_id,
             node_removed_attribute_value_conflict.conflict_id,
         }
-        attr_value_data_check = core_data_checks[attribute_value_conflict.conflict_id]
-        peer_data_check = core_data_checks[peer_conflict.conflict_id]
-        cardinality_one_property_data_check_a = core_data_checks[cardinality_one_property_conflict_a.conflict_id]
-        cardinality_one_property_data_check_b = core_data_checks[cardinality_one_property_conflict_b.conflict_id]
-        cardinality_many_property_data_check = core_data_checks[cardinality_many_property_conflict.conflict_id]
-        node_removed_data_check = core_data_checks[node_removed_conflict.conflict_id]
-        node_removed_attr_value_data_check = core_data_checks[node_removed_attribute_value_conflict.conflict_id]
+        attr_value_data_check = data_checks_by_conflict_id[attribute_value_conflict.conflict_id]
+        peer_data_check = data_checks_by_conflict_id[peer_conflict.conflict_id]
+        cardinality_one_property_data_check_a = data_checks_by_conflict_id[
+            cardinality_one_property_conflict_a.conflict_id
+        ]
+        cardinality_one_property_data_check_b = data_checks_by_conflict_id[
+            cardinality_one_property_conflict_b.conflict_id
+        ]
+        cardinality_many_property_data_check = data_checks_by_conflict_id[
+            cardinality_many_property_conflict.conflict_id
+        ]
+        node_removed_data_check = data_checks_by_conflict_id[node_removed_conflict.conflict_id]
+        node_removed_attr_value_data_check = data_checks_by_conflict_id[
+            node_removed_attribute_value_conflict.conflict_id
+        ]
         assert attr_value_data_check.keep_branch.value.value == attribute_value_conflict.keep_branch.value
         assert peer_data_check.keep_branch.value is None
         assert cardinality_one_property_data_check_a.keep_branch.value is None
@@ -835,8 +846,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert peer_conflict.conflict_id in core_data_checks
-        peer_data_check = core_data_checks[peer_conflict.conflict_id]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert peer_conflict.conflict_id in data_checks_by_conflict_id
+        peer_data_check = data_checks_by_conflict_id[peer_conflict.conflict_id]
         assert peer_data_check.keep_branch.value.value is peer_conflict.keep_branch.value
 
     async def test_resolve_peer_property_conflict(
@@ -927,11 +939,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert cardinality_one_property_conflict_a.conflict_id in core_data_checks
-        assert cardinality_one_property_conflict_b.conflict_id in core_data_checks
-        data_check_a = core_data_checks[cardinality_one_property_conflict_a.conflict_id]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert cardinality_one_property_conflict_a.conflict_id in data_checks_by_conflict_id
+        assert cardinality_one_property_conflict_b.conflict_id in data_checks_by_conflict_id
+        data_check_a = data_checks_by_conflict_id[cardinality_one_property_conflict_a.conflict_id]
         assert data_check_a.keep_branch.value.value == cardinality_one_property_conflict_a.keep_branch.value
-        data_check_b = core_data_checks[cardinality_one_property_conflict_b.conflict_id]
+        data_check_b = data_checks_by_conflict_id[cardinality_one_property_conflict_b.conflict_id]
         assert data_check_b.keep_branch.value.value == cardinality_one_property_conflict_b.keep_branch.value
 
     async def test_resolve_cardinality_many_property_conflict(
@@ -987,8 +1000,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert cardinality_many_property_conflict.conflict_id in core_data_checks
-        peer_data_check = core_data_checks[cardinality_many_property_conflict.conflict_id]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert cardinality_many_property_conflict.conflict_id in data_checks_by_conflict_id
+        peer_data_check = data_checks_by_conflict_id[cardinality_many_property_conflict.conflict_id]
         assert peer_data_check.keep_branch.value.value is cardinality_many_property_conflict.keep_branch.value
 
     async def test_merge_fails_with_conflicts(
@@ -1059,12 +1073,15 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
         assert {
             node_removed_conflict.conflict_id,
             node_removed_attribute_value_conflict.conflict_id,
-        } <= set(core_data_checks.keys())
-        node_removed_data_check = core_data_checks[node_removed_conflict.conflict_id]
-        node_removed_attr_value_data_check = core_data_checks[node_removed_attribute_value_conflict.conflict_id]
+        } <= set(data_checks_by_conflict_id.keys())
+        node_removed_data_check = data_checks_by_conflict_id[node_removed_conflict.conflict_id]
+        node_removed_attr_value_data_check = data_checks_by_conflict_id[
+            node_removed_attribute_value_conflict.conflict_id
+        ]
         assert node_removed_data_check.keep_branch.value.value == node_removed_conflict.keep_branch.value
         assert (
             node_removed_attr_value_data_check.keep_branch.value.value
@@ -1094,10 +1111,53 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert set(core_data_checks.keys()) == {tc.conflict_id for tc in tracked_conflicts}
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert set(data_checks_by_conflict_id.keys()) == {tc.conflict_id for tc in tracked_conflicts}
         for tracked_conflict in tracked_conflicts:
-            data_check = core_data_checks[tracked_conflict.conflict_id]
+            data_check = data_checks_by_conflict_id[tracked_conflict.conflict_id]
             assert data_check.keep_branch.value.value == tracked_conflict.keep_branch.value
+
+    async def test_create_another_proposed_change_data_checks_created(
+        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+    ) -> None:
+        # verify duplicate data checks can be created
+        result = await client.execute_graphql(
+            query=PROPOSED_CHANGE_CREATE,
+            variables={
+                "name": PROPOSED_CHANGE_NAME + "2",
+                "source_branch": BRANCH_NAME,
+                "destination_branch": default_branch.name,
+            },
+        )
+        assert result["CoreProposedChangeCreate"]["object"]["id"]
+        pc_id = result["CoreProposedChangeCreate"]["object"]["id"]
+        attribute_value_conflict = self.retrieve_item("attribute_value")
+        peer_conflict = self.retrieve_item("peer_conflict")
+        cardinality_one_property_conflict_a = self.retrieve_item("cardinality_one_property_conflict_a")
+        cardinality_one_property_conflict_b = self.retrieve_item("cardinality_one_property_conflict_b")
+        cardinality_many_property_conflict = self.retrieve_item("cardinality_many_property_conflict")
+        node_removed_conflict = self.retrieve_item("node_removed")
+        node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
+
+        pc = await NodeManager.get_one(db=db, id=pc_id)
+        validators = await pc.validations.get_peers(db=db)
+        data_validator = None
+        for v in validators.values():
+            if v.get_kind() == InfrahubKind.DATAVALIDATOR:
+                data_validator = v
+        assert data_validator
+        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert set(data_checks_by_conflict_id.keys()) == {
+            attribute_value_conflict.conflict_id,
+            peer_conflict.conflict_id,
+            cardinality_one_property_conflict_a.conflict_id,
+            cardinality_one_property_conflict_b.conflict_id,
+            cardinality_many_property_conflict.conflict_id,
+            node_removed_conflict.conflict_id,
+            node_removed_attribute_value_conflict.conflict_id,
+        }
+        assert len(core_data_checks) == len(data_checks_by_conflict_id)
 
     async def test_merge_proposed_change(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
