@@ -30,7 +30,18 @@ To help with the development process of a repository configuration file, you can
 
 ## GraphQL query {#graphql-query}
 
-This is the easiest type of object to link to Infrahub through an external repository because they do not need to be specified in the `.infrahub.yml` file. When Infrahub creates a Repository or pulls changes from the associated external repository, it will scan all the files in the repository and save any that have a `.gql` extension as GraphQLQuery objects in Infrahub.
+GraphQL queries could be defined in file(s) with a `.gql` extension. Then queries must also be explicitly identified in the `.infrahub.yml` file under `queries`.
+
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  queries:
+    - name: topology_info
+      file_path: "topology/topology_info.gql"
+  ```
+
+</details>
 
 ## Schema {#schema}
 
