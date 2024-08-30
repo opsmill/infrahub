@@ -176,16 +176,29 @@ export default function ObjectItems({
 
           <Filters schema={schema} />
 
-          {schema.kind !== ARTIFACT_OBJECT && (
+          {schema.kind === ACCOUNT_OBJECT && (
+            <Tooltip
+              enabled={!permission.write.allow}
+              content={permission.isAdmin.message ?? undefined}>
+              <Button
+                data-cy="create"
+                data-testid="create-object-button"
+                disabled={!permission.isAdmin.allow}
+                onClick={() => setShowCreateDrawer(true)}>
+                <Icon icon="mdi:plus" className="text-sm mr-1.5" />
+                Add {schema?.label}
+              </Button>
+            </Tooltip>
+          )}
+
+          {schema.kind !== ARTIFACT_OBJECT && schema.kind !== ACCOUNT_OBJECT && (
             <Tooltip
               enabled={!permission.write.allow}
               content={permission.write.message ?? undefined}>
               <Button
                 data-cy="create"
                 data-testid="create-object-button"
-                disabled={
-                  schema.kind === ACCOUNT_OBJECT ? !permission.isAdmin : !permission.write.allow
-                }
+                disabled={!permission.write.allow}
                 onClick={() => setShowCreateDrawer(true)}>
                 <Icon icon="mdi:plus" className="text-sm mr-1.5" />
                 Add {schema?.label}
