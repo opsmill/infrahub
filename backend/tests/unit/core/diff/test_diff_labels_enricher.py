@@ -1,3 +1,4 @@
+from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.enricher.labels import DiffLabelsEnricher
 from infrahub.core.initialization import create_branch
@@ -19,19 +20,24 @@ async def test_labels_added(
     db: InfrahubDatabase, default_branch, car_yaris_main, person_jane_main, person_alfred_main, person_john_main
 ):
     branch = await create_branch(db=db, branch_name="branch")
+    yaris_label_main = await car_yaris_main.render_display_label(db=db)
+    yaris_branch = await NodeManager.get_one(db=db, branch=branch, id=car_yaris_main.get_id())
+    yaris_branch.color.value = "purple"
+    await yaris_branch.save(db=db)
+    yaris_label_branch = await yaris_branch.render_display_label(db=db)
     alfred_branch = await NodeManager.get_one(db=db, branch=branch, id=person_alfred_main.get_id())
     await alfred_branch.delete(db=db)
 
     diff_attribute_owner_prop = EnrichedPropertyFactory.build(
-        property_type=DatabaseEdgeType.HAS_OWNER, previous_value=None, new_value=person_john_main.id
+        property_type=DatabaseEdgeType.HAS_OWNER, previous_value=car_yaris_main.id, new_value=person_john_main.id
     )
     diff_attribute_source_conflict = EnrichedConflictFactory.build(
-        base_branch_value=person_john_main.id, diff_branch_value=person_alfred_main.id
+        base_branch_value=person_alfred_main.id, diff_branch_value=person_john_main.id
     )
     diff_attribute_source_prop = EnrichedPropertyFactory.build(
         property_type=DatabaseEdgeType.HAS_SOURCE,
         previous_value=person_john_main.id,
-        new_value=None,
+        new_value=car_yaris_main.id,
         conflict=diff_attribute_source_conflict,
     )
     diff_attribute_value_conflict = EnrichedConflictFactory.build(
@@ -74,13 +80,18 @@ async def test_labels_added(
     )
     diff_rel = EnrichedRelationshipGroupFactory.build(name="owner", nodes=set(), relationships={diff_rel_element})
     diff_node = EnrichedNodeFactory.build(
+        action=DiffAction.UPDATED,
         uuid=car_yaris_main.get_id(),
         kind=car_yaris_main.get_kind(),
         relationships={diff_rel},
         attributes={diff_attribute},
     )
     deleted_diff_node = EnrichedNodeFactory.build(
-        uuid=person_alfred_main.get_id(), kind=person_alfred_main.get_kind(), relationships=set(), attributes=set()
+        action=DiffAction.REMOVED,
+        uuid=person_alfred_main.get_id(),
+        kind=person_alfred_main.get_kind(),
+        relationships=set(),
+        attributes=set(),
     )
 
     diff_root = EnrichedRootFactory.build(
@@ -92,18 +103,18 @@ async def test_labels_added(
 
     nodes_by_id = {n.uuid: n for n in diff_root.nodes}
     updated_node = nodes_by_id[car_yaris_main.get_id()]
-    assert updated_node.label == "yaris #444444"
+    assert updated_node.label == yaris_label_branch
     diff_attribute = updated_node.attributes.pop()
     properties_by_type = {p.property_type: p for p in diff_attribute.properties}
     owner_prop = properties_by_type[DatabaseEdgeType.HAS_OWNER]
-    assert owner_prop.previous_label is None
+    assert owner_prop.previous_label == yaris_label_main
     assert owner_prop.new_label == "John"
     source_prop = properties_by_type[DatabaseEdgeType.HAS_SOURCE]
     assert source_prop.previous_label == "John"
-    assert source_prop.new_label is None
+    assert source_prop.new_label == yaris_label_branch
     source_prop_conflict = source_prop.conflict
-    assert source_prop_conflict.base_branch_label == "John"
-    assert source_prop_conflict.diff_branch_label == "Alfred"
+    assert source_prop_conflict.base_branch_label == "Alfred"
+    assert source_prop_conflict.diff_branch_label == "John"
     value_prop = properties_by_type[DatabaseEdgeType.HAS_VALUE]
     assert value_prop.previous_label is None
     assert value_prop.new_label is None
@@ -129,7 +140,7 @@ async def test_labels_added(
     assert related_prop.previous_label == "John"
     assert related_prop.new_label == "Jane"
     related_prop_conflict = related_prop.conflict
-    assert related_prop_conflict.base_branch_label == "yaris #444444"
+    assert related_prop_conflict.base_branch_label == yaris_label_main
     assert related_prop_conflict.diff_branch_label == "Jane"
 
     deleted_node = nodes_by_id[person_alfred_main.get_id()]

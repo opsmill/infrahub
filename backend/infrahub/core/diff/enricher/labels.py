@@ -2,6 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Generator
 
+from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.database import InfrahubDatabase
@@ -49,10 +50,16 @@ class DiffLabelsEnricher(DiffEnricherInterface):
             raise RuntimeError("could not identify diff branch")
         return self._diff_branch_name
 
+    def _get_branch_for_action(self, action: DiffAction) -> str:
+        if action is DiffAction.REMOVED:
+            return self.base_branch_name
+        return self.diff_branch_name
+
     def _nodes_iterator(self, enriched_diff_root: EnrichedDiffRoot) -> Generator[DisplayLabelRequest, str | None, None]:
         for node in enriched_diff_root.nodes:
             if not self._conflicts_only:
-                label = yield DisplayLabelRequest(node_id=node.uuid, branch_name=self.diff_branch_name)
+                branch_name = self._get_branch_for_action(action=node.action)
+                label = yield DisplayLabelRequest(node_id=node.uuid, branch_name=branch_name)
                 if label:
                     node.label = label
             for attribute_diff in node.attributes:
@@ -80,7 +87,8 @@ class DiffLabelsEnricher(DiffEnricherInterface):
     ) -> Generator[DisplayLabelRequest, str | None, None]:
         for element_diff in relationship_diff.relationships:
             if not self._conflicts_only:
-                peer_label = yield DisplayLabelRequest(node_id=element_diff.peer_id, branch_name=self.diff_branch_name)
+                branch_name = self._get_branch_for_action(action=element_diff.action)
+                peer_label = yield DisplayLabelRequest(node_id=element_diff.peer_id, branch_name=branch_name)
                 if peer_label:
                     element_diff.peer_label = peer_label
             if element_diff.conflict:
@@ -137,7 +145,7 @@ class DiffLabelsEnricher(DiffEnricherInterface):
                 conflict_diff.base_branch_label = label
         if conflict_diff.diff_branch_value:
             label = yield DisplayLabelRequest(
-                node_id=conflict_diff.diff_branch_value, branch_name=self.base_branch_name
+                node_id=conflict_diff.diff_branch_value, branch_name=self.diff_branch_name
             )
             if label:
                 conflict_diff.diff_branch_label = label
@@ -168,7 +176,7 @@ class DiffLabelsEnricher(DiffEnricherInterface):
             if node_kind not in branch_map:
                 branch_map[node_kind] = []
             branch_map[node_kind].append(dlr.node_id)
-        return await get_display_labels(db=self.db, nodes=display_label_request_map, ignore_deleted=False)
+        return await get_display_labels(db=self.db, nodes=display_label_request_map)
 
     async def enrich(
         self,
