@@ -396,6 +396,7 @@ class CoreRepositoryValidator(CoreValidator):
 
 class CoreSchemaCheck(CoreCheck):
     conflicts: JSONAttribute
+    enriched_conflict_id: StringOptional
 
 
 class CoreSchemaValidator(CoreValidator):
@@ -813,6 +814,7 @@ class CoreRepositoryValidatorSync(CoreValidatorSync):
 
 class CoreSchemaCheckSync(CoreCheckSync):
     conflicts: JSONAttribute
+    enriched_conflict_id: StringOptional
 
 
 class CoreSchemaValidatorSync(CoreValidatorSync):
