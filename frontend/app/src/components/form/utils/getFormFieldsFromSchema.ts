@@ -39,6 +39,7 @@ type GetFormFieldsFromSchema = {
   isFilterForm?: boolean;
   filters?: Array<Filter>;
   pools?: Array<NumberPoolData>;
+  isUpdate?: boolean;
 };
 
 export const getFormFieldsFromSchema = ({
@@ -49,10 +50,11 @@ export const getFormFieldsFromSchema = ({
   isFilterForm,
   filters,
   pools = [],
+  isUpdate,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields = [
     ...(schema.attributes ?? []),
-    ...getRelationshipsForForm(schema.relationships ?? []),
+    ...getRelationshipsForForm(schema.relationships ?? [], isUpdate),
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 

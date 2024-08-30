@@ -25,7 +25,7 @@ describe("getRelationshipsForForm", () => {
     expect(result).toEqual([relationships[0]]);
   });
 
-  it("returns a relationship if cardinality is many and kind is Attribute or Parent", () => {
+  it("returns a relationship of cardinality many if kind is Attribute or Parent", () => {
     // GIVEN
     const relationships = [
       buildRelationshipSchema({ cardinality: "many", kind: "Attribute" }),
@@ -39,7 +39,7 @@ describe("getRelationshipsForForm", () => {
     expect(result).toEqual(relationships);
   });
 
-  it("should not return a relationship if cardinality is many and kind is Generic/Component/Hierarchy", () => {
+  it("should not return a relationship of cardinality many if kind is Generic/Component/Hierarchy", () => {
     // GIVEN
     const relationships = [
       buildRelationshipSchema({ cardinality: "many", kind: "Generic" }),
@@ -56,7 +56,7 @@ describe("getRelationshipsForForm", () => {
     expect(result).toEqual([]);
   });
 
-  it("returns a relationship if cardinality is many and it's mandatory field", () => {
+  it("returns a relationship of cardinality many if it's mandatory field", () => {
     // GIVEN
     const relationships = [
       buildRelationshipSchema({ cardinality: "many", kind: "Attribute", optional: false }),
@@ -73,5 +73,25 @@ describe("getRelationshipsForForm", () => {
 
     // THEN
     expect(result).toEqual(relationships);
+  });
+
+  it("When update, returns a mandatory relationship of cardinality is many if kind is Attribute or Parent", () => {
+    // GIVEN
+    const relationships = [
+      buildRelationshipSchema({ cardinality: "many", kind: "Attribute", optional: false }),
+      buildRelationshipSchema({ cardinality: "many", kind: "Parent", optional: false }),
+      buildRelationshipSchema({ cardinality: "many", kind: "Generic", optional: false }),
+      buildRelationshipSchema({ cardinality: "many", kind: "Component", optional: false }),
+      buildRelationshipSchema({ cardinality: "many", kind: "Hierarchy", optional: false }),
+      buildRelationshipSchema({ cardinality: "many", kind: "Group", optional: false }),
+      buildRelationshipSchema({ cardinality: "many", kind: "Profile", optional: false }),
+    ];
+    const isUpdate = true;
+
+    // WHEN
+    const result = getRelationshipsForForm(relationships, isUpdate);
+
+    // THEN
+    expect(result).toEqual([relationships[0], relationships[1]]);
   });
 });
