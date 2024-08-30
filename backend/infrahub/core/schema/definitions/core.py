@@ -1343,6 +1343,7 @@ core_models: dict[str, Any] = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
+                {"name": "enriched_conflict_id", "kind": "Text", "optional": True},
             ],
         },
         {
