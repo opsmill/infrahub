@@ -132,6 +132,7 @@ class DiffCoordinator:
                 from_time=from_time,
                 to_time=to_time,
                 tracking_id=tracking_id,
+                include_empty=True,
             )
             if tracking_id:
                 diff_uuids_to_delete += [
