@@ -1391,7 +1391,7 @@ async def test_schema_branch_process_filters(
             "enum": None,
             "id": None,
             "kind": FilterSchemaKind.TEXT,
-            "name": "hfids",
+            "name": "hfid",
             "object_kind": None,
             "state": HashableModelState.PRESENT,
         },

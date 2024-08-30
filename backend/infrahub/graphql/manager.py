@@ -785,7 +785,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         if schema.human_friendly_id and top_level:
             # HFID filter limited to top level because we can't filter on HFID for relationships (yet)
-            filters["hfids"] = graphene.List(graphene.List(graphene.String))
+            filters["hfid"] = graphene.List(graphene.String)
 
         for attr in schema.attributes:
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)

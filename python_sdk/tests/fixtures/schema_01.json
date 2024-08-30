@@ -268,7 +268,7 @@
                     "description": null
                 },
                 {
-                    "name": "hfids",
+                    "name": "hfid",
                     "kind": "List",
                     "description": null
                 },

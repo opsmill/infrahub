@@ -349,7 +349,7 @@ class InfrahubClient(BaseClient):
                 filters["ids"] = [id]
         elif hfid:
             if isinstance(schema, NodeSchema) and schema.human_friendly_id:
-                filters["hfids"] = [hfid]
+                filters["hfid"] = hfid
             else:
                 raise ValueError("Cannot filter by HFID is node schema has not HFID defined")
         elif kwargs:
@@ -1357,7 +1357,7 @@ class InfrahubClientSync(BaseClient):
                 filters["ids"] = [id]
         elif hfid:
             if isinstance(schema, NodeSchema) and schema.human_friendly_id:
-                filters["hfids"] = [hfid]
+                filters["hfid"] = hfid
             else:
                 raise ValueError("Cannot filter by HFID is node schema has not HFID defined")
         elif kwargs:

@@ -14,9 +14,7 @@ class GetListMixin:
     @classmethod
     async def get_list(cls, fields: dict, context: GraphqlContext, **kwargs):
         async with context.db.start_session() as db:
-            filters = {
-                key: value for key, value in kwargs.items() if ("__" in key and value) or key in ("ids", "hfids")
-            }
+            filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key in ("ids", "hfid")}
 
             objs = await NodeManager.query(
                 db=db,
@@ -47,7 +45,7 @@ class GetListMixin:
             filters = {
                 key: value
                 for key, value in kwargs.items()
-                if ("__" in key and value is not None) or key in ("ids", "hfids")
+                if ("__" in key and value is not None) or key in ("ids", "hfid")
             }
 
             edges = fields.get("edges", {})
@@ -69,7 +67,7 @@ class GetListMixin:
             )
 
             if "count" in fields:
-                if filters.get("hfids"):
+                if filters.get("hfid"):
                     response["count"] = len(objs)
                 else:
                     response["count"] = await NodeManager.count(
