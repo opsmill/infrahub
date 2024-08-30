@@ -137,6 +137,7 @@ export default function ObjectItemEditComponent(props: Props) {
       currentObject={objectDetailsData}
       currentProfiles={objectProfiles}
       data-cy="object-item-edit"
+      isUpdate
     />
   );
 }
