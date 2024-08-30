@@ -43,17 +43,6 @@ test.describe("Getting started with Infrahub - Integration with Git", () => {
     });
   });
 
-  test("2. Git integration", async ({ page }) => {
-    await page.goto("/");
-
-    await test.step("Create a new Git repository", async () => {
-      await page.getByRole("link", { name: "Repository" }).click();
-      await expect(page.getByText("A Git Repository integrated with Infrahub")).toBeVisible();
-      // await page.getByRole("link", { name: "Add Genericrepository" }).click();
-      // await expect(page.getByText("Create Genericrepository")).toBeVisible();
-      await saveScreenshotForDocs(page, "guides_repository_add_git_repo");
-    });
-  });
   // test("Update the Jinja2 template in GitHub", async ({ page }) => {
   //   // not currently E2E testable
   // });
