@@ -10,7 +10,11 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import IPPrefixUtilization
-from infrahub.core.query.resource_manager import IPAddressPoolGetIdentifiers, PrefixPoolGetIdentifiers
+from infrahub.core.query.resource_manager import (
+    IPAddressPoolGetIdentifiers,
+    NumberPoolGetAllocated,
+    PrefixPoolGetIdentifiers,
+)
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.number import NumberUtilizationGetter
 
@@ -244,30 +248,23 @@ async def resolve_number_pool_allocation(
     db: InfrahubDatabase, context: GraphqlContext, pool: CoreNode, fields: dict, offset: int, limit: int
 ) -> dict:
     response: dict[str, Any] = {}
+    query = await NumberPoolGetAllocated.init(
+        db=db, pool=pool, offset=offset, limit=limit, branch=context.branch, branch_agnostic=True
+    )
+
     if "count" in fields:
-        response["count"] = await registry.manager.count(
-            db=db,
-            schema=pool.node.value,  # type: ignore[attr-defined]
-            at=context.at,
-            branch_agnostic=True,
-        )
+        response["count"] = await query.count(db=db)
+
     if "edges" in fields:
-        allocated_numbers = await registry.manager.query(
-            db=db,
-            schema=pool.node.value,  # type: ignore[attr-defined]
-            at=context.at,
-            branch_agnostic=True,
-            limit=limit,
-            offset=offset,
-        )
+        await query.execute(db=db)
         edges = []
-        for entry in allocated_numbers:
+        for entry in query.results:
             node = {
                 "node": {
-                    "id": entry.get_id(),
+                    "id": entry.get_as_optional_type("id", str),
                     "kind": pool.node.value,  # type: ignore[attr-defined]
-                    "branch": entry._branch.name,
-                    "display_label": getattr(entry, pool.node_attribute.value).value,  # type: ignore[attr-defined]
+                    "branch": entry.get_as_optional_type("branch", str),
+                    "display_label": entry.get_as_optional_type("value", int),
                 }
             }
             edges.append(node)
@@ -277,7 +274,7 @@ async def resolve_number_pool_allocation(
 
 
 async def resolve_number_pool_utilization(db: InfrahubDatabase, context: GraphqlContext, pool: CoreNode) -> dict:
-    number_pool = NumberUtilizationGetter(db=db, pool=pool, at=context.at)
+    number_pool = NumberUtilizationGetter(db=db, pool=pool, at=context.at, branch=context.branch)
     await number_pool.load_data()
 
     return {

@@ -11,9 +11,8 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import InitializationError, NodeNotFoundError, ValidationError
+from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.utils import find_next_free
 
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
@@ -197,7 +196,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not attribute.from_pool:
             return
 
-        number_pool: Optional[CoreNumberPool] = None
         try:
             number_pool = await registry.manager.get_one_by_id_or_default_filter(
                 db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
@@ -208,35 +206,27 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
                 )
             )
+            return
 
-        if number_pool:
-            if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
-                existing_nodes = await registry.manager.query(db=db, schema=self._schema, branch_agnostic=True)
-                used_numbers = [getattr(existing_node, attribute.name).value for existing_node in existing_nodes]
-
-                next_free = find_next_free(
-                    start=number_pool.start_range.value,
-                    end=number_pool.end_range.value,
-                    used_numbers=used_numbers,
-                )
-
-                if next_free:
-                    attribute.value = next_free
-                    attribute.source = number_pool.id
-                else:
-                    errors.append(
-                        ValidationError(
-                            {f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."}
-                        )
-                    )
-            else:
+        if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
+            try:
+                next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self)
+            except PoolExhaustedError:
                 errors.append(
-                    ValidationError(
-                        {
-                            f"{attribute.name}.from_pool": f"The {number_pool.name.value} pool can't be used for '{attribute.name}'."
-                        }
-                    )
+                    ValidationError({f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."})
                 )
+                return
+
+            attribute.value = next_free
+            attribute.source = number_pool.id
+        else:
+            errors.append(
+                ValidationError(
+                    {
+                        f"{attribute.name}.from_pool": f"The {number_pool.name.value} pool can't be used for '{attribute.name}'."
+                    }
+                )
+            )
 
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
@@ -312,7 +302,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name, None)
                     ),
                 )
-                if not self.id:
+                if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
                     await self.process_pool(db=db, attribute=attribute, errors=errors)
 
@@ -371,7 +361,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
         # pylint: disable=no-member
-        if not self.id and hasattr(self, "label") and hasattr(self, "name"):
+        if not self._existing and hasattr(self, "label") and hasattr(self, "name"):
             if self.label.value is None and self.name.value:
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
                 self.label.is_default = False
@@ -384,9 +374,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if await query.count(db=db):
                 raise ValidationError({"id": f"{id} is already in use"})
 
-        await self._process_fields(db=db, fields=kwargs)
-
         self.id = id or str(UUIDT())
+
+        await self._process_fields(db=db, fields=kwargs)
 
         return self
 
