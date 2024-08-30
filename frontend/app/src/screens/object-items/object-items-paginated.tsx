@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
+  ACCOUNT_OBJECT,
   ACCOUNT_TOKEN_OBJECT,
   ARTIFACT_OBJECT,
   MENU_EXCLUDELIST,
@@ -182,7 +183,9 @@ export default function ObjectItems({
               <Button
                 data-cy="create"
                 data-testid="create-object-button"
-                disabled={!permission.write.allow}
+                disabled={
+                  schema.kind === ACCOUNT_OBJECT ? !permission.isAdmin : !permission.write.allow
+                }
                 onClick={() => setShowCreateDrawer(true)}>
                 <Icon icon="mdi:plus" className="text-sm mr-1.5" />
                 Add {schema?.label}

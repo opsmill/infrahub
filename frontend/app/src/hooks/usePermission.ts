@@ -3,6 +3,7 @@ import { DateTimeParam, useQueryParam } from "use-query-params";
 import { useAuth } from "./useAuth";
 
 interface UsePermission {
+  isAdmin: boolean;
   write: {
     allow: boolean;
     message: string | null;
@@ -17,6 +18,7 @@ export const usePermission = (): UsePermission => {
 
   if (!isAuthenticated || isViewingPastData) {
     return {
+      isAdmin: false,
       write: {
         allow: false,
         message: isAuthenticated ? "Can't edit data from the past." : "Login required.",
@@ -25,6 +27,7 @@ export const usePermission = (): UsePermission => {
   }
 
   return {
+    isAdmin: permissions?.isAdmin ?? false,
     write: {
       allow: permissions?.write ?? false,
       message: null,
