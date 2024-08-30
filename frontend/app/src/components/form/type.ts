@@ -29,7 +29,7 @@ export type AttributeValueFormPool = {
     kind: string;
     id: string;
   };
-  value: { from_pool: string };
+  value: { from_pool: { id: string } };
 };
 
 export type AttributeValueForCheckbox = {

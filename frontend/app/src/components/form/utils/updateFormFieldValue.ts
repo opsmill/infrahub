@@ -35,7 +35,9 @@ export const updateAttributeFieldValue = (
         label: newValue.from_pool.name,
       },
       value: {
-        from_pool: newValue.from_pool.id,
+        from_pool: {
+          id: newValue.from_pool.id,
+        },
       },
     };
   }
