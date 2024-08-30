@@ -40,14 +40,12 @@ jobs:
       frontend: ${{ steps.changes.outputs.frontend_all }}
       helm: ${{ steps.changes.outputs.helm_all }}
       sdk: ${{ steps.changes.outputs.sdk_all }}
-      sync: ${{ steps.changes.outputs.sync_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
       infrahub_poetry_files: ${{ steps.changes.outputs.infrahub_poetry_files }}
       python_sdk_poetry_files: ${{ steps.changes.outputs.python_sdk_poetry_files }}
-      sync_poetry_files: ${{ steps.changes.outputs.sync_poetry_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
     steps:
@@ -178,17 +176,6 @@ jobs:
     with:
       directory: "./python-sdk/"
 
-  sync-poetry-check:
-    if: |
-      needs.files-changed.outputs.sync_poetry_files == 'true' ||
-      github.ref_name == 'stable' ||
-      github.ref_name == 'develop'
-    needs:
-      - "files-changed"
-    uses: "./.github/workflows/poetry-check.yml"
-    with:
-      directory: "./sync/"
-
   python-sdk-unit-tests:
     strategy:
       matrix:
@@ -282,45 +269,6 @@ jobs:
         with:
           flag-name: python-sdk-integration
           parallel: true
-
-  infrahub-sync-unit-tests:
-    strategy:
-      matrix:
-        python-version:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.sync == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: sync/
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: "Setup environment"
-        run: |
-          pipx install poetry
-          poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
-      - name: "Install Package"
-        run: "poetry install"
-      - name: "Pylint Tests"
-        run: "poetry run pylint infrahub_sync/"
-      # - name: "Mypy Tests"
-      #   run: "poetry run mypy --show-error-codes infrahub_sync/"
-
 
   backend-tests-unit:
     if: |
