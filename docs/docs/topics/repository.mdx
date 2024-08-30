@@ -1,6 +1,8 @@
 ---
 title: Repository
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Repository
 
@@ -65,25 +67,55 @@ See this [guide](/guides/repository) for instructions on troubleshooting reposit
 
 Admin status keeps track of Infrahub usage of a repository.
 
-- Active: Infrahub is actively using this repository.
-- Inactive: Infrahub isn't using this repository.
-- Staging: Infrahub is waiting the next proposed change to bring this repository up.
+<Tabs>
+    <TabItem value="Active" default>
+        Infrahub is actively using this repository.
+    </TabItem>
+    <TabItem value="Inactive" default>
+        Infrahub isn't using this repository.
+    </TabItem>
+    <TabItem value="Staging" default>
+        Infrahub is waiting the next proposed change to bring this repository up.
+    </TabItem>
+</Tabs>
 
 ### Operational status
 
 Operational status keeps track of the connectivity between Infrahub and the Repository.
 
-- Unknown: Can't compute the operational status.
-- Error cred: Infrahub can't autheticate to the repository.
-- Error connection: Infrahub can't reach the repository.
-- Error: Issue happened when adding the repository.
-- Online: Repository is up and running.
+<Tabs>
+    <TabItem value="Unknown" default>
+        Can't compute the operational status.
+    </TabItem>
+    <TabItem value="Error cred">
+        Infrahub can't autheticate to the repository.
+    </TabItem>
+    <TabItem value="Error connection">
+        Infrahub can't reach the repository.
+    </TabItem>
+    <TabItem value="Error">
+        Issue happened when adding the repository.
+    </TabItem>
+    <TabItem value="Online">
+        Repository is up and running.
+    </TabItem>
+</Tabs>
 
 ### Sync status
 
 Sync status keeps track of the synchronisation operation's output.
 
-- Unknown: Can't compute the sync status.
-- In sync: All assets stored on the repository are synced in Infrahub.
-- Error import: Something wrong happened while importing repository to Infrahub.
-- Syncing: Sync operation is ongoing.
+<Tabs>
+    <TabItem value="Unknown" default>
+        Can't compute the sync status.
+    </TabItem>
+    <TabItem value="In sync">
+        All assets stored on the repository are synced in Infrahub.
+    </TabItem>
+    <TabItem value="Error import">
+        Something wrong happened while importing repository to Infrahub.
+    </TabItem>
+    <TabItem value="Syncing">
+        Sync operation is ongoing.
+    </TabItem>
+</Tabs>
