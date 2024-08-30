@@ -64,10 +64,9 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("filter diff data", async () => {
       await page.getByRole("button", { name: "1" }).click();
-      await expect(page.getByTestId("reset-diff-filters")).toBeVisible();
       await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
       await expect(page.getByText("UpdatedInterface L3Ethernet1")).not.toBeVisible();
-      await page.getByTestId("reset-diff-filters").click();
+      await page.getByRole("button", { name: "1" }).click();
       await expect(page.getByText("UpdatedInterface L3Ethernet1")).toBeVisible();
     });
   });
