@@ -8,15 +8,15 @@ import TabItem from '@theme/TabItem';
 
 Infrahub supports two different types of connections to external Git repositories:
 
-- [**Core Repository**](/topics/repository#core-repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
+- [**Repository**](/topics/repository#repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
 - [**Read-only Repository**](/topics/repository#read-only-repository) links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
 
 ## Recommendations
 
 - We recommend to use a dedicated repository for Infrahub resources.
 - We recommend to configure the branch `main` as `default_branch`.
-- Use read-only repository preferably for slow moving assets as pulling the changes is a manual operation. It goes well with putting a release tag as a ref and bump the ref from release to release.
-- Use read-only repository for shared assets across multiple instances or repository external to your organization.
+- Use `Read-only Repository` preferably for slow moving assets as pulling the changes is a manual operation. It goes well with putting a release tag as a ref and bump the ref from release to release.
+- Use `Read-only Repository` for shared assets across multiple instances or repository external to your organization.
 
 ## Adding a repository {#add-repository}
 
@@ -72,7 +72,7 @@ In the UI, you should see your new repository. If the repository you added has `
 
 ### Via the GraphQL interface
 
-Using the GraphQL Interface, it is possible to add a CoreRepository or Read-only Repository via a [Mutation](/topics/graphql).
+Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only Repository` via a [Mutation](/topics/graphql).
 {/*TODO: Detail usage if using external GraphQL browser i.e. insomnia*/}
 
 1. Open the [GraphQL Interface](http://localhost:8000/graphql).
@@ -99,7 +99,7 @@ Using the GraphQL Interface, it is possible to add a CoreRepository or Read-only
 3. Copy-paste the correct mutation from below and complete the information
 
 <Tabs>
-  <TabItem value="CoreRepository" default>
+  <TabItem value="Repository" default>
 
 ```GraphQL
   # Endpoint: http://127.0.0.1:8000/graphql/main
@@ -121,7 +121,7 @@ Using the GraphQL Interface, it is possible to add a CoreRepository or Read-only
 
   </TabItem>
   <TabItem value="Read-only Repository">
-    **Make sure that you are on the correct Infrahub branch.** Unlike a CoreRepository, a Read-only Repository will only pull files into the Infrahub branch on which it was created.
+    **Make sure that you are on the correct Infrahub branch.** Unlike a Repository, a Read-only Repository will only pull files into the Infrahub branch on which it was created.
 
 ```GraphQL
   # Endpoint : http://127.0.0.1:8000/graphql/<branch>
@@ -172,7 +172,7 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 3. Create the correct repository object
 
 <Tabs>
-  <TabItem value="Core Repository" default>
+  <TabItem value="Repository" default>
 
 ```python
   # Create repository object ...
@@ -211,11 +211,11 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 
 ## Pulling changes for read-only repository
 
-Read-only Repositories and CoreRepositories work in different ways when it comes to tracking changes on the remote repository. Please refer to the [Repository Topic](/topics/repository#read-only-vs-core) for futher details.
+`Read-only Repository` and `Repository` work in different ways when it comes to tracking changes on the remote repository. Please refer to the [Repository Topic](/topics/repository#read-only-vs-core) for futher details.
 
 :::warning
 
-Unlike CoreRepositories, Infrahub does not automatically update Read-only Repositories with changes from the external repository. To pull in changes from the external repository you must update the `ref` of the Read-only Repository to the desired value.
+Unlike `Repository`, Infrahub does not automatically update `Read-only Repository` with changes from the external repository. To pull in changes from the external repository you must update the `ref` of the `Read-only Repository` to the desired value.
 
 :::
 
@@ -279,8 +279,8 @@ If you are using GitHub as your Git Server, you need to have a fine-grained pers
   2. Select Fine-grained tokens
   3. Limit the scope of the token in **Repository Access** > **Only Select Repositories**
   4. Grant the token permission:
-    - a. If you want to create a CoreRepository using this token, then you will need to give it `Read/Write` access for the **Content** of the repository.
-    - b. If you want to create a Read-only Repository using this token, then you will only need to give it `Read` access for the **Content** of the repository.
+    - a. If you want to create a `Repository` using this token, then you will need to give it `Read/Write` access for the **Content** of the repository.
+    - b. If you want to create a `Read-only Repositor`y using this token, then you will only need to give it `Read` access for the **Content** of the repository.
 
   ![Fine-Grained Token](../media/github_fined_grain_access_token_setup.png)
 </details>

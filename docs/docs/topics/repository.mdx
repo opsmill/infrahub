@@ -10,7 +10,7 @@ import TabItem from '@theme/TabItem';
 
 Infrahub supports two different types of connections to external Git repositories
 
-- **CoreRepository** fully integrates with Git version control, including branch tracking and two-way branch synchronization.
+- **Repository** fully integrates with Git version control, including branch tracking and two-way branch synchronization.
 - **Read-only Repository** links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
 
 See the [guide](/guides/repository) for instructions on creating repositories in Infrahub.
@@ -27,15 +27,15 @@ The [Infrahub web server](/reference/api-server) will never connect directly wit
 
 ![](../media/repository_architecture.excalidraw.svg)
 
-Infrahub stores all of the data that it needs for every remote repository in a directory defined by the `git.repositories_directory` setting in `infrahub.toml`. When the Git agent receives an instruction to update a remote repository, it pulls data from the remote repositories and saves it to the filesystem in the `git.repositories_directory` directory. The Git agent then parses the new data and sends the necessary GraphQL mutations to the Infrahub web server. Infrahub attempts to update each CoreRepository with any changes in the remote repository several times per minute. Read-only repositories are only updated when specifically requested.
+Infrahub stores all of the data that it needs for every remote repository in a directory defined by the `git.repositories_directory` setting in `infrahub.toml`. When the Git agent receives an instruction to update a remote repository, it pulls data from the remote repositories and saves it to the filesystem in the `git.repositories_directory` directory. The Git agent then parses the new data and sends the necessary GraphQL mutations to the Infrahub web server. Infrahub attempts to update `Repository` with any changes in the remote repository several times per minute. Read-only repositories are only updated when specifically requested.
 
 Please note that each Git agent must have access to the same directory on the file system so that they can share work among each other.
 
 <!-- vale off -->
-## Read-only Repository vs. CoreRepository {#read-only-vs-core}
+## Read-only Repository vs. Repository {#read-only-vs-core}
 <!-- vale on -->
 
-Feature                 | CoreRepository                | Read-only Repository
+Feature                 | Repository                | Read-only Repository
 ------------------------|-------------------------------|---------------------
 Branches                | Tracks all remote branches    | Data from one remote commit imported to one Infrahub branch
 Updates **from** remote | Automatic via background task | Manually, by updating `ref`
@@ -49,11 +49,9 @@ Read-only Repositories will only pull data from an external repository into Infr
 
 See the [guide](/guides/repository) for instructions on pulling changes from read-only repositories in Infrahub.
 
-### CoreRepository {#core-repository}
+### Repository {#repository}
 
-{/*TODO: Detail all statuses...*/}
-
-When you create a CoreRepository, Infrahub will try to pull every branch defined in the external repository and create an associated Infrahub branch with the same name and matching data according to what is defined in the `.infrahub.yml` configuration file on the particular remote branch. Infrahub will attempt to sync updates from the external repository several times per minute in a background task that runs on the Git agent(s).
+When you create a `Repository`, Infrahub will try to pull every branch defined in the external repository and create an associated Infrahub branch with the same name and matching data according to what is defined in the `.infrahub.yml` configuration file on the particular remote branch. Infrahub will attempt to sync updates from the external repository several times per minute in a background task that runs on the Git agent(s).
 
 Editing a given GraphQL Query, Transform, Artifact Definition, or Schema within Infrahub **will not** result in those changes being pushed to the external repository and **could potentially be overwritten** when Infrahub pulls new commits from the external repository. Infrahub will only push changes to an external repository when a [Proposed Change](/topics/proposed-change) is merged for which the source and destination branch are both linked to branches on the same external repository. In this case, Infrahub will attempt to create a merge commit and push that commit to the destination branch on the external repository.
 
