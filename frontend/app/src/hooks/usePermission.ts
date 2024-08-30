@@ -37,7 +37,7 @@ export const usePermission = (): UsePermission => {
     },
     write: {
       allow: permissions?.write ?? false,
-      message: isAuthenticated ? "Can't edit data from the past." : null,
+      message: isAuthenticated ? "Login required." : null,
     },
   };
 };
