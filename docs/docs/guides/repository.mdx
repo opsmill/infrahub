@@ -11,8 +11,6 @@ Infrahub supports two different types of connections to external Git repositorie
 - [**Core Repository**](/topics/repository#core-repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
 - [**Read-only Repository**](/topics/repository#read-only-repository) links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
 
-{/*TODO: Add a recommendation section*/}
-
 ## Recommendations
 
 - We recommend to use a dedicated repository for Infrahub resources.
@@ -37,7 +35,7 @@ If you are using GitHub as your Git Server, you need to have a [fine-grained per
 ### Via the web interface
 
 ![Add a Git Repository ](../media/create_repository.png)
-{/*TODO: Change this screen*/}
+{/*TODO: Generate this screen*/}
 
 1. Log in to the Infrahub UI
 2. Go to `Unified Storage` > `Repository`
@@ -215,11 +213,9 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 
 Read-only Repositories and CoreRepositories work in different ways when it comes to tracking changes on the remote repository. Please refer to the [Repository Topic](/topics/repository#read-only-vs-core) for futher details.
 
-{/*TODO: Mention that we can update commit using button*/}
-
 :::warning
 
-Unlike CoreRepositories, Infrahub does not automatically update Read-only Repositories with changes from the external repository. To pull in changes from the external repository you must either set the `ref` of the Read-only Repository to the desired value.
+Unlike CoreRepositories, Infrahub does not automatically update Read-only Repositories with changes from the external repository. To pull in changes from the external repository you must update the `ref` of the Read-only Repository to the desired value.
 
 :::
 
@@ -258,6 +254,19 @@ Unlike CoreRepositories, Infrahub does not automatically update Read-only Reposi
     }
   }
 ```
+
+## Troubleshooting repository
+
+Various issues could affect repositories. The [Repository Status](/topics/repository#repository-statuses) gives you futher details about the root cause.
+
+Also, directly from the UI you can access low level operations's output:
+
+1. Log in to the Infrahub UI
+2. Go to `Unified Storage` > `Repository`
+3. Click on the `CoreReadOnlyRepository` record
+4. Click on the `Tasks` tab
+
+{/*TODO: Add further use cases e.g. sync-issue*/}
 
 ## GitHub personal access token {#personal-access-token}
 
