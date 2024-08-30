@@ -23,6 +23,14 @@ CAR = NodeSchema(
             cardinality=RelationshipCardinality.ONE,
         ),
         RelationshipSchema(
+            name="previous_owner",
+            kind=RelationshipKind.ATTRIBUTE,
+            optional=True,
+            peer=TestKind.PERSON,
+            cardinality=RelationshipCardinality.ONE,
+            identifier="testingcar__previousowners",
+        ),
+        RelationshipSchema(
             name="manufacturer",
             kind=RelationshipKind.ATTRIBUTE,
             optional=False,
