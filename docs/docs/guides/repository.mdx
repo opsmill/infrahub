@@ -301,7 +301,7 @@ This guide makes the assumption that you have saved the CA certificate file as `
 Next we will have to create a Dockerfile. The file should be saved as `Dockerfile` in the same directory as the directory containing the CA certificate you want to install.
 
 ```dockerfile
-ARG INFRAHUB_VERSION=0.15.3
+ARG INFRAHUB_VERSION=0.16.0
 FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
 
 COPY mycacertificate.crt /usr/local/share/ca-certificates/
@@ -311,10 +311,10 @@ RUN update-ca-certificates
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
 ```bash
-INFRAHUB_VERSION=0.15.3 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
+INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 
-This will build a custom docker image and tag it as `custom/infrahub:0.15.3`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
+This will build a custom docker image and tag it as `custom/infrahub:0.16.0`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
 
 As a last step we have to create a `docker-compose.override.yml` file with the following contents in the `development` directory of your clone of the Infrahub repository.
 
@@ -322,7 +322,7 @@ As a last step we have to create a `docker-compose.override.yml` file with the f
 ---
 services:
   infrahub-git:
-    image: custom/infrahub:0.15.3
+    image: custom/infrahub:0.16.0
 ```
 
 A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](/guides/installation).
@@ -346,7 +346,7 @@ In this process we will have to build a custom docker image. This docker image w
 We will have to create a Dockerfile, that should be saved as `Dockerfile` on your local filesystem.
 
 ```dockerfile
-ARG INFRAHUB_VERSION=0.15.3
+ARG INFRAHUB_VERSION=0.16.0
 FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
 
 RUN git config --global http.sslVerify "false"
@@ -355,10 +355,10 @@ RUN git config --global http.sslVerify "false"
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
 ```bash
-INFRAHUB_VERSION=0.15.3 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
+INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 
-This will build a custom docker image and tag it as `custom/infrahub:0.15.3`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
+This will build a custom docker image and tag it as `custom/infrahub:0.16.0`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
 
 As a last step we have to create a `docker-compose.override.yml` file with the following contents in the `development` directory of your clone of the Infrahub repository.
 
@@ -366,7 +366,7 @@ As a last step we have to create a `docker-compose.override.yml` file with the f
 ---
 services:
   infrahub-git:
-    image: custom/infrahub:0.15.3
+    image: custom/infrahub:0.16.0
 ```
 
 A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](/guides/installation).
@@ -390,7 +390,7 @@ In this process we will have to build a custom docker image. This docker image w
 We will have to create a Dockerfile, that should be saved as `Dockerfile` on your local filesystem. In the Dockerfile you will have to adapt the URL for the proxy to your environment. Replace `user:password` with the username and password you have to use for the proxy, if required. Replace the FQDN `internal.proxy` to the FQDN of the proxy and modify the port, if required.
 
 ```dockerfile
-ARG INFRAHUB_VERSION=0.15.3
+ARG INFRAHUB_VERSION=0.16.0
 FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
 
 RUN git config --global http.proxy http://user:password@internal.proxy:8080
@@ -399,10 +399,10 @@ RUN git config --global http.proxy http://user:password@internal.proxy:8080
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
 ```bash
-INFRAHUB_VERSION=0.15.3 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
+INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 
-This will build a custom docker image and tag it as `custom/infrahub:0.15.3`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
+This will build a custom docker image and tag it as `custom/infrahub:0.16.0`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
 
 As a last step we have to create a `docker-compose.override.yml` file with the following contents in the `development` directory of your clone of the Infrahub repository.
 
@@ -410,7 +410,7 @@ As a last step we have to create a `docker-compose.override.yml` file with the f
 ---
 services:
   infrahub-git:
-    image: custom/infrahub:0.15.3
+    image: custom/infrahub:0.16.0
 ```
 
 A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](/guides/installation).
