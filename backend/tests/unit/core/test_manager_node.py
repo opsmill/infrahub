@@ -513,7 +513,6 @@ async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_bra
         updated_at=Timestamp().to_string(),
         branch=default_branch,
         labels=["Node", "TestCar"],
-        is_deleted=False,
     )
 
     class Car(Node):
