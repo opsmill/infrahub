@@ -17,15 +17,15 @@ export const usePermission = (): UsePermission => {
 
   const isViewingPastData = !!qspDate;
 
-  if (!isAuthenticated || isViewingPastData) {
+  if (isViewingPastData) {
     return {
       isAdmin: {
         allow: false,
-        message: "Admin permissions required.",
+        message: "Can't edit data from the past.",
       },
       write: {
         allow: false,
-        message: isAuthenticated ? "Can't edit data from the past." : "Login required.",
+        message: "Can't edit data from the past.",
       },
     };
   }
@@ -37,7 +37,7 @@ export const usePermission = (): UsePermission => {
     },
     write: {
       allow: permissions?.write ?? false,
-      message: null,
+      message: isAuthenticated ? "Can't edit data from the past." : null,
     },
   };
 };
