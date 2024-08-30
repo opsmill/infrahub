@@ -2,12 +2,13 @@ import { QSP } from "@/config/qsp";
 import { DateTimeParam, useQueryParam } from "use-query-params";
 import { useAuth } from "./useAuth";
 
+type Permission = {
+  allow: boolean;
+  message: string | null;
+};
 interface UsePermission {
-  isAdmin: boolean;
-  write: {
-    allow: boolean;
-    message: string | null;
-  };
+  isAdmin: Permission;
+  write: Permission;
 }
 
 export const usePermission = (): UsePermission => {
@@ -18,7 +19,10 @@ export const usePermission = (): UsePermission => {
 
   if (!isAuthenticated || isViewingPastData) {
     return {
-      isAdmin: false,
+      isAdmin: {
+        allow: false,
+        message: "Admin permissions required.",
+      },
       write: {
         allow: false,
         message: isAuthenticated ? "Can't edit data from the past." : "Login required.",
@@ -27,7 +31,10 @@ export const usePermission = (): UsePermission => {
   }
 
   return {
-    isAdmin: permissions?.isAdmin ?? false,
+    isAdmin: {
+      allow: permissions?.isAdmin ?? false,
+      message: null,
+    },
     write: {
       allow: permissions?.write ?? false,
       message: null,
