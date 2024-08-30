@@ -33,7 +33,7 @@ export const usePermission = (): UsePermission => {
   return {
     isAdmin: {
       allow: permissions?.isAdmin ?? false,
-      message: null,
+      message: isAuthenticated ? "Admin permissions required." : null,
     },
     write: {
       allow: permissions?.write ?? false,

@@ -160,6 +160,8 @@ export default function ObjectItems({
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
+  console.log("permission.isAdmin.message: ", permission.isAdmin.message);
+
   return (
     <>
       <div
@@ -178,7 +180,7 @@ export default function ObjectItems({
 
           {schema.kind === ACCOUNT_OBJECT && (
             <Tooltip
-              enabled={!permission.write.allow}
+              enabled={!permission.isAdmin.allow}
               content={permission.isAdmin.message ?? undefined}>
               <Button
                 data-cy="create"
