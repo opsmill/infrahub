@@ -38,8 +38,6 @@ export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
 export const ARTIFACT_OBJECT = "CoreArtifact";
 
-export const INFRAHUB_TASK = "InfrahubTask";
-
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
 
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
@@ -53,8 +51,6 @@ export const SCHEMA_DROPDOWN_REMOVE = "SchemaDropdownRemove";
 export const SCHEMA_ENUM_ADD = "SchemaEnumAdd";
 
 export const SCHEMA_ENUM_REMOVE = "SchemaEnumRemove";
-
-export const GROUP_OBJECT = "CoreGroup";
 
 export const NUMBER_POOL_OBJECT = "CoreNumberPool";
 
