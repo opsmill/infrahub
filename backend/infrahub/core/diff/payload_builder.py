@@ -42,28 +42,24 @@ log = get_logger(__name__)
 
 
 async def get_display_labels_per_kind(
-    kind: str, ids: list[str], branch_name: str, db: InfrahubDatabase, ignore_deleted: bool = True
+    kind: str, ids: list[str], branch_name: str, db: InfrahubDatabase
 ) -> dict[str, str]:
     """Return the display_labels of a list of nodes of a specific kind."""
     branch = await registry.get_branch(branch=branch_name, db=db)
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     fields = schema_branch.generate_fields_for_display_label(name=kind)
-    nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch, ignore_deleted=ignore_deleted)
+    nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch)
     return {node_id: await node.render_display_label(db=db) for node_id, node in nodes.items()}
 
 
-async def get_display_labels(
-    nodes: dict[str, dict[str, list[str]]], db: InfrahubDatabase, ignore_deleted: bool = True
-) -> dict[str, dict[str, str]]:
+async def get_display_labels(nodes: dict[str, dict[str, list[str]]], db: InfrahubDatabase) -> dict[str, dict[str, str]]:
     """Query the display_labels of a group of nodes organized per branch and per kind."""
     response: dict[str, dict[str, str]] = {}
     for branch_name, items in nodes.items():
         if branch_name not in response:
             response[branch_name] = {}
         for kind, ids in items.items():
-            labels = await get_display_labels_per_kind(
-                kind=kind, ids=ids, db=db, branch_name=branch_name, ignore_deleted=ignore_deleted
-            )
+            labels = await get_display_labels_per_kind(kind=kind, ids=ids, db=db, branch_name=branch_name)
             response[branch_name].update(labels)
 
     return response
