@@ -50,16 +50,8 @@ export const BadgeAdded = ({ className, ...props }: DiffBadgeProps) => {
   );
 };
 
-export const CloseBadgeAdded = ({ className }: CloseBadgeProps) => {
-  return (
-    <div
-      className={classNames(
-        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 bg-green-200 text-green-800 rounded-full",
-        className
-      )}>
-      <Icon icon="mdi:close" size={1} />
-    </div>
-  );
+export const CloseBadgeAdded = () => {
+  return <CloseBadge className="bg-green-200 text-green-800" />;
 };
 
 export const BadgeRemoved = ({ className, ...props }: DiffBadgeProps) => {
@@ -72,16 +64,8 @@ export const BadgeRemoved = ({ className, ...props }: DiffBadgeProps) => {
   );
 };
 
-export const CloseBadgeRemoved = ({ className }: CloseBadgeProps) => {
-  return (
-    <div
-      className={classNames(
-        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 bg-red-200 text-red-800 rounded-full",
-        className
-      )}>
-      <Icon icon="mdi:close" size={1} />
-    </div>
-  );
+export const CloseBadgeRemoved = () => {
+  return <CloseBadge className="bg-red-200 text-red-800" />;
 };
 
 export const BadgeConflict = ({ className, ...props }: DiffBadgeProps) => {
@@ -94,16 +78,8 @@ export const BadgeConflict = ({ className, ...props }: DiffBadgeProps) => {
   );
 };
 
-export const CloseBadgeConflict = ({ className }: CloseBadgeProps) => {
-  return (
-    <div
-      className={classNames(
-        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 bg-yellow-200 text-yellow-800 rounded-full",
-        className
-      )}>
-      <Icon icon="mdi:close" size={1} />
-    </div>
-  );
+export const CloseBadgeConflict = () => {
+  return <CloseBadge className="bg-yellow-200 text-yellow-800" />;
 };
 
 export const BadgeUpdated = ({ className, ...props }: DiffBadgeProps) => {
@@ -116,11 +92,15 @@ export const BadgeUpdated = ({ className, ...props }: DiffBadgeProps) => {
   );
 };
 
-export const CloseBadgeUpdated = ({ className }: CloseBadgeProps) => {
+export const CloseBadgeUpdated = () => {
+  return <CloseBadge className="bg-blue-200 text-blue-800" />;
+};
+
+const CloseBadge = ({ className }: CloseBadgeProps) => {
   return (
     <div
       className={classNames(
-        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 bg-blue-200 text-blue-800 rounded-full",
+        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 rounded-full",
         className
       )}>
       <Icon icon="mdi:close" size={1} />
