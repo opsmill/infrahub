@@ -41,6 +41,8 @@ query GetDiffTree($branch: String){
         num_removed
         num_updated
         num_conflicts
+        num_untracked_base_changes
+        num_untracked_diff_changes
         nodes {
             uuid
             kind
@@ -243,6 +245,14 @@ async def test_diff_tree_one_attr_change(
     await diff_repository.update_conflict_by_id(
         conflict_id=enriched_conflict.uuid, selection=ConflictSelection.DIFF_BRANCH
     )
+    # add some untracked changes
+    main_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
+    main_crit.color.value = "blurple"
+    branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
+    branch_crit.color.value = "walrus"
+    await main_crit.save(db=db)
+    await branch_crit.save(db=db)
+
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=params.schema,
@@ -278,6 +288,8 @@ async def test_diff_tree_one_attr_change(
         "num_removed": 0,
         "num_updated": 1,
         "num_conflicts": 1,
+        "num_untracked_base_changes": 1,
+        "num_untracked_diff_changes": 1,
         "nodes": [
             {
                 "uuid": criticality_low.id,
@@ -307,7 +319,7 @@ async def test_diff_tree_one_attr_change(
                                 "property_type": "HAS_VALUE",
                                 "last_changed_at": property_changed_at,
                                 "previous_value": criticality_low.color.value,
-                                "new_value": branch_crit.color.value,
+                                "new_value": "#abcdef",
                                 "previous_label": None,
                                 "new_label": None,
                                 "status": UPDATED_ACTION,
@@ -382,6 +394,8 @@ async def test_diff_tree_one_relationship_change(
         "num_removed": 0,
         "num_updated": 3,
         "num_conflicts": 0,
+        "num_untracked_base_changes": 0,
+        "num_untracked_diff_changes": 0,
     }
     assert len(nodes_response) == 3
     node_response_by_id = {n["uuid"]: n for n in nodes_response}

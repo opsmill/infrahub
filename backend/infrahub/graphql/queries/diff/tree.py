@@ -10,6 +10,7 @@ from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
@@ -122,6 +123,8 @@ class DiffTree(DiffSummaryCounts):
     diff_branch = String(required=True)
     from_time = DateTime(required=True)
     to_time = DateTime(required=True)
+    num_untracked_base_changes = Int(required=False)
+    num_untracked_diff_changes = Int(required=False)
     name = String(required=False)
     nodes = List(DiffNode)
 
@@ -378,7 +381,24 @@ class DiffTreeResolver:
         enriched_diff = enriched_diffs[0]
 
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
+        need_base_changes = "num_untracked_base_changes" in full_fields
+        need_branch_changes = "num_untracked_diff_changes" in full_fields
         diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, context=context)
+        if need_base_changes or need_branch_changes:
+            branch_names = []
+            if need_base_changes:
+                branch_names.append(base_branch.name)
+            if need_branch_changes:
+                branch_names.append(diff_branch.name)
+            query = await DiffCountChanges.init(
+                db=context.db, branch_names=branch_names, diff_from=enriched_diff.to_time, diff_to=Timestamp()
+            )
+            await query.execute(db=context.db)
+            branch_change_map = query.get_num_changes_by_branch()
+            if need_base_changes:
+                diff_tree.num_untracked_base_changes = branch_change_map[base_branch.name]
+            if need_branch_changes:
+                diff_tree.num_untracked_diff_changes = branch_change_map[diff_branch.name]
         return await self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
     # pylint: disable=unused-argument
