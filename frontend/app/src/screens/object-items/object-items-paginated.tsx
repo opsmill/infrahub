@@ -160,8 +160,6 @@ export default function ObjectItems({
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
-  console.log("permission.isAdmin.message: ", permission.isAdmin.message);
-
   return (
     <>
       <div
