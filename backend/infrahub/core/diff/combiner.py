@@ -210,7 +210,11 @@ class DiffCombiner:
         if combined_action is DiffAction.REMOVED:
             for element in ordered_elements:
                 for prop in element.properties:
-                    if prop.property_type is DatabaseEdgeType.IS_RELATED and prop.action is DiffAction.UPDATED and prop.previous_value:
+                    if (
+                        prop.property_type is DatabaseEdgeType.IS_RELATED
+                        and prop.action is DiffAction.UPDATED
+                        and prop.previous_value
+                    ):
                         peer_id = prop.previous_value
                         peer_label = prop.previous_label
                         break
