@@ -725,7 +725,12 @@ class InfrahubNodeBase:
         if not self._schema.human_friendly_id:
             return None
 
-        return [str(self.get_path_value(path=item)) for item in self._schema.human_friendly_id]
+        # If all components of an HFID are null, we cannot identify a single node
+        hfid_components = [self.get_path_value(path=item) for item in self._schema.human_friendly_id]
+        if all(c is None for c in hfid_components):
+            return None
+
+        return [str(c) for c in hfid_components]
 
     def get_human_friendly_id_as_string(self, include_kind: bool = False) -> Optional[str]:
         hfid = self.get_human_friendly_id()

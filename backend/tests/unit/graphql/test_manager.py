@@ -214,6 +214,7 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "height__source__id",
         "height__value",
         "height__values",
+        "hfid",
         "member_of_groups__description__value",
         "member_of_groups__description__values",
         "member_of_groups__group_type__value",
