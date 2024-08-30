@@ -58,16 +58,15 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("resolve conflict", async () => {
-      await page.getByRole("button", { name: "Base" }).click();
+      await page.getByRole("button", { name: "Base", exact: true }).click();
       await expect(page.getByText("Conflict marked as resovled")).toBeVisible();
     });
 
     await test.step("filter diff data", async () => {
       await page.getByRole("button", { name: "1" }).click();
-      await expect(page.getByRole("button", { name: "Reset Filter" })).toBeVisible();
       await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
       await expect(page.getByText("UpdatedInterface L3Ethernet1")).not.toBeVisible();
-      await page.getByRole("button", { name: "Reset Filter" }).click();
+      await page.getByRole("button", { name: "1" }).click();
       await expect(page.getByText("UpdatedInterface L3Ethernet1")).toBeVisible();
     });
   });
