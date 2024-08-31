@@ -110,7 +110,9 @@ class TestConflictsEnricher:
         attribute_name = "smell"
         node_uuid = str(uuid4())
         node_kind = "SomethingSmelly"
-        base_conflict_property = EnrichedPropertyFactory.build(property_type=property_type, action=DiffAction.UPDATED)
+        base_conflict_property = EnrichedPropertyFactory.build(
+            property_type=property_type, action=DiffAction.UPDATED, new_value="potato salad"
+        )
         base_properties = {
             base_conflict_property,
             EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_SOURCE),
@@ -130,7 +132,9 @@ class TestConflictsEnricher:
             EnrichedNodeFactory.build(relationships=set()),
         }
         base_root = EnrichedRootFactory.build(nodes=base_nodes)
-        branch_conflict_property = EnrichedPropertyFactory.build(property_type=property_type, action=DiffAction.UPDATED)
+        branch_conflict_property = EnrichedPropertyFactory.build(
+            property_type=property_type, action=DiffAction.UPDATED, new_value="ham sandwich"
+        )
         branch_properties = {
             branch_conflict_property,
             EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),

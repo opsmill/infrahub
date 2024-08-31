@@ -18,11 +18,17 @@ from infrahub.core.diff.model.path import (
 )
 
 
-class EnrichedConflictFactory(DataclassFactory[EnrichedDiffConflict]): ...
+class EnrichedConflictFactory(DataclassFactory[EnrichedDiffConflict]):
+    __set_as_default_factory_for_type__ = True
+    base_branch_label = None
+    diff_branch_label = None
 
 
 class EnrichedPropertyFactory(DataclassFactory[EnrichedDiffProperty]):
+    __set_as_default_factory_for_type__ = True
     conflict = None
+    previous_label = None
+    new_label = None
 
 
 class EnrichedAttributeFactory(DataclassFactory[EnrichedDiffAttribute]):

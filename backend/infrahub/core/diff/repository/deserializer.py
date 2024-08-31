@@ -288,11 +288,15 @@ class EnrichedDiffDeserializer:
     def _property_node_to_enriched_property(self, property_node: Neo4jNode) -> EnrichedDiffProperty:
         previous_value = self._get_str_or_none_property_value(node=property_node, property_name="previous_value")
         new_value = self._get_str_or_none_property_value(node=property_node, property_name="new_value")
+        previous_label = self._get_str_or_none_property_value(node=property_node, property_name="previous_label")
+        new_label = self._get_str_or_none_property_value(node=property_node, property_name="new_label")
         return EnrichedDiffProperty(
             property_type=DatabaseEdgeType(str(property_node.get("property_type"))),
             changed_at=Timestamp(str(property_node.get("changed_at"))),
             previous_value=previous_value,
             new_value=new_value,
+            previous_label=previous_label,
+            new_label=new_label,
             action=DiffAction(str(property_node.get("action"))),
             path_identifier=str(property_node.get("path_identifier")),
         )
@@ -345,6 +349,12 @@ class EnrichedDiffDeserializer:
         diff_branch_value = self._get_str_or_none_property_value(
             node=diff_conflict_node, property_name="diff_branch_value"
         )
+        base_branch_label = self._get_str_or_none_property_value(
+            node=diff_conflict_node, property_name="base_branch_label"
+        )
+        diff_branch_label = self._get_str_or_none_property_value(
+            node=diff_conflict_node, property_name="diff_branch_label"
+        )
         base_timestamp_str = self._get_str_or_none_property_value(
             node=diff_conflict_node, property_name="base_branch_changed_at"
         )
@@ -357,8 +367,10 @@ class EnrichedDiffDeserializer:
             base_branch_action=DiffAction(str(diff_conflict_node.get("base_branch_action"))),
             base_branch_value=base_branch_value,
             base_branch_changed_at=Timestamp(base_timestamp_str) if base_timestamp_str else None,
+            base_branch_label=base_branch_label,
             diff_branch_action=DiffAction(str(diff_conflict_node.get("diff_branch_action"))),
             diff_branch_value=diff_branch_value,
+            diff_branch_label=diff_branch_label,
             diff_branch_changed_at=Timestamp(diff_timestamp_str) if diff_timestamp_str else None,
             selected_branch=ConflictSelection(selected_branch) if selected_branch else None,
         )

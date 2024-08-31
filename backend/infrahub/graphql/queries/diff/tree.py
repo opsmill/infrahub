@@ -39,9 +39,11 @@ class ConflictDetails(ObjectType):
     base_branch_action = Field(GrapheneDiffActionEnum, required=True)
     base_branch_value = String()
     base_branch_changed_at = DateTime(required=True)
+    base_branch_label = String()
     diff_branch_action = Field(GrapheneDiffActionEnum, required=True)
     diff_branch_value = String()
     diff_branch_changed_at = DateTime(required=True)
+    diff_branch_label = String()
     selected_branch = Field(GraphQLConflictSelection)
 
 
@@ -57,6 +59,8 @@ class DiffProperty(ObjectType):
     last_changed_at = DateTime(required=True)
     previous_value = String(required=False)
     new_value = String(required=False)
+    previous_label = String(required=False)
+    new_label = String(required=False)
     status = Field(GrapheneDiffActionEnum, required=True)
     path_identifier = String(required=True)
     conflict = Field(ConflictDetails, required=False)
@@ -265,6 +269,8 @@ class DiffTreeResolver:
             last_changed_at=enriched_property.changed_at.obj,
             previous_value=enriched_property.previous_value,
             new_value=enriched_property.new_value,
+            previous_label=enriched_property.previous_label,
+            new_label=enriched_property.new_label,
             status=enriched_property.action,
             path_identifier=enriched_property.path_identifier,
             conflict=conflict,
@@ -282,11 +288,13 @@ class DiffTreeResolver:
             base_branch_changed_at=enriched_conflict.base_branch_changed_at.obj
             if enriched_conflict.base_branch_changed_at
             else None,
+            base_branch_label=enriched_conflict.base_branch_label,
             diff_branch_action=enriched_conflict.diff_branch_action,
             diff_branch_value=enriched_conflict.diff_branch_value,
             diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.obj
             if enriched_conflict.diff_branch_changed_at
             else None,
+            diff_branch_label=enriched_conflict.diff_branch_label,
             selected_branch=enriched_conflict.selected_branch.value if enriched_conflict.selected_branch else None,
         )
 

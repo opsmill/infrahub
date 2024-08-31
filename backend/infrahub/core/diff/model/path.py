@@ -91,9 +91,11 @@ class ConflictSelection(Enum):
 class EnrichedDiffConflict:
     uuid: str
     base_branch_action: DiffAction
-    base_branch_value: Any
+    base_branch_value: str | None
     diff_branch_action: DiffAction
-    diff_branch_value: Any
+    diff_branch_value: str | None
+    base_branch_label: str | None = field(default=None, kw_only=True)
+    diff_branch_label: str | None = field(default=None, kw_only=True)
     base_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     diff_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     selected_branch: ConflictSelection | None = field(default=None)
@@ -103,9 +105,11 @@ class EnrichedDiffConflict:
 class EnrichedDiffProperty:
     property_type: DatabaseEdgeType
     changed_at: Timestamp
-    previous_value: Any
-    new_value: Any
+    previous_value: str | None
+    new_value: str | None
     action: DiffAction
+    previous_label: str | None = field(default=None, kw_only=True)
+    new_label: str | None = field(default=None, kw_only=True)
     path_identifier: str = field(default="", kw_only=True)
     conflict: EnrichedDiffConflict | None = field(default=None)
 
@@ -117,8 +121,10 @@ class EnrichedDiffProperty:
         return EnrichedDiffProperty(
             property_type=calculated_property.property_type,
             changed_at=calculated_property.changed_at,
-            previous_value=calculated_property.previous_value,
-            new_value=calculated_property.new_value,
+            previous_value=str(calculated_property.previous_value)
+            if calculated_property.previous_value is not None
+            else None,
+            new_value=str(calculated_property.new_value) if calculated_property.new_value is not None else None,
             action=calculated_property.action,
         )
 
