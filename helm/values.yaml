@@ -1,3 +1,4 @@
+# yamllint disable rule:line-length
 ---
 global:
   kubernetesClusterDomain: cluster.local
