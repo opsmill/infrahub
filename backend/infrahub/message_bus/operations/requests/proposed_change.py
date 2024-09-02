@@ -98,17 +98,6 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
             await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
-        # async with service.database.start_transaction() as db:
-        #     object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-        #         db=db,
-        #         validator_kind=InfrahubKind.DATAVALIDATOR,
-        #         validator_label="Data Integrity",
-        #         check_schema_kind=InfrahubKind.DATACHECK,
-        #     )
-        #     await object_conflict_validator_recorder.record_conflicts(
-        #         proposed_change_id=message.proposed_change, conflicts=conflicts
-        #     )
-
 
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
     async with service.task_report(

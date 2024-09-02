@@ -15,6 +15,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql import prepare_graphql_params
@@ -41,6 +42,8 @@ query GetDiffTree($branch: String){
         num_removed
         num_updated
         num_conflicts
+        num_untracked_base_changes
+        num_untracked_diff_changes
         nodes {
             uuid
             kind
@@ -71,15 +74,19 @@ query GetDiffTree($branch: String){
                     last_changed_at
                     previous_value
                     new_value
+                    previous_label
+                    new_label
                     status
                     conflict {
                         uuid
                         base_branch_action
                         base_branch_value
                         base_branch_changed_at
+                        base_branch_label
                         diff_branch_action
                         diff_branch_value
                         diff_branch_changed_at
+                        diff_branch_label
                         selected_branch
                     }
                 }
@@ -100,9 +107,11 @@ query GetDiffTree($branch: String){
                         base_branch_action
                         base_branch_changed_at
                         base_branch_value
+                        base_branch_label
                         diff_branch_action
                         diff_branch_value
                         diff_branch_changed_at
+                        diff_branch_label
                         selected_branch
                     }
                     properties {
@@ -110,15 +119,19 @@ query GetDiffTree($branch: String){
                         last_changed_at
                         previous_value
                         new_value
+                        previous_label
+                        new_label
                         status
                         conflict {
                             uuid
                             base_branch_action
                             base_branch_value
                             base_branch_changed_at
+                            base_branch_label
                             diff_branch_action
                             diff_branch_value
                             diff_branch_changed_at
+                            diff_branch_label
                             selected_branch
                         }
                     }
@@ -154,6 +167,8 @@ query GetDiffTreeSummary($branch: String, $filters: DiffTreeQueryFilters){
         num_updated
         num_conflicts
         num_unchanged
+        num_untracked_base_changes
+        num_untracked_diff_changes
     }
 }
 """
@@ -233,6 +248,14 @@ async def test_diff_tree_one_attr_change(
     await diff_repository.update_conflict_by_id(
         conflict_id=enriched_conflict.uuid, selection=ConflictSelection.DIFF_BRANCH
     )
+    # add some untracked changes
+    main_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
+    main_crit.color.value = "blurple"
+    branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
+    branch_crit.color.value = "walrus"
+    await main_crit.save(db=db)
+    await branch_crit.save(db=db)
+
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=params.schema,
@@ -268,6 +291,8 @@ async def test_diff_tree_one_attr_change(
         "num_removed": 0,
         "num_updated": 1,
         "num_conflicts": 1,
+        "num_untracked_base_changes": 1,
+        "num_untracked_diff_changes": 1,
         "nodes": [
             {
                 "uuid": criticality_low.id,
@@ -297,7 +322,9 @@ async def test_diff_tree_one_attr_change(
                                 "property_type": "HAS_VALUE",
                                 "last_changed_at": property_changed_at,
                                 "previous_value": criticality_low.color.value,
-                                "new_value": branch_crit.color.value,
+                                "new_value": "#abcdef",
+                                "previous_label": None,
+                                "new_label": None,
                                 "status": UPDATED_ACTION,
                                 "conflict": {
                                     "uuid": enriched_conflict.uuid,
@@ -306,11 +333,13 @@ async def test_diff_tree_one_attr_change(
                                     "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string(
                                         with_z=False
                                     ),
+                                    "base_branch_label": None,
                                     "diff_branch_action": UPDATED_ACTION,
                                     "diff_branch_value": "#abcdef",
                                     "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string(
                                         with_z=False
                                     ),
+                                    "diff_branch_label": None,
                                     "selected_branch": GraphQLConfictSelection.DIFF_BRANCH.name,
                                 },
                             }
@@ -338,6 +367,9 @@ async def test_diff_tree_one_relationship_change(
     before_change_datetime = datetime.now(tz=UTC)
     await branch_car.save(db=db)
     after_change_datetime = datetime.now(tz=UTC)
+    accord_label = await branch_car.render_display_label(db=db)
+    john_label = await person_john_main.render_display_label(db=db)
+    jane_label = await person_jane_main.render_display_label(db=db)
 
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
@@ -365,6 +397,8 @@ async def test_diff_tree_one_relationship_change(
         "num_removed": 0,
         "num_updated": 3,
         "num_conflicts": 0,
+        "num_untracked_base_changes": 0,
+        "num_untracked_diff_changes": 0,
     }
     assert len(nodes_response) == 3
     node_response_by_id = {n["uuid"]: n for n in nodes_response}
@@ -423,6 +457,8 @@ async def test_diff_tree_one_relationship_change(
         "last_changed_at": owner_prop_changed_at,
         "previous_value": person_john_main.id,
         "new_value": person_jane_main.id,
+        "previous_label": john_label,
+        "new_label": jane_label,
         "status": UPDATED_ACTION,
         "conflict": None,
     }
@@ -472,10 +508,10 @@ async def test_diff_tree_one_relationship_change(
     }
     cars_properties_by_type = {p["property_type"]: p for p in cars_properties}
     assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_VISIBLE_TYPE, IS_PROTECTED_TYPE}
-    for property_type, previous_value in [
-        (IS_RELATED_TYPE, car_accord_main.id),
-        (IS_PROTECTED_TYPE, "False"),
-        (IS_VISIBLE_TYPE, "True"),
+    for property_type, previous_value, previous_label in [
+        (IS_RELATED_TYPE, car_accord_main.id, accord_label),
+        (IS_PROTECTED_TYPE, "False", None),
+        (IS_VISIBLE_TYPE, "True", None),
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
@@ -484,7 +520,9 @@ async def test_diff_tree_one_relationship_change(
             "property_type": property_type,
             "last_changed_at": cars_prop_changed_at,
             "previous_value": previous_value,
+            "previous_label": previous_label,
             "new_value": None,
+            "new_label": None,
             "status": REMOVED_ACTION,
             "conflict": None,
         }
@@ -534,10 +572,10 @@ async def test_diff_tree_one_relationship_change(
     }
     cars_properties_by_type = {p["property_type"]: p for p in cars_properties}
     assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_VISIBLE_TYPE, IS_PROTECTED_TYPE}
-    for property_type, new_value in [
-        (IS_RELATED_TYPE, car_accord_main.id),
-        (IS_PROTECTED_TYPE, "False"),
-        (IS_VISIBLE_TYPE, "True"),
+    for property_type, new_value, new_label in [
+        (IS_RELATED_TYPE, car_accord_main.id, accord_label),
+        (IS_PROTECTED_TYPE, "False", None),
+        (IS_VISIBLE_TYPE, "True", None),
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
@@ -546,7 +584,9 @@ async def test_diff_tree_one_relationship_change(
             "property_type": property_type,
             "last_changed_at": cars_prop_changed_at,
             "previous_value": None,
+            "previous_label": None,
             "new_value": new_value,
+            "new_label": new_label,
             "status": ADDED_ACTION,
             "conflict": None,
         }
@@ -599,9 +639,15 @@ async def test_diff_tree_hierarchy_change(
 @pytest.mark.parametrize(
     "filters,counters",
     [
-        pytest.param({}, DiffSummaryCounters(num_added=2, num_updated=4), id="no-filters"),
         pytest.param(
-            {"kind": {"includes": ["TestThing"]}}, DiffSummaryCounters(num_added=2, num_updated=1), id="kind-includes"
+            {},
+            DiffSummaryCounters(num_added=2, num_updated=5, num_removed=2, from_time=Timestamp(), to_time=Timestamp()),
+            id="no-filters",
+        ),
+        pytest.param(
+            {"kind": {"includes": ["TestThing"]}},
+            DiffSummaryCounters(num_added=2, num_updated=1, num_removed=2, from_time=Timestamp(), to_time=Timestamp()),
+            id="kind-includes",
         ),
     ],
 )
@@ -637,16 +683,15 @@ async def test_diff_summary_filters(
     thing1_branch.name.value = "THING1"
     await thing1_branch.save(db=db)
 
-    # FIXME, there is an issue related to label for deleted nodes right now that makes it complicated to use REMOVED nodes in this test
-    # thing2_branch = await NodeManager.get_one(db=db, id=thing2_main.id, branch=diff_branch)
-    # await thing2_branch.delete(db=db)
+    thing2_branch = await NodeManager.get_one(db=db, id=thing2_main.id, branch=diff_branch)
+    await thing2_branch.delete(db=db)
 
     # ----------------------------
     # Generate Diff in DB
     # ----------------------------
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
-    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+    enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
 
     result = await graphql(
@@ -658,27 +703,37 @@ async def test_diff_summary_filters(
     )
 
     assert result.errors is None
+    counters.from_time = enriched_diff.from_time
+    counters.to_time = enriched_diff.to_time
     diff: dict = result.data["DiffTreeSummary"]
+    from_timestamp = Timestamp(result.data["DiffTreeSummary"]["from_time"])
+    to_timestamp = Timestamp(result.data["DiffTreeSummary"]["to_time"])
     summary = DiffSummaryCounters(
         num_added=diff["num_added"],
         num_updated=diff["num_updated"],
         num_unchanged=diff["num_unchanged"],
         num_removed=diff["num_removed"],
         num_conflicts=diff["num_conflicts"],
+        from_time=from_timestamp,
+        to_time=to_timestamp,
     )
     assert summary == counters
+    assert result.data["DiffTreeSummary"]["num_untracked_base_changes"] == 0
+    assert result.data["DiffTreeSummary"]["num_untracked_diff_changes"] == 0
 
 
 @pytest.mark.parametrize(
     "filters,labels",
     [
-        pytest.param({}, ["THING1", "europe", "paris", "paris rack2", "paris-r1", "thing3"], id="no-filters"),
-        pytest.param({"kind": {"includes": ["TestThing"]}}, ["THING1", "thing3"], id="kind-includes"),
+        pytest.param({}, ["THING1", "thing2", "europe", "paris", "paris rack2", "paris-r1", "thing3"], id="no-filters"),
+        pytest.param({"kind": {"includes": ["TestThing"]}}, ["THING1", "thing2", "thing3"], id="kind-includes"),
         pytest.param(
             {"kind": {"excludes": ["TestThing"]}}, ["europe", "paris", "paris rack2", "paris-r1"], id="kind-excludes"
         ),
-        pytest.param({"namespace": {"includes": ["Test"]}}, ["THING1", "thing3"], id="namespace-includes"),
-        pytest.param({"namespace": {"excludes": ["Location"]}}, ["THING1", "thing3"], id="namespace-excludes"),
+        pytest.param({"namespace": {"includes": ["Test"]}}, ["THING1", "thing2", "thing3"], id="namespace-includes"),
+        pytest.param(
+            {"namespace": {"excludes": ["Location"]}}, ["THING1", "thing2", "thing3"], id="namespace-excludes"
+        ),
         pytest.param(
             {"status": {"includes": ["UPDATED"]}},
             ["THING1", "europe", "paris", "paris rack2", "paris-r1"],
@@ -686,12 +741,12 @@ async def test_diff_summary_filters(
         ),
         pytest.param(
             {"status": {"excludes": ["UNCHANGED"]}},
-            ["THING1", "europe", "paris", "paris rack2", "paris-r1", "thing3"],
+            ["THING1", "thing2", "europe", "paris", "paris rack2", "paris-r1", "thing3"],
             id="status-excludes",
         ),
         pytest.param(
             {"kind": {"includes": ["TestThing"]}, "status": {"excludes": ["ADDED"]}},
-            ["THING1"],
+            ["THING1", "thing2"],
             id="kind-includes-status-excludes",
         ),
     ],
@@ -728,9 +783,8 @@ async def test_diff_get_filters(
     thing1_branch.name.value = "THING1"
     await thing1_branch.save(db=db)
 
-    # FIXME, there is an issue related to label for deleted nodes right now that makes it complicated to use REMOVED nodes in this test
-    # thing2_branch = await NodeManager.get_one(db=db, id=thing2_main.id, branch=diff_branch)
-    # await thing2_branch.delete(db=db)
+    thing2_branch = await NodeManager.get_one(db=db, id=thing2_main.id, branch=diff_branch)
+    await thing2_branch.delete(db=db)
 
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)

@@ -7,6 +7,7 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
+from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-    from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
 
     from ..attribute import BaseAttribute
@@ -200,7 +200,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         number_pool: Optional[CoreNumberPool] = None
         try:
             number_pool = await registry.manager.get_one_by_id_or_default_filter(
-                db=db, id=attribute.from_pool, kind=InfrahubKind.NUMBERPOOL
+                db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
             )
         except NodeNotFoundError:
             errors.append(
@@ -212,40 +212,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if number_pool:
             if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
                 existing_nodes = await registry.manager.query(db=db, schema=self._schema, branch_agnostic=True)
-
-                used_number_lookup_key: Optional[str] = None
-                used_numbers: dict[str, list[int]] = {}
-
-                if not number_pool.unique_for.value:
-                    # No uniqueness constraints so this should be a unique list
-                    # None is used as key to make follow up code generic
-                    used_numbers[None] = [
-                        getattr(existing_node, attribute.name).value for existing_node in existing_nodes
-                    ]
-                else:
-                    # Lookup existing values and sort them given the uniqueness field
-                    for existing_node in existing_nodes:
-                        # Get the relationship peer and use the peer ID as key
-                        unique_for_value_peer = await getattr(existing_node, number_pool.unique_for.value).get_peer(
-                            db=db
-                        )
-                        used_number_set: list[int] = used_numbers.setdefault(
-                            unique_for_value_peer.id if unique_for_value_peer else None, []
-                        )
-                        used_number_set.append(getattr(existing_node, attribute.name).value)
-
-                    unique_for_peer = await getattr(self, number_pool.unique_for.value).get_peer(db=db)
-                    if unique_for_peer:
-                        used_number_lookup_key = unique_for_peer.id
+                used_numbers = [getattr(existing_node, attribute.name).value for existing_node in existing_nodes]
 
                 next_free = find_next_free(
                     start=number_pool.start_range.value,
                     end=number_pool.end_range.value,
-                    used_numbers=used_numbers.get(used_number_lookup_key, []),
+                    used_numbers=used_numbers,
                 )
 
                 if next_free:
                     attribute.value = next_free
+                    attribute.source = number_pool.id
                 else:
                     errors.append(
                         ValidationError(

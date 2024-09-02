@@ -10,6 +10,7 @@ from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
         EnrichedDiffRoot,
         EnrichedDiffSingleRelationship,
     )
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql import GraphqlContext
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
@@ -39,9 +41,11 @@ class ConflictDetails(ObjectType):
     base_branch_action = Field(GrapheneDiffActionEnum, required=True)
     base_branch_value = String()
     base_branch_changed_at = DateTime(required=True)
+    base_branch_label = String()
     diff_branch_action = Field(GrapheneDiffActionEnum, required=True)
     diff_branch_value = String()
     diff_branch_changed_at = DateTime(required=True)
+    diff_branch_label = String()
     selected_branch = Field(GraphQLConflictSelection)
 
 
@@ -57,6 +61,8 @@ class DiffProperty(ObjectType):
     last_changed_at = DateTime(required=True)
     previous_value = String(required=False)
     new_value = String(required=False)
+    previous_label = String(required=False)
+    new_label = String(required=False)
     status = Field(GrapheneDiffActionEnum, required=True)
     path_identifier = String(required=True)
     conflict = Field(ConflictDetails, required=False)
@@ -118,6 +124,8 @@ class DiffTree(DiffSummaryCounts):
     diff_branch = String(required=True)
     from_time = DateTime(required=True)
     to_time = DateTime(required=True)
+    num_untracked_base_changes = Int(required=False)
+    num_untracked_diff_changes = Int(required=False)
     name = String(required=False)
     nodes = List(DiffNode)
 
@@ -128,6 +136,8 @@ class DiffTreeSummary(DiffSummaryCounts):
     from_time = DateTime(required=True)
     to_time = DateTime(required=True)
     num_unchanged = Int(required=False)
+    num_untracked_base_changes = Int(required=False)
+    num_untracked_diff_changes = Int(required=False)
 
 
 class DiffTreeResolver:
@@ -265,6 +275,8 @@ class DiffTreeResolver:
             last_changed_at=enriched_property.changed_at.obj,
             previous_value=enriched_property.previous_value,
             new_value=enriched_property.new_value,
+            previous_label=enriched_property.previous_label,
+            new_label=enriched_property.new_label,
             status=enriched_property.action,
             path_identifier=enriched_property.path_identifier,
             conflict=conflict,
@@ -282,11 +294,13 @@ class DiffTreeResolver:
             base_branch_changed_at=enriched_conflict.base_branch_changed_at.obj
             if enriched_conflict.base_branch_changed_at
             else None,
+            base_branch_label=enriched_conflict.base_branch_label,
             diff_branch_action=enriched_conflict.diff_branch_action,
             diff_branch_value=enriched_conflict.diff_branch_value,
             diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.obj
             if enriched_conflict.diff_branch_changed_at
             else None,
+            diff_branch_label=enriched_conflict.diff_branch_label,
             selected_branch=enriched_conflict.selected_branch.value if enriched_conflict.selected_branch else None,
         )
 
@@ -318,6 +332,29 @@ class DiffTreeResolver:
         if list_response:
             return response_list
         return response_list[0]
+
+    async def _add_untracked_fields(
+        self,
+        db: InfrahubDatabase,
+        diff_response: DiffTreeSummary | DiffTree,
+        from_time: Timestamp,
+        base_branch_name: str | None = None,
+        diff_branch_name: str | None = None,
+    ) -> None:
+        if not (base_branch_name or diff_branch_name):
+            return
+        branch_names = []
+        if base_branch_name:
+            branch_names.append(base_branch_name)
+        if diff_branch_name:
+            branch_names.append(diff_branch_name)
+        query = await DiffCountChanges.init(db=db, branch_names=branch_names, diff_from=from_time, diff_to=Timestamp())
+        await query.execute(db=db)
+        branch_change_map = query.get_num_changes_by_branch()
+        if base_branch_name:
+            diff_response.num_untracked_base_changes = branch_change_map.get(base_branch_name, 0)
+        if diff_branch_name:
+            diff_response.num_untracked_diff_changes = branch_change_map.get(diff_branch_name, 0)
 
     # pylint: disable=unused-argument
     async def resolve(
@@ -371,6 +408,16 @@ class DiffTreeResolver:
 
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
         diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, context=context)
+        need_base_changes = "num_untracked_base_changes" in full_fields
+        need_branch_changes = "num_untracked_diff_changes" in full_fields
+        if need_base_changes or need_branch_changes:
+            await self._add_untracked_fields(
+                db=context.db,
+                diff_response=diff_tree,
+                from_time=enriched_diff.to_time,
+                base_branch_name=base_branch.name if need_base_changes else None,
+                diff_branch_name=diff_branch.name if need_branch_changes else None,
+            )
         return await self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
     # pylint: disable=unused-argument
@@ -408,13 +455,25 @@ class DiffTreeResolver:
             filters=filters_dict,
         )
 
-        return DiffTreeSummary(
+        diff_tree_summary = DiffTreeSummary(
             base_branch=base_branch.name,
             diff_branch=diff_branch.name,
-            from_time=from_timestamp.to_graphql(),
-            to_time=to_timestamp.to_graphql(),
-            **summary.model_dump(),
+            from_time=summary.from_time.obj,
+            to_time=summary.to_time.obj,
+            **summary.model_dump(exclude={"from_time", "to_time"}),
         )
+        full_fields = await extract_fields(info.field_nodes[0].selection_set)
+        need_base_changes = "num_untracked_base_changes" in full_fields
+        need_branch_changes = "num_untracked_diff_changes" in full_fields
+        if need_base_changes or need_branch_changes:
+            await self._add_untracked_fields(
+                db=context.db,
+                diff_response=diff_tree_summary,
+                from_time=summary.to_time,
+                base_branch_name=base_branch.name if need_base_changes else None,
+                diff_branch_name=diff_branch.name if need_branch_changes else None,
+            )
+        return diff_tree_summary
 
 
 class IncExclFilterOptions(InputObjectType):

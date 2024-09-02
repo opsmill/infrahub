@@ -32,6 +32,7 @@ class DiffRepository:
         limit: int | None = None,
         offset: int | None = None,
         tracking_id: TrackingId | None = None,
+        include_empty: bool = False,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
         final_limit = limit or config.SETTINGS.database.query_size_limit
@@ -51,7 +52,8 @@ class DiffRepository:
         diff_roots = await self.deserializer.deserialize(
             database_results=query.get_results(), include_parents=include_parents
         )
-        diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
+        if not include_empty:
+            diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
         return diff_roots
 
     async def get_one(

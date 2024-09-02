@@ -208,7 +208,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
 
     async def _get_proposed_change_and_data_validator(self, db) -> tuple[Node, Node]:
-        pcs = await NodeManager.query(db=db, schema=InfrahubKind.PROPOSEDCHANGE, filters={"source_branch": BRANCH_NAME})
+        pcs = await NodeManager.query(
+            db=db, schema=InfrahubKind.PROPOSEDCHANGE, filters={"name__value": PROPOSED_CHANGE_NAME}
+        )
         assert len(pcs) == 1
         pc = pcs[0]
         validators = await pc.validations.get_peers(db=db)
@@ -260,9 +262,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         branch1 = registry.get_branch_from_registry(branch=BRANCH_NAME)
 
         omnicorp_id = initial_dataset["omnicorp"].get_id()
+        omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
+        omnicorp_label = await omnicorp_node.render_display_label(db=db)
         john_id = initial_dataset["john"].get_id()
+        john_node = await NodeManager.get_one(db=db, id=john_id)
+        john_label = await john_node.render_display_label(db=db)
         ed_209_id = initial_dataset["ed_209"].get_id()
         ed_209_branch = await NodeManager.get_one(db=db, branch=branch1, id=ed_209_id)
+        ed_209_label = await ed_209_branch.render_display_label(db=db)
         await ed_209_branch.delete(db=db)
 
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": BRANCH_NAME})
@@ -277,6 +284,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         ed_209_node = nodes_by_id[ed_209_id]
         assert ed_209_node.contains_conflict is False
         assert ed_209_node.action is DiffAction.REMOVED
+        assert ed_209_node.label == ed_209_label
         attributes_by_name = {a.name: a for a in ed_209_node.attributes}
         assert set(attributes_by_name.keys()) == {"name", "color", "description"}
         for attr_node in attributes_by_name.values():
@@ -301,6 +309,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert manufacturer_element.action is DiffAction.REMOVED
         assert manufacturer_element.contains_conflict is False
         assert manufacturer_element.peer_id == omnicorp_id
+        assert manufacturer_element.peer_label == omnicorp_label
         properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
@@ -310,6 +319,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
             assert prop_diff.new_value is None
+        related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
+        assert related_prop.previous_label == omnicorp_label
+        assert related_prop.new_label is None
         owner_rel = relationships_by_name["owner"]
         assert owner_rel.action is DiffAction.REMOVED
         assert owner_rel.contains_conflict is False
@@ -318,6 +330,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert owner_element.action is DiffAction.REMOVED
         assert owner_element.contains_conflict is False
         assert owner_element.peer_id == john_id
+        assert owner_element.peer_label == john_label
         properties_by_type = {p.property_type: p for p in owner_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
@@ -327,9 +340,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
             assert prop_diff.new_value is None
+        related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
+        assert related_prop.previous_label == john_label
+        assert related_prop.new_label is None
         omnicorp_node = nodes_by_id[omnicorp_id]
         assert omnicorp_node.action is DiffAction.UPDATED
         assert omnicorp_node.contains_conflict is False
+        assert omnicorp_node.label == omnicorp_label
         assert len(omnicorp_node.attributes) == 0
         assert len(omnicorp_node.relationships) == 1
         relationship_diff = omnicorp_node.relationships.pop()
@@ -341,6 +358,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert relationship_element.action is DiffAction.REMOVED
         assert relationship_element.contains_conflict is False
         assert relationship_element.peer_id == ed_209_id
+        assert relationship_element.peer_label == ed_209_label
+        properties_by_type = {p.property_type: p for p in relationship_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
@@ -349,9 +368,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
             assert prop_diff.new_value is None
+        related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
+        assert related_prop.previous_value == ed_209_id
+        assert related_prop.previous_label == ed_209_label
+        assert related_prop.new_label is None
         john_node = nodes_by_id[john_id]
         assert john_node.action is DiffAction.UPDATED
         assert john_node.contains_conflict is False
+        assert john_node.label == john_label
         assert len(john_node.relationships) == 1
         relationship_diff = john_node.relationships.pop()
         assert relationship_diff.name == "cars"
@@ -362,6 +386,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert relationship_element.action is DiffAction.REMOVED
         assert relationship_element.contains_conflict is False
         assert relationship_element.peer_id == ed_209_id
+        assert relationship_element.peer_label == ed_209_label
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
@@ -370,6 +395,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
             assert prop_diff.new_value is None
+        related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
+        assert related_prop.previous_label == ed_209_label
+        assert related_prop.new_label is None
 
     async def test_diff_add_attribute_value_conflict(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
@@ -423,7 +451,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         jesko_id = initial_dataset["jesko"].get_id()
         cyberdyne_id = initial_dataset["cyberdyne"].get_id()
+        cyberdyne_node = await NodeManager.get_one(db=db, id=cyberdyne_id)
+        cyberdyne_label = await cyberdyne_node.render_display_label(db=db)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
+        omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
+        omnicorp_label = await omnicorp_node.render_display_label(db=db)
         jesko_main = await NodeManager.get_one(db=db, branch=default_branch, id=jesko_id)
         await jesko_main.manufacturer.update(db=db, data={"id": cyberdyne_id})
         await jesko_main.save(db=db)
@@ -459,8 +491,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert manufacturer_element.conflict
         assert manufacturer_element.conflict.base_branch_action is DiffAction.UPDATED
         assert manufacturer_element.conflict.base_branch_value == cyberdyne_id
+        assert manufacturer_element.conflict.base_branch_label == cyberdyne_label
         assert manufacturer_element.conflict.diff_branch_action is DiffAction.UPDATED
         assert manufacturer_element.conflict.diff_branch_value == omnicorp_id
+        assert manufacturer_element.conflict.diff_branch_label == omnicorp_label
         assert manufacturer_element.conflict.selected_branch is None
         self.track_item(
             "peer_conflict",
@@ -479,14 +513,21 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         t_800_id = initial_dataset["t_800"].get_id()
         john_id = initial_dataset["john"].get_id()
+        john_node = await NodeManager.get_one(db=db, id=john_id)
+        john_label = await john_node.render_display_label(db=db)
         cyberdyne_id = initial_dataset["cyberdyne"].get_id()
+        cyberdyne_node = await NodeManager.get_one(db=db, id=cyberdyne_id)
+        cyberdyne_label = await cyberdyne_node.render_display_label(db=db)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
+        omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
+        omnicorp_label = await omnicorp_node.render_display_label(db=db)
         t_800_main = await NodeManager.get_one(db=db, branch=default_branch, id=t_800_id)
         await t_800_main.owner.update(db=db, data={"id": john_id, "_relation__owner": cyberdyne_id})
         await t_800_main.save(db=db)
         t_800_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=t_800_id)
         await t_800_branch.owner.update(db=db, data={"id": john_id, "_relation__owner": omnicorp_id})
         await t_800_branch.save(db=db)
+        t_800_label = await t_800_main.render_display_label(db=db)
         changes_done_time = Timestamp()
 
         result = await client.execute_graphql(
@@ -512,6 +553,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         elements_by_peer_id = {e.peer_id: e for e in owner_rel.relationships}
         owner_element = elements_by_peer_id[john_id]
         assert owner_element.contains_conflict
+        assert owner_element.peer_label == john_label
         properties_by_type = {p.property_type: p for p in owner_element.properties}
         assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.IS_RELATED}
         is_related_property = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -519,15 +561,20 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert is_related_property.conflict is None
         assert is_related_property.previous_value == john_id
         assert is_related_property.new_value == john_id
+        assert is_related_property.previous_label == john_label
+        assert is_related_property.new_label == john_label
         owner_property = properties_by_type[DatabaseEdgeType.HAS_OWNER]
         assert owner_property.action is DiffAction.ADDED
         assert owner_property.previous_value is None
         assert owner_property.new_value == omnicorp_id
+        assert owner_property.new_label == omnicorp_label
         assert owner_property.conflict
         assert owner_property.conflict.base_branch_action is DiffAction.ADDED
         assert owner_property.conflict.base_branch_value == cyberdyne_id
+        assert owner_property.conflict.base_branch_label == cyberdyne_label
         assert owner_property.conflict.diff_branch_action is DiffAction.ADDED
         assert owner_property.conflict.diff_branch_value == omnicorp_id
+        assert owner_property.conflict.diff_branch_label == omnicorp_label
         assert owner_property.conflict.selected_branch is None
         self.track_item(
             "cardinality_one_property_conflict_a",
@@ -551,6 +598,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         elements_by_peer_id = {e.peer_id: e for e in cars_rel.relationships}
         car_element = elements_by_peer_id[t_800_id]
         assert car_element.contains_conflict
+        assert car_element.peer_label == t_800_label
         properties_by_type = {p.property_type: p for p in car_element.properties}
         assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.IS_RELATED}
         is_related_property = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -558,6 +606,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert is_related_property.conflict is None
         assert is_related_property.previous_value == t_800_id
         assert is_related_property.new_value == t_800_id
+        assert is_related_property.previous_label == t_800_label
+        assert is_related_property.new_label == t_800_label
         owner_property = properties_by_type[DatabaseEdgeType.HAS_OWNER]
         assert owner_property.action is DiffAction.ADDED
         assert owner_property.previous_value is None
@@ -565,8 +615,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert owner_property.conflict
         assert owner_property.conflict.base_branch_action is DiffAction.ADDED
         assert owner_property.conflict.base_branch_value == cyberdyne_id
+        assert owner_property.conflict.base_branch_label == cyberdyne_label
         assert owner_property.conflict.diff_branch_action is DiffAction.ADDED
         assert owner_property.conflict.diff_branch_value == omnicorp_id
+        assert owner_property.conflict.diff_branch_label == omnicorp_label
         assert owner_property.conflict.selected_branch is None
         self.track_item(
             "cardinality_one_property_conflict_b",
@@ -767,7 +819,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert set(core_data_checks.keys()) == {
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert set(data_checks_by_conflict_id.keys()) == {
             attribute_value_conflict.conflict_id,
             peer_conflict.conflict_id,
             cardinality_one_property_conflict_a.conflict_id,
@@ -776,13 +829,21 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             node_removed_conflict.conflict_id,
             node_removed_attribute_value_conflict.conflict_id,
         }
-        attr_value_data_check = core_data_checks[attribute_value_conflict.conflict_id]
-        peer_data_check = core_data_checks[peer_conflict.conflict_id]
-        cardinality_one_property_data_check_a = core_data_checks[cardinality_one_property_conflict_a.conflict_id]
-        cardinality_one_property_data_check_b = core_data_checks[cardinality_one_property_conflict_b.conflict_id]
-        cardinality_many_property_data_check = core_data_checks[cardinality_many_property_conflict.conflict_id]
-        node_removed_data_check = core_data_checks[node_removed_conflict.conflict_id]
-        node_removed_attr_value_data_check = core_data_checks[node_removed_attribute_value_conflict.conflict_id]
+        attr_value_data_check = data_checks_by_conflict_id[attribute_value_conflict.conflict_id]
+        peer_data_check = data_checks_by_conflict_id[peer_conflict.conflict_id]
+        cardinality_one_property_data_check_a = data_checks_by_conflict_id[
+            cardinality_one_property_conflict_a.conflict_id
+        ]
+        cardinality_one_property_data_check_b = data_checks_by_conflict_id[
+            cardinality_one_property_conflict_b.conflict_id
+        ]
+        cardinality_many_property_data_check = data_checks_by_conflict_id[
+            cardinality_many_property_conflict.conflict_id
+        ]
+        node_removed_data_check = data_checks_by_conflict_id[node_removed_conflict.conflict_id]
+        node_removed_attr_value_data_check = data_checks_by_conflict_id[
+            node_removed_attribute_value_conflict.conflict_id
+        ]
         assert attr_value_data_check.keep_branch.value.value == attribute_value_conflict.keep_branch.value
         assert peer_data_check.keep_branch.value is None
         assert cardinality_one_property_data_check_a.keep_branch.value is None
@@ -835,8 +896,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert peer_conflict.conflict_id in core_data_checks
-        peer_data_check = core_data_checks[peer_conflict.conflict_id]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert peer_conflict.conflict_id in data_checks_by_conflict_id
+        peer_data_check = data_checks_by_conflict_id[peer_conflict.conflict_id]
         assert peer_data_check.keep_branch.value.value is peer_conflict.keep_branch.value
 
     async def test_resolve_peer_property_conflict(
@@ -927,11 +989,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert cardinality_one_property_conflict_a.conflict_id in core_data_checks
-        assert cardinality_one_property_conflict_b.conflict_id in core_data_checks
-        data_check_a = core_data_checks[cardinality_one_property_conflict_a.conflict_id]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert cardinality_one_property_conflict_a.conflict_id in data_checks_by_conflict_id
+        assert cardinality_one_property_conflict_b.conflict_id in data_checks_by_conflict_id
+        data_check_a = data_checks_by_conflict_id[cardinality_one_property_conflict_a.conflict_id]
         assert data_check_a.keep_branch.value.value == cardinality_one_property_conflict_a.keep_branch.value
-        data_check_b = core_data_checks[cardinality_one_property_conflict_b.conflict_id]
+        data_check_b = data_checks_by_conflict_id[cardinality_one_property_conflict_b.conflict_id]
         assert data_check_b.keep_branch.value.value == cardinality_one_property_conflict_b.keep_branch.value
 
     async def test_resolve_cardinality_many_property_conflict(
@@ -987,8 +1050,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert cardinality_many_property_conflict.conflict_id in core_data_checks
-        peer_data_check = core_data_checks[cardinality_many_property_conflict.conflict_id]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert cardinality_many_property_conflict.conflict_id in data_checks_by_conflict_id
+        peer_data_check = data_checks_by_conflict_id[cardinality_many_property_conflict.conflict_id]
         assert peer_data_check.keep_branch.value.value is cardinality_many_property_conflict.keep_branch.value
 
     async def test_merge_fails_with_conflicts(
@@ -1059,12 +1123,15 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
         assert {
             node_removed_conflict.conflict_id,
             node_removed_attribute_value_conflict.conflict_id,
-        } <= set(core_data_checks.keys())
-        node_removed_data_check = core_data_checks[node_removed_conflict.conflict_id]
-        node_removed_attr_value_data_check = core_data_checks[node_removed_attribute_value_conflict.conflict_id]
+        } <= set(data_checks_by_conflict_id.keys())
+        node_removed_data_check = data_checks_by_conflict_id[node_removed_conflict.conflict_id]
+        node_removed_attr_value_data_check = data_checks_by_conflict_id[
+            node_removed_attribute_value_conflict.conflict_id
+        ]
         assert node_removed_data_check.keep_branch.value.value == node_removed_conflict.keep_branch.value
         assert (
             node_removed_attr_value_data_check.keep_branch.value.value
@@ -1094,10 +1161,53 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        assert set(core_data_checks.keys()) == {tc.conflict_id for tc in tracked_conflicts}
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert set(data_checks_by_conflict_id.keys()) == {tc.conflict_id for tc in tracked_conflicts}
         for tracked_conflict in tracked_conflicts:
-            data_check = core_data_checks[tracked_conflict.conflict_id]
+            data_check = data_checks_by_conflict_id[tracked_conflict.conflict_id]
             assert data_check.keep_branch.value.value == tracked_conflict.keep_branch.value
+
+    async def test_create_another_proposed_change_data_checks_created(
+        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+    ) -> None:
+        # verify duplicate data checks can be created
+        result = await client.execute_graphql(
+            query=PROPOSED_CHANGE_CREATE,
+            variables={
+                "name": PROPOSED_CHANGE_NAME + "2",
+                "source_branch": BRANCH_NAME,
+                "destination_branch": default_branch.name,
+            },
+        )
+        assert result["CoreProposedChangeCreate"]["object"]["id"]
+        pc_id = result["CoreProposedChangeCreate"]["object"]["id"]
+        attribute_value_conflict = self.retrieve_item("attribute_value")
+        peer_conflict = self.retrieve_item("peer_conflict")
+        cardinality_one_property_conflict_a = self.retrieve_item("cardinality_one_property_conflict_a")
+        cardinality_one_property_conflict_b = self.retrieve_item("cardinality_one_property_conflict_b")
+        cardinality_many_property_conflict = self.retrieve_item("cardinality_many_property_conflict")
+        node_removed_conflict = self.retrieve_item("node_removed")
+        node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
+
+        pc = await NodeManager.get_one(db=db, id=pc_id)
+        validators = await pc.validations.get_peers(db=db)
+        data_validator = None
+        for v in validators.values():
+            if v.get_kind() == InfrahubKind.DATAVALIDATOR:
+                data_validator = v
+        assert data_validator
+        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
+        assert set(data_checks_by_conflict_id.keys()) == {
+            attribute_value_conflict.conflict_id,
+            peer_conflict.conflict_id,
+            cardinality_one_property_conflict_a.conflict_id,
+            cardinality_one_property_conflict_b.conflict_id,
+            cardinality_many_property_conflict.conflict_id,
+            node_removed_conflict.conflict_id,
+            node_removed_attribute_value_conflict.conflict_id,
+        }
+        assert len(core_data_checks) == len(data_checks_by_conflict_id)
 
     async def test_merge_proposed_change(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient

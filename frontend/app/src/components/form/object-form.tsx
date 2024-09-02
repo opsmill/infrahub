@@ -25,6 +25,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
   currentObject?: Record<string, AttributeType | RelationshipType>;
   currentProfiles?: ProfileData[];
   isFilterForm?: boolean;
+  isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
   onUpdateComplete?: () => void;
 }

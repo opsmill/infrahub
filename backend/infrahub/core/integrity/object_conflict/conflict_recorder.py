@@ -26,6 +26,7 @@ class ObjectConflictValidatorRecorder:
         await self.initialize_validator(validator)
 
         previous_checks = await validator.checks.get_peers(db=self.db)  # type: ignore[attr-defined]
+        previous_checks_by_conflict_id = {check.enriched_conflict_id.value: check for check in previous_checks.values()}
         is_success = False
 
         current_checks: list[Node] = []
@@ -56,9 +57,9 @@ class ObjectConflictValidatorRecorder:
         for conflict in conflicts:
             conflicts_data = [conflict.to_conflict_dict()]
             conflict_obj = None
-            if conflict.conflict_id and conflict.conflict_id in previous_checks:
-                conflict_obj = previous_checks[conflict.conflict_id]
-                check_ids_to_keep.add(conflict.conflict_id)
+            if conflict.conflict_id and conflict.conflict_id in previous_checks_by_conflict_id:
+                conflict_obj = previous_checks_by_conflict_id[conflict.conflict_id]
+                check_ids_to_keep.add(conflict_obj.get_id())
             if not conflict_obj:
                 for previous_check in previous_checks.values():
                     if previous_check.conflicts.value == conflicts_data:  # type: ignore[attr-defined]
@@ -70,7 +71,7 @@ class ObjectConflictValidatorRecorder:
 
                 await conflict_obj.new(
                     db=self.db,
-                    id=conflict.conflict_id,
+                    enriched_conflict_id=conflict.conflict_id,
                     label=conflict.label,
                     origin="internal",
                     kind="DataIntegrity",

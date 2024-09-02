@@ -60,7 +60,7 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
         if previous_value in (None, "NULL"):
             return DiffAction.ADDED
         if new_value in (None, "NULL"):
-            return DiffAction.ADDED
+            return DiffAction.REMOVED
         return DiffAction.UPDATED
 
     def _build_property_maps(

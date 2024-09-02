@@ -14,6 +14,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from tests.helpers.test_app import TestInfrahub
@@ -176,34 +177,44 @@ class TestDiffReadQuery(TestInfrahub):
     @pytest.mark.parametrize(
         "filters,counters",
         [
-            pytest.param({}, DiffSummaryCounters(num_added=2, num_updated=4), id="no-filters"),
+            pytest.param(
+                {},
+                DiffSummaryCounters(num_added=2, num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
+                id="no-filters",
+            ),
             pytest.param(
                 {"kind": {"includes": ["TestThing"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1),
+                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
                 id="kind-includes",
             ),
-            pytest.param({"kind": {"excludes": ["TestThing"]}}, DiffSummaryCounters(num_updated=3), id="kind-excludes"),
+            pytest.param(
+                {"kind": {"excludes": ["TestThing"]}},
+                DiffSummaryCounters(num_updated=3, from_time=Timestamp(), to_time=Timestamp()),
+                id="kind-excludes",
+            ),
             pytest.param(
                 {"namespace": {"includes": ["Test"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1),
+                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
                 id="namespace-includes",
             ),
             pytest.param(
                 {"namespace": {"excludes": ["Location"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1),
+                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
                 id="namespace-excludes",
             ),
             pytest.param(
-                {"status": {"includes": ["updated"]}}, DiffSummaryCounters(num_updated=4), id="status-includes"
+                {"status": {"includes": ["updated"]}},
+                DiffSummaryCounters(num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
+                id="status-includes",
             ),
             pytest.param(
                 {"status": {"excludes": ["unchanged"]}},
-                DiffSummaryCounters(num_added=2, num_updated=4),
+                DiffSummaryCounters(num_added=2, num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
                 id="status-excludes",
             ),
             pytest.param(
                 {"kind": {"includes": ["TestThing"]}, "status": {"excludes": ["added"]}},
-                DiffSummaryCounters(num_updated=1),
+                DiffSummaryCounters(num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
                 id="kind-includes-status-excludes",
             ),
         ],
@@ -220,6 +231,8 @@ class TestDiffReadQuery(TestInfrahub):
         await query.execute(db=db)
 
         summary = query.get_summary()
+        counters.from_time = load_data["from_time"]
+        counters.to_time = load_data["to_time"]
         assert summary == counters
 
     async def test_get_without_parent(self, db: InfrahubDatabase, default_branch: Branch, load_data):
