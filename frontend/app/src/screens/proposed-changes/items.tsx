@@ -218,7 +218,7 @@ export const ProposedChangesPage = () => {
             <SearchInput
               loading={loading}
               onChange={debouncedHandleSearch}
-              placeholder="Search a Propsoed Change"
+              placeholder="Search a Proposed Change"
               className="border-none focus-visible:ring-0 h-7"
               containerClassName=" flex-grow"
               data-testid="proposed-changes-list-search-bar"
