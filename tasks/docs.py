@@ -127,7 +127,7 @@ def vale(context: Context):
         print("Warning, Vale is not installed")
         return
 
-    exec_cmd = "vale ."
+    exec_cmd = "vale docs/docs"
     print(" - [docs] Lint docs with vale")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -165,8 +165,8 @@ def format(context: Context):
 @task
 def lint(context: Context):
     """This will run all linter."""
-    vale(context)
     markdownlint(context)
+    vale(context)
 
 
 def _generate_infrahub_cli_documentation(context: Context):

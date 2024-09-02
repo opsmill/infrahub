@@ -17,25 +17,31 @@ exceptions:
   - Attributes
   - Beta
   - BGP
+  - CA certificates
   - CI
   - Codespaces
   - CoreArtifactTarget
   - CoreRepository
+  - CoreGroup
   - Docker Compose
   - E2E
   - Generics
   - Git
   - GitHub
+  - GitHub Codespaces
   - GitLab
   - GitPod
   - GraphQL
   - GraphQLQuery
   - include_in_menu & menu_placement
   - Helm
+  - Human Friendly Identifier
   - Infrahub
   - infrahubctl
+  - IPHost
   - IP
   - IPAM
+  - IPNetwork
   - JavaScript
   - JetStream
   - Jinja

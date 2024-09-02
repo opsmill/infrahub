@@ -2,11 +2,11 @@
 title: Extend the schema
 ---
 import CodeBlock from '@theme/CodeBlock';
-import dcimYaml from '!!raw-loader!../../../../models/base/dcim.yml';
-import ipamYaml from '!!raw-loader!../../../../models/base/ipam.yml';
-import locationYaml from '!!raw-loader!../../../../models/base/location.yml';
-import organizationYaml from '!!raw-loader!../../../../models/base/organization.yml';
-import routingYaml from '!!raw-loader!../../../../models/base/routing.yml';
+import import_dcimYaml from '!!raw-loader!../../../../models/base/dcim.yml';
+import import_ipamYaml from '!!raw-loader!../../../../models/base/ipam.yml';
+import import_locationYaml from '!!raw-loader!../../../../models/base/location.yml';
+import import_organizationYaml from '!!raw-loader!../../../../models/base/organization.yml';
+import import_routingYaml from '!!raw-loader!../../../../models/base/routing.yml';
 
 import ReferenceLink from "../../../src/components/Card";
 
@@ -36,11 +36,11 @@ A "base" schema with these types of models and more is available in the `models/
 
 <details>
   <summary>Infrastructure Base Schema</summary>
-  <CodeBlock language="yaml" title="DCIM Base Schema">{dcimYaml}</CodeBlock>
-  <CodeBlock language="yaml" title="IPAM Base Schema">{ipamYaml}</CodeBlock>
-  <CodeBlock language="yaml" title="Location Base Schema">{locationYaml}</CodeBlock>
-  <CodeBlock language="yaml" title="Organization Base Schema">{organizationYaml}</CodeBlock>
-  <CodeBlock language="yaml" title="Routing Base Schema">{routingYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="DCIM Base Schema">{import_dcimYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="IPAM Base Schema">{import_ipamYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Location Base Schema">{import_locationYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Organization Base Schema">{import_organizationYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Routing Base Schema">{import_routingYaml}</CodeBlock>
 </details>
 
 Use the following command to load these new models into Infrahub

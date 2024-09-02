@@ -333,10 +333,10 @@ We can then use the id's of the tags to add them to the `ColorTags` group.
 mutation {
   CoreStandardGroupUpdate(
     data: {
-      id: "<id of the group>", 
+      id: "<id of the group>",
       members: [
-        {id: "<id of tag1>"}, 
-        {id: "<id of tag2>"}, 
+        {id: "<id of tag1>"},
+        {id: "<id of tag2>"},
         {id: "<id of tag3>"}
       ]
     }
@@ -346,7 +346,7 @@ mutation {
 }
 ```
 
-### 4. Modify the tags_check GraphQL query
+### 4. Modify the `tags_check` GraphQL query
 
 We need to modify the GraphQL query with the `name` parameter. The GraphQL query will be executed for every node that is part of the target group.
 
