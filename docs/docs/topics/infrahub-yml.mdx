@@ -13,6 +13,7 @@ An external repository can be used to link the following Infrahub objects to an 
 - [Jinja2 Transform](/topics/transformation#rendered-file-jinja2-plugin)
 - [Python Transformation](/topics/transformation#transformpython-python-plugin)
 - [Artifact Definition](/topics/artifact)
+- [Generator Definition](/topics/generator)
 
 :::info
 
@@ -127,3 +128,14 @@ Artifact Definitions can be created as described [here](/topics/artifact). To lo
   ```
 
 </details>
+
+## Generator definition {#generator-definition}
+
+Generator Definitions can be created as described [here](/topics/generator). To load Generator Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Generator Definition in `.infrahub.yml` must include the following:
+
+- `name`: the name of the Generator Definition
+- `file_path`: path to the Generator python file within this repository
+- `query`: the name of an Infrahub `GraphQL query` to use with the Generator
+- `class_name`: which specific class to use in the Python file designated by `file_path`
+- `targets`: the Infrahub `Group` to target when generating the Artifact
+- `transformation`: the name of the Transformation to use when generating the Artifact
