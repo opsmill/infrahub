@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
         'guides/installation',
         'guides/create-schema',
         'guides/import-schema',
+        'guides/groups',
         'guides/generator',
         'guides/repository',
         'guides/jinja2-transform',
