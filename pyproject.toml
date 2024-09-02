@@ -458,6 +458,7 @@ select = [
     "E",     # pycodestyle errors
     "EXE",   # flake8-executable
     "F",     # pyflakes
+    "FURB",  # refurb
     "I",     # isort-like checks
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
@@ -469,7 +470,9 @@ select = [
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
+    "RUF",   # Ruff specific rules
     "S",     # flake8-bandit
+    "SIM",   # flake8-simplify
     "TCH",   # flake8-type-checking
     "T10",   # flake8-debugger
     "UP",    # pyupgrade
@@ -494,6 +497,15 @@ ignore = [
     "C403",     # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",     # Unnecessary `list` call within `sorted()`
+    "FURB110",  # Replace ternary `if` expression with `or` operator
+    "FURB113",  # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
+    "FURB116",  # Replace `bin` call with f-string
+    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
+    "FURB132",  # Use `env_vars.discard("PATH")` instead of check and `remove`
+    "FURB140",  # Use `itertools.starmap` instead of the generator
+    "FURB168",  # Prefer `is` operator over `isinstance` to check if an object is `None`
+    "FURB171",  # Membership test against single-item container
+    "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value in a sequence
     "N801",     # Class name should use CapWords convention
     "N802",     # Function name should be lowercase
     "N805",     # First argument of a method should be named self
@@ -532,12 +544,38 @@ ignore = [
     "PTH118",   # `os.path.join()` should be replaced by `Path` with `/` operator
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement
+    "RUF005",   # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
+    "RUF006",   # Store a reference to the return value of `asyncio.create_task`
+    "RUF010",   # Use explicit conversion flag
+    "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF013",   # PEP 484 prohibits implicit `Optional`
+    "RUF015",   # Prefer `next(...)` over single element slice
+    "RUF019",   # Unnecessary key check before dictionary access
+    "RUF021",   # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
+    "RUF022",   # `__all__` is not sorted
+    "RUF025",   # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
+    "RUF027",   # Possible f-string without an `f` prefix
+    "RUF029",   # Function is declared `async`, but doesn't `await` or use `async` features.
+    "RUF100",   # Unused `noqa` directive
     "S101",     # Use of `assert` detected
     "S105",     # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",     # Probable insecure usage of temporary file or directory
     "S202",     # Uses of `tarfile.extractall()`
     "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
+    "SIM108",   # Use ternary operator `markexpr = "not neo4j" if not markexpr else f"not neo4j and ({markexpr})"` instead of `if`-`else`-block
+    "SIM102",   # Use a single `if` statement instead of nested `if` statements
+    "SIM103",   # Return the condition `identifier in self.sub_by_id.keys()` directly
+    "SIM105",   # Use `contextlib.suppress(SchemaNotFoundError)` instead of `try`-`except`-`pass`
+    "SIM110",   # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
+    "SIM114",   # Combine `if` branches using logical `or` operator
+    "SIM117",   # Use a single `with` statement with multiple contexts instead of nested `with` statements
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
+    "SIM201",   # Use `backup_path.suffix != ".backup"` instead of `not backup_path.suffix == ".backup"`
+    "SIM210",   # Remove unnecessary `True if ... else False`
+    "SIM300",   # Yoda condition detected
+    "SIM401",   # Use `property["items"].get("format", None)` instead of an `if` block
+    "SIM910",   #  Use `data.get("identifier")` instead of `data.get("identifier", None)`
     "UP007",    # Use X | Y for type annotations
     "UP012",    # Unnecessary call to encode as UTF-8
     "UP018",    # Unnecessary {literal_type} call (rewrite as a literal)
