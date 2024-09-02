@@ -122,8 +122,10 @@ services:
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
       PREFECT_API_URL: "http://task-manager:4200/api"
+      PREFECT_LOCAL_STORAGE_PATH: "/opt/infrahub/workflow"
     volumes:
       - "storage_data:/opt/infrahub/storage"
+      - "workflow_data:/opt/infrahub/workflow"
     tty: true
     labels:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
@@ -191,9 +193,13 @@ services:
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
       PREFECT_API_URL: "http://task-manager:4200/api"
+      PREFECT_WORKER_QUERY_SECONDS: 3
+      PREFECT_AGENT_QUERY_INTERVAL: 3
+      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     volumes:
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
+      - "workflow_data:/opt/infrahub/workflow"
     tty: true
     labels:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
@@ -203,3 +209,4 @@ volumes:
   git_data:
   git_remote_data:
   storage_data:
+  workflow_data:

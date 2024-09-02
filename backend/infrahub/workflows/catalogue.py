@@ -26,7 +26,13 @@ ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
     function="send_telemetry_push",
 )
 
+DUMMY_FLOW = WorkflowDefinition(
+    name="dummy_flow",
+    work_pool=WORKER_POOL,
+    module="infrahub.tasks.dummy",
+    function="dummy_flow",
+)
 
 worker_pools = [WORKER_POOL]
 
-workflows = [WEBHOOK_SEND, TRANSFORM_JINJA2_RENDER, ANONYMOUS_TELEMETRY_SEND]
+workflows = [WEBHOOK_SEND, TRANSFORM_JINJA2_RENDER, ANONYMOUS_TELEMETRY_SEND, DUMMY_FLOW]

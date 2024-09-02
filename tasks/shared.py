@@ -119,6 +119,7 @@ VOLUME_NAMES = [
     "database_logs",
     "git_data",
     "git_remote_data",
+    "workflow_data",
     "storage_data",
 ]
 
