@@ -58,6 +58,13 @@ export const GET_PROPOSED_CHANGES = gql`
           }
           validations {
             count
+            edges {
+              node {
+                conclusion {
+                  value
+                }
+              }
+            }
           }
         }
         __typename
