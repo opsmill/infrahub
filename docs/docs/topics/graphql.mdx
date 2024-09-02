@@ -210,7 +210,9 @@ Every time a `GraphQLQuery` is created or updated, the content of the query will
 
 ### Import from a Git repository
 
-The Git agent will automatically try to import all files with the extension `.gql` into a `GraphQLQuery` with the name of the file as the name of the query.
+GraphQL queries could be defined in file(s) with a `.gql` extension in a remote repository. Then queries must also be explicitly identified in the `.infrahub.yml` file under `queries`.
+
+More details on the `.infrahub.yml` file format can be found in [.infrahub.yml topic](../topics/infrahub-yml.mdx).
 
 ### Executing stored GraphQL queries
 

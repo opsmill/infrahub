@@ -87,7 +87,7 @@ class DiffRepository:
         from_time: Timestamp,
         to_time: Timestamp,
         filters: dict | None = None,
-    ) -> DiffSummaryCounters:
+    ) -> DiffSummaryCounters | None:
         query = await DiffSummaryQuery.init(
             db=self.db,
             base_branch_name=base_branch_name,
