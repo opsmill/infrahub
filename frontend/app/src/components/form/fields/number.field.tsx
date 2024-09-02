@@ -65,7 +65,8 @@ const NumberField = ({
                     if (defaultValue) field.onChange(defaultValue);
                   }}
                   value={fieldData}
-                  pools={pools}>
+                  pools={pools}
+                  displayValue={typeof fieldData.value === "number"}>
                   {numberInput}
                 </PoolSelector>
               ) : (
