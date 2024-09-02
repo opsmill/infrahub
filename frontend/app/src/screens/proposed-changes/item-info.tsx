@@ -22,7 +22,7 @@ export const ProposedChangesInfo = ({
 }: ProposedChangesInfoProps) => {
   return (
     <>
-      <CheckStatus checks={checks} />
+      <CheckStatus checks={checks} className="m-2" />
 
       <div className="p-1 px-2 space-y-1 truncate">
         <div className="flex items-center gap-2">

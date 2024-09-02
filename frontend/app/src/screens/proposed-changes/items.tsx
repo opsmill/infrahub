@@ -150,7 +150,7 @@ export const ProposedChangesPage = () => {
             branch={node.source_branch.value}
             date={node._updated_at}
             comments={node.comments.count}
-            checks={node.validations.edges.map(({ node }) => node)}
+            checks={node.validations.edges.map(({ node }: any) => node)}
           />
         ),
         data: <ProposedChangesDiffSummary branch={node.source_branch.value} />,
