@@ -449,6 +449,57 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         return sort_results_by_time(results, rel_label="r")
 
 
+class DiffCountChanges(Query):
+    name: str = "diff_count_changes"
+    type: QueryType = QueryType.READ
+
+    def __init__(
+        self,
+        branch_names: list[str],
+        diff_from: Timestamp,
+        diff_to: Timestamp,
+        **kwargs,
+    ):
+        self.branch_names = branch_names
+        self.diff_from = diff_from
+        self.diff_to = diff_to
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
+        self.params = {
+            "from_time": self.diff_from.to_string(),
+            "to_time": self.diff_to.to_string(),
+            "branch_names": self.branch_names,
+        }
+        query = """
+        MATCH (p)-[diff_rel]-(q)
+        WHERE any(l in labels(p) WHERE l in ["Node", "Attribute", "Relationship"])
+        AND diff_rel.branch in $branch_names
+        AND (
+            (diff_rel.from >= $from_time AND diff_rel.from <= $to_time)
+            OR (diff_rel.to >= $to_time AND diff_rel.to <= $to_time)
+        )
+        AND (p.branch_support = "aware" OR q.branch_support = "aware")
+        WITH diff_rel.branch AS branch_name, count(*) AS num_changes
+        """
+        self.add_to_query(query=query)
+        self.return_labels = ["branch_name", "num_changes"]
+
+    def get_num_changes_by_branch(self) -> dict[str, int]:
+        branch_count_map = {}
+        for result in self.get_results():
+            branch_name = str(result.get("branch_name"))
+            try:
+                count = int(result.get("num_changes"))
+            except (TypeError, ValueError):
+                count = 0
+            branch_count_map[branch_name] = count
+        for branch_name in self.branch_names:
+            if branch_name not in branch_count_map:
+                branch_count_map[branch_name] = 0
+        return branch_count_map
+
+
 class DiffAllPathsQuery(DiffQuery):
     """Gets the required Cypher paths for a diff"""
 
