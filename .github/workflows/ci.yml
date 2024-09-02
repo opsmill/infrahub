@@ -604,7 +604,7 @@ jobs:
         env:
           VALE_VERSION: ${{ env.VALE_VERSION }}
       - name: "Validate documentation style"
-        run: ./vale $(find . -type f \\( -name "*.mdx" -o -name "*.md" \\) -not -path "./docs/node_modules/*")
+        run: ./vale $(find . -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing-playwright:
