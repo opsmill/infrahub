@@ -212,6 +212,7 @@ select = [
     "E",     # pycodestyle errors
     "EXE",   # flake8-executable
     "F",     # pyflakes
+    "FURB",  # refurb
     "I",     # isort-like checks
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
@@ -223,7 +224,9 @@ select = [
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
+    "RUF",   # Ruff specific rules
     "S",     # flake8-bandit
+    "SIM",   # flake8-simplify
     "TCH",   # flake8-type-checking
     "T10",   # flake8-debugger
     "UP",    # pyupgrade
@@ -243,6 +246,9 @@ ignore = [
     "B018",    # Found useless attribute access. Either assign it to a variable or remove it.
     "C408",    # Unnecessary `dict` call (rewrite as a literal)
     "C414",    # Unnecessary `list` call within `sorted()`
+    "FURB110", # Replace ternary `if` expression with `or` operator
+    "FURB113", # Use `lines.extend((" " * self.indentation + "}", "}"))` instead of repeatedly calling `lines.append()`
+    "FURB177", # Prefer `Path.cwd()` over `Path().resolve()` for current-directory lookups
     "N802",    # Function name should be lowercase
     "N806",    # Variable in function should be lowercase
     "PERF102", # When using only the values of a dict use the `values()` method
@@ -260,10 +266,21 @@ ignore = [
     "PTH100",  # `os.path.abspath()` should be replaced by `Path.resolve()`
     "PTH109",  # `os.getcwd()` should be replaced by `Path.cwd()`
     "RET504",  # Unnecessary assignment to `data` before `return` statement
+    "RUF",     # Unused `noqa` directive
     "S105",    # Possible hardcoded password assigned to: "PASS"
     "S108",    # Probable insecure usage of temporary file or directory
     "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
+    "SIM102",  # Use a single `if` statement instead of nested `if` statements
+    "SIM103",  # Return the condition directly
+    "SIM105",  # Use `contextlib.suppress(KeyError)` instead of `try`-`except`-`pass`
+    "SIM108",  # Use ternary operator `key_str = f"{value[ALIAS_KEY]}: {key}" if ALIAS_KEY in value and value[ALIAS_KEY] else key` instead of `if`-`else`-block
+    "SIM110",  # Use `return any(getattr(item, resource_field) == resource_id for item in getattr(self, RESOURCE_MAP[resource_type]))` instead of `for` loop
+    "SIM114",  # Combine `if` branches using logical `or` operator
+    "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
+    "SIM118",  # Use `key in dict` instead of `key in dict.keys)
+    "SIM300",  # Yoda condition detected
+    "SIM910",  # Use `data.get(key)` instead of `data.get(key, None)`
     "UP007",   # Use X | Y for type annotations
     "UP031",   # Use format specifiers instead of percent format
     "UP034",   # Avoid extraneous parentheses
