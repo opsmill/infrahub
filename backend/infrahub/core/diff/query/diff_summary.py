@@ -92,10 +92,13 @@ class DiffSummaryQuery(Query):
             "SUM(diff_node.num_conflicts) as num_conflicts",
             "min(diff_root.from_time) as from_time",
             "max(diff_root.to_time) as to_time",
+            "count(diff_root) as num_roots",
         ]
 
-    def get_summary(self) -> DiffSummaryCounters:
+    def get_summary(self) -> DiffSummaryCounters | None:
         result = self.get_result()
         if not result:
-            return DiffSummaryCounters(from_time=self.from_time, to_time=self.to_time)
+            return None
+        if result.get("num_roots") == 0:
+            return None
         return DiffSummaryCounters.from_graph(result)
