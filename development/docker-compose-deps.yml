@@ -20,18 +20,15 @@ services:
       timeout: 5s
       retries: 3
   task-manager:
-    image: prefecthq/prefect:3.0.0rc17-python3.12
+    image: prefecthq/prefect:3.0.0rc19-python3.12
     command: prefect server start --host 0.0.0.0 --ui
     environment:
       PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
       PREFECT_WORKER_QUERY_SECONDS: 3
       PREFECT_AGENT_QUERY_INTERVAL: 3
-      # PREFECT_SERVER_API_HOST: "0.0.0.0"
     healthcheck:
       test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 10s
-    ports:
-      - "4200:4200"
