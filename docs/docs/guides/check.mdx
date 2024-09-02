@@ -1,12 +1,12 @@
 ---
 title: Creating a Check
 ---
-
+<!-- vale off -->
 ## Creating a Check
-
+<!-- vale on -->
 Within Infrahub a [Check](/topics/check) is defined in an [external repository](/topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the check using [infrahubctl check](/infrahubctl/infrahubctl-check).
 
-The goal of this guide is to develop a Check and add it to Infrahub, we will achieve this by following these steps.
+The goal of this guide is to develop a `Check` and add it to Infrahub, we will achieve this by following these steps.
 
 1. Identify the relevant data in the database that you want to use as input for the check using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
 2. Write a Python script that will process and validate the data using your custom business logic
@@ -16,7 +16,7 @@ The goal of this guide is to develop a Check and add it to Infrahub, we will ach
 6. Add the repository to Infrahub as an external repository
 7. Test the Check in a proposed change
 
-In this guide we are going to work with the builtin tag objects in Infrahub. The goal will be to use a check to validate the naming convention of an object using a Regex. Validating a string with a Regex is something we can do directly in the schema so this check won't be super helpful but the goal is instead to show how Checks work. Once you have mastered the basics you will be ready to go on to create more advanced Checks.
+In this guide we are going to work with the builtin tag objects in Infrahub. The goal will be to use a `Check` to validate the naming convention of an object using a Regex. Validating a string with a Regex is something we can do directly in the schema so this check won't be super helpful but the goal is instead to show how Checks work. Once you have mastered the basics you will be ready to go on to create more advanced Checks.
 
 ### 1. Creating a query to collect the desired data
 
@@ -134,7 +134,7 @@ class ColorTagsCheck(InfrahubCheck):
 
 ```
 
-The example is a simple example of what a naming convention logic for a tag could look like.
+The example is an example of what a naming convention logic for a tag could look like.
 
 1. We import the `InfrahubCheck` class.
 

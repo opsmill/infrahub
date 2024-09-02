@@ -66,6 +66,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'guides/installation',
         'guides/create-schema',
+        'guides/import-schema',
         'guides/generator',
         'guides/repository',
         'guides/jinja2-transform',
@@ -96,6 +97,7 @@ const sidebars: SidebarsConfig = {
         'topics/local-demo-environment',
         'topics/generator',
         'topics/graphql',
+        'topics/groups',
         'topics/object-storage',
         'topics/version-control',
         'topics/proposed-change',
@@ -128,6 +130,7 @@ const sidebars: SidebarsConfig = {
             'reference/schema/node',
             'reference/schema/node-extension',
             'reference/schema/attribute',
+            'reference/schema/groups',
             'reference/schema/relationship',
             'reference/schema/generic',
             'reference/schema/validator-migration',
