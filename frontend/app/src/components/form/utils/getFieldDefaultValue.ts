@@ -1,11 +1,13 @@
 import { FieldSchema, AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { ProfileData } from "@/components/form/object-form";
 import {
+  AttributeValueFormPool,
   AttributeValueFromProfile,
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/components/form/type";
 import * as R from "ramda";
+import { LineageSource } from "@/generated/graphql";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
@@ -28,6 +30,7 @@ export const getFieldDefaultValue = ({
   return (
     getCurrentFieldValue(fieldSchema.name, initialObject) ??
     getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
+    getDefaultValueFromPools(fieldSchema.name, initialObject) ??
     getDefaultValueFromSchema(fieldSchema) ?? { source: null, value: null }
   );
 };
@@ -42,6 +45,10 @@ export const getCurrentFieldValue = (
   if (!currentField) return null;
 
   if (currentField.is_default || currentField.is_from_profile) {
+    return null;
+  }
+
+  if (currentField.source?.__typename?.match(/Pool$/g)) {
     return null;
   }
 
@@ -79,6 +86,35 @@ const getDefaultValueFromProfiles = (
     value: (
       profileWithDefaultValueForField[fieldName] as Pick<AttributeType, "value" | "__typename">
     ).value,
+  };
+};
+
+const getDefaultValueFromPools = (
+  fieldName: string,
+  objectData?: Record<string, AttributeType>
+): AttributeValueFormPool | null => {
+  if (!objectData) return null;
+
+  const currentField = objectData[fieldName];
+  if (!currentField) return null;
+
+  if (!currentField.source?.__typename?.match(/Pool$/g)) {
+    return null;
+  }
+
+  const pool = currentField.source as LineageSource;
+
+  if (!pool) return null;
+  if (!pool.id) return null;
+
+  return {
+    source: {
+      type: "pool",
+      id: pool.id,
+      label: pool.display_label || null,
+      kind: pool.__typename,
+    },
+    value: currentField.value,
   };
 };
 
