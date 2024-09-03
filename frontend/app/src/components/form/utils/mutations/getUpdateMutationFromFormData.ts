@@ -29,7 +29,6 @@ export const getUpdateMutationFromFormData = ({
       case "pool":
       case "user": {
         const fieldValue = fieldData.value === "" ? null : fieldData.value;
-        console.log("fieldValue: ", fieldValue);
         return {
           ...acc,
           [field.name]: field.type === "relationship" ? fieldValue : { value: fieldValue },

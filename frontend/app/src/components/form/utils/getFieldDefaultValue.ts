@@ -30,7 +30,7 @@ export const getFieldDefaultValue = ({
   return (
     getCurrentFieldValue(fieldSchema.name, initialObject) ??
     getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
-    getDefaultValueFromPools(fieldSchema.name, initialObject) ??
+    getDefaultValueFromPool(fieldSchema.name, initialObject) ??
     getDefaultValueFromSchema(fieldSchema) ?? { source: null, value: null }
   );
 };
@@ -89,7 +89,7 @@ const getDefaultValueFromProfiles = (
   };
 };
 
-const getDefaultValueFromPools = (
+const getDefaultValueFromPool = (
   fieldName: string,
   objectData?: Record<string, AttributeType>
 ): AttributeValueFormPool | null => {
