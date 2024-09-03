@@ -32,8 +32,8 @@ import { Icon } from "@iconify-icon/react";
 import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import { Badge } from "@/components/ui/badge";
 
 export const DiffContext = createContext({});
 
@@ -77,48 +77,13 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   // Get filters merged with status filter
   const finalFilters = buildFilters(filters, qspStatus);
 
-  const { loading, called, data, previousData, refetch } = useQuery(getProposedChangesDiffTree, {
+  const { loading, called, data, previousData } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,
     variables: { branch, filters: finalFilters },
     notifyOnNetworkStatusChange: true,
   });
 
   if (!called && loading) return <LoadingScreen message="Loading diff..." />;
-  const diffTreeData = (data || previousData)?.DiffTree;
-
-  // When a proposed change is created, there is also a job that compute the diff that is triggered.
-  // If DiffTree is null, it means that diff is still being computed.
-  if (!diffTreeData) {
-    return (
-      <div className="flex flex-col items-center mt-10 gap-5">
-        <LoadingScreen hideText />
-
-        <h1 className="font-semibold">
-          We are computing the diff between{" "}
-          <Badge variant="blue">
-            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
-            {proposedChangesDetails.source_branch?.value}
-          </Badge>{" "}
-          and{" "}
-          <Badge variant="green">
-            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
-            {proposedChangesDetails.destination_branch?.value}
-          </Badge>
-        </h1>
-
-        <div className="text-center">
-          <p>This process may take a few seconds to a few minutes.</p>
-          <p>Once completed, you&apos;ll be able to view the detailed changes.</p>
-        </div>
-
-        <RefreshButton
-          onClick={() => refetch()}
-          disabled={!auth?.permissions?.write || loading}
-          isLoading={loading}
-        />
-      </div>
-    );
-  }
 
   const handleRefresh = async () => {
     setIsLoadingUpdate(true);
@@ -167,6 +132,42 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
     setIsLoadingUpdate(false);
   };
+
+  const diffTreeData = (data || previousData)?.DiffTree;
+
+  // When a proposed change is created, there is also a job that compute the diff that is triggered.
+  // If DiffTree is null, it means that diff is still being computed.
+  if (!diffTreeData) {
+    return (
+      <div className="flex flex-col items-center mt-10 gap-5">
+        <LoadingScreen hideText />
+
+        <h1 className="font-semibold">
+          We are computing the diff between{" "}
+          <Badge variant="blue">
+            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
+            {proposedChangesDetails.source_branch?.value}
+          </Badge>{" "}
+          and{" "}
+          <Badge variant="green">
+            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
+            {proposedChangesDetails.destination_branch?.value}
+          </Badge>
+        </h1>
+
+        <div className="text-center">
+          <p>This process may take a few seconds to a few minutes.</p>
+          <p>Once completed, you&apos;ll be able to view the detailed changes.</p>
+        </div>
+
+        <RefreshButton
+          onClick={handleRefresh}
+          disabled={!auth?.permissions?.write || isLoadingUpdate}
+          isLoading={isLoadingUpdate}
+        />
+      </div>
+    );
+  }
 
   if (!qspStatus && diffTreeData.nodes.length === 0) {
     return (
