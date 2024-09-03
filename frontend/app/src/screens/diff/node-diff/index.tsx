@@ -15,13 +15,11 @@ import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/g
 import { DiffNode } from "./node";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
-import NoDataFound from "@/screens/errors/no-data-found";
 import { Card } from "@/components/ui/card";
 import DiffTree from "@/screens/diff/diff-tree";
-import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
-import { Button } from "@/components/buttons/button-primitive";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { rebaseBranch } from "@/graphql/mutations/branches/rebaseBranch";
-import { objectToString } from "@/utils/common";
+import { classNames, objectToString } from "@/utils/common";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { gql, useMutation } from "@apollo/client";
@@ -30,6 +28,12 @@ import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-update";
 import { useAuth } from "@/hooks/useAuth";
 import { DateDisplay } from "@/components/display/date-display";
+import { Icon } from "@iconify-icon/react";
+import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
+import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { DiffBadge } from "@/screens/diff/node-diff/utils";
 
 export const DiffContext = createContext({});
 
@@ -73,18 +77,48 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   // Get filters merged with status filter
   const finalFilters = buildFilters(filters, qspStatus);
 
-  const { loading, data } = useQuery(getProposedChangesDiffTree, {
+  const { loading, called, data, previousData, refetch } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,
     variables: { branch, filters: finalFilters },
+    notifyOnNetworkStatusChange: true,
   });
 
-  // Manually filter conflicts items since it's not available yet in the backend filters
-  const nodes: Array<DiffNodeType> =
-    data?.DiffTree?.nodes.filter((node: DiffNodeType) => {
-      if (qspStatus === diffActions.CONFLICT) return node.contains_conflict;
+  if (!called && loading) return <LoadingScreen message="Loading diff..." />;
+  const diffTreeData = (data || previousData)?.DiffTree;
 
-      return true;
-    }) ?? [];
+  // When a proposed change is created, there is also a job that compute the diff that is triggered.
+  // If DiffTree is null, it means that diff is still being computed.
+  if (!diffTreeData) {
+    return (
+      <div className="flex flex-col items-center mt-10 gap-5">
+        <LoadingScreen hideText />
+
+        <h1 className="font-semibold">
+          We are computing the diff between{" "}
+          <Badge variant="blue">
+            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
+            {proposedChangesDetails.source_branch?.value}
+          </Badge>{" "}
+          and{" "}
+          <Badge variant="green">
+            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
+            {proposedChangesDetails.destination_branch?.value}
+          </Badge>
+        </h1>
+
+        <div className="text-center">
+          <p>This process may take a few seconds to a few minutes.</p>
+          <p>Once completed, you&apos;ll be able to view the detailed changes.</p>
+        </div>
+
+        <RefreshButton
+          onClick={() => refetch()}
+          disabled={!auth?.permissions?.write || loading}
+          isLoading={loading}
+        />
+      </div>
+    );
+  }
 
   const handleRefresh = async () => {
     setIsLoadingUpdate(true);
@@ -134,12 +168,48 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
     setIsLoadingUpdate(false);
   };
 
+  if (!qspStatus && diffTreeData.nodes.length === 0) {
+    return (
+      <div className="flex flex-col items-center mt-10 gap-5">
+        <div className="p-3 rounded-full bg-white inline-flex">
+          <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
+        </div>
+
+        <h1 className="font-semibold text-lg">No changes detected</h1>
+        <div className="text-center">
+          <p>
+            The last comparison was made{" "}
+            <Tooltip enabled content={formatFullDate(diffTreeData.to_time)}>
+              <span className="font-semibold">
+                {formatRelativeTimeFromNow(diffTreeData.to_time)}
+              </span>
+            </Tooltip>
+            .
+          </p>
+          <p>If you have made any changes, please refresh the diff:</p>
+        </div>
+
+        <RefreshButton
+          onClick={handleRefresh}
+          disabled={!auth?.permissions?.write || isLoadingUpdate}
+          isLoading={isLoadingUpdate}
+        />
+      </div>
+    );
+  }
+
+  // Manually filter conflicts items since it's not available yet in the backend filters
+  const nodes: Array<DiffNodeType> =
+    diffTreeData.nodes.filter((node: DiffNodeType) => {
+      if (qspStatus === diffActions.CONFLICT) return node.contains_conflict;
+
+      return true;
+    }) ?? [];
+
   return (
     <div className="h-full overflow-hidden flex flex-col">
       <div className="flex items-center p-2 bg-custom-white">
-        <div className="mr-2">
-          <ProposedChangesDiffSummary branch={branch} filters={filters} />
-        </div>
+        <ProposedChangesDiffSummary branch={branch} filters={filters} />
 
         <div className="flex flex-1 items-center gap-2 justify-end pr-2">
           {isLoadingUpdate && <LoadingScreen size={22} hideText />}
@@ -174,37 +244,27 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
           <DiffTree
             nodes={nodes}
             className="p-2 w-full"
-            loading={loading}
             emptyMessage="No tree view available for the diff."
           />
         </Card>
 
         <div className="space-y-4 p-2.5 col-start-2 col-end-5 overflow-auto">
-          {loading && <LoadingScreen message="Loading diff..." />}
+          {nodes.length === 0 && qspStatus && (
+            <div className="flex flex-col items-center mt-10 gap-5">
+              <div className="p-3 rounded-full bg-white inline-flex">
+                <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
+              </div>
 
-          {!loading && !nodes.length && qspStatus && (
-            <div className="flex flex-col items-center justify-center">
-              <NoDataFound
-                message={`No diff matches the status: ${qspStatus}. Please adjust your filter settings.`}
-              />
+              <div className="text-center">
+                <h1 className="font-semibold">
+                  No matches found for the status <DiffBadge status={qspStatus} />
+                </h1>
+                <p>Try adjusting the filter settings to include more results.</p>
+              </div>
             </div>
           )}
 
-          {!loading && !nodes.length && !qspStatus && (
-            <div className="flex flex-col items-center justify-center">
-              <NoDataFound message="No diff to display. Try to manually load the latest changes." />
-              <Button
-                variant="primary-outline"
-                onClick={handleRefresh}
-                isLoading={isLoadingUpdate}
-                disabled={!auth?.permissions?.write || isLoadingUpdate}>
-                {isLoadingUpdate ? "Refreshing diff..." : "Refresh diff"}
-              </Button>
-            </div>
-          )}
-
-          {!loading &&
-            !!nodes.length &&
+          {!!nodes.length &&
             nodes
               .filter(({ status }) => status !== "UNCHANGED")
               .map((node) => (
@@ -218,5 +278,14 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
         </div>
       </div>
     </div>
+  );
+};
+
+const RefreshButton = ({ isLoading, ...props }: ButtonProps) => {
+  return (
+    <Button variant="primary-outline" {...props}>
+      <Icon icon="mdi:reload" className={classNames("mr-1", isLoading && "animate-spin")} />
+      {isLoading ? "Refreshing..." : "Refresh"}
+    </Button>
   );
 };
