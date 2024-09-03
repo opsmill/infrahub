@@ -1,10 +1,11 @@
 ---
 title: Creating a Group
 ---
+<!-- vale off -->
+# Creating a Group in Infrahub
+<!-- vale on -->
 
-# Creating a group in Infrahub
-
-Within Infrahub a [Group](/topics/groups) is defined through the UI and allow you to create and manage collections of objects.
+Within Infrahub a [Group](/topics/groups) can be created in multiple ways: in the UI, GraphQL, SDK and allow you to create and manage collections of objects.
 
 As the first step we need to create a group. Execute this GraphQL mutation to create the group `TagConfigGroup`.
 
@@ -13,13 +14,13 @@ mutation CreateGroup {
   CoreStandardGroupCreate (data: {name: {value: "TagConfigGroup"}}) {
     ok
     object {
-      id
+      hfid
     }
   }
 }
 ```
 
-Take note of the returned id, we will need it when we add members to this group.
+Take note of the returned `HFID`, we will need it when we add members to this group.
 
 ## Adding targets to the group
 
@@ -41,7 +42,7 @@ query {
 ```
 
 Next, we will be adding the tag nodes to the group. We will use the following GraphQL mutation.
-In the mutation, replace the ids:
+In the mutation, replace the `IDs`:
 
 - The first id needs to be replaced with the id of the group that we created in the first step
 - The second and third id need to be replaced with the ids of the tags from the previous step
@@ -50,7 +51,7 @@ In the mutation, replace the ids:
 mutation UpdateGroupMembers {
   CoreStandardGroupUpdate (
     data: {
-      id: "<the name or the id of the group>",
+      hfid: ["TagConfigGroup"],
       members: [
         {id: "<id of red tag>"},
         {id: "<id of blue tag>"}]}

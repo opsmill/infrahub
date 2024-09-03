@@ -134,8 +134,7 @@ Artifact Definitions can be created as described [here](/topics/artifact). To lo
 Generator Definitions can be created as described [here](/topics/generator). To load Generator Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Generator Definition in `.infrahub.yml` must include the following:
 
 - `name`: the name of the Generator Definition
-- `file_path`: path to the Generator python file within this repository
+- `file_path`: path to the Generator Python file within this repository
 - `query`: the name of an Infrahub `GraphQL query` to use with the Generator
-- `class_name`: which specific class to use in the Python file designated by `file_path`
-- `targets`: the Infrahub `Group` to target when generating the Artifact
-- `transformation`: the name of the Transformation to use when generating the Artifact
+- `class_name`: the class defining the generator in the Python file designated by file_path
+- `targets`: the Infrahub Group containing the targets for which we want to run the Generator
