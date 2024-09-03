@@ -686,7 +686,7 @@ jobs:
         if: always() && github.event.pull_request.head.repo.fork == false
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
-          jobName: "E2E-testing-playwright"
+          jobName: ${{ matrix.name }}
           stepName: "Run Playwright tests"
           path: "frontend/app/playwright-junit.xml"
           type: "junit"
