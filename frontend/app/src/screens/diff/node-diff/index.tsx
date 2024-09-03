@@ -218,7 +218,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
           <div className="flex items-center">
             <div className="flex items-center text-xs mr-2">
               <span className="mr-1">Updated</span>
-              <DateDisplay date={data?.DiffTree?.to_time} />
+              <DateDisplay date={diffTreeData?.to_time} />
             </div>
 
             <Button
@@ -268,8 +268,8 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
                 <DiffNode
                   key={node.uuid}
                   node={node}
-                  sourceBranch={data?.DiffTree?.base_branch}
-                  destinationBranch={data?.DiffTree?.diff_branch}
+                  sourceBranch={diffTreeData?.base_branch}
+                  destinationBranch={diffTreeData?.diff_branch}
                 />
               ))}
         </div>
