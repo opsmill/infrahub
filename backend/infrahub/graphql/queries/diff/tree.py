@@ -8,6 +8,7 @@ from infrahub_sdk.utils import extract_fields
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.query.diff import DiffCountChanges
@@ -75,6 +76,7 @@ class DiffAttribute(DiffSummaryCounts):
     path_identifier = String(required=True)
     properties = List(DiffProperty)
     contains_conflict = Boolean(required=True)
+    conflict = Field(ConflictDetails, required=False)
 
 
 class DiffSingleRelationship(DiffSummaryCounts):
@@ -207,6 +209,10 @@ class DiffTreeResolver:
         diff_properties = [
             self.to_diff_property(enriched_property=e_prop, context=context) for e_prop in enriched_attribute.properties
         ]
+        conflict = None
+        for diff_prop in diff_properties:
+            if diff_prop.property_type == DatabaseEdgeType.HAS_VALUE.value and diff_prop.conflict:
+                conflict = diff_prop.conflict
         return DiffAttribute(
             name=enriched_attribute.name,
             last_changed_at=enriched_attribute.changed_at.obj,
@@ -214,6 +220,7 @@ class DiffTreeResolver:
             path_identifier=enriched_attribute.path_identifier,
             properties=diff_properties,
             contains_conflict=enriched_attribute.contains_conflict,
+            conflict=conflict,
             num_added=enriched_attribute.num_added,
             num_updated=enriched_attribute.num_updated,
             num_removed=enriched_attribute.num_removed,
