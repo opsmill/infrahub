@@ -1013,6 +1013,82 @@ async def test_many_relationship_property_update(
     assert source_rel.new_value == person_jane_main.get_id()
 
 
+async def test_cardinality_one_peer_conflicting_updates(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main,
+    person_jane_main,
+    person_albert_main,
+    car_accord_main,
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    branch_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await branch_car.owner.update(db=db, data={"id": person_albert_main.id})
+    await branch_car.save(db=db)
+    branch_update_done = Timestamp()
+    main_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await main_car.owner.update(db=db, data={"id": person_jane_main.id})
+    await main_car.save(db=db)
+    main_update_done = Timestamp()
+
+    diff_query = await DiffAllPathsQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=branch,
+        diff_from=from_time,
+    )
+    await diff_query.execute(db=db)
+    diff_parser = DiffQueryParser(
+        diff_query=diff_query,
+        base_branch_name=default_branch.name,
+        diff_branch_name=branch.name,
+        schema_manager=registry.schema,
+        from_time=from_time,
+    )
+    diff_parser.parse()
+
+    assert diff_parser.get_branches() == {branch.name, default_branch.name}
+    # check branch
+    root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
+    assert root_path.branch == branch.name
+    assert len(root_path.nodes) == 3
+    nodes_by_id = {n.uuid: n for n in root_path.nodes}
+    assert set(nodes_by_id.keys()) == {car_accord_main.get_id(), person_john_main.get_id(), person_albert_main.get_id()}
+    # check car node on branch
+    car_node = nodes_by_id[car_accord_main.id]
+    assert car_node.action is DiffAction.UPDATED
+    assert car_node.attributes == []
+    assert len(car_node.relationships) == 1
+    owner_rel = car_node.relationships[0]
+    assert owner_rel.name == "owner"
+    assert owner_rel.action is DiffAction.UPDATED
+    elements_by_id = {e.peer_id: e for e in owner_rel.relationships}
+    assert set(elements_by_id.keys()) == {person_john_main.id, person_albert_main.id}
+    # check john removed
+    john_element = elements_by_id[person_john_main.id]
+    assert john_element.action is DiffAction.REMOVED
+    assert from_time < john_element.changed_at < branch_update_done
+    properties_by_type = {p.property_type: p for p in john_element.properties}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED}
+    for (prop_type, previous_value) in [(DatabaseEdgeType.IS_RELATED, person_john_main.id), (DatabaseEdgeType.IS_VISIBLE, True), (DatabaseEdgeType.IS_PROTECTED, False)]:
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.previous_value == previous_value
+        assert diff_prop.new_value is None
+        assert from_time < diff_prop.changed_at < branch_update_done
+    # check albert added
+    albert_element = elements_by_id[person_albert_main.id]
+    assert albert_element.action is DiffAction.ADDED
+    assert from_time < albert_element.changed_at < branch_update_done
+    properties_by_type = {p.property_type: p for p in albert_element.properties}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED}
+    for (prop_type, new_value) in [(DatabaseEdgeType.IS_RELATED, person_john_main.id), (DatabaseEdgeType.IS_VISIBLE, True), (DatabaseEdgeType.IS_PROTECTED, False)]:
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.previous_value is None
+        assert diff_prop.new_value == new_value
+        assert from_time < diff_prop.changed_at < branch_update_done
+
+
 async def test_relationship_property_owner_conflicting_updates(
     db: InfrahubDatabase,
     default_branch: Branch,
