@@ -24,7 +24,7 @@ class CoreNumberPool(Node):
         # Check if there is already a resource allocated with this identifier
         # if not, pull all existing prefixes and allocated the next available
         # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
-        query_get = await NumberPoolGetReserved.init(db=db, pool_id=self.id, identifier=identifier)
+        query_get = await NumberPoolGetReserved.init(db=db, branch=branch, pool_id=self.id, identifier=identifier)
         await query_get.execute(db=db)
         result = query_get.get_result()
         if result:

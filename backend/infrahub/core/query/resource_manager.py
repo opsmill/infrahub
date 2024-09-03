@@ -162,10 +162,19 @@ class NumberPoolGetReserved(Query):
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+
+        self.params.update(branch_params)
+
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[rel:IS_RESERVED]->(reservation:AttributeValue)
-        WHERE rel.identifier = $identifier
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[r:IS_RESERVED]->(reservation:AttributeValue)
+        WHERE
+            r.identifier = $identifier
+            AND
+            %(branch_filter)s
+        """ % {"branch_filter": branch_filter, "number_pool": InfrahubKind.NUMBERPOOL}
         self.add_to_query(query)
         self.return_labels = ["reservation.value"]
 
