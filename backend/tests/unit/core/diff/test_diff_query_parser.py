@@ -1058,11 +1058,13 @@ async def test_cardinality_one_peer_conflicting_updates(
     # check car node on branch
     car_node = nodes_by_id[car_accord_main.id]
     assert car_node.action is DiffAction.UPDATED
+    assert car_node.changed_at < from_time
     assert car_node.attributes == []
     assert len(car_node.relationships) == 1
     owner_rel = car_node.relationships[0]
     assert owner_rel.name == "owner"
     assert owner_rel.action is DiffAction.UPDATED
+    assert from_time < owner_rel.changed_at < branch_update_done
     elements_by_id = {e.peer_id: e for e in owner_rel.relationships}
     assert set(elements_by_id.keys()) == {person_john_main.id, person_albert_main.id}
     # check john removed
@@ -1070,8 +1072,16 @@ async def test_cardinality_one_peer_conflicting_updates(
     assert john_element.action is DiffAction.REMOVED
     assert from_time < john_element.changed_at < branch_update_done
     properties_by_type = {p.property_type: p for p in john_element.properties}
-    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED}
-    for (prop_type, previous_value) in [(DatabaseEdgeType.IS_RELATED, person_john_main.id), (DatabaseEdgeType.IS_VISIBLE, True), (DatabaseEdgeType.IS_PROTECTED, False)]:
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, previous_value in [
+        (DatabaseEdgeType.IS_RELATED, person_john_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
         diff_prop = properties_by_type[prop_type]
         assert diff_prop.previous_value == previous_value
         assert diff_prop.new_value is None
@@ -1081,12 +1091,196 @@ async def test_cardinality_one_peer_conflicting_updates(
     assert albert_element.action is DiffAction.ADDED
     assert from_time < albert_element.changed_at < branch_update_done
     properties_by_type = {p.property_type: p for p in albert_element.properties}
-    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED}
-    for (prop_type, new_value) in [(DatabaseEdgeType.IS_RELATED, person_john_main.id), (DatabaseEdgeType.IS_VISIBLE, True), (DatabaseEdgeType.IS_PROTECTED, False)]:
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, new_value in [
+        (DatabaseEdgeType.IS_RELATED, person_albert_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
         diff_prop = properties_by_type[prop_type]
         assert diff_prop.previous_value is None
         assert diff_prop.new_value == new_value
         assert from_time < diff_prop.changed_at < branch_update_done
+    # check john node on branch
+    john_node = nodes_by_id[person_john_main.id]
+    assert john_node.action is DiffAction.UPDATED
+    assert john_node.attributes == []
+    assert len(john_node.relationships) == 1
+    assert john_node.changed_at < from_time
+    cars_rel = john_node.relationships.pop()
+    assert cars_rel.name == "cars"
+    assert cars_rel.action is DiffAction.UPDATED
+    assert from_time < cars_rel.changed_at < branch_update_done
+    assert len(cars_rel.relationships) == 1
+    cars_element = cars_rel.relationships.pop()
+    assert cars_element.peer_id == car_accord_main.id
+    assert cars_element.action is DiffAction.REMOVED
+    assert from_time < cars_element.changed_at < branch_update_done
+    properties_by_type = {p.property_type: p for p in cars_element.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, previous_value in [
+        (DatabaseEdgeType.IS_RELATED, car_accord_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.previous_value == previous_value
+        assert diff_prop.new_value is None
+        assert from_time < diff_prop.changed_at < branch_update_done
+    # check albert node on branch
+    albert_node = nodes_by_id[person_albert_main.id]
+    assert albert_node.action is DiffAction.UPDATED
+    assert albert_node.attributes == []
+    assert len(albert_node.relationships) == 1
+    assert albert_node.changed_at < from_time
+    cars_rel = albert_node.relationships.pop()
+    assert cars_rel.name == "cars"
+    assert cars_rel.action is DiffAction.UPDATED
+    assert from_time < cars_rel.changed_at < branch_update_done
+    assert len(cars_rel.relationships) == 1
+    cars_element = cars_rel.relationships.pop()
+    assert cars_element.peer_id == car_accord_main.id
+    assert cars_element.action is DiffAction.ADDED
+    assert from_time < cars_element.changed_at < branch_update_done
+    properties_by_type = {p.property_type: p for p in cars_element.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, new_value in [
+        (DatabaseEdgeType.IS_RELATED, car_accord_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.previous_value is None
+        assert diff_prop.new_value == new_value
+        assert from_time < diff_prop.changed_at < branch_update_done
+    # check main
+    root_path = diff_parser.get_diff_root_for_branch(branch=default_branch.name)
+    assert root_path.branch == default_branch.name
+    assert len(root_path.nodes) == 3
+    nodes_by_id = {n.uuid: n for n in root_path.nodes}
+    assert set(nodes_by_id.keys()) == {car_accord_main.get_id(), person_john_main.get_id(), person_jane_main.get_id()}
+    # check car node on main
+    car_node = nodes_by_id[car_accord_main.id]
+    assert car_node.action is DiffAction.UPDATED
+    assert car_node.changed_at < from_time
+    assert car_node.attributes == []
+    assert len(car_node.relationships) == 1
+    owner_rel = car_node.relationships[0]
+    assert owner_rel.name == "owner"
+    assert owner_rel.action is DiffAction.UPDATED
+    assert branch_update_done < owner_rel.changed_at < main_update_done
+    elements_by_id = {e.peer_id: e for e in owner_rel.relationships}
+    assert set(elements_by_id.keys()) == {person_john_main.id, person_jane_main.id}
+    # check john removed
+    john_element = elements_by_id[person_john_main.id]
+    assert john_element.action is DiffAction.REMOVED
+    assert branch_update_done < john_element.changed_at < main_update_done
+    properties_by_type = {p.property_type: p for p in john_element.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, previous_value in [
+        (DatabaseEdgeType.IS_RELATED, person_john_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.previous_value == previous_value
+        assert diff_prop.new_value is None
+        assert branch_update_done < diff_prop.changed_at < main_update_done
+    # check jane added
+    jane_element = elements_by_id[person_jane_main.id]
+    assert jane_element.action is DiffAction.ADDED
+    assert branch_update_done < jane_element.changed_at < main_update_done
+    properties_by_type = {p.property_type: p for p in jane_element.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, new_value in [
+        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.previous_value is None
+        assert diff_prop.new_value == new_value
+        assert branch_update_done < diff_prop.changed_at < main_update_done
+    # check john node on main
+    john_node = nodes_by_id[person_john_main.id]
+    assert john_node.action is DiffAction.UPDATED
+    assert john_node.attributes == []
+    assert len(john_node.relationships) == 1
+    assert john_node.changed_at < from_time
+    cars_rel = john_node.relationships.pop()
+    assert cars_rel.name == "cars"
+    assert cars_rel.action is DiffAction.UPDATED
+    assert branch_update_done < cars_rel.changed_at < main_update_done
+    assert len(cars_rel.relationships) == 1
+    cars_element = cars_rel.relationships.pop()
+    assert cars_element.peer_id == car_accord_main.id
+    assert cars_element.action is DiffAction.REMOVED
+    assert branch_update_done < cars_element.changed_at < main_update_done
+    properties_by_type = {p.property_type: p for p in cars_element.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, previous_value in [
+        (DatabaseEdgeType.IS_RELATED, car_accord_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.previous_value == previous_value
+        assert diff_prop.new_value is None
+        assert branch_update_done < diff_prop.changed_at < main_update_done
+    # check jane node on main
+    jane_node = nodes_by_id[person_jane_main.id]
+    assert jane_node.action is DiffAction.UPDATED
+    assert jane_node.attributes == []
+    assert len(jane_node.relationships) == 1
+    assert jane_node.changed_at < from_time
+    cars_rel = jane_node.relationships.pop()
+    assert cars_rel.name == "cars"
+    assert cars_rel.action is DiffAction.UPDATED
+    assert branch_update_done < cars_rel.changed_at < main_update_done
+    assert len(cars_rel.relationships) == 1
+    cars_element = cars_rel.relationships.pop()
+    assert cars_element.peer_id == car_accord_main.id
+    assert cars_element.action is DiffAction.ADDED
+    assert branch_update_done < cars_element.changed_at < main_update_done
+    properties_by_type = {p.property_type: p for p in cars_element.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, new_value in [
+        (DatabaseEdgeType.IS_RELATED, car_accord_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.previous_value is None
+        assert diff_prop.new_value == new_value
+        assert branch_update_done < diff_prop.changed_at < main_update_done
 
 
 async def test_relationship_property_owner_conflicting_updates(
