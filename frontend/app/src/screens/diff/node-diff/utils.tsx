@@ -65,6 +65,7 @@ export const DiffRow = ({
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
       <Accordion
+        defaultOpen={hasConflicts}
         iconClassName={classNames("absolute", iconClassName)}
         hideChevron={!children}
         title={
