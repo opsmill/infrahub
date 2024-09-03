@@ -103,9 +103,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("trigger the diff update", async () => {
       await page.getByText("Data").click();
-      await expect(page.getByRole("button", { name: "Refresh diff" })).toBeVisible();
-      await expect(page.getByText("No diff to display. Try to")).toBeVisible();
-      await page.getByRole("button", { name: "Refresh diff" }).first().click();
+      await expect(page.getByText("We are computing the diff")).toBeVisible();
+      await page.getByRole("button", { name: "Refresh" }).click();
       await expect(page.getByText("Diff updated!")).toBeVisible();
     });
 
