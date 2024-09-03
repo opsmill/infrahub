@@ -48,7 +48,7 @@ class AccountGlobalPermissionQuery(Query):
         WHERE account.uuid = $account_id
         CALL {
             WITH account
-            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            MATCH (account)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
             RETURN account as account1, r as r1
             ORDER BY r.branch_level DESC, r.from DESC
@@ -84,7 +84,7 @@ async def fetch_permissions(
 ) -> dict[str, list[GlobalPermission]]:
     branch = await registry.get_branch(db=db, branch=branch)
 
-    query1 = await AccountGlobalPermissionQuery.init(db=db, branch=branch, account_id=account_id)
+    query1 = await AccountGlobalPermissionQuery.init(db=db, branch=branch, account_id=account_id, branch_agnostic=True)
     await query1.execute(db=db)
     global_permissions = query1.get_permissions()
 

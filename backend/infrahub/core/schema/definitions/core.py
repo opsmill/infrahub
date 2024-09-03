@@ -2091,6 +2091,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
                 {
@@ -2142,6 +2143,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.GENERICGROUP],
+            "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
                     "name": "roles",
