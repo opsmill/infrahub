@@ -1,5 +1,6 @@
 import {
   BadgeAdded,
+  BadgeConflict,
   BadgeRemoved,
   BadgeType,
   BadgeUnchanged,
@@ -17,6 +18,7 @@ export const diffBadges: { [key: string]: BadgeType } = {
   UPDATED: BadgeUpdated,
   REMOVED: BadgeRemoved,
   UNCHANGED: BadgeUnchanged,
+  CONFLICT: BadgeConflict,
 };
 
 export const DiffBadge = ({
