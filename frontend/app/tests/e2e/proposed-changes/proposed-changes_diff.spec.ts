@@ -89,13 +89,14 @@ test.describe("/proposed-changes diff data", () => {
   });
 
   test("should comment a proposed changes", async ({ page }) => {
-    await test.step("access proposed changes", async () => {
+    await test.step("access proposed change diff tab", async () => {
       await page.goto("/proposed-changes");
       await page.getByRole("link", { name: "conflict-test" }).click();
-      await page.getByText("Data").click();
       await expect(
         page.locator("header").filter({ hasText: "Proposed changesconflict-test" })
       ).toBeVisible();
+      await page.getByText("Data").click();
+      await expect(page.getByRole("button", { name: "Refresh diff" })).toBeVisible();
     });
 
     await test.step("comment proposed changes", async () => {
