@@ -10,7 +10,7 @@ import { Table, tRow } from "@/components/table/table";
 
 import { CardWithBorder } from "@/components/ui/card";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
-import { debounce } from "@/utils/common";
+import { classNames, debounce } from "@/utils/common";
 import { TabsButtons } from "@/components/buttons/tabs-buttons";
 import { useNavigate } from "react-router-dom";
 import { constructPath } from "@/utils/fetch";
@@ -45,12 +45,14 @@ export const ProposedChangesPage = () => {
   const [search, setSearch] = useQueryParam(QSP.SEARCH, StringParam);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<tRow | undefined>();
 
-  const states = qspState ? STATES[qspState] : STATES.open;
+  const [statesVisible, statesHidden] = qspState
+    ? [STATES.close, STATES.open]
+    : [STATES.open, STATES.close];
 
   const { loading, networkStatus, previousData, error, data, refetch } = useQuery(
     GET_PROPOSED_CHANGES,
     {
-      variables: { states, search },
+      variables: { statesVisible, statesHidden, search },
       notifyOnNetworkStatusChange: true,
     }
   );
@@ -148,6 +150,7 @@ export const ProposedChangesPage = () => {
             branch={node.source_branch.value}
             date={node._updated_at}
             comments={node.comments.count}
+            checks={node.validations.edges.map(({ node }: any) => node)}
           />
         ),
         data: <ProposedChangesDiffSummary branch={node.source_branch.value} />,
@@ -174,11 +177,25 @@ export const ProposedChangesPage = () => {
 
   const tabs = [
     {
-      label: "Opened",
+      label: (
+        <>
+          Opened
+          <Badge className={classNames("ml-1", !qspState && "bg-green-700 text-white")}>
+            {data?.[PROPOSED_CHANGES_OBJECT + (qspState ? "Hidden" : "Visible")]?.count ?? "..."}
+          </Badge>
+        </>
+      ),
       name: "open",
     },
     {
-      label: "Closed",
+      label: (
+        <>
+          Closed
+          <Badge className={classNames("ml-1", qspState && "bg-green-700 text-white")}>
+            {data?.[PROPOSED_CHANGES_OBJECT + (qspState ? "Visible" : "Hidden")]?.count ?? "..."}
+          </Badge>
+        </>
+      ),
       name: "close",
     },
   ];
@@ -201,7 +218,7 @@ export const ProposedChangesPage = () => {
             <SearchInput
               loading={loading}
               onChange={debouncedHandleSearch}
-              placeholder="Search a Propsoed Change"
+              placeholder="Search a Proposed Change"
               className="border-none focus-visible:ring-0 h-7"
               containerClassName=" flex-grow"
               data-testid="proposed-changes-list-search-bar"

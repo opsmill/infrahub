@@ -8,6 +8,7 @@ import { TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { useSchema } from "@/hooks/useSchema";
 import { Icon } from "@iconify-icon/react";
 import NoDataFound from "../errors/no-data-found";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface DiffTreeProps extends Omit<TreeProps, "data"> {
   nodes: Array<DiffNode>;
@@ -65,7 +66,7 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
     <a
       href={"#" + diffNode?.uuid}
       tabIndex={-1}
-      className="flex items-center gap-2 text-gray-800"
+      className="flex items-center gap-2 text-gray-800 overflow-hidden"
       data-testid="hierarchical-tree-item">
       <DiffBadge
         status={element.metadata?.status as string}
@@ -74,7 +75,9 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
         icon={schema?.icon ?? undefined}
       />
 
-      <span className="whitespace-nowrap">{element.name}</span>
+      <Tooltip enabled content={element.name}>
+        <span className="whitespace-nowrap truncate">{element.name}</span>
+      </Tooltip>
     </a>
   );
 };
