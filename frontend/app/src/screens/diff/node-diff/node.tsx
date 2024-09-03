@@ -51,8 +51,8 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
             </div>
           }
           className="bg-gray-100 border rounded-md">
-          <div className="divide-y border-t">
-            <div className="bg-custom-white grid grid-cols-3 pl-8">
+          <div className="bg-custom-white divide-y border-t">
+            <div className="grid grid-cols-3 pl-8">
               <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
                 <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}
               </Badge>
@@ -87,9 +87,16 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 const attribute = {
                   name: relationship.name,
                   contains_conflict: relationship.contains_conflict,
-                  conflict: element.conflict,
-                  path_identifier: element.path_identifier,
-                  properties: element.properties,
+                  properties: [
+                    {
+                      conflict: element.conflict,
+                      new_value: element.peer_label,
+                      path_identifier: element.path_identifier,
+                      previous_value: element.conflict?.base_branch_label,
+                      property_type: "HAS_VALUE",
+                    },
+                    ...element.properties,
+                  ],
                 };
 
                 return (
@@ -97,7 +104,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                     key={index}
                     attribute={attribute}
                     status={node.status}
-                    previousValue={element.previous_peer_label}
+                    previousValue={element.conflict?.base_branch_label}
                     newValue={element.peer_label}
                   />
                 );
