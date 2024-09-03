@@ -401,6 +401,7 @@ class DiffTreeResolver:
             include_parents=include_parents,
             limit=limit,
             offset=offset,
+            include_empty=True,
         )
         if not enriched_diffs:
             return None
@@ -454,6 +455,8 @@ class DiffTreeResolver:
             to_time=to_timestamp,
             filters=filters_dict,
         )
+        if summary is None:
+            return None
 
         diff_tree_summary = DiffTreeSummary(
             base_branch=base_branch.name,

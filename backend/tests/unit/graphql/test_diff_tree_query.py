@@ -195,7 +195,43 @@ async def diff_coordinator(db: InfrahubDatabase, diff_branch: Branch) -> DiffCoo
     return coordinator
 
 
-async def test_diff_tree_empty_diff(
+async def test_diff_tree_no_changes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_low,
+    diff_coordinator: DiffCoordinator,
+    diff_branch: Branch,
+):
+    enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+    from_time = datetime.fromisoformat(diff_branch.created_at)
+    to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
+
+    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+
+    assert result.errors is None
+    assert result.data["DiffTree"] == {
+        "base_branch": default_branch.name,
+        "diff_branch": diff_branch.name,
+        "from_time": from_time.isoformat(),
+        "to_time": to_time.isoformat(),
+        "num_added": 0,
+        "num_removed": 0,
+        "num_updated": 0,
+        "num_conflicts": 0,
+        "num_untracked_base_changes": 0,
+        "num_untracked_diff_changes": 0,
+        "nodes": [],
+    }
+
+
+async def test_diff_tree_no_diffs(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, diff_branch: Branch
 ):
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
@@ -634,6 +670,58 @@ async def test_diff_tree_hierarchy_change(
         "europe": None,
     }
     assert nodes_parent == expected_nodes_parent
+
+
+async def test_diff_tree_summary_no_diffs(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, diff_branch: Branch
+):
+    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_SUMMARY,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+
+    assert result.errors is None
+    assert result.data["DiffTreeSummary"] is None
+
+
+async def test_diff_tree_summary_no_changes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_low,
+    diff_coordinator: DiffCoordinator,
+    diff_branch: Branch,
+):
+    enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+    from_time = datetime.fromisoformat(diff_branch.created_at)
+    to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
+
+    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_SUMMARY,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+
+    assert result.errors is None
+    assert result.data["DiffTreeSummary"] == {
+        "base_branch": default_branch.name,
+        "diff_branch": diff_branch.name,
+        "from_time": from_time.isoformat(),
+        "to_time": to_time.isoformat(),
+        "num_added": 0,
+        "num_removed": 0,
+        "num_updated": 0,
+        "num_unchanged": 0,
+        "num_conflicts": 0,
+        "num_untracked_base_changes": 0,
+        "num_untracked_diff_changes": 0,
+    }
 
 
 @pytest.mark.parametrize(
