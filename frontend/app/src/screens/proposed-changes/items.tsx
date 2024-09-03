@@ -31,6 +31,8 @@ import { ProposedChangesReviewers } from "@/screens/proposed-changes/reviewers";
 import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { useSchema } from "@/hooks/useSchema";
 
 const STATES = {
   open: ["open"],
@@ -44,6 +46,7 @@ export const ProposedChangesPage = () => {
   useTitle("Proposed changes");
   const [search, setSearch] = useQueryParam(QSP.SEARCH, StringParam);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<tRow | undefined>();
+  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
   const [statesVisible, statesHidden] = qspState
     ? [STATES.close, STATES.open]
@@ -209,8 +212,13 @@ export const ProposedChangesPage = () => {
           </div>
         }
         reload={() => refetch()}
-        isReloadLoading={loading}
-      />
+        isReloadLoading={loading}>
+        <ObjectHelpButton
+          className="ml-auto"
+          documentationUrl={schema?.documentation}
+          kind={PROPOSED_CHANGES_OBJECT}
+        />
+      </Content.Title>
 
       <Content>
         <CardWithBorder className="m-2">
