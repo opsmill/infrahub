@@ -386,22 +386,7 @@ async def test_diff_tree_one_attr_change(
                                 "previous_label": None,
                                 "new_label": None,
                                 "status": UPDATED_ACTION,
-                                "conflict": {
-                                    "uuid": enriched_conflict.uuid,
-                                    "base_branch_action": UPDATED_ACTION,
-                                    "base_branch_value": "#fedcba",
-                                    "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string(
-                                        with_z=False
-                                    ),
-                                    "base_branch_label": None,
-                                    "diff_branch_action": UPDATED_ACTION,
-                                    "diff_branch_value": "#abcdef",
-                                    "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string(
-                                        with_z=False
-                                    ),
-                                    "diff_branch_label": None,
-                                    "selected_branch": GraphQLConfictSelection.DIFF_BRANCH.name,
-                                },
+                                "conflict": None,
                             }
                         ],
                     }
