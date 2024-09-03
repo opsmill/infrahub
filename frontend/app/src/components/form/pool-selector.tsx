@@ -22,11 +22,10 @@ type PoolSelectorProps = {
   onReset: () => void;
   pools: Array<NumberPoolData>;
   value: FormFieldValue;
-  displayValue?: boolean;
 };
 
 export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
-  ({ children, onChange, onReset, value, pools, displayValue }, ref) => {
+  ({ children, onChange, onReset, value, pools }, ref) => {
     const [override, setOverride] = React.useState(false);
 
     const items: Array<tComboboxItem> = pools.map((pool) => ({
@@ -40,11 +39,14 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
       },
     }));
 
+    const displayFromPool =
+      typeof value.value === "object" && value.value && "from_pool" in value.value;
+
     return (
       <Popover>
         <div className="flex gap-1 w-full">
           <PopoverAnchor asChild>
-            {value.source?.type !== "pool" || override || displayValue ? (
+            {value.source?.type !== "pool" || override || !displayFromPool ? (
               <Slot autoFocus={override} onBlur={() => setOverride(false)} ref={ref}>
                 {children}
               </Slot>
