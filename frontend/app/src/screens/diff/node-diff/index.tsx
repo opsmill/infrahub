@@ -241,11 +241,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
 
       <div className="flex-grow grid grid-cols-4 overflow-hidden">
         <Card className="col-span-1 my-2.5 ml-2.5 overflow-auto">
-          <DiffTree
-            nodes={nodes}
-            className="p-2 w-full"
-            emptyMessage="No tree view available for the diff."
-          />
+          <DiffTree nodes={nodes} className="p-2 w-full" />
         </Card>
 
         <div className="space-y-4 p-2.5 col-start-2 col-end-5 overflow-auto">
