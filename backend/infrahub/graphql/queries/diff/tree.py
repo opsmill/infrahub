@@ -213,6 +213,7 @@ class DiffTreeResolver:
         for diff_prop in diff_properties:
             if diff_prop.property_type == DatabaseEdgeType.HAS_VALUE.value and diff_prop.conflict:
                 conflict = diff_prop.conflict
+                diff_prop.conflict = None
         return DiffAttribute(
             name=enriched_attribute.name,
             last_changed_at=enriched_attribute.changed_at.obj,
