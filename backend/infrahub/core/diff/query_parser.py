@@ -540,9 +540,6 @@ class DiffQueryParser:
         self, diff_node: DiffNodeIntermediate, base_diff_node: DiffNodeIntermediate
     ) -> None:
         for relationship_name, diff_relationship in diff_node.relationships_by_name.items():
-            # if relationship_name == "owner":
-            #     breakpoint()
-
             base_diff_relationship = base_diff_node.relationships_by_name.get(relationship_name)
             if not base_diff_relationship:
                 continue
@@ -564,16 +561,16 @@ class DiffQueryParser:
 
                 for base_diff_property in base_property_set:
                     prop_type = DatabaseEdgeType(base_diff_property.property_type)
-                    if prop_type not in base_diff_property_by_type:
-                        continue
                     if (
-                        base_diff_property.status is RelationshipStatus.ACTIVE
-                        and base_diff_property.changed_at >= self.from_time
-                    ):
-                        continue
-                    if (
-                        prop_type in latest_diff_property_times_by_type
-                        and base_diff_property.changed_at > latest_diff_property_times_by_type[prop_type]
+                        prop_type not in base_diff_property_by_type
+                        or (
+                            base_diff_property.status is RelationshipStatus.ACTIVE
+                            and base_diff_property.changed_at >= self.from_time
+                        )
+                        or (
+                            prop_type in latest_diff_property_times_by_type
+                            and base_diff_property.changed_at > latest_diff_property_times_by_type[prop_type]
+                        )
                     ):
                         continue
                     if base_diff_property_by_type[prop_type] is None:
@@ -582,9 +579,7 @@ class DiffQueryParser:
                     current_property = base_diff_property_by_type.get(prop_type)
                     if current_property and base_diff_property.changed_at < current_property.changed_at:
                         base_diff_property_by_type[prop_type] = base_diff_property
-                for bdp in base_diff_property_by_type.values():
-                    if bdp:
-                        property_set.add(bdp)
+                property_set.update({bdp for bdp in base_diff_property_by_type.values() if bdp})
 
     def _remove_empty_base_diff_root(self) -> None:
         base_diff_root = self._diff_root_by_branch.get(self.base_branch_name)
