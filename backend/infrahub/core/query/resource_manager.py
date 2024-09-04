@@ -178,6 +178,12 @@ class NumberPoolGetReserved(Query):
         self.add_to_query(query)
         self.return_labels = ["reservation.value"]
 
+    def get_reservation(self) -> int | None:
+        result = self.get_result()
+        if result:
+            return result.get_as_optional_type("reservation.value", return_type=int)
+        return None
+
 
 class NumberPoolGetUsed(Query):
     name: str = "number_pool_get_used"

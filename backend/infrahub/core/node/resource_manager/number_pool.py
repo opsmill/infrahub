@@ -26,11 +26,9 @@ class CoreNumberPool(Node):
         # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
         query_get = await NumberPoolGetReserved.init(db=db, branch=branch, pool_id=self.id, identifier=identifier)
         await query_get.execute(db=db)
-        result = query_get.get_result()
-        if result:
-            value = result.get_as_optional_type("reservation.value", return_type=int)
-            if value is not None:
-                return value
+        reservation = query_get.get_reservation()
+        if reservation is not None:
+            return reservation
 
         # If we have not returned a value we need to find one if avaiable
         number = await self.get_next(db=db, branch=branch)
