@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Field, Int, List, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
-from infrahub.core.account import fetch_permissions
+from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import InternalAccountToken
 from infrahub.exceptions import PermissionDeniedError
@@ -13,6 +13,7 @@ from infrahub.exceptions import PermissionDeniedError
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.account import GlobalPermission
     from infrahub.graphql import GraphqlContext
 
 
@@ -97,12 +98,14 @@ async def resolve_account_permissions(
         raise ValueError("An account_session is mandatory to execute this query")
 
     fields = await extract_fields_first_node(info)
-    permissions = await fetch_permissions(
-        db=context.db, branch=context.branch, account_id=context.account_session.account_id
-    )
+    permissions: dict[str, list[GlobalPermission]] = {}
+    if registry.permission_backends:
+        for permission_backend in registry.permission_backends:
+            permissions.update(
+                await permission_backend.load_permissions(db=context.db, account_id=context.account_session.account_id)
+            )
 
     response: dict[str, Any] = {}
-
     if "global_permissions" in fields:
         global_list = permissions["global_permissions"]
         response["global_permissions"] = {"count": len(global_list)}
