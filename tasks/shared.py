@@ -34,6 +34,10 @@ MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
 )
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
 
+TASK_MANAGER_DOCKER_IMAGE = os.getenv(
+    "TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0-python3.12"
+)
+
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", str(TOP_DIRECTORY_NAME)))
@@ -201,6 +205,7 @@ def get_env_vars(context: Context, namespace: str = "default") -> str:
         "NBR_WORKERS": NBR_WORKERS,
         "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
         "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
+        "TASK_MANAGER_DOCKER_IMAGE": TASK_MANAGER_DOCKER_IMAGE,
         "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
     }
 

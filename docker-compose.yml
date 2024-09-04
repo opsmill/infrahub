@@ -145,6 +145,20 @@ services:
       - 2004:2004
       - 6362:6362
 
+  task-manager:
+    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0-python3.12}"
+    command: prefect server start --host 0.0.0.0 --ui
+    restart: unless-stopped
+    environment:
+      PREFECT_WORKER_QUERY_SECONDS: 3
+      PREFECT_AGENT_QUERY_INTERVAL: 3
+    healthcheck:
+      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
   infrahub-server:
     image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.0}"
     restart: unless-stopped
