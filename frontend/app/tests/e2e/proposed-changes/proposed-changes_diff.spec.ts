@@ -67,7 +67,7 @@ test.describe("/proposed-changes diff data", () => {
   test("should approve a proposed changes", async ({ page }) => {
     await test.step("got to the proposed changes data tab", async () => {
       await page.goto("/proposed-changes");
-      await page.getByRole("link", { name: "conflict-test" }).click();
+      await page.getByRole("link", { name: "conflict-test" }).first().click();
       await expect(page.getByRole("cell", { name: "A", exact: true }).first()).toBeVisible();
       await expect(page.getByRole("cell", { name: "A", exact: true }).nth(1)).toBeVisible();
       await page.getByRole("button", { name: "Approve" }).click();
