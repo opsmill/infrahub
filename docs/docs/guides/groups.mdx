@@ -7,7 +7,25 @@ title: Creating a Group
 
 Within Infrahub a [Group](/topics/groups) can be created in multiple ways: in the UI, GraphQL, SDK and allow you to create and manage collections of objects.
 
-As the first step we need to create a group. Execute this GraphQL mutation to create the group `TagConfigGroup`.
+As the first step we need to create a group.
+We will be adding the `red` and `blue` tag to the `TagConfigGroup` group that we created in the previous step.
+
+- [Via the web interface](#via-the-web-interface)
+- [Via the GraphQL interface](#via-the-graphql-interface)
+
+## Via the web interface
+
+As the first step we need to create a group.
+![New Group](../media/group_tagconfig_grp_new_grp.png)
+
+Then we will add members to the group.
+![Adding members in group](../media/group_tagconfig_grp_adding_members.png)
+
+## Via the GraphQL interface
+
+### Creating a new group
+
+Execute this GraphQL mutation to create the group `TagConfigGroup`.
 
 ```GraphQL
 mutation CreateGroup {
@@ -22,7 +40,7 @@ mutation CreateGroup {
 
 Take note of the returned `HFID`, we will need it when we add members to this group.
 
-## Adding targets to the group
+### Adding members to the group
 
 We will be adding the `red` and `blue` tag to the `TagConfigGroup` group that we created in the previous step.
 
@@ -61,6 +79,7 @@ mutation UpdateGroupMembers {
 }
 ```
 
+![Adding members in group](../media/group_tagconfig_grp_adding_members.png)
 The resulting mutation should look like this (note that the ids will be different in your case).
 
 ```GraphQL
@@ -80,4 +99,4 @@ mutation UpdateGroupMembers {
 In the web interface navigate to Standard Groups under the Groups section in the menu on the left.
 Select the `TagConfigGroup` and navigate to the Members tab. We can confirm that the `red` and `blue` tag are now a member of the group.
 
-![Group members](../media/guides/artifact/artifact_group_members.png)
+![Group members](../media/group_tagconfig_grp_new_members.png)
