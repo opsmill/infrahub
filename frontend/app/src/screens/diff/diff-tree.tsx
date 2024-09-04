@@ -7,14 +7,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { useSchema } from "@/hooks/useSchema";
 import { Icon } from "@iconify-icon/react";
-import NoDataFound from "../errors/no-data-found";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface DiffTreeProps extends Omit<TreeProps, "data"> {
   nodes: Array<DiffNode>;
-  emptyMessage?: string;
 }
 
-export default function DiffTree({ nodes, loading, emptyMessage, ...props }: DiffTreeProps) {
+export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
   const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_TREE);
   const location = useLocation();
   const navigate = useNavigate();
@@ -24,7 +23,7 @@ export default function DiffTree({ nodes, loading, emptyMessage, ...props }: Dif
     setTreeData(addItemsToTree(EMPTY_TREE, generateRootCategoryNodeForDiffTree(formattedNodes)));
   }, [nodes]);
 
-  if (treeData.length <= 1) return <NoDataFound message={emptyMessage ?? "No data to display."} />;
+  if (treeData.length <= 1) return null;
 
   return (
     <Tree
@@ -65,7 +64,7 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
     <a
       href={"#" + diffNode?.uuid}
       tabIndex={-1}
-      className="flex items-center gap-2 text-gray-800"
+      className="flex items-center gap-2 text-gray-800 overflow-hidden"
       data-testid="hierarchical-tree-item">
       <DiffBadge
         status={element.metadata?.status as string}
@@ -74,7 +73,9 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
         icon={schema?.icon ?? undefined}
       />
 
-      <span className="whitespace-nowrap">{element.name}</span>
+      <Tooltip enabled content={element.name}>
+        <span className="whitespace-nowrap truncate">{element.name}</span>
+      </Tooltip>
     </a>
   );
 };
