@@ -17,6 +17,14 @@ export const getUpdateMutationFromFormData = ({
       return acc;
     }
 
+    if (
+      fieldData.source?.type === "pool" &&
+      field.defaultValue?.source?.id === fieldData?.source?.id
+    ) {
+      // If the same pool is selected, then remove from the updates
+      return acc;
+    }
+
     switch (fieldData.source?.type) {
       case "pool":
       case "user": {
