@@ -141,7 +141,7 @@ def prefect_test_fixture():
         yield
 
 
-@pytest.fixture(autouse=True, scope="session")
+@pytest.fixture(scope="session")
 def prefect_test(prefect_test_fixture):
     with disable_run_logger():
         yield
