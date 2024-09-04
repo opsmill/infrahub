@@ -1756,13 +1756,13 @@ test = ["objgraph", "psutil"]
 
 [[package]]
 name = "griffe"
-version = "0.47.0"
+version = "1.2.0"
 description = "Signatures for entire Python programs. Extract the structure, the frame, the skeleton of your project, to generate API documentation or find breaking changes in your API."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "griffe-0.47.0-py3-none-any.whl", hash = "sha256:07a2fd6a8c3d21d0bbb0decf701d62042ccc8a576645c7f8799fe1f10de2b2de"},
-    {file = "griffe-0.47.0.tar.gz", hash = "sha256:95119a440a3c932b13293538bdbc405bee4c36428547553dc6b327e7e7d35e5a"},
+    {file = "griffe-1.2.0-py3-none-any.whl", hash = "sha256:a8b2fcb1ecdc5a412e646b0b4375eb20a5d2eac3a11dd8c10c56967a4097663c"},
+    {file = "griffe-1.2.0.tar.gz", hash = "sha256:1c9f6ef7455930f3f9b0c4145a961c90385d1e2cbc496f7796fbff560ec60d31"},
 ]
 
 [package.dependencies]
@@ -2150,21 +2150,6 @@ zipp = ">=0.5"
 docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (<7.2.5)", "sphinx (>=3.5)", "sphinx-lint"]
 perf = ["ipython"]
 testing = ["flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-mypy (>=0.9.1)", "pytest-perf (>=0.9.2)", "pytest-ruff"]
-
-[[package]]
-name = "importlib-resources"
-version = "6.1.3"
-description = "Read resources from Python packages"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "importlib_resources-6.1.3-py3-none-any.whl", hash = "sha256:4c0269e3580fe2634d364b39b38b961540a7738c02cb984e98add8b4221d793d"},
-    {file = "importlib_resources-6.1.3.tar.gz", hash = "sha256:56fb4525197b78544a3354ea27793952ab93f935bb4bf746b846bb1015020f2b"},
-]
-
-[package.extras]
-docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (<7.2.5)", "sphinx (>=3.5)", "sphinx-lint"]
-testing = ["jaraco.collections", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-mypy", "pytest-ruff (>=0.2.1)", "zipp (>=3.17)"]
 
 [[package]]
 name = "infrahub-sdk"
@@ -3897,22 +3882,22 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.0.0rc17"
+version = "3.0.0"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "prefect-3.0.0rc17-py3-none-any.whl", hash = "sha256:7934edfd244863c2a4589893194c8c71ff124eef4c41c6c82f234cb54d5e93c3"},
-    {file = "prefect-3.0.0rc17.tar.gz", hash = "sha256:af8cc4e679df09bcf0e99e95883d93c7739177f4396cfe529614a7f789b319e5"},
+    {file = "prefect-3.0.0-py3-none-any.whl", hash = "sha256:066b0cbbd24b99ff14412e2b3dedb4f317d4d8aa81b2e032ef43ae667851f321"},
+    {file = "prefect-3.0.0.tar.gz", hash = "sha256:e6da7ae54612a36423ea2bb224cf62b6aed56cfd320a44be2377c7af899c3193"},
 ]
 
 [package.dependencies]
-aiosqlite = ">=0.17.0"
+aiosqlite = ">=0.17.0,<1.0.0"
 alembic = ">=1.7.5,<2.0.0"
 anyio = ">=4.4.0,<5.0.0"
 apprise = ">=1.1.0,<2.0.0"
 asgi-lifespan = ">=1.0,<3.0"
-asyncpg = ">=0.23"
+asyncpg = ">=0.23,<1.0.0"
 cachetools = ">=5.3,<6.0"
 click = ">=8.0,<8.2"
 cloudpickle = ">=2.0,<4.0"
@@ -3920,16 +3905,15 @@ coolname = ">=1.0.4,<3.0.0"
 croniter = ">=1.0.12,<4.0.0"
 cryptography = ">=36.0.1"
 dateparser = ">=1.1.1,<2.0.0"
-docker = ">=4.0"
+docker = ">=4.0,<8.0"
 exceptiongroup = ">=1.0.0"
 fastapi = ">=0.111.0,<1.0.0"
 fsspec = ">=2022.5.0"
 graphviz = ">=0.20.1"
-griffe = ">=0.20.0,<0.48.0"
+griffe = ">=0.49.0,<2.0.0"
 httpcore = ">=1.0.5,<2.0.0"
 httpx = {version = ">=0.23,<0.23.2 || >0.23.2", extras = ["http2"]}
-humanize = ">=4.9.0"
-importlib-resources = ">=6.1.3,<6.2.0"
+humanize = ">=4.9.0,<5.0.0"
 jinja2 = ">=3.0.0,<4.0.0"
 jinja2-humanize-extension = ">=0.4.0"
 jsonpatch = ">=1.32,<2.0"
@@ -3958,7 +3942,7 @@ typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.13.0"
 typing-extensions = ">=4.5.0,<5.0.0"
 ujson = ">=5.8.0,<6.0.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
-websockets = ">=10.4,<13.0"
+websockets = ">=10.4,<14.0"
 
 [package.extras]
 aws = ["prefect-aws (>=0.5.0rc1)"]
@@ -6346,4 +6330,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "ad788bda29622c646eb98e8cc9325ed828f2d38665001abf36b3c1f453f9ceaa"
+content-hash = "441715a06b1c3e40ba52050a1a0452b90f9e98e3191fdaaaac7dd98d13e3b35e"
