@@ -40,14 +40,8 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByText("UpdatedDeviceden1-edge1").click();
       await expect(page.getByText("status")).toBeVisible();
       await expect(page.getByText("active", { exact: true })).toBeVisible();
-      await expect(page.getByText("maintenance", { exact: true })).toBeVisible();
-      await page
-        .locator("div")
-        .filter({ hasText: /^status$/ })
-        .first()
-        .click();
+      await expect(page.getByText("maintenance", { exact: true }).first()).toBeVisible();
       await expect(page.getByText("valueConflict")).toBeVisible();
-      await page.getByText("valueConflict").click();
       await expect(
         page
           .locator("div")
