@@ -20,7 +20,7 @@ services:
       timeout: 5s
       retries: 3
   task-manager:
-    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0-python3.12}" 
+    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0-python3.12}"
     command: prefect server start --host 0.0.0.0 --ui
     environment:
       PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
