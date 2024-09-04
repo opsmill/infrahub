@@ -209,6 +209,17 @@ class InfrahubLockRegistry:
 
         return new_name
 
+    def get_existing(
+        self,
+        name: str,
+        namespace: str | None,
+        local: Optional[bool] = None,
+    ) -> InfrahubLock | None:
+        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        if lock_name not in self.locks:
+            return None
+        return self.locks[lock_name]
+
     def get(
         self, name: str, namespace: Optional[str] = None, local: Optional[bool] = None, in_multi: bool = False
     ) -> InfrahubLock:

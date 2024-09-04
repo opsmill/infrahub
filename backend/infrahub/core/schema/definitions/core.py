@@ -15,7 +15,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     ProposedChangeState,
     RelationshipDeleteBehavior,
-    RepositoryAdminStatus,
+    RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
     Severity,
@@ -407,23 +407,23 @@ core_models: dict[str, Any] = {
                     "allow_override": AllowOverrideType.NONE,
                 },
                 {
-                    "name": "admin_status",
+                    "name": "internal_status",
                     "kind": "Dropdown",
                     "choices": [
                         {
-                            "name": RepositoryAdminStatus.STAGING.value,
+                            "name": RepositoryInternalStatus.STAGING.value,
                             "label": "Staging",
                             "description": "Repository was recently added to this branch.",
                             "color": "#fef08a",
                         },
                         {
-                            "name": RepositoryAdminStatus.ACTIVE.value,
+                            "name": RepositoryInternalStatus.ACTIVE.value,
                             "label": "Active",
                             "description": "Repository is actively being synced for this branch",
                             "color": "#86efac",
                         },
                         {
-                            "name": RepositoryAdminStatus.INACTIVE.value,
+                            "name": RepositoryInternalStatus.INACTIVE.value,
                             "label": "Inactive",
                             "description": "Repository is not active on this branch.",
                             "color": "#e5e7eb",
@@ -432,7 +432,7 @@ core_models: dict[str, Any] = {
                     "default_value": "inactive",
                     "optional": False,
                     "branch": BranchSupportType.LOCAL.value,
-                    "order_weight": 6000,
+                    "order_weight": 7000,
                     "allow_override": AllowOverrideType.NONE,
                 },
                 {
@@ -473,7 +473,7 @@ core_models: dict[str, Any] = {
                     "optional": False,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "default_value": RepositoryOperationalStatus.UNKNOWN.value,
-                    "order_weight": 7000,
+                    "order_weight": 5000,
                 },
                 {
                     "name": "sync_status",
@@ -507,7 +507,7 @@ core_models: dict[str, Any] = {
                     "optional": False,
                     "branch": BranchSupportType.LOCAL.value,
                     "default_value": RepositorySyncStatus.UNKNOWN.value,
-                    "order_weight": 8000,
+                    "order_weight": 6000,
                 },
             ],
             "relationships": [
@@ -518,6 +518,7 @@ core_models: dict[str, Any] = {
                     "kind": "Attribute",
                     "optional": True,
                     "cardinality": "one",
+                    "order_weight": 4000,
                 },
                 {
                     "name": "tags",
@@ -525,6 +526,7 @@ core_models: dict[str, Any] = {
                     "kind": "Attribute",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 8000,
                 },
                 {
                     "name": "transformations",
@@ -532,6 +534,7 @@ core_models: dict[str, Any] = {
                     "identifier": "repository__transformation",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 10000,
                 },
                 {
                     "name": "queries",
@@ -539,6 +542,7 @@ core_models: dict[str, Any] = {
                     "identifier": "graphql_query__repository",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 9000,
                 },
                 {
                     "name": "checks",
@@ -546,6 +550,7 @@ core_models: dict[str, Any] = {
                     "identifier": "check_definition__repository",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 11000,
                 },
                 {
                     "name": "generators",
@@ -553,6 +558,7 @@ core_models: dict[str, Any] = {
                     "identifier": "generator_definition__repository",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 12000,
                 },
             ],
         },

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Generator, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, Optional, TypeVar, Union
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+RETURN_TYPE = TypeVar("RETURN_TYPE")
 
 
 def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[QueryResult]:
@@ -224,6 +226,27 @@ class QueryResult:
         if item:
             return str(item)
         return None
+
+    def get_as_optional_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> Optional[RETURN_TYPE]:
+        """Return a label as a given type.
+
+        For example if an integer is needed the caller would use:
+        .get_as_optional_type(label="name_of_label", return_type=int)
+        """
+        item = self._get(label=label)
+        if item is not None:
+            return return_type(item)
+        return None
+
+    def get_as_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> RETURN_TYPE:
+        """Return a label as a given type.
+
+        For example if an integer is needed the caller would use:
+        .get_as_type(label="name_of_label", return_type=int)
+        """
+        item = self._get(label=label)
+
+        return return_type(item)
 
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
         entry = self._get(label=label)
