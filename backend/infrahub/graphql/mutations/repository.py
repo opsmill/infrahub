@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from graphene import Boolean, InputObjectType, Mutation, String
 
-from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
 from infrahub.core.schema import NodeSchema
@@ -77,9 +77,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         # If we are in the default branch, we set the sync status to Active
         # If we are in another branch, we set the sync status to Staging
         if branch.is_default:
-            obj.admin_status.value = RepositoryAdminStatus.ACTIVE.value
+            obj.internal_status.value = RepositoryInternalStatus.ACTIVE.value
         else:
-            obj.admin_status.value = RepositoryAdminStatus.STAGING.value
+            obj.internal_status.value = RepositoryInternalStatus.STAGING.value
         await obj.save(db=context.db)
 
         # Create the new repository in the filesystem.
@@ -95,7 +95,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 ref=obj.ref.value,
                 infrahub_branch_name=branch.name,
-                admin_status=obj.admin_status.value,
+                internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
         else:
@@ -106,7 +106,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 default_branch_name=obj.default_branch.value,
                 infrahub_branch_name=branch.name,
-                admin_status=obj.admin_status.value,
+                internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
 

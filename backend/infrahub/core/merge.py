@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
-from infrahub.core.constants import DiffAction, RelationshipStatus, RepositoryAdminStatus
+from infrahub.core.constants import DiffAction, RelationshipStatus, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaBranchDiff
 from infrahub.core.protocols import CoreRepository
@@ -444,15 +444,15 @@ class BranchMerger:
             if repo.id not in repos_in_main:
                 continue
 
-            if repo.admin_status.value == RepositoryAdminStatus.INACTIVE.value:
+            if repo.internal_status.value == RepositoryInternalStatus.INACTIVE.value:
                 continue
 
-            if self.source_branch.sync_with_git or repo.admin_status.value == RepositoryAdminStatus.STAGING.value:
+            if self.source_branch.sync_with_git or repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
                 events.append(
                     messages.GitRepositoryMerge(
                         repository_id=repo.id,
                         repository_name=repo.name.value,
-                        admin_status=repo.admin_status.value,
+                        internal_status=repo.internal_status.value,
                         source_branch=self.source_branch.name,
                         destination_branch=registry.default_branch,
                         default_branch=repo.default_branch.value,

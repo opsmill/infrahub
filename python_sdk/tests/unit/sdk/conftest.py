@@ -1419,7 +1419,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
-                            "admin_status": {"value": "active"},
+                            "internal_status": {"value": "active"},
                         }
                     },
                     {
@@ -1429,7 +1429,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge-read-only"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
                             "commit": {"value": "cccccccccccccccccccc"},
-                            "admin_status": {"value": "active"},
+                            "internal_status": {"value": "active"},
                         }
                     },
                 ],
@@ -1448,7 +1448,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
-                            "admin_status": {"value": "active"},
+                            "internal_status": {"value": "active"},
                         }
                     },
                     {
@@ -1458,7 +1458,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge-read-only"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
                             "commit": {"value": "dddddddddddddddddddd"},
-                            "admin_status": {"value": "active"},
+                            "internal_status": {"value": "active"},
                         }
                     },
                 ],

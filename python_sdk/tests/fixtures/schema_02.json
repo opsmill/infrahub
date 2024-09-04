@@ -78,7 +78,7 @@
                     "choices": null
                 },
                 {
-                    "name": "admin_status",
+                    "name": "internal_status",
                     "kind": "Text",
                     "label": "Admin Status",
                     "description": null,
@@ -530,7 +530,7 @@
                     "choices": null
                 },
                 {
-                    "name": "admin_status",
+                    "name": "internal_status",
                     "kind": "Text",
                     "label": "Admin Status",
                     "description": null,
@@ -849,7 +849,7 @@
                     "optional": false
                 },
                 {
-                    "name": "admin_status",
+                    "name": "internal_status",
                     "kind": "Text",
                     "label": "Admin Status",
                     "description": null,

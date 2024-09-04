@@ -84,7 +84,7 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
       <FilterButton
         onClick={() => handleFilter(diffActions.ADDED)}
         muted={!!qsp && qsp !== diffActions.ADDED}
-        disabled={!data?.DiffTreeSummary?.num_added}
+        disabled={!data?.DiffTreeSummary?.num_added && qsp !== diffActions.ADDED}
         className="relative">
         <BadgeAdded>{data?.DiffTreeSummary?.num_added}</BadgeAdded>
         {qsp === diffActions.ADDED && <CloseBadgeAdded />}
@@ -93,7 +93,7 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
       <FilterButton
         onClick={() => handleFilter(diffActions.REMOVED)}
         muted={!!qsp && qsp !== diffActions.REMOVED}
-        disabled={!data?.DiffTreeSummary?.num_removed}
+        disabled={!data?.DiffTreeSummary?.num_removed && qsp !== diffActions.REMOVED}
         className="relative">
         <BadgeRemoved>{data?.DiffTreeSummary?.num_removed}</BadgeRemoved>
         {qsp === diffActions.REMOVED && <CloseBadgeRemoved />}
@@ -102,7 +102,7 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
       <FilterButton
         onClick={() => handleFilter(diffActions.UPDATED)}
         muted={!!qsp && qsp !== diffActions.UPDATED}
-        disabled={!data?.DiffTreeSummary?.num_updated}
+        disabled={!data?.DiffTreeSummary?.num_updated && qsp !== diffActions.UPDATED}
         className="relative">
         <BadgeUpdated>{data?.DiffTreeSummary?.num_updated}</BadgeUpdated>
         {qsp === diffActions.UPDATED && <CloseBadgeUpdated />}
@@ -111,7 +111,7 @@ export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChanges
       <FilterButton
         onClick={() => handleFilter(diffActions.CONFLICT)}
         muted={!!qsp && qsp !== diffActions.CONFLICT}
-        disabled={!data?.DiffTreeSummary?.num_conflicts}
+        disabled={!data?.DiffTreeSummary?.num_conflicts && qsp !== diffActions.CONFLICT}
         className="relative">
         <BadgeConflict>{data?.DiffTreeSummary?.num_conflicts}</BadgeConflict>
         {qsp === diffActions.CONFLICT && <CloseBadgeConflict />}

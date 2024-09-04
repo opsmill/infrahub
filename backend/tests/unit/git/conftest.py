@@ -514,7 +514,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-test-fixture-01"},
                             "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
                             "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
-                            "admin_status": {"value": "active"},
+                            "internal_status": {"value": "active"},
                         }
                     }
                 ]
@@ -532,7 +532,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-test-fixture-01"},
                             "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
                             "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
-                            "admin_status": {"value": "active"},
+                            "internal_status": {"value": "active"},
                         }
                     }
                 ]

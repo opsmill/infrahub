@@ -1,5 +1,4 @@
 import { Tabs } from "@/components/tabs";
-import { Link } from "@/components/ui/link";
 import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { GET_PROPOSED_CHANGE_DETAILS } from "@/graphql/queries/proposed-changes/getProposedChangesDetails";
@@ -18,7 +17,7 @@ import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Navigate, useLocation, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
@@ -26,6 +25,9 @@ import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-chang
 import { NetworkStatus } from "@apollo/client";
 import { CoreProposedChange } from "@/generated/graphql";
 import { Badge } from "@/components/ui/badge";
+import { getObjectDetailsUrl } from "@/utils/objects";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { useSchema } from "@/hooks/useSchema";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -101,6 +103,7 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
 
 export function Component() {
   const { proposedChangeId } = useParams();
+  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
   const { loading, networkStatus, error, data, client } = useQuery(GET_PROPOSED_CHANGE_DETAILS, {
     notifyOnNetworkStatusChange: true,
@@ -171,16 +174,44 @@ export function Component() {
             <Icon icon="mdi:chevron-right" />
 
             <span>{proposedChangesData.display_label}</span>
-
-            <Badge variant="blue">
-              <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
-              {proposedChangesData.source_branch?.value}
-            </Badge>
+          </div>
+        }
+        description={
+          <div className="inline-flex gap-1 text-xs items-center">
+            <Link
+              to={constructPath(
+                getObjectDetailsUrl(
+                  proposedChangesData?.created_by?.node?.id,
+                  proposedChangesData?.created_by?.node?.__typename
+                )
+              )}
+              className="font-semibold text-custom-blue-green">
+              {proposedChangesData?.created_by?.node?.display_label}
+            </Link>
+            wants to merge
+            <Link to={constructPath(`/branches/${proposedChangesData.source_branch?.value}`)}>
+              <Badge variant="blue">
+                <Icon icon="mdi:layers-triple" className="mr-1" />
+                {proposedChangesData.source_branch?.value}
+              </Badge>
+            </Link>
+            into
+            <Link to={constructPath(`/branches/${proposedChangesData.destination_branch?.value}`)}>
+              <Badge variant="green" className="items-center">
+                <Icon icon="mdi:layers-triple" className="mr-1" />
+                {proposedChangesData.destination_branch?.value}
+              </Badge>
+            </Link>
           </div>
         }
         reload={() => client.reFetchObservableQueries()}
-        isReloadLoading={loading}
-      />
+        isReloadLoading={loading}>
+        <ObjectHelpButton
+          documentationUrl={schema?.documentation}
+          kind={PROPOSED_CHANGES_OBJECT}
+          className="ml-auto"
+        />
+      </Content.Title>
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 

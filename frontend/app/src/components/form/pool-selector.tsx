@@ -39,11 +39,14 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
       },
     }));
 
+    const displayFromPool =
+      typeof value.value === "object" && value.value && "from_pool" in value.value;
+
     return (
       <Popover>
         <div className="flex gap-1 w-full">
           <PopoverAnchor asChild>
-            {value.source?.type !== "pool" || override ? (
+            {value.source?.type !== "pool" || override || !displayFromPool ? (
               <Slot autoFocus={override} onBlur={() => setOverride(false)} ref={ref}>
                 {children}
               </Slot>
