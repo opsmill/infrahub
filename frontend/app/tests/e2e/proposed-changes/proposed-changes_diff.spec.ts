@@ -39,7 +39,7 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("UpdatedInterface L3Ethernet1")).toBeVisible();
       await page.getByText("UpdatedDeviceden1-edge1").click();
       await expect(page.getByText("status")).toBeVisible();
-      await expect(page.getByText("active")).toBeVisible();
+      await expect(page.getByText("active", { exact: true })).toBeVisible();
       await expect(page.getByText("maintenance", { exact: true })).toBeVisible();
       await page
         .locator("div")
