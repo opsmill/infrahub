@@ -1,10 +1,11 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole
 from infrahub.exceptions import AuthorizationError
+from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.default_checker import DefaultGraphQLPermissionChecker
 
@@ -25,4 +26,4 @@ class TestDefaultAuthChecker:
 
     async def test_always_raises_error(self):
         with pytest.raises(AuthorizationError):
-            await self.checker.check(self.graphql_query)
+            await self.checker.check(analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams))

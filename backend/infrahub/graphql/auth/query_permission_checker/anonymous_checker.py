@@ -2,9 +2,10 @@ from typing import Callable
 
 from infrahub.auth import AccountSession
 from infrahub.exceptions import AuthorizationError
+from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 
-from .interface import GraphQLQueryPermissionCheckerInterface
+from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class AnonymousGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
@@ -14,7 +15,9 @@ class AnonymousGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     async def supports(self, account_session: AccountSession) -> bool:
         return not account_session.authenticated
 
-    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
+    async def check(
+        self, analyzed_query: InfrahubGraphQLQueryAnalyzer, query_parameters: GraphqlParams
+    ) -> CheckerResolution:
         if self.anonymous_access_allowed_func() and not analyzed_query.contains_mutation:
-            return
+            return CheckerResolution.TERMINATE
         raise AuthorizationError("Authentication is required to perform this operation")
