@@ -80,7 +80,7 @@ class TestCreateRepository(TestInfrahubApp):
         return InfrahubTestClient(app=app)
 
     @pytest.fixture
-    async def client(self, test_client: InfrahubTestClient, integration_helper):  # type: ignore[override]
+    async def client(self, test_client: InfrahubTestClient, integration_helper, prefect_test):  # type: ignore[override]
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
 
