@@ -8,7 +8,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
     RelationshipStatus,
-    RepositoryAdminStatus,
+    RepositoryInternalStatus,
 )
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
@@ -285,17 +285,17 @@ class Migration013DeleteUsernamePasswordReadOnlySchema(DeleteElementInSchemaQuer
         )
 
 
-class Migration013AddAdminStatusData(AttributeAddQuery):
+class Migration013AddInternalStatusData(AttributeAddQuery):
     def __init__(self, **kwargs: Any):
         if "branch" in kwargs:
             del kwargs["branch"]
 
         super().__init__(
             node_kind="CoreGenericRepository",
-            attribute_name="admin_status",
+            attribute_name="internal_status",
             attribute_kind="Dropdown",
             branch_support=BranchSupportType.LOCAL.value,
-            default_value=RepositoryAdminStatus.ACTIVE.value,
+            default_value=RepositoryInternalStatus.ACTIVE.value,
             branch=default_branch,
             **kwargs,
         )
@@ -309,7 +309,7 @@ class Migration013(GraphMigration):
         Migration013DeleteUsernamePasswordGenericSchema,
         Migration013DeleteUsernamePasswordReadWriteSchema,
         Migration013DeleteUsernamePasswordReadOnlySchema,
-        Migration013AddAdminStatusData,
+        Migration013AddInternalStatusData,
     ]
     minimum_version: int = 12
 

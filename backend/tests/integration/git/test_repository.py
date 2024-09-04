@@ -62,5 +62,5 @@ class TestCreateRepository(TestInfrahubApp):
         )
 
         assert repository.commit.value
-        assert repository.admin_status.value == "active"
+        assert repository.internal_status.value == "active"
         assert check_definition.file_path.value == "checks/car_overview.py"

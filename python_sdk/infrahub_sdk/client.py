@@ -979,7 +979,7 @@ class InfrahubClient(BaseClient):
                 kind=kind,
                 branch=branch_name,
                 fragment=True,
-                include=["id", "name", "location", "commit", "ref", "admin_status"],
+                include=["id", "name", "location", "commit", "ref", "internal_status"],
             )
 
         responses: dict[str, Any] = {}
@@ -999,7 +999,7 @@ class InfrahubClient(BaseClient):
 
                 repositories[repo_name].branches[branch_name] = repository.commit.value
                 repositories[repo_name].branch_info[branch_name] = RepositoryBranchInfo(
-                    admin_status=repository.admin_status.value
+                    internal_status=repository.internal_status.value
                 )
 
         return repositories
