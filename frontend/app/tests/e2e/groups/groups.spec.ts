@@ -29,6 +29,7 @@ test.describe("/objects/CoreGroup - Generic Group Object.", () => {
       await saveScreenshotForDocs(page, "group_tagconfig_grp_new_grp");
 
       await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("StandardGroup created")).toBeVisible();
     });
   });
 
