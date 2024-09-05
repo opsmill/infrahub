@@ -13,11 +13,15 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
   });
 
   test("should generate artifacts successfully", async ({ page }) => {
-    await page.goto("/objects/CoreArtifact");
+    await page.goto(
+      '/objects/CoreArtifact?filters=[{"name":"name__value","value":"Startup Config for Edge devices"}]'
+    );
 
     // reload page until we have artifacts defined
-    while (await page.getByRole("link", { name: "startup Config for Edge devices" }).isHidden()) {
-      await page.goto("/objects/CoreArtifact");
+    while (
+      await page.getByRole("link", { name: "startup Config for Edge devices" }).first().isHidden()
+    ) {
+      await page.reload();
       await expect(page.getByText("Previous")).toBeVisible();
     }
 
