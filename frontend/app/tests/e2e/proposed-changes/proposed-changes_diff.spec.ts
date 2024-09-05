@@ -14,6 +14,8 @@ test.describe("/proposed-changes diff data", () => {
   });
 
   test("should verify the diff data with conflicts", async ({ page }) => {
+    test.slow();
+
     await test.step("create a new proposed change with reviewers", async () => {
       await page.goto("/proposed-changes");
       await page.getByTestId("add-proposed-changes-button").click();
@@ -28,11 +30,11 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByText("Data").click();
     });
 
-    // await test.step("trigger the diff update", async () => {
-    //   await expect(page.getByText("We are computing the diff")).toBeVisible();
-    //   await page.getByRole("button", { name: "Refresh" }).click();
-    //   await expect(page.getByText("Diff updated!")).toBeVisible({ timeout: 5 * 60 * 1000 });
-    // });
+    await test.step("trigger the diff update", async () => {
+      await expect(page.getByText("We are computing the diff")).toBeVisible();
+      await page.getByRole("button", { name: "Refresh" }).click();
+      await expect(page.getByText("Diff updated!")).toBeVisible();
+    });
 
     await test.step("check diff data", async () => {
       await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
