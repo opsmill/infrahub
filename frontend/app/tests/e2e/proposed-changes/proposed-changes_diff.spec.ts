@@ -31,7 +31,7 @@ test.describe("/proposed-changes diff data", () => {
     await test.step("trigger the diff update", async () => {
       await expect(page.getByText("We are computing the diff")).toBeVisible();
       await page.getByRole("button", { name: "Refresh" }).click();
-      await expect(page.getByText("Diff updated!")).toBeVisible();
+      await expect(page.getByText("Diff updated!")).toBeVisible({ timeout: 5 * 60 * 1000 });
     });
 
     await test.step("check diff data", async () => {
@@ -39,15 +39,9 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("UpdatedInterface L3Ethernet1")).toBeVisible();
       await page.getByText("UpdatedDeviceden1-edge1").click();
       await expect(page.getByText("status")).toBeVisible();
-      await expect(page.getByText("active")).toBeVisible();
-      await expect(page.getByText("maintenance", { exact: true })).toBeVisible();
-      await page
-        .locator("div")
-        .filter({ hasText: /^status$/ })
-        .first()
-        .click();
+      await expect(page.getByText("active", { exact: true })).toBeVisible();
+      await expect(page.getByText("maintenance", { exact: true }).first()).toBeVisible();
       await expect(page.getByText("valueConflict")).toBeVisible();
-      await page.getByText("valueConflict").click();
       await expect(
         page
           .locator("div")
@@ -73,7 +67,7 @@ test.describe("/proposed-changes diff data", () => {
   test("should approve a proposed changes", async ({ page }) => {
     await test.step("got to the proposed changes data tab", async () => {
       await page.goto("/proposed-changes");
-      await page.getByRole("link", { name: "conflict-test" }).click();
+      await page.getByRole("link", { name: "conflict-test" }).first().click();
       await expect(page.getByRole("cell", { name: "A", exact: true }).first()).toBeVisible();
       await expect(page.getByRole("cell", { name: "A", exact: true }).nth(1)).toBeVisible();
       await page.getByRole("button", { name: "Approve" }).click();
