@@ -229,9 +229,19 @@ class CacheSettings(BaseSettings):
 class WorkflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
     enable: bool = True
-    # address: str = "localhost"
+    address: str = "localhost"
+    port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     driver: WorkflowDriver = WorkflowDriver.WORKER
 
+    @property
+    def api_endpoint(self):
+        url = "https://" if self.tls_enabled else "http://"
+        url += self.address
+        if self.port:
+            url += f":{self.port}"
+        url += "/api"
+        return url
 
 class ApiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_API_")

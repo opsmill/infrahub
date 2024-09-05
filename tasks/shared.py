@@ -55,15 +55,13 @@ TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
 TEST_COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-test-database-memgraph.yml",
-    "development/docker-compose-test-cache.yml",
-    "development/docker-compose-test-message-queue.yml",
+    "development/docker-compose-test-deps.yml",
     TEST_COMPOSE_FILE,
 ]
 TEST_COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-test-database-neo4j.yml",
-    "development/docker-compose-test-cache.yml",
-    "development/docker-compose-test-message-queue.yml",
+    "development/docker-compose-test-deps.yml",
     TEST_COMPOSE_FILE,
 ]
 

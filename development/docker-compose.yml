@@ -121,6 +121,8 @@ services:
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      INFRAHUB_WORKFLOW_ADDRESS: task-manager
+      INFRAHUB_WORKFLOW_PORT: 4200
       PREFECT_API_URL: "http://task-manager:4200/api"
       PREFECT_LOCAL_STORAGE_PATH: "/opt/infrahub/workflow"
     volumes:
@@ -192,6 +194,8 @@ services:
       INFRAHUB_TIMEOUT: 20
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      INFRAHUB_WORKFLOW_ADDRESS: task-manager
+      INFRAHUB_WORKFLOW_PORT: 4200
       PREFECT_API_URL: "http://task-manager:4200/api"
       PREFECT_WORKER_QUERY_SECONDS: 3
       PREFECT_AGENT_QUERY_INTERVAL: 3
