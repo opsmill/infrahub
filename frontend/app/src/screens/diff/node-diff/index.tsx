@@ -5,7 +5,6 @@ import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
-import { useParams } from "react-router-dom";
 import {
   diffActions,
   DiffFilter,
@@ -39,6 +38,7 @@ export const DiffContext = createContext({});
 
 type NodeDiffProps = {
   filters: DiffFilter;
+  branchName: string;
 };
 
 // Handle QSP to filter from the status
@@ -57,8 +57,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
   };
 };
 
-export const NodeDiff = ({ filters }: NodeDiffProps) => {
-  const { "*": branchName } = useParams();
+export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   const auth = useAuth();
   const [qspStatus] = useQueryParam(QSP.STATUS, StringParam);
   const date = useAtomValue(datetimeAtom);

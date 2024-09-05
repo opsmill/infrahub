@@ -69,13 +69,11 @@ export const ProposedChangeDiffSummary: React.FC<ProposedChangeDiffSummaryProps>
 
   if (error) {
     return (
-      <div className="flex justify-start">
-        <ErrorScreen
-          message={error?.message ?? "No diff summary available."}
-          hideIcon
-          className="p-0"
-        />
-      </div>
+      <ErrorScreen
+        message={error?.message ?? "No diff summary available."}
+        hideIcon
+        className="p-0 items-start"
+      />
     );
   }
 
