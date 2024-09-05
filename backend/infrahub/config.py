@@ -235,7 +235,7 @@ class WorkflowSettings(BaseSettings):
     driver: WorkflowDriver = WorkflowDriver.WORKER
 
     @property
-    def api_endpoint(self):
+    def api_endpoint(self) -> str:
         url = "https://" if self.tls_enabled else "http://"
         url += self.address
         if self.port:
