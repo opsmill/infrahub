@@ -9,8 +9,8 @@ import { useParams } from "react-router-dom";
 import {
   diffActions,
   DiffFilter,
-  ProposedChangesDiffSummary,
-} from "../../proposed-changes/diff-summary";
+  ProposedChangeDiffFilter,
+} from "../../proposed-changes/diff-filter";
 import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/getProposedChangesDiffTree";
 import { DiffNode } from "./node";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -210,7 +210,7 @@ export const NodeDiff = ({ filters }: NodeDiffProps) => {
   return (
     <div className="h-full overflow-hidden flex flex-col">
       <div className="flex items-center p-2 bg-custom-white">
-        <ProposedChangesDiffSummary branch={branch} filters={filters} />
+        <ProposedChangeDiffFilter branch={branch} filters={filters} />
 
         <div className="flex flex-1 items-center gap-2 justify-end pr-2">
           {isLoadingUpdate && <LoadingScreen size={22} hideText />}

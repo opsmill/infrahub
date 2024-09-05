@@ -1,4 +1,12 @@
-export type DiffStatus = "ADDED" | "UPDATED" | "REMOVED" | "UNCHANGED";
+export const DIFF_STATUS = {
+  ADDED: "ADDED",
+  REMOVED: "REMOVED",
+  UPDATED: "UPDATED",
+  CONFLICT: "CONFLICT",
+  UNCHANGED: "UNCHANGED",
+} as const;
+
+export type DiffStatus = (typeof DIFF_STATUS)[keyof typeof DIFF_STATUS];
 
 export type DiffConflict = {
   base_branch_action: DiffStatus;
