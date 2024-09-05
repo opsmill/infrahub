@@ -16,6 +16,7 @@ from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from prefect.testing.utilities import prefect_test_harness
 
 from infrahub_sdk.schema import NodeSchema, SchemaRoot
 from infrahub_sdk.types import HTTPMethod
@@ -28,6 +29,12 @@ TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
 @pytest.fixture(scope="session", autouse=True)
 def add_tracker():
     os.environ["PYTEST_RUNNING"] = "true"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def prefect_test_fixture():
+    with prefect_test_harness():
+        yield
 
 
 # pylint: disable=redefined-outer-name

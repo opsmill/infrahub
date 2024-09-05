@@ -171,7 +171,7 @@ addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --jun
 junit_duration_report = "call"
 
 [tool.pytest_env]
-PREFECT_LOGGING_LEVEL="CRITICAL" 
+PREFECT_LOGGING_LEVEL="CRITICAL"
 INFRAHUB_LOG_LEVEL="CRITICAL"
 
 [tool.mypy]
