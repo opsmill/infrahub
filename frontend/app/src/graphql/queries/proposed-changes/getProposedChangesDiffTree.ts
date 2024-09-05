@@ -70,6 +70,18 @@ export const getProposedChangesDiffTree = gql`
           contains_conflict
           last_changed_at
           name
+          conflict {
+            base_branch_label
+            base_branch_action
+            base_branch_changed_at
+            base_branch_value
+            diff_branch_label
+            diff_branch_action
+            diff_branch_changed_at
+            diff_branch_value
+            selected_branch
+            uuid
+          }
           properties {
             conflict {
               base_branch_label

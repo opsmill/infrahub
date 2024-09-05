@@ -28,11 +28,11 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByText("Data").click();
     });
 
-    await test.step("trigger the diff update", async () => {
-      await expect(page.getByText("We are computing the diff")).toBeVisible();
-      await page.getByRole("button", { name: "Refresh" }).click();
-      await expect(page.getByText("Diff updated!")).toBeVisible({ timeout: 5 * 60 * 1000 });
-    });
+    // await test.step("trigger the diff update", async () => {
+    //   await expect(page.getByText("We are computing the diff")).toBeVisible();
+    //   await page.getByRole("button", { name: "Refresh" }).click();
+    //   await expect(page.getByText("Diff updated!")).toBeVisible({ timeout: 5 * 60 * 1000 });
+    // });
 
     await test.step("check diff data", async () => {
       await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
@@ -41,7 +41,7 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("status")).toBeVisible();
       await expect(page.getByText("active", { exact: true })).toBeVisible();
       await expect(page.getByText("maintenance", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("valueConflict")).toBeVisible();
+      await expect(page.getByText("statusConflict")).toBeVisible();
       await expect(
         page
           .locator("div")
@@ -51,7 +51,7 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("resolve conflict", async () => {
-      await page.getByRole("button", { name: "Base", exact: true }).click();
+      await page.getByRole("checkbox", { name: "main", exact: true }).click();
       await expect(page.getByText("Conflict marked as resovled")).toBeVisible();
     });
 

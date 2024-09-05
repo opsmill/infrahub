@@ -14,7 +14,7 @@ type DiffNodePropertyProps = {
   status: DiffStatus;
 };
 
-const getPreviousValue = (property: DiffProperty) => {
+export const getPreviousValue = (property: DiffProperty) => {
   const previousValue = formatValue(property.previous_value);
   if (previousValue === null) return null;
 
@@ -36,7 +36,7 @@ const getPreviousValue = (property: DiffProperty) => {
   );
 };
 
-const getNewValue = (property: DiffProperty) => {
+export const getNewValue = (property: DiffProperty) => {
   const newValue = formatValue(property.new_value);
   if (newValue === null) return null;
 
