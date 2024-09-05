@@ -243,6 +243,7 @@ class WorkflowSettings(BaseSettings):
         url += "/api"
         return url
 
+
 class ApiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_API_")
     cors_allow_origins: list[str] = Field(
