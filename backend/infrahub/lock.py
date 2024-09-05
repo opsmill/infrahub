@@ -102,6 +102,9 @@ class NATSLock:
     async def release(self) -> None:
         await self.service.cache.delete(key=self.name)
 
+    async def locked(self) -> bool:
+        return await self.service.cache.get(key=self.name) is not None
+
 
 class InfrahubLock:
     """InfrahubLock object to provide a unified interface for both Local and Distributed locks.
