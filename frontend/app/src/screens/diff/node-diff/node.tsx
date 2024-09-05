@@ -8,10 +8,11 @@ import { useLocation, useParams } from "react-router-dom";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
+import type { DiffNode as DiffNodeType, PropertyType } from "@/screens/diff/node-diff/types";
 import { classNames } from "@/utils/common";
 import { useEffect, useRef } from "react";
 import { Icon } from "@iconify-icon/react";
+import { getNewValue, getPreviousValue } from "./node-property";
 
 type DiffNodeProps = {
   node: DiffNodeType;
@@ -51,8 +52,8 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
             </div>
           }
           className="bg-gray-100 border rounded-md">
-          <div className="divide-y border-t">
-            <div className="bg-custom-white grid grid-cols-3 pl-8">
+          <div className="bg-custom-white divide-y border-t">
+            <div className="grid grid-cols-3 pl-8">
               <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
                 <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}
               </Badge>
@@ -62,13 +63,76 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
               </Badge>
             </div>
 
-            {node.attributes.map((attribute: any, index: number) => (
-              <DiffNodeAttribute key={index} attribute={attribute} status={node.status} />
-            ))}
+            {node.attributes.map((attribute: any, index: number) => {
+              const valueProperty = attribute.properties.find(
+                ({ property_type }) => property_type === "HAS_VALUE"
+              );
 
-            {node.relationships.map((relationship: any, index: number) => (
-              <DiffNodeRelationship key={index} relationship={relationship} status={node.status} />
-            ))}
+              return (
+                <DiffNodeAttribute
+                  key={index}
+                  attribute={attribute}
+                  status={node.status}
+                  previousValue={getPreviousValue({
+                    ...valueProperty,
+                    conflict: attribute.conflict,
+                  })}
+                  newValue={getNewValue({
+                    ...valueProperty,
+                    conflict: attribute.conflict,
+                  })}
+                />
+              );
+            })}
+
+            {node.relationships.map((relationship: any, index: number) => {
+              if (relationship.cardinality === "ONE") {
+                const element = relationship.elements[0];
+
+                const attribute = {
+                  name: relationship.name,
+                  contains_conflict: relationship.contains_conflict,
+                  properties: element.properties,
+                  conflict: element.conflict,
+                  path_identifier: element.path_identifier,
+                  uuid: element.uuid,
+                };
+
+                const valueProperty = {
+                  conflict: element.conflict,
+                  new_value: element.peer_label,
+                  path_identifier: element.path_identifier,
+                  previous_value: element.conflict?.base_branch_label,
+                  property_type: "HAS_VALUE" as PropertyType,
+                  last_changed_at: element.last_changed_at,
+                  status: element.status,
+                };
+
+                return (
+                  <DiffNodeAttribute
+                    key={index}
+                    attribute={attribute}
+                    status={node.status}
+                    previousValue={getPreviousValue({
+                      ...valueProperty,
+                      conflict: attribute.conflict,
+                    })}
+                    newValue={getNewValue({
+                      ...valueProperty,
+                      conflict: attribute.conflict,
+                    })}
+                  />
+                );
+              }
+
+              return (
+                <DiffNodeRelationship
+                  key={index}
+                  relationship={relationship}
+                  status={node.status}
+                />
+              );
+            })}
           </div>
         </Accordion>
       )}

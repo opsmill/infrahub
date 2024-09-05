@@ -1,130 +1,116 @@
-import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
-import useQuery from "@/hooks/useQuery";
-import ErrorScreen from "../errors/error-screen";
-import {
-  BadgeAdded,
-  BadgeConflict,
-  BadgeRemoved,
-  BadgeUpdated,
-  CloseBadgeAdded,
-  CloseBadgeConflict,
-  CloseBadgeRemoved,
-  CloseBadgeUpdated,
-} from "../diff/diff-badge";
-import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "@/config/qsp";
-import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { classNames } from "@/utils/common";
+import React from "react";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
+
+import useQuery from "@/hooks/useQuery";
+import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import ErrorScreen from "@/screens/errors/error-screen";
+import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import { constructPath } from "@/utils/fetch";
+import { QSP } from "@/config/qsp";
+import { DIFF_STATUS, DiffStatus } from "../diff/node-diff/types";
 
-export type DiffFilter = {
-  namespace?: {
-    excludes?: String[];
-    includes?: String[];
-  };
-  status?: {
-    excludes?: String[];
-    includes?: String[];
-  };
+interface DiffTreeSummary {
+  num_added: number;
+  num_removed: number;
+  num_updated: number;
+  num_conflicts: number;
+}
+
+interface ProposedChangeDiffSummaryProps {
+  branchName: string;
+  proposedChangeId: string;
+}
+
+const BadgeLink: React.FC<{
+  status: DiffStatus;
+  count: number | undefined;
+  proposedChangeId: string;
+}> = ({ status, count, proposedChangeId }) => {
+  const proposedChangeDetailsPath = `/proposed-changes/${proposedChangeId}`;
+  const tabSearchParam = { name: QSP.PROPOSED_CHANGES_TAB, value: "data" };
+
+  return (
+    <Link
+      to={constructPath(proposedChangeDetailsPath, [
+        tabSearchParam,
+        { name: QSP.STATUS, value: status },
+      ])}>
+      <DiffBadge status={status}>{count}</DiffBadge>
+    </Link>
+  );
 };
 
-type tProposedChangesDiffSummary = {
-  branch: string;
-  filters?: DiffFilter;
-};
-
-export const diffActions = {
-  ADDED: "ADDED",
-  REMOVED: "REMOVED",
-  UPDATED: "UPDATED",
-  CONFLICT: "CONFLICT",
-};
-
-export const ProposedChangesDiffSummary = ({ branch, filters }: tProposedChangesDiffSummary) => {
-  const [qsp, setQsp] = useQueryParam(QSP.STATUS, StringParam);
-
-  const { error, data = {} } = useQuery(getProposedChangesDiffSummary, {
-    skip: !branch,
-    variables: { branch, filters },
-    context: {
-      processErrorMessage: (message: string) => {
-        // If the branch is not found, then do not display alert
-        if (message.includes("not found")) return;
-
-        toast(<Alert type={ALERT_TYPES.ERROR} message={message} />, {
-          toastId: "alert-error",
-        });
+export const ProposedChangeDiffSummary: React.FC<ProposedChangeDiffSummaryProps> = ({
+  proposedChangeId,
+  branchName,
+}) => {
+  const { error, data, loading } = useQuery<{ DiffTreeSummary: DiffTreeSummary }>(
+    getProposedChangesDiffSummary,
+    {
+      skip: !branchName,
+      variables: { branch: branchName },
+      context: {
+        processErrorMessage: (message: string) => {
+          if (!message.includes("not found")) {
+            toast(<Alert type={ALERT_TYPES.ERROR} message={message} />, {
+              toastId: "alert-error",
+            });
+          }
+        },
       },
-    },
-  });
+    }
+  );
 
-  const handleFilter = (value: string) => {
-    // Removes filter
-    if (value === qsp) return setQsp(undefined);
-
-    // Set filter
-    setQsp(value);
-  };
+  if (loading) {
+    return <DiffSummarySkeleton />;
+  }
 
   if (error) {
     return (
-      <div className="flex justify-start">
-        <ErrorScreen
-          message={error?.message ?? "No diff summary available."}
-          hideIcon
-          className="p-0"
-        />
-      </div>
+      <ErrorScreen
+        message={error?.message ?? "No diff summary available."}
+        hideIcon
+        className="p-0 items-start"
+      />
     );
   }
 
+  const { DiffTreeSummary } = data || {};
+
   return (
-    <div className="flex items-center gap-2 shrink-0">
-      <FilterButton
-        onClick={() => handleFilter(diffActions.ADDED)}
-        muted={!!qsp && qsp !== diffActions.ADDED}
-        disabled={!data?.DiffTreeSummary?.num_added && qsp !== diffActions.ADDED}
-        className="relative">
-        <BadgeAdded>{data?.DiffTreeSummary?.num_added}</BadgeAdded>
-        {qsp === diffActions.ADDED && <CloseBadgeAdded />}
-      </FilterButton>
-
-      <FilterButton
-        onClick={() => handleFilter(diffActions.REMOVED)}
-        muted={!!qsp && qsp !== diffActions.REMOVED}
-        disabled={!data?.DiffTreeSummary?.num_removed && qsp !== diffActions.REMOVED}
-        className="relative">
-        <BadgeRemoved>{data?.DiffTreeSummary?.num_removed}</BadgeRemoved>
-        {qsp === diffActions.REMOVED && <CloseBadgeRemoved />}
-      </FilterButton>
-
-      <FilterButton
-        onClick={() => handleFilter(diffActions.UPDATED)}
-        muted={!!qsp && qsp !== diffActions.UPDATED}
-        disabled={!data?.DiffTreeSummary?.num_updated && qsp !== diffActions.UPDATED}
-        className="relative">
-        <BadgeUpdated>{data?.DiffTreeSummary?.num_updated}</BadgeUpdated>
-        {qsp === diffActions.UPDATED && <CloseBadgeUpdated />}
-      </FilterButton>
-
-      <FilterButton
-        onClick={() => handleFilter(diffActions.CONFLICT)}
-        muted={!!qsp && qsp !== diffActions.CONFLICT}
-        disabled={!data?.DiffTreeSummary?.num_conflicts && qsp !== diffActions.CONFLICT}
-        className="relative">
-        <BadgeConflict>{data?.DiffTreeSummary?.num_conflicts}</BadgeConflict>
-        {qsp === diffActions.CONFLICT && <CloseBadgeConflict />}
-      </FilterButton>
+    <div className="inline-flex gap-2">
+      <BadgeLink
+        status={DIFF_STATUS.ADDED}
+        count={DiffTreeSummary?.num_added}
+        proposedChangeId={proposedChangeId}
+      />
+      <BadgeLink
+        status={DIFF_STATUS.REMOVED}
+        count={DiffTreeSummary?.num_removed}
+        proposedChangeId={proposedChangeId}
+      />
+      <BadgeLink
+        status={DIFF_STATUS.UPDATED}
+        count={DiffTreeSummary?.num_updated}
+        proposedChangeId={proposedChangeId}
+      />
+      <BadgeLink
+        status={DIFF_STATUS.CONFLICT}
+        count={DiffTreeSummary?.num_conflicts}
+        proposedChangeId={proposedChangeId}
+      />
     </div>
   );
 };
 
-export const FilterButton = ({ muted, children, ...props }: ButtonProps & { muted?: boolean }) => (
-  <Button
-    {...props}
-    variant="ghost"
-    className={classNames("relative rounded-full p-0 h-auto", muted && "opacity-60")}>
-    {children}
-  </Button>
-);
+const DiffSummarySkeleton: React.FC = () => {
+  return (
+    <div className="flex gap-2">
+      {[...Array(4)].map((_, index) => (
+        <div key={index} className="h-6 w-9 bg-gray-200 animate-pulse rounded-full" />
+      ))}
+    </div>
+  );
+};

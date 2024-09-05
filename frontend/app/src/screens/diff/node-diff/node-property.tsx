@@ -14,7 +14,7 @@ type DiffNodePropertyProps = {
   status: DiffStatus;
 };
 
-const getPreviousValue = (property: DiffProperty) => {
+export const getPreviousValue = (property: DiffProperty) => {
   const previousValue = formatValue(property.previous_value);
   if (previousValue === null) return null;
 
@@ -22,7 +22,9 @@ const getPreviousValue = (property: DiffProperty) => {
     return previousValue;
   }
 
-  const conflictValue = formatValue(property.conflict.base_branch_value);
+  const conflictValue = formatValue(
+    property.conflict.base_branch_label || property.conflict.base_branch_value
+  );
   return (
     <div className="flex items-center gap-2">
       {previousValue}
@@ -34,7 +36,7 @@ const getPreviousValue = (property: DiffProperty) => {
   );
 };
 
-const getNewValue = (property: DiffProperty) => {
+export const getNewValue = (property: DiffProperty) => {
   const newValue = formatValue(property.new_value);
   if (newValue === null) return null;
 
@@ -42,7 +44,9 @@ const getNewValue = (property: DiffProperty) => {
     return newValue;
   }
 
-  const conflictValue = formatValue(property.conflict.diff_branch_value);
+  const conflictValue = formatValue(
+    property.conflict.diff_branch_label || property.conflict.diff_branch_value
+  );
   return (
     <Badge variant="yellow" className="font-medium">
       {conflictValue}

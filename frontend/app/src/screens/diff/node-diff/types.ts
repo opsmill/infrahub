@@ -1,4 +1,20 @@
-export type DiffStatus = "ADDED" | "UPDATED" | "REMOVED" | "UNCHANGED";
+export const DIFF_STATUS = {
+  ADDED: "ADDED",
+  REMOVED: "REMOVED",
+  UPDATED: "UPDATED",
+  CONFLICT: "CONFLICT",
+  UNCHANGED: "UNCHANGED",
+} as const;
+
+export type DiffStatus = (typeof DIFF_STATUS)[keyof typeof DIFF_STATUS];
+
+export type PropertyType =
+  | "HAS_VALUE"
+  | "HAS_OWNER"
+  | "HAS_SOURCE"
+  | "IS_VISIBLE"
+  | "IS_PROTECTED"
+  | "IS_RELATED";
 
 export type DiffConflict = {
   base_branch_action: DiffStatus;
@@ -15,13 +31,7 @@ export type DiffProperty = {
   conflict: DiffConflict | null;
   new_value: any;
   previous_value: any;
-  property_type:
-    | "HAS_VALUE"
-    | "HAS_OWNER"
-    | "HAS_SOURCE"
-    | "IS_VISIBLE"
-    | "IS_PROTECTED"
-    | "IS_RELATED";
+  property_type: PropertyType;
   path_identifier: string | null;
   status: DiffStatus;
 };
@@ -32,6 +42,7 @@ export type DiffAttribute = {
   properties: Array<DiffProperty>;
   path_identifier: string | null;
   contains_conflict: boolean;
+  conflict: DiffConflict | null;
 };
 
 export type DiffRelationshipElement = {

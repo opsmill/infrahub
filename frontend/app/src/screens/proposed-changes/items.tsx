@@ -12,10 +12,9 @@ import { CardWithBorder } from "@/components/ui/card";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { classNames, debounce } from "@/utils/common";
 import { TabsButtons } from "@/components/buttons/tabs-buttons";
-import { useNavigate } from "react-router-dom";
+import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { constructPath } from "@/utils/fetch";
 import { QSP } from "@/config/qsp";
-import { ProposedChangesDiffSummary } from "./diff-summary";
 import { useState } from "react";
 import ModalDelete from "@/components/modals/modal-delete";
 import { toast } from "react-toastify";
@@ -33,6 +32,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { useSchema } from "@/hooks/useSchema";
+import { ProposedChangeDiffSummary } from "@/screens/proposed-changes/diff-summary";
 
 const STATES = {
   open: ["open"],
@@ -142,8 +142,26 @@ export const ProposedChangesPage = () => {
   ];
 
   const rows = nodes.map((node: any) => {
+    const proposedChangeDetailsPath = `/proposed-changes/${node.id}`;
+
+    const PcDetailsLink = ({
+      tab,
+      ...props
+    }: Omit<LinkProps, "to"> & {
+      tab?: "data" | "artifacts" | "schema" | "checks" | "tasks";
+    }) => (
+      <Link
+        {...props}
+        className="w-full min-h-[64px] flex items-center"
+        to={constructPath(
+          proposedChangeDetailsPath,
+          tab && [{ name: QSP.PROPOSED_CHANGES_TAB, value: tab }]
+        )}
+      />
+    );
+
     return {
-      link: constructPath(`/proposed-changes/${node.id}`),
+      link: constructPath(proposedChangeDetailsPath),
       values: {
         id: node.id, // Used for delete modal
         display_label: node.display_label, // Used for delete modal
@@ -156,17 +174,36 @@ export const ProposedChangesPage = () => {
             checks={node.validations.edges.map(({ node }: any) => node)}
           />
         ),
-        data: <ProposedChangesDiffSummary branch={node.source_branch.value} />,
-        checks: <Badge className="rounded-full">{node.validations.count}</Badge>,
+        data: (
+          <PcDetailsLink tab="data">
+            <ProposedChangeDiffSummary
+              proposedChangeId={node.id}
+              branchName={node.source_branch.value}
+            />
+          </PcDetailsLink>
+        ),
+        checks: (
+          <PcDetailsLink tab="checks">
+            <Badge className="rounded-full px-2">{node.validations.count}</Badge>
+          </PcDetailsLink>
+        ),
         tasks: (
-          <ProposedChangesCounter id={node.id} query={getProposedChangesTasks} kind={TASK_OBJECT} />
+          <PcDetailsLink tab="tasks">
+            <ProposedChangesCounter
+              id={node.id}
+              query={getProposedChangesTasks}
+              kind={TASK_OBJECT}
+            />
+          </PcDetailsLink>
         ),
         artifacts: (
-          <ProposedChangesCounter
-            id={node.id}
-            query={getProposedChangesArtifacts}
-            kind={ARTIFACT_OBJECT}
-          />
+          <PcDetailsLink tab="artifacts">
+            <ProposedChangesCounter
+              id={node.id}
+              query={getProposedChangesArtifacts}
+              kind={ARTIFACT_OBJECT}
+            />
+          </PcDetailsLink>
         ),
         reviewers: (
           <ProposedChangesReviewers
