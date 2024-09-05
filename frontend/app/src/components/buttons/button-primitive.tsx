@@ -18,7 +18,7 @@ const buttonVariants = cva(
         "primary-outline":
           "text-custom-blue-700 border border-custom-blue-700 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
         dark: "border bg-gray-200 shadow-sm enabled:hover:bg-gray-300",
-        ghost: "enabled:hover:bg-gray-100",
+        ghost: "hover:bg-gray-100",
       },
       size: {
         default: "h-9 px-4 py-2",

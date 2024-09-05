@@ -1,7 +1,7 @@
 from copy import deepcopy
 from uuid import uuid4
 
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.enricher.cardinality_one import DiffCardinalityOneEnricher
 from infrahub.core.diff.model.path import EnrichedDiffProperty
@@ -23,7 +23,10 @@ class TestDiffCardinalityOneEnricher:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
         diff_relationship = EnrichedRelationshipGroupFactory.build(
-            name="cars", nodes=set(), relationships={EnrichedRelationshipElementFactory.build() for _ in range(3)}
+            name="cars",
+            nodes=set(),
+            cardinality=RelationshipCardinality.MANY,
+            relationships={EnrichedRelationshipElementFactory.build() for _ in range(3)},
         )
         diff_node = EnrichedNodeFactory.build(kind="TestPerson", relationships={diff_relationship})
         diff_root = EnrichedRootFactory.build(diff_branch_name=branch.name, nodes={diff_node})
@@ -69,7 +72,10 @@ class TestDiffCardinalityOneEnricher:
         )
 
         diff_relationship = EnrichedRelationshipGroupFactory.build(
-            name="owner", nodes=set(), relationships={diff_rel_element_1, diff_rel_element_2}
+            name="owner",
+            nodes=set(),
+            cardinality=RelationshipCardinality.ONE,
+            relationships={diff_rel_element_1, diff_rel_element_2},
         )
         diff_node = EnrichedNodeFactory.build(kind="TestCar", relationships={diff_relationship})
         diff_root = EnrichedRootFactory.build(diff_branch_name=branch.name, nodes={diff_node})
@@ -157,7 +163,10 @@ class TestDiffCardinalityOneEnricher:
         )
 
         diff_relationship = EnrichedRelationshipGroupFactory.build(
-            name="owner", nodes=set(), relationships={diff_rel_element_1, diff_rel_element_2}
+            name="owner",
+            nodes=set(),
+            cardinality=RelationshipCardinality.ONE,
+            relationships={diff_rel_element_1, diff_rel_element_2},
         )
         diff_node = EnrichedNodeFactory.build(kind="TestCar", relationships={diff_relationship})
         diff_root = EnrichedRootFactory.build(diff_branch_name=branch.name, nodes={diff_node})
@@ -235,7 +244,10 @@ class TestDiffCardinalityOneEnricher:
         )
 
         diff_relationship = EnrichedRelationshipGroupFactory.build(
-            name="owner", nodes=set(), relationships={diff_rel_element_1, diff_rel_element_2}
+            name="owner",
+            nodes=set(),
+            cardinality=RelationshipCardinality.ONE,
+            relationships={diff_rel_element_1, diff_rel_element_2},
         )
         diff_node = EnrichedNodeFactory.build(kind="TestCar", relationships={diff_relationship})
         diff_root = EnrichedRootFactory.build(diff_branch_name=branch.name, nodes={diff_node})

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -63,12 +63,12 @@ async def test_repository_update(db: InfrahubDatabase, register_core_models_sche
     service = InfrahubServices(database=db, message_bus=recorder)
 
     UPDATE_COMMIT = """
-    mutation CoreRepositoryUpdate($id: String!, $commit_id: String!, $admin_status: String!) {
+    mutation CoreRepositoryUpdate($id: String!, $commit_id: String!, $internal_status: String!) {
         CoreRepositoryUpdate(
             data: {
                 id: $id
                 commit: { value: $commit_id }
-                admin_status: { value: $admin_status }
+                internal_status: { value: $internal_status }
             }) {
             ok
         }
@@ -81,13 +81,13 @@ async def test_repository_update(db: InfrahubDatabase, register_core_models_sche
     await repo.new(db=db, name="test-edge-demo", location="/tmp/edge")
     await repo.save(db=db)
 
-    repo.admin_status.value = RepositoryAdminStatus.STAGING.value
+    repo.internal_status.value = RepositoryInternalStatus.STAGING.value
     await repo.save(db=db)
 
     result = await graphql_mutation(
         query=UPDATE_COMMIT,
         db=db,
-        variables={"id": repo.id, "commit_id": commit_id, "admin_status": RepositoryAdminStatus.ACTIVE.value},
+        variables={"id": repo.id, "commit_id": commit_id, "internal_status": RepositoryInternalStatus.ACTIVE.value},
         service=service,
     )
 
@@ -96,7 +96,7 @@ async def test_repository_update(db: InfrahubDatabase, register_core_models_sche
 
     repo_main = await NodeManager.get_one(db=db, id=repo.id, raise_on_error=True)
 
-    assert repo_main.admin_status.value == RepositoryAdminStatus.ACTIVE.value
+    assert repo_main.internal_status.value == RepositoryInternalStatus.ACTIVE.value
     assert repo_main.commit.value == commit_id
 
 

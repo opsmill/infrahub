@@ -159,7 +159,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
     task_report: Optional[InfrahubTaskReportLogger] = Field(default=None)
 
-    admin_status: str = Field("active", description="Administrative status: Active, Inactive, Staging")
+    internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
     infrahub_branch_name: Optional[str] = Field(
         None, description="Infrahub branch on which to sync the remote repository"
     )
