@@ -29,6 +29,7 @@ import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import { Badge } from "@/components/ui/badge";
+import ErrorScreen from "@/screens/errors/error-screen";
 
 export const DiffContext = createContext({});
 
@@ -72,13 +73,17 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   // Get filters merged with status filter
   const finalFilters = buildFilters(filters, qspStatus);
 
-  const { networkStatus, data, previousData } = useQuery(getProposedChangesDiffTree, {
+  const { networkStatus, data, previousData, error } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,
     variables: { branch, filters: finalFilters },
     notifyOnNetworkStatusChange: true,
   });
 
   if (networkStatus === NetworkStatus.loading) return <LoadingScreen message="Loading diff..." />;
+
+  if (error) {
+    return <ErrorScreen message={error?.message} className="max-w-lg m-auto" />;
+  }
 
   const handleRefresh = async () => {
     setIsLoadingUpdate(true);
