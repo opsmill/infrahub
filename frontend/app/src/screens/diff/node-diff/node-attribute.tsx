@@ -3,6 +3,7 @@ import { DiffRow } from "@/screens/diff/node-diff/utils";
 import { DiffAttribute, DiffStatus } from "@/screens/diff/node-diff/types";
 import { DiffThread } from "@/screens/diff/node-diff/thread";
 import { DiffNodeProperty } from "@/screens/diff/node-diff/node-property";
+import { Conflict } from "./conflict";
 
 type DiffNodeAttributeProps = {
   attribute: DiffAttribute;
@@ -18,6 +19,7 @@ export const DiffNodeAttribute = ({
   status,
 }: DiffNodeAttributeProps) => {
   const { "*": branchName } = useParams();
+  console.log("attribute: ", attribute);
 
   return (
     <DiffRow
@@ -35,6 +37,8 @@ export const DiffNodeAttribute = ({
       left={previousValue}
       right={newValue}>
       <div className="divide-y border-t">
+        {attribute.conflict && <Conflict conflict={attribute.conflict} />}
+
         {attribute.properties.map((property, index: number) => (
           <DiffNodeProperty key={index} property={property} status={status} />
         ))}
