@@ -370,6 +370,7 @@ class DiffTreeResolver:
         root: dict,
         info: GraphQLResolveInfo,
         branch: str | None = None,
+        name: str | None = None,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         filters: dict | None = None,
@@ -409,6 +410,7 @@ class DiffTreeResolver:
             include_parents=include_parents,
             limit=limit,
             offset=offset,
+            tracking_id=NameTrackingId(name) if name else None,
             include_empty=True,
         )
         if not enriched_diffs:
