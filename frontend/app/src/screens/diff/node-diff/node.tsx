@@ -8,7 +8,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
+import type { DiffNode as DiffNodeType, PropertyType } from "@/screens/diff/node-diff/types";
 import { classNames } from "@/utils/common";
 import { useEffect, useRef } from "react";
 import { Icon } from "@iconify-icon/react";
@@ -94,6 +94,8 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                   contains_conflict: relationship.contains_conflict,
                   properties: element.properties,
                   conflict: element.conflict,
+                  path_identifier: element.path_identifier,
+                  uuid: element.uuid,
                 };
 
                 const valueProperty = {
@@ -101,6 +103,9 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                   new_value: element.peer_label,
                   path_identifier: element.path_identifier,
                   previous_value: element.conflict?.base_branch_label,
+                  property_type: "HAS_VALUE" as PropertyType,
+                  last_changed_at: element.last_changed_at,
+                  status: element.status,
                 };
 
                 return (
