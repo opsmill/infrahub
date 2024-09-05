@@ -212,7 +212,12 @@ class InfrahubGraphQLApp:
             branch=branch,
         )
         await self._evaluate_permissions(
-            request=request, query=analyzed_query, query_parameters=graphql_params, account_session=account_session
+            db=db,
+            request=request,
+            query=analyzed_query,
+            query_parameters=graphql_params,
+            account_session=account_session,
+            branch=branch,
         )
 
         # if the query contains some mutation, it's not currently supported to set AT manually
@@ -285,12 +290,18 @@ class InfrahubGraphQLApp:
     async def _evaluate_permissions(
         self,
         request: Request,
+        db: InfrahubDatabase,
         query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
         account_session: AccountSession,
+        branch: Branch | str | None = None,
     ) -> None:
         await self.permission_checker.check(
-            account_session=account_session, analyzed_query=query, query_parameters=query_parameters
+            db=db,
+            account_session=account_session,
+            analyzed_query=query,
+            query_parameters=query_parameters,
+            branch=branch,
         )
 
     def _log_error(self, error: Exception) -> None:

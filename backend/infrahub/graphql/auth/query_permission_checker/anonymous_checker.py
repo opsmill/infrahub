@@ -1,6 +1,8 @@
 from typing import Callable
 
 from infrahub.auth import AccountSession
+from infrahub.core.branch import Branch
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import AuthorizationError
 from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -12,11 +14,17 @@ class AnonymousGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     def __init__(self, anonymous_access_allowed_func: Callable[[], bool]):
         self.anonymous_access_allowed_func = anonymous_access_allowed_func
 
-    async def supports(self, account_session: AccountSession) -> bool:
+    async def supports(
+        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch | str | None = None
+    ) -> bool:
         return not account_session.authenticated
 
     async def check(
-        self, analyzed_query: InfrahubGraphQLQueryAnalyzer, query_parameters: GraphqlParams
+        self,
+        db: InfrahubDatabase,
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        query_parameters: GraphqlParams,
+        branch: Branch | str | None = None,
     ) -> CheckerResolution:
         if self.anonymous_access_allowed_func() and not analyzed_query.contains_mutation:
             return CheckerResolution.TERMINATE
