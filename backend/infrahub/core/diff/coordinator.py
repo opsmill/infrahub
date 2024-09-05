@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core.timestamp import Timestamp
+from infrahub.log import get_logger
 
 from .model.path import BranchTrackingId, EnrichedDiffRoot, NameTrackingId, TimeRange, TrackingId
 
@@ -20,6 +21,9 @@ if TYPE_CHECKING:
     from .enricher.labels import DiffLabelsEnricher
     from .enricher.summary_counts import DiffSummaryCountsEnricher
     from .repository.repository import DiffRepository
+
+
+log = get_logger()
 
 
 @dataclass
@@ -94,6 +98,7 @@ class DiffCoordinator:
         return lock_name
 
     async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
+        log.debug(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
         incremental_lock_name = self._get_lock_name(
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=True
         )
@@ -101,7 +106,9 @@ class DiffCoordinator:
             name=incremental_lock_name, namespace=self.lock_namespace
         )
         if existing_incremental_lock and await existing_incremental_lock.locked():
+            log.debug(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
             async with self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace):
+                log.debug(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
                 return await self.diff_repo.get_one(
                     tracking_id=BranchTrackingId(name=diff_branch.name), diff_branch_name=diff_branch.name
                 )
@@ -115,6 +122,7 @@ class DiffCoordinator:
             self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace),
             self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace),
         ):
+            log.debug(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
             return await self._update_diffs(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
@@ -138,6 +146,7 @@ class DiffCoordinator:
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
         )
         async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
+            log.debug(f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}")
             return await self._update_diffs(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
