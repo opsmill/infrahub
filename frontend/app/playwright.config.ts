@@ -16,7 +16,7 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   /* 30s timeout for both assertions and tests (2min in CI) */
   timeout: process.env.CI
     ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
