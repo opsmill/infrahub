@@ -6,6 +6,7 @@ from typing import Any, AsyncGenerator, Optional
 import pytest
 import yaml
 from infrahub_sdk import UUIDT
+from prefect.testing.utilities import prefect_test_harness
 
 from infrahub import config
 from infrahub.core import registry
@@ -23,6 +24,12 @@ from tests.helpers.file_repo import FileRepo
 @pytest.fixture(scope="session", autouse=True)
 def add_tracker():
     os.environ["PYTEST_RUNNING"] = "true"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def prefect_test_fixture():
+    with prefect_test_harness():
+        yield
 
 
 @pytest.fixture(scope="session")
