@@ -3,6 +3,7 @@ from typing import Dict
 import pendulum
 import pytest
 from fastapi.testclient import TestClient
+from prefect.testing.utilities import prefect_test_harness
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
@@ -10,8 +11,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from prefect.logging.loggers import disable_run_logger
-from prefect.testing.utilities import prefect_test_harness
+
 
 @pytest.fixture
 def client():
@@ -30,10 +30,12 @@ def client_headers():
 def admin_headers():
     return {"X-INFRAHUB-KEY": "admin-security"}
 
+
 @pytest.fixture(autouse=True, scope="session")
 def prefect_test_fixture():
     with prefect_test_harness():
         yield
+
 
 @pytest.fixture
 def rpc_bus(helper):
