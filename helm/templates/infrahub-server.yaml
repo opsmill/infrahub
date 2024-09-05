@@ -16,7 +16,14 @@ spec:
     metadata:
       labels:
         service: infrahub-server
+      {{- with .Values.infrahubServer.podLabels }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+      {{- with .Values.infrahubServer.podAnnotations }}
+      annotations:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       {{- with .Values.infrahubServer.affinity }}
       affinity: {{- toYaml . | nindent 8 }}
