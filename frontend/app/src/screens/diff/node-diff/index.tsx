@@ -5,11 +5,7 @@ import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
-import {
-  diffActions,
-  DiffFilter,
-  ProposedChangeDiffFilter,
-} from "../../proposed-changes/diff-filter";
+import { DiffFilter, ProposedChangeDiffFilter } from "../../proposed-changes/diff-filter";
 import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/getProposedChangesDiffTree";
 import { DiffNode } from "./node";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -21,14 +17,14 @@ import { rebaseBranch } from "@/graphql/mutations/branches/rebaseBranch";
 import { classNames, objectToString } from "@/utils/common";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { gql, useMutation } from "@apollo/client";
+import { gql, NetworkStatus, useMutation } from "@apollo/client";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-update";
 import { useAuth } from "@/hooks/useAuth";
 import { DateDisplay } from "@/components/display/date-display";
 import { Icon } from "@iconify-icon/react";
-import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
+import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
@@ -47,7 +43,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
     ...filters?.status,
     includes: Array.from(
       // CONFLICT should not be part of the status filters
-      new Set([...(filters?.status?.includes ?? []), qsp !== diffActions.CONFLICT && qsp])
+      new Set([...(filters?.status?.includes ?? []), qsp !== DIFF_STATUS.CONFLICT && qsp])
     ).filter((value) => !!value),
   };
 
@@ -76,13 +72,13 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   // Get filters merged with status filter
   const finalFilters = buildFilters(filters, qspStatus);
 
-  const { loading, called, data, previousData } = useQuery(getProposedChangesDiffTree, {
+  const { networkStatus, data, previousData } = useQuery(getProposedChangesDiffTree, {
     skip: !schemaData,
     variables: { branch, filters: finalFilters },
     notifyOnNetworkStatusChange: true,
   });
 
-  if (!called && loading) return <LoadingScreen message="Loading diff..." />;
+  if (networkStatus === NetworkStatus.loading) return <LoadingScreen message="Loading diff..." />;
 
   const handleRefresh = async () => {
     setIsLoadingUpdate(true);
@@ -201,7 +197,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   // Manually filter conflicts items since it's not available yet in the backend filters
   const nodes: Array<DiffNodeType> =
     diffTreeData.nodes.filter((node: DiffNodeType) => {
-      if (qspStatus === diffActions.CONFLICT) return node.contains_conflict;
+      if (qspStatus === DIFF_STATUS.CONFLICT) return node.contains_conflict;
 
       return true;
     }) ?? [];
