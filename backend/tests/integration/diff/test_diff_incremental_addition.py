@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
@@ -13,6 +14,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
@@ -23,6 +25,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
+    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
 
@@ -84,13 +87,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
 
-    async def test_remove_on_main(
+    @pytest.fixture(scope="class")
+    async def data_01_remove_on_main(
         self,
         db: InfrahubDatabase,
         initial_dataset,
         default_branch: Branch,
         diff_branch: Branch,
-        diff_coordinator: DiffCoordinator,
     ) -> None:
         delorean_id = initial_dataset["delorean"].get_id()
 
@@ -98,31 +101,111 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         await delorean_main.previous_owner.update(db=db, data=[None])
         await delorean_main.save(db=db)
 
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-
-        assert len(enriched_diff.nodes) == 0
-
-    async def test_update_previous_owner_on_branch(
+    @pytest.fixture(scope="class")
+    async def data_02_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
         initial_dataset,
         default_branch: Branch,
         diff_branch: Branch,
-        diff_coordinator: DiffCoordinator,
+        data_01_remove_on_main,
     ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
-        doc_brown = initial_dataset["doc_brown"]
-        marty_label = await marty.render_display_label(db=db)
 
         delorean_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=delorean.get_id())
         await delorean_branch.previous_owner.update(
             db=db, data=[{"id": marty.get_id(), "_relation__is_protected": False}]
         )
         await delorean_branch.save(db=db)
-        delorean_label = await delorean_branch.render_display_label(db=db)
 
+    @pytest.fixture(scope="class")
+    async def data_03_new_peer_on_main(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        default_branch: Branch,
+        diff_branch: Branch,
+        data_02_previous_owner_on_branch,
+    ) -> None:
+        delorean = initial_dataset["delorean"]
+        biff = initial_dataset["biff"]
+
+        delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean.get_id())
+        await delorean_main.previous_owner.update(db=db, data=[{"id": biff.get_id(), "_relation__is_protected": True}])
+        await delorean_main.save(db=db)
+
+    @pytest.fixture(scope="class")
+    async def data_04_update_previous_owner_protected_on_branch(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        default_branch: Branch,
+        diff_branch: Branch,
+        data_03_new_peer_on_main,
+    ) -> None:
+        delorean = initial_dataset["delorean"]
+        marty = initial_dataset["marty"]
+
+        delorean_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=delorean.get_id())
+        await delorean_branch.previous_owner.update(
+            db=db, data=[{"id": marty.get_id(), "_relation__is_protected": True}]
+        )
+        await delorean_branch.save(db=db)
+
+    @pytest.fixture(scope="class")
+    async def data_05_remove_previous_owner_on_branch(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        default_branch: Branch,
+        diff_branch: Branch,
+        data_04_update_previous_owner_protected_on_branch,
+    ) -> None:
+        delorean = initial_dataset["delorean"]
+
+        delorean_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=delorean.get_id())
+        await delorean_branch.previous_owner.update(db=db, data=[None])
+        await delorean_branch.save(db=db)
+
+    @pytest.fixture(scope="class")
+    async def data_06_remove_previous_owner_on_main_again(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        default_branch: Branch,
+        diff_branch: Branch,
+        data_05_remove_previous_owner_on_branch,
+    ) -> None:
+        delorean = initial_dataset["delorean"]
+
+        delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean.get_id())
+        await delorean_main.previous_owner.update(db=db, data=[None])
+        await delorean_main.save(db=db)
+
+    async def test_remove_on_main(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_branch: Branch,
+        diff_coordinator: DiffCoordinator,
+        data_01_remove_on_main,
+    ) -> None:
         enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+
+        assert len(enriched_diff.nodes) == 0
+
+    async def validate_diff_data_02(
+        self,
+        db: InfrahubDatabase,
+        enriched_diff: EnrichedDiffRoot,
+        initial_dataset: dict[str, Node],
+    ):
+        delorean = initial_dataset["delorean"]
+        marty = initial_dataset["marty"]
+        doc_brown = initial_dataset["doc_brown"]
+        marty_label = await marty.render_display_label(db=db)
+        delorean_label = await delorean.render_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -163,26 +246,42 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert protected_prop.conflict.diff_branch_action is DiffAction.UPDATED
         assert protected_prop.conflict.diff_branch_value == "False"
 
-    async def test_add_new_peer_on_main(
+    async def test_update_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        initial_dataset,
+        data_02_previous_owner_on_branch,
     ) -> None:
+        incremental_diff = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
+        await self.validate_diff_data_02(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
+        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=diff_branch,
+            from_time=incremental_diff.from_time,
+            to_time=incremental_diff.to_time,
+            name=str(uuid4),
+        )
+        await self.validate_diff_data_02(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
+
+    async def validate_diff_data_03(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        enriched_diff: EnrichedDiffRoot,
+        initial_dataset: dict[str, Node],
+    ):
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         marty = initial_dataset["marty"]
         biff = initial_dataset["biff"]
         marty_label = await marty.render_display_label(db=db)
-
         delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean.get_id())
-        await delorean_main.previous_owner.update(db=db, data=[{"id": biff.get_id(), "_relation__is_protected": True}])
-        await delorean_main.save(db=db)
         delorean_label = await delorean_main.render_display_label(db=db)
-
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -223,28 +322,44 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert protected_prop.conflict.diff_branch_action is DiffAction.UPDATED
         assert str(protected_prop.conflict.diff_branch_value) == "False"
 
-    async def test_update_previous_owner_protected_on_branch(
+    async def test_add_new_peer_on_main(
         self,
         db: InfrahubDatabase,
         initial_dataset,
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        data_03_new_peer_on_main,
     ) -> None:
+        incremental_diff = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
+        await self.validate_diff_data_03(
+            db=db, default_branch=default_branch, enriched_diff=incremental_diff, initial_dataset=initial_dataset
+        )
+        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=diff_branch,
+            from_time=Timestamp(diff_branch.created_at),
+            to_time=Timestamp(),
+            name=str(uuid4),
+        )
+        await self.validate_diff_data_03(
+            db=db, default_branch=default_branch, enriched_diff=full_diff, initial_dataset=initial_dataset
+        )
+
+    async def validate_diff_data_04(
+        self,
+        db: InfrahubDatabase,
+        enriched_diff: EnrichedDiffRoot,
+        initial_dataset: dict[str, Node],
+    ):
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
         marty_label = await marty.render_display_label(db=db)
-
-        delorean_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=delorean.get_id())
-        await delorean_branch.previous_owner.update(
-            db=db, data=[{"id": marty.get_id(), "_relation__is_protected": True}]
-        )
-        await delorean_branch.save(db=db)
-        delorean_label = await delorean_branch.render_display_label(db=db)
-
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        delorean_label = await delorean.render_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -282,25 +397,39 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # no conflict b/c both have been updated to the same value
         assert protected_prop.conflict is None
 
-    async def test_remove_previous_owner_on_branch(
+    async def test_update_previous_owner_protected_on_branch(
         self,
         db: InfrahubDatabase,
         initial_dataset,
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        data_04_update_previous_owner_protected_on_branch,
     ) -> None:
+        incremental_diff = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
+        await self.validate_diff_data_04(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
+        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=diff_branch,
+            from_time=Timestamp(diff_branch.created_at),
+            to_time=Timestamp(),
+            name=str(uuid4),
+        )
+        await self.validate_diff_data_04(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
+
+    async def validate_diff_data_05(
+        self,
+        db: InfrahubDatabase,
+        enriched_diff: EnrichedDiffRoot,
+        initial_dataset: dict[str, Node],
+    ):
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
         doc_brown_label = await doc_brown.render_display_label(db=db)
-
-        delorean_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=delorean.get_id())
-        await delorean_branch.previous_owner.update(db=db, data=[None])
-        await delorean_branch.save(db=db)
-        delorean_label = await delorean_branch.render_display_label(db=db)
-
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        delorean_label = await delorean.render_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -347,24 +476,38 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             assert protected_prop.conflict.diff_branch_action is DiffAction.REMOVED
             assert protected_prop.conflict.diff_branch_value is None
 
-    async def test_remove_previous_owner_on_main_again(
+    async def test_remove_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
         initial_dataset,
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        data_05_remove_previous_owner_on_branch,
     ) -> None:
+        incremental_diff = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
+        await self.validate_diff_data_05(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
+        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=diff_branch,
+            from_time=Timestamp(diff_branch.created_at),
+            to_time=Timestamp(),
+            name=str(uuid4),
+        )
+        await self.validate_diff_data_05(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
+
+    async def validate_diff_data_06(
+        self,
+        db: InfrahubDatabase,
+        enriched_diff: EnrichedDiffRoot,
+        initial_dataset: dict[str, Node],
+    ):
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         doc_brown_label = await doc_brown.render_display_label(db=db)
-
-        delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean.get_id())
-        await delorean_main.previous_owner.update(db=db, data=[None])
-        await delorean_main.save(db=db)
-        delorean_label = await delorean_main.render_display_label(db=db)
-
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        delorean_label = await delorean.render_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -402,3 +545,25 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             assert protected_prop.new_value is None
             assert protected_prop.action is DiffAction.REMOVED
             assert protected_prop.conflict is None
+
+    async def test_remove_previous_owner_on_main_again(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        default_branch: Branch,
+        diff_branch: Branch,
+        diff_coordinator: DiffCoordinator,
+        data_06_remove_previous_owner_on_main_again,
+    ) -> None:
+        incremental_diff = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
+        await self.validate_diff_data_06(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
+        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=diff_branch,
+            from_time=Timestamp(diff_branch.created_at),
+            to_time=Timestamp(),
+            name=str(uuid4),
+        )
+        await self.validate_diff_data_06(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)

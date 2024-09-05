@@ -99,6 +99,7 @@ const sidebars: SidebarsConfig = {
         'topics/generator',
         'topics/graphql',
         'topics/groups',
+        'topics/metadata',
         'topics/object-storage',
         'topics/version-control',
         'topics/proposed-change',
