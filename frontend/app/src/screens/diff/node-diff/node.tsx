@@ -5,13 +5,14 @@ import { DiffNodeRelationship } from "./node-relationship";
 import { DiffNodeAttribute } from "./node-attribute";
 import { DiffThread } from "./thread";
 import { useLocation, useParams } from "react-router-dom";
-import { DiffBadge, formatValue } from "@/screens/diff/node-diff/utils";
+import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import type { DiffNode as DiffNodeType } from "@/screens/diff/node-diff/types";
+import type { DiffNode as DiffNodeType, PropertyType } from "@/screens/diff/node-diff/types";
 import { classNames } from "@/utils/common";
 import { useEffect, useRef } from "react";
 import { Icon } from "@iconify-icon/react";
+import { getNewValue, getPreviousValue } from "./node-property";
 
 type DiffNodeProps = {
   node: DiffNodeType;
@@ -72,10 +73,14 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                   key={index}
                   attribute={attribute}
                   status={node.status}
-                  previousValue={
-                    valueProperty?.previous_value && formatValue(valueProperty?.previous_value)
-                  }
-                  newValue={status !== "REMOVED" && formatValue(valueProperty?.new_value)}
+                  previousValue={getPreviousValue({
+                    ...valueProperty,
+                    conflict: attribute.conflict,
+                  })}
+                  newValue={getNewValue({
+                    ...valueProperty,
+                    conflict: attribute.conflict,
+                  })}
                 />
               );
             })}
@@ -87,16 +92,20 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 const attribute = {
                   name: relationship.name,
                   contains_conflict: relationship.contains_conflict,
-                  properties: [
-                    {
-                      conflict: element.conflict,
-                      new_value: element.peer_label,
-                      path_identifier: element.path_identifier,
-                      previous_value: element.conflict?.base_branch_label,
-                      property_type: "HAS_VALUE",
-                    },
-                    ...element.properties,
-                  ],
+                  properties: element.properties,
+                  conflict: element.conflict,
+                  path_identifier: element.path_identifier,
+                  uuid: element.uuid,
+                };
+
+                const valueProperty = {
+                  conflict: element.conflict,
+                  new_value: element.peer_label,
+                  path_identifier: element.path_identifier,
+                  previous_value: element.conflict?.base_branch_label,
+                  property_type: "HAS_VALUE" as PropertyType,
+                  last_changed_at: element.last_changed_at,
+                  status: element.status,
                 };
 
                 return (
@@ -104,8 +113,14 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                     key={index}
                     attribute={attribute}
                     status={node.status}
-                    previousValue={element.conflict?.base_branch_label}
-                    newValue={element.peer_label}
+                    previousValue={getPreviousValue({
+                      ...valueProperty,
+                      conflict: attribute.conflict,
+                    })}
+                    newValue={getNewValue({
+                      ...valueProperty,
+                      conflict: attribute.conflict,
+                    })}
                   />
                 );
               }

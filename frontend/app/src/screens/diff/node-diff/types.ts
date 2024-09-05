@@ -8,6 +8,14 @@ export const DIFF_STATUS = {
 
 export type DiffStatus = (typeof DIFF_STATUS)[keyof typeof DIFF_STATUS];
 
+export type PropertyType =
+  | "HAS_VALUE"
+  | "HAS_OWNER"
+  | "HAS_SOURCE"
+  | "IS_VISIBLE"
+  | "IS_PROTECTED"
+  | "IS_RELATED";
+
 export type DiffConflict = {
   base_branch_action: DiffStatus;
   base_branch_changed_at: string;
@@ -23,13 +31,7 @@ export type DiffProperty = {
   conflict: DiffConflict | null;
   new_value: any;
   previous_value: any;
-  property_type:
-    | "HAS_VALUE"
-    | "HAS_OWNER"
-    | "HAS_SOURCE"
-    | "IS_VISIBLE"
-    | "IS_PROTECTED"
-    | "IS_RELATED";
+  property_type: PropertyType;
   path_identifier: string | null;
   status: DiffStatus;
 };
