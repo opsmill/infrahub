@@ -8,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import NodeNotFoundError
 
 
 class ObjectConflictValidatorRecorder:
@@ -17,10 +18,13 @@ class ObjectConflictValidatorRecorder:
         self.validator_label = validator_label
         self.check_schema_kind = check_schema_kind
 
-    async def record_conflicts(self, proposed_change_id: str, conflicts: Sequence[ObjectConflict]) -> list[Node]:
-        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, db=self.db
-        )
+    async def record_conflicts(self, proposed_change_id: str, conflicts: Sequence[ObjectConflict]) -> list[Node]:  # pylint: disable=too-many-branches
+        try:
+            proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+                id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, db=self.db
+            )
+        except NodeNotFoundError:
+            return []
         proposed_change = cast(CoreProposedChange, proposed_change)
         validator = await self.get_or_create_validator(proposed_change)
         await self.initialize_validator(validator)
