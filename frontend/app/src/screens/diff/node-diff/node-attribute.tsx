@@ -4,6 +4,7 @@ import { DiffAttribute, DiffStatus } from "@/screens/diff/node-diff/types";
 import { DiffThread } from "@/screens/diff/node-diff/thread";
 import { DiffNodeProperty } from "@/screens/diff/node-diff/node-property";
 import { Conflict } from "./conflict";
+import { BadgeConflict } from "../diff-badge";
 
 type DiffNodeAttributeProps = {
   attribute: DiffAttribute;
@@ -19,7 +20,6 @@ export const DiffNodeAttribute = ({
   status,
 }: DiffNodeAttributeProps) => {
   const { "*": branchName } = useParams();
-  console.log("attribute: ", attribute);
 
   return (
     <DiffRow
@@ -27,7 +27,10 @@ export const DiffNodeAttribute = ({
       hasConflicts={attribute.contains_conflict}
       title={
         <div className="flex justify-between items-center pr-2">
-          <div className="py-3 font-semibold">{attribute.name}</div>
+          <div className="flex items-center py-3 gap-2 font-semibold">
+            {attribute.name}
+            {attribute.conflict && <BadgeConflict>Conflict</BadgeConflict>}
+          </div>
 
           {!branchName && attribute.path_identifier && (
             <DiffThread path={attribute.path_identifier} />
