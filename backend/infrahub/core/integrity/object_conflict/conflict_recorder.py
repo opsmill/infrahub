@@ -18,7 +18,7 @@ class ObjectConflictValidatorRecorder:
         self.validator_label = validator_label
         self.check_schema_kind = check_schema_kind
 
-    async def record_conflicts(self, proposed_change_id: str, conflicts: Sequence[ObjectConflict]) -> list[Node]:
+    async def record_conflicts(self, proposed_change_id: str, conflicts: Sequence[ObjectConflict]) -> list[Node]:  # pylint: disable=too-many-branches
         try:
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
                 id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, db=self.db
