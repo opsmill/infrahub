@@ -3,7 +3,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
+from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountRole
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import AuthorizationError
 from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -17,13 +19,15 @@ class TestDefaultAuthChecker:
         self.checker = DefaultGraphQLPermissionChecker()
 
     @pytest.mark.parametrize("role", [x.value for x in AccountRole])
-    async def test_supports_all_accounts(self, role):
+    async def test_supports_all_accounts(self, db: InfrahubDatabase, branch: Branch, role):
         self.account_session.role = role
 
-        is_supported = await self.checker.supports(self.account_session)
+        is_supported = await self.checker.supports(db=db, account_session=self.account_session, branch=branch)
 
         assert is_supported is True
 
-    async def test_always_raises_error(self):
+    async def test_always_raises_error(self, db: InfrahubDatabase, branch: Branch):
         with pytest.raises(AuthorizationError):
-            await self.checker.check(analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams))
+            await self.checker.check(
+                db=db, analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams), branch=branch
+            )
