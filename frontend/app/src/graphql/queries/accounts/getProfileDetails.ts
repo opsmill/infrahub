@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getProfileDetails = Handlebars.compile(`
-query {
+query GET_PROFILE_DETAILS {
   AccountProfile {
     id
     display_label

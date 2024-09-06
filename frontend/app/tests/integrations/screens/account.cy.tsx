@@ -1,6 +1,5 @@
 /// <reference types="cypress" />
 
-import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { initials } from "../../../src/components/display/avatar";
@@ -18,12 +17,11 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // Mock the apollo query and data
-const mocks: any[] = [
+const mocks = [
   {
     request: {
-      query: gql`
-        ${profileDetailsMocksQuery}
-      `,
+      query: profileDetailsMocksQuery,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: profileDetailsMocksData,
@@ -53,7 +51,7 @@ describe("List screen", () => {
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <TestProvider initialValues={[[genericsState, accountDetailsMocksSchema]]}>
-          <AuthHeader setSidebarOpen={() => null} />
+          <AuthHeader />
         </TestProvider>
       </MockedProvider>
     );
