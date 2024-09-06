@@ -385,14 +385,6 @@ module = "infrahub.message_bus.operations.schema.validator"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.send.telemetry"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.send.webhook"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.trigger.ipam"
 ignore_errors = true
 
