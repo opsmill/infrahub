@@ -541,7 +541,6 @@ ignore = [
     "RUF015",   # Prefer `next(...)` over single element slice
     "RUF019",   # Unnecessary key check before dictionary access
     "RUF021",   # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
-    "RUF022",   # `__all__` is not sorted
     "RUF025",   # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
     "RUF027",   # Possible f-string without an `f` prefix
     "RUF029",   # Function is declared `async`, but doesn't `await` or use `async` features.
