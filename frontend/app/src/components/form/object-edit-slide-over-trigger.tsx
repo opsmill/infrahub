@@ -11,6 +11,7 @@ interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   schema: IModelSchema;
   onUpdateComplete?: () => void;
 }
+
 const ObjectEditSlideOverTrigger = ({
   data,
   schema,

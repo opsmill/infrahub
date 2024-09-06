@@ -1,15 +1,11 @@
-import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
+import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Filters } from "@/components/filters/filters";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
-  ACCOUNT_OBJECT,
   ACCOUNT_TOKEN_OBJECT,
-  ARTIFACT_OBJECT,
   MENU_EXCLUDELIST,
   SEARCH_ANY_FILTER,
   SEARCH_FILTERS,
@@ -23,7 +19,6 @@ import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -39,6 +34,7 @@ import { toast } from "react-toastify";
 import { useObjectItems } from "@/hooks/useObjectItems";
 import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
+import { ObjectCreateFormTrigger } from "@/components/form/object-create-form-trigger";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
@@ -59,7 +55,6 @@ export default function ObjectItems({
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -176,35 +171,7 @@ export default function ObjectItems({
 
           <Filters schema={schema} />
 
-          {schema.kind === ACCOUNT_OBJECT && (
-            <Tooltip
-              enabled={!permission.isAdmin.allow}
-              content={permission.isAdmin.message ?? undefined}>
-              <Button
-                data-cy="create"
-                data-testid="create-object-button"
-                disabled={!permission.isAdmin.allow}
-                onClick={() => setShowCreateDrawer(true)}>
-                <Icon icon="mdi:plus" className="text-sm mr-1.5" />
-                Add {schema?.label}
-              </Button>
-            </Tooltip>
-          )}
-
-          {schema.kind !== ARTIFACT_OBJECT && schema.kind !== ACCOUNT_OBJECT && (
-            <Tooltip
-              enabled={!permission.write.allow}
-              content={permission.write.message ?? undefined}>
-              <Button
-                data-cy="create"
-                data-testid="create-object-button"
-                disabled={!permission.write.allow}
-                onClick={() => setShowCreateDrawer(true)}>
-                <Icon icon="mdi:plus" className="text-sm mr-1.5" />
-                Add {schema?.label}
-              </Button>
-            </Tooltip>
-          )}
+          <ObjectCreateFormTrigger schema={schema} onSuccess={onSuccess} disabled={loading} />
         </div>
 
         {loading && !rows && <LoadingScreen />}
@@ -271,28 +238,6 @@ export default function ObjectItems({
           </div>
         )}
       </div>
-
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel="New"
-            title={`Create ${schema.label}`}
-            subtitle={schema.description}
-          />
-        }
-        open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
-        <ObjectForm
-          onSuccess={async (result: any) => {
-            setShowCreateDrawer(false);
-            await graphqlClient.refetchQueries({ include: [schema.kind!] });
-            if (onSuccess) onSuccess(result);
-          }}
-          onCancel={() => setShowCreateDrawer(false)}
-          kind={schema.kind!}
-        />
-      </SlideOver>
 
       <ModalDelete
         title="Delete"
