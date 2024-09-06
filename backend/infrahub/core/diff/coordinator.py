@@ -178,29 +178,35 @@ class DiffCoordinator:
         diff_branch: Branch,
         diff_id: str,
     ) -> EnrichedDiffRoot:
-        current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
-        if current_branch_diff.tracking_id and isinstance(current_branch_diff.tracking_id, BranchTrackingId):
-            to_time = Timestamp()
-        else:
-            to_time = current_branch_diff.to_time
-        await self.diff_repo.delete_diff_roots(diff_root_uuids=[current_branch_diff.uuid])
-        base_branch_diff, fresh_branch_diff = await self._update_diffs(
-            base_branch=base_branch,
-            diff_branch=diff_branch,
-            from_time=current_branch_diff.from_time,
-            to_time=to_time,
-            tracking_id=current_branch_diff.tracking_id,
-            force_branch_refresh=True,
+        general_lock_name = self._get_lock_name(
+            base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
         )
+        async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
+            log.debug(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
+            current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
+            if current_branch_diff.tracking_id and isinstance(current_branch_diff.tracking_id, BranchTrackingId):
+                to_time = Timestamp()
+            else:
+                to_time = current_branch_diff.to_time
+            await self.diff_repo.delete_diff_roots(diff_root_uuids=[current_branch_diff.uuid])
+            base_branch_diff, fresh_branch_diff = await self._update_diffs(
+                base_branch=base_branch,
+                diff_branch=diff_branch,
+                from_time=current_branch_diff.from_time,
+                to_time=to_time,
+                tracking_id=current_branch_diff.tracking_id,
+                force_branch_refresh=True,
+            )
 
-        if current_branch_diff:
-            await self.conflict_transferer.transfer(earlier=current_branch_diff, later=fresh_branch_diff)
+            if current_branch_diff:
+                await self.conflict_transferer.transfer(earlier=current_branch_diff, later=fresh_branch_diff)
 
-        await self.summary_counts_enricher.enrich(enriched_diff_root=base_branch_diff)
-        await self.diff_repo.save(enriched_diff=base_branch_diff)
-        await self.summary_counts_enricher.enrich(enriched_diff_root=fresh_branch_diff)
-        await self.diff_repo.save(enriched_diff=fresh_branch_diff)
-        await self._update_core_data_checks(enriched_diff=fresh_branch_diff)
+            await self.summary_counts_enricher.enrich(enriched_diff_root=base_branch_diff)
+            await self.diff_repo.save(enriched_diff=base_branch_diff)
+            await self.summary_counts_enricher.enrich(enriched_diff_root=fresh_branch_diff)
+            await self.diff_repo.save(enriched_diff=fresh_branch_diff)
+            await self._update_core_data_checks(enriched_diff=fresh_branch_diff)
+            log.debug(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
         return fresh_branch_diff
 
     async def _update_diffs(
