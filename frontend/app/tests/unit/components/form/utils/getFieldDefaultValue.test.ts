@@ -471,4 +471,29 @@ describe("getFieldDefaultValue", () => {
     // THEN
     expect(defaultValue).to.deep.equal({ source: null, value: null });
   });
+
+  it("returns object value when assigned from a pool", () => {
+    // GIVEN
+    const fieldSchema = buildAttributeSchema({ default_value: "my-default-value" });
+
+    const initialObject: Record<string, AttributeType> = {
+      field1: {
+        value: "my-default-value",
+        source: {
+          id: "pool-id",
+          display_label: "Fake pool",
+          __typename: "FakePool",
+        },
+      },
+    };
+
+    // WHEN
+    const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+    // THEN
+    expect(defaultValue).to.deep.equal({
+      source: { type: "pool", id: "pool-id", label: "Fake pool", kind: "FakePool" },
+      value: "my-default-value",
+    });
+  });
 });

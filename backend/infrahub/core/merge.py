@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
-from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipStatus, RepositoryAdminStatus
+from infrahub.core.constants import DiffAction, RelationshipStatus, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaBranchDiff
+from infrahub.core.protocols import CoreRepository
 from infrahub.core.query.branch import (
     AddNodeToBranch,
 )
@@ -22,7 +23,6 @@ from .diff.branch_differ import BranchDiffer
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
-    from infrahub.core.protocols import CoreGenericRepository
     from infrahub.core.schema_manager import SchemaBranch, SchemaDiff
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
@@ -434,31 +434,28 @@ class BranchMerger:
 
     async def merge_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        repos_in_main_list: list[CoreGenericRepository] = await NodeManager.query(
-            schema=InfrahubKind.REPOSITORY, db=self.db
-        )
+        repos_in_main_list = await NodeManager.query(schema=CoreRepository, db=self.db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
 
-        repos_in_branch_list: list[CoreGenericRepository] = await NodeManager.query(
-            schema=InfrahubKind.REPOSITORY, db=self.db, branch=self.source_branch
-        )
+        repos_in_branch_list = await NodeManager.query(schema=CoreRepository, db=self.db, branch=self.source_branch)
         events = []
         for repo in repos_in_branch_list:
             # Check if the repo, exist in main, if not ignore this repo
             if repo.id not in repos_in_main:
                 continue
 
-            if repo.admin_status.value == RepositoryAdminStatus.INACTIVE.value:
+            if repo.internal_status.value == RepositoryInternalStatus.INACTIVE.value:
                 continue
 
-            if self.source_branch.sync_with_git or repo.admin_status.value == RepositoryAdminStatus.STAGING.value:
+            if self.source_branch.sync_with_git or repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
                 events.append(
                     messages.GitRepositoryMerge(
                         repository_id=repo.id,
-                        repository_name=repo.name.value,  # type: ignore[attr-defined]
-                        admin_status=repo.admin_status.value,
+                        repository_name=repo.name.value,
+                        internal_status=repo.internal_status.value,
                         source_branch=self.source_branch.name,
                         destination_branch=registry.default_branch,
+                        default_branch=repo.default_branch.value,
                     )
                 )
 

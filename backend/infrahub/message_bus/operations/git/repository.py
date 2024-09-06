@@ -1,5 +1,5 @@
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
@@ -18,7 +18,7 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
         "Cloning and importing repository",
         repository=message.repository_name,
         location=message.location,
-        admin_status=message.admin_status,
+        internal_status=message.internal_status,
     )
     async with service.git_report(
         related_node=message.repository_id,
@@ -33,12 +33,13 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
                 client=service.client,
                 task_report=git_report,
                 infrahub_branch_name=message.infrahub_branch_name,
-                admin_status=message.admin_status,
+                internal_status=message.internal_status,
+                default_branch_name=message.default_branch_name,
             )
             await repo.import_objects_from_files(
                 infrahub_branch_name=message.infrahub_branch_name, git_branch_name=message.default_branch_name
             )
-            if message.admin_status == RepositoryAdminStatus.ACTIVE.value:
+            if message.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 await repo.sync()
 
 
@@ -62,7 +63,7 @@ async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: Inf
                 task_report=git_report,
             )
             await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name)
-            if message.admin_status == RepositoryAdminStatus.ACTIVE.value:
+            if message.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 await repo.sync_from_remote()
 
 
@@ -156,14 +157,19 @@ async def merge(message: messages.GitRepositoryMerge, service: InfrahubServices)
         destination_branch=message.destination_branch,
     )
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
+    repo = await InfrahubRepository.init(
+        id=message.repository_id,
+        name=message.repository_name,
+        client=service.client,
+        default_branch_name=message.default_branch,
+    )
 
-    if message.admin_status == RepositoryAdminStatus.STAGING.value:
+    if message.internal_status == RepositoryInternalStatus.STAGING.value:
         repo_source = await service.client.get(
             kind=InfrahubKind.GENERICREPOSITORY, id=message.repository_id, branch=message.source_branch
         )
         repo_main = await service.client.get(kind=InfrahubKind.GENERICREPOSITORY, id=message.repository_id)
-        repo_main.admin_status.value = RepositoryAdminStatus.ACTIVE.value
+        repo_main.internal_status.value = RepositoryInternalStatus.ACTIVE.value
         repo_main.sync_status.value = repo_source.sync_status.value
 
         commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)

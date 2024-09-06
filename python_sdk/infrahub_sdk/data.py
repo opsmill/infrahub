@@ -6,7 +6,7 @@ from infrahub_sdk.node import InfrahubNode
 
 
 class RepositoryBranchInfo(BaseModel):
-    admin_status: str
+    internal_status: str
 
 
 class RepositoryData(BaseModel):
@@ -20,6 +20,6 @@ class RepositoryData(BaseModel):
 
     def get_staging_branch(self) -> Optional[str]:
         for branch, info in self.branch_info.items():  # pylint: disable=no-member
-            if info.admin_status == "staging":
+            if info.internal_status == "staging":
                 return branch
         return None

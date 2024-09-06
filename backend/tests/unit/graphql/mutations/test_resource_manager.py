@@ -807,7 +807,7 @@ async def test_test_number_pool_update(db: InfrahubDatabase, default_branch: Bra
     )
 
     assert update_forbidden.errors
-    assert "The fields 'model', 'model_attribute' or 'unique_for' can't be changed." in str(update_forbidden.errors[0])
+    assert "The fields 'node' or 'node_attribute' can't be changed." in str(update_forbidden.errors[0])
     assert update_invalid_range.errors
     assert "start_range can't be larger than end_range" in str(update_invalid_range.errors[0])
     assert update_ok.data

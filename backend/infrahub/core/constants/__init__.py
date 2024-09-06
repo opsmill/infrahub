@@ -107,7 +107,7 @@ class CheckType(InfrahubStringEnum):
     ALL = "all"
 
 
-class RepositoryAdminStatus(InfrahubStringEnum):
+class RepositoryInternalStatus(InfrahubStringEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     STAGING = "staging"

@@ -10,12 +10,11 @@ import { Table, tRow } from "@/components/table/table";
 
 import { CardWithBorder } from "@/components/ui/card";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
-import { debounce } from "@/utils/common";
+import { classNames, debounce } from "@/utils/common";
 import { TabsButtons } from "@/components/buttons/tabs-buttons";
-import { useNavigate } from "react-router-dom";
+import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { constructPath } from "@/utils/fetch";
 import { QSP } from "@/config/qsp";
-import { ProposedChangesDiffSummary } from "./diff-summary";
 import { useState } from "react";
 import ModalDelete from "@/components/modals/modal-delete";
 import { toast } from "react-toastify";
@@ -31,6 +30,14 @@ import { ProposedChangesReviewers } from "@/screens/proposed-changes/reviewers";
 import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { useSchema } from "@/hooks/useSchema";
+import { ProposedChangeDiffSummary } from "@/screens/proposed-changes/diff-summary";
+
+const STATES = {
+  open: ["open"],
+  close: ["closed", "merged", "canceled"],
+};
 
 export const ProposedChangesPage = () => {
   const permission = usePermission();
@@ -39,11 +46,16 @@ export const ProposedChangesPage = () => {
   useTitle("Proposed changes");
   const [search, setSearch] = useQueryParam(QSP.SEARCH, StringParam);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<tRow | undefined>();
+  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
+
+  const [statesVisible, statesHidden] = qspState
+    ? [STATES.close, STATES.open]
+    : [STATES.open, STATES.close];
 
   const { loading, networkStatus, previousData, error, data, refetch } = useQuery(
     GET_PROPOSED_CHANGES,
     {
-      variables: { state: qspState, search },
+      variables: { statesVisible, statesHidden, search },
       notifyOnNetworkStatusChange: true,
     }
   );
@@ -130,8 +142,26 @@ export const ProposedChangesPage = () => {
   ];
 
   const rows = nodes.map((node: any) => {
+    const proposedChangeDetailsPath = `/proposed-changes/${node.id}`;
+
+    const PcDetailsLink = ({
+      tab,
+      ...props
+    }: Omit<LinkProps, "to"> & {
+      tab?: "data" | "artifacts" | "schema" | "checks" | "tasks";
+    }) => (
+      <Link
+        {...props}
+        className="w-full min-h-[64px] flex items-center"
+        to={constructPath(
+          proposedChangeDetailsPath,
+          tab && [{ name: QSP.PROPOSED_CHANGES_TAB, value: tab }]
+        )}
+      />
+    );
+
     return {
-      link: constructPath(`/proposed-changes/${node.id}`),
+      link: constructPath(proposedChangeDetailsPath),
       values: {
         id: node.id, // Used for delete modal
         display_label: node.display_label, // Used for delete modal
@@ -141,19 +171,39 @@ export const ProposedChangesPage = () => {
             branch={node.source_branch.value}
             date={node._updated_at}
             comments={node.comments.count}
+            checks={node.validations.edges.map(({ node }: any) => node)}
           />
         ),
-        data: <ProposedChangesDiffSummary branch={node.source_branch.value} />,
-        checks: <Badge className="rounded-full">{node.validations.count}</Badge>,
+        data: (
+          <PcDetailsLink tab="data">
+            <ProposedChangeDiffSummary
+              proposedChangeId={node.id}
+              branchName={node.source_branch.value}
+            />
+          </PcDetailsLink>
+        ),
+        checks: (
+          <PcDetailsLink tab="checks">
+            <Badge className="rounded-full px-2">{node.validations.count}</Badge>
+          </PcDetailsLink>
+        ),
         tasks: (
-          <ProposedChangesCounter id={node.id} query={getProposedChangesTasks} kind={TASK_OBJECT} />
+          <PcDetailsLink tab="tasks">
+            <ProposedChangesCounter
+              id={node.id}
+              query={getProposedChangesTasks}
+              kind={TASK_OBJECT}
+            />
+          </PcDetailsLink>
         ),
         artifacts: (
-          <ProposedChangesCounter
-            id={node.id}
-            query={getProposedChangesArtifacts}
-            kind={ARTIFACT_OBJECT}
-          />
+          <PcDetailsLink tab="artifacts">
+            <ProposedChangesCounter
+              id={node.id}
+              query={getProposedChangesArtifacts}
+              kind={ARTIFACT_OBJECT}
+            />
+          </PcDetailsLink>
         ),
         reviewers: (
           <ProposedChangesReviewers
@@ -167,11 +217,25 @@ export const ProposedChangesPage = () => {
 
   const tabs = [
     {
-      label: "Opened",
+      label: (
+        <>
+          Opened
+          <Badge className={classNames("ml-1", !qspState && "bg-green-700 text-white")}>
+            {data?.[PROPOSED_CHANGES_OBJECT + (qspState ? "Hidden" : "Visible")]?.count ?? "..."}
+          </Badge>
+        </>
+      ),
       name: "open",
     },
     {
-      label: "Closed",
+      label: (
+        <>
+          Closed
+          <Badge className={classNames("ml-1", qspState && "bg-green-700 text-white")}>
+            {data?.[PROPOSED_CHANGES_OBJECT + (qspState ? "Visible" : "Hidden")]?.count ?? "..."}
+          </Badge>
+        </>
+      ),
       name: "close",
     },
   ];
@@ -185,8 +249,13 @@ export const ProposedChangesPage = () => {
           </div>
         }
         reload={() => refetch()}
-        isReloadLoading={loading}
-      />
+        isReloadLoading={loading}>
+        <ObjectHelpButton
+          className="ml-auto"
+          documentationUrl={schema?.documentation}
+          kind={PROPOSED_CHANGES_OBJECT}
+        />
+      </Content.Title>
 
       <Content>
         <CardWithBorder className="m-2">
@@ -194,7 +263,7 @@ export const ProposedChangesPage = () => {
             <SearchInput
               loading={loading}
               onChange={debouncedHandleSearch}
-              placeholder="Search a Propsoed Change"
+              placeholder="Search a Proposed Change"
               className="border-none focus-visible:ring-0 h-7"
               containerClassName=" flex-grow"
               data-testid="proposed-changes-list-search-bar"

@@ -1,7 +1,8 @@
-from graphene import Boolean, InputObjectType, Int, String
+from graphene import Boolean, Field, InputObjectType, Int, String
 from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
+from infrahub.graphql.types.attribute import GenericPoolInput
 
 
 class BaseAttributeCreate(InputObjectType):
@@ -47,12 +48,12 @@ class StringAttributeUpdate(BaseAttributeUpdate):
 
 class NumberAttributeCreate(BaseAttributeCreate):
     value = Int(required=False)
-    from_pool = String(required=False)
+    from_pool = Field(GenericPoolInput, required=False)
 
 
 class NumberAttributeUpdate(BaseAttributeUpdate):
     value = Int(required=False)
-    from_pool = String(required=False)
+    from_pool = Field(GenericPoolInput, required=False)
 
 
 class IntAttributeCreate(BaseAttributeCreate):

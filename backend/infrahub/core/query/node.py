@@ -595,6 +595,31 @@ class NodeListGetRelationshipsQuery(Query):
         return peers_by_node
 
 
+class NodeGetKindQuery(Query):
+    name: str = "node_get_kind_query"
+    type = QueryType.READ
+
+    def __init__(self, ids: list[str], **kwargs: Any) -> None:
+        self.ids = ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        query = """
+        MATCH p = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)
+        WHERE n.uuid IN $ids
+        """
+        self.add_to_query(query)
+        self.params["ids"] = self.ids
+
+        self.return_labels = ["n.uuid AS node_id", "n.kind AS node_kind"]
+
+    async def get_node_kind_map(self) -> dict[str, str]:
+        node_kind_map: dict[str, str] = {}
+        for result in self.get_results():
+            node_kind_map[str(result.get("node_id"))] = str(result.get("node_kind"))
+        return node_kind_map
+
+
 class NodeListGetInfoQuery(Query):
     name: str = "node_list_get_info"
 
@@ -1055,9 +1080,16 @@ class NodeGetListQuery(Query):
             var_name = f"final_attr_value{far.index}"
             self.params[var_name] = far.field_attr_comparison_value
             if self.partial_match:
-                where_parts.append(
-                    f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
-                )
+                if isinstance(far.field_attr_comparison_value, list):
+                    # If the any filter is an array/list
+                    var_array = f"{var_name}_array"
+                    where_parts.append(
+                        f"any({var_array} IN ${var_name} WHERE toLower(toString({far.final_value_query_variable})) CONTAINS toLower({var_array}))"
+                    )
+                else:
+                    where_parts.append(
+                        f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
+                    )
                 continue
 
             where_parts.append(f"{far.final_value_query_variable} {far.comparison_operator} ${var_name}")

@@ -11,11 +11,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, ...props
   />
 ));
 
-interface CardWithBorderRootProps extends HTMLAttributes<HTMLDivElement> {
+export interface CardWithBorderProps extends HTMLAttributes<HTMLDivElement> {
   contentClassName?: string;
 }
 
-const CardWithBorderRoot = forwardRef<HTMLDivElement, CardWithBorderRootProps>(
+const CardWithBorderRoot = forwardRef<HTMLDivElement, CardWithBorderProps>(
   ({ children, className, contentClassName, ...props }, ref) => {
     return (
       <div

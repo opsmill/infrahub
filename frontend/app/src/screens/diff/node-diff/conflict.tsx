@@ -1,10 +1,15 @@
-import { ToggleButtons } from "@/components/buttons/toggle-buttons";
+import { Checkbox } from "@/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { resolveConflict } from "@/graphql/mutations/diff/resolveConflict";
+import { usePermission } from "@/hooks/usePermission";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
@@ -12,7 +17,9 @@ import { toast } from "react-toastify";
 export const Conflict = ({ conflict }: any) => {
   const currentBranch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const permission = usePermission();
   const [isLoading, setIsLoading] = useState(false);
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const handleAccept = async (conflictValue: string) => {
     try {
@@ -38,7 +45,9 @@ export const Conflict = ({ conflict }: any) => {
 
       await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Conflict marked as resovled" />);
+      const message = newValue ? "Conflict marked as resovled" : "Conflict marked as not resovled";
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
 
       setIsLoading(false);
     } catch (error) {
@@ -47,23 +56,51 @@ export const Conflict = ({ conflict }: any) => {
     }
   };
 
-  const tabs = [
-    {
-      label: "Base",
-      isActive: conflict.selected_branch === "BASE_BRANCH",
-      onClick: () => handleAccept("BASE_BRANCH"),
-    },
-    {
-      label: "Branch",
-      isActive: conflict.selected_branch === "DIFF_BRANCH",
-      onClick: () => handleAccept("DIFF_BRANCH"),
-    },
-  ];
-
   return (
-    <div className="flex items-center justify-end p-2">
-      <span className="mr-1">Accept:</span>
-      <ToggleButtons tabs={tabs} isLoading={isLoading} />
+    <div className="flex items-center justify-end gap-2 p-2">
+      {isLoading && <LoadingScreen hideText size={16} />}
+
+      <span className="text-xs">Choose the branch to resolve the conflict:</span>
+
+      <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={"base"}
+            disabled={isLoading || !permission.write.allow}
+            checked={conflict.selected_branch === "BASE_BRANCH"}
+            onChange={() => handleAccept("BASE_BRANCH")}
+          />
+          <label
+            htmlFor={"base"}
+            className={
+              conflict.selected_branch === "BASE_BRANCH" ? "cursor-default" : "cursor-pointer"
+            }>
+            <Badge variant="green">
+              <Icon icon="mdi:layers-triple" className="mr-1" />
+              {proposedChangesDetails.destination_branch?.value}
+            </Badge>
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={"diff"}
+            disabled={isLoading || !permission.write.allow}
+            checked={conflict.selected_branch === "DIFF_BRANCH"}
+            onChange={() => handleAccept("DIFF_BRANCH")}
+          />
+          <label
+            htmlFor={"diff"}
+            className={
+              conflict.selected_branch === "DIFF_BRANCH" ? "cursor-default" : "cursor-pointer"
+            }>
+            <Badge variant="blue">
+              <Icon icon="mdi:layers-triple" className="mr-1" />
+              {proposedChangesDetails.source_branch?.value}
+            </Badge>
+          </label>
+        </div>
+      </div>
     </div>
   );
 };

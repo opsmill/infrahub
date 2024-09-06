@@ -14,6 +14,7 @@ import usePagination from "./usePagination";
 
 interface Options extends OperationVariables {
   branch?: string;
+  context?: Record<string, string | boolean | ((message: string) => void)>;
 }
 
 const useQuery: typeof useApolloQuery = (QUERY, options?: Options) => {
@@ -30,6 +31,7 @@ const useQuery: typeof useApolloQuery = (QUERY, options?: Options) => {
     },
     context: {
       uri: CONFIG.GRAPHQL_URL(options?.branch || branch?.name, date),
+      ...options?.context,
     },
   });
 };

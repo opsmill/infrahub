@@ -111,7 +111,7 @@ class CoreGenericRepository(CoreNode):
     name: String
     description: StringOptional
     location: String
-    admin_status: Dropdown
+    internal_status: Dropdown
     operational_status: Dropdown
     sync_status: Dropdown
     credential: RelatedNode
@@ -267,6 +267,7 @@ class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
 class CoreDataCheck(CoreCheck):
     conflicts: JSONAttribute
     keep_branch: Enum
+    enriched_conflict_id: StringOptional
 
 
 class CoreDataValidator(CoreValidator):
@@ -352,7 +353,6 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
 class CoreNumberPool(CoreResourcePool, LineageSource):
     node: String
     node_attribute: String
-    unique_for: StringOptional
     start_range: Integer
     end_range: Integer
 
@@ -396,6 +396,7 @@ class CoreRepositoryValidator(CoreValidator):
 
 class CoreSchemaCheck(CoreCheck):
     conflicts: JSONAttribute
+    enriched_conflict_id: StringOptional
 
 
 class CoreSchemaValidator(CoreValidator):
@@ -528,7 +529,7 @@ class CoreGenericRepositorySync(CoreNodeSync):
     name: String
     description: StringOptional
     location: String
-    admin_status: Dropdown
+    internal_status: Dropdown
     operational_status: Dropdown
     sync_status: Dropdown
     credential: RelatedNodeSync
@@ -684,6 +685,7 @@ class CoreCustomWebhookSync(CoreWebhookSync, CoreTaskTargetSync):
 class CoreDataCheckSync(CoreCheckSync):
     conflicts: JSONAttribute
     keep_branch: Enum
+    enriched_conflict_id: StringOptional
 
 
 class CoreDataValidatorSync(CoreValidatorSync):
@@ -769,7 +771,6 @@ class CoreIPPrefixPoolSync(CoreResourcePoolSync, LineageSourceSync):
 class CoreNumberPoolSync(CoreResourcePoolSync, LineageSourceSync):
     node: String
     node_attribute: String
-    unique_for: StringOptional
     start_range: Integer
     end_range: Integer
 
@@ -813,6 +814,7 @@ class CoreRepositoryValidatorSync(CoreValidatorSync):
 
 class CoreSchemaCheckSync(CoreCheckSync):
     conflicts: JSONAttribute
+    enriched_conflict_id: StringOptional
 
 
 class CoreSchemaValidatorSync(CoreValidatorSync):

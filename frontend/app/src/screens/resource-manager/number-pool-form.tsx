@@ -148,6 +148,7 @@ const NodeAttributesSelects = () => {
   const nodesOptions: SelectOption[] = availableSchemaList.map((schema) => ({
     id: schema.kind as string,
     name: schema.label as string,
+    badge: schema.namespace,
   }));
 
   const attributesOptions: SelectOption[] = selectedNode?.attributes

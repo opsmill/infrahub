@@ -10,6 +10,8 @@ import DateTimePicker from "react-datepicker";
 import { DateTimeParam, useQueryParam } from "use-query-params";
 import { Button } from "./buttons/button-primitive";
 
+import "react-datepicker/dist/react-datepicker.css";
+
 export const TimeFrameSelector = () => {
   const [date, setDate] = useAtom(datetimeAtom);
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, DateTimeParam);

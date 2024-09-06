@@ -194,15 +194,6 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         if attribute.kind != "Number":
             raise ValidationError(input_value="The selected attribute is not of the kind Number")
 
-        if "unique_for" in data:
-            relationships = [
-                relationship
-                for relationship in pool_node.relationships
-                if relationship.name == data["unique_for"].value
-            ]
-            if not relationships:
-                raise ValidationError(input_value="The selected relationship doesn't exist in the selected model")
-
         if data["start_range"].value > data["end_range"].value:
             raise ValidationError(input_value="start_range can't be larger than end_range")
 
@@ -219,12 +210,10 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         database: InfrahubDatabase | None = None,
         node: Node | None = None,
     ) -> tuple[Node, Self]:
-        if (  # pylint: disable=too-many-boolean-expressions
-            (data.get("node") and data.get("node").value)
-            or (data.get("node_attribute") and data.get("node_attribute").value)
-            or (data.get("unique_for") and data.get("unique_for").value)
+        if (data.get("node") and data.get("node").value) or (
+            data.get("node_attribute") and data.get("node_attribute").value
         ):
-            raise ValidationError(input_value="The fields 'model', 'model_attribute' or 'unique_for' can't be changed.")
+            raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
         context: GraphqlContext = info.context
 
         async with context.db.start_transaction() as dbt:

@@ -1,6 +1,5 @@
 import { AddComment } from "@/components/conversations/add-comment";
 import { Thread } from "@/components/conversations/thread";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import {
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -22,7 +21,6 @@ import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext } from "react";
 import { useParams } from "react-router-dom";
-import { toast } from "react-toastify";
 import { DiffContext } from ".";
 
 type tDiffComments = {
@@ -152,8 +150,6 @@ export const DiffComments = (props: tDiffComments) => {
           date,
         },
       });
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
       handleRefetch();
     } catch (error: any) {

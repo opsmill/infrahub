@@ -101,16 +101,22 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await expect(page.locator("dl")).toContainText("cr1234");
     });
 
+    await test.step("trigger the diff update", async () => {
+      await page.getByText("Data").click();
+      await expect(page.getByText("We are computing the diff")).toBeVisible();
+      await page.getByRole("button", { name: "Refresh" }).click();
+      await expect(page.getByText("Diff updated!")).toBeVisible();
+    });
+
     await test.step("View branch diff", async () => {
-      await page.getByRole("button", { name: "Diff" }).click();
-      await page.getByText("my-first-Tenant").click();
+      await page.getByText("UpdatedTenantmy-first-Tenant").click();
       await expect(page.getByText("Testing Infrahub")).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_diff");
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 
     await test.step("Merge branch cr1234 into main", async () => {
-      await page.getByRole("button", { name: "Details" }).click();
+      await page.getByText("Details", { exact: true }).click();
       const mergeButton = page.getByRole("button", { name: "Merge" });
       await expect(mergeButton).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_details");

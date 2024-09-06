@@ -38,6 +38,7 @@ export type NodeFormProps = {
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType | RelationshipType>;
   isFilterForm?: boolean;
+  isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
 };
 
@@ -49,6 +50,7 @@ export const NodeForm = ({
   onSuccess,
   isFilterForm,
   onSubmit,
+  isUpdate,
   ...props
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
@@ -80,6 +82,7 @@ export const NodeForm = ({
     isFilterForm,
     filters,
     pools: numberPools,
+    isUpdate,
   });
 
   async function onSubmitCreate(data: Record<string, FormFieldValue>) {

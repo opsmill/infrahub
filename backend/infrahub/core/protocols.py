@@ -105,7 +105,7 @@ class CoreGenericRepository(CoreNode):
     name: String
     description: StringOptional
     location: String
-    admin_status: Dropdown
+    internal_status: Dropdown
     operational_status: Dropdown
     sync_status: Dropdown
     credential: RelationshipManager
@@ -261,6 +261,7 @@ class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
 class CoreDataCheck(CoreCheck):
     conflicts: JSONAttribute
     keep_branch: Enum
+    enriched_conflict_id: StringOptional
 
 
 class CoreDataValidator(CoreValidator):
@@ -346,7 +347,6 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
 class CoreNumberPool(CoreResourcePool, LineageSource):
     node: String
     node_attribute: String
-    unique_for: StringOptional
     start_range: Integer
     end_range: Integer
 
@@ -390,6 +390,7 @@ class CoreRepositoryValidator(CoreValidator):
 
 class CoreSchemaCheck(CoreCheck):
     conflicts: JSONAttribute
+    enriched_conflict_id: StringOptional
 
 
 class CoreSchemaValidator(CoreValidator):

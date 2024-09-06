@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing_extensions import Self
 
 from infrahub.core.query import Query, QueryResult, QueryType
@@ -14,11 +14,14 @@ from .filters import EnrichedDiffQueryFilters
 
 # type: ignore[call-overload]
 class DiffSummaryCounters(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     num_added: int = 0
     num_updated: int = 0
     num_unchanged: int = 0
     num_removed: int = 0
     num_conflicts: int = 0
+    from_time: Timestamp
+    to_time: Timestamp
 
     @classmethod
     def from_graph(cls, result: QueryResult) -> Self:
@@ -28,6 +31,8 @@ class DiffSummaryCounters(BaseModel):
             num_unchanged=int(result.get_as_str("num_unchanged") or 0),
             num_removed=int(result.get_as_str("num_removed") or 0),
             num_conflicts=int(result.get_as_str("num_conflicts") or 0),
+            from_time=Timestamp(result.get_as_str("from_time")),
+            to_time=Timestamp(result.get_as_str("to_time")),
         )
 
 
@@ -85,10 +90,15 @@ class DiffSummaryQuery(Query):
             "SUM(diff_node.num_unchanged) as num_unchanged",
             "SUM(diff_node.num_removed) as num_removed",
             "SUM(diff_node.num_conflicts) as num_conflicts",
+            "min(diff_root.from_time) as from_time",
+            "max(diff_root.to_time) as to_time",
+            "count(diff_root) as num_roots",
         ]
 
-    def get_summary(self) -> DiffSummaryCounters:
+    def get_summary(self) -> DiffSummaryCounters | None:
         result = self.get_result()
         if not result:
-            return DiffSummaryCounters()
+            return None
+        if result.get("num_roots") == 0:
+            return None
         return DiffSummaryCounters.from_graph(result)

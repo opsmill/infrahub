@@ -180,6 +180,52 @@ async def test_method_get_by_id(httpx_mock: HTTPXMock, clients, mock_schema_quer
 
 
 @pytest.mark.parametrize("client_type", client_types)
+async def test_method_get_by_hfid(httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type):  # pylint: disable=unused-argument
+    response = {
+        "data": {
+            "CoreRepository": {
+                "edges": [
+                    {
+                        "node": {
+                            "__typename": "CoreRepository",
+                            "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                            "hfid": ["infrahub-demo-core"],
+                            "name": {"value": "infrahub-demo-core"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
+                            "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                        }
+                    }
+                ]
+            }
+        }
+    }
+
+    response_id = "bfae43e8-5ebb-456c-a946-bf64e930710a"
+    httpx_mock.add_response(
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"},
+    )
+
+    if client_type == "standard":
+        repo = await clients.standard.get(kind="CoreRepository", hfid=["infrahub-demo-core"])
+        assert isinstance(repo, InfrahubNode)
+        with pytest.raises(NodeNotFoundError):
+            assert clients.standard.store.get(key=response_id)
+
+        repo = await clients.standard.get(kind="CoreRepository", hfid=["infrahub-demo-core"], populate_store=True)
+        assert clients.standard.store.get(key=response_id)
+    else:
+        repo = clients.sync.get(kind="CoreRepository", hfid=["infrahub-demo-core"])
+        assert isinstance(repo, InfrahubNodeSync)
+        with pytest.raises(NodeNotFoundError):
+            assert clients.sync.store.get(key="infrahub-demo-core")
+
+        repo = clients.sync.get(kind="CoreRepository", hfid=["infrahub-demo-core"], populate_store=True)
+        assert clients.sync.store.get(key=response_id)
+
+
+@pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_by_default_filter(httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type):  # pylint: disable=unused-argument
     response = {
         "data": {
