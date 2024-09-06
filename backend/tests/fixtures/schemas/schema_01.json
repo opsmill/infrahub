@@ -190,7 +190,7 @@
                     "optional": false
                 },
                 {
-                    "name": "admin_status",
+                    "name": "internal_status",
                     "kind": "String",
                     "label": null,
                     "description": null,

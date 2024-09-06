@@ -3,7 +3,7 @@ from typing import Iterable
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import QueryResult
 from infrahub.core.timestamp import Timestamp
@@ -89,15 +89,14 @@ class EnrichedDiffDeserializer:
     ) -> None:
         for relationship_result in result.get_nested_node_collection("diff_relationships"):
             group_node, element_node, element_conflict, property_node, property_conflict = relationship_result
-            if group_node is not None and element_node is None and property_node is None:
-                enriched_node.add_relationship_from_DiffRelationship(diff_rel=group_node)
-                continue
-            if group_node is None or element_node is None or property_node is None:
+            enriched_relationship_group = None
+            if group_node:
+                enriched_relationship_group = self._deserialize_diff_relationship_group(
+                    relationship_group_node=group_node, enriched_root=enriched_root, enriched_node=enriched_node
+                )
+            if element_node is None or property_node is None or enriched_relationship_group is None:
                 continue
 
-            enriched_relationship_group = self._deserialize_diff_relationship_group(
-                relationship_group_node=group_node, enriched_root=enriched_root, enriched_node=enriched_node
-            )
             enriched_relationship_element = self._deserialize_diff_relationship_element(
                 relationship_element_node=element_node,
                 enriched_relationship_group=enriched_relationship_group,
@@ -137,6 +136,7 @@ class EnrichedDiffDeserializer:
                 parent_kind=parent.get("kind"),
                 parent_label=parent.get("label"),
                 parent_rel_name=rel.get("name"),
+                parent_rel_cardinality=RelationshipCardinality(rel.get("cardinality")),
                 parent_rel_label=rel.get("label"),
             )
             current_node_uuid = parent.get("uuid")
@@ -232,7 +232,21 @@ class EnrichedDiffDeserializer:
         if rel_key in self._diff_node_rel_group_map:
             return self._diff_node_rel_group_map[rel_key]
 
-        enriched_relationship = EnrichedDiffRelationship.from_graph(node=relationship_group_node)
+        timestamp_str = relationship_group_node.get("changed_at")
+        enriched_relationship = EnrichedDiffRelationship(
+            name=relationship_group_node.get("name"),
+            label=relationship_group_node.get("label"),
+            cardinality=RelationshipCardinality(relationship_group_node.get("cardinality")),
+            changed_at=Timestamp(timestamp_str) if timestamp_str else None,
+            action=DiffAction(str(relationship_group_node.get("action"))),
+            path_identifier=str(relationship_group_node.get("path_identifier")),
+            num_added=int(relationship_group_node.get("num_added")),
+            num_conflicts=int(relationship_group_node.get("num_conflicts")),
+            num_removed=int(relationship_group_node.get("num_removed")),
+            num_updated=int(relationship_group_node.get("num_updated")),
+            contains_conflict=str(relationship_group_node.get("contains_conflict")).lower() == "true",
+        )
+
         self._diff_node_rel_group_map[rel_key] = enriched_relationship
         enriched_node.relationships.add(enriched_relationship)
         return enriched_relationship
@@ -274,11 +288,15 @@ class EnrichedDiffDeserializer:
     def _property_node_to_enriched_property(self, property_node: Neo4jNode) -> EnrichedDiffProperty:
         previous_value = self._get_str_or_none_property_value(node=property_node, property_name="previous_value")
         new_value = self._get_str_or_none_property_value(node=property_node, property_name="new_value")
+        previous_label = self._get_str_or_none_property_value(node=property_node, property_name="previous_label")
+        new_label = self._get_str_or_none_property_value(node=property_node, property_name="new_label")
         return EnrichedDiffProperty(
             property_type=DatabaseEdgeType(str(property_node.get("property_type"))),
             changed_at=Timestamp(str(property_node.get("changed_at"))),
             previous_value=previous_value,
             new_value=new_value,
+            previous_label=previous_label,
+            new_label=new_label,
             action=DiffAction(str(property_node.get("action"))),
             path_identifier=str(property_node.get("path_identifier")),
         )
@@ -331,6 +349,12 @@ class EnrichedDiffDeserializer:
         diff_branch_value = self._get_str_or_none_property_value(
             node=diff_conflict_node, property_name="diff_branch_value"
         )
+        base_branch_label = self._get_str_or_none_property_value(
+            node=diff_conflict_node, property_name="base_branch_label"
+        )
+        diff_branch_label = self._get_str_or_none_property_value(
+            node=diff_conflict_node, property_name="diff_branch_label"
+        )
         base_timestamp_str = self._get_str_or_none_property_value(
             node=diff_conflict_node, property_name="base_branch_changed_at"
         )
@@ -343,8 +367,10 @@ class EnrichedDiffDeserializer:
             base_branch_action=DiffAction(str(diff_conflict_node.get("base_branch_action"))),
             base_branch_value=base_branch_value,
             base_branch_changed_at=Timestamp(base_timestamp_str) if base_timestamp_str else None,
+            base_branch_label=base_branch_label,
             diff_branch_action=DiffAction(str(diff_conflict_node.get("diff_branch_action"))),
             diff_branch_value=diff_branch_value,
+            diff_branch_label=diff_branch_label,
             diff_branch_changed_at=Timestamp(diff_timestamp_str) if diff_timestamp_str else None,
             selected_branch=ConflictSelection(selected_branch) if selected_branch else None,
         )

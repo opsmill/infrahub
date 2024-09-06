@@ -84,7 +84,12 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         ...profiles.map((s) => s.label),
       ];
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
-      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
+      const schemaKindNameMap = {
+        ...R.fromPairs(schemaKindNameTuples),
+        SchemaAttribute: "Attribute",
+        SchemaRelationship: "Relationship",
+        SchemaNode: "Node",
+      };
 
       const schemaLabels = [...schema.map((s) => s.label), ...generics.map((s) => s.label)];
       const schemaKindLabelTuples = R.zip(schemaKinds, schemaLabels);

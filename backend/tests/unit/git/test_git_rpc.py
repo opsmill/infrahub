@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from infrahub_sdk import UUIDT, Config, InfrahubClient
 
-from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
@@ -60,7 +60,7 @@ class TestAddRepository:
         self.mock_repo = AsyncMock(spec=InfrahubRepository)
         self.mock_repo.default_branch = self.default_branch_name
         self.mock_repo.infrahub_branch_name = self.default_branch_name
-        self.mock_repo.admin_status = "active"
+        self.mock_repo.internal_status = "active"
         self.mock_repo_class.new.return_value = self.mock_repo
 
     def teardown_method(self):
@@ -74,7 +74,7 @@ class TestAddRepository:
             location=git_upstream_repo_01["path"],
             default_branch_name=self.default_branch_name,
             infrahub_branch_name=self.default_branch_name,
-            admin_status="active",
+            internal_status="active",
         )
 
         await git.repository.add(message=message, service=self.services)
@@ -89,7 +89,8 @@ class TestAddRepository:
             client=self.client,
             task_report=self.git_report,
             infrahub_branch_name=self.default_branch_name,
-            admin_status="active",
+            internal_status="active",
+            default_branch_name=self.default_branch_name,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
             infrahub_branch_name=self.default_branch_name, git_branch_name=self.default_branch_name
@@ -115,7 +116,8 @@ async def test_git_rpc_merge(
         repository_name=repo.name,
         source_branch="branch01",
         destination_branch="main",
-        admin_status=RepositoryAdminStatus.ACTIVE.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        default_branch="main",
     )
 
     client_config = Config(requester=dummy_async_request)
@@ -203,7 +205,7 @@ class TestAddReadOnly:
             location=git_upstream_repo_01["path"],
             ref="branch01",
             infrahub_branch_name="read-only-branch",
-            admin_status="active",
+            internal_status="active",
         )
 
         await git.repository.add_read_only(message=message, service=self.services)

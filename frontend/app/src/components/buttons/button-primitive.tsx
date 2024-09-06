@@ -7,17 +7,17 @@ import { Link, LinkProps } from "react-router-dom";
 import { Spinner } from "@/components/ui/spinner";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-disabled",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
-        primary: "text-white bg-custom-blue-700 shadow hover:bg-custom-blue-700/90",
-        danger: "text-white bg-red-500 shadow hover:bg-red-500/90",
-        active: "text-white bg-green-600 shadow hover:bg-green-600/90",
-        outline: "border bg-custom-white shadow-sm hover:bg-gray-100",
+        primary: "text-white bg-custom-blue-700 shadow enabled:hover:bg-custom-blue-700/90",
+        danger: "text-white bg-red-500 shadow enabled:hover:bg-red-500/90",
+        active: "text-white bg-green-600 shadow enabled:hover:bg-green-600/90",
+        outline: "border bg-custom-white shadow-sm enabled:hover:bg-gray-100",
         "primary-outline":
-          "text-custom-blue-700 border border-custom-blue-700 bg-custom-white shadow-sm hover:bg-gray-100",
-        dark: "border bg-gray-200 shadow-sm hover:bg-gray-300",
+          "text-custom-blue-700 border border-custom-blue-700 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
+        dark: "border bg-gray-200 shadow-sm enabled:hover:bg-gray-300",
         ghost: "hover:bg-gray-100",
       },
       size: {

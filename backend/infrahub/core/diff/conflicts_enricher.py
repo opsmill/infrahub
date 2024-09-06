@@ -50,6 +50,8 @@ class ConflictsEnricher:
     def _add_node_conflicts(self, base_node: EnrichedDiffNode, branch_node: EnrichedDiffNode) -> None:
         if base_node.action != branch_node.action:
             self._add_node_conflict(base_node=base_node, branch_node=branch_node)
+        elif branch_node.conflict:
+            branch_node.conflict = None
         base_attribute_map = {a.name: a for a in base_node.attributes}
         branch_attribute_map = {a.name: a for a in branch_node.attributes}
         common_attribute_names = set(base_attribute_map.keys()) & set(branch_attribute_map.keys())
@@ -103,6 +105,8 @@ class ConflictsEnricher:
                     base_property=base_property,
                     branch_property=branch_property,
                 )
+            elif branch_property.conflict:
+                branch_property.conflict = None
 
     def _add_relationship_conflicts(
         self,
@@ -147,36 +151,49 @@ class ConflictsEnricher:
         for property_type in common_property_types:
             base_property = base_properties_by_type[property_type]
             branch_property = branch_properties_by_type[property_type]
-            if base_property.new_value != branch_property.new_value:
-                if branch_property.conflict:
-                    conflict_uuid = branch_property.conflict.uuid
-                    selected_branch = branch_property.conflict.selected_branch
+            same_value = base_property.new_value == branch_property.new_value
+            # special handling for cardinality-one peer ID conflict
+            if branch_property.property_type is DatabaseEdgeType.IS_RELATED and is_cardinality_one:
+                if same_value:
+                    branch_element.conflict = None
+                    continue
+                if branch_element.conflict:
+                    conflict_uuid = branch_element.conflict.uuid
+                    selected_branch = branch_element.conflict.selected_branch
                 else:
                     conflict_uuid = str(uuid4())
                     selected_branch = None
-                # special handling for cardinality-one peer ID conflict
-                if branch_property.property_type is DatabaseEdgeType.IS_RELATED and is_cardinality_one:
-                    branch_element.conflict = EnrichedDiffConflict(
-                        uuid=conflict_uuid,
-                        base_branch_action=base_element.action,
-                        base_branch_value=base_property.new_value,
-                        base_branch_changed_at=base_property.changed_at,
-                        diff_branch_action=branch_element.action,
-                        diff_branch_value=branch_property.new_value,
-                        diff_branch_changed_at=branch_property.changed_at,
-                        selected_branch=selected_branch,
-                    )
-                else:
-                    branch_property.conflict = EnrichedDiffConflict(
-                        uuid=conflict_uuid,
-                        base_branch_action=base_property.action,
-                        base_branch_value=base_property.new_value,
-                        base_branch_changed_at=base_property.changed_at,
-                        diff_branch_action=branch_property.action,
-                        diff_branch_value=branch_property.new_value,
-                        diff_branch_changed_at=branch_property.changed_at,
-                        selected_branch=selected_branch,
-                    )
+                conflict = EnrichedDiffConflict(
+                    uuid=conflict_uuid,
+                    base_branch_action=base_element.action,
+                    base_branch_value=base_property.new_value,
+                    base_branch_changed_at=base_property.changed_at,
+                    diff_branch_action=branch_element.action,
+                    diff_branch_value=branch_property.new_value,
+                    diff_branch_changed_at=branch_property.changed_at,
+                    selected_branch=selected_branch,
+                )
+                branch_element.conflict = conflict
+                continue
+            if same_value:
+                branch_property.conflict = None
+                continue
+            if branch_property.conflict:
+                conflict_uuid = branch_property.conflict.uuid
+                selected_branch = branch_property.conflict.selected_branch
+            else:
+                conflict_uuid = str(uuid4())
+                selected_branch = None
+            branch_property.conflict = EnrichedDiffConflict(
+                uuid=conflict_uuid,
+                base_branch_action=base_property.action,
+                base_branch_value=base_property.new_value,
+                base_branch_changed_at=base_property.changed_at,
+                diff_branch_action=branch_property.action,
+                diff_branch_value=branch_property.new_value,
+                diff_branch_changed_at=branch_property.changed_at,
+                selected_branch=selected_branch,
+            )
 
     def _add_property_conflict(
         self,

@@ -224,7 +224,7 @@ class DiffSingleRelationshipIntermediate:
         changed_at = chronological_properties[-1].changed_at
         previous_value = None
         first_diff_prop = chronological_properties[0]
-        if first_diff_prop.changed_at < from_time and first_diff_prop.status is not RelationshipStatus.DELETED:
+        if first_diff_prop.status is RelationshipStatus.DELETED or first_diff_prop.changed_at < from_time:
             previous_value = first_diff_prop.value
         new_value = None
         last_diff_prop = chronological_properties[-1]
@@ -268,6 +268,14 @@ class DiffSingleRelationshipIntermediate:
         final_properties = [peer_final_property] + other_final_properties
         last_changed_property = max(final_properties, key=lambda fp: fp.changed_at)
         last_changed_at = last_changed_property.changed_at
+        # handle case when peer has been deleted on another branch, but the properties of the relationship are updated
+        if (
+            last_changed_property.property_type is not DatabaseEdgeType.IS_RELATED
+            and any(p.action is not DiffAction.REMOVED for p in other_final_properties)
+            and peer_final_property.action is DiffAction.REMOVED
+        ):
+            peer_final_property.action = DiffAction.UNCHANGED
+            peer_final_property.new_value = peer_id
         if last_changed_at < from_time:
             action = DiffAction.UNCHANGED
         elif peer_final_property.action in (DiffAction.ADDED, DiffAction.REMOVED):
@@ -331,7 +339,11 @@ class DiffRelationshipIntermediate:
         ):
             action = single_relationships[0].action
         return DiffRelationship(
-            name=self.name, changed_at=last_changed_at, action=action, relationships=single_relationships
+            name=self.name,
+            changed_at=last_changed_at,
+            action=action,
+            relationships=single_relationships,
+            cardinality=self.cardinality,
         )
 
 
@@ -539,20 +551,35 @@ class DiffQueryParser:
                     DatabaseEdgeType(p.property_type): None for p in property_set
                 }
                 base_diff_property_by_type[DatabaseEdgeType.IS_RELATED] = None
+                latest_diff_property_times_by_type: dict[DatabaseEdgeType, Timestamp] = {}
+                for diff_property in property_set:
+                    if (
+                        diff_property.property_type not in latest_diff_property_times_by_type
+                        or diff_property.changed_at > latest_diff_property_times_by_type[diff_property.property_type]
+                    ):
+                        latest_diff_property_times_by_type[diff_property.property_type] = diff_property.changed_at
+
                 for base_diff_property in base_property_set:
                     prop_type = DatabaseEdgeType(base_diff_property.property_type)
-                    if prop_type not in base_diff_property_by_type:
-                        continue
-                    if base_diff_property.changed_at >= self.from_time:
-                        continue
                     if (
-                        base_diff_property_by_type[prop_type] is None
-                        or base_diff_property.changed_at < base_diff_property_by_type[prop_type]
+                        prop_type not in base_diff_property_by_type
+                        or (
+                            base_diff_property.status is RelationshipStatus.ACTIVE
+                            and base_diff_property.changed_at >= self.from_time
+                        )
+                        or (
+                            prop_type in latest_diff_property_times_by_type
+                            and base_diff_property.changed_at > latest_diff_property_times_by_type[prop_type]
+                        )
                     ):
+                        continue
+                    if base_diff_property_by_type[prop_type] is None:
                         base_diff_property_by_type[prop_type] = base_diff_property
-                for diff_property in base_diff_property_by_type.values():
-                    if diff_property:
-                        property_set.add(diff_property)
+                        continue
+                    current_property = base_diff_property_by_type.get(prop_type)
+                    if current_property and base_diff_property.changed_at < current_property.changed_at:
+                        base_diff_property_by_type[prop_type] = base_diff_property
+                property_set.update({bdp for bdp in base_diff_property_by_type.values() if bdp})
 
     def _remove_empty_base_diff_root(self) -> None:
         base_diff_root = self._diff_root_by_branch.get(self.base_branch_name)

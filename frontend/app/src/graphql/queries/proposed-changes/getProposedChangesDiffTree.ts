@@ -2,18 +2,21 @@ import { gql } from "@apollo/client";
 
 export const getProposedChangesDiffTree = gql`
   query GET_PROPOSED_CHANGES_DIFF_TREE($branch: String, $filters: DiffTreeQueryFilters) {
-    DiffTree(branch: $branch, filters: $filters, include_parents: false) {
+    DiffTree(branch: $branch, filters: $filters, include_parents: true) {
       nodes {
         uuid
         relationships {
           label
           status
           contains_conflict
+          cardinality
           elements {
             conflict {
+              base_branch_label
               base_branch_action
               base_branch_changed_at
               base_branch_value
+              diff_branch_label
               diff_branch_action
               diff_branch_changed_at
               diff_branch_value
@@ -25,9 +28,11 @@ export const getProposedChangesDiffTree = gql`
             peer_id
             properties {
               conflict {
+                base_branch_label
                 base_branch_action
                 base_branch_changed_at
                 base_branch_value
+                diff_branch_label
                 diff_branch_action
                 diff_branch_changed_at
                 diff_branch_value
@@ -50,9 +55,11 @@ export const getProposedChangesDiffTree = gql`
           path_identifier
         }
         conflict {
+          base_branch_label
           base_branch_action
           base_branch_changed_at
           diff_branch_action
+          diff_branch_label
           base_branch_value
           diff_branch_changed_at
           diff_branch_value
@@ -63,11 +70,25 @@ export const getProposedChangesDiffTree = gql`
           contains_conflict
           last_changed_at
           name
+          conflict {
+            base_branch_label
+            base_branch_action
+            base_branch_changed_at
+            base_branch_value
+            diff_branch_label
+            diff_branch_action
+            diff_branch_changed_at
+            diff_branch_value
+            selected_branch
+            uuid
+          }
           properties {
             conflict {
+              base_branch_label
               base_branch_action
               base_branch_changed_at
               base_branch_value
+              diff_branch_label
               diff_branch_action
               diff_branch_changed_at
               diff_branch_value

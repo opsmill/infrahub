@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind, RepositoryAdminStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from tests.constants import TestKind
@@ -71,7 +71,7 @@ class TestCreateRepository(TestInfrahubApp):
         )
 
         assert repository_branch.commit.value
-        assert repository_branch.admin_status.value == RepositoryAdminStatus.STAGING.value
+        assert repository_branch.internal_status.value == RepositoryInternalStatus.STAGING.value
         assert check_definition.file_path.value == "checks/car_overview.py"
 
         repository_main: CoreRepository = await NodeManager.get_one(
@@ -79,7 +79,7 @@ class TestCreateRepository(TestInfrahubApp):
         )
 
         assert repository_main.commit.value is None
-        assert repository_main.admin_status.value == RepositoryAdminStatus.INACTIVE.value
+        assert repository_main.internal_status.value == RepositoryInternalStatus.INACTIVE.value
 
     async def test_merge_branch(
         self,
@@ -98,5 +98,5 @@ class TestCreateRepository(TestInfrahubApp):
             db=db, id="car-dealership", kind=InfrahubKind.REPOSITORY, raise_on_error=True
         )
 
-        assert repository_main.admin_status.value == RepositoryAdminStatus.ACTIVE.value
+        assert repository_main.internal_status.value == RepositoryInternalStatus.ACTIVE.value
         assert repository_main.commit.value == repository_branch.commit.value

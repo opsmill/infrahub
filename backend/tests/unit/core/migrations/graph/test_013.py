@@ -5,7 +5,7 @@ from infrahub.core.constants import BranchSupportType, RelationshipCardinality, 
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m013_convert_git_password_credential import (
     Migration013,
-    Migration013AddAdminStatusData,
+    Migration013AddInternalStatusData,
     Migration013ConvertCoreRepositoryWithCred,
     Migration013ConvertCoreRepositoryWithoutCred,
     Migration013DeleteUsernamePasswordGenericSchema,
@@ -275,16 +275,16 @@ async def test_migration_013_delete_username_password_schema(
     assert nbr_rels_after == nbr_rels_before + (2 * 3)
 
 
-async def test_migration_013_add_admin_status_data(
+async def test_migration_013_add_internal_status_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
 ):
     nbr_rels_before = await count_relationships(db=db)
 
-    query = await Migration013AddAdminStatusData.init(db=db)
+    query = await Migration013AddInternalStatusData.init(db=db)
     await query.execute(db=db)
     assert query.stats.get_counter(name="nodes_created") == 3 + 1
 
-    query = await Migration013AddAdminStatusData.init(db=db)
+    query = await Migration013AddInternalStatusData.init(db=db)
     await query.execute(db=db)
     assert query.stats.get_counter(name="nodes_created") == 0
 

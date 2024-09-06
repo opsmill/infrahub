@@ -1,7 +1,6 @@
 import {
   attributesKindForDetailsViewExclude,
   attributesKindForListView,
-  peersKindForForm,
   relationshipsForDetailsView,
   relationshipsForListView,
   relationshipsForTabs,
@@ -141,25 +140,6 @@ export const getObjectTabs = (tabs: any[], data: any) => {
     ...tab,
     count: data[tab.name]?.count,
   }));
-};
-
-// Used by the form to display the fields
-export const getObjectRelationshipsForForm = (
-  schema?: iNodeSchema | iGenericSchema,
-  isUpdate?: boolean
-) => {
-  const relationships = (schema?.relationships || [])
-    // Create form includes cardinality many but only if required, edit form doesn't include it at all
-    .filter(
-      (relationship) =>
-        relationship.cardinality === "one" ||
-        (isUpdate
-          ? peersKindForForm.includes(relationship?.kind ?? "")
-          : peersKindForForm.includes(relationship?.kind ?? "") || !relationship.optional)
-    )
-    .filter(Boolean);
-
-  return relationships;
 };
 
 // Include current value in the options to make it available in the select component

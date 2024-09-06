@@ -92,6 +92,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                         parent_kind=ancestor.kind,
                         parent_label="",
                         parent_rel_name=parent_rel.name,
+                        parent_rel_cardinality=parent_rel.cardinality,
                         parent_rel_label=parent_rel.label or "",
                     )
 
@@ -149,6 +150,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                 parent_kind=peer_parent.peer_kind,
                 parent_label="",
                 parent_rel_name=parent_rel.name,
+                parent_rel_cardinality=parent_rel.cardinality,
                 parent_rel_label=parent_rel.label or "",
             )
 

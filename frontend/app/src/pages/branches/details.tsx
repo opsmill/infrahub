@@ -127,6 +127,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
     case DIFF_TABS.SCHEMA: {
       return (
         <NodeDiff
+          branchName={branchName}
           filters={{
             namespace: { includes: ["Schema"], excludes: ["Profile"] },
             status: { excludes: ["UNCHANGED"] },
@@ -137,6 +138,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
     case DIFF_TABS.DATA: {
       return (
         <NodeDiff
+          branchName={branchName}
           filters={{
             namespace: { excludes: ["Schema", "Profile"] },
             status: { excludes: ["UNCHANGED"] },

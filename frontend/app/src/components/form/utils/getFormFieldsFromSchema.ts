@@ -17,11 +17,7 @@ import {
   FormFieldValue,
   NumberPoolData,
 } from "@/components/form/type";
-import {
-  getObjectRelationshipsForForm,
-  getOptionsFromAttribute,
-  getRelationshipOptions,
-} from "@/utils/getSchemaObjectColumns";
+import { getOptionsFromAttribute, getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
 import { isGeneric, sortByOrderWeight } from "@/utils/common";
 import { getFieldDefaultValue } from "@/components/form/utils/getFieldDefaultValue";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
@@ -33,6 +29,7 @@ import { getRelationshipDefaultValue } from "@/components/form/utils/getRelation
 import { Filter } from "@/hooks/useFilters";
 import { getRelationshipParent } from "@/components/form/utils/getRelationshipParent";
 import { isRequired } from "@/components/form/utils/validation";
+import { getRelationshipsForForm } from "@/components/form/utils/getRelationshipsForForm";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;
@@ -42,6 +39,7 @@ type GetFormFieldsFromSchema = {
   isFilterForm?: boolean;
   filters?: Array<Filter>;
   pools?: Array<NumberPoolData>;
+  isUpdate?: boolean;
 };
 
 export const getFormFieldsFromSchema = ({
@@ -52,10 +50,11 @@ export const getFormFieldsFromSchema = ({
   isFilterForm,
   filters,
   pools = [],
+  isUpdate,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields = [
     ...(schema.attributes ?? []),
-    ...getObjectRelationshipsForForm(schema),
+    ...getRelationshipsForForm(schema.relationships ?? [], isUpdate),
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 

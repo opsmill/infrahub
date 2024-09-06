@@ -41,7 +41,6 @@ export const ROOT_TREE_ITEM: TreeItemProps["element"] = {
   name: "",
   parent: null,
   children: [],
-  isBranch: true,
 };
 
 export const EMPTY_TREE: TreeProps["data"] = [ROOT_TREE_ITEM];
@@ -82,20 +81,25 @@ export const updateTreeData = (
 };
 
 export const addItemsToTree = (
-  currentTree: TreeProps["data"],
-  newItems: TreeProps["data"]
+  currentTreeItems: TreeProps["data"],
+  newTreeItems: TreeProps["data"]
 ): TreeProps["data"] => {
-  return newItems.reduce((acc, item) => {
-    const parentIndex = acc.findIndex(({ id }) => id === item.parent);
-    if (parentIndex !== -1) {
-      const parent = {
-        ...acc[parentIndex],
-        children: [...new Set([...acc[parentIndex].children, item.id])],
-      };
-      return [...acc.slice(0, parentIndex), parent, ...acc.slice(parentIndex + 1), item];
+  const map = new Map<TreeProps["data"][0]["id"], TreeProps["data"][0]>();
+
+  // Build a map of items
+  [...currentTreeItems, ...newTreeItems].forEach((item) => {
+    map.set(item.id, item); // Initialize children as an empty array
+  });
+
+  newTreeItems.forEach((item) => {
+    const parentId = item.parent ?? TREE_ROOT_ID;
+    const parent = map.get(parentId);
+    if (parent) {
+      map.set(parent.id, { ...parent, children: [...new Set(parent.children.concat(item.id))] });
     }
-    return [...acc, item];
-  }, currentTree);
+  });
+
+  return Array.from(map, ([, value]) => value);
 };
 
 export const getTreeItemAncestors = (

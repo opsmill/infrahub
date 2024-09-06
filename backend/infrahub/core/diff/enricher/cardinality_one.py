@@ -33,26 +33,14 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
         self._node_schema_map: dict[str, MainSchemaTypes] = {}
 
     async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:
+        self._node_schema_map = {}
         for diff_node in enriched_diff_root.nodes:
             for relationship_group in diff_node.relationships:
                 if (
-                    self.is_cardinality_one(
-                        node_kind=diff_node.kind,
-                        relationship_name=relationship_group.name,
-                        diff_branch_name=enriched_diff_root.diff_branch_name,
-                    )
+                    relationship_group.cardinality is RelationshipCardinality.ONE
                     and len(relationship_group.relationships) > 0
                 ):
                     self.consolidate_cardinality_one_diff_elements(diff_relationship=relationship_group)
-
-    def is_cardinality_one(self, node_kind: str, relationship_name: str, diff_branch_name: str) -> bool:
-        if node_kind not in self._node_schema_map:
-            self._node_schema_map[node_kind] = self.db.schema.get(
-                name=node_kind, branch=diff_branch_name, duplicate=False
-            )
-        node_schema = self._node_schema_map[node_kind]
-        relationship_schema = node_schema.get_relationship(name=relationship_name)
-        return relationship_schema.cardinality == RelationshipCardinality.ONE
 
     def _determine_action(self, previous_value: Any, new_value: Any) -> DiffAction:
         if previous_value == new_value:
@@ -60,7 +48,7 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
         if previous_value in (None, "NULL"):
             return DiffAction.ADDED
         if new_value in (None, "NULL"):
-            return DiffAction.ADDED
+            return DiffAction.REMOVED
         return DiffAction.UPDATED
 
     def _build_property_maps(

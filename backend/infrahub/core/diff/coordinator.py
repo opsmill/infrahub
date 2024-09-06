@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+from infrahub import lock
 from infrahub.core.timestamp import Timestamp
+from infrahub.log import get_logger
 
 from .model.path import BranchTrackingId, EnrichedDiffRoot, NameTrackingId, TimeRange, TrackingId
 
@@ -16,8 +18,12 @@ if TYPE_CHECKING:
     from .conflicts_enricher import ConflictsEnricher
     from .data_check_synchronizer import DiffDataCheckSynchronizer
     from .enricher.aggregated import AggregatedDiffEnricher
+    from .enricher.labels import DiffLabelsEnricher
     from .enricher.summary_counts import DiffSummaryCountsEnricher
     from .repository.repository import DiffRepository
+
+
+log = get_logger()
 
 
 @dataclass
@@ -33,6 +39,8 @@ class EnrichedDiffRequest:
 
 
 class DiffCoordinator:
+    lock_namespace = "diff-update"
+
     def __init__(
         self,
         diff_repo: DiffRepository,
@@ -40,6 +48,7 @@ class DiffCoordinator:
         diff_enricher: AggregatedDiffEnricher,
         diff_combiner: DiffCombiner,
         conflicts_enricher: ConflictsEnricher,
+        labels_enricher: DiffLabelsEnricher,
         summary_counts_enricher: DiffSummaryCountsEnricher,
         data_check_synchronizer: DiffDataCheckSynchronizer,
     ) -> None:
@@ -48,8 +57,10 @@ class DiffCoordinator:
         self.diff_enricher = diff_enricher
         self.diff_combiner = diff_combiner
         self.conflicts_enricher = conflicts_enricher
+        self.labels_enricher = labels_enricher
         self.summary_counts_enricher = summary_counts_enricher
         self.data_check_synchronizer = data_check_synchronizer
+        self.lock_registry = lock.registry
         self._enriched_diff_cache: dict[EnrichedDiffRequest, EnrichedDiffRoot] = {}
 
     async def run_update(
@@ -80,17 +91,45 @@ class DiffCoordinator:
             name=name,
         )
 
+    def _get_lock_name(self, base_branch_name: str, diff_branch_name: str, is_incremental: bool) -> str:
+        lock_name = f"{base_branch_name}__{diff_branch_name}"
+        if is_incremental:
+            lock_name += "__incremental"
+        return lock_name
+
     async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
+        log.debug(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
+        incremental_lock_name = self._get_lock_name(
+            base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=True
+        )
+        existing_incremental_lock = self.lock_registry.get_existing(
+            name=incremental_lock_name, namespace=self.lock_namespace
+        )
+        if existing_incremental_lock and await existing_incremental_lock.locked():
+            log.debug(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
+            async with self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace):
+                log.debug(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
+                return await self.diff_repo.get_one(
+                    tracking_id=BranchTrackingId(name=diff_branch.name), diff_branch_name=diff_branch.name
+                )
+        general_lock_name = self._get_lock_name(
+            base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
+        )
         from_time = Timestamp(diff_branch.get_created_at())
         to_time = Timestamp()
         tracking_id = BranchTrackingId(name=diff_branch.name)
-        return await self._update_diffs(
-            base_branch=base_branch,
-            diff_branch=diff_branch,
-            from_time=from_time,
-            to_time=to_time,
-            tracking_id=tracking_id,
-        )
+        async with (
+            self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace),
+            self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace),
+        ):
+            log.debug(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
+            return await self._update_diffs(
+                base_branch=base_branch,
+                diff_branch=diff_branch,
+                from_time=from_time,
+                to_time=to_time,
+                tracking_id=tracking_id,
+            )
 
     async def create_or_update_arbitrary_timeframe_diff(
         self,
@@ -103,13 +142,18 @@ class DiffCoordinator:
         tracking_id = None
         if name:
             tracking_id = NameTrackingId(name=name)
-        return await self._update_diffs(
-            base_branch=base_branch,
-            diff_branch=diff_branch,
-            from_time=from_time,
-            to_time=to_time,
-            tracking_id=tracking_id,
+        general_lock_name = self._get_lock_name(
+            base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
         )
+        async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
+            log.debug(f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}")
+            return await self._update_diffs(
+                base_branch=base_branch,
+                diff_branch=diff_branch,
+                from_time=from_time,
+                to_time=to_time,
+                tracking_id=tracking_id,
+            )
 
     async def _update_diffs(
         self,
@@ -128,6 +172,8 @@ class DiffCoordinator:
                 diff_branch_names=[branch.name],
                 from_time=from_time,
                 to_time=to_time,
+                tracking_id=tracking_id,
+                include_empty=True,
             )
             if tracking_id:
                 diff_uuids_to_delete += [
@@ -160,6 +206,9 @@ class DiffCoordinator:
             await self.conflicts_enricher.add_conflicts_to_branch_diff(
                 base_diff_root=aggregated_diffs_by_branch_name[base_branch.name],
                 branch_diff_root=aggregated_diffs_by_branch_name[diff_branch.name],
+            )
+            await self.labels_enricher.enrich(
+                enriched_diff_root=aggregated_diffs_by_branch_name[diff_branch.name], conflicts_only=True
             )
 
         if tracking_id:
@@ -199,16 +248,17 @@ class DiffCoordinator:
     ) -> list[TimeRange]:
         if not time_ranges:
             return [TimeRange(from_time=from_time, to_time=to_time)]
+        sorted_time_ranges = sorted(time_ranges, key=lambda tr: tr.from_time)
         missing_time_ranges = []
-        if time_ranges[0].from_time > from_time:
-            missing_time_ranges.append(TimeRange(from_time=from_time, to_time=time_ranges[0].from_time))
+        if sorted_time_ranges[0].from_time > from_time:
+            missing_time_ranges.append(TimeRange(from_time=from_time, to_time=sorted_time_ranges[0].from_time))
         index = 0
-        while index < len(time_ranges) - 1:
-            this_diff = time_ranges[index]
-            next_diff = time_ranges[index + 1]
-            if this_diff.to_time != next_diff.from_time:
+        while index < len(sorted_time_ranges) - 1:
+            this_diff = sorted_time_ranges[index]
+            next_diff = sorted_time_ranges[index + 1]
+            if this_diff.to_time < next_diff.from_time:
                 missing_time_ranges.append(TimeRange(from_time=this_diff.to_time, to_time=next_diff.from_time))
             index += 1
-        if time_ranges[-1].to_time < to_time:
-            missing_time_ranges.append(TimeRange(from_time=time_ranges[-1].to_time, to_time=to_time))
+        if sorted_time_ranges[-1].to_time < to_time:
+            missing_time_ranges.append(TimeRange(from_time=sorted_time_ranges[-1].to_time, to_time=to_time))
         return missing_time_ranges

@@ -3,8 +3,8 @@ from dataclasses import dataclass, field, replace
 from typing import Iterable
 from uuid import uuid4
 
-from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants.database import DatabaseEdgeType
 
 from .model.path import (
     EnrichedDiffAttribute,
@@ -25,7 +25,6 @@ class NodePair:
 
 class DiffCombiner:
     def __init__(self) -> None:
-        self.schema_manager = registry.schema
         # {child_uuid: (parent_uuid, parent_rel_name)}
         self._child_parent_uuid_map: dict[str, tuple[str, str]] = {}
         self._parent_node_uuids: set[str] = set()
@@ -89,20 +88,26 @@ class DiffCombiner:
         actions = {earlier, later}
         if actions == {DiffAction.UNCHANGED}:
             return False
-        if actions == {DiffAction.ADDED, DiffAction.REMOVED}:
+        if earlier is DiffAction.ADDED and later is DiffAction.REMOVED:
             return False
         return True
 
     def _combine_actions(self, earlier: DiffAction, later: DiffAction) -> DiffAction:
         actions = {earlier, later}
-        combined_action = DiffAction.UPDATED
-        if DiffAction.ADDED in actions:
-            combined_action = DiffAction.ADDED
-        elif DiffAction.REMOVED in actions:
-            combined_action = DiffAction.REMOVED
-        elif actions == {DiffAction.UNCHANGED}:
-            combined_action = DiffAction.UNCHANGED
-        return combined_action
+        if len(actions) == 1:
+            return actions.pop()
+        if DiffAction.UNCHANGED in actions:
+            actual_action = actions - {DiffAction.UNCHANGED}
+            return actual_action.pop()
+        actions_map = {
+            (DiffAction.ADDED, DiffAction.REMOVED): DiffAction.UPDATED,
+            (DiffAction.ADDED, DiffAction.UPDATED): DiffAction.ADDED,
+            (DiffAction.UPDATED, DiffAction.ADDED): DiffAction.UPDATED,
+            (DiffAction.UPDATED, DiffAction.REMOVED): DiffAction.REMOVED,
+            (DiffAction.REMOVED, DiffAction.ADDED): DiffAction.UPDATED,
+            (DiffAction.REMOVED, DiffAction.UPDATED): DiffAction.UPDATED,
+        }
+        return actions_map[(earlier, later)]
 
     def _combine_conflicts(
         self, earlier: EnrichedDiffConflict | None, later: EnrichedDiffConflict | None
@@ -141,16 +146,15 @@ class DiffCombiner:
             combined_conflict = self._combine_conflicts(
                 earlier=earlier_property.conflict, later=later_property.conflict
             )
-            combined_property = EnrichedDiffProperty(
-                property_type=later_property.property_type,
-                changed_at=later_property.changed_at,
-                previous_value=earlier_property.previous_value,
-                new_value=later_property.new_value,
-                path_identifier=later_property.path_identifier,
-                action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
-                conflict=combined_conflict,
+            combined_properties.add(
+                replace(
+                    later_property,
+                    previous_label=earlier_property.previous_label,
+                    previous_value=earlier_property.previous_value,
+                    action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
+                    conflict=combined_conflict,
+                )
             )
-            combined_properties.add(combined_property)
         combined_properties |= {
             deepcopy(prop) for prop in later_properties if prop.property_type not in common_property_types
         }
@@ -200,11 +204,25 @@ class DiffCombiner:
                 earlier_properties=combined_properties, later_properties=element.properties
             )
         final_element = ordered_elements[-1]
+        peer_id = final_element.peer_id
+        peer_label = final_element.peer_label
+        # if this relationship is removed and was updated earlier, use the previous peer ID from the update
+        if combined_action is DiffAction.REMOVED:
+            for element in ordered_elements:
+                for prop in element.properties:
+                    if (
+                        prop.property_type is DatabaseEdgeType.IS_RELATED
+                        and prop.action is DiffAction.UPDATED
+                        and prop.previous_value
+                    ):
+                        peer_id = prop.previous_value
+                        peer_label = prop.previous_label
+                        break
         return EnrichedDiffSingleRelationship(
             changed_at=final_element.changed_at,
             action=combined_action,
-            peer_id=final_element.peer_id,
-            peer_label=final_element.peer_label,
+            peer_id=peer_id,
+            peer_label=peer_label,
             path_identifier=final_element.path_identifier,
             properties=combined_properties,
             conflict=self._combine_conflicts(earlier=ordered_elements[0].conflict, later=final_element.conflict),
@@ -244,9 +262,7 @@ class DiffCombiner:
         self,
         earlier_relationships: set[EnrichedDiffRelationship],
         later_relationships: set[EnrichedDiffRelationship],
-        node_kind: str,
     ) -> set[EnrichedDiffRelationship]:
-        node_schema = self.schema_manager.get_node_schema(name=node_kind, branch=self.diff_branch_name, duplicate=False)
         earlier_rels_by_name = {rel.name: rel for rel in earlier_relationships}
         later_rels_by_name = {rel.name: rel for rel in later_relationships}
         common_rel_names = set(earlier_rels_by_name.keys()) & set(later_rels_by_name.keys())
@@ -257,12 +273,10 @@ class DiffCombiner:
                 copied.nodes = set()
                 combined_relationships.add(copied)
                 continue
-            relationship_schema = node_schema.get_relationship(name=earlier_relationship.name)
-            is_cardinality_one = relationship_schema.cardinality is RelationshipCardinality.ONE
             later_relationship = later_rels_by_name[earlier_relationship.name]
             if len(earlier_relationship.relationships) == 0 and len(later_relationship.relationships) == 0:
                 combined_relationship_elements = set()
-            elif is_cardinality_one:
+            elif earlier_relationship.cardinality is RelationshipCardinality.ONE:
                 combined_relationship_elements = {
                     self._combine_cardinality_one_relationship_elements(
                         elements=(earlier_relationship.relationships | later_relationship.relationships)
@@ -275,6 +289,7 @@ class DiffCombiner:
             combined_relationship = EnrichedDiffRelationship(
                 name=later_relationship.name,
                 label=later_relationship.label,
+                cardinality=later_relationship.cardinality,
                 changed_at=later_relationship.changed_at or earlier_relationship.changed_at,
                 action=self._combine_actions(earlier=earlier_relationship.action, later=later_relationship.action),
                 path_identifier=later_relationship.path_identifier,
@@ -315,7 +330,6 @@ class DiffCombiner:
             combined_relationships = self._combine_relationships(
                 earlier_relationships=node_pair.earlier.relationships,
                 later_relationships=node_pair.later.relationships,
-                node_kind=node_pair.later.kind,
             )
             combined_action = self._combine_actions(earlier=node_pair.earlier.action, later=node_pair.later.action)
             combined_nodes.add(

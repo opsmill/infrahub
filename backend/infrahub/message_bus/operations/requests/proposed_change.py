@@ -11,7 +11,7 @@ import pytest
 from pydantic import BaseModel
 
 from infrahub import config, lock
-from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, RepositoryAdminStatus
+from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, RepositoryInternalStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import SchemaConflict
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
@@ -98,17 +98,6 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
             await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
-        # async with service.database.start_transaction() as db:
-        #     object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-        #         db=db,
-        #         validator_kind=InfrahubKind.DATAVALIDATOR,
-        #         validator_label="Data Integrity",
-        #         check_schema_kind=InfrahubKind.DATACHECK,
-        #     )
-        #     await object_conflict_validator_recorder.record_conflicts(
-        #         proposed_change_id=message.proposed_change, conflicts=conflicts
-        #     )
-
 
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
     async with service.task_report(
@@ -128,7 +117,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             repositories=repositories
         ):
             for repo in repositories:
-                if not repo.read_only and repo.admin_status == RepositoryAdminStatus.ACTIVE.value:
+                if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
                     events.append(
                         messages.RequestRepositoryChecks(
                             proposed_change=message.proposed_change,
@@ -311,7 +300,7 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
             if (
                 message.source_branch_sync_with_git
                 and not repository.read_only
-                and repository.admin_status == RepositoryAdminStatus.ACTIVE.value
+                and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
             ):
                 events.append(
                     messages.RequestRepositoryChecks(
@@ -651,7 +640,7 @@ query DestinationBranchRepositories {
         name {
           value
         }
-        admin_status {
+        internal_status {
           value
         }
         ... on CoreRepository {
@@ -680,7 +669,7 @@ query MyQuery {
         name {
           value
         }
-        admin_status {
+        internal_status {
           value
         }
         commit {
@@ -701,7 +690,7 @@ query MyQuery {
         name {
           value
         }
-        admin_status {
+        internal_status {
           value
         }
         commit {
@@ -719,7 +708,7 @@ class Repository(BaseModel):
     repository_name: str
     read_only: bool
     commit: str
-    admin_status: str
+    internal_status: str
 
 
 def _parse_proposed_change_repositories(
@@ -741,7 +730,7 @@ def _parse_proposed_change_repositories(
                 repository_id=repo.repository_id,
                 repository_name=repo.repository_name,
                 read_only=repo.read_only,
-                admin_status=repo.admin_status,
+                internal_status=repo.internal_status,
                 destination_commit=repo.commit,
                 source_branch=message.source_branch,
                 destination_branch=message.destination_branch,
@@ -755,14 +744,14 @@ def _parse_proposed_change_repositories(
                 repository_id=repo.repository_id,
                 repository_name=repo.repository_name,
                 read_only=repo.read_only,
-                admin_status=repo.admin_status,
+                internal_status=repo.internal_status,
                 source_commit=repo.commit,
                 source_branch=message.source_branch,
                 destination_branch=message.destination_branch,
             )
         else:
             pc_repos[repo.repository_id].source_commit = repo.commit
-            pc_repos[repo.repository_id].admin_status = repo.admin_status
+            pc_repos[repo.repository_id].internal_status = repo.internal_status
 
     return list(pc_repos.values())
 
@@ -783,7 +772,7 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
                 repository_name=repo["node"]["name"]["value"],
                 read_only=repo["node"]["__typename"] == InfrahubKind.READONLYREPOSITORY,
                 commit=repo["node"]["commit"]["value"] or "",
-                admin_status=repo["node"]["admin_status"]["value"],
+                internal_status=repo["node"]["internal_status"]["value"],
             )
         )
     return parsed

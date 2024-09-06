@@ -398,7 +398,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **default_branch_name** | Default branch for this repository | N/A | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
-| **admin_status** | Administrative status of the repository | string | None |
+| **internal_status** | Administrative status of the repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.connectivity
@@ -429,9 +429,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **repository_id** | The unique ID of the Repository | string | None |
 | **repository_name** | The name of the repository | string | None |
-| **admin_status** | Administrative status of the repository | string | None |
+| **internal_status** | Administrative status of the repository | string | None |
 | **source_branch** | The source branch | string | None |
 | **destination_branch** | The source branch | string | None |
+| **default_branch** | The default branch in Git | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.add_read_only
@@ -451,7 +452,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **ref** | Ref to track on the external repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
-| **admin_status** | Administrative status of the repository | string | None |
+| **internal_status** | Internal status of the repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.import_objects
@@ -1611,7 +1612,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **default_branch_name** | Default branch for this repository | N/A | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
-| **admin_status** | Administrative status of the repository | string | None |
+| **internal_status** | Administrative status of the repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.connectivity
@@ -1644,9 +1645,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **repository_id** | The unique ID of the Repository | string | None |
 | **repository_name** | The name of the repository | string | None |
-| **admin_status** | Administrative status of the repository | string | None |
+| **internal_status** | Administrative status of the repository | string | None |
 | **source_branch** | The source branch | string | None |
 | **destination_branch** | The source branch | string | None |
+| **default_branch** | The default branch in Git | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.add_read_only
@@ -1667,7 +1669,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **ref** | Ref to track on the external repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
-| **admin_status** | Administrative status of the repository | string | None |
+| **internal_status** | Internal status of the repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.import_objects

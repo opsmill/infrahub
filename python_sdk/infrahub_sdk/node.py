@@ -109,7 +109,7 @@ class Attribute:
         elif isinstance(self.value, get_args(IP_TYPES)):
             data["value"] = self.value.with_prefixlen
         elif isinstance(self.value, InfrahubNodeBase) and self.value.is_resource_pool():
-            data["from_pool"] = self.value.id
+            data["from_pool"] = {"id": self.value.id}
         else:
             data["value"] = self.value
 
@@ -725,7 +725,12 @@ class InfrahubNodeBase:
         if not self._schema.human_friendly_id:
             return None
 
-        return [str(self.get_path_value(path=item)) for item in self._schema.human_friendly_id]
+        # If all components of an HFID are null, we cannot identify a single node
+        hfid_components = [self.get_path_value(path=item) for item in self._schema.human_friendly_id]
+        if all(c is None for c in hfid_components):
+            return None
+
+        return [str(c) for c in hfid_components]
 
     def get_human_friendly_id_as_string(self, include_kind: bool = False) -> Optional[str]:
         hfid = self.get_human_friendly_id()
@@ -1062,11 +1067,7 @@ class InfrahubNode(InfrahubNodeBase):
 
     @classmethod
     async def from_graphql(
-        cls,
-        client: InfrahubClient,
-        branch: str,
-        data: dict,
-        schema: Optional[MainSchemaTypes] = None,
+        cls, client: InfrahubClient, branch: str, data: dict, schema: Optional[MainSchemaTypes] = None
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
@@ -1274,7 +1275,7 @@ class InfrahubNode(InfrahubNodeBase):
             if rel_schema and prefetch_relationships:
                 peer_schema = await self._client.schema.get(kind=rel_schema.peer, branch=self._branch)
                 peer_node = InfrahubNode(client=self._client, schema=peer_schema, branch=self._branch)
-                peer_data = await peer_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
+                peer_data = await peer_node.generate_query_data_node(include=include, exclude=exclude)
 
             if rel_schema and rel_schema.cardinality == "one":
                 rel_data = RelatedNode._generate_query_data(peer_data=peer_data)
@@ -1543,11 +1544,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     @classmethod
     def from_graphql(
-        cls,
-        client: InfrahubClientSync,
-        branch: str,
-        data: dict,
-        schema: Optional[MainSchemaTypes] = None,
+        cls, client: InfrahubClientSync, branch: str, data: dict, schema: Optional[MainSchemaTypes] = None
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
@@ -1747,7 +1744,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             if rel_schema and prefetch_relationships:
                 peer_schema = self._client.schema.get(kind=rel_schema.peer, branch=self._branch)
                 peer_node = InfrahubNodeSync(client=self._client, schema=peer_schema, branch=self._branch)
-                peer_data = peer_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
+                peer_data = peer_node.generate_query_data_node(include=include, exclude=exclude)
 
             if rel_schema and rel_schema.cardinality == "one":
                 rel_data = RelatedNodeSync._generate_query_data(peer_data=peer_data)
@@ -2046,13 +2043,7 @@ def generate_relationship_property(node: Union[InfrahubNode, InfrahubNodeSync], 
             setattr(
                 self,
                 internal_name,
-                node_class(
-                    name=external_name,
-                    branch=node._branch,
-                    client=node._client,
-                    schema=schema,
-                    data=value,
-                ),
+                node_class(name=external_name, branch=node._branch, client=node._client, schema=schema, data=value),
             )
 
     return prop

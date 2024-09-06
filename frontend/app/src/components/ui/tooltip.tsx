@@ -19,16 +19,19 @@ export function Tooltip({
     <TooltipPrimitives.Provider>
       <TooltipPrimitives.Root delayDuration={300}>
         <TooltipPrimitives.Trigger asChild>{children}</TooltipPrimitives.Trigger>
-        <TooltipPrimitives.Content
-          side={side}
-          className={classNames(
-            "bg-gray-600 text-white text-xs font-medium px-3 py-2 rounded-lg shadow-sm z-50",
-            !enabled && "hidden",
-            className
-          )}
-          {...props}>
-          {content}
-        </TooltipPrimitives.Content>
+
+        <TooltipPrimitives.Portal>
+          <TooltipPrimitives.Content
+            side={side}
+            className={classNames(
+              "bg-gray-600 text-white text-xs font-medium px-3 py-2 rounded-lg shadow-sm z-50",
+              !enabled && "hidden",
+              className
+            )}
+            {...props}>
+            {content}
+          </TooltipPrimitives.Content>
+        </TooltipPrimitives.Portal>
       </TooltipPrimitives.Root>
     </TooltipPrimitives.Provider>
   );

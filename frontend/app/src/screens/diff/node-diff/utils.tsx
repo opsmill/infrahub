@@ -1,5 +1,6 @@
 import {
   BadgeAdded,
+  BadgeConflict,
   BadgeRemoved,
   BadgeType,
   BadgeUnchanged,
@@ -17,14 +18,15 @@ export const diffBadges: { [key: string]: BadgeType } = {
   UPDATED: BadgeUpdated,
   REMOVED: BadgeRemoved,
   UNCHANGED: BadgeUnchanged,
+  CONFLICT: BadgeConflict,
 };
 
 export const DiffBadge = ({
   status,
-  icon,
+  size = "default",
   children,
   ...props
-}: DiffBadgeProps & { status: string; icon?: boolean }) => {
+}: DiffBadgeProps & { status: string; size?: "icon" | "default" }) => {
   const DiffBadgeComp = diffBadges[status];
 
   if (!DiffBadgeComp) {
@@ -32,7 +34,9 @@ export const DiffBadge = ({
   }
 
   return (
-    <DiffBadgeComp {...props}>{!icon && (children ?? capitalizeFirstLetter(status))}</DiffBadgeComp>
+    <DiffBadgeComp {...props}>
+      {size !== "icon" && (children ?? capitalizeFirstLetter(status))}
+    </DiffBadgeComp>
   );
 };
 
@@ -59,10 +63,11 @@ export const DiffRow = ({
   status,
 }: DiffRowProps) => {
   return (
-    <div className={classNames("bg-custom-white min-h-9 relative", hasConflicts && "bg-yellow-50")}>
+    <div className={classNames("min-h-9 relative", hasConflicts && "bg-yellow-50")}>
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
       <Accordion
+        defaultOpen={hasConflicts}
         iconClassName={classNames("absolute", iconClassName)}
         hideChevron={!children}
         title={

@@ -159,7 +159,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
     task_report: Optional[InfrahubTaskReportLogger] = Field(default=None)
 
-    admin_status: str = Field("active", description="Administrative status: Active, Inactive, Staging")
+    internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
     infrahub_branch_name: Optional[str] = Field(
         None, description="Infrahub branch on which to sync the remote repository"
     )
@@ -195,7 +195,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     @property
     def directory_default(self) -> str:
         """Return the path to the directory of the main branch."""
-        return os.path.join(self.directory_root, registry.default_branch)
+        return os.path.join(self.directory_root, "main")
 
     @property
     def directory_branches(self) -> str:
@@ -352,7 +352,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         """Access a specific worktree by its identifier."""
 
         worktrees = self.get_worktrees()
-
         for worktree in worktrees:
             if worktree.identifier == identifier:
                 return worktree
@@ -463,11 +462,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             False if they already had the same value
         """
 
+        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
         log.debug(
-            f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=branch_name
+            f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=infrahub_branch
         )
         await self.sdk.repository_update_commit(
-            branch_name=branch_name, repository_id=self.id, commit=commit, is_read_only=self.is_read_only
+            branch_name=infrahub_branch, repository_id=self.id, commit=commit, is_read_only=self.is_read_only
         )
 
         return True
@@ -601,13 +601,19 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return sorted(list(new_branches)), sorted(updated_branches)
 
-    async def validate_remote_branch(self, branch_name: str) -> bool:  # pylint: disable=unused-argument
+    async def validate_remote_branch(self, branch_name: str) -> bool:
         """Validate a branch present on the remote repository.
         To check a branch we need to first create a worktree in the temporary folder then apply some checks:
         - xxx
 
         At the end, we need to delete the worktree in the temporary folder.
         """
+        if branch_name == registry.default_branch and branch_name != self.default_branch:
+            # If the default branch of Infrahub and the git repository differs we map the repository
+            # default branch to that of Infrahub. In that scenario we can't import a branch from the
+            # repository if it matches the default branch of Infrahub
+            log.warning("Ignoring import of mismatched default branch", branch=branch_name, repository=self.name)
+            return False
         try:
             # Check if the branch can be created in the database
             Branch(name=branch_name)
@@ -628,8 +634,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         if not self.has_origin:
             return False
+        identifier = branch_name
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            identifier = "main"
 
-        repo = self.get_git_repo_worktree(identifier=branch_name)
+        repo = self.get_git_repo_worktree(identifier=identifier)
         if not repo:
             raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
 
@@ -645,7 +654,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             return True
 
         self.create_commit_worktree(commit=commit_after)
-        await self.update_commit_value(branch_name=branch_name, commit=commit_after)
+        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+        await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
 
         return commit_after
 
@@ -767,3 +777,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             ) from error
 
         raise RepositoryError(identifier=name, message=error.stderr) from error
+
+    def _get_mapped_remote_branch(self, branch_name: str) -> str:
+        """Returns the remote branch for Git Repositories."""
+        if branch_name != self.default_branch and branch_name == registry.default_branch:
+            return self.default_branch
+        return branch_name
+
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        """Returns the target branch within Infrahub."""
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            return registry.default_branch
+        return branch_name

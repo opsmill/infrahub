@@ -74,7 +74,7 @@ test.describe("when searching an object", () => {
     await test.step("find a matching result", async () => {
       await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("atl1");
       await expect(
-        page.getByTestId("search-anywhere").getByRole("option", { name: "atl1Site" })
+        page.getByTestId("search-anywhere").getByRole("option", { name: "atl1 Location Site" })
       ).toBeVisible();
     });
   });
@@ -91,6 +91,8 @@ test.describe("when searching an object", () => {
     });
 
     await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill(uuid);
-    await expect(page.getByRole("option", { name: "AS174 174Autonomous System" })).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: "AS174 174 Infra Autonomous System" })
+    ).toBeVisible();
   });
 });
