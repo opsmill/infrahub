@@ -172,15 +172,16 @@ class DiffCoordinator:
             log.debug(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
         return branch_enriched_diff
 
-    async def recalculate_for_branch(
+    async def recalculate_for_tracked_diff(
         self,
         base_branch: Branch,
         diff_branch: Branch,
+        tracking_id: TrackingId,
     ) -> EnrichedDiffRoot:
         current_diffs = await self.diff_repo.get(
             base_branch_name=base_branch.name,
             diff_branch_names=[base_branch.name, diff_branch.name],
-            tracking_id=BranchTrackingId(name=diff_branch.name),
+            tracking_id=tracking_id,
             include_empty=True,
         )
         current_branch_diff: EnrichedDiffRoot | None = None
@@ -191,13 +192,13 @@ class DiffCoordinator:
         await self.diff_repo.delete_diff_roots(diff_root_uuids=[d.uuid for d in current_diffs])
         from_time = Timestamp(diff_branch.get_created_at())
         to_time = Timestamp()
-        tracking_id = BranchTrackingId(name=diff_branch.name)
         fresh_base_diff, fresh_branch_diff = await self._update_diffs(
             base_branch=base_branch,
             diff_branch=diff_branch,
             from_time=from_time,
             to_time=to_time,
             tracking_id=tracking_id,
+            force_refresh=True,
         )
 
         if current_branch_diff:
@@ -217,6 +218,7 @@ class DiffCoordinator:
         from_time: Timestamp,
         to_time: Timestamp,
         tracking_id: TrackingId | None = None,
+        force_refresh: bool = False,
     ) -> tuple[EnrichedDiffRoot, EnrichedDiffRoot]:
         requested_diff_branches = {base_branch.name: base_branch, diff_branch.name: diff_branch}
         aggregated_diffs_by_branch_name: dict[str, EnrichedDiffRoot] = {}
@@ -234,10 +236,13 @@ class DiffCoordinator:
                 diff_uuids_to_delete += [
                     diff.uuid for diff in retrieved_enriched_diffs if diff.tracking_id == tracking_id
                 ]
-            covered_time_ranges = [
-                TimeRange(from_time=enriched_diff.from_time, to_time=enriched_diff.to_time)
-                for enriched_diff in retrieved_enriched_diffs
-            ]
+            if force_refresh:
+                covered_time_ranges = []
+            else:
+                covered_time_ranges = [
+                    TimeRange(from_time=enriched_diff.from_time, to_time=enriched_diff.to_time)
+                    for enriched_diff in retrieved_enriched_diffs
+                ]
             missing_time_ranges = self._get_missing_time_ranges(
                 time_ranges=covered_time_ranges, from_time=from_time, to_time=to_time
             )
@@ -272,10 +277,6 @@ class DiffCoordinator:
             if diff_uuids_to_delete:
                 await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
 
-        for enriched_diff in aggregated_diffs_by_branch_name.values():
-            await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diff)
-            await self.diff_repo.save(enriched_diff=enriched_diff)
-        await self._update_core_data_checks(enriched_diff=enriched_diff)
         return (
             aggregated_diffs_by_branch_name[base_branch.name],
             aggregated_diffs_by_branch_name[diff_branch.name],
