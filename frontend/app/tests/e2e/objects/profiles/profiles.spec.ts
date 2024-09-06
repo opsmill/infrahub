@@ -203,22 +203,22 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     });
 
     await test.step("verify Interface L2 optional attributes are all visible", async () => {
-      await expect(page.getByText("Profile Name *")).toBeVisible();
-      await expect(page.getByText("Description")).toBeVisible();
-      await expect(page.getByText("MTU")).toBeVisible();
-      await expect(page.getByText("Enabled")).toBeVisible();
-      await expect(page.getByText("Status")).toBeVisible();
-      await expect(page.getByText("Role")).toBeVisible();
+      await expect(page.getByLabel("Profile Name *")).toBeVisible();
+      await expect(page.getByLabel("Description")).toBeVisible();
+      await expect(page.getByLabel("MTU")).toBeVisible();
+      await expect(page.getByLabel("Enabled")).toBeVisible();
+      await expect(page.getByLabel("Status")).toBeVisible();
+      await expect(page.getByLabel("Role")).toBeVisible();
     });
 
     await test.step("verify Interface L2 mandatory attributes and relationships are not visible", async () => {
-      await expect(page.getByText("Layer2 Mode *")).not.toBeVisible();
-      await expect(page.getByText("Speed *")).not.toBeVisible();
-      await expect(page.getByText("Untagged VLAN")).not.toBeVisible();
+      await expect(page.getByLabel("Layer2 Mode *")).not.toBeVisible();
+      await expect(page.getByLabel("Speed *")).not.toBeVisible();
+      await expect(page.getByLabel("Untagged VLAN")).not.toBeVisible();
       await expect(
         page.getByTestId("side-panel-container").getByText("Tagged VLANs")
       ).not.toBeVisible();
-      await expect(page.getByText("Device *")).not.toBeVisible();
+      await expect(page.getByLabel("Device *")).not.toBeVisible();
     });
   });
 

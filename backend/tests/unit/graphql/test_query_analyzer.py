@@ -98,6 +98,7 @@ async def test_get_models_in_use(
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,
+        InfrahubKind.USERGROUP,
         "TestCar",
         "TestElectricCar",
         "TestGazCar",

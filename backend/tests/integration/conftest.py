@@ -89,18 +89,11 @@ class IntegrationHelper:
         token = str(UUIDT())
         account_name = account_name or "admin"
         response = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNT,
-            db=self.db,
-            filters={"name__value": account_name},
-            limit=1,
+            schema=InfrahubKind.ACCOUNT, db=self.db, filters={"name__value": account_name}, limit=1
         )
         account = response[0]
         account_token = await Node.init(db=self.db, schema=InfrahubKind.ACCOUNTTOKEN)
-        await account_token.new(
-            db=self.db,
-            token=token,
-            account=account,
-        )
+        await account_token.new(db=self.db, token=token, account=account)
         await account_token.save(db=self.db)
         return token
 
