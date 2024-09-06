@@ -679,9 +679,6 @@ max-complexity = 33
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
-    "ANN002", # Missing type annotation for `*args`
-    "ANN003", # Missing type annotation for `**kwargs`
-    "ANN201", # Missing return type annotation for public function
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
 ]
 
