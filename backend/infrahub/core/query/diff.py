@@ -67,7 +67,7 @@ class DiffNodeQuery(DiffQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         # TODO need to improve the query to capture an object that has been deleted into the branch
         # TODO probably also need to consider a node what was merged already
 
@@ -133,7 +133,7 @@ class DiffAttributeQuery(DiffQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         # TODO need to improve the query to capture an object that has been deleted into the branch
 
         rels_filters, rels_params = self.branch.get_query_filter_relationships_diff(
@@ -196,7 +196,7 @@ class DiffRelationshipQuery(DiffQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         where_clause = ""
         if self.namespaces_include:
             where_clause += "(src.namespace IN $namespaces_include OR dst.namespace IN $namespaces_include) AND "
@@ -258,7 +258,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
     name: str = "diff_relationship_property"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
             rel_labels=["r"], start_time=self.diff_from, end_time=self.diff_to
         )
@@ -308,7 +308,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
 
         super().__init__(order_by=["a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -359,7 +359,7 @@ class DiffNodePropertiesByIDSQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -413,7 +413,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -465,7 +465,7 @@ class DiffCountChanges(Query):
         self.diff_to = diff_to
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params = {
             "from_time": self.diff_from.to_string(),
             "to_time": self.diff_to.to_string(),
@@ -538,7 +538,7 @@ class DiffAllPathsQuery(DiffQuery):
         where_clause = " AND ".join(where_clause_parts)
         return f"({where_clause})"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params.update(
             {
                 "namespaces_include": self.namespaces_include,

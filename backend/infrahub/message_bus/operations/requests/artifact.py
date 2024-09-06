@@ -7,7 +7,7 @@ from infrahub.tasks.artifact import define_artifact
 log = get_logger()
 
 
-async def generate(message: messages.RequestArtifactGenerate, service: InfrahubServices):
+async def generate(message: messages.RequestArtifactGenerate, service: InfrahubServices) -> None:
     log.debug("Generating artifact", message=message)
 
     repo = await get_initialized_repo(

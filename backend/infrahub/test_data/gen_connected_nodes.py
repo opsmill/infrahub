@@ -12,7 +12,7 @@ log = get_logger()
 
 
 class GenerateConnectedNodes(DataGenerator):
-    async def load_data(self, nbr_tags: int = 50, nbr_repository: int = 100, nbr_query: int = 1000):
+    async def load_data(self, nbr_tags: int = 50, nbr_repository: int = 100, nbr_query: int = 1000) -> None:
         """Generate a large number of GraphQLQuery associated with some Tags and some Repositorie."""
         default_branch = await registry.get_branch(db=self.db)
 

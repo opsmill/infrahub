@@ -12,7 +12,7 @@ from infrahub.tasks.check import set_check_status
 log = get_logger()
 
 
-async def create(message: messages.CheckArtifactCreate, service: InfrahubServices):
+async def create(message: messages.CheckArtifactCreate, service: InfrahubServices) -> None:
     log.debug("Creating artifact", message=message)
     validator = await service.client.get(
         kind=InfrahubKind.ARTIFACTVALIDATOR, id=message.validator_id, include=["checks"]

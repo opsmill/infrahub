@@ -14,7 +14,7 @@ class BaseOptions:
     def __init__(self, class_type):
         self.class_type = class_type
 
-    def freeze(self):
+    def freeze(self) -> None:
         self._frozen = True
 
     def __setattr__(self, name, value):
