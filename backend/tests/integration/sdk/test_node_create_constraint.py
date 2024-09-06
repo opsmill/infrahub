@@ -1,3 +1,4 @@
+import re
 from typing import Any, Dict
 
 import pytest
@@ -7,6 +8,7 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 from tests.helpers.test_app import TestInfrahubApp
 
 from ..shared import load_schema
@@ -287,3 +289,16 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
             await new_car.save()
 
         assert "owner-nbr_seats" in exc.value.message
+
+    async def test_create_repository_with_slash_failure(self, db: InfrahubDatabase, initial_dataset):
+        repo = await Node.init(schema="CoreRepository", db=db)
+        with pytest.raises(
+            ValidationError, match=re.escape("repo/name must be conform with the regex: '^[^/]*$' at name")
+        ):
+            await repo.new(db=db, name="repo/name", location="dummy", username="dummy", password="dummy")
+
+        repo = await Node.init(schema="CoreReadOnlyRepository", db=db)
+        with pytest.raises(
+            ValidationError, match=re.escape("repo/name must be conform with the regex: '^[^/]*$' at name")
+        ):
+            await repo.new(db=db, name="repo/name", location="dummy", username="dummy", password="dummy")
