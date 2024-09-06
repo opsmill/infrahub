@@ -54,6 +54,19 @@ class GlobalPermissions(InfrahubStringEnum):
     EDIT_DEFAULT_BRANCH = "edit_default_branch"
 
 
+class PermissionAction(InfrahubStringEnum):
+    ANY = "any"
+    ADD = "create"
+    CHANGE = "update"
+    DELETE = "delete"
+    VIEW = "view"
+
+
+class PermissionDecision(InfrahubStringEnum):
+    ALLOW = "allow"
+    DENY = "deny"
+
+
 class AccountRole(InfrahubStringEnum):
     ADMIN = "admin"
     READ_ONLY = "read-only"
