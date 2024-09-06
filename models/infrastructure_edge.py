@@ -1514,10 +1514,10 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
 
 
 async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
-    for account in ACCOUNTS:
-        groups = await client.filters(branch=branch, kind="CoreUserGroup", name__value="Administrators")
-        store.set(key=groups[0].name, node=groups[0])
+    groups = await client.filters(branch=branch, kind="CoreUserGroup", name__value="Administrators")
+    store.set(key=groups[0].name, node=groups[0])
 
+    for account in ACCOUNTS:
         data = account.model_dump()
         data["member_of_groups"] = groups
 
