@@ -8,6 +8,7 @@ from ..model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRo
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
+from ..query.empty_roots import EnrichedDiffEmptyRootsQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.save_query import EnrichedDiffSaveQuery
@@ -119,6 +120,14 @@ class DiffRepository:
         )
         await query.execute(db=self.db)
         return await query.get_time_ranges()
+
+    async def get_empty_roots(self) -> list[EnrichedDiffRoot]:
+        query = await EnrichedDiffEmptyRootsQuery.init(db=self.db)
+        await query.execute(db=self.db)
+        diff_roots = []
+        for neo4j_node in query.get_empty_root_nodes():
+            diff_roots.append(self.deserializer.build_diff_root(root_node=neo4j_node))
+        return diff_roots
 
     async def get_conflict_by_id(self, conflict_id: str) -> EnrichedDiffConflict:
         query = await EnrichedDiffConflictQuery.init(db=self.db, conflict_id=conflict_id)
