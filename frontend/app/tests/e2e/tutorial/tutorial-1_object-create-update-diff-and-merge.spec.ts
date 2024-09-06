@@ -131,6 +131,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Validate merged changes in main", async () => {
       await page.getByTestId("branch-list-display-button").click();
       await page.getByTestId("branch-list-dropdown").getByText("main", { exact: true }).click();
+      await expect(page.getByTestId("branch-list-display-button")).toContainText("main");
       await page.getByTestId("sidebar-menu").getByRole("link", { name: "Tenant" }).click();
       await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");
     });
