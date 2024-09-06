@@ -397,10 +397,6 @@ module = "infrahub.message_bus.operations.trigger.ipam"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.test_data.dataset01"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.test_data.dataset03"
 ignore_errors = true
 
