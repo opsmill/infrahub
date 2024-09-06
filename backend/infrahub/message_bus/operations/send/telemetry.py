@@ -2,6 +2,7 @@ import hashlib
 import json
 import platform
 import time
+from typing import Any
 
 import httpx
 
@@ -18,7 +19,7 @@ TELEMETRY_VERSION: str = "20240524"
 
 
 async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
-    data = {
+    data: dict[str, Any] = {
         "database_type": service.database.db_type.value,
         "relationship_count": {"total": await utils.count_relationships(db=service.database)},
         "node_count": {"total": await utils.count_nodes(db=service.database)},
@@ -34,7 +35,7 @@ async def gather_database_information(service: InfrahubServices, branch: Branch)
 
 
 async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
-    data = {}
+    data: dict[str, Any] = {}
     main_schema = registry.schema.get_schema_branch(name=branch.name)
     data["node_count"] = len(main_schema.node_names)
     data["generic_count"] = len(main_schema.generic_names)
@@ -66,7 +67,7 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     default_branch = registry.get_branch_from_registry()
     workers = await service.component.list_workers(branch=default_branch.name, schema_hash=False)
 
-    data = {
+    data: dict[str, Any] = {
         "deployment_id": registry.id,
         "execution_time": None,
         "infrahub_version": __version__,
