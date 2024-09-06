@@ -370,6 +370,7 @@ core_models: dict[str, Any] = {
             "attributes": [
                 {
                     "name": "name",
+                    "regex": "^[^/]*$",
                     "kind": "Text",
                     "unique": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
