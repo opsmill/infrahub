@@ -73,7 +73,7 @@ async def test_merged(default_branch: Branch):
         await merge(message=message, service=service)
 
     mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=database, branch=default_branch)
-    diff_repo.get_empty_roots.assert_awaited_once_with(diff_branch_names=[target_branch_name])
+    diff_repo.get_empty_roots.assert_awaited_once_with(base_branch_names=[target_branch_name])
     assert len(recorder.messages) == 6
     assert recorder.messages[0] == messages.RefreshRegistryBranches()
     assert recorder.messages[1] == messages.TriggerIpamReconciliation(branch=target_branch_name, ipam_node_details=[])
