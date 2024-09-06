@@ -2427,6 +2427,7 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
         InfrahubKind.REFRESHTOKEN,
         InfrahubKind.BASEPERMISSION,
         InfrahubKind.GLOBALPERMISSION,
+        InfrahubKind.OBJECTPERMISSION,
     ]
     nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
     generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]

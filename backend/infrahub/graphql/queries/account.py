@@ -13,7 +13,7 @@ from infrahub.exceptions import PermissionDeniedError
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.account import GlobalPermission
+    from infrahub.core.account import GlobalPermission, ObjectPermission
     from infrahub.graphql import GraphqlContext
 
 
@@ -75,8 +75,22 @@ class AccountGlobalPermissionNode(ObjectType):
     identifier = Field(String, required=True)
 
 
+class AccountObjectPermissionNode(ObjectType):
+    id = Field(String, required=True)
+    branch = Field(String, required=True)
+    namespace = Field(String, required=True)
+    name = Field(String, required=True)
+    action = Field(String, required=True)
+    decision = Field(String, required=True)
+    identifier = Field(String, required=True)
+
+
 class AccountGlobalPermissionEdge(ObjectType):
     node = Field(AccountGlobalPermissionNode, required=True)
+
+
+class AccountObjectPermissionEdge(ObjectType):
+    node = Field(AccountObjectPermissionNode, required=True)
 
 
 class AccountGlobalPermissionEdges(ObjectType):
@@ -84,8 +98,14 @@ class AccountGlobalPermissionEdges(ObjectType):
     edges = Field(List(of_type=AccountGlobalPermissionEdge, required=True), required=True)
 
 
+class AccountObjectPermissionEdges(ObjectType):
+    count = Field(Int, required=True)
+    edges = Field(List(of_type=AccountObjectPermissionEdge, required=True), required=True)
+
+
 class AccountPermissionsEdges(ObjectType):
     global_permissions = Field(AccountGlobalPermissionEdges, required=False)
+    object_permissions = Field(AccountObjectPermissionEdges, required=False)
 
 
 async def resolve_account_permissions(
@@ -98,7 +118,7 @@ async def resolve_account_permissions(
         raise ValueError("An account_session is mandatory to execute this query")
 
     fields = await extract_fields_first_node(info)
-    permissions: dict[str, list[GlobalPermission]] = {}
+    permissions: dict[str, list[GlobalPermission] | list[ObjectPermission]] = {}
     for permission_backend in registry.permission_backends:
         permissions.update(
             await permission_backend.load_permissions(
@@ -113,6 +133,23 @@ async def resolve_account_permissions(
         response["global_permissions"]["edges"] = [
             {"node": {"id": obj.id, "name": obj.name, "action": obj.action, "identifier": str(obj)}}  # type: ignore[union-attr]
             for obj in global_list
+        ]
+    if "object_permissions" in fields:
+        object_list = permissions["object_permissions"]
+        response["object_permissions"] = {"count": len(object_list)}
+        response["object_permissions"]["edges"] = [
+            {
+                "node": {
+                    "id": obj.id,
+                    "branch": obj.branch,  # type: ignore[union-attr]
+                    "namespace": obj.namespace,  # type: ignore[union-attr]
+                    "name": obj.name,
+                    "action": obj.action,
+                    "decision": obj.decision,  # type: ignore[union-attr]
+                    "identifier": str(obj),
+                }
+            }
+            for obj in object_list
         ]
     return response
 
