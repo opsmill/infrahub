@@ -179,7 +179,7 @@ def selected_field_names_from_context(
     return (field.name.value for fields_list in fields_map.values() for field in fields_list)
 
 
-def print_query(info: GraphQLResolveInfo):
+def print_query(info: GraphQLResolveInfo) -> None:
     """Traverse the query"""
     initial_selection_set = info.field_nodes[0].selection_set
     print_selection_set(initial_selection_set, 1)

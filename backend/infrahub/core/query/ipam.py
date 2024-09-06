@@ -60,7 +60,7 @@ class IPPrefixSubnetFetch(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -124,7 +124,7 @@ class IPPrefixSubnetFetch(Query):
         self.return_labels = ["prefixes_to_check[0] as pfx", "prefixes_to_check[1] as av"]
         self.order_by = ["av.binary_address"]
 
-    def get_subnets(self):
+    def get_subnets(self) -> list[IPPrefixData]:
         """Return a list of all subnets fitting in the prefix."""
         subnets: list[IPPrefixData] = []
 
@@ -151,7 +151,7 @@ class IPPrefixIPAddressFetch(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -197,7 +197,7 @@ class IPPrefixIPAddressFetch(Query):
         self.return_labels = ["addr", "av"]
         self.order_by = ["av.binary_address"]
 
-    def get_addresses(self):
+    def get_addresses(self) -> list[IPAddressData]:
         """Return a list of all addresses fitting in the prefix."""
         addresses: list[IPAddressData] = []
 
@@ -249,7 +249,7 @@ class IPPrefixUtilization(Query):
         self.ip_prefixes = ip_prefixes
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
         self.params["time_at"] = self.at.to_string()
 
@@ -321,7 +321,7 @@ class IPPrefixReconcileQuery(Query):
         self.namespace_id = _get_namespace_id(namespace)
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
         self.params["namespace_kind"] = InfrahubKind.IPNAMESPACE

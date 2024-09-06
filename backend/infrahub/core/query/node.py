@@ -122,7 +122,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         at = self.at or self.node._at
         self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
@@ -355,7 +355,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -385,7 +385,7 @@ class NodeCheckIDQuery(Query):
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["uuid"] = self.node_id
 
         query = """
@@ -424,7 +424,7 @@ class NodeListGetAttributeQuery(Query):
 
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -563,7 +563,7 @@ class NodeListGetRelationshipsQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)

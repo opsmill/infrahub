@@ -16,7 +16,7 @@ from infrahub.tasks.check import set_check_status
 # pylint: disable=duplicate-code
 
 
-async def run(message: messages.CheckGeneratorRun, service: InfrahubServices):
+async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) -> None:
     repository = await get_initialized_repo(
         repository_id=message.repository_id,
         name=message.repository_name,
