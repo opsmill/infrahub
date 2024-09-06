@@ -415,7 +415,15 @@ class DiffTreeResolver:
         )
         if not enriched_diffs:
             return None
-        enriched_diff = enriched_diffs[0]
+        if len(enriched_diffs) > 0:
+            # take the one with the longest duration that covers multiple branches
+            enriched_diff = sorted(
+                enriched_diffs,
+                key=lambda d: (d.base_branch_name != d.diff_branch_name, d.to_time.obj - d.from_time.obj),
+                reverse=True,
+            )[0]
+        else:
+            enriched_diff = enriched_diffs[0]
 
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
         diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, context=context)
