@@ -1,9 +1,11 @@
 from infrahub import config
 from infrahub.auth import AccountSession
+from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PermissionDecision
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.utils import extract_camelcase_words
@@ -51,13 +53,20 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                         else branch or config.SETTINGS.initial.default_branch,
                         namespace=extracted_words[0],
                         name="".join(extracted_words[1:]),
-                        action=action,
+                        action=action.lower(),
                         decision=PermissionDecision.ALLOW.value,
                     )
                 )
             )
 
-        # if has_permissions():
-        #    raise PermissionDeniedError(f"You are not allowed to perform: {kind_action_map}")
+        if registry.permission_backends:
+            for permission in permissions:
+                has_permission = False
+                for permission_backend in registry.permission_backends:
+                    has_permission = await permission_backend.has_permission(
+                        db=db, account_id=self.account_session.account_id, permission=permission, branch=branch
+                    )
+                if not has_permission:
+                    raise PermissionDeniedError(f"You do not have the following permission: {permission}")
 
         return CheckerResolution.NEXT_CHECKER
