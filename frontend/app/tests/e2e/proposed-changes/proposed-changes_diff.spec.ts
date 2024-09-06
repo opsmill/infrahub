@@ -54,7 +54,7 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("resolve conflict", async () => {
       await page.getByRole("checkbox", { name: "main", exact: true }).click();
-      await expect(page.getByText("Conflict marked as resovled")).toBeVisible();
+      await expect(page.getByText("Conflict marked as resolved")).toBeVisible();
     });
 
     await test.step("filter diff data", async () => {
