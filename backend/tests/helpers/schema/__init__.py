@@ -27,4 +27,4 @@ async def load_schema(db: InfrahubDatabase, schema: SchemaRoot) -> None:
     await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
-__all__ = ["CAR", "MANUFACTURER", "PERSON", "CAR_SCHEMA", "TICKET"]
+__all__ = ["CAR", "CAR_SCHEMA", "MANUFACTURER", "PERSON", "TICKET"]

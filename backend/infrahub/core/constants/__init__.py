@@ -9,12 +9,12 @@ from infrahub.utils import InfrahubStringEnum
 from .schema import FlagProperty, NodeProperty, SchemaElementPathType, UpdateSupport, UpdateValidationErrorType
 
 __all__ = [
-    "InfrahubKind",
     "FlagProperty",
+    "InfrahubKind",
     "NodeProperty",
+    "SchemaElementPathType",
     "UpdateSupport",
     "UpdateValidationErrorType",
-    "SchemaElementPathType",
 ]
 
 
