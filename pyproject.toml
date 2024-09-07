@@ -492,7 +492,6 @@ ignore = [
     "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
     "FURB132",  # Use `env_vars.discard("PATH")` instead of check and `remove`
     "FURB140",  # Use `itertools.starmap` instead of the generator
-    "FURB168",  # Prefer `is` operator over `isinstance` to check if an object is `None`
     "FURB171",  # Membership test against single-item container
     "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value in a sequence
     "N801",     # Class name should use CapWords convention
