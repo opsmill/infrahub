@@ -190,7 +190,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> Any:
+    ) -> Self | SchemaProtocol:
         attrs: dict[str, Any] = {}
 
         branch = await registry.get_branch(branch=branch, db=db)
