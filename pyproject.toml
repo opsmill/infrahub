@@ -544,7 +544,6 @@ ignore = [
     "RUF025",   # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
     "RUF027",   # Possible f-string without an `f` prefix
     "RUF029",   # Function is declared `async`, but doesn't `await` or use `async` features.
-    "RUF100",   # Unused `noqa` directive
     "S101",     # Use of `assert` detected
     "S105",     # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",     # Probable insecure usage of temporary file or directory
@@ -629,10 +628,6 @@ max-complexity = 33
     # Review and change the below later                                                              #
     ##################################################################################################
     "ANN201", # Missing return type annotation for public function
-]
-
-"backend/infrahub/git/repository.py" = [
-    "TCH003", # Pydantic needs UUID import to not only be available under TYPE_CHECKING clause
 ]
 
 "backend/tests/**.py" = [

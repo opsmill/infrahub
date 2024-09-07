@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
 from infrahub.core.migrations.shared import MigrationResult
-from infrahub.core.query import Query, QueryType  # noqa: TCH001
+from infrahub.core.query import Query, QueryType
 
 from ..query.attribute_rename import AttributeInfo, AttributeRenameQuery
 from ..query.delete_element_in_schema import DeleteElementInSchemaQuery
