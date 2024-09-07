@@ -385,10 +385,6 @@ module = "infrahub.message_bus.operations.schema.validator"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.trigger.ipam"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.test_data.dataset03"
 ignore_errors = true
 
