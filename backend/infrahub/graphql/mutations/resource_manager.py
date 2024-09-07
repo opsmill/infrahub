@@ -130,10 +130,10 @@ class IPAddressPoolGetResource(Mutation):
         resource = await obj.get_resource(
             db=context.db,
             branch=context.branch,
-            identifier=data.get("identifier", None),
-            prefixlen=data.get("prefix_length", None),
-            address_type=data.get("address_type", None),
-            data=data.get("data", None),
+            identifier=data.get("identifier"),
+            prefixlen=data.get("prefix_length"),
+            address_type=data.get("address_type"),
+            data=data.get("data"),
         )
 
         result = {
@@ -141,7 +141,7 @@ class IPAddressPoolGetResource(Mutation):
             "node": {
                 "id": resource.id,
                 "kind": resource.get_kind(),
-                "identifier": data.get("identifier", None),
+                "identifier": data.get("identifier"),
                 "display_label": await resource.render_display_label(db=context.db),
                 "branch": context.branch.name,
             },

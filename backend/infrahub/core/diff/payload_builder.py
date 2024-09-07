@@ -500,7 +500,7 @@ def extract_diff_relationship_one(
             return None
 
         peer = dict(peer_list[0])
-        peer["display_label"] = display_labels.get(peer.get("id", None), "")
+        peer["display_label"] = display_labels.get(peer.get("id"), "")
 
         if rel.action.value == "added":
             peer_value = {"new": peer}
@@ -526,10 +526,10 @@ def extract_diff_relationship_one(
         rel_removed = unique_action_rels_map[DiffAction.REMOVED]
 
         peer_added = dict([rel_node for rel_node in rel_added.nodes.values() if rel_node.id != node_id][0])
-        peer_added["display_label"] = display_labels.get(peer_added.get("id", None), "")
+        peer_added["display_label"] = display_labels.get(peer_added.get("id"), "")
 
         peer_removed = dict([rel_node for rel_node in rel_removed.nodes.values() if rel_node.id != node_id][0])
-        peer_removed["display_label"] = display_labels.get(peer_removed.get("id", None), "")
+        peer_removed["display_label"] = display_labels.get(peer_removed.get("id"), "")
         peer_value = {"new": dict(peer_added), "previous": dict(peer_removed)}
 
         return BranchDiffRelationshipOne(
