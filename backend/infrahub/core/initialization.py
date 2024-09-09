@@ -302,7 +302,7 @@ async def create_initial_permissions(db: InfrahubDatabase) -> list[Node]:
         log.info(f"Created global permission: {global_permission}")
 
     for object_permission in [
-        # Allow anything for now to now break existing behaviour
+        # Allow anything for now to not break existing behaviour
         ObjectPermission(
             id="",
             branch="any",

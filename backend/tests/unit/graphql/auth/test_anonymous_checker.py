@@ -38,7 +38,11 @@ class TestAnonymousAuthChecker:
 
         with pytest.raises(AuthorizationError):
             await self.checker.check(
-                db=db, analyzed_query=self.graphql_query, query_parameters=self.query_parameters, branch=branch
+                db=db,
+                account_session=self.account_session,
+                analyzed_query=self.graphql_query,
+                query_parameters=self.query_parameters,
+                branch=branch,
             )
 
     async def test_check_passes(self, db: InfrahubDatabase, branch: Branch):
@@ -46,5 +50,9 @@ class TestAnonymousAuthChecker:
         self.graphql_query.contains_mutation = False
 
         await self.checker.check(
-            db=db, analyzed_query=self.graphql_query, query_parameters=self.query_parameters, branch=branch
+            db=db,
+            account_session=self.account_session,
+            analyzed_query=self.graphql_query,
+            query_parameters=self.query_parameters,
+            branch=branch,
         )

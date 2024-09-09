@@ -1,17 +1,17 @@
-from abc import ABC, abstractmethod
+from __future__ import annotations
 
-from infrahub.core.account import GlobalPermission, ObjectPermission
-from infrahub.core.branch import Branch
-from infrahub.database import InfrahubDatabase
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
+    from infrahub.permissions.constants import AssignedPermissions
 
 
 class PermissionBackend(ABC):
     @abstractmethod
-    async def load_permissions(
-        self, db: InfrahubDatabase, account_id: str, branch: Branch | str | None = None
-    ) -> dict[str, list[GlobalPermission] | list[ObjectPermission]]: ...
+    async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions: ...
 
     @abstractmethod
-    async def has_permission(
-        self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch | str | None = None
-    ) -> bool: ...
+    async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool: ...

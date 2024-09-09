@@ -13,8 +13,8 @@ from infrahub.exceptions import PermissionDeniedError
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.account import GlobalPermission, ObjectPermission
     from infrahub.graphql import GraphqlContext
+    from infrahub.permissions.constants import AssignedPermissions
 
 
 class AccountTokenNode(ObjectType):
@@ -118,20 +118,20 @@ async def resolve_account_permissions(
         raise ValueError("An account_session is mandatory to execute this query")
 
     fields = await extract_fields_first_node(info)
-    permissions: dict[str, list[GlobalPermission] | list[ObjectPermission]] = {}
+    permissions: AssignedPermissions = {"global_permissions": [], "object_permissions": []}
     for permission_backend in registry.permission_backends:
-        permissions.update(
-            await permission_backend.load_permissions(
-                db=context.db, account_id=context.account_session.account_id, branch=context.branch
-            )
+        backend_permissions = await permission_backend.load_permissions(
+            db=context.db, account_id=context.account_session.account_id, branch=context.branch
         )
+        permissions["global_permissions"].extend(backend_permissions["global_permissions"])
+        permissions["object_permissions"].extend(backend_permissions["object_permissions"])
 
-    response: dict[str, Any] = {}
+    response: dict[str, dict[str, Any]] = {}
     if "global_permissions" in fields:
         global_list = permissions["global_permissions"]
         response["global_permissions"] = {"count": len(global_list)}
         response["global_permissions"]["edges"] = [
-            {"node": {"id": obj.id, "name": obj.name, "action": obj.action, "identifier": str(obj)}}  # type: ignore[union-attr]
+            {"node": {"id": obj.id, "name": obj.name, "action": obj.action, "identifier": str(obj)}}
             for obj in global_list
         ]
     if "object_permissions" in fields:
@@ -141,11 +141,11 @@ async def resolve_account_permissions(
             {
                 "node": {
                     "id": obj.id,
-                    "branch": obj.branch,  # type: ignore[union-attr]
-                    "namespace": obj.namespace,  # type: ignore[union-attr]
+                    "branch": obj.branch,
+                    "namespace": obj.namespace,
                     "name": obj.name,
                     "action": obj.action,
-                    "decision": obj.decision,  # type: ignore[union-attr]
+                    "decision": obj.decision,
                     "identifier": str(obj),
                 }
             }

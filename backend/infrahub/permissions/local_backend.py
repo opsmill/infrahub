@@ -1,9 +1,16 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from infrahub.core.account import GlobalPermission, ObjectPermission, fetch_permissions
-from infrahub.core.branch import Branch
 from infrahub.core.constants import PermissionDecision
-from infrahub.database import InfrahubDatabase
 
 from .backend import PermissionBackend
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
+    from infrahub.permissions.constants import AssignedPermissions
 
 
 class LocalPermissionBackend(PermissionBackend):
@@ -47,21 +54,13 @@ class LocalPermissionBackend(PermissionBackend):
 
         return most_specific_permission == PermissionDecision.ALLOW.value
 
-    async def load_permissions(
-        self, db: InfrahubDatabase, account_id: str, branch: Branch | str | None = None
-    ) -> dict[str, list[GlobalPermission] | list[ObjectPermission]]:
-        all_permissions = await fetch_permissions(db=db, account_id=account_id, branch=branch)
-        return {
-            "global_permissions": all_permissions.get("global_permissions", []),
-            "object_permissions": all_permissions.get("object_permissions", []),
-        }
+    async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions:
+        return await fetch_permissions(db=db, account_id=account_id, branch=branch)
 
-    async def has_permission(
-        self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch | str | None = None
-    ) -> bool:
+    async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool:
         granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
-        global_permissions: list[GlobalPermission] = granted_permissions["global_permissions"]  # type: ignore[assignment]
-        object_permissions: list[ObjectPermission] = granted_permissions["object_permissions"]  # type: ignore[assignment]
+        global_permissions: list[GlobalPermission] = granted_permissions["global_permissions"]
+        object_permissions: list[ObjectPermission] = granted_permissions["object_permissions"]
 
         if permission.startswith("global:"):
             return permission in [str(p) for p in global_permissions]

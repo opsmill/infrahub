@@ -1,4 +1,3 @@
-from infrahub import config
 from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -18,9 +17,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     def __init__(self) -> None:
         self.can_edit_default_branch: bool = False
 
-    async def supports(
-        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch | str | None = None
-    ) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         self.can_edit_default_branch = False
 
         if registry.permission_backends and account_session.authenticated:
@@ -36,13 +33,14 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     async def check(
         self,
         db: InfrahubDatabase,
+        account_session: AccountSession,
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch | str | None = None,
+        branch: Branch,
     ) -> CheckerResolution:
         operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in (
             GLOBAL_BRANCH_NAME,
-            config.SETTINGS.initial.default_branch,
+            registry.default_branch,
         )
         is_exempt_operation = analyzed_query.operation_name is not None and (
             analyzed_query.operation_name in self.exempt_operations
@@ -56,7 +54,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             and not is_exempt_operation
         ):
             raise PermissionDeniedError(
-                f"You are not allowed to change data in the default branch '{config.SETTINGS.initial.default_branch}'"
+                f"You are not allowed to change data in the default branch '{registry.default_branch}'"
             )
 
         return CheckerResolution.NEXT_CHECKER

@@ -9,6 +9,8 @@ from infrahub.core.registry import registry
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.permissions.constants import AssignedPermissions
+
 
 # pylint: disable=redefined-builtin
 
@@ -107,7 +109,6 @@ class AccountObjectPermissionQuery(Query):
         )
         self.params.update(branch_params)
 
-        # ruff: noqa: E501
         query = """
         MATCH (account:CoreGenericAccount)
         WHERE account.uuid = $account_id
@@ -122,12 +123,25 @@ class AccountObjectPermissionQuery(Query):
         WITH account, r1 as r
         WHERE r.status = "active"
         WITH account
-        MATCH (account)-[]->(:Relationship {name: "group_member"})<-[]-(:CoreUserGroup)-[]->(:Relationship {name: "role__usergroups"})<-[]-(:CoreUserRole)-[]->(:Relationship {name: "role__permissions"})<-[]-(object_permission:CoreObjectPermission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "branch"})-[:HAS_VALUE]->(object_permission_branch:AttributeValue)
+        MATCH group_path = (account)-[]->(:Relationship {name: "group_member"})
+            <-[]-(:CoreUserGroup)
+            -[]->(:Relationship {name: "role__usergroups"})
+            <-[]-(:CoreUserRole)
+            -[]->(:Relationship {name: "role__permissions"})
+            <-[]-(object_permission:CoreObjectPermission)
+            -[:HAS_ATTRIBUTE]->(:Attribute {name: "branch"})
+            -[:HAS_VALUE]->(object_permission_branch:AttributeValue)
         WITH object_permission, object_permission_branch
-        MATCH (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(object_permission_namespace:AttributeValue)
-        MATCH (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(object_permission_name:AttributeValue)
-        MATCH (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(object_permission_action:AttributeValue)
-        MATCH (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(object_permission_decision:AttributeValue)
+        WHERE all(r IN relationships(group_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH namespace_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(object_permission_namespace:AttributeValue)
+            WHERE all(r IN relationships(namespace_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH name_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(object_permission_name:AttributeValue)
+            WHERE all(r IN relationships(name_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH action_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(object_permission_action:AttributeValue)
+            WHERE all(r IN relationships(action_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH decision_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(object_permission_decision:AttributeValue)
+            WHERE all(r IN relationships(decision_path) WHERE (%(branch_filter)s) AND r.status = "active")
+
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
@@ -158,9 +172,7 @@ class AccountObjectPermissionQuery(Query):
         return permissions
 
 
-async def fetch_permissions(
-    account_id: str, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None
-) -> dict[str, list[GlobalPermission] | list[ObjectPermission]]:
+async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
     branch = await registry.get_branch(db=db, branch=branch)
 
     query1 = await AccountGlobalPermissionQuery.init(db=db, branch=branch, account_id=account_id, branch_agnostic=True)

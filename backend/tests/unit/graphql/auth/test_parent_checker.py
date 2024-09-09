@@ -51,7 +51,11 @@ class TestParentAuthChecker:
         )
         self.sub_auth_checker_one.check.assert_not_awaited()
         self.sub_auth_checker_two.check.assert_awaited_once_with(
-            db=db, analyzed_query=self.graphql_query, query_parameters=self.query_parameters, branch=branch
+            db=db,
+            account_session=self.account_session,
+            analyzed_query=self.graphql_query,
+            query_parameters=self.query_parameters,
+            branch=branch,
         )
 
     async def test_error_if_no_support(self, db: InfrahubDatabase, branch: Branch):
