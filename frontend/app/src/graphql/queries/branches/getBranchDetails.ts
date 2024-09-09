@@ -1,22 +1,8 @@
-import Handlebars from "handlebars";
+import { gql } from "@apollo/client";
 
-// TODO: Not working for now, needs the backend to be implemented
-// const template = Handlebars.compile(`query {
-//     branch (name: "{{banchName}}") {
-//         id
-//         name
-//         description
-//         origin_branch
-//         branched_from
-//         created_at
-//         sync_with_git
-//         is_default
-//     }
-// }
-// `);
-
-export const getBranchDetails = Handlebars.compile(`query {
-  Branch {
+export const getBranchDetailsQuery = gql`
+  query GET_BRANCH_DETAILS($branchName: String!) {
+    Branch(name: $branchName) {
       id
       name
       description
@@ -25,16 +11,6 @@ export const getBranchDetails = Handlebars.compile(`query {
       created_at
       sync_with_git
       is_default
-  }
-  {{#if accountKind}}
-  {{accountKind}} {
-    edges {
-      node {
-        id
-        display_label
-      }
     }
   }
-  {{/if}}
-}
-`);
+`;
