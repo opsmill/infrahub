@@ -120,6 +120,7 @@ VOLUME_NAMES = [
     "git_data",
     "git_remote_data",
     "workflow_data",
+    "workflow_db",
     "storage_data",
 ]
 
