@@ -562,7 +562,6 @@ ignore = [
     "UP012",    # Unnecessary call to encode as UTF-8
     "UP018",    # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",    # Use format specifiers instead of percent format
-    "UP034",    # Avoid extraneous parentheses
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/

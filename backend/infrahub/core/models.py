@@ -409,7 +409,7 @@ class HashableModel(BaseModel):
 
     @staticmethod
     def is_list_composed_of_hashable_model(items: list[Any]) -> bool:
-        return all((isinstance(item, HashableModel) for item in items))
+        return all(isinstance(item, HashableModel) for item in items)
 
     @staticmethod
     def _organize_sub_items(items: list[HashableModel], shared_ids: set[str]) -> dict[tuple[Any], HashableModel]:
