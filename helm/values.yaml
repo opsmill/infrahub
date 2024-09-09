@@ -72,6 +72,45 @@ infrahubGit:
       INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
       INFRAHUB_TIMEOUT: "20"
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
+      PREFECT_API_URL: "http://prefect-server:4200/api"
+      PREFECT_WORKER_QUERY_SECONDS: 3
+      PREFECT_AGENT_QUERY_INTERVAL: 3
+      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
+    imagePullPolicy: Always
+    imageRegistry: registry.opsmill.io
+
+# ----------- Infrahub Task Runner -----------
+infrahubTaskRunner:
+  replicas: 2
+  persistence:
+    enabled: true
+    size: 100Mi
+    accessMode: ReadWriteMany
+    storageClassName: nfs
+  infrahubTaskRunner:
+    args:
+      - prefect
+      - worker
+      - start
+      - --type
+      - infrahubasync
+      - --pool
+      - infrahub-internal
+      - --with-healthcheck
+    env:
+      INFRAHUB_CACHE_PORT: 6379
+      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_LOG_LEVEL: DEBUG
+      INFRAHUB_PRODUCTION: "false"
+      INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      INFRAHUB_TIMEOUT: "20"
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
+      INFRAHUB_WORKFLOW_ADDRESS: prefect-server
+      INFRAHUB_WORKFLOW_PORT: 4200
+      PREFECT_API_URL: "http://prefect-server:4200/api"
+      PREFECT_WORKER_QUERY_SECONDS: 3
+      PREFECT_AGENT_QUERY_INTERVAL: 3
+      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     imagePullPolicy: Always
     imageRegistry: registry.opsmill.io
 
@@ -105,6 +144,10 @@ infrahubServer:
       INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
+      INFRAHUB_WORKFLOW_ADDRESS: prefect-server
+      INFRAHUB_WORKFLOW_PORT: 4200
+      PREFECT_API_URL: "http://prefect-server:4200/api"
+      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     imagePullPolicy: Always
     imageRegistry: registry.opsmill.io
   ports:
@@ -164,6 +207,23 @@ nats:
   config:
     jetstream:
       enabled: true
+
+# ------------- Prefect -------------
+prefect-server:
+  enabled: true
+  server:
+    image:
+      prefectTag: 3.0.0-python3.12-kubernetes
+    env:
+      - name: PREFECT_UI_SERVE_BASE
+        value: /
+  serviceAccount:
+    create: false
+  postgresql:
+    enabled: true
+    primary:
+      persistence:
+        enabled: false
 
 # -------------- Cloud --------------
 traefik:
