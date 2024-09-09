@@ -396,7 +396,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
 
 def retry_db_transaction(name: str):
     def func_wrapper(func):
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs):
             for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
                 try:
                     return await func(*args, **kwargs)

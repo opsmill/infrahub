@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -56,7 +56,7 @@ class InfrahubMutationOptions(MutationOptions):
 
 class InfrahubMutationMixin:
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, *args, **kwargs):
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, *args: Any, **kwargs):
         context: GraphqlContext = info.context
 
         obj = None
