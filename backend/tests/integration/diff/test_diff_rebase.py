@@ -168,6 +168,11 @@ class TestDiffRebase(TestInfrahubApp):
         kara_branch_1 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_1)
         kara_branch_1.description.value = "branch-1-description"
         await kara_branch_1.save(db=db)
+        jesko_id = initial_dataset["jesko"].id
+        cyberdyne_id = initial_dataset["cyberdyne"].id
+        jesko_branch_1 = await NodeManager.get_one(db=db, id=jesko_id, branch=branch_1)
+        await jesko_branch_1.manufacturer.update(db=db, data=cyberdyne_id)
+        await jesko_branch_1.save(db=db)
 
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": branch_1.name})
         assert result["DiffUpdate"]["ok"]
@@ -180,6 +185,11 @@ class TestDiffRebase(TestInfrahubApp):
         kara_branch_2 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_2)
         kara_branch_2.description.value = "branch-2-description"
         await kara_branch_2.save(db=db)
+        jesko_id = initial_dataset["jesko"].id
+        omnicorp_id = initial_dataset["omnicorp"].id
+        jesko_branch_2 = await NodeManager.get_one(db=db, id=jesko_id, branch=branch_2)
+        await jesko_branch_2.manufacturer.update(db=db, data=omnicorp_id)
+        await jesko_branch_2.save(db=db)
 
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": branch_2.name})
         assert result["DiffUpdate"]["ok"]
@@ -195,6 +205,10 @@ class TestDiffRebase(TestInfrahubApp):
         diff_repository: DiffRepository,
     ):
         kara_id = initial_dataset["kara"].id
+        jesko_id = initial_dataset["jesko"].id
+        koenigsegg_id = initial_dataset["koenigsegg"].id
+        cyberdyne_id = initial_dataset["cyberdyne"].id
+        omnicorp_id = initial_dataset["omnicorp"].id
 
         branch_1_diff = await diff_repository.get_one(
             diff_branch_name=branch_1.name, tracking_id=BranchTrackingId(name=branch_1.name)
@@ -202,13 +216,14 @@ class TestDiffRebase(TestInfrahubApp):
         branch_2_diff = await diff_repository.get_one(
             diff_branch_name=branch_2.name, tracking_id=BranchTrackingId(name=branch_2.name)
         )
-        for new_value, branch_diff in [
-            ("branch-1-description", branch_1_diff),
-            ("branch-2-description", branch_2_diff),
+        for new_desc_value, new_peer_id, branch_diff in [
+            ("branch-1-description", cyberdyne_id, branch_1_diff),
+            ("branch-2-description", omnicorp_id, branch_2_diff),
         ]:
-            assert len(branch_diff.nodes) == 1
-            kara_node = branch_diff.nodes.pop()
-            assert kara_node.uuid == kara_id
+            assert len(branch_diff.nodes) == 4
+            nodes_by_id = {n.uuid: n for n in branch_diff.nodes}
+            assert set(nodes_by_id.keys()) == {kara_id, jesko_id, koenigsegg_id, new_peer_id}
+            kara_node = nodes_by_id[kara_id]
             assert len(kara_node.attributes) == 1
             description_attr = kara_node.attributes.pop()
             assert description_attr.name == "description"
@@ -216,8 +231,54 @@ class TestDiffRebase(TestInfrahubApp):
             value_prop = description_attr.properties.pop()
             assert value_prop.property_type is DatabaseEdgeType.HAS_VALUE
             assert value_prop.previous_value == "Starbuck"
-            assert value_prop.new_value == new_value
+            assert value_prop.new_value == new_desc_value
             assert value_prop.conflict is None
+            jesko_node = nodes_by_id[jesko_id]
+            assert len(jesko_node.relationships) == 1
+            manufacturer_rel = jesko_node.relationships.pop()
+            assert manufacturer_rel.name == "manufacturer"
+            assert len(manufacturer_rel.relationships) == 1
+            manufacturer_element = manufacturer_rel.relationships.pop()
+            assert manufacturer_element.peer_id == new_peer_id
+            assert manufacturer_element.action is DiffAction.UPDATED
+            assert manufacturer_element.conflict is None
+            assert len(manufacturer_element.properties) == 1
+            related_prop = manufacturer_element.properties.pop()
+            assert related_prop.property_type is DatabaseEdgeType.IS_RELATED
+            assert related_prop.action is DiffAction.UPDATED
+            assert related_prop.previous_value == koenigsegg_id
+            assert related_prop.new_value == new_peer_id
+            assert related_prop.conflict is None
+            for manufacturer_id, expected_action in (
+                (koenigsegg_id, DiffAction.REMOVED),
+                (new_peer_id, DiffAction.ADDED),
+            ):
+                manufacturer_node = nodes_by_id[manufacturer_id]
+                assert len(manufacturer_node.relationships) == 1
+                cars_rel = manufacturer_node.relationships.pop()
+                assert cars_rel.name == "cars"
+                assert cars_rel.action is DiffAction.UPDATED
+                assert len(cars_rel.relationships) == 1
+                cars_element = cars_rel.relationships.pop()
+                assert cars_element.peer_id == jesko_id
+                assert cars_element.action is expected_action
+                assert cars_element.conflict is None
+                properties_by_type = {p.property_type: p for p in cars_element.properties}
+                assert set(properties_by_type.keys()) == {
+                    DatabaseEdgeType.IS_RELATED,
+                    DatabaseEdgeType.IS_PROTECTED,
+                    DatabaseEdgeType.IS_VISIBLE,
+                }
+                for property_type, check_value in (
+                    (DatabaseEdgeType.IS_RELATED, jesko_id),
+                    (DatabaseEdgeType.IS_PROTECTED, "False"),
+                    (DatabaseEdgeType.IS_VISIBLE, "True"),
+                ):
+                    prop_diff = properties_by_type[property_type]
+                    assert prop_diff.action is expected_action
+                    assert prop_diff.previous_value == (check_value if expected_action is DiffAction.REMOVED else None)
+                    assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
+                    assert prop_diff.conflict is None
 
     async def test_merge_causes_diff_update(
         self,
@@ -227,9 +288,13 @@ class TestDiffRebase(TestInfrahubApp):
         add_branch_1_changes,
         branch_1: Branch,
         branch_2: Branch,
-        diff_repository,
+        diff_repository: DiffRepository,
     ):
         kara_id = initial_dataset["kara"].id
+        jesko_id = initial_dataset["jesko"].id
+        koenigsegg_id = initial_dataset["koenigsegg"].id
+        cyberdyne_id = initial_dataset["cyberdyne"].id
+        omnicorp_id = initial_dataset["omnicorp"].id
         before_merge = Timestamp()
         result = await client.execute_graphql(query=BRANCH_MERGE, variables={"branch": branch_1.name})
         assert result["BranchMerge"]["ok"]
@@ -238,10 +303,10 @@ class TestDiffRebase(TestInfrahubApp):
             diff_branch_name=branch_2.name, tracking_id=BranchTrackingId(name=branch_2.name)
         )
 
-        assert len(branch_2_diff.nodes) == 1
+        assert len(branch_2_diff.nodes) == 4
         assert branch_2_diff.to_time > before_merge
-        kara_node = branch_2_diff.nodes.pop()
-        assert kara_node.uuid == kara_id
+        nodes_by_id = {n.uuid: n for n in branch_2_diff.nodes}
+        kara_node = nodes_by_id[kara_id]
         assert len(kara_node.attributes) == 1
         description_attr = kara_node.attributes.pop()
         assert description_attr.name == "description"
@@ -255,24 +320,90 @@ class TestDiffRebase(TestInfrahubApp):
         assert value_prop.conflict.base_branch_value == "branch-1-description"
         assert value_prop.conflict.diff_branch_action is DiffAction.UPDATED
         assert value_prop.conflict.diff_branch_value == "branch-2-description"
+        jesko_node = nodes_by_id[jesko_id]
+        assert len(jesko_node.relationships) == 1
+        manufacturer_rel = jesko_node.relationships.pop()
+        assert manufacturer_rel.name == "manufacturer"
+        assert len(manufacturer_rel.relationships) == 1
+        manufacturer_element = manufacturer_rel.relationships.pop()
+        assert manufacturer_element.peer_id == omnicorp_id
+        assert manufacturer_element.action is DiffAction.UPDATED
+        assert manufacturer_element.conflict
+        assert manufacturer_element.conflict.base_branch_action is DiffAction.UPDATED
+        assert manufacturer_element.conflict.base_branch_value == cyberdyne_id
+        assert manufacturer_element.conflict.diff_branch_action is DiffAction.UPDATED
+        assert manufacturer_element.conflict.diff_branch_value == omnicorp_id
+        assert len(manufacturer_element.properties) == 1
+        related_prop = manufacturer_element.properties.pop()
+        assert related_prop.property_type is DatabaseEdgeType.IS_RELATED
+        assert related_prop.action is DiffAction.UPDATED
+        assert related_prop.previous_value == koenigsegg_id
+        assert related_prop.new_value == omnicorp_id
+        assert related_prop.conflict is None
+        for manufacturer_id, expected_action in ((koenigsegg_id, DiffAction.REMOVED), (omnicorp_id, DiffAction.ADDED)):
+            manufacturer_node = nodes_by_id[manufacturer_id]
+            assert len(manufacturer_node.relationships) == 1
+            cars_rel = manufacturer_node.relationships.pop()
+            assert cars_rel.name == "cars"
+            assert cars_rel.action is DiffAction.UPDATED
+            assert len(cars_rel.relationships) == 1
+            cars_element = cars_rel.relationships.pop()
+            assert cars_element.peer_id == jesko_id
+            assert cars_element.action is expected_action
+            assert cars_element.conflict is None
+            properties_by_type = {p.property_type: p for p in cars_element.properties}
+            assert set(properties_by_type.keys()) == {
+                DatabaseEdgeType.IS_RELATED,
+                DatabaseEdgeType.IS_PROTECTED,
+                DatabaseEdgeType.IS_VISIBLE,
+            }
+            for property_type, check_value in (
+                (DatabaseEdgeType.IS_RELATED, jesko_id),
+                (DatabaseEdgeType.IS_PROTECTED, "False"),
+                (DatabaseEdgeType.IS_VISIBLE, "True"),
+            ):
+                prop_diff = properties_by_type[property_type]
+                assert prop_diff.action is expected_action
+                assert prop_diff.previous_value == (check_value if expected_action is DiffAction.REMOVED else None)
+                assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
+                assert prop_diff.conflict is None
 
-    async def test_resolve_conflict(self, client: InfrahubClient, branch_2: Branch, diff_repository: DiffRepository):
+    async def test_resolve_conflict(
+        self, client: InfrahubClient, branch_2: Branch, diff_repository: DiffRepository, initial_dataset
+    ):
+        cyberdyne_id = initial_dataset["cyberdyne"].id
         branch_2_diff = await diff_repository.get_one(
             diff_branch_name=branch_2.name, tracking_id=BranchTrackingId(name=branch_2.name)
         )
-        conflict = branch_2_diff.get_all_conflicts()[0]
+        conflicts = branch_2_diff.get_all_conflicts()
+        attr_conflict = None
+        peer_conflict = None
+        for conflict in conflicts:
+            if conflict.base_branch_value == "branch-1-description":
+                attr_conflict = conflict
+            elif conflict.base_branch_value == cyberdyne_id:
+                peer_conflict = conflict
+        assert attr_conflict
+        assert peer_conflict
 
         result = await client.execute_graphql(
             query=CONFLICT_SELECTION_QUERY,
-            variables={"conflict_id": conflict.uuid, "selected_branch": ConflictSelection.DIFF_BRANCH.name},
+            variables={"conflict_id": attr_conflict.uuid, "selected_branch": ConflictSelection.DIFF_BRANCH.name},
+        )
+        assert result["ResolveDiffConflict"]["ok"]
+        result = await client.execute_graphql(
+            query=CONFLICT_SELECTION_QUERY,
+            variables={"conflict_id": peer_conflict.uuid, "selected_branch": ConflictSelection.BASE_BRANCH.name},
         )
         assert result["ResolveDiffConflict"]["ok"]
 
         branch_2_diff = await diff_repository.get_one(
             diff_branch_name=branch_2.name, tracking_id=BranchTrackingId(name=branch_2.name)
         )
-        conflict = branch_2_diff.get_all_conflicts()[0]
-        assert conflict.selected_branch is ConflictSelection.DIFF_BRANCH
+        updated_conflicts = branch_2_diff.get_all_conflicts()
+        conflicts_by_id = {c.uuid: c for c in updated_conflicts}
+        assert conflicts_by_id[attr_conflict.uuid].selected_branch is ConflictSelection.DIFF_BRANCH
+        assert conflicts_by_id[peer_conflict.uuid].selected_branch is ConflictSelection.BASE_BRANCH
 
     async def test_rebase_causes_diff_recalculation(
         self,
@@ -283,6 +414,10 @@ class TestDiffRebase(TestInfrahubApp):
         diff_repository: DiffRepository,
     ):
         kara_id = initial_dataset["kara"].id
+        jesko_id = initial_dataset["jesko"].id
+        koenigsegg_id = initial_dataset["koenigsegg"].id
+        cyberdyne_id = initial_dataset["cyberdyne"].id
+        omnicorp_id = initial_dataset["omnicorp"].id
         before_rebase = Timestamp()
         result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": branch_2.name})
         assert result["BranchRebase"]["ok"]
@@ -291,10 +426,10 @@ class TestDiffRebase(TestInfrahubApp):
             diff_branch_name=branch_2.name, tracking_id=BranchTrackingId(name=branch_2.name)
         )
 
-        assert len(branch_2_diff.nodes) == 1
+        assert len(branch_2_diff.nodes) == 4
         assert branch_2_diff.to_time > before_rebase
-        kara_node = branch_2_diff.nodes.pop()
-        assert kara_node.uuid == kara_id
+        nodes_by_id = {n.uuid: n for n in branch_2_diff.nodes}
+        kara_node = nodes_by_id[kara_id]
         assert len(kara_node.attributes) == 1
         description_attr = kara_node.attributes.pop()
         assert description_attr.name == "description"
@@ -309,3 +444,51 @@ class TestDiffRebase(TestInfrahubApp):
         assert value_prop.conflict.diff_branch_action is DiffAction.UPDATED
         assert value_prop.conflict.diff_branch_value == "branch-2-description"
         assert value_prop.conflict.selected_branch is ConflictSelection.DIFF_BRANCH
+        jesko_node = nodes_by_id[jesko_id]
+        assert len(jesko_node.relationships) == 1
+        manufacturer_rel = jesko_node.relationships.pop()
+        assert manufacturer_rel.name == "manufacturer"
+        assert len(manufacturer_rel.relationships) == 1
+        manufacturer_element = manufacturer_rel.relationships.pop()
+        assert manufacturer_element.peer_id == omnicorp_id
+        assert manufacturer_element.action is DiffAction.UPDATED
+        assert manufacturer_element.conflict
+        assert manufacturer_element.conflict.base_branch_action is DiffAction.UPDATED
+        assert manufacturer_element.conflict.base_branch_value == cyberdyne_id
+        assert manufacturer_element.conflict.diff_branch_action is DiffAction.UPDATED
+        assert manufacturer_element.conflict.diff_branch_value == omnicorp_id
+        assert manufacturer_element.conflict.selected_branch is ConflictSelection.BASE_BRANCH
+        assert len(manufacturer_element.properties) == 1
+        related_prop = manufacturer_element.properties.pop()
+        assert related_prop.property_type is DatabaseEdgeType.IS_RELATED
+        assert related_prop.action is DiffAction.UPDATED
+        assert related_prop.previous_value == koenigsegg_id
+        assert related_prop.new_value == omnicorp_id
+        assert related_prop.conflict is None
+        for manufacturer_id, expected_action in ((koenigsegg_id, DiffAction.REMOVED), (omnicorp_id, DiffAction.ADDED)):
+            manufacturer_node = nodes_by_id[manufacturer_id]
+            assert len(manufacturer_node.relationships) == 1
+            cars_rel = manufacturer_node.relationships.pop()
+            assert cars_rel.name == "cars"
+            assert cars_rel.action is DiffAction.UPDATED
+            assert len(cars_rel.relationships) == 1
+            cars_element = cars_rel.relationships.pop()
+            assert cars_element.peer_id == jesko_id
+            assert cars_element.action is expected_action
+            assert cars_element.conflict is None
+            properties_by_type = {p.property_type: p for p in cars_element.properties}
+            assert set(properties_by_type.keys()) == {
+                DatabaseEdgeType.IS_RELATED,
+                DatabaseEdgeType.IS_PROTECTED,
+                DatabaseEdgeType.IS_VISIBLE,
+            }
+            for property_type, check_value in (
+                (DatabaseEdgeType.IS_RELATED, jesko_id),
+                (DatabaseEdgeType.IS_PROTECTED, "False"),
+                (DatabaseEdgeType.IS_VISIBLE, "True"),
+            ):
+                prop_diff = properties_by_type[property_type]
+                assert prop_diff.action is expected_action
+                assert prop_diff.previous_value == (check_value if expected_action is DiffAction.REMOVED else None)
+                assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
+                assert prop_diff.conflict is None
