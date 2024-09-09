@@ -99,13 +99,12 @@ async def resolve_account_permissions(
 
     fields = await extract_fields_first_node(info)
     permissions: dict[str, list[GlobalPermission]] = {}
-    if registry.permission_backends:
-        for permission_backend in registry.permission_backends:
-            permissions.update(
-                await permission_backend.load_permissions(
-                    db=context.db, account_id=context.account_session.account_id, branch=context.branch
-                )
+    for permission_backend in registry.permission_backends:
+        permissions.update(
+            await permission_backend.load_permissions(
+                db=context.db, account_id=context.account_session.account_id, branch=context.branch
             )
+        )
 
     response: dict[str, Any] = {}
     if "global_permissions" in fields:
