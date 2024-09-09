@@ -12,6 +12,8 @@ from neo4j import (
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
+    NotificationDisabledCategory,
+    NotificationMinimumSeverity,
     Query,
     Record,
     TrustAll,
@@ -384,6 +386,8 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
+        notifications_disabled_categories=[NotificationDisabledCategory.UNRECOGNIZED],
+        warn_notification_severity=NotificationMinimumSeverity.INFORMATION,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:
