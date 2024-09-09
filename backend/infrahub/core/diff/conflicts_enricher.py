@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.database import InfrahubDatabase
 
@@ -151,7 +151,10 @@ class ConflictsEnricher:
         for property_type in common_property_types:
             base_property = base_properties_by_type[property_type]
             branch_property = branch_properties_by_type[property_type]
-            same_value = base_property.new_value == branch_property.new_value
+            same_value = base_property.new_value == branch_property.new_value or (
+                base_property.action is DiffAction.UNCHANGED
+                and base_property.previous_value == branch_property.previous_value
+            )
             # special handling for cardinality-one peer ID conflict
             if branch_property.property_type is DatabaseEdgeType.IS_RELATED and is_cardinality_one:
                 if same_value:
