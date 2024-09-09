@@ -1,5 +1,6 @@
 import { components } from "@/infraops";
-import { peersKindForForm } from "@/config/constants";
+import { relationshipKindForForm } from "@/config/constants";
+import { RelationshipKind } from "@/screens/objects/types";
 
 export const getRelationshipsForForm = (
   relationships: components["schemas"]["RelationshipSchema-Output"][],
@@ -11,7 +12,9 @@ export const getRelationshipsForForm = (
   return relationships.filter((relationship) => {
     if (relationship.cardinality === "one") return true;
 
-    const isPeerKindEligibleForForm = peersKindForForm.includes(relationship?.kind ?? "");
+    const isPeerKindEligibleForForm = relationshipKindForForm.includes(
+      relationship.kind as RelationshipKind
+    );
     if (isUpdate) return isPeerKindEligibleForForm;
 
     return isPeerKindEligibleForForm || !relationship.optional;
