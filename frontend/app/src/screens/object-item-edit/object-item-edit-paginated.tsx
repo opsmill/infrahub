@@ -29,13 +29,18 @@ interface Props {
 export default function ObjectItemEditComponent(props: Props) {
   const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
 
-  const { schema } = useSchema(objectname);
+  const { schema, isProfile } = useSchema(objectname);
 
   if (!schema) {
     return <NoDataFound message={`Schema ${objectname} not found`} />;
   }
 
-  const query = gql(generateObjectEditFormQuery(schema, objectid));
+  const query = gql(
+    generateObjectEditFormQuery({
+      schema,
+      objectId: objectid,
+    })
+  );
 
   const { loading, error, data } = useQuery(query, { skip: !schema });
 
