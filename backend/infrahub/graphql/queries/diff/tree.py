@@ -370,6 +370,7 @@ class DiffTreeResolver:
         root: dict,
         info: GraphQLResolveInfo,
         branch: str | None = None,
+        name: str | None = None,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         filters: dict | None = None,
@@ -409,11 +410,20 @@ class DiffTreeResolver:
             include_parents=include_parents,
             limit=limit,
             offset=offset,
+            tracking_id=NameTrackingId(name) if name else None,
             include_empty=True,
         )
         if not enriched_diffs:
             return None
-        enriched_diff = enriched_diffs[0]
+        if len(enriched_diffs) > 0:
+            # take the one with the longest duration that covers multiple branches
+            enriched_diff = sorted(
+                enriched_diffs,
+                key=lambda d: (d.base_branch_name != d.diff_branch_name, d.to_time.obj - d.from_time.obj),
+                reverse=True,
+            )[0]
+        else:
+            enriched_diff = enriched_diffs[0]
 
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
         diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, context=context)

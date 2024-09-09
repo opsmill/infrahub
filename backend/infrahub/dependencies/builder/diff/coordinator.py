@@ -3,6 +3,7 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 
 from .calculator import DiffCalculatorDependency
 from .combiner import DiffCombinerDependency
+from .conflict_transferer import DiffConflictTransfererDependency
 from .conflicts_enricher import DiffConflictsEnricherDependency
 from .data_check_synchronizer import DiffDataCheckSynchronizerDependency
 from .enricher.aggregated import DiffAggregatedEnricherDependency
@@ -23,4 +24,5 @@ class DiffCoordinatorDependency(DependencyBuilder[DiffCoordinator]):
             labels_enricher=DiffLabelsEnricherDependency.build(context=context),
             summary_counts_enricher=DiffSummaryCountsEnricherDependency.build(context=context),
             data_check_synchronizer=DiffDataCheckSynchronizerDependency.build(context=context),
+            conflict_transferer=DiffConflictTransfererDependency.build(context=context),
         )
