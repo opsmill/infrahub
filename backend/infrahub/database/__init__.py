@@ -387,7 +387,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
         notifications_disabled_categories=[NotificationDisabledCategory.UNRECOGNIZED],
-        warn_notification_severity=NotificationMinimumSeverity.INFORMATION,
+        notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:
