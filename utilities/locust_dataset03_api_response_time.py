@@ -6,7 +6,7 @@ class InfrahubUser(HttpUser):
     # tasks = [InfrahubDataset03]
 
     @task
-    def query_device_names(self):
+    def query_device_names(self) -> None:
         query = """
         query {
             device {
@@ -20,7 +20,7 @@ class InfrahubUser(HttpUser):
         self.client.post("/graphql", json=data, name="query_device_names")
 
     @task
-    def query_one_device(self):
+    def query_one_device(self) -> None:
         query = """
         query {
             device(name__value: "ord1-edge1"){

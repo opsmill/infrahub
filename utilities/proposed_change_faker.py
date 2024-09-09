@@ -168,7 +168,7 @@ async def create_proposed_change(client: InfrahubClient, log: logging.Logger) ->
     return new_proposed_change
 
 
-async def run(client: InfrahubClient, log: logging.Logger, branch: str):
+async def run(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
     proposed_change = await create_proposed_change(client, log)
     repository = await create_repository(client, log)
     await create_validators(client, log, proposed_change, repository)
