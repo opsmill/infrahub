@@ -46,7 +46,7 @@ class Registry:
     _branch_object: Optional[type[Branch]] = None
     _manager: Optional[type[NodeManager]] = None
     _storage: Optional[InfrahubObjectStorage] = None
-    permission_backends: Optional[list[PermissionBackend]] = None
+    permission_backends: list[PermissionBackend] = field(default_factory=list)
 
     @property
     def branch_object(self) -> type[Branch]:
