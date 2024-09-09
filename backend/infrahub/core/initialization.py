@@ -18,6 +18,7 @@ from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.protocols import CoreAccount
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -259,9 +260,9 @@ async def create_account(
     role: str = "admin",
     password: Optional[str] = None,
     token_value: Optional[str] = None,
-) -> Node:
+) -> CoreAccount:
     token_schema = db.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
-    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    obj = await Node.init(db=db, schema=CoreAccount)
     await obj.new(db=db, name=name, account_type="User", role=role, password=password)
     await obj.save(db=db)
     log.info(f"Created Account: {name}", account_name=name)
@@ -310,7 +311,7 @@ async def create_administrator_role(db: InfrahubDatabase, global_permissions: Op
     return obj
 
 
-async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_accounts: list[Node]) -> Node:
+async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_accounts: list[CoreAccount]) -> Node:
     group_name = "Administrators"
     group = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
     await group.new(db=db, name=group_name, roles=[role])
@@ -320,7 +321,7 @@ async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_ac
     for admin_account in admin_accounts:
         await group.members.add(db=db, data=admin_account)  # type: ignore[attr-defined]
         await group.members.save(db=db)  # type: ignore[attr-defined]
-        log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")  # type: ignore[attr-defined]
+        log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")
 
     return group
 
@@ -350,7 +351,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    admin_accounts: list[Node] = []
+    admin_accounts: list[CoreAccount] = []
     admin_accounts.append(
         await create_account(
             db=db,
