@@ -121,7 +121,7 @@ async def push(
 
 
 @task(retries=5)
-async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]):  # pylint: disable=unused-argument
+async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:  # pylint: disable=unused-argument
     """Send the telemetry data to the specified URL, using HTTP POST."""
     async with httpx.AsyncClient() as client:
         response = await client.post(url=url, json=payload)

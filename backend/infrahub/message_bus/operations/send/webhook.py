@@ -41,7 +41,7 @@ async def event(message: messages.SendWebhookEvent, service: InfrahubServices) -
 
 
 @flow
-async def send_webhook(message: SendWebhookData):
+async def send_webhook(message: SendWebhookData) -> None:
     service = services.service
     log = get_run_logger()
 
@@ -53,7 +53,7 @@ async def send_webhook(message: SendWebhookData):
         )
 
     webhook_data = ujson.loads(webhook_definition)
-    payload = {"event_type": message.event_type, "data": message.event_data, "service": service}
+    payload: dict[str, Any] = {"event_type": message.event_type, "data": message.event_data, "service": service}
     webhook_map: dict[str, type[Webhook]] = {
         "standard": StandardWebhook,
         "custom": CustomWebhook,
