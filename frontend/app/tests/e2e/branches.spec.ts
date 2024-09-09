@@ -51,29 +51,19 @@ test.describe("Branches creation and deletion", () => {
       expect(page.url()).toContain("/branches/test123");
     });
 
+    test("create a new branch for next step", async ({ page }) => {
+      await page.goto("/");
+      await createBranch(page, "test456");
+    });
+
     test("should delete a non-selected branch and remain on the current branch", async ({
       page,
     }) => {
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const status = response.status();
-
-          return response.url().includes("menu?branch=main") && status === 200;
-        }), // wait for the menu to load otherwise issues may happen when creating branch
-        page.waitForResponse((response) => {
-          const status = response.status();
-
-          return response.url().includes("/graphql/main") && status === 200;
-        }), // wait for the menu to load otherwise issues may happen when creating branch
-
-        page.goto("/"),
-      ]);
-      await createBranch(page, "test456");
       await page.goto("/branches/test456?branch=test123");
 
       await page.getByRole("button", { name: "Delete" }).click();
 
-      const modalDelete = await page.getByTestId("modal-delete");
+      const modalDelete = page.getByTestId("modal-delete");
       await expect(modalDelete.getByRole("heading", { name: "Delete" })).toBeVisible();
       await expect(
         modalDelete.getByText("Are you sure you want to remove the branch `test456`?")
