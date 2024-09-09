@@ -5,6 +5,7 @@ from infrahub import config
 from ..app import InfrahubGraphQLApp
 from ..auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
 from ..auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
+from ..auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from ..auth.query_permission_checker.default_checker import DefaultGraphQLPermissionChecker
 from ..auth.query_permission_checker.read_only_checker import ReadOnlyGraphQLPermissionChecker
 from ..auth.query_permission_checker.read_write_checker import ReadWriteGraphQLPermissionChecker
@@ -17,6 +18,7 @@ def get_anonymous_access_setting() -> bool:
 def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
     return GraphQLQueryPermissionChecker(
         [
+            DefaultBranchPermissionChecker(),
             ReadWriteGraphQLPermissionChecker(),
             ReadOnlyGraphQLPermissionChecker(),
             AnonymousGraphQLPermissionChecker(get_anonymous_access_setting),
