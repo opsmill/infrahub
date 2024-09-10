@@ -111,7 +111,7 @@ INTERFACE_UPDATE = """
 """
 
 INTERFACE_CREATE = """
-    mutation($device: String!, $intf_name: String!, $description: String!, $speed: Int!, $role: String!, $status: String!) {
+    mutation($device: String!, $intf_name: String!, $description: String!, $speed: BigInt!, $role: String!, $status: String!) {
         InfraInterfaceL3Create(data: {
             device: { id: $device },
             name: { value: $intf_name },
