@@ -14,6 +14,7 @@ async def update(message: messages.RequestDiffUpdate, service: InfrahubServices)
     diff_branch = await registry.get_branch(db=service.database, branch=message.branch_name)
 
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=diff_branch)
+
     await diff_coordinator.run_update(
         base_branch=base_branch,
         diff_branch=diff_branch,
@@ -21,3 +22,12 @@ async def update(message: messages.RequestDiffUpdate, service: InfrahubServices)
         to_time=message.to_time,
         name=message.name,
     )
+
+
+async def refresh(message: messages.RequestDiffRefresh, service: InfrahubServices) -> None:
+    component_registry = get_component_registry()
+    base_branch = await registry.get_branch(db=service.database, branch=registry.default_branch)
+    diff_branch = await registry.get_branch(db=service.database, branch=message.branch_name)
+
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=diff_branch)
+    await diff_coordinator.recalculate(base_branch=base_branch, diff_branch=diff_branch, diff_id=message.diff_id)
