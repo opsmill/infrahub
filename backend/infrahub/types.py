@@ -227,11 +227,11 @@ class Dropdown(InfrahubDataType):
 
 class Number(InfrahubDataType):
     label: str = "Number"
-    graphql = graphene.Int
+    graphql = graphene.BigInt
     graphql_query = "NumberAttributeType"
     graphql_create = "NumberAttributeCreate"
     graphql_update = "NumberAttributeUpdate"
-    graphql_filter = graphene.Int
+    graphql_filter = graphene.BigInt
     infrahub = "Integer"
 
 

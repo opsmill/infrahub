@@ -909,7 +909,7 @@ async def test_create_person_not_valid(db: InfrahubDatabase, default_branch, car
     )
 
     assert len(result.errors) == 1
-    assert "Int cannot represent non-integer value" in result.errors[0].message
+    assert result.errors[0].message == "Expected value of type 'BigInt', found \"182\"."
 
 
 async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_branch, car_person_schema):
