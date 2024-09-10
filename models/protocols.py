@@ -4,40 +4,31 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from infrahub_sdk.protocols import CoreNode, BuiltinIPAddress, BuiltinIPAddressSync, BuiltinIPNamespace, BuiltinIPNamespaceSync, BuiltinIPPrefix, BuiltinIPPrefixSync, BuiltinTag, BuiltinTagSync, CoreAccount, CoreAccountSync, CoreArtifact, CoreArtifactCheck, CoreArtifactCheckSync, CoreArtifactDefinition, CoreArtifactDefinitionSync, CoreArtifactSync, CoreArtifactTarget, CoreArtifactTargetSync, CoreArtifactThread, CoreArtifactThreadSync, CoreArtifactValidator, CoreArtifactValidatorSync, CoreChangeComment, CoreChangeCommentSync, CoreChangeThread, CoreChangeThreadSync, CoreCheck, CoreCheckDefinition, CoreCheckDefinitionSync, CoreCheckSync, CoreComment, CoreCommentSync, CoreCredential, CoreCredentialSync, CoreCustomWebhook, CoreCustomWebhookSync, CoreDataCheck, CoreDataCheckSync, CoreDataValidator, CoreDataValidatorSync, CoreFileCheck, CoreFileCheckSync, CoreFileThread, CoreFileThreadSync, CoreGeneratorCheck, CoreGeneratorCheckSync, CoreGeneratorDefinition, CoreGeneratorDefinitionSync, CoreGeneratorGroup, CoreGeneratorGroupSync, CoreGeneratorInstance, CoreGeneratorInstanceSync, CoreGeneratorValidator, CoreGeneratorValidatorSync, CoreGenericAccount, CoreGenericAccountSync, CoreGenericRepository, CoreGenericRepositorySync, CoreGraphQLQuery, CoreGraphQLQueryGroup, CoreGraphQLQueryGroupSync, CoreGraphQLQuerySync, CoreGroup, CoreGroupSync, CoreIPAddressPool, CoreIPAddressPoolSync, CoreIPPrefixPool, CoreIPPrefixPoolSync, CoreNodeSync, CoreNumberPool, CoreNumberPoolSync, CoreObjectThread, CoreObjectThreadSync, CorePasswordCredential, CorePasswordCredentialSync, CoreProfile, CoreProfileSync, CoreProposedChange, CoreProposedChangeSync, CoreReadOnlyRepository, CoreReadOnlyRepositorySync, CoreRepository, CoreRepositorySync, CoreRepositoryValidator, CoreRepositoryValidatorSync, CoreResourcePool, CoreResourcePoolSync, CoreSchemaCheck, CoreSchemaCheckSync, CoreSchemaValidator, CoreSchemaValidatorSync, CoreStandardCheck, CoreStandardCheckSync, CoreStandardGroup, CoreStandardGroupSync, CoreStandardWebhook, CoreStandardWebhookSync, CoreTaskTarget, CoreTaskTargetSync, CoreThread, CoreThreadComment, CoreThreadCommentSync, CoreThreadSync, CoreTransformJinja2, CoreTransformJinja2Sync, CoreTransformPython, CoreTransformPythonSync, CoreTransformation, CoreTransformationSync, CoreUserValidator, CoreUserValidatorSync, CoreValidator, CoreValidatorSync, CoreWebhook, CoreWebhookSync, InternalAccountToken, InternalAccountTokenSync, InternalRefreshToken, InternalRefreshTokenSync, IpamNamespace, IpamNamespaceSync, LineageOwner, LineageOwnerSync, LineageSource, LineageSourceSync
+from infrahub_sdk.protocols import (
+    BuiltinIPAddress,
+    BuiltinIPPrefix,
+    CoreArtifactTarget,
+    CoreNode,
+)
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import RelatedNode, RelationshipManager
     from infrahub_sdk.protocols_base import (
-        String,
-        StringOptional,
-        Integer,
-        IntegerOptional,
         Boolean,
-        BooleanOptional,
-        DateTime,
-        DateTimeOptional,
         Dropdown,
         DropdownOptional,
-        HashedPassword,
-        HashedPasswordOptional,
-        IPHost,
-        IPHostOptional,
-        IPNetwork,
-        IPNetworkOptional,
-        JSONAttribute,
-        JSONAttributeOptional,
-        ListAttribute,
-        ListAttributeOptional,
-        URL,
-        URLOptional,
+        Integer,
+        IntegerOptional,
+        String,
+        StringOptional,
     )
 
 
 class InfraEndpoint(CoreNode):
     connected_endpoint: RelatedNode
+
 
 class OrganizationGeneric(CoreNode):
     name: String
@@ -45,9 +36,11 @@ class OrganizationGeneric(CoreNode):
     tags: RelationshipManager
     asn: RelationshipManager
 
+
 class LocationGeneric(CoreNode):
     name: String
     description: StringOptional
+
 
 class InfraInterface(CoreNode):
     name: String
@@ -60,19 +53,21 @@ class InfraInterface(CoreNode):
     device: RelatedNode
     tags: RelationshipManager
 
+
 class InfraLagInterface(CoreNode):
     lacp: String
     minimum_links: Integer
     max_bundle: IntegerOptional
     mlag: RelatedNode
 
+
 class InfraMlagInterface(CoreNode):
     mlag_id: Integer
     mlag_domain: RelatedNode
 
+
 class InfraService(CoreNode):
     name: String
-
 
 
 class InfraAutonomousSystem(CoreNode):
@@ -81,6 +76,7 @@ class InfraAutonomousSystem(CoreNode):
     description: StringOptional
     organization: RelatedNode
 
+
 class InfraBGPPeerGroup(CoreNode):
     name: String
     description: StringOptional
@@ -88,6 +84,7 @@ class InfraBGPPeerGroup(CoreNode):
     export_policies: StringOptional
     local_as: RelatedNode
     remote_as: RelatedNode
+
 
 class InfraBGPSession(CoreArtifactTarget):
     type: String
@@ -104,12 +101,14 @@ class InfraBGPSession(CoreArtifactTarget):
     peer_group: RelatedNode
     peer_session: RelatedNode
 
+
 class InfraBackBoneService(InfraService):
     circuit_id: String
     internal_circuit_id: String
     provider: RelatedNode
     site_a: RelatedNode
     site_b: RelatedNode
+
 
 class InfraCircuit(CoreNode):
     circuit_id: String
@@ -121,16 +120,20 @@ class InfraCircuit(CoreNode):
     endpoints: RelationshipManager
     bgp_sessions: RelationshipManager
 
+
 class InfraCircuitEndpoint(InfraEndpoint):
     description: StringOptional
     site: RelatedNode
     circuit: RelatedNode
 
+
 class LocationContinent(LocationGeneric):
     pass
 
+
 class LocationCountry(LocationGeneric):
     pass
+
 
 class InfraDevice(CoreArtifactTarget):
     name: String
@@ -146,11 +149,14 @@ class InfraDevice(CoreArtifactTarget):
     platform: RelatedNode
     mlag_domain: RelatedNode
 
+
 class IpamIPAddress(BuiltinIPAddress):
     interface: RelatedNode
 
+
 class IpamIPPrefix(BuiltinIPPrefix):
     pass
+
 
 class InfraInterfaceL2(InfraInterface, InfraEndpoint, CoreArtifactTarget):
     l2_mode: String
@@ -160,11 +166,13 @@ class InfraInterfaceL2(InfraInterface, InfraEndpoint, CoreArtifactTarget):
     untagged_vlan: RelatedNode
     tagged_vlan: RelationshipManager
 
+
 class InfraInterfaceL3(InfraInterface, InfraEndpoint, CoreArtifactTarget):
     lacp_rate: String
     lacp_priority: Integer
     ip_addresses: RelationshipManager
     lag: RelatedNode
+
 
 class InfraLagInterfaceL2(InfraInterface, InfraLagInterface, CoreArtifactTarget):
     l2_mode: String
@@ -172,12 +180,15 @@ class InfraLagInterfaceL2(InfraInterface, InfraLagInterface, CoreArtifactTarget)
     untagged_vlan: RelatedNode
     tagged_vlan: RelationshipManager
 
+
 class InfraLagInterfaceL3(InfraInterface, InfraLagInterface, CoreArtifactTarget):
     members: RelationshipManager
     ip_addresses: RelationshipManager
 
+
 class OrganizationManufacturer(OrganizationGeneric):
     platform: RelationshipManager
+
 
 class InfraMlagDomain(CoreNode):
     name: String
@@ -185,11 +196,14 @@ class InfraMlagDomain(CoreNode):
     devices: RelationshipManager
     peer_interfaces: RelationshipManager
 
+
 class InfraMlagInterfaceL2(InfraMlagInterface):
     members: RelationshipManager
 
+
 class InfraMlagInterfaceL3(InfraMlagInterface):
     members: RelationshipManager
+
 
 class InfraPlatform(CoreNode):
     name: String
@@ -200,9 +214,11 @@ class InfraPlatform(CoreNode):
     ansible_network_os: StringOptional
     devices: RelationshipManager
 
+
 class OrganizationProvider(OrganizationGeneric):
     location: RelationshipManager
     circuit: RelationshipManager
+
 
 class LocationRack(LocationGeneric):
     name: String
@@ -216,6 +232,7 @@ class LocationRack(LocationGeneric):
     site: RelatedNode
     tags: RelationshipManager
 
+
 class LocationSite(LocationGeneric):
     city: StringOptional
     address: StringOptional
@@ -225,9 +242,11 @@ class LocationSite(LocationGeneric):
     circuit_endpoints: RelationshipManager
     tags: RelationshipManager
 
+
 class OrganizationTenant(OrganizationGeneric):
     location: RelationshipManager
     circuit: RelationshipManager
+
 
 class InfraVLAN(CoreNode):
     name: String
@@ -237,5 +256,3 @@ class InfraVLAN(CoreNode):
     role: Dropdown
     site: RelatedNode
     gateway: RelatedNode
-
-
