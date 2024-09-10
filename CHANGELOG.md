@@ -11,6 +11,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [0.16.0](https://github.com/opsmill/infrahub/tree/v0.15.3) - 2024-09-10
+
+### Fixed
+
+- Do not allow '/' character in repository name to avoid sync failure. ([#4279](https://github.com/opsmill/infrahub/pull/4279))
+
+
 ## [0.15.3](https://github.com/opsmill/infrahub/tree/v0.15.3) - 2024-08-13
 
 ### Added
