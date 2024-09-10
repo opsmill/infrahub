@@ -295,10 +295,10 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         with pytest.raises(
             ValidationError, match=re.escape("repo/name must be conform with the regex: '^[^/]*$' at name")
         ):
-            await repo.new(db=db, name="repo/name", location="dummy", username="dummy", password="dummy")
+            await repo.new(db=db, name="repo/name", location="dummy")
 
         repo = await Node.init(schema="CoreReadOnlyRepository", db=db)
         with pytest.raises(
             ValidationError, match=re.escape("repo/name must be conform with the regex: '^[^/]*$' at name")
         ):
-            await repo.new(db=db, name="repo/name", location="dummy", username="dummy", password="dummy")
+            await repo.new(db=db, name="repo/name", location="dummy")
