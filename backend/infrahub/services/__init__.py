@@ -102,6 +102,7 @@ class InfrahubServices:
         await self.message_bus.initialize(service=self)
         await self.cache.initialize(service=self)
         await self.scheduler.initialize(service=self)
+        await self.workflow.initialize(service=self)
 
     async def shutdown(self) -> None:
         """Initialize the Services"""

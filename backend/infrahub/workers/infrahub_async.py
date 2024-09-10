@@ -22,6 +22,8 @@ from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):
@@ -69,6 +71,12 @@ class InfrahubWorkerAsync(BaseWorker):
 
         database = InfrahubDatabase(driver=await get_db(retry=1))
 
+        workflow = config.OVERRIDE.workflow or (
+            WorkflowWorkerExecution()
+            if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
+            else WorkflowLocalExecution()
+        )
+
         message_bus = config.OVERRIDE.message_bus or (
             NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
         )
@@ -81,6 +89,7 @@ class InfrahubWorkerAsync(BaseWorker):
             client=client,
             database=database,
             message_bus=message_bus,
+            workflow=workflow,
             component_type=ComponentType.GIT_AGENT,
         )
         services.service = service

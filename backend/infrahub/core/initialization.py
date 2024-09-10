@@ -2,10 +2,6 @@ import importlib
 from typing import Optional
 from uuid import uuid4
 
-from prefect.client.orchestration import get_client
-from prefect.client.schemas.actions import WorkPoolCreate
-from prefect.exceptions import ObjectAlreadyExists
-
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -32,7 +28,6 @@ from infrahub.log import get_logger
 from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
 from infrahub.utils import format_label
-from infrahub.workflows.catalogue import worker_pools, workflows
 
 log = get_logger()
 
@@ -115,26 +110,6 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.permission_backends = initialize_permission_backends()
 
 
-async def initialize_tasks() -> None:
-    async with get_client(sync_client=False) as client:
-        for worker in worker_pools:
-            wp = WorkPoolCreate(
-                name=worker.name,
-                type=worker.worker_type,
-                description=worker.description,
-            )
-            try:
-                await client.create_work_pool(work_pool=wp)
-                log.info(f"work pool {worker} created successfully ... ")
-            except ObjectAlreadyExists:
-                log.info(f"work pool {worker} already present ")
-
-        # Create deployment
-        for workflow in workflows:
-            flow_id = await client.create_flow_from_name(workflow.name)
-            await client.create_deployment(flow_id=flow_id, **workflow.to_deployment())
-
-
 async def initialization(db: InfrahubDatabase) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
@@ -155,8 +130,6 @@ async def initialization(db: InfrahubDatabase) -> None:
             await db.manager.index.add()
         else:
             log.warning("The database index manager hasn't been initialized.")
-
-        await initialize_tasks()
 
     # ---------------------------------------------------
     # Load all schema in the database into the registry
