@@ -11,6 +11,7 @@ from typing import (
     Any,
     Callable,
     Coroutine,
+    Literal,
     MutableMapping,
     Optional,
     TypedDict,
@@ -47,6 +48,7 @@ from infrahub_sdk.node import (
     InfrahubNodeSync,
 )
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
+from infrahub_sdk.protocols_base import CoreNode
 from infrahub_sdk.queries import get_commit_update_mutation
 from infrahub_sdk.query_groups import InfrahubGroupContext, InfrahubGroupContextSync
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
@@ -58,9 +60,10 @@ from infrahub_sdk.utils import decode_json, is_valid_uuid
 if TYPE_CHECKING:
     from types import TracebackType
 
+
 # pylint: disable=redefined-builtin  disable=too-many-lines
 
-SchemaType = TypeVar("SchemaType")
+SchemaType = TypeVar("SchemaType", bound=CoreNode)
 
 
 class NodeDiff(ExtensionTypedDict):
@@ -373,6 +376,7 @@ class InfrahubClient(BaseClient):
         at: Optional[Timestamp] = ...,
         branch: Optional[str] = ...,
         id: Optional[str] = ...,
+        hfid: Optional[list[str]] = ...,
         include: Optional[list[str]] = ...,
         exclude: Optional[list[str]] = ...,
         populate_store: bool = ...,
@@ -388,6 +392,7 @@ class InfrahubClient(BaseClient):
         at: Optional[Timestamp] = ...,
         branch: Optional[str] = ...,
         id: Optional[str] = ...,
+        hfid: Optional[list[str]] = ...,
         include: Optional[list[str]] = ...,
         exclude: Optional[list[str]] = ...,
         populate_store: bool = ...,
@@ -999,7 +1004,7 @@ class InfrahubClient(BaseClient):
 
     async def allocate_next_ip_address(
         self,
-        resource_pool: InfrahubNode,
+        resource_pool: CoreNode,
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
@@ -1008,7 +1013,7 @@ class InfrahubClient(BaseClient):
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Optional[InfrahubNode]:
+    ) -> Optional[CoreNode]:
         """Allocate a new IP address by using the provided resource pool.
 
         Args:
@@ -1050,9 +1055,106 @@ class InfrahubClient(BaseClient):
             return await self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
         return None
 
+    @overload
     async def allocate_next_ip_prefix(
         self,
-        resource_pool: InfrahubNode,
+        resource_pool: CoreNode,
+        kind: type[SchemaType],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[True] = True,
+    ) -> SchemaType: ...
+
+    @overload
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNode,
+        kind: type[SchemaType],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[False] = False,
+    ) -> Optional[SchemaType]: ...
+
+    @overload
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNode,
+        kind: type[SchemaType],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: bool = ...,
+    ) -> SchemaType: ...
+
+    @overload
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNode,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[True] = True,
+    ) -> CoreNode: ...
+
+    @overload
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNode,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[False] = False,
+    ) -> Optional[CoreNode]: ...
+
+    @overload
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNode,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: bool = ...,
+    ) -> Optional[CoreNode]: ...
+
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNode,
+        kind: Optional[type[SchemaType]] = None,  # pylint: disable=unused-argument
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
@@ -1062,20 +1164,20 @@ class InfrahubClient(BaseClient):
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Optional[InfrahubNode]:
+    ) -> Optional[Union[CoreNode, SchemaType]]:
         """Allocate a new IP prefix by using the provided resource pool.
 
         Args:
-            resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
-            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
-            prefix_length (int, optional): Length of the prefix to allocate.
-            member_type (str, optional): Member type of the prefix to allocate.
-            prefix_type (str, optional): Kind of the prefix to allocate.
-            data (dict, optional): A key/value map to use to set attributes values on the allocated prefix.
-            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
-            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
-            tracker (str, optional): The offset for pagination.
-            raise_for_error (bool, optional): The limit for pagination.
+            resource_pool: Node corresponding to the pool to allocate resources from.
+            identifier: Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            prefix_length: Length of the prefix to allocate.
+            member_type: Member type of the prefix to allocate.
+            prefix_type: Kind of the prefix to allocate.
+            data: A key/value map to use to set attributes values on the allocated prefix.
+            branch: Name of the branch to allocate from. Defaults to default_branch.
+            timeout: Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker: The offset for pagination.
+            raise_for_error: The limit for pagination.
         Returns:
             InfrahubNode: Node corresponding to the allocated resource.
         """

@@ -31,7 +31,7 @@ class NodeStoreBase:
         self._store: dict[str, dict] = defaultdict(dict)
         self._store_by_hfid: dict[str, Any] = defaultdict(dict)
 
-    def _set(self, node: Union[InfrahubNode, InfrahubNodeSync], key: Optional[str] = None) -> None:
+    def _set(self, node: Union[InfrahubNode, InfrahubNodeSync, SchemaType], key: Optional[str] = None) -> None:
         hfid = node.get_human_friendly_id_as_string(include_kind=True)
 
         if not key and not hfid:
@@ -120,7 +120,7 @@ class NodeStore(NodeStoreBase):
     def get_by_hfid(self, key: str, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
         return self._get_by_hfid(key=key, raise_when_missing=raise_when_missing)
 
-    def set(self, node: InfrahubNode, key: Optional[str] = None) -> None:
+    def set(self, node: Any, key: Optional[str] = None) -> None:
         return self._set(node=node, key=key)
 
 

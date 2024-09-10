@@ -86,4 +86,27 @@ class {{ node.namespace + node.name }}({{ node.inherit_from | join(", ") or "Cor
     {% endif %}
 
 {% endfor %}
+
+{% for node in profiles %}
+class {{ node.namespace + node.name }}({{ node.inherit_from | join(", ") or "CoreNode" }}):
+    {% if not node.attributes|default([]) and not node.relationships|default([]) %}
+    pass
+    {% endif %}
+    {% for attribute in node.attributes|default([]) %}
+    {{ attribute | render_attribute }}
+    {% endfor %}
+    {% for relationship in node.relationships|default([]) %}
+    {{ relationship | render_relationship(sync) }}
+    {% endfor %}
+    {% if node.hierarchical | default(false) %}
+    {% if sync %}
+    parent: RelatedNodeSync
+    children: RelationshipManagerSync
+    {% else %}
+    parent: RelatedNode
+    children: RelationshipManager
+    {% endif %}
+    {% endif %}
+
+{% endfor %}
 """

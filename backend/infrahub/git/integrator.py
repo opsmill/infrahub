@@ -16,6 +16,16 @@ from infrahub_sdk import (
     InfrahubRepositoryConfig,
     ValidationError,
 )
+from infrahub_sdk.protocols import (
+    CoreArtifact,
+    CoreArtifactDefinition,
+    CoreCheckDefinition,
+    CoreGeneratorDefinition,
+    CoreGraphQLQuery,
+    CoreTransformation,
+    CoreTransformJinja2,
+    CoreTransformPython,
+)
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
     InfrahubGeneratorDefinitionConfig,
@@ -191,7 +201,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         transforms_in_graph = {
             transform.name.value: transform
             for transform in await self.sdk.filters(
-                kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name, repository__ids=[str(self.id)]
+                kind=CoreTransformJinja2, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -256,18 +266,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             )
             await transforms_in_graph[transform_name].delete()
 
-    async def create_jinja2_transform(self, branch_name: str, data: InfrahubRepositoryJinja2) -> InfrahubNode:
+    async def create_jinja2_transform(self, branch_name: str, data: InfrahubRepositoryJinja2) -> CoreTransformJinja2:
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
         create_payload = self.sdk.schema.generate_payload_create(
             schema=schema, data=data.payload, source=self.id, is_protected=True
         )
-        obj = await self.sdk.create(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreTransformJinja2, branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
     @classmethod
     async def compare_jinja2_transform(
-        cls, existing_transform: InfrahubNode, local_transform: InfrahubRepositoryJinja2
+        cls, existing_transform: CoreTransformJinja2, local_transform: InfrahubRepositoryJinja2
     ) -> bool:
         # pylint: disable=no-member
         if (
@@ -280,7 +290,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         return True
 
     async def update_jinja2_transform(
-        self, existing_transform: InfrahubNode, local_transform: InfrahubRepositoryJinja2
+        self, existing_transform: CoreTransformJinja2, local_transform: InfrahubRepositoryJinja2
     ) -> None:
         # pylint: disable=no-member
         if existing_transform.description.value != local_transform.description:
@@ -303,7 +313,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         artifact_defs_in_graph = {
             artdef.name.value: artdef
-            for artdef in await self.sdk.filters(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name)
+            for artdef in await self.sdk.filters(kind=CoreArtifactDefinition, branch=branch_name)
         }
 
         local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
@@ -364,7 +374,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     @classmethod
     async def compare_artifact_definition(
         cls,
-        existing_artifact_definition: InfrahubNode,
+        existing_artifact_definition: CoreArtifactDefinition,
         local_artifact_definition: InfrahubRepositoryArtifactDefinitionConfig,
     ) -> bool:
         # pylint: disable=no-member
@@ -379,7 +389,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
     async def update_artifact_definition(
         self,
-        existing_artifact_definition: InfrahubNode,
+        existing_artifact_definition: CoreArtifactDefinition,
         local_artifact_definition: InfrahubRepositoryArtifactDefinitionConfig,
     ) -> None:
         # pylint: disable=no-member
@@ -537,7 +547,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         queries_in_graph = {
             query.name.value: query
             for query in await self.sdk.filters(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, repository__ids=[str(self.id)]
+                kind=CoreGraphQLQuery, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -578,7 +588,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             )
             await graph_query.delete()
 
-    async def create_graphql_query(self, branch_name: str, name: str, query_string: str) -> InfrahubNode:
+    async def create_graphql_query(self, branch_name: str, name: str, query_string: str) -> CoreGraphQLQuery:
         data = {"name": name, "query": query_string, "repository": self.id}
 
         schema = await self.sdk.schema.get(kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name)
@@ -588,7 +598,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             source=self.id,
             is_protected=True,
         )
-        obj = await self.sdk.create(kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreGraphQLQuery, branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
@@ -633,7 +643,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         check_definition_in_graph = {
             check.name.value: check
             for check in await self.sdk.filters(
-                kind=InfrahubKind.CHECKDEFINITION, branch=branch_name, repository__ids=[str(self.id)]
+                kind=CoreCheckDefinition, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -701,7 +711,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         generator_definition_in_graph = {
             generator.name.value: generator
             for generator in await self.sdk.filters(
-                kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name, repository__ids=[str(self.id)]
+                kind=CoreGeneratorDefinition, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -748,7 +758,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             await generator_definition_in_graph[generator_name].delete()
 
     async def _generator_requires_update(
-        self, generator: InfrahubGeneratorDefinitionConfig, existing_generator: InfrahubNode, branch_name: str
+        self,
+        generator: InfrahubGeneratorDefinitionConfig,
+        existing_generator: CoreGeneratorDefinition,
+        branch_name: str,
     ) -> bool:
         graphql_queries = await self.sdk.filters(
             kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, name__value=generator.query, populate_store=True
@@ -957,7 +970,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     async def _update_generator_definition(
         self,
         generator: InfrahubGeneratorDefinitionConfig,
-        existing_generator: InfrahubNode,
+        existing_generator: CoreGeneratorDefinition,
     ) -> None:
         if existing_generator.query.id != generator.query:
             existing_generator.query = {"id": generator.query, "source": str(self.id), "is_protected": True}
@@ -979,7 +992,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         await existing_generator.save()
 
-    async def create_python_check_definition(self, branch_name: str, check: CheckDefinitionInformation) -> InfrahubNode:
+    async def create_python_check_definition(
+        self, branch_name: str, check: CheckDefinitionInformation
+    ) -> CoreCheckDefinition:
         data = {
             "name": check.name,
             "repository": check.repository,
@@ -1001,7 +1016,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             source=self.id,
             is_protected=True,
         )
-        obj = await self.sdk.create(kind=InfrahubKind.CHECKDEFINITION, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreCheckDefinition, branch=branch_name, **create_payload)
         await obj.save()
 
         return obj
@@ -1009,7 +1024,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     async def update_python_check_definition(
         self,
         check: CheckDefinitionInformation,
-        existing_check: InfrahubNode,
+        existing_check: CoreCheckDefinition,
     ) -> None:
         if existing_check.query.id != check.query:
             existing_check.query = {"id": check.query, "source": str(self.id), "is_protected": True}
@@ -1027,7 +1042,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
     @classmethod
     async def compare_python_check_definition(
-        cls, check: CheckDefinitionInformation, existing_check: InfrahubNode
+        cls, check: CheckDefinitionInformation, existing_check: CoreCheckDefinition
     ) -> bool:
         """Compare an existing Python Check Object with a Check Class
         and identify if we need to update the object in the database."""
@@ -1042,7 +1057,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             return False
         return True
 
-    async def create_python_transform(self, branch_name: str, transform: TransformPythonInformation) -> InfrahubNode:
+    async def create_python_transform(
+        self, branch_name: str, transform: TransformPythonInformation
+    ) -> CoreTransformPython:
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name)
         data = {
             "name": transform.name,
@@ -1058,12 +1075,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             source=self.id,
             is_protected=True,
         )
-        obj = await self.sdk.create(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreTransformPython, branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
     async def update_python_transform(
-        self, existing_transform: InfrahubNode, local_transform: TransformPythonInformation
+        self, existing_transform: CoreTransformPython, local_transform: TransformPythonInformation
     ) -> None:
         if existing_transform.query.id != local_transform.query:
             existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
@@ -1078,7 +1095,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
     @classmethod
     async def compare_python_transform(
-        cls, existing_transform: InfrahubNode, local_transform: TransformPythonInformation
+        cls, existing_transform: CoreTransformPython, local_transform: TransformPythonInformation
     ) -> bool:
         if (
             existing_transform.query.id != local_transform.query
@@ -1246,11 +1263,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         self,
         branch_name: str,
         commit: str,
-        artifact: InfrahubNode,
+        artifact: CoreArtifact,
         target: InfrahubNode,
-        definition: InfrahubNode,
-        transformation: InfrahubNode,
-        query: InfrahubNode,
+        definition: CoreArtifactDefinition,
+        transformation: CoreTransformation,
+        query: CoreGraphQLQuery,
     ) -> ArtifactGenerateResult:
         variables = target.extract(params=definition.parameters.value)
         response = await self.sdk.query_gql_query(
@@ -1300,7 +1317,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     async def render_artifact(
-        self, artifact: InfrahubNode, message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate]
+        self, artifact: CoreArtifact, message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate]
     ) -> ArtifactGenerateResult:
         response = await self.sdk.query_gql_query(
             name=message.query,

@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Mapping, Optional
 
 import jinja2
 
@@ -9,19 +9,24 @@ from infrahub_sdk.schema import (
     GenericSchema,
     MainSchemaTypes,
     NodeSchema,
+    ProfileSchema,
     RelationshipSchema,
 )
+
 
 class CodeGenerator:
     def __init__(self, schema: dict[str, MainSchemaTypes]):
         self.generics: dict[str, GenericSchema] = {}
         self.nodes: dict[str, NodeSchema] = {}
+        self.profiles: dict[str, ProfileSchema] = {}
 
         for name, schema_type in schema.items():
             if isinstance(schema_type, GenericSchema):
                 self.generics[name] = schema_type
             if isinstance(schema_type, NodeSchema):
                 self.nodes[name] = schema_type
+            if isinstance(schema_type, ProfileSchema):
+                self.profiles[name] = schema_type
 
         self.base_protocols = [
             e
@@ -34,6 +39,9 @@ class CodeGenerator:
 
         self.sorted_generics = self._sort_and_filter_models(self.generics, filters=["CoreNode"] + self.base_protocols)
         self.sorted_nodes = self._sort_and_filter_models(self.nodes, filters=["CoreNode"] + self.base_protocols)
+        self.sorted_profiles = self._sort_and_filter_models(
+            self.profiles, filters=["CoreProfile"] + self.base_protocols
+        )
 
     def render(self, sync: bool = True) -> str:
         jinja2_env = jinja2.Environment(loader=jinja2.BaseLoader(), trim_blocks=True, lstrip_blocks=True)
@@ -43,7 +51,11 @@ class CodeGenerator:
 
         template = jinja2_env.from_string(PROTOCOLS_TEMPLATE)
         return template.render(
-            generics=self.sorted_generics, nodes=self.sorted_nodes, base_protocols=self.base_protocols, sync=sync
+            generics=self.sorted_generics,
+            nodes=self.sorted_nodes,
+            profiles=self.sorted_profiles,
+            base_protocols=self.base_protocols,
+            sync=sync,
         )
 
     @staticmethod
@@ -97,12 +109,12 @@ class CodeGenerator:
 
     @staticmethod
     def _sort_and_filter_models(
-        models: Mapping[str, Union[GenericSchema, NodeSchema]], filters: Optional[list[str]] = None
-    ) -> list[Union[GenericSchema, NodeSchema]]:
+        models: Mapping[str, MainSchemaTypes], filters: Optional[list[str]] = None
+    ) -> list[MainSchemaTypes]:
         if filters is None:
             filters = ["CoreNode"]
 
-        filtered: list[Union[GenericSchema, NodeSchema]] = []
+        filtered: list[MainSchemaTypes] = []
         for name, model in models.items():
             if name in filters:
                 continue

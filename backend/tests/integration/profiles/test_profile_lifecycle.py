@@ -12,6 +12,7 @@ from infrahub.graphql import prepare_graphql_params
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
+# type: ignore[attr-defined]
 
 class TestProfileLifecycle(TestInfrahubApp):
     @pytest.fixture(scope="class")
