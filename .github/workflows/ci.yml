@@ -117,9 +117,13 @@ jobs:
       - name: "Setup environment"
         run: "pip install ruff==0.5.0"
       - name: "Linting: ruff check"
-        run: "ruff check ."
+        run: "ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
-        run: "ruff format --check --diff ."
+        run: "ruff format --check --diff --exclude python_sdk ."
+      - name: "Linting: ruff check [SDK]"
+        run: "ruff check python_sdk --config python_sdk/pyproject.toml"
+      - name: "Linting: ruff format [SDK]"
+        run: "ruff format --check --diff --config python_sdk/pyproject.toml python_sdk"
 
   markdown-lint:
     if: needs.files-changed.outputs.documentation == 'true'
