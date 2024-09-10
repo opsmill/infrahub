@@ -48,7 +48,7 @@ from infrahub_sdk.node import (
     InfrahubNodeSync,
 )
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
-from infrahub_sdk.protocols_base import CoreNode
+from infrahub_sdk.protocols_base import CoreNode, CoreNodeSync
 from infrahub_sdk.queries import get_commit_update_mutation
 from infrahub_sdk.query_groups import InfrahubGroupContext, InfrahubGroupContextSync
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
@@ -64,6 +64,7 @@ if TYPE_CHECKING:
 # pylint: disable=redefined-builtin  disable=too-many-lines
 
 SchemaType = TypeVar("SchemaType", bound=CoreNode)
+SchemaTypeSync = TypeVar("SchemaTypeSync", bound=CoreNodeSync)
 
 
 class NodeDiff(ExtensionTypedDict):
@@ -104,7 +105,7 @@ class ProcessRelationsNodeSync(TypedDict):
     related_nodes: list[InfrahubNodeSync]
 
 
-def get_schema_name(schema: Union[str, type[SchemaType]]) -> str:
+def get_schema_name(schema: Union[type[Union[SchemaType, SchemaTypeSync]], str]) -> str:
     if hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:  # type: ignore[union-attr]
         return schema.__name__  # type: ignore[union-attr]
 
@@ -1297,15 +1298,34 @@ class InfrahubClientSync(BaseClient):
         )
         return cls(address=address, config=config)
 
+    @overload
     def create(
         self,
         kind: str,
+        data: Optional[dict] = ...,
+        branch: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> InfrahubNodeSync: ...
+
+    @overload
+    def create(
+        self,
+        kind: type[SchemaTypeSync],
+        data: Optional[dict] = ...,
+        branch: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> SchemaTypeSync: ...
+
+    def create(
+        self,
+        kind: Union[str, type[SchemaTypeSync]],
         data: Optional[dict] = None,
         branch: Optional[str] = None,
         **kwargs: Any,
-    ) -> InfrahubNodeSync:
+    ) -> Union[InfrahubNodeSync, SchemaTypeSync]:
         branch = branch or self.default_branch
-        schema = self.schema.get(kind=kind, branch=branch)
+        kind_str = get_schema_name(schema=kind)
+        schema = self.schema.get(kind=kind_str, branch=branch)
 
         if not data and not kwargs:
             raise ValueError("Either data or a list of keywords but be provided")
@@ -1404,9 +1424,39 @@ class InfrahubClientSync(BaseClient):
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
+    @overload
+    def all(
+        self,
+        kind: type[SchemaTypeSync],
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        populate_store: bool = ...,
+        offset: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+    ) -> list[SchemaTypeSync]: ...
+
+    @overload
     def all(
         self,
         kind: str,
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        populate_store: bool = ...,
+        offset: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+    ) -> list[InfrahubNodeSync]: ...
+
+    def all(
+        self,
+        kind: Union[str, type[SchemaTypeSync]],
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         populate_store: bool = False,
@@ -1416,7 +1466,7 @@ class InfrahubClientSync(BaseClient):
         exclude: Optional[list[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
-    ) -> list[InfrahubNodeSync]:
+    ) -> Union[list[InfrahubNodeSync], list[SchemaTypeSync]]:
         """Retrieve all nodes of a given kind
 
         Args:
@@ -1476,9 +1526,43 @@ class InfrahubClientSync(BaseClient):
 
         return ProcessRelationsNodeSync(nodes=nodes, related_nodes=related_nodes)
 
+    @overload
+    def filters(
+        self,
+        kind: type[SchemaTypeSync],
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        populate_store: bool = ...,
+        offset: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+        partial_match: bool = ...,
+        **kwargs: Any,
+    ) -> list[SchemaTypeSync]: ...
+
+    @overload
     def filters(
         self,
         kind: str,
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        populate_store: bool = ...,
+        offset: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+        partial_match: bool = ...,
+        **kwargs: Any,
+    ) -> list[InfrahubNodeSync]: ...
+
+    def filters(
+        self,
+        kind: Union[str, type[SchemaTypeSync]],
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         populate_store: bool = False,
@@ -1490,7 +1574,7 @@ class InfrahubClientSync(BaseClient):
         prefetch_relationships: bool = False,
         partial_match: bool = False,
         **kwargs: Any,
-    ) -> list[InfrahubNodeSync]:
+    ) -> Union[list[InfrahubNodeSync], list[SchemaTypeSync]]:
         """Retrieve nodes of a given kind based on provided filters.
 
         Args:
@@ -1510,7 +1594,8 @@ class InfrahubClientSync(BaseClient):
         Returns:
             list[InfrahubNodeSync]: List of Nodes that match the given filters.
         """
-        schema = self.schema.get(kind=kind, branch=branch)
+        kind_str = get_schema_name(schema=kind)
+        schema = self.schema.get(kind=kind_str, branch=branch)
 
         branch = branch or self.default_branch
         if at:
@@ -1572,9 +1657,41 @@ class InfrahubClientSync(BaseClient):
 
         return nodes
 
+    @overload
+    def get(
+        self,
+        kind: type[SchemaTypeSync],
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        id: Optional[str] = ...,
+        hfid: Optional[list[str]] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        populate_store: bool = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+        **kwargs: Any,
+    ) -> SchemaTypeSync: ...
+
+    @overload
     def get(
         self,
         kind: str,
+        at: Optional[Timestamp] = ...,
+        branch: Optional[str] = ...,
+        id: Optional[str] = ...,
+        hfid: Optional[list[str]] = ...,
+        include: Optional[list[str]] = ...,
+        exclude: Optional[list[str]] = ...,
+        populate_store: bool = ...,
+        fragment: bool = ...,
+        prefetch_relationships: bool = ...,
+        **kwargs: Any,
+    ) -> InfrahubNodeSync: ...
+
+    def get(
+        self,
+        kind: Union[str, type[SchemaTypeSync]],
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
@@ -1585,9 +1702,10 @@ class InfrahubClientSync(BaseClient):
         fragment: bool = False,
         prefetch_relationships: bool = False,
         **kwargs: Any,
-    ) -> InfrahubNodeSync:
+    ) -> Union[InfrahubNodeSync, SchemaTypeSync]:
         branch = branch or self.default_branch
-        schema = self.schema.get(kind=kind, branch=branch)
+        kind_str = get_schema_name(schema=kind)
+        schema = self.schema.get(kind=kind_str, branch=branch)
 
         filters: MutableMapping[str, Any] = {}
 
@@ -1619,7 +1737,7 @@ class InfrahubClientSync(BaseClient):
         )
 
         if len(results) == 0:
-            raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
+            raise NodeNotFoundError(branch_name=branch, node_type=kind_str, identifier=filters)
         if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
@@ -1733,7 +1851,7 @@ class InfrahubClientSync(BaseClient):
 
     def allocate_next_ip_address(
         self,
-        resource_pool: InfrahubNodeSync,
+        resource_pool: CoreNodeSync,
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
@@ -1742,7 +1860,7 @@ class InfrahubClientSync(BaseClient):
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Optional[InfrahubNodeSync]:
+    ) -> Optional[CoreNodeSync]:
         """Allocate a new IP address by using the provided resource pool.
 
         Args:
@@ -1780,9 +1898,106 @@ class InfrahubClientSync(BaseClient):
             return self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
         return None
 
+    @overload
     def allocate_next_ip_prefix(
         self,
-        resource_pool: InfrahubNodeSync,
+        resource_pool: CoreNodeSync,
+        kind: type[SchemaTypeSync],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[True] = True,
+    ) -> SchemaTypeSync: ...
+
+    @overload
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: type[SchemaTypeSync],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[False] = False,
+    ) -> Optional[SchemaTypeSync]: ...
+
+    @overload
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: type[SchemaTypeSync],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: bool = ...,
+    ) -> SchemaTypeSync: ...
+
+    @overload
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[True] = True,
+    ) -> CoreNodeSync: ...
+
+    @overload
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[False] = False,
+    ) -> Optional[CoreNodeSync]: ...
+
+    @overload
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        member_type: Optional[str] = ...,
+        prefix_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: bool = ...,
+    ) -> Optional[CoreNodeSync]: ...
+
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: Optional[type[SchemaTypeSync]] = None,  # pylint: disable=unused-argument
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
@@ -1792,7 +2007,7 @@ class InfrahubClientSync(BaseClient):
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Optional[InfrahubNodeSync]:
+    ) -> Optional[Union[CoreNodeSync, SchemaTypeSync]]:
         """Allocate a new IP prefix by using the provided resource pool.
 
         Args:
