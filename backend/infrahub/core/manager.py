@@ -139,7 +139,7 @@ class NodeManager:
         account=...,
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
-    ) -> list[Any]: ...
+    ) -> list[Node]: ...
 
     @overload
     @classmethod
@@ -178,7 +178,7 @@ class NodeManager:
         account=None,
         partial_match: bool = False,
         branch_agnostic: bool = False,
-    ) -> list[Any]:
+    ) -> list[Node] | list[SchemaProtocol]:
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
@@ -489,7 +489,7 @@ class NodeManager:
         branch: Branch | str | None = ...,
         id: str | None = ...,  # pylint: disable=redefined-builtin
         hfid: list[str] | None = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def find_object(
@@ -500,7 +500,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         id: str | None = None,  # pylint: disable=redefined-builtin
         hfid: list[str] | None = None,
-    ) -> Any:
+    ) -> Node | SchemaProtocol:
         if not id and not hfid:
             raise ProcessingError(message="either id or hfid must be provided.")
 
@@ -609,7 +609,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def get_one_by_default_filter(
@@ -626,7 +626,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -739,7 +739,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @overload
     @classmethod
@@ -757,7 +757,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | Any: ...
 
     @classmethod
     async def get_one_by_hfid(
@@ -774,7 +774,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | None | SchemaProtocol:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -861,7 +861,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def get_one_by_id_or_default_filter(
@@ -877,7 +877,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -983,7 +983,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @overload
     @classmethod
@@ -1001,7 +1001,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def get_one(
@@ -1018,7 +1018,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Optional[Any]:
+    ) -> Node | SchemaProtocol | None:
         """Return one node based on its ID."""
         branch = await registry.get_branch(branch=branch, db=db)
 

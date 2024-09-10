@@ -1,6 +1,5 @@
 from typing import Sequence, cast
 
-import infrahub.core.constants.infrahubkind as InfrahubKind
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
 from infrahub.core.diff.model.diff import ObjectConflict
 from infrahub.core.manager import NodeManager
@@ -21,7 +20,7 @@ class ObjectConflictValidatorRecorder:
     async def record_conflicts(self, proposed_change_id: str, conflicts: Sequence[ObjectConflict]) -> list[Node]:  # pylint: disable=too-many-branches
         try:
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-                id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, db=self.db
+                id=proposed_change_id, kind=CoreProposedChange, db=self.db
             )
         except NodeNotFoundError:
             return []

@@ -191,6 +191,7 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 module = "tests.integration.*"
 disallow_untyped_defs = false
+ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.api.diff.diff"

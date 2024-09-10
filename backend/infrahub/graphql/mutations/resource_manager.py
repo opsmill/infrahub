@@ -9,6 +9,7 @@ from typing_extensions import Self
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import PrefixMemberType
+from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
 
@@ -20,7 +21,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
     from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
     from infrahub.database import InfrahubDatabase
 
@@ -119,9 +119,9 @@ class IPAddressPoolGetResource(Mutation):
     ) -> Self:
         context: GraphqlContext = info.context
 
-        obj: CoreIPAddressPool = await registry.manager.find_object(
+        obj = await registry.manager.find_object(
             db=context.db,
-            kind=InfrahubKind.IPADDRESSPOOL,
+            kind=CoreIPAddressPool,
             id=data.get("id"),
             hfid=data.get("hfid"),
             branch=context.branch,

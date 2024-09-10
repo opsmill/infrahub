@@ -847,6 +847,14 @@ class RelationshipManager:
         peer_type: Literal[None] = None,
     ) -> Mapping[str, Node]: ...
 
+    @overload
+    async def get_peers(
+        self,
+        db: InfrahubDatabase,
+        branch_agnostic: bool = False,
+        peer_type: Literal[None] = None,
+    ) -> Mapping[str, Node]: ...
+
     async def get_peers(
         self,
         db: InfrahubDatabase,

@@ -34,8 +34,8 @@ class BuiltinIPPrefix(Node):
                     retrieved = await NodeManager.get_one(
                         db=db, branch=self._branch, id=self.id, fields={"member_type": None, "prefix": None}
                     )
-                    self.member_type = retrieved.member_type  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
-                    self.prefix = retrieved.prefix  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
+                    self.member_type = retrieved.member_type  # type: ignore[attr-defined,union-attr]  # pylint: disable=attribute-defined-outside-init
+                    self.prefix = retrieved.prefix  # type: ignore[attr-defined,union-attr]  # pylint: disable=attribute-defined-outside-init
                 utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self])
                 utilization = await utilization_getter.get_use_percentage(
                     ip_prefixes=[self], branch_names=[self._branch.name]
@@ -51,6 +51,6 @@ class BuiltinIPPrefix(Node):
             retrieved = await NodeManager.get_one(
                 db=db, branch=self._branch, id=self.id, fields={"member_type": None, "prefix": None}
             )
-            self.member_type = retrieved.member_type  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
-            self.prefix = retrieved.prefix  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
+            self.member_type = retrieved.member_type  # type: ignore[attr-defined,union-attr]  # pylint: disable=attribute-defined-outside-init
+            self.prefix = retrieved.prefix  # type: ignore[attr-defined,union-attr]  # pylint: disable=attribute-defined-outside-init
         return get_prefix_space(self)

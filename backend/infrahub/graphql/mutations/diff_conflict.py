@@ -4,10 +4,11 @@ from typing import TYPE_CHECKING
 
 from graphene import Boolean, InputField, InputObjectType, Mutation, String
 
-from infrahub.core.constants import BranchConflictKeep, InfrahubKind
+from infrahub.core.constants import BranchConflictKeep
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreDataCheck
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.enums import ConflictSelection as GraphQlConflictSelection
@@ -51,7 +52,7 @@ class ResolveDiffConflict(Mutation):
         await diff_repo.update_conflict_by_id(conflict_id=data.conflict_id, selection=selection)
 
         core_data_checks = await NodeManager.query(
-            db=context.db, schema=InfrahubKind.DATACHECK, filters={"enriched_conflict_id__value": data.conflict_id}
+            db=context.db, schema=CoreDataCheck, filters={"enriched_conflict_id__value": data.conflict_id}
         )
         if not core_data_checks:
             return cls(ok=True)
@@ -62,6 +63,6 @@ class ResolveDiffConflict(Mutation):
         else:
             keep_branch = None
         for cdc in core_data_checks:
-            cdc.keep_branch.value = keep_branch
+            cdc.keep_branch.value = keep_branch  # type: ignore[misc]
             await cdc.save(db=context.db)
         return cls(ok=True)

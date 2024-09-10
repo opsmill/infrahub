@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, Int, List, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node, is_valid_uuid
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreNode
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.protocols import CoreNode
     from infrahub.graphql import GraphqlContext
 
 
@@ -43,9 +42,7 @@ async def search_resolver(
     fields = await extract_fields_first_node(info)
 
     if is_valid_uuid(q):
-        matching: Optional[CoreNode] = await NodeManager.get_one(
-            db=context.db, branch=context.branch, at=context.at, id=q
-        )
+        matching = await NodeManager.get_one(db=context.db, kind=CoreNode, branch=context.branch, at=context.at, id=q)
         if matching:
             result.append(matching)
     else:
@@ -53,7 +50,7 @@ async def search_resolver(
             await NodeManager.query(
                 db=context.db,
                 branch=context.branch,
-                schema=InfrahubKind.NODE,
+                schema=CoreNode,
                 filters={"any__value": q},
                 limit=limit,
                 partial_match=partial_match,

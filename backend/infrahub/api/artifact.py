@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.protocols import CoreArtifactDefinition
+from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.log import get_logger
@@ -36,14 +36,16 @@ async def get_artifact(
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> Response:
-    artifact = await registry.manager.get_one(db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at)
+    artifact = await registry.manager.get_one(
+        db=db, id=artifact_id, kind=CoreArtifact, branch=branch_params.branch, at=branch_params.at
+    )
     if not artifact:
         raise NodeNotFoundError(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
     return Response(
-        content=registry.storage.retrieve(identifier=artifact.storage_id.value),
+        content=registry.storage.retrieve(identifier=str(artifact.storage_id.value)),
         headers={"Content-Type": artifact.content_type.value.value},
     )
 

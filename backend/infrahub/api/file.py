@@ -44,7 +44,7 @@ async def get_file(
         kind=InfrahubKind.GENERICREPOSITORY,
         branch=branch_params.branch,
         at=branch_params.at,
-    )
+    )  # type: ignore[assignment]
 
     commit = commit or repo.commit.value
 

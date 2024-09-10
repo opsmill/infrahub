@@ -9,6 +9,7 @@ from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.constants import TaskConclusion as PyTaskConclusion
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreNode
 from infrahub.core.task import Task, TaskLog
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import retry_db_transaction
@@ -65,7 +66,9 @@ class TaskCreate(Mutation):
         account_id = str(data.created_by) if data.created_by else None
 
         if not (
-            related_node := await NodeManager.get_one(db=context.db, id=str(data.related_node), branch=context.branch)
+            related_node := await NodeManager.get_one(
+                db=context.db, kind=CoreNode, id=str(data.related_node), branch=context.branch
+            )
         ):
             raise NodeNotFoundError(
                 node_type="related_node",
