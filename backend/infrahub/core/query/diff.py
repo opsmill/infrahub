@@ -513,7 +513,6 @@ class DiffAllPathsQuery(DiffQuery):
         kinds_include: Optional[list[str]] = None,
         kinds_exclude: Optional[list[str]] = None,
         branch_support: Optional[list[BranchSupportType]] = None,
-        *args,
         **kwargs,
     ):
         self.base_branch = base_branch
@@ -523,7 +522,7 @@ class DiffAllPathsQuery(DiffQuery):
         self.kinds_exclude = kinds_exclude
         self.branch_support = branch_support or [BranchSupportType.AWARE]
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
     def _get_node_where_clause(self, node_variable_name: str) -> str:
         where_clause_parts = []

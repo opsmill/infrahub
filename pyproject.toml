@@ -588,7 +588,6 @@ max-complexity = 33
     # Review and change the below later                                                              #
     ##################################################################################################
     "ANN001", # Missing type annotation for function argument
-    "ANN002", # Missing type annotation for `*args`
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN202", # Missing return type annotation for private function
     "ANN204", # Missing return type annotation for special method
