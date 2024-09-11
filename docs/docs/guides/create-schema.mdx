@@ -193,7 +193,7 @@ In the Web UI we can now see that the device has a relation to the Ethernet1 int
 
 ## 3. Abstracting nodes into generics
 
-We would like to add another interface `Vlan1` to our device `atl1-edge1`. We could simply add the interface as a `NetworkInterface` node, however this could cause some problems. The `Vlan1` interface is a logical interface, `Ethernet1` on the other hand is a physical interface. While physical interfaces a lot of properties in common with logical interfaces, they also have their differences. A cable can be plugged into a Physical interface, which you cannot do on a logical interface.
+We would like to add another interface `Vlan1` to our device `atl1-edge1`. We could add the interface as a `NetworkInterface` node, however this could cause some problems. The `Vlan1` interface is a logical interface, `Ethernet1` on the other hand is a physical interface. While physical interfaces a lot of properties in common with logical interfaces, they also have their differences. A cable can be plugged into a Physical interface, which you cannot do on a logical interface.
 
 This is a perfect case for us to abstract common attributes/relationships into a generic.
 

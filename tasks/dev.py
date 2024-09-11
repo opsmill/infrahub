@@ -157,9 +157,9 @@ def status(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(optional=["database"])
-def start(context: Context, database: str = INFRAHUB_DATABASE):
+def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False):
     """Start a local instance of Infrahub within docker compose."""
-    start_services(context=context, database=database, namespace=NAMESPACE)
+    start_services(context=context, database=database, namespace=NAMESPACE, wait=wait)
 
 
 @task(optional=["database"])

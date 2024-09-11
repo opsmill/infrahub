@@ -8,6 +8,7 @@ from ..model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRo
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
+from ..query.empty_roots import EnrichedDiffEmptyRootsQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.save_query import EnrichedDiffSaveQuery
@@ -32,6 +33,7 @@ class DiffRepository:
         limit: int | None = None,
         offset: int | None = None,
         tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
         include_empty: bool = False,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
@@ -47,6 +49,7 @@ class DiffRepository:
             limit=final_limit,
             offset=offset,
             tracking_id=tracking_id,
+            diff_id=diff_id,
         )
         await query.execute(db=self.db)
         diff_roots = await self.deserializer.deserialize(
@@ -57,23 +60,31 @@ class DiffRepository:
         return diff_roots
 
     async def get_one(
-        self, tracking_id: TrackingId, diff_branch_name: str, filters: dict | None = None, include_parents: bool = True
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+        filters: dict | None = None,
+        include_parents: bool = True,
     ) -> EnrichedDiffRoot:
         enriched_diffs = await self.get(
             base_branch_name=registry.default_branch,
             diff_branch_names=[diff_branch_name],
             tracking_id=tracking_id,
+            diff_id=diff_id,
             filters=filters,
             include_parents=include_parents,
+            include_empty=True,
         )
+        error_str = f"branch {diff_branch_name}"
+        if tracking_id:
+            error_str += f" with tracking_id {tracking_id.serialize()}"
+        if diff_id:
+            error_str += f" with ID {diff_id}"
         if len(enriched_diffs) == 0:
-            raise ResourceNotFoundError(
-                f"Cannot find diff for branch {diff_branch_name} and tracking_id {tracking_id.serialize()}"
-            )
+            raise ResourceNotFoundError(f"Cannot find diff for {error_str}")
         if len(enriched_diffs) > 1:
-            raise ResourceNotFoundError(
-                f"Multiple diffs for branch {diff_branch_name} and tracking_id {tracking_id.serialize()}"
-            )
+            raise ResourceNotFoundError(f"Multiple diffs for {error_str}")
         return enriched_diffs[0]
 
     async def save(self, enriched_diff: EnrichedDiffRoot) -> None:
@@ -119,6 +130,20 @@ class DiffRepository:
         )
         await query.execute(db=self.db)
         return await query.get_time_ranges()
+
+    async def get_empty_roots(
+        self,
+        diff_branch_names: list[str] | None = None,
+        base_branch_names: list[str] | None = None,
+    ) -> list[EnrichedDiffRoot]:
+        query = await EnrichedDiffEmptyRootsQuery.init(
+            db=self.db, diff_branch_names=diff_branch_names, base_branch_names=base_branch_names
+        )
+        await query.execute(db=self.db)
+        diff_roots = []
+        for neo4j_node in query.get_empty_root_nodes():
+            diff_roots.append(self.deserializer.build_diff_root(root_node=neo4j_node))
+        return diff_roots
 
     async def get_conflict_by_id(self, conflict_id: str) -> EnrichedDiffConflict:
         query = await EnrichedDiffConflictQuery.init(db=self.db, conflict_id=conflict_id)

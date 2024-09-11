@@ -19,7 +19,7 @@ services:
       test: wget http://localhost:7474 || exit 1
       interval: 2s
       timeout: 10s
-      retries: 20
+      retries: 40
       start_period: 3s
     labels:
       infrahub_role: "database"

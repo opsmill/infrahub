@@ -1,4 +1,4 @@
 #!/bin/bash
 
 git pull
-invoke demo.start
+invoke demo.start --wait
