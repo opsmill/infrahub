@@ -4,10 +4,11 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Generator, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, Optional, TypeVar, Union
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
+from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
 
 from infrahub import config
@@ -22,6 +23,8 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+RETURN_TYPE = TypeVar("RETURN_TYPE")
 
 
 def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[QueryResult]:
@@ -224,7 +227,34 @@ class QueryResult:
             return str(item)
         return None
 
+    def get_as_optional_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> Optional[RETURN_TYPE]:
+        """Return a label as a given type.
+
+        For example if an integer is needed the caller would use:
+        .get_as_optional_type(label="name_of_label", return_type=int)
+        """
+        item = self._get(label=label)
+        if item is not None:
+            return return_type(item)
+        return None
+
+    def get_as_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> RETURN_TYPE:
+        """Return a label as a given type.
+
+        For example if an integer is needed the caller would use:
+        .get_as_type(label="name_of_label", return_type=int)
+        """
+        item = self._get(label=label)
+
+        return return_type(item)
+
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
+        entry = self._get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+
+    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode]]:
         entry = self._get(label=label)
         if isinstance(entry, list):
             return entry
@@ -254,6 +284,12 @@ class QueryResult:
         for item in self.data:
             if isinstance(item, Neo4jNode):
                 yield item
+
+    def get_paths(self, label: str) -> Generator[Neo4jPath, None, None]:
+        """Return all nodes."""
+        for path in self.get(label=label):
+            if isinstance(path, Neo4jPath):
+                yield path
 
     def __iter__(self) -> Iterator:
         yield from self.data
@@ -300,6 +336,7 @@ class Query(ABC):
 
     raise_error_if_empty: bool = False
     insert_return: bool = True
+    insert_limit: bool = True
 
     def __init__(
         self,
@@ -401,10 +438,10 @@ class Query(ABC):
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if offset:
+        if offset and self.insert_limit:
             tmp_query_lines.append(f"SKIP {offset}")
 
-        if limit:
+        if limit and self.insert_limit:
             tmp_query_lines.append(f"LIMIT {limit}")
 
         query_str = "\n".join(tmp_query_lines)
@@ -426,8 +463,8 @@ class Query(ABC):
 
         return self.insert_variables_in_query(query=query_str, variables=self.params)
 
-    @staticmethod
-    def insert_variables_in_query(query: str, variables: dict) -> str:
+    @classmethod
+    def insert_variables_in_query(cls, query: str, variables: dict) -> str:
         """Search for all the variables in a Query string and replace each variable with its value."""
 
         def prep_value(v: Any) -> str:
@@ -435,8 +472,16 @@ class Query(ABC):
                 return str(v)
             return f'"{v}"'
 
-        for key, value in variables.items():
+        # Sort the list of variables first to ensure the longest will be processed first
+        vars_list = list(variables.items())
+        vars_list.sort(key=lambda x: len(x[0]), reverse=True)
+        for key, value in vars_list:
             if isinstance(value, dict):
+                # First try to insert individual element of the dict as var
+                sub_vars = {f"{key}.{sub_key}": sub_value for sub_key, sub_value in value.items()}
+                query = cls.insert_variables_in_query(query=query, variables=sub_vars)
+
+                # Then replace the entire object if nothing else was found
                 value_items = [f"{key1}: {prep_value(value1)}" for key1, value1 in value.items()]
                 value_str = "{ " + ", ".join(value_items) + " }"
                 query = query.replace(f"${key}", value_str)

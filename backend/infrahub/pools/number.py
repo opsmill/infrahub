@@ -1,11 +1,16 @@
-from dataclasses import dataclass
-from typing import Optional, Union
+from __future__ import annotations
 
-from infrahub.core.node import Node
-from infrahub.core.protocols import CoreNode
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Optional, Union
+
+from infrahub.core.query.resource_manager import NumberPoolGetAllocated
 from infrahub.core.registry import registry
-from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.core.protocols import CoreNode
+    from infrahub.core.timestamp import Timestamp
+    from infrahub.database import InfrahubDatabase
 
 
 @dataclass
@@ -16,14 +21,12 @@ class UsedNumber:
 
 class NumberUtilizationGetter:
     def __init__(
-        self,
-        db: InfrahubDatabase,
-        pool: CoreNode,
-        at: Optional[Union[Timestamp, str]] = None,
+        self, db: InfrahubDatabase, pool: CoreNode, branch: Branch, at: Optional[Union[Timestamp, str]] = None
     ) -> None:
         self.db = db
         self.at = at
         self.pool = pool
+        self.branch = branch
         self.start_range = int(pool.start_range.value)  # type: ignore[attr-defined]
         self.end_range = int(pool.end_range.value)  # type: ignore[attr-defined]
         self.used: list[UsedNumber] = []
@@ -31,26 +34,20 @@ class NumberUtilizationGetter:
         self.used_branches: set[int] = set()
 
     async def load_data(self) -> None:
-        existing_nodes = await registry.manager.query(
-            db=self.db,
-            schema=self.pool.node.value,  # type: ignore[attr-defined]
-            at=self.at,
-            branch_agnostic=True,
-        )
+        query = await NumberPoolGetAllocated.init(db=self.db, pool=self.pool, branch=self.branch, branch_agnostic=True)
+        await query.execute(db=self.db)
+
         self.used = [
-            UsedNumber(number=getattr(node, self.pool.node_attribute.value).value, branch=node._branch.name)  # type: ignore[attr-defined]
-            for node in existing_nodes
+            UsedNumber(
+                number=result.get_as_type(label="value", return_type=int),
+                branch=result.get_as_type(label="branch", return_type=str),
+            )
+            for result in query.results
+            if result.get_as_optional_type(label="value", return_type=int) is not None
         ]
-        self.used_default_branch = {
-            entry.number
-            for entry in self.used
-            if self.start_range <= entry.number <= self.end_range and entry.branch == registry.default_branch
-        }
-        used_branches = {
-            entry.number
-            for entry in self.used
-            if self.start_range <= entry.number <= self.end_range and entry.branch != registry.default_branch
-        }
+
+        self.used_default_branch = {entry.number for entry in self.used if entry.branch == registry.default_branch}
+        used_branches = {entry.number for entry in self.used if entry.branch != registry.default_branch}
         self.used_branches = used_branches - self.used_default_branch
 
     @property
@@ -68,12 +65,3 @@ class NumberUtilizationGetter:
     @property
     def total_pool_size(self) -> int:
         return self.end_range - self.start_range + 1
-
-
-class NumberUtilizationGettera:
-    def __init__(
-        self, db: InfrahubDatabase, ip_prefixes: list[Node], at: Optional[Union[Timestamp, str]] = None
-    ) -> None:
-        self.db = db
-        self.ip_prefixes = ip_prefixes
-        self.at = at

@@ -5,6 +5,7 @@ import pytest
 from git import Repo
 from infrahub_sdk import UUIDT, Config, InfrahubClient, InfrahubNode
 from infrahub_sdk.branch import BranchData
+from pytest_httpx._httpx_mock import HTTPXMock
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import (
@@ -23,7 +24,6 @@ from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NA
 from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
-    GraphQLQueryInformation,
 )
 from infrahub.git.worktree import Worktree
 from infrahub.utils import find_first_file_in_directory
@@ -100,7 +100,7 @@ async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path)
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
 
-    assert "An error occurred with GitRepository" in str(exc.value)
+    assert f"fatal: repository '{tmp_path}' does not exist" in str(exc.value)
 
 
 async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmp_path):
@@ -378,16 +378,22 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository):
     assert True
 
 
-async def test_sync_new_branch(client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query):
+async def test_sync_new_branch(client, git_repo_03: InfrahubRepository, httpx_mock: HTTPXMock, mock_add_branch01_query):
     repo = git_repo_03
 
     await repo.fetch()
     # Mock update_commit_value query
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
-    response = {"data": {"repository_update": {"ok": True, "object": {"commit": {"value": str(commit)}}}}}
+    commit_response = {"data": {"repository_update": {"ok": True, "object": {"commit": {"value": str(commit)}}}}}
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-repository-update-commit"}
+        method="POST", json=commit_response, match_headers={"X-Infrahub-Tracker": "mutation-repository-update-commit"}
+    )
+    admin_response = {"data": {"CoreGenericRepositoryUpdate": {"ok": True}}}
+    httpx_mock.add_response(
+        method="POST",
+        json=admin_response,
+        match_headers={"X-Infrahub-Tracker": "mutation-repository-update-admin-status"},
     )
 
     repo.client = client
@@ -698,16 +704,6 @@ async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository):
     assert len(yaml_files) == 4
 
 
-async def test_find_graphql_queries(git_repo_10: InfrahubRepository):
-    repo = git_repo_10
-
-    commit = repo.get_commit_value(branch_name="main")
-
-    queries = await repo.find_graphql_queries(commit=commit)
-    assert len(queries) == 5
-    assert isinstance(queries[0], GraphQLQueryInformation)
-
-
 async def test_calculate_diff_between_commits(
     git_repo_01: InfrahubRepository, branch01: BranchData, branch02: BranchData
 ):
@@ -766,6 +762,54 @@ async def test_calculate_diff_between_commits(
     assert changed == ["README.md", "test_files/sports.yml"]
     assert added == ["mynewfile.txt"]
     assert removed == ["pyproject.toml"]
+
+
+async def test_list_all_files(git_repo_01: InfrahubRepository, branch01: BranchData, branch02: BranchData):
+    repo = git_repo_01
+
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
+
+    worktree = repo.get_worktree(identifier=branch01.name)
+    git_repo = repo.get_git_repo_worktree(identifier=branch01.name)
+
+    # Add a file
+    new_file = "mynewfile.txt"
+    Path(os.path.join(worktree.directory, new_file)).write_text("this is a new file\n", encoding="utf-8")
+
+    # Remove a file
+    file_to_remove = "pyproject.toml"
+    os.remove(os.path.join(worktree.directory, file_to_remove))
+
+    git_repo.index.add([new_file])
+    git_repo.index.remove([file_to_remove])
+
+    git_repo.index.commit("Add 1, remove 1")
+
+    commit_branch01 = repo.get_commit_value(branch_name=branch01.name, remote=False)
+    commit_branch02 = repo.get_commit_value(branch_name=branch02.name, remote=False)
+
+    branch01_files = await repo.list_all_files(commit=commit_branch01)
+    branch02_files = await repo.list_all_files(commit=commit_branch02)
+
+    assert branch01_files == [
+        ".gitignore",
+        "README.md",
+        "mynewfile.txt",
+        "poetry.lock",
+        "tasks.py",
+        "test_files/countries.yml",
+        "test_files/sports.yml",
+    ]
+    assert branch02_files == [
+        ".gitignore",
+        "README.md",
+        "poetry.lock",
+        "pyproject.toml",
+        "tasks.py",
+        "test_files/countries.yml",
+        "test_files/sports.yml",
+    ]
 
 
 def test_extract_repo_file_information():

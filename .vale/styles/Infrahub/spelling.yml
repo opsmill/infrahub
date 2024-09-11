@@ -4,4 +4,5 @@ message: "Did you really mean '%s'?"
 level: error
 filters:
   - '[pP]y.*\b'
+  - '\bimport_.*\b'    # New filter to ignore variables starting with 'import_'
 ignore: spelling-exceptions.txt

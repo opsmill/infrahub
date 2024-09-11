@@ -20,6 +20,7 @@ def test_validate_schema_empty():
 
     result = runner.invoke(app=app, args=["schema", str(fixture_file)])
     assert result.exit_code == 1
+    assert "'version' | Field required (missing)" in result.stdout
 
 
 def test_validate_schema_non_valid():

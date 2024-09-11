@@ -17,6 +17,8 @@ from .git_branch_create import GitBranchCreate
 from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_add import GitRepositoryAdd
+from .git_repository_connectivity import GitRepositoryConnectivity
+from .git_repository_importobjects import GitRepositoryImportObjects
 from .git_repository_merge import GitRepositoryMerge
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
 from .git_repository_read_only_pull import GitRepositoryPullReadOnly
@@ -32,6 +34,8 @@ from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifact_generate import RequestArtifactGenerate
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
+from .request_diff_refresh import RequestDiffRefresh
+from .request_diff_update import RequestDiffUpdate
 from .request_generator_run import RequestGeneratorRun
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_generatordefinition_run import RequestGeneratorDefinitionRun
@@ -73,8 +77,10 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
     "git.repository.add": GitRepositoryAdd,
+    "git.repository.connectivity": GitRepositoryConnectivity,
     "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
+    "git.repository.import_objects": GitRepositoryImportObjects,
     "git.repository.pull_read_only": GitRepositoryPullReadOnly,
     "schema.migration.path": SchemaMigrationPath,
     "schema.validator.path": SchemaValidatorPath,
@@ -84,6 +90,8 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.artifact.generate": RequestArtifactGenerate,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
+    "request.diff.update": RequestDiffUpdate,
+    "request.diff.refresh": RequestDiffRefresh,
     "request.generator.run": RequestGeneratorRun,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.generator_definition.run": RequestGeneratorDefinitionRun,

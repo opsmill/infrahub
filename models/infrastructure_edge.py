@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class Account(BaseModel):
     name: str
     password: str
-    type: str
+    account_type: str
     role: str
 
 
@@ -53,6 +53,38 @@ class Device(BaseModel):
         }
 
         return INTERFACE_L2_NAMES.get(self.type, [])
+
+    @property
+    def l3_interface_names(self) -> list[str]:
+        INTERFACE_L3_NAMES = {
+            "7280R3": [
+                "Ethernet1",
+                "Ethernet2",
+                "Ethernet3",
+                "Ethernet4",
+                "Ethernet5",
+                "Ethernet6",
+                "Ethernet7",
+                "Ethernet8",
+                "Ethernet9",
+                "Ethernet10",
+            ],
+            "ASR1002-HX": [
+                "Ethernet1",
+                "Ethernet2",
+                "Ethernet3",
+                "Ethernet4",
+                "Ethernet5",
+                "Ethernet6",
+                "Ethernet7",
+                "Ethernet8",
+                "Ethernet9",
+                "Ethernet10",
+            ],
+            "7010TX-48": [],
+            "MX204": ["et-0/0/0", "et-0/0/1", "et-0/0/2"],
+        }
+        return INTERFACE_L3_NAMES.get(self.type, [])
 
 
 class Group(BaseModel):
@@ -247,7 +279,7 @@ ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
 
 
-def site_generator(nbr_site=2) -> list[Site]:
+def site_generator(nbr_site: int = 2) -> list[Site]:
     """Generate a list of site names by iterating over the list of SITES defined above and by increasing the id.
 
     site_names_generator(nbr_site=5)
@@ -286,34 +318,6 @@ INTERFACE_MGMT_NAME = {
     "MX204": "MGMT",
 }
 
-INTERFACE_L3_NAMES = {
-    "7280R3": [
-        "Ethernet1",
-        "Ethernet2",
-        "Ethernet3",
-        "Ethernet4",
-        "Ethernet5",
-        "Ethernet6",
-        "Ethernet7",
-        "Ethernet8",
-        "Ethernet9",
-        "Ethernet10",
-    ],
-    "ASR1002-HX": [
-        "Ethernet1",
-        "Ethernet2",
-        "Ethernet3",
-        "Ethernet4",
-        "Ethernet5",
-        "Ethernet6",
-        "Ethernet7",
-        "Ethernet8",
-        "Ethernet9",
-        "Ethernet10",
-    ],
-    "7010TX-48": [],
-    "MX204": ["et-0/0/0", "et-0/0/1", "et-0/0/2"],
-}
 
 LAG_INTERFACE_L2 = {
     "7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}],
@@ -432,14 +436,14 @@ ASNS = (
 INTERFACE_OBJS: dict[str, list[InfrahubNode]] = defaultdict(list)
 
 ACCOUNTS = (
-    Account(name="pop-builder", type="Script", password="Password123", role="read-write"),
-    Account(name="CRM Synchronization", type="Script", password="Password123", role="read-write"),
-    Account(name="Jack Bauer", type="User", password="Password123", role="read-only"),
-    Account(name="Chloe O'Brian", type="User", password="Password123", role="read-write"),
-    Account(name="David Palmer", type="User", password="Password123", role="read-write"),
-    Account(name="Operation Team", type="User", password="Password123", role="read-only"),
-    Account(name="Engineering Team", type="User", password="Password123", role="read-write"),
-    Account(name="Architecture Team", type="User", password="Password123", role="read-only"),
+    Account(name="pop-builder", account_type="Script", password="Password123", role="read-write"),
+    Account(name="CRM Synchronization", account_type="Script", password="Password123", role="read-write"),
+    Account(name="Jack Bauer", account_type="User", password="Password123", role="read-only"),
+    Account(name="Chloe O'Brian", account_type="User", password="Password123", role="read-write"),
+    Account(name="David Palmer", account_type="User", password="Password123", role="read-write"),
+    Account(name="Operation Team", account_type="User", password="Password123", role="read-only"),
+    Account(name="Engineering Team", account_type="User", password="Password123", role="read-write"),
+    Account(name="Architecture Team", account_type="User", password="Password123", role="read-only"),
 )
 
 
@@ -878,7 +882,7 @@ async def generate_site(
         await obj.save()
 
         # L3 Interfaces
-        for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES[device.type]):
+        for intf_idx, intf_name in enumerate(device.l3_interface_names):
             intf_role = INTERFACE_L3_ROLES_MAPPING[device.role][intf_idx]
 
             intf = await client.create(
@@ -1171,7 +1175,7 @@ async def generate_site(
 
 async def branch_scenario_add_upstream(
     client: InfrahubClient, log: logging.Logger, site_name: str, external_pool: InfrahubNode
-):
+) -> None:
     """
     Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site.
     """
@@ -1280,7 +1284,7 @@ async def branch_scenario_add_upstream(
 
 async def branch_scenario_replace_ip_addresses(
     client: InfrahubClient, log: logging.Logger, site_name: str, interconnection_pool: InfrahubNode
-):
+) -> None:
     """
     Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site
     """
@@ -1338,7 +1342,7 @@ async def branch_scenario_replace_ip_addresses(
     log.info(f" - Replaced {device2_name}-{peer_intfs_dev2[0].name.value} IP to {ip.address.value}")
 
 
-async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str):
+async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
     """
     Create a new Branch and Delete Colt Upstream Circuit
     """
@@ -1405,7 +1409,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
         log.info(f" - Deleted Colt Technology Services [{circuit_id}]")
 
 
-async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str):
+async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
     """
     Create a new Branch and introduce some conflicts
     """
@@ -1448,7 +1452,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
     await intf1_main.save()
 
 
-async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging.Logger):
+async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging.Logger) -> None:
     """
     Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE
     """
@@ -1483,7 +1487,7 @@ async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging
     await platform3_main.save()
 
 
-async def generate_continents_countries(client: InfrahubClient, log: logging.Logger, branch: str):
+async def generate_continents_countries(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
     continent_batch = await client.create_batch()
     country_batch = await client.create_batch()
 
@@ -1509,7 +1513,7 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
     log.info("Created continents and countries")
 
 
-async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch):
+async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
     for account in ACCOUNTS:
         obj = await client.create(
             branch=branch,
@@ -1520,7 +1524,7 @@ async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: 
         store.set(key=account.name, node=obj)
 
 
-async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch):
+async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
     account_chloe = store.get("Chloe O'Brian")
     account_crm = store.get("CRM Synchronization")
     organizations_dict = {org.name: org.type for org in ORGANIZATIONS}
@@ -1548,7 +1552,9 @@ async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str,
         store.set(key=asn.organization, node=obj)
 
 
-async def prepare_bgp_peer_groups(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch):
+async def prepare_bgp_peer_groups(
+    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+) -> None:
     account_pop = store.get("pop-builder")
 
     log.info("Creating BGP Peer Groups")
@@ -1579,7 +1585,7 @@ async def prepare_bgp_peer_groups(client: InfrahubClient, log: logging.Logger, b
         store.set(key=peer_group.name, node=obj)
 
 
-async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch):
+async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
     for group in GROUPS:
         obj = await client.create(branch=branch, kind="CoreStandardGroup", data=group.model_dump())
 
@@ -1587,7 +1593,9 @@ async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: st
         store.set(key=group.name, node=obj)
 
 
-async def prepare_interface_profiles(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch):
+async def prepare_interface_profiles(
+    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+) -> None:
     for intf_profile in INTERFACE_PROFILES:
         data_profile = {
             "profile_name": {"value": intf_profile.name},
@@ -1598,7 +1606,7 @@ async def prepare_interface_profiles(client: InfrahubClient, log: logging.Logger
         store.set(key=intf_profile.name, node=profile)
 
 
-async def prepare_organizations(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch):
+async def prepare_organizations(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
     for org in ORGANIZATIONS:
         data_org = {
             "name": {"value": org.name, "is_protected": True},
@@ -1608,7 +1616,7 @@ async def prepare_organizations(client: InfrahubClient, log: logging.Logger, bra
         store.set(key=org.name, node=obj)
 
 
-async def prepare_platforms(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch):
+async def prepare_platforms(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
     for platform in PLATFORMS:
         obj = await client.create(
             branch=branch,
@@ -1619,7 +1627,7 @@ async def prepare_platforms(client: InfrahubClient, log: logging.Logger, branch:
         store.set(key=platform.name, node=obj)
 
 
-async def prepare_tags(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch):
+async def prepare_tags(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
     account_pop = store.get("pop-builder")
 
     log.info("Creating Tags")
@@ -1635,7 +1643,7 @@ async def prepare_tags(client: InfrahubClient, log: logging.Logger, branch: str,
 #   infrahubctl run models/infrastructure_edge.py
 #
 # ---------------------------------------------------------------
-async def run(client: InfrahubClient, log: logging.Logger, branch: str, num_sites: int = 5):
+async def run(client: InfrahubClient, log: logging.Logger, branch: str, num_sites: int = 5) -> None:
     # ------------------------------------------
     # Create Continents, Countries
     # ------------------------------------------

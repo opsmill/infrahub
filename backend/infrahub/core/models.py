@@ -92,7 +92,7 @@ class SchemaDiff(BaseModel):
                         )
                         if element_children and isinstance(element_children, dict):
                             for sub_action, sub_info in element_children.items():
-                                for sub_name, _ in sub_info.items():
+                                for sub_name in sub_info.keys():
                                     print(
                                         f"{indent_str * 2}{str(sub_name).ljust(column_size - indentation * 2)} | {str(sub_action).title()}"
                                     )
@@ -135,11 +135,12 @@ class SchemaUpdateValidationResult(BaseModel):
     errors: list[SchemaUpdateValidationError] = Field(default_factory=list)
     constraints: list[SchemaUpdateConstraintInfo] = Field(default_factory=list)
     migrations: list[SchemaUpdateMigrationInfo] = Field(default_factory=list)
+    enforce_update_support: bool = True
     diff: SchemaDiff
 
     @classmethod
-    def init(cls, diff: SchemaDiff, schema: SchemaBranch) -> Self:
-        obj = cls(diff=diff)
+    def init(cls, diff: SchemaDiff, schema: SchemaBranch, enforce_update_support: bool = True) -> Self:
+        obj = cls(diff=diff, enforce_update_support=enforce_update_support)
         obj.process_diff(schema=schema)
 
         return obj
@@ -181,7 +182,7 @@ class SchemaUpdateValidationResult(BaseModel):
         node_field_diff: HashableModelDiff,
     ) -> None:
         path_type = SchemaPathType.ATTRIBUTE if node_field_name == "attributes" else SchemaPathType.RELATIONSHIP
-        for field_name, _ in node_field_diff.added.items():
+        for field_name in node_field_diff.added.keys():
             if path_type == SchemaPathType.ATTRIBUTE:
                 self.migrations.append(
                     SchemaUpdateMigrationInfo(
@@ -192,7 +193,7 @@ class SchemaUpdateValidationResult(BaseModel):
                     )
                 )
 
-        for field_name, _ in node_field_diff.removed.items():
+        for field_name in node_field_diff.removed.keys():
             self.migrations.append(
                 SchemaUpdateMigrationInfo(  # type: ignore[call-arg]
                     path=SchemaPath(  # type: ignore[call-arg]
@@ -244,7 +245,7 @@ class SchemaUpdateValidationResult(BaseModel):
         schema_path: SchemaPath,
         field_update: str,
     ) -> None:
-        if field_update == UpdateSupport.NOT_SUPPORTED.value:
+        if field_update == UpdateSupport.NOT_SUPPORTED.value and self.enforce_update_support:
             self.errors.append(
                 SchemaUpdateValidationError(
                     path=schema_path,
@@ -480,7 +481,7 @@ class HashableModel(BaseModel):
         TODO Implement other fields type like dict
         """
 
-        for field_name, _ in other.model_fields.items():
+        for field_name in other.model_fields.keys():
             if not hasattr(self, field_name):
                 setattr(self, field_name, getattr(other, field_name))
                 continue

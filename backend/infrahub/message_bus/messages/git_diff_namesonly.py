@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import Field
 
@@ -14,7 +14,7 @@ class GitDiffNamesOnly(InfrahubMessage):
     repository_name: str = Field(..., description="The name of the repository")
     repository_kind: str = Field(..., description="The kind of the repository")
     first_commit: str = Field(..., description="The first commit")
-    second_commit: str = Field(..., description="The second commit")
+    second_commit: Optional[str] = Field(None, description="The second commit")
 
 
 class GitDiffNamesOnlyResponseData(InfrahubResponseData):

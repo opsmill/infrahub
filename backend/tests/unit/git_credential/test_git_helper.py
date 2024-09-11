@@ -19,10 +19,12 @@ def test_parse_helper_get_input():
         parse_helper_get_input(text=data_in)
 
 
-def test_get_with_path(mock_core_schema_01, mock_repositories_query):
+def test_get_with_path(mock_core_schema_01, mock_repositories_query, mock_credential_query):
     input_data = "protocol=https\nhost=github.com\npath=opsmill/infrahub-demo-edge.git"
 
-    result = runner.invoke(app=app, args=["get", input_data])
+    result = runner.invoke(
+        app=app, args=["get", input_data], env={"INFRAHUB_INSERT_TRACKER": "true"}, catch_exceptions=False
+    )
     assert not result.stderr
     assert result.stdout == "username=myusername\npassword=mypassword\n"
     assert result.exit_code == 0

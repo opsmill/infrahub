@@ -62,15 +62,19 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByLabel("Select profiles optional").click();
       await page.getByRole("option", { name: "L2 profile v1" }).click();
       await expect(page.getByLabel("Description")).toHaveValue("Desc from L2 profile v1");
+      await expect(page.getByTestId("source-profile-badge")).toContainText("L2 profile v1");
 
       await page.getByRole("option", { name: "L2 profile v2" }).click();
       await expect(page.getByLabel("Description")).toHaveValue("Desc from L2 profile v2");
+      await expect(page.getByTestId("source-profile-badge")).toContainText("L2 profile v2");
 
       await page.getByRole("option", { name: "Generic profile" }).click();
       await expect(page.getByLabel("Description")).toHaveValue("Desc from L2 profile v2");
+      await expect(page.getByTestId("source-profile-badge")).toContainText("L2 profile v2");
 
       await page.getByRole("option", { name: "L2 profile v2" }).click();
-      await expect(page.getByLabel("Description")).toHaveValue("Desc from L2 profile v1");
+      await expect(page.getByLabel("Description")).toHaveValue("Desc from generic profile");
+      await expect(page.getByTestId("source-profile-badge")).toContainText("Generic profile");
     });
   });
 });

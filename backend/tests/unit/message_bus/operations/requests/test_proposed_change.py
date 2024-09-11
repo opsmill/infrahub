@@ -9,7 +9,7 @@ from pytest_httpx import HTTPXMock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
-from infrahub.core.diff.model import DiffElementType
+from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -40,7 +40,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
         encoding="UTF-8"
     )
 
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock
 
 
@@ -128,8 +128,8 @@ async def test_get_proposed_change_schema_integrity_constraints(
     )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
     # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 79
-    assert len(non_generate_profile_constraints) == 17
+    assert len(constraints) == 127
+    assert len(non_generate_profile_constraints) == 62
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",

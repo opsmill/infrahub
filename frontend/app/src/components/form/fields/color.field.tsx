@@ -1,8 +1,9 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { FormFieldProps } from "@/components/form/type";
+import { FormFieldProps, FormAttributeValue } from "@/components/form/type";
 import { InputProps } from "@/components/ui/input";
 import { ColorPicker } from "@/components/inputs/color-picker";
 import { LabelFormField } from "@/components/form/fields/common";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface InputFieldProps
   extends FormFieldProps,
@@ -24,21 +25,29 @@ const ColorField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        // Not passing value is needed to prevent error on uncontrolled component
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
-        const { value, ...fieldMethodsWithoutValue } = field;
+        const fieldData: FormAttributeValue = field.value;
+
         return (
-          <div className="relative flex flex-col">
+          <div className="space-y-2">
             <LabelFormField
               label={label}
               unique={unique}
               required={!!rules?.required}
               description={description}
+              fieldData={fieldData}
             />
 
             <FormInput>
-              <ColorPicker {...field} className {...props} />
+              <ColorPicker
+                {...field}
+                value={fieldData?.value}
+                onChange={(newValue: string) => {
+                  field.onChange(updateFormFieldValue(newValue, defaultValue));
+                }}
+                {...props}
+              />
             </FormInput>
+
             <FormMessage />
           </div>
         );

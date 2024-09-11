@@ -1,13 +1,12 @@
 /// <reference types="cypress" />
 
-import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { initials } from "../../../src/components/display/avatar";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { AuthProvider } from "../../../src/hooks/useAuth";
 import Header from "../../../src/screens/layout/header";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { genericsState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
@@ -18,12 +17,11 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // Mock the apollo query and data
-const mocks: any[] = [
+const mocks = [
   {
     request: {
-      query: gql`
-        ${profileDetailsMocksQuery}
-      `,
+      query: profileDetailsMocksQuery,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: profileDetailsMocksData,
@@ -52,8 +50,8 @@ describe("List screen", () => {
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <TestProvider initialValues={[[schemaState, accountDetailsMocksSchema]]}>
-          <AuthHeader setSidebarOpen={() => null} />
+        <TestProvider initialValues={[[genericsState, accountDetailsMocksSchema]]}>
+          <AuthHeader />
         </TestProvider>
       </MockedProvider>
     );

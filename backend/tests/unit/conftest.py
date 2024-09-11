@@ -13,6 +13,14 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
+from infrahub.core.attribute import (
+    Boolean,
+    IntegerOptional,
+    JSONAttributeOptional,
+    ListAttributeOptional,
+    String,
+    StringOptional,
+)
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
 from infrahub.core.initialization import (
@@ -26,6 +34,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -1738,6 +1747,26 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
 
 
 @pytest.fixture
+async def criticality_protocol():
+    class TestCriticality(CoreNode):
+        name: String
+        label: StringOptional
+        levvel: IntegerOptional
+        mylist: ListAttributeOptional
+        json_no_default: JSONAttributeOptional
+        json_default: JSONAttributeOptional
+        time: StringOptional
+        status: StringOptional
+
+        color: String
+        is_true: Boolean
+        is_false: Boolean
+        description: StringOptional
+
+    return TestCriticality
+
+
+@pytest.fixture
 async def criticality_low(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4)
@@ -1977,6 +2006,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
                 "name": "Generic",
                 "namespace": "Location",
                 "default_filter": "name__value",
+                "display_labels": ["name__value"],
                 "hierarchical": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -2017,6 +2047,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
                 "name": "Thing",
                 "namespace": "Test",
                 "default_filter": "name__value",
+                "display_labels": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                 ],
@@ -2386,6 +2417,7 @@ async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, 
 @pytest.fixture
 async def register_account_schema(db: InfrahubDatabase) -> None:
     SCHEMAS_TO_REGISTER = [
+        InfrahubKind.GENERICACCOUNT,
         InfrahubKind.ACCOUNT,
         InfrahubKind.ACCOUNTTOKEN,
         InfrahubKind.GENERICGROUP,
@@ -2455,19 +2487,11 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(
-        db=db,
-        name="test-admin",
-        type="User",
-        password=config.SETTINGS.initial.admin_password,
-        role="admin",
+        db=db, name="test-admin", account_type="User", password=config.SETTINGS.initial.admin_password, role="admin"
     )
     await account.save(db=db)
     token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
-    await token.new(
-        db=db,
-        token="admin-security",
-        account=account,
-    )
+    await token.new(db=db, token="admin-security", account=account)
     await token.save(db=db)
 
     return account
@@ -2494,7 +2518,7 @@ async def authentication_base(
 @pytest.fixture
 async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(db=db, name="First Account", type="Git", password="FirstPassword123", role="read-write")
+    await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123", role="read-write")
     await obj.save(db=db)
     return obj
 
@@ -2502,7 +2526,7 @@ async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, re
 @pytest.fixture
 async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(db=db, name="Second Account", type="Git", password="SecondPassword123")
+    await obj.new(db=db, name="Second Account", account_type="Git", password="SecondPassword123")
     await obj.save(db=db)
     return obj
 
@@ -2562,7 +2586,7 @@ async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_sch
 @pytest.fixture
 async def mock_core_schema_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = helper.schema_file(file_name="core_schema_01.json")
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response_text)
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=response_text)
     return httpx_mock
 
 

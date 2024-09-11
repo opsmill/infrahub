@@ -251,9 +251,11 @@ class SchemaBranch:
         #     else:
         #         del self.generics[item_kind]
 
-    def validate_update(self, other: SchemaBranch) -> SchemaUpdateValidationResult:
+    def validate_update(self, other: SchemaBranch, enforce_update_support: bool = True) -> SchemaUpdateValidationResult:
         diff = self.diff(other=other)
-        result = SchemaUpdateValidationResult.init(diff=diff, schema=other)
+        result = SchemaUpdateValidationResult.init(
+            diff=diff, schema=other, enforce_update_support=enforce_update_support
+        )
         result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
 
@@ -464,9 +466,10 @@ class SchemaBranch:
             new_item.update(node_extension)
             self.set(name=node_extension.kind, schema=new_item)
 
-    def process(self) -> None:
+    def process(self, validate_schema: bool = True) -> None:
         self.process_pre_validation()
-        self.process_validate()
+        if validate_schema:
+            self.process_validate()
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
@@ -1543,7 +1546,7 @@ class SchemaBranch:
         profile = ProfileSchema(
             name=node.kind,
             namespace="Profile",
-            label=f"Profile{node.kind}",
+            label=f"Profile {node.label}",
             description=f"Profile for {node.kind}",
             branch=node.branch,
             include_in_menu=False,
@@ -1583,6 +1586,8 @@ class SchemaBranch:
         filters = []
 
         filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
+        if schema.human_friendly_id:
+            filters.append(FilterSchema(name="hfid", kind=FilterSchemaKind.LIST))
 
         for attr in schema.attributes:
             filter_kind = KIND_FILTER_MAP.get(attr.kind, None)
@@ -2168,6 +2173,7 @@ class SchemaManager(NodeManager):
         schema: Optional[SchemaBranch] = None,
         schema_diff: Optional[SchemaBranchDiff] = None,
         at: Optional[Timestamp] = None,
+        validate_schema: bool = True,
     ) -> SchemaBranch:
         """Query all the node of type NodeSchema and GenericSchema from the database and convert them to their respective type.
 
@@ -2235,7 +2241,7 @@ class SchemaManager(NodeManager):
                     schema=await self.convert_node_schema_to_schema(schema_node=schema_node, db=db),
                 )
 
-        schema.process()
+        schema.process(validate_schema=validate_schema)
 
         return schema
 

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
-from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipStatus
+from infrahub.core.constants import DiffAction, RelationshipStatus, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaBranchDiff
+from infrahub.core.protocols import CoreRepository
 from infrahub.core.query.branch import (
     AddNodeToBranch,
 )
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
-    from .diff.model import DataConflict
+    from .diff.model.diff import DataConflict
 
 
 class BranchMerger:
@@ -256,8 +257,7 @@ class BranchMerger:
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
         await self.merge_graph(at=at, conflict_resolution=conflict_resolution)
-        if self.source_branch.sync_with_git:
-            await self.merge_repositories()
+        await self.merge_repositories()
 
     async def merge_graph(  # pylint: disable=too-many-branches,too-many-statements
         self,
@@ -300,7 +300,7 @@ class BranchMerger:
                         if node.rel_id:
                             rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
-                for _, attr in node.attributes.items():
+                for attr in node.attributes.values():
                     if attr.action == DiffAction.ADDED:
                         await add_relationship(
                             src_node_id=node.db_id,
@@ -375,7 +375,7 @@ class BranchMerger:
         branch_relationships = rels.get(self.source_branch.name, {})
 
         for rel_name in branch_relationships.keys():
-            for _, rel_element in branch_relationships[rel_name].items():
+            for rel_element in branch_relationships[rel_name].values():
                 for rel_node in rel_element.nodes.values():
                     matched_conflict_path = [path for path in rel_element.conflict_paths if path in conflict_resolution]
                     conflict_path = None
@@ -434,31 +434,30 @@ class BranchMerger:
 
     async def merge_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        repos_in_main_list = await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=self.db)
+        repos_in_main_list = await NodeManager.query(schema=CoreRepository, db=self.db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
 
-        repos_in_branch_list = await NodeManager.query(
-            schema=InfrahubKind.REPOSITORY, db=self.db, branch=self.source_branch
-        )
+        repos_in_branch_list = await NodeManager.query(schema=CoreRepository, db=self.db, branch=self.source_branch)
         events = []
         for repo in repos_in_branch_list:
             # Check if the repo, exist in main, if not ignore this repo
             if repo.id not in repos_in_main:
                 continue
 
-            # repos_in_main[repo.id]
-            # changed_files = repo.calculate_diff_with_commit(repo_in_main.commit.value)
+            if repo.internal_status.value == RepositoryInternalStatus.INACTIVE.value:
+                continue
 
-            # if not changed_files:
-            #     continue
-            events.append(
-                messages.GitRepositoryMerge(
-                    repository_id=repo.id,
-                    repository_name=repo.name.value,  # type: ignore[attr-defined]
-                    source_branch=self.source_branch.name,
-                    destination_branch=registry.default_branch,
+            if self.source_branch.sync_with_git or repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
+                events.append(
+                    messages.GitRepositoryMerge(
+                        repository_id=repo.id,
+                        repository_name=repo.name.value,
+                        internal_status=repo.internal_status.value,
+                        source_branch=self.source_branch.name,
+                        destination_branch=registry.default_branch,
+                        default_branch=repo.default_branch.value,
+                    )
                 )
-            )
 
         for event in events:
             await self.service.send(message=event)

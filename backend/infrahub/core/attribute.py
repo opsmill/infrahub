@@ -5,6 +5,7 @@ import re
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+import netaddr
 import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.timestamp import TimestampFormatError
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,c-extension-no-member,too-many-public-methods
+# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
 
 
 class AttributeCreateData(BaseModel):
@@ -87,7 +88,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.at = at
         self.is_default = is_default
         self.is_from_profile = is_from_profile
-        self.from_pool: Optional[str] = None
+        self.from_pool: Optional[dict] = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -504,11 +505,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return value
 
-    async def from_graphql(self, data: dict) -> bool:
+    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
         """Update attr from GraphQL payload"""
 
         changed = False
-
         if "value" in data:
             if self.is_enum:
                 value_to_set = self.schema.convert_value_to_enum(data["value"])
@@ -517,6 +517,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
+        elif "from_pool" in data:
+            self.from_pool = data["from_pool"]
+            await self.node.process_pool(db=db, attribute=self, errors=[])
+            changed = True
 
         if changed and self.is_from_profile:
             self.is_from_profile = False
@@ -550,7 +554,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     def get_create_data(self) -> AttributeCreateData:
         # pylint: disable=no-member
-        branch = self.get_branch_based_on_support_type()
+        branch = self.branch
+        hierarchy_level = branch.hierarchy_level
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
+            branch = registry.get_global_branch()
+        elif self.schema.branch == BranchSupportType.LOCAL and self.node._schema.branch == BranchSupportType.AGNOSTIC:
+            branch = registry.get_global_branch()
+            hierarchy_level = 0
         data = AttributeCreateData(
             node_type=self.get_db_node_type(),
             uuid=str(UUIDT()),
@@ -558,7 +568,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             type=self.get_kind(),
             branch=branch.name,
             status="active",
-            branch_level=self.branch.hierarchy_level,
+            branch_level=hierarchy_level,
             branch_support=self.schema.branch.value,
             content=self.to_db(),
             is_default=self.is_default,
@@ -576,6 +586,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
 class AnyAttribute(BaseAttribute):
     type = Any
+    value: Any
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -586,29 +597,56 @@ class AnyAttribute(BaseAttribute):
         return value_as_string
 
 
+class AnyAttributeOptional(AnyAttribute):
+    @classmethod
+    def deserialize_from_string(cls, value_as_string: str) -> Any:
+        return value_as_string
+
+
 class String(BaseAttribute):
     type = str
+    value: str
+
+
+class StringOptional(String):
+    value: Optional[str]
 
 
 class HashedPassword(BaseAttribute):
     type = str
+    value: str
 
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
         return hash_password(str(self.value))
 
 
+class HashedPasswordOptional(HashedPassword):
+    value: Optional[str]
+
+
 class Integer(BaseAttribute):
     type = int
+    value: int
     from_pool: Optional[str] = None
+
+
+class IntegerOptional(Integer):
+    value: Optional[int]
 
 
 class Boolean(BaseAttribute):
     type = bool
+    value: bool
+
+
+class BooleanOptional(Boolean):
+    value: Optional[bool]
 
 
 class DateTime(BaseAttribute):
     type = str
+    value: str
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -623,8 +661,13 @@ class DateTime(BaseAttribute):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
 
+class DateTimeOptional(DateTime):
+    value: Optional[str]
+
+
 class Dropdown(BaseAttribute):
     type = str
+    value: str
 
     @property
     def color(self) -> str:
@@ -665,8 +708,13 @@ class Dropdown(BaseAttribute):
             raise ValidationError({name: f"{value} must be one of {', '.join(sorted(values))!r}"})
 
 
+class DropdownOptional(Dropdown):
+    value: Optional[str]
+
+
 class URL(BaseAttribute):
     type = str
+    value: str
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -676,8 +724,13 @@ class URL(BaseAttribute):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
 
+class URLOptional(URL):
+    value: Optional[str]
+
+
 class IPNetwork(BaseAttribute):
     type = str
+    value: str
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
@@ -804,8 +857,13 @@ class IPNetwork(BaseAttribute):
         return data
 
 
+class IPNetworkOptional(IPNetwork):
+    value: Optional[str]
+
+
 class IPHost(BaseAttribute):
     type = str
+    value: str
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
@@ -924,8 +982,119 @@ class IPHost(BaseAttribute):
         return data
 
 
+class IPHostOptional(IPHost):
+    value: Optional[str]
+
+
+class MacAddress(BaseAttribute):
+    type = str
+    value: str
+
+    @property
+    def obj(self) -> netaddr.EUI:
+        """Return the MAC adress."""
+        if not self.value:
+            raise ValueError("value for MAC address must be defined")
+        return netaddr.EUI(addr=self.value)
+
+    @property
+    def oui(self) -> Optional[str]:
+        """Return the OUI (Organisationally Unique Identifier) for the MAC address."""
+        if not self.value:
+            return None
+        try:
+            return str(self.obj.oui)
+        except netaddr.NotRegisteredError:
+            # Workaround OUI lookup failure
+            # netaddr might not be up-to-date, or actual OUI just not exist (i.e. random mac address)
+            return str(self.obj).removesuffix(f"-{self.ei}")
+
+    @property
+    def ei(self) -> Optional[str]:
+        """Return the EI (Extension Identifier) for the MAC address."""
+        if not self.value:
+            return None
+        return self.obj.ei
+
+    @property
+    def version(self) -> Optional[int]:
+        """Return the version of the MAC address."""
+        if not self.value:
+            return None
+        return self.obj.version
+
+    @property
+    def binary(self) -> Optional[str]:
+        """Return the MAC address in binary format."""
+        if not self.value:
+            return None
+        return self.obj.bin
+
+    @property
+    def eui48(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_eui48)
+
+    @property
+    def eui64(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return str(self.obj.eui64())
+
+    @property
+    def bare(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_bare)
+
+    @property
+    def dot_notation(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_cisco)
+
+    @property
+    def semicolon_notation(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_unix)
+
+    @property
+    def split_notation(self) -> Optional[str]:
+        if not self.value:
+            return None
+        return self.obj.format(dialect=netaddr.mac_pgsql)
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the format of the attribute.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Format of the attribute value is not valid
+        """
+        super().validate_format(value=value, name=name, schema=schema)
+
+        if not netaddr.valid_mac(addr=str(value)):
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
+
+    def serialize_value(self) -> str:
+        """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
+        return str(netaddr.EUI(addr=str(self.value)))
+
+
+class MacAddressOptional(MacAddress):
+    value: Optional[str]
+
+
 class ListAttribute(BaseAttribute):
     type = list
+    value: list[Any]
 
     @classmethod
     def deserialize_from_string(cls, value_as_string: str) -> Any:
@@ -944,8 +1113,13 @@ class ListAttribute(BaseAttribute):
         return data.value
 
 
+class ListAttributeOptional(ListAttribute):
+    value: Optional[list[Any]]
+
+
 class JSONAttribute(BaseAttribute):
     type = (dict, list)
+    value: Union[dict, list]
 
     @classmethod
     def deserialize_from_string(cls, value_as_string: str) -> Any:
@@ -962,3 +1136,7 @@ class JSONAttribute(BaseAttribute):
         if data.value and isinstance(data.value, (str, bytes)):
             return ujson.loads(data.value)
         return data.value
+
+
+class JSONAttributeOptional(JSONAttribute):
+    value: Optional[Union[dict, list]]

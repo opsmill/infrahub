@@ -1,32 +1,28 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { RoundedButton } from "@/components/buttons/rounded-button";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
-import SlideOver from "@/components/display/slide-over";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import { SelectOption } from "@/components/inputs/select";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link as StyledLink } from "@/components/ui/link";
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { addRelationship } from "@/graphql/mutations/relationships/addRelationship";
+import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
 import { usePermission } from "@/hooks/usePermission";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
-import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { classNames } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
-import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
+import { useMutation } from "@/hooks/useQuery";
 import { EyeSlashIcon, LockClosedIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
@@ -35,6 +31,7 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import DynamicForm from "@/components/form/dynamic-form";
+import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -65,8 +62,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const generics = useAtomValue(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const schemaKindName = useAtomValue(schemaKindNameState);
-  const schemaKindLabel = useAtomValue(schemaKindLabelState);
+
+  const [addRelationship] = useMutation(ADD_RELATIONSHIP);
+
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
@@ -165,23 +163,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     const { relation } = data;
 
     if (relation?.id || relation?.from_pool) {
-      const mutationString = addRelationship({
-        data: stringifyWithoutQuotes({
-          id: objectid,
-          name: relationshipSchema.name,
-          nodes: [relation],
-        }),
-      });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
+      await addRelationship({
+        variables: {
+          objectId: objectid,
+          relationshipIds: [relation],
+          relationshipName: relationshipSchema.name,
         },
       });
 
@@ -281,23 +267,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
           {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
             <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-              <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                <thead className="bg-gray-50">
+              <table className="table-auto border-spacing-0 w-full" cellPadding="0">
+                <thead className="bg-gray-50 text-left border-b border-gray-300">
                   <tr>
                     {newColumns?.map((column) => (
-                      <th
-                        key={column.name}
-                        scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
-                        {column.label}
+                      <th key={column.name} scope="col" className="h-9 font-semibold">
+                        <TextCell>{column.label}</TextCell>
                       </th>
                     ))}
 
-                    <th
-                      scope="col"
-                      className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
-                      <span className="sr-only">Meta</span>
-                    </th>
+                    <th scope="col"></th>
                   </tr>
                 </thead>
 
@@ -305,36 +284,15 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData?.map(({ node, properties }: any, index: number) => (
                     <tr
                       key={index}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      data-cy="relationship-row"
+                      className="border-b border-gray-200 hover:bg-gray-50"
                       data-testid="relationship-row">
                       {newColumns?.map((column) => (
-                        <td
-                          key={node.id + "-" + column.name}
-                          className={classNames(
-                            index !== relationshipsData.length - 1
-                              ? "border-b border-gray-200"
-                              : "",
-                            "whitespace-nowrap text-xs font-medium h-[39px]"
-                          )}>
-                          <Link
-                            className="whitespace-wrap px-2 py-1 text-xs flex items-center text-gray-900"
-                            to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
-                            {getObjectItemDisplayValue(
-                              node,
-                              column,
-                              schemaKindName,
-                              schemaKindLabel
-                            )}
-                          </Link>
+                        <td key={node.id + column.name} className="h-9">
+                          <ObjectItemsCell row={node} attribute={column} />
                         </td>
                       ))}
 
-                      <td
-                        className={classNames(
-                          index !== relationshipsData.length - 1 ? "border-b border-gray-200" : "",
-                          "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex items-center justify-end h-[39px]"
-                        )}>
+                      <td className="h-9 text-right">
                         {properties && (
                           <MetaDetailsTooltip
                             updatedAt={properties.updated_at}
@@ -435,27 +393,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
       <SlideOver
         title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">
-                Add associated {relationshipSchema.label}
-              </span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {relationshipSchema.peer}
-            </span>
-          </div>
+          parentSchema && (
+            <SlideOverTitle
+              schema={parentSchema}
+              currentObjectLabel={relationshipSchema.label}
+              title={`Associate a new ${relationshipSchema.label}`}
+              subtitle={`Add a new ${relationshipSchema.label} to the current object`}
+            />
+          )
         }
         open={showAddDrawer}
         setOpen={setShowAddDrawer}>
@@ -470,8 +415,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               options,
             },
           ]}
-          onSubmit={async (data) => {
-            await handleSubmit(data);
+          onSubmit={async ({ relation }) => {
+            await handleSubmit({ relation: relation.value });
           }}
           onCancel={() => {
             setShowAddDrawer(false);
@@ -506,31 +451,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       {relatedObjectToEdit && (
         <SlideOver
           title={
-            <>
-              {
-                <div className="space-y-2">
-                  <div className="flex items-center w-full">
-                    <span className="text-lg font-semibold mr-3">
-                      {relatedObjectToEdit?.display_label}
-                    </span>
-                    <div className="flex-1"></div>
-                    <div className="flex items-center">
-                      <Icon icon={"mdi:layers-triple"} />
-                      <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-                    <svg
-                      className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                      viewBox="0 0 6 6"
-                      aria-hidden="true">
-                      <circle cx={3} cy={3} r={3} />
-                    </svg>
-                    {relatedObjectToEdit?.__typename.replace(regex, "")}
-                  </span>
-                </div>
-              }
-            </>
+            parentSchema && (
+              <SlideOverTitle
+                schema={parentSchema}
+                currentObjectLabel={relationshipSchema.label}
+                title={`Edit ${relatedObjectToEdit?.display_label}`}
+                subtitle="Update the details of the related object"
+              />
+            )
           }
           open={!!relatedObjectToEdit}
           setOpen={() => setRelatedObjectToEdit(undefined)}>

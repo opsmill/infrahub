@@ -7,12 +7,12 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
+from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import InitializationError, NodeNotFoundError, ValidationError
+from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.utils import find_next_free
 
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-    from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
 
     from ..attribute import BaseAttribute
@@ -42,16 +41,13 @@ if TYPE_CHECKING:
 class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
-        cls,
-        _meta=None,
-        default_filter=None,
-        **options,
+        cls, _meta=None, default_filter=None, **options
     ):
         if not _meta:
             _meta = BaseNodeOptions(cls)
 
         _meta.default_filter = default_filter
-        super(Node, cls).__init_subclass_with_meta__(_meta=_meta, **options)
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     def get_schema(self) -> Union[NodeSchema, ProfileSchema]:
         return self._schema
@@ -147,12 +143,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
-    def __init__(
-        self,
-        schema: Union[NodeSchema, ProfileSchema],
-        branch: Branch,
-        at: Timestamp,
-    ):
+    def __init__(self, schema: Union[NodeSchema, ProfileSchema], branch: Branch, at: Timestamp):
         self._schema: Union[NodeSchema, ProfileSchema] = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
@@ -195,55 +186,47 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def _process_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
+    async def process_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
         """
 
-        if attribute.value or not attribute.from_pool:
+        if not attribute.from_pool:
             return
 
-        number_pool: Optional[CoreNumberPool] = None
         try:
             number_pool = await registry.manager.get_one_by_id_or_default_filter(
-                db=db, id=attribute.from_pool, kind=InfrahubKind.NUMBERPOOL
+                db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
             )
-
         except NodeNotFoundError:
             errors.append(
                 ValidationError(
                     {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
                 )
             )
+            return
 
-        if number_pool:
-            if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
-                existing_nodes = await registry.manager.query(db=db, schema=self._schema, branch_agnostic=True)
-                used_numbers = [getattr(existing_node, attribute.name).value for existing_node in existing_nodes]
-                next_free = find_next_free(
-                    start=number_pool.start_range.value,
-                    end=number_pool.end_range.value,
-                    used_numbers=used_numbers,
-                )
-                if next_free:
-                    attribute.value = next_free
-                else:
-                    errors.append(
-                        ValidationError(
-                            {f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."}
-                        )
-                    )
-
-            else:
+        if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
+            try:
+                next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self)
+            except PoolExhaustedError:
                 errors.append(
-                    ValidationError(
-                        {
-                            f"{attribute.name}.from_pool": f"The {number_pool.name.value} pool can't be used for '{attribute.name}'."
-                        }
-                    )
+                    ValidationError({f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."})
                 )
+                return
+
+            attribute.value = next_free
+            attribute.source = number_pool.id
+        else:
+            errors.append(
+                ValidationError(
+                    {
+                        f"{attribute.name}.from_pool": f"The {number_pool.name.value} pool can't be used for '{attribute.name}'."
+                    }
+                )
+            )
 
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
@@ -280,35 +263,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # -------------------------------------------
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
-        for attr_schema in self._schema.attributes:
-            self._attributes.append(attr_schema.name)
-
-            # Check if there is a more specific generator present
-            # Otherwise use the default generator
-            generator_method_name = "_generate_attribute_default"
-            if hasattr(self, f"generate_{attr_schema.name}"):
-                generator_method_name = f"generate_{attr_schema.name}"
-
-            generator_method = getattr(self, generator_method_name)
-            try:
-                setattr(
-                    self,
-                    attr_schema.name,
-                    await generator_method(
-                        db=db,
-                        name=attr_schema.name,
-                        schema=attr_schema,
-                        data=fields.get(attr_schema.name, None),
-                    ),
-                )
-                if not self.id:
-                    attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self._process_pool(db=db, attribute=attribute, errors=errors)
-
-                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
-            except ValidationError as exc:
-                errors.append(exc)
-
         for rel_schema in self._schema.relationships:
             self._relationships.append(rel_schema.name)
 
@@ -327,6 +281,32 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name, None)
                     ),
                 )
+            except ValidationError as exc:
+                errors.append(exc)
+
+        for attr_schema in self._schema.attributes:
+            self._attributes.append(attr_schema.name)
+
+            # Check if there is a more specific generator present
+            # Otherwise use the default generator
+            generator_method_name = "_generate_attribute_default"
+            if hasattr(self, f"generate_{attr_schema.name}"):
+                generator_method_name = f"generate_{attr_schema.name}"
+
+            generator_method = getattr(self, generator_method_name)
+            try:
+                setattr(
+                    self,
+                    attr_schema.name,
+                    await generator_method(
+                        db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name, None)
+                    ),
+                )
+                if not self._existing:
+                    attribute: BaseAttribute = getattr(self, attr_schema.name)
+                    await self.process_pool(db=db, attribute=attribute, errors=errors)
+
+                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:
                 errors.append(exc)
 
@@ -381,7 +361,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
         # pylint: disable=no-member
-        if not self.id and hasattr(self, "label") and hasattr(self, "name"):
+        if not self._existing and hasattr(self, "label") and hasattr(self, "name"):
             if self.label.value is None and self.name.value:
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
                 self.label.is_default = False
@@ -394,9 +374,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if await query.count(db=db):
                 raise ValidationError({"id": f"{id} is already in use"})
 
-        await self._process_fields(db=db, fields=kwargs)
-
         self.id = id or str(UUIDT())
+
+        await self._process_fields(db=db, fields=kwargs)
 
         return self
 
@@ -449,11 +429,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 identifier = f"{rel.schema.identifier}::{rel.peer_id}"
                 rel.id, rel.db_id = new_ids[identifier]
 
-    async def _update(
-        self,
-        db: InfrahubDatabase,
-        at: Optional[Timestamp] = None,
-    ) -> None:
+    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
@@ -468,11 +444,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             rel: RelationshipManager = getattr(self, name)
             await rel.save(at=update_at, db=db)
 
-    async def save(
-        self,
-        db: InfrahubDatabase,
-        at: Optional[Timestamp] = None,
-    ) -> Self:
+    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> Self:
         """Create or Update the Node in the database."""
 
         save_at = Timestamp(at)
@@ -590,7 +562,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
                 attribute = getattr(self, key)
-                changed |= await attribute.from_graphql(value)
+                changed |= await attribute.from_graphql(data=value, db=db)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)

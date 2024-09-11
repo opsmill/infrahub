@@ -16,6 +16,7 @@ import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { SearchActions } from "./search-actions";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
+import { Card } from "@/components/ui/card";
 
 type SearchInputProps = {
   className?: string;
@@ -128,7 +129,7 @@ const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
     return (
       <Dialog.Panel
         ref={forwardedRef}
-        className="w-full max-w-screen-md max-h-[75vh] rounded-2xl bg-gray-50 shadow-xl transition-all flex flex-col"
+        className="p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl transition-all space-y-2"
         data-testid="search-anywhere">
         <Combobox
           onChange={(url: string) => {
@@ -142,27 +143,22 @@ const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
 
             onSelection(url);
           }}>
-          <div className="p-2.5 relative">
-            <Combobox.Button className="absolute top-5 left-2.5 pl-2 flex items-center">
-              <Icon icon="mdi:magnify" className="text-lg text-custom-blue-10" aria-hidden="true" />
+          <div className="relative">
+            <Combobox.Button className="absolute top-2.5 pl-2.5">
+              <Icon icon="mdi:magnify" className="text-xl text-custom-blue-600" />
             </Combobox.Button>
 
             <Combobox.Input
+              as={Input}
               placeholder="Search anywhere"
               onChange={(e) => setQuery(e.target.value)}
               value={query}
-              className={`
-                w-full px-8 py-2
-                text-sm leading-5 text-gray-900 placeholder:text-gray-400
-                rounded-md border border-gray-300 focus:border-custom-blue-600 focus:ring-custom-blue-600 shadow-sm
-              `}
+              className="w-full px-9 py-2"
             />
           </div>
 
           {query && (
-            <Combobox.Options
-              static
-              className="overflow-x-hidden overflow-y-auto divide-y shadow-inner">
+            <Combobox.Options static className="overflow-x-hidden overflow-y-auto space-y-2">
               <SearchActions query={query} />
               <SearchNodes query={query} />
               <SearchDocs query={query} />
@@ -179,14 +175,15 @@ type SearchGroupProps = {
 };
 
 export const SearchGroup = ({ children }: SearchGroupProps) => {
-  return <div className="p-2.5">{children}</div>;
+  return <Card className="p-2">{children}</Card>;
 };
+
 export const SearchGroupTitle = ({ children }: SearchGroupProps) => {
   return (
     <Combobox.Option
       value=""
       disabled
-      className="text-xxs font-semibold text-gray-500 flex items-center">
+      className="text-xs mb-0.5 pl-1.5 font-semibold text-neutral-600 flex items-center">
       {children}
     </Combobox.Option>
   );
@@ -200,7 +197,10 @@ export const SearchResultItem = ({ className = "", children, to, ...props }: Lin
       to={to}
       {...props}
       className={({ active }) =>
-        classNames(`flex items-center gap-1 text-xs p-2 ${active ? "bg-slate-200" : ""}`, className)
+        classNames(
+          `flex items-center gap-1 text-xs p-2 rounded ${active ? "bg-gray-100" : ""}`,
+          className
+        )
       }>
       {children}
     </Combobox.Option>

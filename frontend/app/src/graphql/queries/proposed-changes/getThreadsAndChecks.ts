@@ -20,7 +20,6 @@ query getThreadsAndChecksFor{{kind}} {
     }
   }
 
-{{#if conflicts}}
   CoreValidator(
     proposed_change__ids: ["{{id}}"]
   ) {
@@ -42,8 +41,6 @@ query getThreadsAndChecksFor{{kind}} {
       }
     }
   }
-
-{{/if}}
 
 }
 `);

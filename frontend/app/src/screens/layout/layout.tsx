@@ -67,8 +67,8 @@ function Layout() {
 
   if (isLoadingBranches) {
     return (
-      <div className="w-screen h-screen flex">
-        <LoadingScreen />;
+      <div className="w-screen h-screen flex items-center justify-center">
+        <LoadingScreen message="Loading branches..." />
       </div>
     );
   }

@@ -4,7 +4,7 @@ from infrahub_sdk.client import NodeDiff
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, SchemaPathType
-from infrahub.core.diff.model import DiffElementType
+from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
@@ -57,6 +57,24 @@ def person_name_node_diff(
                 schema_kind="TestPerson",
                 field_name="name",
                 property_name="unique",
+            ),
+        ),
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.inherit_from.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind="TestPerson",
+                field_name="inherit_from",
+                property_name="inherit_from",
+            ),
+        ),
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.inherit_from.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind="TestCar",
+                field_name="inherit_from",
+                property_name="inherit_from",
             ),
         ),
     }

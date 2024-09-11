@@ -1,4 +1,4 @@
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
+import { RelationshipKind } from "@/screens/objects/types";
 
 export const DEFAULT_BRANCH_NAME = "main";
 
@@ -14,9 +14,15 @@ export const TASK_TARGET = "CoreTaskTarget";
 
 export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
-export const ACCOUNT_OBJECT = "CoreAccount";
+export const ACCOUNT_OBJECT = "CoreGenericAccount";
 
-export const ACCOUNT_TOKEN_OBJECT = "InternalAccountToken";
+export const GENERIC_REPOSITORY_KIND = "CoreGenericRepository";
+
+export const REPOSITORY_KIND = "CoreRepository";
+
+export const READONLY_REPOSITORY_KIND = "CoreReadOnlyRepository";
+
+export const ACCOUNT_TOKEN_OBJECT = "InfrahubAccountToken";
 
 export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
 
@@ -30,11 +36,11 @@ export const PROPOSED_CHANGES_OBJECT_THREAD_OBJECT = "CoreObjectThread";
 
 export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
 
+export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
+
 export const ARTIFACT_OBJECT = "CoreArtifact";
 
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
-
-export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
@@ -48,7 +54,7 @@ export const SCHEMA_ENUM_ADD = "SchemaEnumAdd";
 
 export const SCHEMA_ENUM_REMOVE = "SchemaEnumRemove";
 
-export const GROUP_OBJECT = "CoreGroup";
+export const NUMBER_POOL_OBJECT = "CoreNumberPool";
 
 export const TASK_OBJECT = "InfrahubTask";
 
@@ -57,7 +63,6 @@ export const WRITE_ROLES = ["admin", "read-write"];
 export const ADMIN_ROLES = ["admin"];
 
 export const MENU_EXCLUDELIST = [
-  "InternalAccountToken",
   "CoreChangeComment",
   "CoreChangeThread",
   "CoreFileThread",
@@ -164,7 +169,7 @@ export const SCHEMA_ATTRIBUTE_KIND = {
   JSON: "JSON",
   ANY: "Any",
   BOOLEAN: "Boolean",
-} satisfies Record<string, SchemaAttributeType>;
+} as const;
 
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 
@@ -190,7 +195,7 @@ export const RELATIONSHIP_VIEW_BLACKLIST = [
   "profiles",
 ];
 
-export const peersKindForForm = ["Attribute", "Parent"];
+export const relationshipKindForForm: Array<RelationshipKind> = ["Attribute", "Parent"];
 
 export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
 
@@ -203,3 +208,11 @@ export const SEARCH_ANY_FILTER = "any__value";
 export const SEARCH_PARTIAL_MATCH = "partial_match";
 
 export const SEARCH_FILTERS = [SEARCH_ANY_FILTER, SEARCH_PARTIAL_MATCH];
+
+export const DIFF_TABS = {
+  DATA: "data",
+  FILES: "files",
+  ARTIFACTS: "artifacts",
+  SCHEMA: "schema",
+  CHECKS: "checks",
+};

@@ -350,7 +350,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **repository_kind** | The kind of the repository | string | None |
 | **first_commit** | The first commit | string | None |
-| **second_commit** | The second commit | string | None |
+| **second_commit** | The second commit | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -397,6 +397,23 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **default_branch_name** | Default branch for this repository | N/A | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **internal_status** | Administrative status of the repository | string | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event git.repository.connectivity
+<!-- vale on -->
+
+**Description**: Validate connectivity and credentials to remote repository
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_location** | The location of repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.merge
@@ -412,8 +429,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **repository_id** | The unique ID of the Repository | string | None |
 | **repository_name** | The name of the repository | string | None |
+| **internal_status** | Administrative status of the repository | string | None |
 | **source_branch** | The source branch | string | None |
 | **destination_branch** | The source branch | string | None |
+| **default_branch** | The default branch in Git | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.add_read_only
@@ -432,6 +451,25 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **ref** | Ref to track on the external repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **internal_status** | Internal status of the repository | string | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event git.repository.import_objects
+<!-- vale on -->
+
+**Description**: Re run import job against an existing commit.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **commit** | Specific commit to pull | string | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
@@ -620,6 +658,46 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **artifact_definition** | The unique ID of the Artifact Definition | string | None |
 | **branch** | The branch to target | string | None |
 | **limit** | List of targets to limit the scope of the generation, if populated only the included artifacts will be regenerated | array | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Request Diff
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event request.diff.update
+<!-- vale on -->
+
+**Description**: Request diff to be updated.
+
+    If the message only include a branch_name, it is assumed to be for updating the diff that tracks
+    the lifetime changes of a branch
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **branch_name** | The branch associated with the diff | string | None |
+| **name** | N/A | N/A | None |
+| **from_time** | N/A | N/A | None |
+| **to_time** | N/A | N/A | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event request.diff.refresh
+<!-- vale on -->
+
+**Description**: Request diff be recalculated from scratch.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **branch_name** | The branch associated with the diff | string | None |
+| **diff_id** | The id for this diff | string | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -1499,7 +1577,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **repository_kind** | The kind of the repository | string | None |
 | **first_commit** | The first commit | string | None |
-| **second_commit** | The second commit | string | None |
+| **second_commit** | The second commit | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -1548,6 +1626,24 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
 | **default_branch_name** | Default branch for this repository | N/A | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **internal_status** | Administrative status of the repository | string | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event git.repository.connectivity
+<!-- vale on -->
+
+**Description**: Validate connectivity and credentials to remote repository
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_location** | The location of repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.merge
@@ -1564,8 +1660,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **repository_id** | The unique ID of the Repository | string | None |
 | **repository_name** | The name of the repository | string | None |
+| **internal_status** | Administrative status of the repository | string | None |
 | **source_branch** | The source branch | string | None |
 | **destination_branch** | The source branch | string | None |
+| **default_branch** | The default branch in Git | string | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event git.repository.add_read_only
@@ -1585,6 +1683,26 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **ref** | Ref to track on the external repository | string | None |
 | **created_by** | The user ID of the user that created the repository | N/A | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **internal_status** | Internal status of the repository | string | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event git.repository.import_objects
+<!-- vale on -->
+
+**Description**: Re run import job against an existing commit.
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **commit** | Specific commit to pull | string | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
 <!-- vale on -->
 <!-- vale off -->
@@ -1782,6 +1900,48 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **artifact_definition** | The unique ID of the Artifact Definition | string | None |
 | **branch** | The branch to target | string | None |
 | **limit** | List of targets to limit the scope of the generation, if populated only the included artifacts will be regenerated | array | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Request Diff
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event request.diff.update
+<!-- vale on -->
+
+**Description**: Request diff to be updated.
+
+    If the message only include a branch_name, it is assumed to be for updating the diff that tracks
+    the lifetime changes of a branch
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **branch_name** | The branch associated with the diff | string | None |
+| **name** | N/A | N/A | None |
+| **from_time** | N/A | N/A | None |
+| **to_time** | N/A | N/A | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event request.diff.refresh
+<!-- vale on -->
+
+**Description**: Request diff be recalculated from scratch.
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **branch_name** | The branch associated with the diff | string | None |
+| **diff_id** | The id for this diff | string | None |
 <!-- vale on -->
 
 <!-- vale off -->

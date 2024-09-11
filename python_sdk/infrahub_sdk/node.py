@@ -108,6 +108,8 @@ class Attribute:
                 data["value"] = f"${var_name}"
         elif isinstance(self.value, get_args(IP_TYPES)):
             data["value"] = self.value.with_prefixlen
+        elif isinstance(self.value, InfrahubNodeBase) and self.value.is_resource_pool():
+            data["from_pool"] = {"id": self.value.id}
         else:
             data["value"] = self.value
 
@@ -130,6 +132,12 @@ class Attribute:
             data[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         return data
+
+    def _generate_mutation_query(self) -> dict[str, Any]:
+        if isinstance(self.value, InfrahubNodeBase) and self.value.is_resource_pool():
+            # If it points to a pool, ask for the value of the pool allocated resource
+            return {self.name: {"value": None}}
+        return {}
 
 
 class RelatedNodeBase:
@@ -717,7 +725,12 @@ class InfrahubNodeBase:
         if not self._schema.human_friendly_id:
             return None
 
-        return [str(self.get_path_value(path=item)) for item in self._schema.human_friendly_id]
+        # If all components of an HFID are null, we cannot identify a single node
+        hfid_components = [self.get_path_value(path=item) for item in self._schema.human_friendly_id]
+        if all(c is None for c in hfid_components):
+            return None
+
+        return [str(c) for c in hfid_components]
 
     def get_human_friendly_id_as_string(self, include_kind: bool = False) -> Optional[str]:
         hfid = self.get_human_friendly_id()
@@ -1047,18 +1060,14 @@ class InfrahubNode(InfrahubNodeBase):
         self._client = client
         self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
 
-        if isinstance(data, dict) and "node" in data:
+        if isinstance(data, dict) and isinstance(data.get("node"), dict):
             data = data.get("node")
 
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
     @classmethod
     async def from_graphql(
-        cls,
-        client: InfrahubClient,
-        branch: str,
-        data: dict,
-        schema: Optional[MainSchemaTypes] = None,
+        cls, client: InfrahubClient, branch: str, data: dict, schema: Optional[MainSchemaTypes] = None
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
@@ -1266,7 +1275,7 @@ class InfrahubNode(InfrahubNodeBase):
             if rel_schema and prefetch_relationships:
                 peer_schema = await self._client.schema.get(kind=rel_schema.peer, branch=self._branch)
                 peer_node = InfrahubNode(client=self._client, schema=peer_schema, branch=self._branch)
-                peer_data = await peer_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
+                peer_data = await peer_node.generate_query_data_node(include=include, exclude=exclude)
 
             if rel_schema and rel_schema.cardinality == "one":
                 rel_data = RelatedNode._generate_query_data(peer_data=peer_data)
@@ -1295,14 +1304,18 @@ class InfrahubNode(InfrahubNodeBase):
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     def _generate_mutation_query(self) -> dict[str, Any]:
-        query_result = {"ok": None, "object": {"id": None}}
+        query_result: dict[str, Any] = {"ok": None, "object": {"id": None}}
+
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            query_result["object"].update(attr._generate_mutation_query())
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if not isinstance(rel, RelatedNode):
                 continue
 
-            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+            query_result["object"].update(rel._generate_mutation_query())
 
         return query_result
 
@@ -1310,6 +1323,18 @@ class InfrahubNode(InfrahubNodeBase):
         object_response: dict[str, Any] = response[mutation_name]["object"]
         self.id = object_response["id"]
         self._existing = True
+
+        for attr_name in self._attributes:
+            attr = getattr(self, attr_name)
+            if (
+                attr_name not in object_response
+                or not isinstance(attr.value, InfrahubNodeBase)
+                or not attr.value.is_resource_pool()
+            ):
+                continue
+
+            # Process allocated resource from a pool and update attribute
+            attr.value = object_response[attr_name]
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
@@ -1512,18 +1537,14 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client
 
-        if isinstance(data, dict) and "node" in data:
+        if isinstance(data, dict) and isinstance(data.get("node"), dict):
             data = data.get("node")
 
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
     @classmethod
     def from_graphql(
-        cls,
-        client: InfrahubClientSync,
-        branch: str,
-        data: dict,
-        schema: Optional[MainSchemaTypes] = None,
+        cls, client: InfrahubClientSync, branch: str, data: dict, schema: Optional[MainSchemaTypes] = None
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
@@ -1723,7 +1744,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             if rel_schema and prefetch_relationships:
                 peer_schema = self._client.schema.get(kind=rel_schema.peer, branch=self._branch)
                 peer_node = InfrahubNodeSync(client=self._client, schema=peer_schema, branch=self._branch)
-                peer_data = peer_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
+                peer_data = peer_node.generate_query_data_node(include=include, exclude=exclude)
 
             if rel_schema and rel_schema.cardinality == "one":
                 rel_data = RelatedNodeSync._generate_query_data(peer_data=peer_data)
@@ -1756,14 +1777,18 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     def _generate_mutation_query(self) -> dict[str, Any]:
-        query_result = {"ok": None, "object": {"id": None}}
+        query_result: dict[str, Any] = {"ok": None, "object": {"id": None}}
+
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            query_result["object"].update(attr._generate_mutation_query())
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if not isinstance(rel, RelatedNodeSync):
                 continue
 
-            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+            query_result["object"].update(rel._generate_mutation_query())
 
         return query_result
 
@@ -1771,6 +1796,18 @@ class InfrahubNodeSync(InfrahubNodeBase):
         object_response: dict[str, Any] = response[mutation_name]["object"]
         self.id = object_response["id"]
         self._existing = True
+
+        for attr_name in self._attributes:
+            attr = getattr(self, attr_name)
+            if (
+                attr_name not in object_response
+                or not isinstance(attr.value, InfrahubNodeBase)
+                or not attr.value.is_resource_pool()
+            ):
+                continue
+
+            # Process allocated resource from a pool and update attribute
+            attr.value = object_response[attr_name]["value"]
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
@@ -2006,13 +2043,7 @@ def generate_relationship_property(node: Union[InfrahubNode, InfrahubNodeSync], 
             setattr(
                 self,
                 internal_name,
-                node_class(
-                    name=external_name,
-                    branch=node._branch,
-                    client=node._client,
-                    schema=schema,
-                    data=value,
-                ),
+                node_class(name=external_name, branch=node._branch, client=node._client, schema=schema, data=value),
             )
 
     return prop

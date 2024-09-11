@@ -2,10 +2,15 @@ import { QSP } from "@/config/qsp";
 import { Branch } from "@/generated/graphql";
 import { BRANCH_CREATE } from "@/graphql/mutations/branches/createBranch";
 import { branchesState } from "@/state/atoms/branches.atom";
-import { useMutation } from "@apollo/client";
+import { useMutation } from "@/hooks/useQuery";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
-import DynamicForm from "./dynamic-form";
+import { Form, FormSubmit } from "@/components/ui/form";
+import { Button } from "@/components/buttons/button-primitive";
+import React from "react";
+import InputField from "@/components/form/fields/input.field";
+import { isMinLength, isRequired } from "@/components/form/utils/validation";
+import CheckboxField from "@/components/form/fields/checkbox.field";
 
 type BranchFormData = {
   name: string;
@@ -42,36 +47,40 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
   };
 
   return (
-    <DynamicForm
-      className="p-2"
-      onCancel={onCancel}
+    <Form
+      className="p-2 space-y-4"
       onSubmit={async (data) => {
-        await handleSubmit(data as BranchFormData);
-      }}
-      submitLabel="Create a new branch"
-      fields={[
-        {
-          name: "name",
-          label: "New branch name",
-          type: "Text",
-          rules: {
-            required: true,
-            minLength: { value: 3, message: "Name must be at least 3 characters long" },
+        const branchData: BranchFormData = {
+          name: data.name.value as string,
+          description: (data?.description?.value ?? undefined) as string | undefined,
+          sync_with_git: !!data.sync_with_git.value,
+        };
+        await handleSubmit(branchData);
+      }}>
+      <InputField
+        name="name"
+        label="New branch name"
+        rules={{
+          required: true,
+          validate: {
+            required: isRequired,
+            minLength: isMinLength(3),
           },
-        },
-        {
-          name: "description",
-          label: "New branch description",
-          type: "Text",
-        },
-        {
-          name: "sync_with_git",
-          label: "Sync with Git",
-          type: "Checkbox",
-          defaultValue: false,
-        },
-      ]}
-    />
+        }}
+      />
+
+      <InputField name="description" label="New branch description" />
+
+      <CheckboxField name="sync_with_git" label="Sync with Git" rules={{ required: true }} />
+
+      <div className="text-right">
+        <Button variant="outline" className="mr-2" onClick={onCancel}>
+          Cancel
+        </Button>
+
+        <FormSubmit>Create a new branch</FormSubmit>
+      </div>
+    </Form>
   );
 };
 

@@ -50,8 +50,11 @@ class Timestamp:
     def __repr__(self) -> str:
         return f"Timestamp: {self.to_string()}"
 
-    def to_string(self) -> str:
-        return self.obj.to_iso8601_string()
+    def to_string(self, with_z: bool = True) -> str:
+        iso8601_string = self.obj.to_iso8601_string()
+        if not with_z and iso8601_string[-1] == "Z":
+            iso8601_string = iso8601_string[:-1] + "+00:00"
+        return iso8601_string
 
     def to_timestamp(self) -> int:
         return self.obj.int_timestamp
@@ -81,6 +84,9 @@ class Timestamp:
             return NotImplemented
         return self.obj >= other.obj
 
-    def add_delta(self, hours: int = 0, minutes: int = 0, seconds: int = 0) -> Timestamp:
-        time = self.obj.add(hours=hours, minutes=minutes, seconds=seconds)
+    def __hash__(self) -> int:
+        return hash(self.to_string())
+
+    def add_delta(self, hours: int = 0, minutes: int = 0, seconds: int = 0, microseconds: int = 0) -> Timestamp:
+        time = self.obj.add(hours=hours, minutes=minutes, seconds=seconds, microseconds=microseconds)
         return Timestamp(time)

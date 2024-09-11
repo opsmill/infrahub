@@ -12,9 +12,15 @@ from infrahub.api.dependencies import (
     get_current_user,
     get_db,
 )
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import (
+    CoreGenericRepository,
+    CoreGraphQLQuery,
+    CoreTransformJinja2,
+    CoreTransformPython,
+)
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.exceptions import TransformError
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
 from infrahub.message_bus.messages import (
@@ -43,13 +49,21 @@ async def transform_python(
     transform = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=transform_id,
-        kind=InfrahubKind.TRANSFORMPYTHON,
+        kind=CoreTransformPython,
         branch=branch_params.branch,
         at=branch_params.at,
     )
 
-    query = await transform.query.get_peer(db=db)  # type: ignore[attr-defined]
-    repository = await transform.repository.get_peer(db=db)  # type: ignore[attr-defined]
+    query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
+    repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+
+    if repository.commit.value is None:  # type: ignore[attr-defined]
+        raise TransformError(
+            repository_name=repository.name.value,
+            location=repository.location.value,
+            commit="n/a",
+            message="Repository doesn't have a commit",
+        )
 
     gql_params = prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
 
@@ -66,12 +80,12 @@ async def transform_python(
     service: InfrahubServices = request.app.state.service
 
     message = TransformPythonData(
-        repository_id=repository.id,  # type: ignore[attr-defined]
-        repository_name=repository.name.value,  # type: ignore[attr-defined]
+        repository_id=repository.id,
+        repository_name=repository.name.value,
         repository_kind=repository.get_kind(),
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
-        transform_location=f"{transform.file_path.value}::{transform.class_name.value}",  # type: ignore[attr-defined]
+        transform_location=f"{transform.file_path.value}::{transform.class_name.value}",
         data=data,
     )
 
@@ -92,13 +106,21 @@ async def transform_jinja2(
     transform = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=transform_id,
-        kind=InfrahubKind.TRANSFORMJINJA2,
+        kind=CoreTransformJinja2,
         branch=branch_params.branch,
         at=branch_params.at,
     )
 
-    query = await transform.query.get_peer(db=db)  # type: ignore[attr-defined]
-    repository = await transform.repository.get_peer(db=db)  # type: ignore[attr-defined]
+    query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
+    repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+
+    if repository.commit.value is None:  # type: ignore[attr-defined]
+        raise TransformError(
+            repository_name=repository.name.value,
+            location=repository.location.value,
+            commit="n/a",
+            message="Repository doesn't have a commit",
+        )
 
     gql_params = prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
 
@@ -115,12 +137,12 @@ async def transform_jinja2(
     service: InfrahubServices = request.app.state.service
 
     message = TransformJinjaTemplate(
-        repository_id=repository.id,  # type: ignore[attr-defined]
-        repository_name=repository.name.value,  # type: ignore[attr-defined]
+        repository_id=repository.id,
+        repository_name=repository.name.value,
         repository_kind=repository.get_kind(),
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
-        template_location=transform.template_path.value,  # type: ignore[attr-defined]
+        template_location=transform.template_path.value,
         data=data,
     )
 

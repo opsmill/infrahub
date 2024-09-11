@@ -31,6 +31,7 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     minHeight: {
+      4: "1rem", // 16px
       7: "1.75rem", // 28px
       10: "40px",
       full: "100%",
@@ -41,6 +42,7 @@ export default {
       },
       colors: {
         "custom-blue": {
+          1: "#E4F3F7",
           10: "#a7d9e6",
           50: "#23a1c1",
           100: "#3babc8",

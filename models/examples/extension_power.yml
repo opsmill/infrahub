@@ -1,0 +1,204 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+generics:
+  - name: Generic
+    namespace: Power
+    description: "Generic Power"
+    label: "Power"
+    icon: "subway:power"
+    include_in_menu: true
+    menu_placement: InfraDevice
+    display_labels:
+      - name__value
+    order_by:
+      - device__name__value
+      - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
+    human_friendly_id:
+      - device__name__value
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: enabled
+        kind: Boolean
+        default_value: true
+      - name: status
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: primary
+            label: Primary
+            color: "#6a5acd"
+          - name: backup
+            label: Backup
+            color: "#9090de"
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__power"
+        optional: false
+        cardinality: one
+        kind: Parent
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: connected_endpoint
+        peer: PowerGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
+        identifier: connected__power
+  - name: Choice
+    namespace: Template
+    description: "Generic Choice"
+    label: "Choice"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: color
+        kind: Text
+        optional: true
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+nodes:
+  - name: PowerOutlet
+    namespace: Power
+    description: "Power Outlet"
+    label: "Power Outlet"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "PowerGeneric"
+    attributes:
+      - name: feed
+        label: Feed
+        optional: true
+        kind: Text
+    relationships:
+      - name: port_type
+        label: Type
+        identifier: poweroutlet__type
+        peer: TemplatePowerOutletType
+        optional: false
+        cardinality: one
+  - name: PowerPort
+    namespace: Power
+    description: "Power Port"
+    label: "Power Port"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "PowerGeneric"
+    attributes:
+      - name: alloc_draw
+        label: Allocated Draw
+        kind: Number
+      - name: max_draw
+        label: Maximun Draw
+        kind: Number
+    relationships:
+      - name: port_type
+        label: Type
+        identifier: powerport__type
+        peer: TemplatePowerPortType
+        optional: false
+        cardinality: one
+  - name: PowerOutletType
+    namespace: Template
+    description: "Power Outlet Type"
+    label: "Power Outlet Type"
+    include_in_menu: true
+    icon: "mdi:power-socket-de"
+    menu_placement: PowerGeneric
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - cardinality: many
+        name: power_outlet
+        identifier: poweroutlet__type
+        optional: true
+        peer: PowerPowerOutlet
+  - name: PowerPortType
+    namespace: Template
+    description: "Power Port Type"
+    label: "Power Port Type"
+    include_in_menu: true
+    icon: "mdi:power-plug"
+    menu_placement: PowerGeneric
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    human_friendly_id: null
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - cardinality: many
+        name: power_port
+        identifier: powerport__type
+        optional: true
+        peer: PowerPowerPort
+
+extensions:
+  nodes:
+    - kind: InfraDevice
+      relationships:
+        - name: power_outlets
+          label: Power Outlets
+          peer: PowerPowerOutlet
+          optional: true
+          cardinality: many
+          kind: Component
+        - name: power_ports
+          label: Power Ports
+          peer: PowerPowerPort
+          optional: true
+          cardinality: many
+          kind: Component

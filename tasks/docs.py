@@ -127,7 +127,7 @@ def vale(context: Context):
         print("Warning, Vale is not installed")
         return
 
-    exec_cmd = "vale ."
+    exec_cmd = "vale $(find . -type f \\( -name '*.mdx' -o -name '*.md' \\) -not -path './docs/node_modules/*')"
     print(" - [docs] Lint docs with vale")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -165,8 +165,8 @@ def format(context: Context):
 @task
 def lint(context: Context):
     """This will run all linter."""
-    vale(context)
     markdownlint(context)
+    vale(context)
 
 
 def _generate_infrahub_cli_documentation(context: Context):
@@ -219,7 +219,7 @@ def _generate_infrahubsync_documentation(context: Context):
 
     print(" - Generate infrahub-sync CLI documentation")
     exec_cmd = 'poetry run typer infrahub_sync.cli utils docs --name "infrahub-sync"'
-    exec_cmd += " --output docs/docs/sync/reference/cli.mdx"
+    exec_cmd += " --output docs/docs/integrations/sync/reference/cli.mdx"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -301,6 +301,8 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
             }
         )
 
+    print(" - Generate Infrahub SDK configuration documentation")
+
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2"
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
     output_label = "docs/docs/python-sdk/reference/config.mdx"
@@ -341,7 +343,6 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
         }
         for name, property in schema["properties"].items()
     ]
-
     definitions = deepcopy(schema["$defs"])
 
     for name, definition in schema["$defs"].items():
@@ -358,6 +359,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2"
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/dotinfrahub.mdx"
+    output_label = "docs/docs/reference/dotinfrahub.mdx"
     if not os.path.exists(template_file):
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
@@ -369,6 +371,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     rendered_file = template.render(properties=properties, definitions=definitions)
 
     Path(output_file).write_text(rendered_file, encoding="utf-8")
+    print(f"Docs saved to: {output_label}")
 
 
 def _generate_infrahub_events_documentation() -> None:

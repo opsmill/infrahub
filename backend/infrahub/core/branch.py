@@ -88,6 +88,11 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
     def set_created_at(cls, value: str) -> str:
         return Timestamp(value).to_string()
 
+    def get_created_at(self) -> str:
+        if not self.created_at:
+            raise RuntimeError(f"created_at not set for branch {self.name}")
+        return self.created_at
+
     @property
     def active_schema_hash(self) -> SchemaBranchHash:
         if self.schema_hash:

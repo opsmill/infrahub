@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
 from enum import IntFlag
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
@@ -9,17 +11,14 @@ import pytest
 from pydantic import BaseModel
 
 from infrahub import config, lock
-from infrahub.core.constants import (
-    CheckType,
-    InfrahubKind,
-    ProposedChangeState,
-)
-from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.model import SchemaConflict
+from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, RepositoryInternalStatus
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.diff import SchemaConflict
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
@@ -34,6 +33,7 @@ from infrahub.pytest_plugin import InfrahubBackendPlugin
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
+    from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema_manager import SchemaBranch
@@ -49,7 +49,7 @@ class DefinitionSelect(IntFlag):
     FILE_CHANGES = 2
 
     @staticmethod
-    def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool):
+    def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool) -> DefinitionSelect:
         if condition:
             return current | flag
         return current
@@ -76,7 +76,9 @@ async def cancel(message: messages.RequestProposedChangeCancel, service: Infrahu
         title="Canceling proposed change",
     ) as task_report:
         await task_report.info("Canceling proposed change as the source branch was deleted", id=message.proposed_change)
-        proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
+        proposed_change: CoreProposedChange = await service.client.get(
+            kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change
+        )
         proposed_change.state.value = ProposedChangeState.CANCELED.value
         await proposed_change.save()
 
@@ -89,18 +91,12 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
     ):
         log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
 
+        destination_branch = await registry.get_branch(db=service.database, branch=message.destination_branch)
         source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
-        diff = await BranchDiffer.init(db=service.database, branch=source_branch, branch_only=False)
-        conflicts = await diff.get_conflicts_graph()
-
-        async with service.database.start_transaction() as db:
-            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-                db=db,
-                validator_kind=InfrahubKind.DATAVALIDATOR,
-                validator_label="Data Integrity",
-                check_schema_kind=InfrahubKind.DATACHECK,
-            )
-            await object_conflict_validator_recorder.record_conflicts(message.proposed_change, conflicts)
+        component_registry = get_component_registry()
+        async with service.database.start_transaction() as dbt:
+            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+            await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
 
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
@@ -121,7 +117,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             repositories=repositories
         ):
             for repo in repositories:
-                if not repo.read_only:
+                if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
                     events.append(
                         messages.RequestRepositoryChecks(
                             proposed_change=message.proposed_change,
@@ -258,7 +254,7 @@ async def schema_integrity(
         # ----------------------------------------------------------
         source_branch = registry.get_branch_from_registry(branch=message.source_branch)
         _, responses = await schema_validators_checker(
-            branch=source_branch, schema=candidate_schema, constraints=constraints, service=service
+            branch=source_branch, schema=candidate_schema, constraints=list(constraints), service=service
         )
 
         # TODO we need to report a failure if an error happened during the execution of a validator
@@ -301,7 +297,11 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
         events: list[InfrahubMessage] = []
         for repository in message.branch_diff.repositories:
             log_line = "Skipping merge conflict checks for data only branch"
-            if message.source_branch_sync_with_git and not repository.read_only:
+            if (
+                message.source_branch_sync_with_git
+                and not repository.read_only
+                and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
+            ):
                 events.append(
                     messages.RequestRepositoryChecks(
                         proposed_change=message.proposed_change,
@@ -396,10 +396,12 @@ async def run_generators(message: messages.RequestProposedChangeRunGenerators, s
         related_node=message.proposed_change,
         title="Evaluating Generators",
     ) as task_report:
-        generators = await service.client.filters(
-            kind="CoreGeneratorDefinition", prefetch_relationships=True, populate_store=True
+        generators: list[CoreGeneratorDefinition] = await service.client.filters(
+            kind=InfrahubKind.GENERATORDEFINITION,
+            prefetch_relationships=True,
+            populate_store=True,
+            branch=message.source_branch,
         )
-
         generator_definitions = [
             ProposedChangeGeneratorDefinition(
                 definition_id=generator.id,
@@ -454,25 +456,27 @@ async def run_generators(message: messages.RequestProposedChangeRunGenerators, s
     next_messages: list[InfrahubMessage] = []
     if message.refresh_artifacts:
         await task_report.info("Adding Refresh Artifact job", proposed_change=message.proposed_change)
-        msg = messages.RequestProposedChangeRefreshArtifacts(
-            proposed_change=message.proposed_change,
-            source_branch=message.source_branch,
-            source_branch_sync_with_git=message.source_branch_sync_with_git,
-            destination_branch=message.destination_branch,
-            branch_diff=message.branch_diff,
+        next_messages.append(
+            messages.RequestProposedChangeRefreshArtifacts(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_sync_with_git=message.source_branch_sync_with_git,
+                destination_branch=message.destination_branch,
+                branch_diff=message.branch_diff,
+            )
         )
-        next_messages.append(msg)
 
     if message.do_repository_checks:
         await task_report.info("Adding Repository Check job", proposed_change=message.proposed_change)
-        msg = messages.RequestProposedChangeRepositoryChecks(
-            proposed_change=message.proposed_change,
-            source_branch=message.source_branch,
-            source_branch_sync_with_git=message.source_branch_sync_with_git,
-            destination_branch=message.destination_branch,
-            branch_diff=message.branch_diff,
+        next_messages.append(
+            messages.RequestProposedChangeRepositoryChecks(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_sync_with_git=message.source_branch_sync_with_git,
+                destination_branch=message.destination_branch,
+                branch_diff=message.branch_diff,
+            )
         )
-        next_messages.append(msg)
 
     for next_msg in next_messages:
         next_msg.assign_meta(parent=message)
@@ -565,17 +569,43 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
             directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
         ) -> Union[int, pytest.ExitCode]:
             config_file = str(directory / ".infrahub.yml")
-            return pytest.main(
-                [
-                    str(directory),
-                    f"--infrahub-repo-config={config_file}",
-                    f"--infrahub-address={config.SETTINGS.main.internal_address}",
-                    "--continue-on-collection-errors",  # FIXME: Non-Infrahub tests should be ignored
-                    "-qqqq",
-                    "-s",
-                ],
-                plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
-            )
+            test_directory = directory / "tests"
+
+            if not test_directory.is_dir():
+                log.debug(
+                    event="repository_tests_ignored",
+                    proposed_change=proposed_change,
+                    repository=repository.repository_name,
+                    message="tests directory not found",
+                )
+                return 1
+
+            # Redirect stdout/stderr to avoid showing pytest lines in the git agent
+            old_out = sys.stdout
+            old_err = sys.stderr
+
+            with Path(os.devnull).open(mode="w", encoding="utf-8") as devnull:
+                sys.stdout = devnull
+                sys.stderr = devnull
+
+                exit_code = pytest.main(
+                    [
+                        str(test_directory),
+                        f"--infrahub-repo-config={config_file}",
+                        f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                        "-qqqq",
+                        "-s",
+                    ],
+                    plugins=[
+                        InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)
+                    ],
+                )
+
+            # Restore stdout/stderr back to their orignal states
+            sys.stdout = old_out
+            sys.stderr = old_err
+
+            return exit_code
 
         for repository in message.branch_diff.repositories:
             log_line = "Skipping tests for data only branch"
@@ -592,7 +622,7 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
 
                 return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
                 log.info(
-                    "repository_tests_completed",
+                    event="repository_tests_completed",
                     proposed_change=message.proposed_change,
                     repository=repository.repository_name,
                     return_code=return_code,
@@ -608,6 +638,9 @@ query DestinationBranchRepositories {
         __typename
         id
         name {
+          value
+        }
+        internal_status {
           value
         }
         ... on CoreRepository {
@@ -636,6 +669,9 @@ query MyQuery {
         name {
           value
         }
+        internal_status {
+          value
+        }
         commit {
           value
         }
@@ -654,6 +690,9 @@ query MyQuery {
         name {
           value
         }
+        internal_status {
+          value
+        }
         commit {
           value
         }
@@ -669,6 +708,7 @@ class Repository(BaseModel):
     repository_name: str
     read_only: bool
     commit: str
+    internal_status: str
 
 
 def _parse_proposed_change_repositories(
@@ -690,24 +730,28 @@ def _parse_proposed_change_repositories(
                 repository_id=repo.repository_id,
                 repository_name=repo.repository_name,
                 read_only=repo.read_only,
+                internal_status=repo.internal_status,
                 destination_commit=repo.commit,
                 source_branch=message.source_branch,
                 destination_branch=message.destination_branch,
             )
         else:
             pc_repos[repo.repository_id].destination_commit = repo.commit
+
     for repo in source_repos:
         if repo.repository_id not in pc_repos:
             pc_repos[repo.repository_id] = ProposedChangeRepository(
                 repository_id=repo.repository_id,
                 repository_name=repo.repository_name,
                 read_only=repo.read_only,
+                internal_status=repo.internal_status,
                 source_commit=repo.commit,
                 source_branch=message.source_branch,
                 destination_branch=message.destination_branch,
             )
         else:
             pc_repos[repo.repository_id].source_commit = repo.commit
+            pc_repos[repo.repository_id].internal_status = repo.internal_status
 
     return list(pc_repos.values())
 
@@ -728,6 +772,7 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
                 repository_name=repo["node"]["name"]["value"],
                 read_only=repo["node"]["__typename"] == InfrahubKind.READONLYREPOSITORY,
                 commit=repo["node"]["commit"]["value"] or "",
+                internal_status=repo["node"]["internal_status"]["value"],
             )
         )
     return parsed
@@ -785,7 +830,7 @@ async def _get_proposed_change_repositories(
 async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
     conflicts = False
     for repo in repositories:
-        if repo.has_diff:
+        if repo.has_diff and not repo.is_staging:
             git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
@@ -799,12 +844,21 @@ async def _validate_repository_merge_conflicts(repositories: list[ProposedChange
 
 async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
     for repo in repositories:
-        if repo.has_diff:
+        if repo.has_diff and repo.source_commit and repo.destination_commit:
+            # TODO we need to find a way to return all files in the repo if the repo is new
             git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
 
-            files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
-                first_commit=repo.source_commit, second_commit=repo.destination_commit
-            )
+            files_changed: list[str] = []
+            files_added: list[str] = []
+            files_removed: list[str] = []
+
+            if repo.destination_branch:
+                files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
+                    first_commit=repo.source_commit, second_commit=repo.destination_commit
+                )
+            else:
+                files_added = await git_repo.list_all_files(commit=repo.source_commit)
+
             repo.files_removed = files_removed
             repo.files_added = files_added
             repo.files_changed = files_changed

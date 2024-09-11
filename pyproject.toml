@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.15.3"
+version = "0.16.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -24,8 +24,8 @@ optional = true
 
 [tool.poetry.dependencies]
 python = "^3.10, < 3.13"
-neo4j = "~5.20"
-neo4j-rust-ext = "^5.20.0.0"
+neo4j = "~5.24"
+neo4j-rust-ext = "^5.24.0.0"
 infrahub-sdk = { path = "python_sdk", extras = [
     "ctl",
     "tests",
@@ -38,20 +38,20 @@ structlog = "24.1.0"
 boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"] }
-typer = "~0.7"
+typer = "0.12.3"
 
 # Dependencies specific to the API Server
-fastapi = "~0.110"
+fastapi = "~0.112"
 fastapi-storages = "~0.3"
 graphene = "~3.3"
 gunicorn = "^22.0.0"
 lunr = "^0.7.0.post1"
-starlette-exporter = "~0.21"
+starlette-exporter = "~0.23"
 python-multipart = "0.0.9"                             # Required by FastAPI to upload large files
 asgi-correlation-id = "4.2.0"                          # Middleware for FastAPI to generate ID per request
 bcrypt = "~4.1"                                        # Used to hash and validate password
 pyjwt = "~2.8"                                         # Used to manage JWT tokens
-uvicorn = { version = "~0.27", extras = ["standard"] }
+uvicorn = { version = "~0.30", extras = ["standard"] }
 opentelemetry-instrumentation-aio-pika = "^0.45b0"
 opentelemetry-instrumentation-fastapi = "^0.45b0"
 opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
@@ -61,7 +61,7 @@ netaddr = "1.3.0"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
-pylint = "*"
+pylint = "~3.1"
 mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
@@ -77,13 +77,13 @@ pre-commit = "^2.20.0"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
-typer-cli = "*"
-ruff = "0.4.6"
+ruff = "0.5.0"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
 deepdiff = "^6.2"
-towncrier = "24.7.1"
+polyfactory = "^2.16.2"
+towncrier = "^24.8"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
@@ -160,6 +160,7 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
     "ignore:Deprecated call to",
+    "ignore:pkg_resources is deprecated as an API",          # Remove on https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2181 has been fixed
 ]
 addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
 junit_duration_report = "call"
@@ -168,6 +169,7 @@ junit_duration_report = "call"
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
+disable_error_code = ["type-abstract"]
 exclude = ["^backend/tests/scale", "^backend/tests/unit"]
 
 [[tool.mypy.overrides]]
@@ -307,10 +309,6 @@ module = "infrahub.graphql.mutations.schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.query"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.resolver"
 ignore_errors = true
 
@@ -322,9 +320,6 @@ ignore_errors = true
 module = "infrahub.graphql.subscription"
 ignore_errors = true
 
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.subscription.graphql_query"
-ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.types.attribute"
@@ -366,21 +361,12 @@ ignore_errors = true
 module = "infrahub.message_bus.operations.refresh.webhook"
 ignore_errors = true
 
-
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.requests.artifact"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.generator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.requests.graphql_query_group"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.proposed_change"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -460,6 +446,7 @@ preview = true
 task-tags = ["FIXME", "TODO", "XXX"]
 
 select = [
+    "ANN",   # flake8-annotations
     "ASYNC", # flake8-async
     "B",     # flake8-bugbear
     "C4",    # flake8-comprehensions
@@ -473,6 +460,7 @@ select = [
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
     "N",     # pep8-naming
+    "PERF",  # Perflint
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PTH",   # flake8-use-pathlib
@@ -481,7 +469,6 @@ select = [
     "RET",   # flake8-return
     "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
     "UP",    # pyupgrade
     "W",     # pycodestyle warnings
@@ -495,7 +482,8 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "ASYNC101", # Async functions should not call `open`, `time.sleep`, or `subprocess` methods
+    "ASYNC230", # Async functions should not open files with blocking methods like `open`
+    "ASYNC251", # Async functions should not call `time.sleep`
     "B007",     # Loop control variable not used within loop body
     "B008",     # Do not perform function call `Depends` in argument defaults;
     "B009",     # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
@@ -509,6 +497,10 @@ ignore = [
     "N805",     # First argument of a method should be named self
     "N806",     # Variable in function should be lowercase
     "N812",     # Lowercase imported as non-lowercase
+    "PERF203",  # `try`-`except` within a loop incurs performance overhead
+    "PERF401",  # Use a list comprehension to create a transformed list
+    "PERF402",  # Use `list` or `list.copy` to create a copy of a list
+    "PERF403",  # Use a dictionary comprehension instead of a for-loop
     "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
@@ -545,7 +537,6 @@ ignore = [
     "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
     "UP007",    # Use X | Y for type annotations
-    "UP008",    # Use super() instead of super(__class__, self)
     "UP012",    # Unnecessary call to encode as UTF-8
     "UP018",    # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",    # Use format specifiers instead of percent format
@@ -571,6 +562,20 @@ max-complexity = 33
 
 [tool.ruff.lint.per-file-ignores]
 
+"backend/infrahub/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001", # Missing type annotation for function argument
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+    "ANN204", # Missing return type annotation for special method
+    "ANN206", # Missing return type annotation for classmethod
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+]
+
 "backend/infrahub/git/repository.py" = [
     "TCH003", # Pydantic needs UUID import to not only be available under TYPE_CHECKING clause
 ]
@@ -579,6 +584,18 @@ max-complexity = 33
     "S101", # Use of assert detected
     "S105", #  Possible hardcoded password assigned to variable
     "S106", #  Possible hardcoded password assigned to argument
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001", # Missing type annotation for function argument
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+    "ANN204", # Missing return type annotation for special method
+    "ANN205", # Missing return type annotation for staticmethod
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+
 ]
 
 "models/infrastructure_edge.py" = [
@@ -590,6 +607,26 @@ max-complexity = 33
     ##################################################################################################
     "C901", # `generate_site` is too complex (34 > 33)"
     "E501", # Line too long
+]
+
+"tasks/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001", # Missing type annotation for function argument
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+]
+
+
+"utilities/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN201", # Missing return type annotation for public function
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
 ]
 
 [tool.towncrier]

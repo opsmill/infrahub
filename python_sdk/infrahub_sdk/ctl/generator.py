@@ -46,7 +46,11 @@ async def run(
     client = await initialize_client()
     if variables_dict:
         data = execute_graphql_query(
-            query=generator_config.query, variables_dict=variables_dict, branch=branch, debug=False
+            query=generator_config.query,
+            variables_dict=variables_dict,
+            branch=branch,
+            debug=False,
+            repository_config=repository_config,
         )
         generator = generator_class(
             query=generator_config.query,
@@ -80,7 +84,11 @@ async def run(
                 infrahub_node=InfrahubNode,
             )
             data = execute_graphql_query(
-                query=generator_config.query, variables_dict=check_parameter, branch=branch, debug=False
+                query=generator_config.query,
+                variables_dict=check_parameter,
+                branch=branch,
+                debug=False,
+                repository_config=repository_config,
             )
             await generator._init_client.schema.all(branch=generator.branch_name)
             await generator.run(identifier=generator_config.name, data=data)

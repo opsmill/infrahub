@@ -30,13 +30,13 @@ client = InfrahubClientSync(address="http://localhost:8000")
 
 ## Authentication
 
-The SDK is using a token-based authentication method to authenticate with the API and GraphQL. The token can be provided using a Config object or you can define it as the `INFRAHUB_API_TOKEN` environment variable.
+The SDK is using a token-based authentication method to authenticate with the API and GraphQL. The token can be provided using a `Config` object or you can define it as the `INFRAHUB_API_TOKEN` environment variable.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
 
   ```python
-  from infrahub_sdk import InfrahubClient
+  from infrahub_sdk import Config, InfrahubClient
   client = await InfrahubClient(config=Config(api_token="token"))
   client = await InfrahubClient() # token is read from the INFRAHUB_API_TOKEN environment variable
   ```
@@ -45,7 +45,7 @@ The SDK is using a token-based authentication method to authenticate with the AP
   <TabItem value="Sync" default>
 
   ```python
-  from infrahub_sdk import InfrahubClientSync
+  from infrahub_sdk import Config, InfrahubClientSync
   client = InfrahubClientSync(config=Config(api_token="token"))
   client = InfrahubClientSync() # token is read from the INFRAHUB_API_TOKEN environment variable
   ```
@@ -55,13 +55,13 @@ The SDK is using a token-based authentication method to authenticate with the AP
 
 ## Configuring the client object
 
-The client object can be configured by providing a Config object. Here we will show you how to enable the client to print out all of the GraphQL queries it will send to Infrahub.
+The client object can be configured by providing a `Config` object. Here we will show you how to enable the client to print out all of the GraphQL queries it will send to Infrahub.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
 
   ```python
-  from infrahub_sdk import InfrahubClient, Config
+  from infrahub_sdk import Config, InfrahubClient
   config = Config(echo_graphql_queries=True)
   client = await InfrahubClient(config=config)
   ```
@@ -70,7 +70,7 @@ The client object can be configured by providing a Config object. Here we will s
   <TabItem value="Sync" default>
 
   ```python
-  from infrahub_sdk import InfrahubClientSync, Config
+  from infrahub_sdk import Config, InfrahubClientSync
   config = Config(echo_graphql_queries=True)
   client = InfrahubClientSync(config=config)
   ```

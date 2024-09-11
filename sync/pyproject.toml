@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.4.2"
+version = "0.5.0"
 description = "Infrahub-Sync is a versatile Python package that synchronizes data between a source and a destination system"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -26,6 +26,8 @@ python = ">=3.9, < 3.13"
 infrahub-sdk = {version = "^0,>=0.11", extras = ["all"]}
 structlog = "^22.3.0"
 diffsync = { version = ">=1.10,<2.0 || >=2.0", extras = ["redis"] }
+netutils = "^1.9.1"
+tqdm = "^4.66.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -43,7 +45,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.6"
+ruff = "0.5.0"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -154,7 +156,8 @@ task-tags = [
 ]
 
 select = [
-   "ASYNC", # flake8-async
+    "ANN",   # flake8-annotations
+    "ASYNC", # flake8-async
     "B",     # flake8-bugbear
     "C4",    # flake8-comprehensions
     "C90",   # mccabe complexity
@@ -167,6 +170,7 @@ select = [
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
     "N",     # pep8-naming
+    "PERF",  # Perflint
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PTH",   # flake8-use-pathlib
@@ -175,7 +179,6 @@ select = [
     "RET",   # flake8-return
     "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
     "UP",    # pyupgrade
     "W",     # pycodestyle warnings
@@ -189,9 +192,18 @@ ignore = [
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
 # investigation if they are deemed to not make sense.                                            #
 ##################################################################################################
+    "ANN001",  # Missing type annotation for function argument
+    "ANN002",  # Missing type annotation for `*args`
+    "ANN003",  # Missing type annotation for `**kwargs`
+    "ANN201",  # Missing return type annotation for public function
+    "ANN202",  # Missing return type annotation for private function
+    "ANN204",  # Missing return type annotation for special method
+    "ANN206",  # Missing return type annotation for classmethod
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
     "B904",    # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
     "C416",    # Unnecessary `list` comprehension (rewrite using `list()`)
     "INP001",  # File is part of an implicit namespace package. Add an `__init__.py`.
+    "PERF401", # Use a list comprehension to create a transformed list
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments

@@ -1,14 +1,15 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Input, InputProps } from "@/components/ui/input";
-import { FormFieldProps } from "@/components/form/type";
+import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface InputFieldProps
   extends FormFieldProps,
     Omit<InputProps, "defaultValue" | "name"> {}
 
 const InputField = ({
-  defaultValue,
+  defaultValue = { source: null, value: null },
   description,
   label,
   name,
@@ -23,30 +24,29 @@ const InputField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        // Not passing "value" is needed to prevent error on uncontrolled component
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
-        const { value, onChange, ...fieldMethodsWithoutValue } = field;
+        const fieldData: FormAttributeValue = field.value;
+
         return (
-          <div className="relative mb-2 flex flex-col">
+          <div className="space-y-2">
             <LabelFormField
               label={label}
               unique={unique}
               required={!!rules?.required}
               description={description}
+              fieldData={fieldData}
             />
 
             <FormInput>
               <Input
-                {...fieldMethodsWithoutValue}
-                {...props}
+                {...field}
+                value={(fieldData?.value as string) ?? ""}
                 onChange={(event) => {
-                  onChange(
-                    props.type === "number" ? event.target.valueAsNumber : event.target.value
-                  );
+                  field.onChange(updateFormFieldValue(event.target.value, defaultValue));
                 }}
-                value={value ?? ""}
+                {...props}
               />
             </FormInput>
+
             <FormMessage />
           </div>
         );

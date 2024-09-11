@@ -10,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -79,6 +80,7 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
     registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
     registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
 async def initialization(db: InfrahubDatabase) -> None:
@@ -234,23 +236,13 @@ async def create_account(
 ) -> Node:
     token_schema = db.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(
-        db=db,
-        name=name,
-        type="User",
-        role=role,
-        password=password,
-    )
+    await obj.new(db=db, name=name, account_type="User", role=role, password=password)
     await obj.save(db=db)
     log.info(f"Created Account: {name}", account_name=name)
 
     if token_value:
         token = await Node.init(db=db, schema=token_schema)
-        await token.new(
-            db=db,
-            token=token_value,
-            account=obj,
-        )
+        await token.new(db=db, token=token_value, name="Created automatically", account=obj)
         await token.save(db=db)
 
     return obj

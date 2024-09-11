@@ -6,7 +6,7 @@ from enum import Enum
 from infrahub_sdk.client import NodeDiff  # noqa: TCH002
 from pydantic import BaseModel, Field
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import NodeNotFoundError
 
 SCHEMA_CHANGE = re.compile("^Schema[A-Z]")
@@ -45,6 +45,7 @@ class ProposedChangeRepository(BaseModel):
     read_only: bool
     source_branch: str
     destination_branch: str
+    internal_status: str
     source_commit: str = Field(default="")
     destination_commit: str = Field(default="")
     conflicts: list[str] = Field(default_factory=list, description="List of files with merge conflicts")
@@ -56,6 +57,13 @@ class ProposedChangeRepository(BaseModel):
     def has_diff(self) -> bool:
         """Indicates if a diff exists for managed repositories."""
         if not self.read_only and self.source_commit and self.source_commit != self.destination_commit:
+            return True
+        return False
+
+    @property
+    def is_staging(self) -> bool:
+        """Indicates if the repository is in staging mode."""
+        if self.internal_status == RepositoryInternalStatus.STAGING.value:
             return True
         return False
 

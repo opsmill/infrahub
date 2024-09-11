@@ -4,21 +4,19 @@ import { DateDisplay } from "@/components/display/date-display";
 import SlideOver from "@/components/display/slide-over";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { deleteBranch } from "@/graphql/mutations/branches/deleteBranch";
 import { mergeBranch } from "@/graphql/mutations/branches/mergeBranch";
 import { rebaseBranch } from "@/graphql/mutations/branches/rebaseBranch";
 import { validateBranch } from "@/graphql/mutations/branches/validateBranch";
-import { getBranchDetails } from "@/graphql/queries/branches/getBranchDetails";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectForm from "@/components/form/object-form";
 import { branchesState } from "@/state/atoms/branches.atom";
-import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { objectToString } from "@/utils/common";
 import { constructPath, getCurrentQsp } from "@/utils/fetch";
@@ -31,20 +29,19 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { getBranchDetailsQuery } from "@/graphql/queries/branches/getBranchDetails";
+import NoDataFound from "@/screens/errors/no-data-found";
 
 export const BranchDetails = () => {
   const { "*": branchName } = useParams();
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
-  const [schemaList] = useAtom(schemaState);
 
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
   const [displayModal, setDisplayModal] = useState(false);
   const [detailsContent, setDetailsContent] = useState({});
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
-
-  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const navigate = useNavigate();
 
@@ -74,7 +71,6 @@ export const BranchDetails = () => {
         toastId: "alert-success",
       });
     } catch (error: any) {
-      console.log("error: ", error);
       setDetailsContent(error);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={errorMessage} />);
@@ -83,28 +79,26 @@ export const BranchDetails = () => {
     setIsLoadingRequest(false);
   };
 
-  const queryString = accountSchemaData
-    ? getBranchDetails({
-        accountKind: accountSchemaData.kind,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
+  const { loading, error, data } = useQuery(getBranchDetailsQuery, { variables: { branchName } });
 
-  const query = gql`
-    ${queryString}
-  `;
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
-  const { loading, error, data } = useQuery(query, { skip: !accountSchemaData });
+  if (error) {
+    return <ErrorScreen message="Something went wrong when fetching the branch details." />;
+  }
 
-  const branch = data?.Branch?.filter((branch: any) => branch.name === branchName)[0];
+  const branchData = data?.Branch;
+
+  if (!branchData || branchData.length === 0) {
+    return <NoDataFound message={`Branch ${branchName} does not exists.`} />;
+  }
+
+  const branch = branchData[0];
 
   return (
     <div className="bg-custom-white">
-      {loading && <LoadingScreen />}
-
-      {error && <ErrorScreen message="Something went wrong when fetching the branch details." />}
-
       {displayModal && (
         <ModalDelete
           title="Delete"
@@ -143,7 +137,7 @@ export const BranchDetails = () => {
 
       {!loading && branch?.name && (
         <>
-          <div className="border-t border-b border-gray-200 px-2 py-2 sm:p-0 mb-6">
+          <div className="border-t border-b border-gray-200 px-2 py-2">
             <dl className="divide-y divide-gray-200">
               <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
@@ -282,7 +276,7 @@ export const BranchDetails = () => {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {accountSchemaData?.kind}
+              {PROPOSED_CHANGES_OBJECT}
             </span>
           </div>
         }

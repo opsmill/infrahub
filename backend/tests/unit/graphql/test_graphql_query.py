@@ -1,3 +1,5 @@
+from typing import Dict, Literal
+
 import pytest
 from deepdiff import DeepDiff
 from graphql import graphql
@@ -10,12 +12,13 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 
 
-async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     query = """
     query {
         InfrahubInfo {
@@ -37,7 +40,7 @@ async def test_info_query(db: InfrahubDatabase, default_branch: Branch, critical
     assert result.data["InfrahubInfo"]["version"] == __version__
 
 
-async def test_simple_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_simple_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -77,7 +80,9 @@ async def test_simple_query(db: InfrahubDatabase, default_branch: Branch, critic
     assert gql_params.context.related_node_ids == {obj1.id, obj2.id}
 
 
-async def test_simple_query_with_offset_and_limit(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_simple_query_with_offset_and_limit(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+):
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -115,7 +120,7 @@ async def test_simple_query_with_offset_and_limit(db: InfrahubDatabase, default_
     assert len(result.data["TestCriticality"]["edges"]) == 1
 
 
-async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Branch, data_schema):
+async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -162,7 +167,7 @@ async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Bran
     assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == "Low"
 
 
-async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch: Branch, data_schema):
+async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -217,7 +222,7 @@ async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch
     ]
 
 
-async def test_display_label_default_value(db: InfrahubDatabase, default_branch: Branch, data_schema):
+async def test_display_label_default_value(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -265,7 +270,7 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
     assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == f"TestCriticality(ID: {obj1.id})"
 
 
-async def test_display_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_display_hfid(db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -312,7 +317,7 @@ async def test_display_hfid(db: InfrahubDatabase, default_branch, animal_person_
     }
 
 
-async def test_display_label_generic(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
     cat_schema = animal_person_schema.get(name="TestCat")
@@ -357,7 +362,9 @@ async def test_display_label_generic(db: InfrahubDatabase, default_branch, anima
     assert sorted([item["node"]["display_label"] for item in result.data["TestAnimal"]["edges"]]) == expected_results
 
 
-async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data_schema, all_attribute_types_schema):
+async def test_all_attributes(
+    db: InfrahubDatabase, default_branch: Branch, data_schema: None, all_attribute_types_schema: NodeSchema
+):
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(
         db=db,
@@ -443,7 +450,7 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data
     assert results["obj2"]["prefix"]["prefixlen"] is None
 
 
-async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -507,7 +514,7 @@ async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_pe
     assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, c3.id}
 
 
-async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -582,7 +589,9 @@ async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch,
     assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, c3.id}
 
 
-async def test_display_label_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_display_label_nested_query(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -691,139 +700,7 @@ def _check_diff_for_branch_and_id(all_dicts: list[dict], branch_name: str, id: s
     return this_dict
 
 
-async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
-
-    p1_main = await Node.init(db=db, schema=person)
-    await p1_main.new(db=db, name="John", height=180)
-    await p1_main.save(db=db)
-    p2_main = await Node.init(db=db, schema=person)
-    await p2_main.new(db=db, name="Jane", height=170)
-    await p2_main.save(db=db)
-
-    c1_main = await Node.init(db=db, schema=car)
-    await c1_main.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1_main)
-    await c1_main.save(db=db)
-    c2_main = await Node.init(db=db, schema=car)
-    await c2_main.new(db=db, name="bolt", nbr_seats=4, is_electric=True, owner=p1_main)
-    await c2_main.save(db=db)
-    c3_main = await Node.init(db=db, schema=car)
-    await c3_main.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2_main)
-    await c3_main.save(db=db)
-
-    branch2 = await create_branch(branch_name="branch2", db=db)
-    await c1_main.delete(db=db)
-    p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
-    )
-    p1_branch2.name.value = "Jonathan"
-    await p1_branch2.save(db=db)
-    p2_main.name.value = "Jeanette"
-    await p2_main.save(db=db)
-    c2_main.name.value = "bolting"
-    await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
-    await c3_branch2.owner.update(data=p1_branch2.id, db=db)
-    await c3_branch2.save(db=db)
-
-    query = """
-    query {
-        DiffSummaryOld {
-            branch
-            node
-            kind
-            actions
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=branch2)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-    assert result.errors is None
-    assert result.data
-    diff_summary = result.data["DiffSummaryOld"]
-    assert len(diff_summary) == 7
-
-    assert {"branch": "main", "node": c1_main.id, "kind": "TestCar", "actions": ["removed"]} in diff_summary
-    assert {"branch": "main", "node": c2_main.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": c3_branch2.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "main", "node": p2_main.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": p1_branch2.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-
-
-async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
-
-    p1_main = await Node.init(db=db, schema=person)
-    await p1_main.new(db=db, name="John", height=180)
-    await p1_main.save(db=db)
-    p2_main = await Node.init(db=db, schema=person)
-    await p2_main.new(db=db, name="Jane", height=170)
-    await p2_main.save(db=db)
-
-    c1_main = await Node.init(db=db, schema=car)
-    await c1_main.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1_main)
-    await c1_main.save(db=db)
-    c2_main = await Node.init(db=db, schema=car)
-    await c2_main.new(db=db, name="bolt", nbr_seats=4, is_electric=True, owner=p1_main)
-    await c2_main.save(db=db)
-    c3_main = await Node.init(db=db, schema=car)
-    await c3_main.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2_main)
-    await c3_main.save(db=db)
-
-    branch2 = await create_branch(branch_name="branch2", db=db)
-    await c1_main.delete(db=db)
-    p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
-    )
-    p1_branch2.name.value = "Jonathan"
-    await p1_branch2.save(db=db)
-    p2_main.name.value = "Jeanette"
-    await p2_main.save(db=db)
-    c2_main.name.value = "bolting"
-    await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
-    await c3_branch2.owner.update(data=p1_branch2.id, db=db)
-    await c3_branch2.save(db=db)
-
-    query = """
-    query {
-        DiffSummaryOld {
-            branch
-            node
-            kind
-            actions
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=branch2)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-    assert result.errors is None
-    assert result.data
-    diff_summary = result.data["DiffSummaryOld"]
-    assert len(diff_summary) == 7
-
-    assert {"branch": "main", "node": c1_main.id, "kind": "TestCar", "actions": ["removed"]} in diff_summary
-    assert {"branch": "main", "node": c2_main.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": c3_branch2.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "main", "node": p2_main.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": p1_branch2.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-
-
-async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -1000,7 +877,62 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     assert cars_element["peers"][0]["action"] == "ADDED"
 
 
-async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_diffsummary_on_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+):
+    person = registry.schema.get(name="TestPerson")
+
+    before_create = Timestamp()
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+    p2 = await Node.init(db=db, schema=person)
+    await p2.new(db=db, name="Jane", height=170)
+    await p2.save(db=db)
+
+    query = """
+        query DiffSummaries($time_from: String) {
+            DiffSummary(time_from: $time_from) {
+                branch
+                id
+                kind
+                action
+            }
+        }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "time_from is required on default branch"
+
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"time_from": before_create.to_string()},
+    )
+    assert result.errors is None
+    assert result.data
+    summaries = result.data["DiffSummary"]
+    assert len(summaries) == 2
+    assert {"branch": default_branch.name, "kind": "TestPerson", "id": p1.get_id(), "action": "ADDED"} in summaries
+    assert {"branch": default_branch.name, "kind": "TestPerson", "id": p2.get_id(), "action": "ADDED"} in summaries
+
+
+async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -1089,7 +1021,7 @@ async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_
     assert result_per_name["John"]["cars"]["edges"][0]["properties"]["__typename"] == "RelationshipProperty"
 
 
-async def test_query_filter_ids(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_query_filter_ids(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -1164,11 +1096,11 @@ async def test_query_filter_ids(db: InfrahubDatabase, default_branch: Branch, cr
 async def test_query_filter_relationship_isnull(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_albert_main,
-    person_john_main,
-    person_jane_main,
-    car_camry_main,
-    car_accord_main,
+    person_albert_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_camry_main: Node,
+    car_accord_main: Node,
 ):
     query = """
     query {
@@ -1228,11 +1160,11 @@ async def test_query_filter_relationship_isnull(
 async def test_query_filter_attribute_isnull(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_albert_main,
-    person_john_main,
-    person_jane_main,
-    car_camry_main,
-    car_accord_main,
+    person_albert_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_camry_main: Node,
+    car_accord_main: Node,
 ):
     person_albert = await NodeManager.get_one(db=db, id=person_albert_main.id)
     person_albert.height.value = None
@@ -1293,7 +1225,7 @@ async def test_query_filter_attribute_isnull(
     assert result_person_ids == {person_john_main.id, person_jane_main.id}
 
 
-async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -1331,7 +1263,12 @@ async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Br
 
 @pytest.mark.parametrize("graphql_enums_on,enum_value", [(True, "MANUAL"), (False, '"manual"')])
 async def test_query_filter_on_enum(
-    db: InfrahubDatabase, default_branch: Branch, person_john_main, car_person_schema, graphql_enums_on, enum_value
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main: Node,
+    car_person_schema: SchemaBranch,
+    graphql_enums_on: bool,
+    enum_value: Literal["MANUAL", '"manual"'],
 ):
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
     car = registry.schema.get(name="TestCar")
@@ -1369,7 +1306,9 @@ async def test_query_filter_on_enum(
     assert result.data["TestCar"]["edges"][0]["node"]["name"]["value"] == "GoKart"
 
 
-async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Branch, car_person_manufacturer_schema):
+async def test_query_multiple_filters(
+    db: InfrahubDatabase, default_branch: Branch, car_person_manufacturer_schema: None
+):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
     manufacturer = registry.schema.get(name="TestManufacturer")
@@ -1518,7 +1457,9 @@ async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Bran
     assert result.data["TestCar"]["edges"][0]["node"]["id"] == c2.id
 
 
-async def test_query_filter_relationships(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_query_filter_relationships(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -1584,7 +1525,7 @@ async def test_query_filter_relationships(db: InfrahubDatabase, default_branch: 
 
 
 async def test_query_filter_relationships_with_generic(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
 ):
     query = """
     query {
@@ -1628,7 +1569,7 @@ async def test_query_filter_relationships_with_generic(
 
 
 async def test_query_filter_relationships_with_generic_filter(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
 ):
     query = """
     query {
@@ -1677,7 +1618,9 @@ async def test_query_filter_relationships_with_generic_filter(
     assert DeepDiff(result.data["TestPerson"]["edges"], expected_results, ignore_order=True).to_dict() == {}
 
 
-async def test_query_filter_relationship_id(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_query_filter_relationship_id(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -1785,7 +1728,9 @@ async def test_query_filter_relationship_id(db: InfrahubDatabase, default_branch
     assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 2
 
 
-async def test_query_attribute_multiple_values(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_query_attribute_multiple_values(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+):
     person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
@@ -1818,7 +1763,9 @@ async def test_query_attribute_multiple_values(db: InfrahubDatabase, default_bra
     assert result.data["TestPerson"]["count"] == 2
 
 
-async def test_query_relationship_multiple_values(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_query_relationship_multiple_values(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -1882,7 +1829,7 @@ async def test_query_relationship_multiple_values(db: InfrahubDatabase, default_
     assert result.data["TestPerson"]["edges"][1]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "nolt"
 
 
-async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
+async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
@@ -1928,7 +1875,7 @@ async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: B
     assert len(result.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"]) == 2
 
 
-async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
+async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
@@ -2001,7 +1948,7 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
     assert names == ["Blue", "Red"]
 
 
-async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
+async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
     p11 = await Node.init(db=db, schema="TestPerson")
     await p11.new(db=db, firstname="John", lastname="Doe")
     await p11.save(db=db)
@@ -2066,7 +2013,7 @@ async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: 
     )
 
 
-async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
+async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, firstname="John", lastname="Doe")
     await p1.save(db=db)
@@ -2125,7 +2072,7 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     )
 
 
-async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
+async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
@@ -2201,7 +2148,11 @@ async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branc
 
 
 async def test_query_attribute_node_property_source(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    person_tag_schema: None,
+    first_account: Node,
 ):
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, firstname="John", lastname="Doe", _source=first_account)
@@ -2242,7 +2193,11 @@ async def test_query_attribute_node_property_source(
 
 
 async def test_query_attribute_node_property_owner(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    person_tag_schema: None,
+    first_account: Node,
 ):
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, firstname="John", lastname="Doe", _owner=first_account)
@@ -2289,7 +2244,7 @@ async def test_query_attribute_node_property_owner(
 
 
 async def test_query_relationship_node_property(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, first_account
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, first_account: Node
 ):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
@@ -2382,7 +2337,11 @@ async def test_query_relationship_node_property(
 
 
 async def test_query_attribute_flag_property(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    person_tag_schema: None,
+    first_account: Node,
 ):
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(
@@ -2428,7 +2387,7 @@ async def test_query_attribute_flag_property(
     assert result1.data["TestPerson"]["edges"][0]["node"]["lastname"]["is_visible"] is False
 
 
-async def test_query_branches(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_query_branches(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch):
     query = """
     query {
         Branch {
@@ -2454,7 +2413,9 @@ async def test_query_branches(db: InfrahubDatabase, default_branch: Branch, regi
     assert result1.data["Branch"][0]["name"] == "main"
 
 
-async def test_query_multiple_branches(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_query_multiple_branches(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+):
     query = """
     query {
         branch1: Branch {
@@ -2487,7 +2448,7 @@ async def test_query_multiple_branches(db: InfrahubDatabase, default_branch: Bra
     assert result1.data["branch2"][0]["name"] == "main"
 
 
-async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
+async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, firstname="John", lastname="Doe")
     await p1.save(db=db)
@@ -2538,7 +2499,7 @@ async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, pe
     assert gql_params.context.related_node_ids == {p1.id, p2.id}
 
 
-async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch, car_schema):
+async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch, car_schema: NodeSchema):
     d1 = await Node.init(db=db, schema="TestCar")
     await d1.new(db=db, name="Porsche 911", nbr_doors=2)
     await d1.save(db=db)
@@ -2586,7 +2547,7 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
     assert gql_params.context.related_node_ids == {d1.id, d2.id}
 
 
-async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema):
+async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema: None):
     d1 = await Node.init(db=db, schema="TestCar")
     await d1.new(db=db, name="Porsche 911", nbr_doors=2)
     await d1.save(db=db)
@@ -2656,7 +2617,7 @@ async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch,
     assert DeepDiff(result.data["TestPerson"]["edges"][0]["node"], expected_results, ignore_order=True).to_dict() == {}
 
 
-async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema):
+async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema: None):
     d1 = await Node.init(db=db, schema="TestCar")
     await d1.new(db=db, name="Porsche 911", nbr_doors=2)
     await d1.save(db=db)
@@ -2707,7 +2668,9 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
     assert len(result.data["TestBoat"]["edges"][0]["node"]["owners"]["edges"]) == 1
 
 
-async def test_generic_root_with_pagination(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+async def test_generic_root_with_pagination(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
+):
     query = """
     query {
         TestCar(limit: 2) {
@@ -2746,7 +2709,9 @@ async def test_generic_root_with_pagination(db: InfrahubDatabase, default_branch
     assert DeepDiff(result.data, expected_response, ignore_order=True).to_dict() == {}
 
 
-async def test_generic_root_with_filters(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+async def test_generic_root_with_filters(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
+):
     query = """
     query {
         TestCar(owner__name__value: "John" ) {
@@ -2784,7 +2749,9 @@ async def test_generic_root_with_filters(db: InfrahubDatabase, default_branch: B
     assert DeepDiff(result.data, expected_response, ignore_order=True).to_dict() == {}
 
 
-async def test_member_of_groups(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+async def test_member_of_groups(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
+):
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
@@ -2872,7 +2839,7 @@ async def test_member_of_groups(db: InfrahubDatabase, default_branch: Branch, ca
 
 
 async def test_hierarchical_location_parent_filter(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
 ):
     query = """
     query GetRack {
@@ -2907,7 +2874,7 @@ async def test_hierarchical_location_parent_filter(
 
 
 async def test_hierarchical_location_ancestors(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
 ):
     query = """
     query {
@@ -2963,7 +2930,7 @@ async def test_hierarchical_location_ancestors(
 
 
 async def test_hierarchical_location_descendants(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
 ):
     query = """
     query {
@@ -3026,7 +2993,7 @@ async def test_hierarchical_location_descendants(
 
 
 async def test_hierarchical_location_descendants_filters_attr(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
 ):
     query = """
     query {
@@ -3075,7 +3042,7 @@ async def test_hierarchical_location_descendants_filters_attr(
 
 
 async def test_hierarchical_location_descendants_filters_ids(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
 ):
     query = """
     query {
@@ -3129,7 +3096,7 @@ async def test_hierarchical_location_descendants_filters_ids(
 
 
 async def test_hierarchical_location_include_descendants(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing: Dict[str, Node]
 ):
     query = """
     query {
@@ -3183,7 +3150,9 @@ async def test_hierarchical_location_include_descendants(
     assert asia["things"]["count"] == 7
 
 
-async def test_hierarchical_groups_descendants(db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data):
+async def test_hierarchical_groups_descendants(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data: Dict[str, Node]
+):
     query = """
     query {
         CoreStandardGroup(name__value: "grp1") {

@@ -42,3 +42,15 @@ python_transforms:
   - name: oc_interfaces
     class_name: OCInterfaces
     file_path: "transforms/openconfig.py"
+
+queries:
+  - name: check_backbone_link_redundancy
+    file_path: "checks/check_backbone_link_redundancy.gql"
+  - name: device_startup_info
+    file_path: "templates/device_startup_info.gql"
+  - name: topology_info
+    file_path: "topology/topology_info.gql"
+  - name: oc_bgp_neighbors
+    file_path: "transforms/oc_bgp_neighbors.gql"
+  - name: oc_interfaces
+    file_path: "transforms/oc_interfaces.gql"

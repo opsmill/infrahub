@@ -1,79 +1,51 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { PROFILE_KIND } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import {
-  IProfileSchema,
-  genericsState,
-  profilesAtom,
-  schemaState,
-} from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
-import { getObjectAttributes, getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
-import ObjectForm from "@/components/form/object-form";
+import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
+import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
+import { areObjectArraysEqualById } from "@/utils/array";
+import { generateObjectEditFormQuery } from "@/screens/object-item-edit/generateObjectEditFormQuery";
+import { useSchema } from "@/hooks/useSchema";
 
 interface Props {
   objectname: string;
   objectid: string;
   closeDrawer: () => void;
-  onUpdateComplete?: Function;
+  onUpdateComplete?: () => void;
   formStructure?: DynamicFieldData[];
 }
 
 export default function ObjectItemEditComponent(props: Props) {
   const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
 
-  const schemaList = useAtomValue(schemaState);
-  const allProfiles = useAtomValue(profilesAtom);
-  const genericsList = useAtomValue(genericsState);
-  const profileGeneric = genericsList.find((s) => s.kind === PROFILE_KIND);
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+  const { schema, isProfile } = useSchema(objectname);
 
-  const nodeSchema = schemaList.find((s) => s.kind === objectname);
-  const profileSchema = allProfiles.find((s) => s.kind === objectname);
+  if (!schema) {
+    return <NoDataFound message={`Schema ${objectname} not found`} />;
+  }
 
-  const schema = nodeSchema || profileSchema;
-  const attributes = getObjectAttributes({ schema: schema, forQuery: true, forProfiles: true });
-  const columns = getSchemaObjectColumns({ schema: schema, forQuery: true });
-
-  const displayProfile =
-    schema?.generate_profile &&
-    !profileGeneric?.used_by?.includes(schema?.kind) &&
-    schema.kind !== PROFILE_KIND;
-
-  const profileName = profileSchema ? objectname : `Profile${objectname}`;
-
-  const queryString = schema
-    ? getObjectDetailsPaginated({
-        kind: schema.kind,
-        columns,
-        attributes, // used for profile
-        objectid,
-        profile: displayProfile && profileName,
-        queryProfiles: displayProfile,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schema
-      "query { ok }";
-
-  const query = gql`
-    ${queryString}
-  `;
+  const query = gql(
+    generateObjectEditFormQuery({
+      schema,
+      objectId: objectid,
+    })
+  );
 
   const { loading, error, data } = useQuery(query, { skip: !schema });
+
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
@@ -91,16 +63,13 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge) => edge?.node) ?? [];
 
-  async function onSubmit(data: any, profiles?: IProfileSchema[]) {
-    const updatedObject = getMutationDetailsFromFormData(
-      schema,
-      data,
-      "update",
-      objectDetailsData,
-      objectProfiles
-    );
+  const onSubmit: ObjectFormProps["onSubmit"] = async ({ fields, formData, profiles }) => {
+    const updatedObject = getUpdateMutationFromFormData({ formData, fields });
+    const isObjectUpdated = Object.keys(updatedObject).length > 0;
 
-    if (Object.keys(updatedObject).length) {
+    const areProfilesUpdated = !!profiles && !areObjectArraysEqualById(profiles, objectProfiles);
+
+    if (isObjectUpdated || areProfilesUpdated) {
       const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];
 
       try {
@@ -109,7 +78,7 @@ export default function ObjectItemEditComponent(props: Props) {
           data: stringifyWithoutQuotes({
             id: objectid,
             ...updatedObject,
-            ...(profilesId.length ? { profiles: profilesId } : {}),
+            ...(areProfilesUpdated ? { profiles: profilesId } : {}),
           }),
         });
 
@@ -133,16 +102,18 @@ export default function ObjectItemEditComponent(props: Props) {
         console.error("Something went wrong while updating the object:", e);
       }
     }
-  }
+  };
 
   return (
     <ObjectForm
       onCancel={closeDrawer}
       onSubmit={onSubmit}
+      onUpdateComplete={onUpdateComplete}
       kind={objectname}
       currentObject={objectDetailsData}
       currentProfiles={objectProfiles}
       data-cy="object-item-edit"
+      isUpdate
     />
   );
 }

@@ -31,7 +31,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/branches/*",
-            lazy: () => import("@/pages/branches/branch-details"),
+            lazy: () => import("@/pages/branches/details"),
           },
           {
             path: "/branches",
@@ -68,12 +68,12 @@ export const router = createBrowserRouter([
             lazy: () => import("@/pages/proposed-changes/new"),
           },
           {
-            path: "/proposed-changes/:proposedchange",
-            lazy: () => import("@/pages/proposed-changes/proposed-changes-details"),
+            path: "/proposed-changes/:proposedChangeId",
+            lazy: () => import("@/pages/proposed-changes/details"),
           },
           {
             path: "/proposed-changes",
-            lazy: () => import("@/pages/proposed-changes/proposed-changes-items"),
+            lazy: () => import("@/pages/proposed-changes/items"),
           },
           {
             path: "/tasks/:task",

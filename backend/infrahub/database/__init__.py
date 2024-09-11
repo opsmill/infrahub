@@ -12,6 +12,9 @@ from neo4j import (
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
+    NotificationDisabledCategory,
+    NotificationMinimumSeverity,
+    Query,
     Record,
     TrustAll,
     TrustCustomCAs,
@@ -158,13 +161,13 @@ class InfrahubDatabase:
             self.manager = DatabaseManagerMemgraph(db=self)
 
     @property
-    def is_session(self):
+    def is_session(self) -> bool:
         if self._mode == InfrahubDatabaseMode.SESSION:
             return True
         return False
 
     @property
-    def is_transaction(self):
+    def is_transaction(self) -> bool:
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
             return True
         return False
@@ -214,12 +217,14 @@ class InfrahubDatabase:
         self._is_session_local = True
         return self._session
 
-    async def transaction(self) -> AsyncTransaction:
+    async def transaction(self, name: Optional[str]) -> AsyncTransaction:
         if self._transaction:
             return self._transaction
 
         session = await self.session()
-        self._transaction = await session.begin_transaction()
+        self._transaction = await session.begin_transaction(
+            metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"}
+        )
         return self._transaction
 
     async def __aenter__(self) -> Self:
@@ -262,7 +267,7 @@ class InfrahubDatabase:
             if self._is_session_local:
                 await self._session.close()
 
-    async def close(self):
+    async def close(self) -> None:
         await self._driver.close()
 
     async def execute_query(
@@ -270,6 +275,8 @@ class InfrahubDatabase:
     ) -> list[Record]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
             span.set_attribute("query", query)
+            if name:
+                span.set_attribute("query_name", name)
 
             with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params)
@@ -280,20 +287,29 @@ class InfrahubDatabase:
     ) -> tuple[list[Record], dict[str, Any]]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
+            if name:
+                span.set_attribute("query_name", name)
 
             with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
-                response = await self.run_query(query=query, params=params)
+                response = await self.run_query(query=query, params=params, name=name)
                 results = [item async for item in response]
                 return results, response._metadata or {}
 
-    async def run_query(self, query: str, params: Optional[dict[str, Any]] = None) -> AsyncResult:
+    async def run_query(
+        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+    ) -> AsyncResult:
+        _query: Union[str | Query] = query
         if self.is_transaction:
-            execution_method = await self.transaction()
+            execution_method = await self.transaction(name=name)
         else:
+            _query = Query(
+                text=query,
+                metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"},
+            )
             execution_method = await self.session()
 
         try:
-            response = await execution_method.run(query=query, parameters=params)
+            response = await execution_method.run(query=_query, parameters=params)
         except ServiceUnavailable as exc:
             log.error("Database Service unavailable", error=str(exc))
             raise DatabaseError(message="Unable to connect to the database") from exc
@@ -311,12 +327,12 @@ class InfrahubDatabase:
             return f"extract(i in {items} | [{item_names_str}])"
         return f"[i IN {items} | [{item_names_str}]]"
 
-    def render_uuid_generation(self, node_label: str, node_attr: str) -> str:
+    def render_uuid_generation(self, node_label: str, node_attr: str, index: int = 1) -> str:
         generate_uuid_query = f"SET {node_label}.{node_attr} = randomUUID()"
         if self.db_type == DatabaseType.MEMGRAPH:
             generate_uuid_query = f"""
-            CALL uuid_generator.get() YIELD uuid
-            SET {node_label}.{node_attr} = uuid
+            CALL uuid_generator.get() YIELD uuid AS uuid{index}
+            SET {node_label}.{node_attr} = uuid{index}
             """
         return generate_uuid_query
 
@@ -370,6 +386,8 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
+        notifications_disabled_categories=[NotificationDisabledCategory.UNRECOGNIZED],
+        notifications_min_severity=NotificationMinimumSeverity.OFF,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:

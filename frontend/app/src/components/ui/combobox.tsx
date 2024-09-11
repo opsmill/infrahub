@@ -37,7 +37,7 @@ export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
             </div>
           </ComboboxTrigger>
 
-          <ComboboxList items={items} onReset={handleChange} />
+          <ComboboxList items={items} onReset={() => handleChange([])} />
         </Popover>
       </ComboboxPrimitive>
     );
@@ -130,6 +130,7 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
 
   return (
     <PopoverContent
+      onCloseAutoFocus={() => setQuery("")}
       className="p-2 space-y-2 overflow-hidden flex flex-col"
       style={{
         width: "var(--radix-popover-trigger-width)",
@@ -153,9 +154,9 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
         <ComboboxPrimitive.Options static className="h-full overflow-auto">
           {filteredOptions.map((item, index) => {
             return typeof item === "string" ? (
-              <ComboboxItem key={index} item={item} />
+              <ComboboxItem key={item + index} item={item} />
             ) : (
-              <ComboboxItem key={index} item={item} />
+              <ComboboxItem key={item.label + index} item={item} />
             );
           })}
         </ComboboxPrimitive.Options>

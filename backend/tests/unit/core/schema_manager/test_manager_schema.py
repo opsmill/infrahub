@@ -340,7 +340,7 @@ async def test_schema_protected_generics(schema_dict, expected_error):
 async def test_schema_branch_generate_weight(schema_all_in_one):
     def extract_weights(schema: SchemaBranch):
         weights = []
-        for _, node in schema.get_all().items():
+        for node in schema.get_all().values():
             if not isinstance(node, (NodeSchema, GenericSchema)):
                 continue
             for item in node.attributes + node.relationships:
@@ -1329,6 +1329,7 @@ async def test_schema_branch_process_filters(
                 "name": "Criticality",
                 "namespace": "Builtin",
                 "default_filter": "name__value",
+                "human_friendly_id": ["name__value"],
                 "label": "Criticality",
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
@@ -1373,8 +1374,9 @@ async def test_schema_branch_process_filters(
 
     assert len(schema_branch.nodes) == 2
     criticality_dict = schema_branch.get("BuiltinCriticality").model_dump()
+    tag_dict = schema_branch.get("BuiltinTag").model_dump()
 
-    expected_filters = [
+    criticality_expected_filters = [
         {
             "id": None,
             "name": "ids",
@@ -1382,6 +1384,15 @@ async def test_schema_branch_process_filters(
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "hfid",
+            "object_kind": None,
             "state": HashableModelState.PRESENT,
         },
         {
@@ -1646,9 +1657,176 @@ async def test_schema_branch_process_filters(
             "state": HashableModelState.PRESENT,
         },
     ]
+    tag_expected_filters = [
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "ids",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "name__value",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "name__values",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.BOOLEAN,
+            "name": "name__is_visible",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.BOOLEAN,
+            "name": "name__is_protected",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "name__source__id",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "name__owner__id",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "description__value",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "description__values",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.BOOLEAN,
+            "name": "description__is_visible",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.BOOLEAN,
+            "name": "description__is_protected",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "description__source__id",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "description__owner__id",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "any__value",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.BOOLEAN,
+            "name": "any__is_visible",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.BOOLEAN,
+            "name": "any__is_protected",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "any__source__id",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "description": None,
+            "enum": None,
+            "id": None,
+            "kind": FilterSchemaKind.TEXT,
+            "name": "any__owner__id",
+            "object_kind": None,
+            "state": HashableModelState.PRESENT,
+        },
+    ]
 
-    assert criticality_dict["filters"] == expected_filters
-    assert not DeepDiff(criticality_dict["filters"], expected_filters, ignore_order=True)
+    assert criticality_dict["filters"] == criticality_expected_filters
+    assert not DeepDiff(criticality_dict["filters"], criticality_expected_filters, ignore_order=True)
+
+    assert tag_dict["filters"] == tag_expected_filters
+    assert not DeepDiff(tag_dict["filters"], tag_expected_filters, ignore_order=True)
 
 
 async def test_process_relationships_on_delete_defaults_set(schema_all_in_one):
@@ -2099,6 +2277,7 @@ async def test_schema_branch_validate_check_missing(
                 },
             },
         ],
+        "enforce_update_support": True,
         "errors": [],
         "migrations": [],
     }
@@ -2174,7 +2353,12 @@ async def test_schema_branch_validate_add_node_relationships(
     new_schema.load_schema(schema=schema2)
 
     result = schema_branch.validate_update(other=new_schema)
-    assert result.model_dump(exclude=["diff"]) == {"constraints": [], "errors": [], "migrations": []}
+    assert result.model_dump(exclude=["diff"]) == {
+        "constraints": [],
+        "enforce_update_support": True,
+        "errors": [],
+        "migrations": [],
+    }
 
 
 # -----------------------------------------------------------------
@@ -2398,6 +2582,7 @@ async def test_load_schema_from_db(
                 "namespace": "Test",
                 "name": "Criticality",
                 "default_filter": "name__value",
+                "human_friendly_id": ["name__value"],
                 "label": "Criticality",
                 "include_in_menu": True,
                 "attributes": [
@@ -2430,6 +2615,7 @@ async def test_load_schema_from_db(
                 "label": "Tag",
                 "include_in_menu": False,
                 "default_filter": "name__value",
+                "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},

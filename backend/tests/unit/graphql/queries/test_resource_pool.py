@@ -4,7 +4,7 @@ from graphql import graphql
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.initialization import create_branch
+from infrahub.core.initialization import create_branch, initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
@@ -573,7 +573,7 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
 async def test_number_pool_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-
+    await initialization(db=db)
     create_ok = await graphql(
         schema=gql_params.schema,
         source=CREATE_NUMBER_POOL,
@@ -672,8 +672,8 @@ mutation CreateNumberPool(
     $name: String!,
     $node: String!,
     $node_attribute: String!,
-    $start_range: Int!,
-    $end_range: Int!
+    $start_range: BigInt!,
+    $end_range: BigInt!
   ) {
   CoreNumberPoolCreate(
     data: {
@@ -695,12 +695,16 @@ mutation CreateNumberPool(
 
 CREATE_TICKET = """
 mutation CreateTestingTicket(
-    $pool: String,
+    $pool: String!,
     $title: String!
 	) {
   TestingTicketCreate(
     data: {
-        ticket_id: {from_pool: $pool},
+        ticket_id: {
+            from_pool: {
+                id: $pool
+            }
+        },
         title: {value: $title}
       }) {
     object {

@@ -63,7 +63,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
       await page.getByRole("link", { name: "Tenant" }).click();
-      const myFirstOrgLink = page.getByRole("cell", { name: "my-first-tenant", exact: true });
+      const myFirstOrgLink = page.getByRole("link", { name: "my-first-tenant" });
       await expect(myFirstOrgLink).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_organizations");
       await myFirstOrgLink.click();
@@ -81,7 +81,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Update confirmation and update UI", async () => {
-      await expect(page.locator("#alert-success-updated")).toContainText("Tenant updated");
+      await expect(page.getByText("Tenant updated")).toBeVisible();
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 
@@ -101,16 +101,22 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await expect(page.locator("dl")).toContainText("cr1234");
     });
 
+    await test.step("trigger the diff update", async () => {
+      await page.getByText("Data").click();
+      await expect(page.getByText("We are computing the diff")).toBeVisible();
+      await page.getByRole("button", { name: "Refresh" }).click();
+      await expect(page.getByText("Diff updated!")).toBeVisible();
+    });
+
     await test.step("View branch diff", async () => {
-      await page.getByRole("button", { name: "Diff" }).click();
-      await page.getByText("my-first-Tenant").click();
+      await page.getByText("UpdatedTenantmy-first-Tenant").click();
       await expect(page.getByText("Testing Infrahub")).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_diff");
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 
     await test.step("Merge branch cr1234 into main", async () => {
-      await page.getByRole("button", { name: "Details" }).click();
+      await page.getByText("Details", { exact: true }).click();
       const mergeButton = page.getByRole("button", { name: "Merge" });
       await expect(mergeButton).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_details");
@@ -125,6 +131,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Validate merged changes in main", async () => {
       await page.getByTestId("branch-list-display-button").click();
       await page.getByTestId("branch-list-dropdown").getByText("main", { exact: true }).click();
+      await expect(page.getByTestId("branch-list-display-button")).toContainText("main");
       await page.getByTestId("sidebar-menu").getByRole("link", { name: "Tenant" }).click();
       await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");
     });
@@ -134,7 +141,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await page.goto("/objects/OrganizationTenant");
 
     await test.step("Row my-first-tenant is visible at current time", async () => {
-      await expect(page.locator("tbody")).toContainText("my-first-tenant");
+      await expect(page.getByRole("link", { name: "my-first-tenant" })).toBeVisible();
     });
 
     await test.step("Row my-first-tenant is not visible when date prior to its creation is selected", async () => {
@@ -143,12 +150,14 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page
         .getByRole("option", { name: format(dateBeforeTest, "h:mm aa"), exact: true })
         .click();
-      await expect(page.locator("tbody")).not.toContainText("my-first-tenant");
+      await expect(
+        page.getByRole("link", { name: "Changes from branch cr1234" })
+      ).not.toBeVisible();
     });
 
     await test.step("Row my-first-tenant is visible again when we reset date input", async () => {
       await page.getByTestId("reset-timeframe-selector").click();
-      await expect(page.locator("tbody")).toContainText("my-first-tenant");
+      await expect(page.getByRole("link", { name: "my-first-tenant" })).toBeVisible();
     });
   });
 });

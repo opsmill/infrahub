@@ -614,8 +614,8 @@ mutation CreateNumberPool(
     $name: String!,
     $node: String!,
     $node_attribute: String!,
-    $start_range: Int!,
-    $end_range: Int!
+    $start_range: BigInt!,
+    $end_range: BigInt!
   ) {
   CoreNumberPoolCreate(
     data: {
@@ -640,8 +640,8 @@ mutation UpdateNumberPool(
     $name: String,
     $node: String,
     $node_attribute: String,
-    $start_range: Int,
-    $end_range: Int
+    $start_range: BigInt,
+    $end_range: BigInt
   ) {
   CoreNumberPoolUpdate(
     data: {
@@ -807,7 +807,7 @@ async def test_test_number_pool_update(db: InfrahubDatabase, default_branch: Bra
     )
 
     assert update_forbidden.errors
-    assert "The fields 'model' or 'model_attribute' can't be changed." in str(update_forbidden.errors[0])
+    assert "The fields 'node' or 'node_attribute' can't be changed." in str(update_forbidden.errors[0])
     assert update_invalid_range.errors
     assert "start_range can't be larger than end_range" in str(update_invalid_range.errors[0])
     assert update_ok.data

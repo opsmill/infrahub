@@ -188,6 +188,17 @@
                     "unique": false,
                     "branch": "aware",
                     "optional": false
+                },
+                {
+                    "name": "internal_status",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": "main",
+                    "inherited": false,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": false
                 }
             ],
             "relationships": [

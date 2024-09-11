@@ -27,12 +27,13 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeValidationError
 from infrahub.message_bus.messages import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 
-from .model import (
+from .model.diff import (
     BranchChanges,
     DataConflict,
     DiffSummaryElement,
     FileDiffElement,
     ModifiedPath,
+    ModifiedPathType,
     NodeAttributeDiffElement,
     NodeDiffElement,
     PropertyDiffElement,
@@ -267,7 +268,7 @@ class BranchDiffer:
         for conflict in conflicts:
             response = DataConflict(
                 name=conflict.element_name or "",
-                type=conflict.type,
+                type=conflict.type.value,
                 id=conflict.node_id,
                 kind=conflict.kind,
                 path=str(conflict),
@@ -311,13 +312,17 @@ class BranchDiffer:
 
             for node_id, node_diff in node_data.items():
                 modified_path = ModifiedPath(
-                    type="data", kind=node_diff.kind, node_id=node_id, action=node_diff.action, path_type=PathType.NODE
+                    type=ModifiedPathType.DATA,
+                    kind=node_diff.kind,
+                    node_id=node_id,
+                    action=node_diff.action,
+                    path_type=PathType.NODE,
                 )
                 paths[branch_name].add(modified_path)
                 for attr_name, attr in node_diff.attributes.items():
                     for prop_type, prop_value in attr.properties.items():
                         modified_path = ModifiedPath(
-                            type="data",
+                            type=ModifiedPathType.DATA,
                             kind=node_diff.kind,
                             node_id=node_id,
                             action=attr.action,
@@ -348,7 +353,7 @@ class BranchDiffer:
                 paths[branch_name] = set()
 
             for rel_name, rels in rel_data.items():
-                for _, rel in rels.items():
+                for rel in rels.values():
                     for node_id in rel.nodes:
                         neighbor_id = [neighbor for neighbor in rel.nodes.keys() if neighbor != node_id][0]
                         schema = self.db.schema.get(name=rel.nodes[node_id].kind, branch=branch_name)
@@ -360,7 +365,7 @@ class BranchDiffer:
                             relationship_key = f"{node_id}/{matching_relationship[0].name}"
                             if relationship_key not in cardinality_one_relationships:
                                 cardinality_one_relationships[relationship_key] = ModifiedPath(
-                                    type="data",
+                                    type=ModifiedPathType.DATA,
                                     node_id=node_id,
                                     action=DiffAction.UNCHANGED,
                                     kind=schema.kind,
@@ -389,7 +394,7 @@ class BranchDiffer:
                         for prop_type, prop_value in rel.properties.items():
                             if matching_relationship:
                                 modified_path = ModifiedPath(
-                                    type="data",
+                                    type=ModifiedPathType.DATA,
                                     node_id=node_id,
                                     kind=schema.kind,
                                     action=rel.action,
@@ -680,7 +685,7 @@ class BranchDiffer:
         for branch_name, items in rels.items():
             for item in items.values():
                 for rel_diff_element in item.values():
-                    for node_id, _ in rel_diff_element.nodes.items():
+                    for node_id in rel_diff_element.nodes.keys():
                         rels_per_node[branch_name][node_id][rel_diff_element.name].append(rel_diff_element)
 
         return rels_per_node
@@ -971,7 +976,7 @@ class BranchDiffer:
                     FileDiffElement(
                         branch=branch_name,
                         location=filename,
-                        repository=repository.id,
+                        repository=repository,
                         action=diff_action,
                         commit_to=commit_to,
                         commit_from=commit_from,

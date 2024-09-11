@@ -1419,6 +1419,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                            "internal_status": {"value": "active"},
                         }
                     },
                     {
@@ -1428,6 +1429,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge-read-only"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
                             "commit": {"value": "cccccccccccccccccccc"},
+                            "internal_status": {"value": "active"},
                         }
                     },
                 ],
@@ -1446,6 +1448,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                            "internal_status": {"value": "active"},
                         }
                     },
                     {
@@ -1455,6 +1458,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-demo-edge-read-only"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
                             "commit": {"value": "dddddddddddddddddddd"},
+                            "internal_status": {"value": "active"},
                         }
                     },
                 ],
@@ -1650,7 +1654,7 @@ async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(
         method="GET",
-        url="http://mock/api/schema/?branch=main",
+        url="http://mock/api/schema?branch=main",
         json=ujson.loads(response_text),
     )
     return httpx_mock
@@ -1659,9 +1663,8 @@ async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 @pytest.fixture
 async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (get_fixtures_dir() / "schema_02.json").read_text(encoding="UTF-8")
-
     httpx_mock.add_response(
-        method="GET", url=re.compile(r"^http://mock/api/schema/\?branch=(main|cr1234)"), json=ujson.loads(response_text)
+        method="GET", url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"), json=ujson.loads(response_text)
     )
     return httpx_mock
 
@@ -1678,7 +1681,7 @@ async def mock_rest_api_artifact_fetch(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(
         method="GET",
-        url="http://mock/api/schema/?branch=main",
+        url="http://mock/api/schema?branch=main",
         json=ujson.loads(schema_response),
     )
 
@@ -1770,7 +1773,7 @@ async def mock_rest_api_artifact_generate(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(
         method="GET",
-        url="http://mock/api/schema/?branch=main",
+        url="http://mock/api/schema?branch=main",
         json=ujson.loads(schema_response),
     )
 
@@ -2328,5 +2331,5 @@ def query_introspection() -> str:
 async def mock_schema_query_ipam(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (get_fixtures_dir() / "schema_ipam.json").read_text(encoding="UTF-8")
 
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock

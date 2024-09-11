@@ -14,3 +14,4 @@ class GitRepositoryAddReadOnly(InfrahubMessage):
     ref: str = Field(..., description="Ref to track on the external repository")
     created_by: Optional[str] = Field(default=None, description="The user ID of the user that created the repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    internal_status: str = Field(..., description="Internal status of the repository")

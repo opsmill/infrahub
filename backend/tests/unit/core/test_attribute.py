@@ -4,7 +4,7 @@ import pytest
 from infrahub_sdk import UUIDT
 
 from infrahub import config
-from infrahub.core.attribute import URL, DateTime, Dropdown, Integer, IPHost, IPNetwork, String
+from infrahub.core.attribute import URL, DateTime, Dropdown, Integer, IPHost, IPNetwork, MacAddress, String
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -240,6 +240,45 @@ async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: 
         "value": "2001:db8::/32",
         "version": 6,
     }
+
+
+async def test_validate_mac_address_returns(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+):
+    schema = criticality_schema.get_attribute("name")
+
+    mac_address = "60:23:6c:c4:9f:7e"
+    test_mac = MacAddress(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=mac_address
+    )
+
+    assert test_mac.value == mac_address
+    assert test_mac.version == 48
+    assert test_mac.binary == "0b11000000010001101101100110001001001111101111110"
+    assert test_mac.oui == "60-23-6C"
+    assert test_mac.ei == "C4-9F-7E"
+    assert test_mac.bare == "60236CC49F7E"
+    assert test_mac.dot_notation == "6023.6cc4.9f7e"
+    assert test_mac.semicolon_notation == "60:23:6c:c4:9f:7e"
+    assert test_mac.split_notation == "60236c:c49f7e"
+    assert test_mac.to_db() == {"is_default": False, "value": "60-23-6C-C4-9F-7E"}
+
+    test_mac = MacAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=None)
+
+    assert test_mac.value is None
+    assert test_mac.version is None
+    assert test_mac.binary is None
+    assert test_mac.oui is None
+    assert test_mac.ei is None
+    assert test_mac.bare is None
+    assert test_mac.dot_notation is None
+    assert test_mac.semicolon_notation is None
+    assert test_mac.split_notation is None
+
+    with pytest.raises(ValidationError, match=r"thisisnotamacaddress is not a valid"):
+        MacAddress(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisisnotamacaddress"
+        )
 
 
 async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):

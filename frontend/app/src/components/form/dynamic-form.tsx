@@ -1,6 +1,6 @@
 import { Button } from "@/components/buttons/button-primitive";
 import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
-import { DynamicFieldProps } from "@/components/form/type";
+import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import ColorField from "@/components/form/fields/color.field";
 import CheckboxField from "@/components/form/fields/checkbox.field";
@@ -14,12 +14,14 @@ import TextareaField from "@/components/form/fields/textarea.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
 import { warnUnexpectedType } from "@/utils/common";
 import EnumField from "@/components/form/fields/enum.field";
-import { forwardRef } from "react";
+import NumberField from "@/components/form/fields/number.field";
+import React, { forwardRef } from "react";
 
-export interface DynamicFormProps extends FormProps {
+export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;
   onCancel?: () => void;
   submitLabel?: string;
+  onSubmit?: (data: Record<string, FormFieldValue>) => void;
 }
 
 const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
@@ -49,28 +51,43 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
   }
 );
 
-const DynamicInput = (props: DynamicFieldProps) => {
-  const { type, ...otherProps } = props;
-  switch (type) {
-    case SCHEMA_ATTRIBUTE_KIND.DATETIME:
+export const DynamicInput = (props: DynamicFieldProps) => {
+  switch (props.type) {
+    case SCHEMA_ATTRIBUTE_KIND.DATETIME: {
+      const { type, ...otherProps } = props;
       return <DatetimeField {...otherProps} />;
-    case SCHEMA_ATTRIBUTE_KIND.COLOR:
+    }
+    case SCHEMA_ATTRIBUTE_KIND.COLOR: {
+      const { type, ...otherProps } = props;
       return <ColorField {...otherProps} />;
+    }
     case SCHEMA_ATTRIBUTE_KIND.BOOLEAN:
-    case SCHEMA_ATTRIBUTE_KIND.CHECKBOX:
+    case SCHEMA_ATTRIBUTE_KIND.CHECKBOX: {
+      const { type, ...otherProps } = props;
       return <CheckboxField {...otherProps} />;
-    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN:
-      return <DropdownField {...(otherProps as Omit<typeof props, "type">)} />;
-    case SCHEMA_ATTRIBUTE_KIND.JSON:
+    }
+    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
+      const { type, ...otherProps } = props;
+      return <DropdownField {...otherProps} />;
+    }
+    case SCHEMA_ATTRIBUTE_KIND.JSON: {
+      const { type, ...otherProps } = props;
       return <JsonField {...otherProps} />;
-    case SCHEMA_ATTRIBUTE_KIND.LIST:
+    }
+    case SCHEMA_ATTRIBUTE_KIND.LIST: {
+      const { type, ...otherProps } = props;
       return <ListField {...otherProps} />;
+    }
     case SCHEMA_ATTRIBUTE_KIND.BANDWIDTH:
-    case SCHEMA_ATTRIBUTE_KIND.NUMBER:
-      return <InputField {...otherProps} type="number" />;
+    case SCHEMA_ATTRIBUTE_KIND.NUMBER: {
+      const { type, ...otherProps } = props;
+      return <NumberField {...otherProps} />;
+    }
     case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
-    case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD:
+    case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD: {
+      const { type, ...otherProps } = props;
       return <PasswordInputField {...otherProps} />;
+    }
     case SCHEMA_ATTRIBUTE_KIND.ANY:
     case SCHEMA_ATTRIBUTE_KIND.EMAIL:
     case SCHEMA_ATTRIBUTE_KIND.FILE:
@@ -79,17 +96,25 @@ const DynamicInput = (props: DynamicFieldProps) => {
     case SCHEMA_ATTRIBUTE_KIND.IP_NETWORK:
     case SCHEMA_ATTRIBUTE_KIND.MAC_ADDRESS:
     case SCHEMA_ATTRIBUTE_KIND.TEXT:
-    case SCHEMA_ATTRIBUTE_KIND.URL:
+    case SCHEMA_ATTRIBUTE_KIND.URL: {
+      const { type, ...otherProps } = props;
       return <InputField {...otherProps} />;
-    case SCHEMA_ATTRIBUTE_KIND.TEXTAREA:
+    }
+    case SCHEMA_ATTRIBUTE_KIND.TEXTAREA: {
+      const { type, ...otherProps } = props;
       return <TextareaField {...otherProps} />;
-    case "enum":
-      return <EnumField {...(otherProps as Omit<typeof props, "type">)} />;
-    case "relationship":
+    }
+    case "enum": {
+      const { type, ...otherProps } = props;
+      return <EnumField {...otherProps} />;
+    }
+    case "relationship": {
       return <RelationshipField {...props} />;
-    default:
-      warnUnexpectedType(type);
+    }
+    default: {
+      warnUnexpectedType(props);
       return null;
+    }
   }
 };
 

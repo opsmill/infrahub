@@ -3,11 +3,7 @@ import { Checkbox } from "@/components/inputs/checkbox";
 import ModalConfirm from "@/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Tooltip } from "@/components/ui/tooltip";
-import {
-  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
-  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "@/config/constants";
+import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
@@ -25,6 +21,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
+import { Card } from "@/components/ui/card";
 
 type tThread = {
   thread: any;
@@ -118,9 +115,7 @@ export const Thread = (props: tThread) => {
     }
 
     const mutationString = updateObjectWithId({
-      kind: displayContext
-        ? PROPOSED_CHANGES_CHANGE_THREAD_OBJECT // for conversations view
-        : PROPOSED_CHANGES_OBJECT_THREAD_OBJECT, // for object views
+      kind: thread.__typename,
       data: stringifyWithoutQuotes({
         id: thread.id,
         resolved: {
@@ -163,7 +158,7 @@ export const Thread = (props: tThread) => {
       <Checkbox
         id={idForLabel}
         disabled={isResolved}
-        enabled={isResolved || markAsResolved}
+        checked={isResolved || markAsResolved}
         onChange={() => setConfirmModal(true)}
       />
       <label htmlFor={idForLabel} className={isResolved ? "cursor-default" : "cursor-pointer"}>
@@ -179,37 +174,30 @@ export const Thread = (props: tThread) => {
   );
 
   return (
-    <section
-      className={classNames(
-        isResolved ? "bg-gray-200" : "bg-custom-white",
-        "p-4 m-4 rounded-lg relative"
-      )}
+    <Card
+      className={classNames("relative", isResolved && "bg-gray-200")}
       data-testid="thread"
       data-cy="thread">
       {displayContext && getThreadTitle(thread)}
 
-      <div className="">
-        {sortedComments.map((comment: any, index: number) => (
-          <Comment
-            key={index}
-            author={comment?.created_by?.node?.display_label ?? "Anonymous"}
-            createdAt={comment?.created_at?.value}
-            content={comment?.text?.value ?? ""}
-            className={"border border-gray-200"}
-          />
-        ))}
-      </div>
+      {sortedComments.map((comment: any, index: number) => (
+        <Comment
+          key={index}
+          author={comment?.created_by?.node?.display_label ?? "Anonymous"}
+          createdAt={comment?.created_at?.value}
+          content={comment?.text?.value ?? ""}
+          className={"border border-gray-200"}
+        />
+      ))}
 
       {displayAddComment ? (
-        <div className="flex-1">
-          <AddComment
-            onSubmit={handleSubmit}
-            onCancel={() => setDisplayAddComment(false)}
-            additionalButtons={MarkAsResolvedWithTooltip}
-          />
-        </div>
+        <AddComment
+          onSubmit={handleSubmit}
+          onCancel={() => setDisplayAddComment(false)}
+          additionalButtons={MarkAsResolvedWithTooltip}
+        />
       ) : (
-        <div className="flex flex-1 justify-between">
+        <div className="flex justify-between">
           {MarkAsResolved}
 
           <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
@@ -227,6 +215,6 @@ export const Thread = (props: tThread) => {
         setOpen={() => setConfirmModal(false)}
         isLoading={isLoading}
       />
-    </section>
+    </Card>
   );
 };

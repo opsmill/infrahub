@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: list[str] = ["name"]
+    _enum_class: Optional[type[enum.Enum]] = None
 
     @property
     def is_attribute(self) -> bool:
@@ -65,7 +66,9 @@ class AttributeSchema(GeneratedAttributeSchema):
     def get_enum_class(self) -> type[enum.Enum]:
         if not self.enum:
             raise ValueError(f"{self.name} is not an Enum")
-        return generate_python_enum(name=f"{self.name.title()}Enum", options=self.enum)
+        if not self._enum_class:
+            self._enum_class = generate_python_enum(name=f"{self.name.title()}Enum", options=self.enum)
+        return self._enum_class
 
     def convert_value_to_enum(self, value: Any) -> Optional[enum.Enum]:
         if isinstance(value, enum.Enum) or value is None:

@@ -1,66 +1,81 @@
-import Handlebars from "handlebars";
+import { gql } from "@apollo/client";
 
-export const getProposedChanges = Handlebars.compile(`
-query {
-  {{kind}}{{#if id}}(ids: ["{{id}}"]){{/if}} {
-    count
-    edges {
-      node {
-        id
-        display_label
-        __typename
-        _updated_at
-
-        {{#each attributes}}
-          {{this.name}} {
-              value
+export const GET_PROPOSED_CHANGES = gql`
+  query GET_PROPOSED_CHANGES($statesVisible: [String], $statesHidden: [String], $search: String) {
+    CoreProposedChange(state__values: $statesVisible, any__value: $search, partial_match: true) {
+      count
+      edges {
+        node {
+          id
+          display_label
+          __typename
+          _updated_at
+          name {
+            value
+            __typename
           }
-        {{/each}}
-
-        {{#each relationships}}
-          {{this.name}} {
-            {{#if this.paginated}}
-              edges {
-            {{/if}}
+          description {
+            value
+            __typename
+          }
+          source_branch {
+            value
+            __typename
+          }
+          approved_by {
+            edges {
               node {
                 id
                 display_label
+                __typename
               }
-            {{#if this.paginated}}
-              }
-            {{/if}}
+              __typename
+            }
+            __typename
           }
-        {{/each}}
-
-        created_by {
-          node {
-            id
-            display_label
+          reviewers {
+            edges {
+              node {
+                id
+                display_label
+                __typename
+              }
+              __typename
+            }
+            __typename
+          }
+          comments {
+            count
+            __typename
+          }
+          created_by {
+            node {
+              id
+              display_label
+              __typename
+            }
+            __typename
+          }
+          validations {
+            count
+            edges {
+              node {
+                conclusion {
+                  value
+                }
+              }
+            }
           }
         }
+        __typename
       }
+      __typename
+    }
+    CoreProposedChangeVisible: CoreProposedChange(state__values: $statesVisible) {
+      count
+    }
+    CoreProposedChangeHidden: CoreProposedChange(state__values: $statesHidden) {
+      count
     }
   }
-
-  {{#if accountKind}}
-
-  {{accountKind}} {
-    edges {
-      node {
-        id
-        display_label
-      }
-    }
-  }
-
-  {{/if}}
-
-  {{#if taskKind}}
-
-  {{taskKind}}(related_node__ids: ["{{id}}"]) {
-    count
-  }
-
-  {{/if}}
-}
-`);
+`;

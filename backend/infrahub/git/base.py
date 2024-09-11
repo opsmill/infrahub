@@ -4,10 +4,11 @@ import os
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, NoReturn, Optional, Union
 from uuid import UUID  # noqa: TCH003
 
-from git import Repo
+import git
+from git import Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TCH002
@@ -157,6 +158,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     )
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
     task_report: Optional[InfrahubTaskReportLogger] = Field(default=None)
+
+    internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
+    infrahub_branch_name: Optional[str] = Field(
+        None, description="Infrahub branch on which to sync the remote repository"
+    )
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
@@ -189,7 +195,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     @property
     def directory_default(self) -> str:
         """Return the path to the directory of the main branch."""
-        return os.path.join(self.directory_root, registry.default_branch)
+        return os.path.join(self.directory_root, "main")
 
     @property
     def directory_branches(self) -> str:
@@ -231,7 +237,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if worktree := self.get_worktree(identifier=identifier):
             return Repo(worktree.directory)
 
-        return None
+        raise RepositoryError(
+            identifier=self.name,
+            message=f"Unable to find the worktree {identifier}.",
+        )
 
     def validate_local_directories(self) -> bool:
         """Check if the local directories structure to ensure that the repository has been properly initialized.
@@ -316,28 +325,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             repo = Repo.clone_from(self.location, self.directory_default)
             repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
-            if "Repository not found" in exc.stderr or "does not appear to be a git" in exc.stderr:
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"Unable to clone the repository {self.name}, please check the address and the credential",
-                ) from exc
-
-            if "error: pathspec" in exc.stderr:
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"The branch {self.default_branch} isn't a valid branch for the repository {self.name} at {self.location}.",
-                ) from exc
-
-            if "authentication failed for" in exc.stderr.lower():
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"Authentication failed for {self.name}, please validate the credentials.",
-                ) from exc
-            raise RepositoryError(identifier=self.name) from exc
+            self._raise_enriched_error(error=exc)
 
         self.has_origin = True
 
-        # Create a worktree for the commit in main
+        # Create a worktree for the commit in the default branch
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         self.create_commit_worktree(commit=commit)
@@ -360,7 +352,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         """Access a specific worktree by its identifier."""
 
         worktrees = self.get_worktrees()
-
         for worktree in worktrees:
             if worktree.identifier == identifier:
                 return worktree
@@ -471,11 +462,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             False if they already had the same value
         """
 
+        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
         log.debug(
-            f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=branch_name
+            f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=infrahub_branch
         )
         await self.sdk.repository_update_commit(
-            branch_name=branch_name, repository_id=self.id, commit=commit, is_read_only=self.is_read_only
+            branch_name=infrahub_branch, repository_id=self.id, commit=commit, is_read_only=self.is_read_only
         )
 
         return True
@@ -560,6 +552,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return changed_files, added_files, removed_files
 
+    async def list_all_files(self, commit: str) -> list[str]:
+        git_repo = self.get_git_repo_main()
+        return [str(entry.path) for entry in git_repo.commit(commit).tree.traverse() if isinstance(entry, Blob)]
+
     async def fetch(self) -> bool:
         """Fetch the latest update from the remote repository and bring a copy locally."""
         if not self.has_origin:
@@ -568,7 +564,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         log.debug("Fetching the latest updates from remote origin.", repository=self.name)
 
         repo = self.get_git_repo_main()
-        repo.remotes.origin.fetch()
+        try:
+            repo.remotes.origin.fetch()
+        except GitCommandError as exc:
+            self._raise_enriched_error(error=exc)
 
         return True
 
@@ -602,13 +601,19 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return sorted(list(new_branches)), sorted(updated_branches)
 
-    async def validate_remote_branch(self, branch_name: str) -> bool:  # pylint: disable=unused-argument
+    async def validate_remote_branch(self, branch_name: str) -> bool:
         """Validate a branch present on the remote repository.
         To check a branch we need to first create a worktree in the temporary folder then apply some checks:
         - xxx
 
         At the end, we need to delete the worktree in the temporary folder.
         """
+        if branch_name == registry.default_branch and branch_name != self.default_branch:
+            # If the default branch of Infrahub and the git repository differs we map the repository
+            # default branch to that of Infrahub. In that scenario we can't import a branch from the
+            # repository if it matches the default branch of Infrahub
+            log.warning("Ignoring import of mismatched default branch", branch=branch_name, repository=self.name)
+            return False
         try:
             # Check if the branch can be created in the database
             Branch(name=branch_name)
@@ -629,8 +634,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         if not self.has_origin:
             return False
+        identifier = branch_name
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            identifier = "main"
 
-        repo = self.get_git_repo_worktree(identifier=branch_name)
+        repo = self.get_git_repo_worktree(identifier=identifier)
         if not repo:
             raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
 
@@ -638,12 +646,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             commit_before = str(repo.head.commit)
             repo.remotes.origin.pull(branch_name)
         except GitCommandError as exc:
-            if "Need to specify how to reconcile" in exc.stderr:
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"Unable to pull the branch {branch_name} for repository {self.name}, there is a conflict that must be resolved.",
-                ) from exc
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+            self._raise_enriched_error(error=exc, branch_name=branch_name)
 
         commit_after = str(repo.head.commit)
 
@@ -651,7 +654,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             return True
 
         self.create_commit_worktree(commit=commit_after)
-        await self.update_commit_value(branch_name=branch_name, commit=commit_after)
+        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+        await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
 
         return commit_after
 
@@ -718,3 +722,70 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             raise RepositoryFileNotFoundError(repository_name=self.name, commit=commit, location=file_path)
 
         return path
+
+    @classmethod
+    def check_connectivity(cls, name: str, url: str) -> None:
+        cmd = git.cmd.Git()
+        try:
+            cmd.ls_remote("--tags", url)
+        except GitCommandError as exc:
+            cls._raise_enriched_error_static(name=name, location=url, error=exc)
+
+    def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
+        self._raise_enriched_error_static(
+            error=error, name=self.name, location=self.location, branch_name=branch_name or self.default_branch
+        )
+
+    @staticmethod
+    def _raise_enriched_error_static(
+        error: GitCommandError, name: str, location: str, branch_name: str | None = None
+    ) -> NoReturn:
+        if "Repository not found" in error.stderr or "does not appear to be a git" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=f"Unable to clone the repository {name}, please check the address and the credential",
+            ) from error
+
+        if "error: pathspec" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=f"The branch {branch_name} isn't a valid branch for the repository {name} at {location}.",
+            ) from error
+
+        if "SSL certificate problem" in error.stderr or "server certificate verification failed" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=f"SSL verification failed for {name}, please validate the certificate chain.",
+            ) from error
+
+        if "authentication failed for" in error.stderr.lower():
+            raise RepositoryError(
+                identifier=name,
+                message=f"Authentication failed for {name}, please validate the credentials.",
+            ) from error
+
+        if "Need to specify how to reconcile" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=f"Unable to pull the branch {branch_name} for repository {name}, there is a conflict that must be resolved.",
+            ) from error
+
+        if "fatal: could not read Username for" in error.stderr and "terminal prompts disable" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=f"Unable to correctly lookup credentials for repository {name} ({location}).",
+            ) from error
+
+        raise RepositoryError(identifier=name, message=error.stderr) from error
+
+    def _get_mapped_remote_branch(self, branch_name: str) -> str:
+        """Returns the remote branch for Git Repositories."""
+        if branch_name != self.default_branch and branch_name == registry.default_branch:
+            return self.default_branch
+        return branch_name
+
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        """Returns the target branch within Infrahub."""
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            return registry.default_branch
+        return branch_name

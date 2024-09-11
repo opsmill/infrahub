@@ -25,7 +25,7 @@ export type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   permissions?: PermissionsType;
-  signIn: (data: any, callback?: () => void) => Promise<void>;
+  signIn: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
   signOut: (callback?: () => void) => void;
   user: User | null;
 };
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState(localToken);
   const [isLoading, setIsLoading] = useState(false);
 
-  const signIn = async (data: any, callback?: () => void) => {
+  const signIn = async (data: { username: string; password: string }, callback?: () => void) => {
     const payload = {
       method: "POST",
       body: JSON.stringify(data),

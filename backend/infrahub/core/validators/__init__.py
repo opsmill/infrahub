@@ -10,6 +10,7 @@ from .attribute.unique import AttributeUniquenessChecker
 from .interface import ConstraintCheckerInterface
 from .node.generate_profile import NodeGenerateProfileChecker
 from .node.hierarchy import NodeHierarchyChecker
+from .node.inherit_from import NodeInheritFromChecker
 from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
 from .relationship.peer import RelationshipPeerChecker
@@ -29,6 +30,7 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, Optional[type[ConstraintCheckerInterface]]] 
     "relationship.optional.update": RelationshipOptionalChecker,
     "relationship.min_count.update": RelationshipCountChecker,
     "relationship.max_count.update": RelationshipCountChecker,
+    "node.inherit_from.update": NodeInheritFromChecker,
     "node.uniqueness_constraints.update": UniquenessChecker,
     "node.parent.update": NodeHierarchyChecker,
     "node.children.update": NodeHierarchyChecker,

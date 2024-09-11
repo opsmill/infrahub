@@ -1,9 +1,8 @@
 import Handlebars from "handlebars";
 
-export const getGroups = Handlebars.compile(`
-query Group {
-  {{#if objectid}}
-  {{kind}}(ids:["{{objectid}}"]) {
+export const getGroupsQuery = Handlebars.compile(`
+query GET_GROUPS {
+  {{objectKind}}(ids:["{{objectId}}"]) {
     edges {
       node {
         member_of_groups {
@@ -12,41 +11,18 @@ query Group {
             node {
               id
               display_label
+              description {
+                value
+              }
+              group_type {
+                value
+              }
+              members {
+                count
+              }
             }
           }
         }
-      }
-    }
-  }
-  {{/if}}
-
-  {{groupKind}}{{#if filters}}({{{filters}}}){{/if}} {
-    count
-    edges {
-      node {
-        id
-        display_label
-        __typename
-
-        {{#each attributes}}
-          {{this.name}} {
-              value
-          }
-        {{/each}}
-
-        {{#each relationships}}
-          {{this.name}} {
-            {{#if this.paginated}}
-              edges {
-            {{/if}}
-              node {
-                display_label
-              }
-            {{#if this.paginated}}
-              }
-            {{/if}}
-          }
-        {{/each}}
       }
     }
   }

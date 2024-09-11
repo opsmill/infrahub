@@ -260,9 +260,15 @@
             ],
             "branch": "aware",
             "default_filter": "name__value",
+            "human_friendly_id": ["name__value"],
             "filters": [
                 {
                     "name": "ids",
+                    "kind": "List",
+                    "description": null
+                },
+                {
+                    "name": "hfid",
                     "kind": "List",
                     "description": null
                 },

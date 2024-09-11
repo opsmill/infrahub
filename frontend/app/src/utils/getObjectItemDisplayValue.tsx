@@ -14,7 +14,9 @@ import {
   IpNetwork,
   JsonAttribute,
   ListAttribute,
+  Maybe,
   NumberAttribute,
+  RelationshipProperty,
   TextAttribute,
 } from "@/generated/graphql";
 import { components } from "@/infraops";
@@ -148,7 +150,7 @@ export const getObjectItemDisplayValue = (
   );
 };
 
-export type AttributeSchema =
+export type FieldSchema =
   | components["schemas"]["AttributeSchema-Output"]
   | components["schemas"]["RelationshipSchema-Output"];
 
@@ -163,11 +165,29 @@ export type AttributeType =
   | ListAttribute
   | AnyAttribute;
 
+export type Node = {
+  id: string;
+  display_label: string;
+  __typename: string;
+};
+
+export type RelationshipOneType = {
+  node: Node | null;
+  properties?: Maybe<RelationshipProperty> & { source?: { __typename?: string } | null };
+};
+
+export type RelationshipManyType = {
+  count?: number;
+  edges: Array<RelationshipOneType>;
+};
+
+export type RelationshipType = RelationshipManyType | RelationshipOneType;
+
 export const ObjectAttributeValue = ({
   attributeSchema,
   attributeValue,
 }: {
-  attributeSchema: AttributeSchema;
+  attributeSchema: FieldSchema;
   attributeValue: AttributeType;
 }) => {
   if (!attributeValue.value && attributeValue.value !== 0) return "-";

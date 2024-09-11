@@ -1,6 +1,8 @@
 ---
 title: Creating a Generator
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Creating a generator in Infrahub
 
@@ -87,7 +89,7 @@ Create a local directory on your computer where we will store the generator file
 
 ```bash
 mkdir example_generator
-````
+```
 
 Within that directory store the above GraphQL query as widget_query.gql.
 
@@ -133,16 +135,28 @@ generator_definitions:
     class_name: WidgetGenerator
     parameters:
       name: "name__value"
+
+queries:
+  - name: widget_query
+    file_path: "widget_query.gql"
 ```
 
-This defines a generator definition with the following properties:
+<Tabs>
+  <TabItem value="Generator definitions" default>
+    This defines a generator definition with the following properties:
+      - **name**: a unique name for the generator
+      - **file_path**: the relative file path to the file containing the generator as seen from within a Git repository
+      - **targets**: the name of a group of which the members will be a target for this generator
+      - **query**: the name of the GraphQL query used within this generator
+      - **parameters**: the parameter to pass to the generator GraphQL query, in this case this we will pass the name of the object (widget) as the name parameter
+      - **query**: the name of the GraphQL query used within this generator
+  </TabItem>
+  <TabItem value="Queries">
+    Here the `name` refers to the query's name and `file_path` should point to the GraphQL file within the repository.
+  </TabItem>
+</Tabs>
 
-- **name**: a unique name for the generator
-- **file_path**: the relative file path to the file containing the generator as seen from within a Git repository
-- **targets**: the name of a group of which the members will be a target for this generator
-- **query**: the name of the GraphQL query used within this generator
-- **parameters**: the parameter to pass to the generator GraphQL query, in this case this we will pass the name of the object (widget) as the name parameter
-- **query**: the name of the GraphQL query used within this generator
+See [this topic](/topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
 ## 4. Create a Git repository
 

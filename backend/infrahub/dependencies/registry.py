@@ -9,6 +9,14 @@ from .builder.constraint.schema.attribute_regex import SchemaAttributeRegexConst
 from .builder.constraint.schema.attribute_uniqueness import SchemaAttributeUniqueConstraintDependency
 from .builder.constraint.schema.relationship_optional import SchemaRelationshipOptionalConstraintDependency
 from .builder.constraint.schema.uniqueness import SchemaUniquenessConstraintDependency
+from .builder.diff.calculator import DiffCalculatorDependency
+from .builder.diff.combiner import DiffCombinerDependency
+from .builder.diff.coordinator import DiffCoordinatorDependency
+from .builder.diff.data_check_synchronizer import DiffDataCheckSynchronizerDependency
+from .builder.diff.enricher.aggregated import DiffAggregatedEnricherDependency
+from .builder.diff.enricher.cardinality_one import DiffCardinalityOneEnricherDependency
+from .builder.diff.enricher.hierarchy import DiffHierarchyEnricherDependency
+from .builder.diff.repository import DiffRepositoryDependency
 from .builder.node.delete_validator import NodeDeleteValidatorDependency
 from .component.registry import ComponentDependencyRegistry
 
@@ -27,6 +35,14 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(RelationshipPeerKindConstraintDependency)
     component_registry.track_dependency(NodeConstraintRunnerDependency)
     component_registry.track_dependency(NodeDeleteValidatorDependency)
+    component_registry.track_dependency(DiffCardinalityOneEnricherDependency)
+    component_registry.track_dependency(DiffHierarchyEnricherDependency)
+    component_registry.track_dependency(DiffAggregatedEnricherDependency)
+    component_registry.track_dependency(DiffCalculatorDependency)
+    component_registry.track_dependency(DiffCombinerDependency)
+    component_registry.track_dependency(DiffRepositoryDependency)
+    component_registry.track_dependency(DiffCoordinatorDependency)
+    component_registry.track_dependency(DiffDataCheckSynchronizerDependency)
     return component_registry
 
 

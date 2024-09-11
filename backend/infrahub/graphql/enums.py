@@ -21,3 +21,8 @@ def generate_graphql_enum(name: str, options: List[Any]) -> graphene.Enum:
 
     py_enum = generate_python_enum(name=name, options=options)
     return graphene.Enum.from_enum(enum=py_enum, description=description_func)
+
+
+class ConflictSelection(graphene.Enum):
+    BASE_BRANCH = "base"
+    DIFF_BRANCH = "diff"

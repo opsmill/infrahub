@@ -16,9 +16,9 @@
   description: "Issue related to the frontend (React)"
   color: "353755"
 
-- name: "group/infrahubctl"
-  description: "Issue related to the infrahubctl command line"
-  color: "77ab64"
+- name: "group/ux-design"
+  description: "Issue related to design or UX"
+  color: "3380ff"
 
 - name: "group/python-sdk"
   description: "Issue related to the Python SDK"
@@ -26,7 +26,7 @@
 
 - name: "group/sync-engine"
   description: "Issue related to the Synchronization engine"
-  color: "56e8e1"
+  color: "05b259"
 
 - name: "group/ci"
   description: "Issue related to the CI pipeline"
@@ -58,6 +58,7 @@
 - name: "type/tech-debt"
   description: "Item we know we need to improve way it is implemented"
   color: "73FA20"
+
 # ----------------------------------
 # TYPE ALL
 # ----------------------------------
@@ -102,15 +103,34 @@
 # ----------------------------------
 - name: "effort/high"
   description: "This issue should be completed in more than a day"
-  color: "c80464"
+  color: "b60205"
 
 - name: "effort/medium"
   description: "This issue should be completed in a less than a day"
-  color: "676a43"
+  color: "ff9f1c"
 
 - name: "effort/low"
   description: "This issue should be completed in a couple of hours"
-  color: "eafee4"
+  color: "ffcc00"
+
+# ----------------------------------
+# SEVERITY
+# ----------------------------------
+- name: "priority/1"
+  description: "This issue must be fixed/implemented ASAP, it's a blocker for a release"
+  color: "b60205"
+
+- name: "priority/2"
+  description: "This issue stalls work on the project or its dependents, it's a blocker for a release"
+  color: "ff9f1c"
+
+- name: "priority/3"
+  description: "Not blocking but should be fixed soon"
+  color: "ffcc00"
+
+- name: "priority/4"
+  description: "Low priority and doesn't need to be rushed"
+  color: "cfda2c"
 
 # ----------------------------------
 # STATUS
@@ -123,6 +143,35 @@
   description: "The redaction of the issue is still a work in progress"
   color: "dcb518"
 
+- name: "state/need-triage"
+  description: "This issue needs to be triaged"
+  color: "333333"
+
+- name: "state/need-more-info"
+  description: "This issue needs more information"
+  color: "cccccc"
+
+- name: "state/need-testing"
+  description: "This issue is ready and needs to be tested."
+  color: "cccccc"
+
+- name: "state/backlog"
+  description: "This issue is part of the backlog"
+  color: "eeeeee"
+
+- name: "state/planned"
+  description: "This issue is planned to be worked on in an upcoming release."
+  color: "eeeeee"
+
+- name: "state/not-reproducible"
+  description: "Unable to reproduce this issue."
+  color: "eeeeee"
+
+- name: "state/wont-fix"
+  description: "Issue has been closed and won't be fix/implemented."
+  color: "eeeeee"
+
+# DEPRECATED
 - name: "state/ref"
   description: "This issue is referenced in our internal tooling"
   color: "c9510c"
@@ -133,3 +182,7 @@
 - name: "ci/skip-changelog"
   description: "Don't include this PR in the changelog"
   color: "c30664"
+
+- name: "cd/preview"
+  description: "Deploy preview branch"
+  color: "d77e96"

@@ -1,0 +1,89 @@
+---
+title: Release 0.15.2
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>0.15.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>July 31st, 2024</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Beta #4, Patch #2</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v0.15.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v0.15.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 0.15.2
+
+We are thrilled to announce the latest release of Infrahub (0.15.2).
+
+## Main changes
+
+### Unified storage
+
+### Schema
+
+- Allow using HFID for relationships when creating new nodes @gmazoyer (#3966)
+
+### Frontend
+
+### Helm chart
+
+### Infrahub sync
+
+### Other
+
+#### 🐛 Bug fixes
+
+- Fix OpenAPI documentation of schema load endpoint @dgarros (#3911)
+- Fix return code when trying to use a restricted namespace @dgarros (#3912)
+- Validate HFID and uniqueness constraints format when loading a schema @gmazoyer (#3972)
+- Run artifact refresh after generators in proposed changes pipeline @ajtmccarty (#3897)
+- Fix button covering GraphQL query view @bilalabbad (#3964)
+- Fix dot on tree being hidden when there is a very long text, also improve CSS for the tree @bilalabbad (#3958)
+- Fix branch details page open correctly when the branch name contains a `/` @bilalabbad (#3917)
+
+### Demo environment
+
+## Migration guide
+
+To migrate your instance of Infrahub to the latest version, please run the following commands and restart all instances of Infrahub.
+
+<!-- vale off -->
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+<!-- vale on -->
+
+> if you are running in docker these commands need to run from the container where Infrahub is installed
+
+### Migration of the demo instance
+
+If you are using the demo environment, you can migrate to the latest version with the following commands
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+> All data will be lost, please make sure to backup everything you need before running this command.
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.

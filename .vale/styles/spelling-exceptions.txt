@@ -13,15 +13,17 @@ config
 Config
 content_type
 convert_query_response
-CoreRepository
 coroutine
 cypher
 Dagster
 datastore
 default_branch
+default_filter
+deserialized
 dev
 devcontainer
 direnv
+display_labels
 docker
 dockerfile
 docusaurus
@@ -41,7 +43,9 @@ graphiql
 graphql
 greymatter
 hfid
-Human Friendly Identifier
+hostname
+httpx
+human_friendly_id
 idempotency
 include_in_menu
 Infrahub
@@ -49,12 +53,14 @@ Infrahub's
 infrahubctl
 IP
 IPAddress
-IPHost
-IPNetwork
 IPAM
+is_empty
+is_ip_within
+is_not_empty
 isort
 jinja
 Jotai
+json
 JSONSchema
 kbps
 Loopbacks
@@ -75,6 +81,8 @@ npm
 o'brian
 openconfig
 opentelemetry
+order_by
+Prefetch
 PyPI
 query_peers
 rebase
@@ -90,8 +98,11 @@ template_path
 toml
 Towncrier
 uncheck
+uniqueness_constraints
 validator
 upsert
+Upserting
+upserting
 validators
 Version Control
 Vitest

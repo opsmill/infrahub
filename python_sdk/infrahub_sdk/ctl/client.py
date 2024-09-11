@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from infrahub_sdk import InfrahubClient, InfrahubClientSync
 from infrahub_sdk.config import Config
@@ -48,7 +48,11 @@ def _define_config(
     max_concurrent_execution: Optional[int] = None,
     retry_on_failure: Optional[bool] = None,
 ) -> Config:
-    client_config = {"address": config.SETTINGS.active.server_address, "insert_tracker": True, "identifier": identifier}
+    client_config: dict[str, Any] = {
+        "address": config.SETTINGS.active.server_address,
+        "insert_tracker": True,
+        "identifier": identifier,
+    }
 
     if config.SETTINGS.active.api_token:
         client_config["api_token"] = config.SETTINGS.active.api_token

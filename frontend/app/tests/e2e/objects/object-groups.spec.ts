@@ -22,46 +22,67 @@ test.describe("Object groups update", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(NEW_TAG);
       await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("Tag created")).toBeVisible();
     });
 
     await test.step("go to the new tag", async () => {
       await page.getByRole("link", { name: NEW_TAG }).click();
       await page.getByTestId("manage-groups").click();
-      await expect(page.getByText("Empty list")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Manage groups", exact: true })).toBeVisible();
+      await expect(page.getByText("There are no groups to display")).toBeVisible();
     });
 
-    await test.step("update the groups #1", async () => {
-      await page.getByTestId("select-open-option-button").click();
-      await page.getByText("arista_devices").click();
-      await page.getByText("cisco_devices").click();
-      await page.getByTestId("select-open-option-button").click();
-      await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("Group updated")).toBeVisible();
-      await page.getByTestId("manage-groups").click();
-      await expect(
-        page.getByTestId("multi-select-input").getByText("Arista Devices")
-      ).toBeVisible();
-      await expect(page.getByTestId("multi-select-input").getByText("Cisco Devices")).toBeVisible();
+    await test.step("open groups manager", async () => {
+      await page.getByTestId("open-group-form-button").click();
+      await expect(page.getByTestId("multi-select-input")).toContainText("Empty list");
     });
 
-    await test.step("update the groups #2", async () => {
-      await page.locator("span").filter({ hasText: "Cisco Devices" }).locator("svg").click();
-      await expect(
-        page.getByTestId("multi-select-input").getByText("Arista Devices")
-      ).toBeVisible();
-      await expect(
-        page.getByTestId("multi-select-input").getByText("Cisco Devices")
-      ).not.toBeVisible();
+    await test.step("add groups to an object", async () => {
+      await page.getByTestId("select-open-option-button").click();
+      await page.getByRole("option", { name: "arista_devices" }).click();
+      await page.getByRole("option", { name: "backbone_interfaces" }).click();
       await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("Group updated")).toBeVisible();
-      await page.getByTestId("manage-groups").click();
+      await expect(page.getByText("2 groups added")).toBeVisible();
+    });
+
+    await test.step("auto-generated toggle button not visible if there is no auto-generated groups", async () => {
+      await expect(page.getByRole("button", { name: "auto-generated" })).not.toBeVisible();
+    });
+
+    await test.step("new groups are visible in groups manager", async () => {
+      await expect(page.getByRole("link", { name: "arista_devices" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Standard Group" }).first()).toBeVisible();
+    });
+
+    await test.step("filter groups", async () => {
+      await page.getByPlaceholder("filter groups...").fill("ari");
+      await expect(page.getByRole("link", { name: "arista_devices" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "backbone_interfaces" })).not.toBeVisible();
+
+      await page.getByPlaceholder("filter groups...").fill("");
+      await expect(page.getByRole("link", { name: "arista_devices" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
+    });
+
+    await test.step("leave arista_devices group", async () => {
+      await page.getByTestId("leave-group-button").first().click();
+      await expect(page.getByRole("heading", { name: "Leave Group" })).toBeVisible();
       await expect(
-        page.getByTestId("multi-select-input").getByText("Arista Devices")
+        page.getByText("Are you sure you want to leave group arista_devices?")
       ).toBeVisible();
-      await expect(
-        page.getByTestId("multi-select-input").getByText("Cisco Devices")
-      ).not.toBeVisible();
+      await page.getByTestId("modal-delete-confirm").click();
+    });
+
+    await test.step("arista_devices group is not visible in groups manager", async () => {
+      await expect(page.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "arista_devices" })).not.toBeVisible();
+    });
+
+    await test.step("add group form does not contains object groups", async () => {
+      await page.getByTestId("open-group-form-button").click();
+      await expect(page.getByTestId("multi-select-input")).toContainText("Empty list");
     });
   });
 });

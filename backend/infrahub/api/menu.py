@@ -58,10 +58,7 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
     log.info("menu_request", branch=branch.name)
 
     full_schema = registry.schema.get_full(branch=branch, duplicate=False)
-    objects = InterfaceMenu(
-        title="Objects",
-        children=[],
-    )
+    objects = InterfaceMenu(title="Objects", children=[])
 
     structure: dict[str, list[InterfaceMenu]] = {}
 
@@ -139,13 +136,8 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
             InterfaceMenu(title="Schema", path="/schema", icon="mdi:file-code"),
             InterfaceMenu(
                 title="Repository",
-                path=f"/objects/{InfrahubKind.REPOSITORY}",
-                icon=_extract_node_icon(full_schema[InfrahubKind.REPOSITORY]),
-            ),
-            InterfaceMenu(
-                title="Read-only Repository",
-                path=f"/objects/{InfrahubKind.READONLYREPOSITORY}",
-                icon="mdi:source-repository",
+                path=f"/objects/{InfrahubKind.GENERICREPOSITORY}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.GENERICREPOSITORY]),
             ),
             InterfaceMenu(
                 title="GraphQL Query",
@@ -201,13 +193,19 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
             ),
         ],
     )
+
     admin = InterfaceMenu(
         title="Admin",
         children=[
             InterfaceMenu(
                 title="Accounts",
-                path=f"/objects/{InfrahubKind.ACCOUNT}",
-                icon=_extract_node_icon(full_schema[InfrahubKind.ACCOUNT]),
+                path=f"/objects/{InfrahubKind.GENERICACCOUNT}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.GENERICACCOUNT]),
+            ),
+            InterfaceMenu(
+                title="Credentials",
+                path=f"/objects/{InfrahubKind.CREDENTIAL}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.CREDENTIAL]),
             ),
             InterfaceMenu(
                 title="Webhooks",

@@ -12,6 +12,8 @@ from infrahub_sdk.utils import base16encode
 BASE = 16
 DIVISOR = BASE - 1
 CHARACTERS = list("0123456789abcdefghijklmnopqrstuvwxyz")[:BASE]
+HOSTNAME = socket.gethostname()
+DEFAULT_NAMESPACE = str(Path(__file__).parent.resolve())
 
 # Code inspired from https://github.com/isaacharrisholt/uuidt
 
@@ -39,9 +41,9 @@ class UUIDT:
         hostname: Optional[str] = None,
         random_chars: Optional[str] = None,
     ):
-        self.namespace = namespace or str(Path(__file__).parent.resolve())
+        self.namespace = namespace or DEFAULT_NAMESPACE
         self.timestamp = timestamp or time.time_ns()
-        self.hostname = hostname or socket.gethostname()
+        self.hostname = hostname or HOSTNAME
         self.random_chars = random_chars or "".join(random.choices(CHARACTERS, k=8))
 
     def __str__(self) -> str:

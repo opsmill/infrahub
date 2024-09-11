@@ -11,7 +11,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.model import (
+from infrahub.core.diff.model.diff import (
     ArtifactTarget,
     BranchDiff,
     BranchDiffArtifact,
@@ -103,16 +103,18 @@ async def get_diff_files(
 
     for branch_name, items in diff_files.items():
         for item in items:
-            if item.repository not in response[branch_name]:
-                response[branch_name][item.repository] = BranchDiffRepository(
-                    id=item.repository,
-                    display_name=f"Repository ({item.repository})",
+            repository_id = item.repository.get_id()
+            display_label = await item.repository.render_display_label(db=db)
+            if repository_id not in response[branch_name]:
+                response[branch_name][repository_id] = BranchDiffRepository(
+                    id=repository_id,
+                    display_name=display_label or f"Repository ({repository_id})",
                     commit_from=item.commit_from,
                     commit_to=item.commit_to,
                     branch=branch_name,
                 )
 
-            response[branch_name][item.repository].files.append(BranchDiffFile(**item.to_graphql()))
+            response[branch_name][repository_id].files.append(BranchDiffFile(**item.to_graphql()))
 
     return response
 

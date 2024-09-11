@@ -514,6 +514,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-test-fixture-01"},
                             "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
                             "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                            "internal_status": {"value": "active"},
                         }
                     }
                 ]
@@ -531,6 +532,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "infrahub-test-fixture-01"},
                             "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
                             "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                            "internal_status": {"value": "active"},
                         }
                     }
                 ]
@@ -640,7 +642,7 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     )
 
     httpx_mock.add_response(
-        method="GET", url=re.compile(r"^http://mock/api/schema/\?branch=(main|cr1234)"), json=ujson.loads(response_text)
+        method="GET", url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"), json=ujson.loads(response_text)
     )
     return httpx_mock
 
@@ -651,7 +653,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
         encoding="UTF-8"
     )
 
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock
 
 

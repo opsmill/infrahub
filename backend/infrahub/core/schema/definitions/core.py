@@ -4,6 +4,7 @@ from infrahub.core.constants import (
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
     AccountRole,
+    AccountStatus,
     AccountType,
     AllowOverrideType,
     ArtifactStatus,
@@ -14,6 +15,9 @@ from infrahub.core.constants import (
     InfrahubKind,
     ProposedChangeState,
     RelationshipDeleteBehavior,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    RepositorySyncStatus,
     Severity,
     ValidatorConclusion,
     ValidatorState,
@@ -91,10 +95,11 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
+                    "identifier": "comment__account",
                 },
             ],
         },
@@ -131,7 +136,8 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
+                    "identifier": "thread__account",
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -154,6 +160,13 @@ core_models: dict[str, Any] = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
                 {"name": "description", "kind": "Text", "optional": True},
+                {
+                    "name": "group_type",
+                    "kind": "Text",
+                    "enum": ["default", "internal"],
+                    "default_value": "default",
+                    "optional": False,
+                },
             ],
             "relationships": [
                 {
@@ -360,11 +373,13 @@ core_models: dict[str, Any] = {
         {
             "name": "GenericRepository",
             "namespace": "Core",
+            "label": "Git Repository",
             "description": "A Git Repository integrated with Infrahub",
             "include_in_menu": False,
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "icon": "mdi:source-repository",
             "branch": BranchSupportType.AGNOSTIC.value,
             "documentation": "/topics/repository",
             "attributes": [
@@ -375,6 +390,7 @@ core_models: dict[str, Any] = {
                     "unique": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 1000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "description",
@@ -382,6 +398,7 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 2000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "location",
@@ -389,29 +406,129 @@ core_models: dict[str, Any] = {
                     "unique": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "order_weight": 3000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
-                    "name": "username",
-                    "kind": "Text",
-                    "optional": True,
-                    "branch": BranchSupportType.AGNOSTIC.value,
-                    "order_weight": 4000,
+                    "name": "internal_status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": RepositoryInternalStatus.STAGING.value,
+                            "label": "Staging",
+                            "description": "Repository was recently added to this branch.",
+                            "color": "#fef08a",
+                        },
+                        {
+                            "name": RepositoryInternalStatus.ACTIVE.value,
+                            "label": "Active",
+                            "description": "Repository is actively being synced for this branch",
+                            "color": "#86efac",
+                        },
+                        {
+                            "name": RepositoryInternalStatus.INACTIVE.value,
+                            "label": "Inactive",
+                            "description": "Repository is not active on this branch.",
+                            "color": "#e5e7eb",
+                        },
+                    ],
+                    "default_value": "inactive",
+                    "optional": False,
+                    "branch": BranchSupportType.LOCAL.value,
+                    "order_weight": 7000,
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
-                    "name": "password",
-                    "kind": "Password",
-                    "optional": True,
+                    "name": "operational_status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": RepositoryOperationalStatus.UNKNOWN.value,
+                            "label": "Unknown",
+                            "description": "Status of the repository is unknown and mostlikely because it hasn't been synced yet",
+                            "color": "#9ca3af",
+                        },
+                        {
+                            "name": RepositoryOperationalStatus.ONLINE.value,
+                            "label": "Online",
+                            "description": "Repository connection is working",
+                            "color": "#86efac",
+                        },
+                        {
+                            "name": RepositoryOperationalStatus.ERROR_CRED.value,
+                            "label": "Credential Error",
+                            "description": "Repository can't be synced due to some credential error(s)",
+                            "color": "#f87171",
+                        },
+                        {
+                            "name": RepositoryOperationalStatus.ERROR_CONNECTION.value,
+                            "label": "Connectivity Error",
+                            "description": "Repository can't be synced due to some connectivity error(s)",
+                            "color": "#f87171",
+                        },
+                        {
+                            "name": RepositoryOperationalStatus.ERROR.value,
+                            "label": "Error",
+                            "description": "Repository can't be synced due to an unknown error",
+                            "color": "#ef4444",
+                        },
+                    ],
+                    "optional": False,
                     "branch": BranchSupportType.AGNOSTIC.value,
+                    "default_value": RepositoryOperationalStatus.UNKNOWN.value,
                     "order_weight": 5000,
+                },
+                {
+                    "name": "sync_status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": RepositorySyncStatus.UNKNOWN.value,
+                            "label": "Unknown",
+                            "description": "Status of the repository is unknown and mostlikely because it hasn't been synced yet",
+                            "color": "#9ca3af",
+                        },
+                        {
+                            "name": RepositorySyncStatus.ERROR_IMPORT.value,
+                            "label": "Import Error",
+                            "description": "Repository import error observed",
+                            "color": "#f87171",
+                        },
+                        {
+                            "name": RepositorySyncStatus.IN_SYNC.value,
+                            "label": "In Sync",
+                            "description": "The repository is syncing correctly",
+                            "color": "#60a5fa",
+                        },
+                        {
+                            "name": RepositorySyncStatus.SYNCING.value,
+                            "label": "Syncing",
+                            "description": "A sync job is currently running against the repository.",
+                            "color": "#a855f7",
+                        },
+                    ],
+                    "optional": False,
+                    "branch": BranchSupportType.LOCAL.value,
+                    "default_value": RepositorySyncStatus.UNKNOWN.value,
+                    "order_weight": 6000,
                 },
             ],
             "relationships": [
+                {
+                    "name": "credential",
+                    "peer": InfrahubKind.CREDENTIAL,
+                    "identifier": "gitrepository__credential",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "one",
+                    "order_weight": 4000,
+                },
                 {
                     "name": "tags",
                     "peer": InfrahubKind.TAG,
                     "kind": "Attribute",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 8000,
                 },
                 {
                     "name": "transformations",
@@ -419,6 +536,7 @@ core_models: dict[str, Any] = {
                     "identifier": "repository__transformation",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 10000,
                 },
                 {
                     "name": "queries",
@@ -426,6 +544,7 @@ core_models: dict[str, Any] = {
                     "identifier": "graphql_query__repository",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 9000,
                 },
                 {
                     "name": "checks",
@@ -433,6 +552,7 @@ core_models: dict[str, Any] = {
                     "identifier": "check_definition__repository",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 11000,
                 },
                 {
                     "name": "generators",
@@ -440,6 +560,7 @@ core_models: dict[str, Any] = {
                     "identifier": "generator_definition__repository",
                     "optional": True,
                     "cardinality": "many",
+                    "order_weight": 12000,
                 },
             ],
         },
@@ -697,6 +818,79 @@ core_models: dict[str, Any] = {
                 },
             ],
         },
+        {
+            "name": "GenericAccount",
+            "namespace": "Core",
+            "description": "User Account for Infrahub",
+            "include_in_menu": False,
+            "label": "Account",
+            "icon": "mdi:account",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["label__value"],
+            "human_friendly_id": ["name__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "documentation": "/topics/auth",
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "password", "kind": "HashedPassword", "unique": False},
+                {"name": "label", "kind": "Text", "optional": True},
+                {"name": "description", "kind": "Text", "optional": True},
+                {
+                    "name": "account_type",
+                    "kind": "Text",
+                    "default_value": AccountType.USER.value,
+                    "enum": AccountType.available_types(),
+                },
+                {
+                    "name": "role",
+                    "kind": "Text",
+                    "default_value": AccountRole.READ_ONLY.value,
+                    "enum": AccountRole.available_types(),
+                },
+                {
+                    "name": "status",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": AccountStatus.ACTIVE.value,
+                            "label": "Active",
+                            "description": "Account is allowed to login",
+                            "color": "#52be80",
+                        },
+                        {
+                            "name": AccountStatus.INACTIVE.value,
+                            "label": "Inactive",
+                            "description": "Account is not allowed to login",
+                            "color": "#e74c3c",
+                        },
+                    ],
+                    "default_value": AccountStatus.ACTIVE.value,
+                },
+            ],
+            "relationships": [
+                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
+            ],
+        },
+        {
+            "name": "Credential",
+            "namespace": "Core",
+            "description": "A credential that could be referenced to access external services.",
+            "include_in_menu": False,
+            "label": "Credential",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["label__value"],
+            "icon": "mdi:key-variant",
+            "human_friendly_id": ["name__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "documentation": "/topics/auth",
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
+                {"name": "label", "kind": "Text", "optional": True, "order_weight": 2000},
+                {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
+            ],
+        },
     ],
     "nodes": [
         {
@@ -781,29 +975,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["label__value"],
             "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
-            "documentation": "/topics/auth",
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "password", "kind": "HashedPassword", "unique": False},
-                {"name": "label", "kind": "Text", "optional": True},
-                {"name": "description", "kind": "Text", "optional": True},
-                {
-                    "name": "type",
-                    "kind": "Text",
-                    "default_value": AccountType.USER.value,
-                    "enum": AccountType.available_types(),
-                },
-                {
-                    "name": "role",
-                    "kind": "Text",
-                    "default_value": AccountRole.READ_ONLY.value,
-                    "enum": AccountRole.available_types(),
-                },
-            ],
-            "relationships": [
-                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
-            ],
+            "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICACCOUNT],
         },
         {
             "name": "AccountToken",
@@ -824,9 +996,36 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": False,
                     "cardinality": "one",
+                    "identifier": "account__token",
+                },
+            ],
+        },
+        {
+            "name": "PasswordCredential",
+            "namespace": "Core",
+            "description": "Username/Password based credential",
+            "include_in_menu": False,
+            "label": "Username / Password",
+            "generate_profile": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": [InfrahubKind.CREDENTIAL],
+            "attributes": [
+                {
+                    "name": "username",
+                    "kind": "Text",
+                    "optional": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 6000,
+                },
+                {
+                    "name": "password",
+                    "kind": "Password",
+                    "optional": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 7000,
                 },
             ],
         },
@@ -845,9 +1044,10 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": False,
                     "cardinality": "one",
+                    "identifier": "account__refreshtoken",
                 },
             ],
         },
@@ -880,7 +1080,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "approved_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Attribute",
@@ -889,7 +1089,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "reviewers",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "kind": "Attribute",
                     "cardinality": "many",
@@ -898,7 +1098,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "created_by",
-                    "peer": InfrahubKind.ACCOUNT,
+                    "peer": InfrahubKind.GENERICACCOUNT,
                     "optional": True,
                     "cardinality": "one",
                     "branch": BranchSupportType.AGNOSTIC.value,
@@ -914,7 +1114,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "threads",
-                    "peer": "CoreThread",
+                    "peer": InfrahubKind.THREAD,
                     "identifier": "proposedchange__thread",
                     "kind": "Component",
                     "optional": True,
@@ -939,7 +1139,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Change Thread",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [],
             "relationships": [],
@@ -951,7 +1151,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Thread - File",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [
                 {"name": "file", "kind": "Text", "optional": True},
@@ -975,7 +1175,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Thread - Artifact",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [
                 {"name": "artifact_id", "kind": "Text", "optional": True},
@@ -991,7 +1191,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Thread - Object",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreThread"],
+            "inherit_from": [InfrahubKind.THREAD],
             "generate_profile": False,
             "attributes": [
                 {"name": "object_path", "kind": "Text", "optional": False},
@@ -1007,7 +1207,7 @@ core_models: dict[str, Any] = {
             "default_filter": "text__value",
             "display_labels": ["text__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreComment"],
+            "inherit_from": [InfrahubKind.COMMENT],
             "generate_profile": False,
             "relationships": [
                 {
@@ -1028,13 +1228,13 @@ core_models: dict[str, Any] = {
             "default_filter": "text__value",
             "display_labels": ["text__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreComment"],
+            "inherit_from": [InfrahubKind.COMMENT],
             "generate_profile": False,
             "attributes": [],
             "relationships": [
                 {
                     "name": "thread",
-                    "peer": "CoreThread",
+                    "peer": InfrahubKind.THREAD,
                     "kind": "Parent",
                     "identifier": "thread__threadcomment",
                     "cardinality": "one",
@@ -1137,6 +1337,7 @@ core_models: dict[str, Any] = {
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
                 {"name": "keep_branch", "enum": BranchConflictKeep.available_types(), "kind": "Text", "optional": True},
+                {"name": "enriched_conflict_id", "kind": "Text", "optional": True},
             ],
         },
         {
@@ -1162,6 +1363,7 @@ core_models: dict[str, Any] = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
+                {"name": "enriched_conflict_id", "kind": "Text", "optional": True},
             ],
         },
         {
@@ -1824,7 +2026,7 @@ core_models: dict[str, Any] = {
         {
             "name": "NumberPool",
             "namespace": "Core",
-            "description": "A pool of integer resources",
+            "description": "A pool of number resources",
             "label": "Number Pool",
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,

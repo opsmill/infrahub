@@ -6,6 +6,8 @@ export const Popover = PopoverPrimitive.Root;
 
 export const PopoverTrigger = PopoverPrimitive.Trigger;
 
+export const PopoverAnchor = PopoverPrimitive.Anchor;
+
 export const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   PopoverPrimitive.PopoverContentProps

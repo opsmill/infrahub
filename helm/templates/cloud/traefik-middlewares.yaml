@@ -1,0 +1,11 @@
+{{- if .Values.cloud.enabled }}
+{{- range $value := .Values.cloud.ingress.middlewares }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $value.name }}
+spec:
+  {{- toYaml $value.spec | nindent 2 }}
+{{- end }}
+{{- end }}

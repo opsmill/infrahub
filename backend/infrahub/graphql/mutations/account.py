@@ -10,6 +10,7 @@ from infrahub.auth import AuthType
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
@@ -23,16 +24,16 @@ if TYPE_CHECKING:
 # pylint: disable=unused-argument
 
 
-class CoreAccountTokenCreateInput(InputObjectType):
+class InfrahubAccountTokenCreateInput(InputObjectType):
     name = InputField(String(required=False), description="The name of the token")
     expiration = InputField(String(required=False), description="Timestamp when the token expires")
 
 
-class CoreAccountTokenDeleteInput(InputObjectType):
+class InfrahubAccountTokenDeleteInput(InputObjectType):
     id = InputField(String(required=True), description="The id of the token to delete")
 
 
-class CoreAccountUpdateSelfInput(InputObjectType):
+class InfrahubAccountUpdateSelfInput(InputObjectType):
     password = InputField(String(required=False), description="The new password")
     description = InputField(String(required=False), description="The new description")
 
@@ -41,7 +42,7 @@ class ValueType(InfrahubObjectType):
     value = String(required=True)
 
 
-class CoreAccountTokenType(InfrahubObjectType):
+class InfrahubAccountTokenType(InfrahubObjectType):
     id = String(required=True)
     token = Field(ValueType)
 
@@ -63,7 +64,7 @@ class AccountMixin:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
         results = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, db=context.db
+            schema=CoreAccount, filters={"ids": [context.account_session.account_id]}, db=context.db
         )
         if not results:
             raise NodeNotFoundError(node_type=InfrahubKind.ACCOUNT, identifier=context.account_session.account_id)
@@ -71,9 +72,9 @@ class AccountMixin:
         account = results[0]
 
         mutation_map = {
-            "CoreAccountTokenCreate": cls.create_token,
-            "CoreAccountTokenDelete": cls.delete_token,
-            "CoreAccountSelfUpdate": cls.update_self,
+            "InfrahubAccountTokenCreate": cls.create_token,
+            "InfrahubAccountTokenDelete": cls.delete_token,
+            "InfrahubAccountSelfUpdate": cls.update_self,
         }
         response = await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
 
@@ -85,7 +86,7 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_token_create")
     async def create_token(
-        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
         token = str(UUIDT())
@@ -106,54 +107,54 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_token_delete")
     async def delete_token(
-        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         token_id = str(data.get("id"))
 
         results = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNTTOKEN, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
+            schema=InternalAccountToken, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
         )
 
         if not results:
             raise NodeNotFoundError(node_type="AccountToken", identifier=token_id)
 
         async with db.start_transaction() as dbt:
-            await results[0].delete(db=dbt)
+            await results[0].delete(db=dbt)  # type: ignore[arg-type]
 
         return cls(ok=True)  # type: ignore[call-arg]
 
     @classmethod
     @retry_db_transaction(name="account_update_self")
     async def update_self(
-        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         for field in ("password", "description"):
             if value := data.get(field):
                 getattr(account, field).value = value
 
         async with db.start_transaction() as dbt:
-            await account.save(db=dbt)
+            await account.save(db=dbt)  # type: ignore[arg-type]
 
         return cls(ok=True)  # type: ignore[call-arg]
 
 
-class CoreAccountTokenCreate(AccountMixin, Mutation):
+class InfrahubAccountTokenCreate(AccountMixin, Mutation):
     class Arguments:
-        data = CoreAccountTokenCreateInput(required=True)
+        data = InfrahubAccountTokenCreateInput(required=True)
 
     ok = Boolean()
-    object = Field(CoreAccountTokenType)
+    object = Field(InfrahubAccountTokenType)
 
 
-class CoreAccountTokenDelete(AccountMixin, Mutation):
+class InfrahubAccountTokenDelete(AccountMixin, Mutation):
     class Arguments:
-        data = CoreAccountTokenDeleteInput(required=True)
+        data = InfrahubAccountTokenDeleteInput(required=True)
 
     ok = Boolean()
 
 
-class CoreAccountSelfUpdate(AccountMixin, Mutation):
+class InfrahubAccountSelfUpdate(AccountMixin, Mutation):
     class Arguments:
-        data = CoreAccountUpdateSelfInput(required=True)
+        data = InfrahubAccountUpdateSelfInput(required=True)
 
     ok = Boolean()

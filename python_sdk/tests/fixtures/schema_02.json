@@ -19,7 +19,7 @@
             "namespace": "Core",
             "description": "A Git Repository integrated with Infrahub",
             "default_filter": "name__value",
-            "branch": "aware",
+            "branch": "agnostic",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "attributes": [
@@ -72,6 +72,24 @@
                     "read_only": false,
                     "inherited": false,
                     "unique": true,
+                    "branch": "aware",
+                    "optional": false,
+                    "order_weight": 3000,
+                    "choices": null
+                },
+                {
+                    "name": "internal_status",
+                    "kind": "Text",
+                    "label": "Admin Status",
+                    "description": null,
+                    "default_value": null,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "read_only": false,
+                    "inherited": false,
+                    "unique": false,
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 3000,
@@ -186,7 +204,7 @@
                     "order_weight": 10000
                 }
             ],
-            "label": "Genericrepository",
+            "label": "Git Repository",
             "used_by": [
                 "CoreReadOnlyRepository",
                 "CoreRepository"
@@ -512,6 +530,24 @@
                     "choices": null
                 },
                 {
+                    "name": "internal_status",
+                    "kind": "Text",
+                    "label": "Admin Status",
+                    "description": null,
+                    "default_value": null,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "read_only": false,
+                    "inherited": true,
+                    "unique": true,
+                    "branch": "aware",
+                    "optional": false,
+                    "order_weight": 3000,
+                    "choices": null
+                },
+                {
                     "id": "17a73306-353a-f864-43e9-1677c172ed4e",
                     "name": "username",
                     "kind": "Text",
@@ -621,7 +657,7 @@
                     "optional": true,
                     "order_weight": 12000
                 }
-            ]            
+            ]
         },
         {
             "name": "GraphQLQuery",
@@ -811,6 +847,24 @@
                     "unique": false,
                     "branch": "aware",
                     "optional": false
+                },
+                {
+                    "name": "internal_status",
+                    "kind": "Text",
+                    "label": "Admin Status",
+                    "description": null,
+                    "default_value": null,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "read_only": false,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": false,
+                    "order_weight": 3100,
+                    "choices": null
                 }
             ],
             "relationships": [

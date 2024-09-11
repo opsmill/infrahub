@@ -32,7 +32,7 @@ from infrahub_sdk.ctl.utils import catch_exception, execute_graphql_query, parse
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
 from infrahub_sdk.jinja2 import identify_faulty_jinja_code
-from infrahub_sdk.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
+from infrahub_sdk.schema import AttributeSchema, GenericSchema, InfrahubRepositoryConfig, NodeSchema, RelationshipSchema
 from infrahub_sdk.transforms import get_transform_class_instance
 from infrahub_sdk.utils import get_branch, write_to_file
 
@@ -186,11 +186,20 @@ def render_jinja2_template(template_path: Path, variables: dict[str, str], data:
     return rendered_tpl
 
 
-def _run_transform(query: str, variables: dict[str, Any], transformer: Callable, branch: str, debug: bool):
+def _run_transform(
+    query: str,
+    variables: dict[str, Any],
+    transformer: Callable,
+    branch: str,
+    debug: bool,
+    repository_config: InfrahubRepositoryConfig,
+):
     branch = get_branch(branch)
 
     try:
-        response = execute_graphql_query(query, variables, branch, debug)
+        response = execute_graphql_query(
+            query=query, variables_dict=variables, branch=branch, debug=debug, repository_config=repository_config
+        )
     except QueryNotFoundError as exc:
         console.print(f"[red]Unable to find query : {exc}")
         raise typer.Exit(1) from exc
@@ -242,7 +251,14 @@ def render(
         raise typer.Exit(1) from exc
 
     transformer = functools.partial(render_jinja2_template, transform_config.template_path, variables_dict)
-    result = _run_transform(transform_config.query, variables_dict, transformer, branch, debug)
+    result = _run_transform(
+        query=transform_config.query,
+        variables=variables_dict,
+        transformer=transformer,
+        branch=branch,
+        debug=debug,
+        repository_config=repository_config,
+    )
 
     if out:
         write_to_file(Path(out), result)
@@ -289,7 +305,12 @@ def transform(
 
     transformer = functools.partial(transform_instance.transform)
     result = _run_transform(
-        query=transform_instance.query, variables=variables_dict, transformer=transformer, branch=branch, debug=debug
+        query=transform_instance.query,
+        variables=variables_dict,
+        transformer=transformer,
+        branch=branch,
+        debug=debug,
+        repository_config=repository_config,
     )
 
     json_string = ujson.dumps(result, indent=2, sort_keys=True)

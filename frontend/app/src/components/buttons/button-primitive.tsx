@@ -4,14 +4,20 @@ import { classNames } from "@/utils/common";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ButtonHTMLAttributes, forwardRef } from "react";
 import { Link, LinkProps } from "react-router-dom";
+import { Spinner } from "@/components/ui/spinner";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
-        primary: "text-white bg-custom-blue-700 shadow hover:bg-custom-blue-700/90",
-        outline: "border bg-custom-white shadow-sm hover:bg-gray-100",
+        primary: "text-white bg-custom-blue-700 shadow enabled:hover:bg-custom-blue-700/90",
+        danger: "text-white bg-red-500 shadow enabled:hover:bg-red-500/90",
+        active: "text-white bg-green-600 shadow enabled:hover:bg-green-600/90",
+        outline: "border bg-custom-white shadow-sm enabled:hover:bg-gray-100",
+        "primary-outline":
+          "text-custom-blue-700 border border-custom-blue-700 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
+        dark: "border bg-gray-200 shadow-sm enabled:hover:bg-gray-300",
         ghost: "hover:bg-gray-100",
       },
       size: {
@@ -19,6 +25,7 @@ const buttonVariants = cva(
         xs: "h-7 px-2 text-xs",
         sm: "h-7 px-2 text-sm",
         icon: "h-7 w-7 rounded-full",
+        square: "h-9 w-9 rounded-md",
       },
     },
     defaultVariants: {
@@ -30,17 +37,21 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+    VariantProps<typeof buttonVariants> {
+  isLoading?: boolean;
+}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, type = "button", ...props }, ref) => {
+  ({ className, variant, size, type = "button", children, isLoading, ...props }, ref) => {
     return (
       <button
         type={type}
         className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
         ref={ref}
-        {...props}
-      />
+        {...props}>
+        {isLoading && <Spinner className="mr-2" />}
+        {children}
+      </button>
     );
   }
 );

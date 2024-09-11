@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from infrahub_sdk import UUIDT, Config, InfrahubClient
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
@@ -46,10 +46,10 @@ class TestAddRepository:
     def setup_method(self):
         self.default_branch_name = "default-branch"
         self.client = AsyncMock(spec=InfrahubClient)
-        self.task_report = AsyncContextManagerMock()
+        self.git_report = AsyncContextManagerMock()
 
         self.services = InfrahubServices(client=self.client)
-        self.services.task_report = self.task_report
+        self.services.git_report = self.git_report
         lock_patcher = patch("infrahub.message_bus.operations.git.repository.lock")
         self.mock_infra_lock = lock_patcher.start()
         self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
@@ -59,6 +59,8 @@ class TestAddRepository:
         self.mock_repo_class = repo_class_patcher.start()
         self.mock_repo = AsyncMock(spec=InfrahubRepository)
         self.mock_repo.default_branch = self.default_branch_name
+        self.mock_repo.infrahub_branch_name = self.default_branch_name
+        self.mock_repo.internal_status = "active"
         self.mock_repo_class.new.return_value = self.mock_repo
 
     def teardown_method(self):
@@ -71,6 +73,8 @@ class TestAddRepository:
             repository_name=git_upstream_repo_01["name"],
             location=git_upstream_repo_01["path"],
             default_branch_name=self.default_branch_name,
+            infrahub_branch_name=self.default_branch_name,
+            internal_status="active",
         )
 
         await git.repository.add(message=message, service=self.services)
@@ -83,9 +87,14 @@ class TestAddRepository:
             name=git_upstream_repo_01["name"],
             location=git_upstream_repo_01["path"],
             client=self.client,
-            task_report=self.task_report,
+            task_report=self.git_report,
+            infrahub_branch_name=self.default_branch_name,
+            internal_status="active",
+            default_branch_name=self.default_branch_name,
         )
-        self.mock_repo.import_objects_from_files.assert_awaited_once_with(branch_name=self.default_branch_name)
+        self.mock_repo.import_objects_from_files.assert_awaited_once_with(
+            infrahub_branch_name=self.default_branch_name, git_branch_name=self.default_branch_name
+        )
         self.mock_repo.sync.assert_awaited_once_with()
 
 
@@ -103,7 +112,12 @@ async def test_git_rpc_merge(
     commit_main_before = repo.get_commit_value(branch_name="main")
 
     message = messages.GitRepositoryMerge(
-        repository_id=str(UUIDT()), repository_name=repo.name, source_branch="branch01", destination_branch="main"
+        repository_id=str(UUIDT()),
+        repository_name=repo.name,
+        source_branch="branch01",
+        destination_branch="main",
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        default_branch="main",
     )
 
     client_config = Config(requester=dummy_async_request)
@@ -166,9 +180,9 @@ async def test_git_rpc_diff(
 class TestAddReadOnly:
     def setup_method(self):
         self.client = AsyncMock(spec=InfrahubClient)
-        self.task_report = AsyncContextManagerMock()
+        self.git_report = AsyncContextManagerMock()
         self.services = InfrahubServices(client=self.client)
-        self.services.task_report = self.task_report
+        self.services.git_report = self.git_report
 
         lock_patcher = patch("infrahub.message_bus.operations.git.repository.lock")
         self.mock_infra_lock = lock_patcher.start()
@@ -191,6 +205,7 @@ class TestAddReadOnly:
             location=git_upstream_repo_01["path"],
             ref="branch01",
             infrahub_branch_name="read-only-branch",
+            internal_status="active",
         )
 
         await git.repository.add_read_only(message=message, service=self.services)
@@ -203,18 +218,18 @@ class TestAddReadOnly:
             client=self.client,
             ref="branch01",
             infrahub_branch_name="read-only-branch",
-            task_report=self.task_report,
+            task_report=self.git_report,
         )
-        self.mock_repo.import_objects_from_files.assert_awaited_once_with(branch_name="read-only-branch")
+        self.mock_repo.import_objects_from_files.assert_awaited_once_with(infrahub_branch_name="read-only-branch")
         self.mock_repo.sync_from_remote.assert_awaited_once_with()
 
 
 class TestPullReadOnly:
     def setup_method(self):
         self.client = AsyncMock(spec=InfrahubClient)
-        self.task_report = AsyncContextManagerMock()
+        self.git_report = AsyncContextManagerMock()
         self.services = InfrahubServices(client=self.client)
-        self.services.task_report = self.task_report
+        self.services.git_report = self.git_report
         self.commit = str(UUIDT())
         self.infrahub_branch_name = "read-only-branch"
         self.repo_id = str(UUIDT())
@@ -265,10 +280,10 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.task_report,
+            task_report=self.git_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
-            branch_name=self.infrahub_branch_name, commit=self.commit
+            infrahub_branch_name=self.infrahub_branch_name, commit=self.commit
         )
         self.mock_repo.sync_from_remote.assert_awaited_once_with(commit=self.commit)
 
@@ -285,7 +300,7 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.task_report,
+            task_report=self.git_report,
         )
         self.mock_repo_class.new.assert_awaited_once_with(
             id=self.repo_id,
@@ -294,9 +309,9 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.task_report,
+            task_report=self.git_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
-            branch_name=self.infrahub_branch_name, commit=self.commit
+            infrahub_branch_name=self.infrahub_branch_name, commit=self.commit
         )
         self.mock_repo.sync_from_remote.assert_awaited_once_with(commit=self.commit)

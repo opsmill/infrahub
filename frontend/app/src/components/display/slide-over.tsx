@@ -1,5 +1,11 @@
 import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment } from "react";
+import React, { Fragment, useRef } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Icon } from "@iconify-icon/react";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 
 interface Props {
   open: boolean;
@@ -11,6 +17,7 @@ interface Props {
 
 export default function SlideOver(props: Props) {
   const { open, setOpen, title, offset = 0 } = props;
+  const initialFocusRef = useRef(null);
 
   // Need to define full classes so tailwind can compile the css
   const panelWidth = "w-[400px]";
@@ -22,7 +29,7 @@ export default function SlideOver(props: Props) {
 
   return (
     <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={setOpen}>
+      <Dialog as="div" className="relative z-10" onClose={setOpen} initialFocus={initialFocusRef}>
         <Transition.Child
           as={Fragment}
           enter="ease-in-out duration-500"
@@ -41,6 +48,7 @@ export default function SlideOver(props: Props) {
         <div className="before:fixed inset-0 overflow-hidden">
           <div className="absolute inset-0 overflow-hidden">
             <div className="pointer-events-none fixed inset-y-0 right-0 flex">
+              <button type="button" tabIndex={-1} ref={initialFocusRef} />
               <Transition.Child
                 as={Fragment}
                 enter="transform transition ease-in-out duration-500"
@@ -67,3 +75,55 @@ export default function SlideOver(props: Props) {
     </Transition.Root>
   );
 }
+
+type SlideOverTitleProps = {
+  schema: IModelSchema;
+  currentObjectLabel?: string;
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+};
+
+export const SlideOverTitle = ({
+  currentObjectLabel,
+  schema,
+  title,
+  subtitle,
+}: SlideOverTitleProps) => {
+  const currentBranch = useAtomValue(currentBranchAtom);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex">
+        <Badge variant="blue" className="flex items-center gap-1">
+          <Icon icon="mdi:layers-triple" />
+          <span>{currentBranch?.name}</span>
+        </Badge>
+
+        <ObjectHelpButton
+          kind={schema.kind}
+          documentationUrl={schema.documentation}
+          className="ml-auto"
+        />
+      </div>
+
+      <div className="flex justify-between">
+        <div className="text-sm flex items-center gap-2 whitespace-nowrap w-full">
+          {schema.label}
+
+          {currentObjectLabel && (
+            <>
+              <Icon icon="mdi:chevron-right" />
+
+              <span className="truncate">{currentObjectLabel}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div>
+        {title && <h3 className="text-lg font-semibold">{title}</h3>}
+        {subtitle && <p className="text-sm">{subtitle}</p>}
+      </div>
+    </div>
+  );
+};

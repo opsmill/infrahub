@@ -8,7 +8,6 @@ import { DATA_CHECK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { getNodeClassName } from "@/screens/diff/data-diff-node";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
@@ -92,7 +91,7 @@ export const Conflict = (props: any) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Conflict marked as resovled" />);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Conflict marked as resolved" />);
 
       setIsLoading(false);
 
@@ -150,11 +149,7 @@ export const Conflict = (props: any) => {
             return (
               <div key={index} className="flex items-center mb-2 last:mb-0">
                 <div
-                  className={classNames(
-                    "flex-1 grid grid-cols-2 gap-2 p-2 rounded-md",
-                    className,
-                    getNodeClassName([], branch, "false")
-                  )}>
+                  className={classNames("flex-1 grid grid-cols-2 gap-2 p-2 rounded-md", className)}>
                   <div className="flex items-center">
                     <Badge className="mr-2">{branch}</Badge>
 

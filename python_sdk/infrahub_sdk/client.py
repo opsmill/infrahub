@@ -21,7 +21,7 @@ from infrahub_sdk.branch import (
 )
 from infrahub_sdk.config import Config
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.data import RepositoryData
+from infrahub_sdk.data import RepositoryBranchInfo, RepositoryData
 from infrahub_sdk.exceptions import (
     AuthenticationError,
     Error,
@@ -329,6 +329,7 @@ class InfrahubClient(BaseClient):
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        hfid: Optional[list[str]] = None,
         include: Optional[list[str]] = None,
         exclude: Optional[list[str]] = None,
         populate_store: bool = False,
@@ -346,6 +347,11 @@ class InfrahubClient(BaseClient):
                 filters[schema.default_filter] = id
             else:
                 filters["ids"] = [id]
+        elif hfid:
+            if isinstance(schema, NodeSchema) and schema.human_friendly_id:
+                filters["hfid"] = hfid
+            else:
+                raise ValueError("Cannot filter by HFID if the node doesn't have an HFID defined")
         elif kwargs:
             filters = kwargs
         else:
@@ -361,7 +367,7 @@ class InfrahubClient(BaseClient):
             fragment=fragment,
             prefetch_relationships=prefetch_relationships,
             **filters,
-        )  # type: ignore[arg-type]
+        )
 
         if len(results) == 0:
             raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
@@ -963,28 +969,26 @@ class InfrahubClient(BaseClient):
     async def get_list_repositories(
         self, branches: Optional[dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
     ) -> dict[str, RepositoryData]:
-        if not branches:
-            branches = await self.branch.all()  # type: ignore
-
-        branch_names = sorted(branches.keys())  # type: ignore
+        branches = branches or await self.branch.all()
 
         batch = await self.create_batch()
-        for branch_name in branch_names:
+        for branch_name, branch in branches.items():
             batch.add(
                 task=self.all,
+                node=branch,  # type: ignore[arg-type]
                 kind=kind,
                 branch=branch_name,
                 fragment=True,
-                include=["id", "name", "location", "commit", "ref"],
+                include=["id", "name", "location", "commit", "ref", "internal_status"],
             )
 
-        responses = []
-        async for _, response in batch.execute():
-            responses.append(response)
+        responses: dict[str, Any] = {}
+        async for branch, response in batch.execute():
+            responses[branch.name] = response
 
-        repositories = {}
+        repositories: dict[str, RepositoryData] = {}
 
-        for branch_name, response in zip(branch_names, responses):
+        for branch_name, response in responses.items():
             for repository in response:
                 repo_name = repository.name.value
                 if repo_name not in repositories:
@@ -994,6 +998,9 @@ class InfrahubClient(BaseClient):
                     )
 
                 repositories[repo_name].branches[branch_name] = repository.commit.value
+                repositories[repo_name].branch_info[branch_name] = RepositoryBranchInfo(
+                    internal_status=repository.internal_status.value
+                )
 
         return repositories
 
@@ -1330,6 +1337,7 @@ class InfrahubClientSync(BaseClient):
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        hfid: Optional[list[str]] = None,
         include: Optional[list[str]] = None,
         exclude: Optional[list[str]] = None,
         populate_store: bool = False,
@@ -1347,6 +1355,11 @@ class InfrahubClientSync(BaseClient):
                 filters[schema.default_filter] = id
             else:
                 filters["ids"] = [id]
+        elif hfid:
+            if isinstance(schema, NodeSchema) and schema.human_friendly_id:
+                filters["hfid"] = hfid
+            else:
+                raise ValueError("Cannot filter by HFID if the node doesn't have an HFID defined")
         elif kwargs:
             filters = kwargs
         else:
@@ -1362,7 +1375,7 @@ class InfrahubClientSync(BaseClient):
             fragment=fragment,
             prefetch_relationships=prefetch_relationships,
             **filters,
-        )  # type: ignore[arg-type]
+        )
 
         if len(results) == 0:
             raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)

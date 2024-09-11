@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING
+
+from .protocols_base import CoreNode
 
 if TYPE_CHECKING:
     from enum import Enum
@@ -10,53 +12,49 @@ if TYPE_CHECKING:
     from infrahub.core.attribute import (
         URL,
         Boolean,
+        BooleanOptional,
         DateTime,
+        DateTimeOptional,
         Dropdown,
         HashedPassword,
         Integer,
+        IntegerOptional,
         IPHost,
         IPNetwork,
         JSONAttribute,
-        ListAttribute,
+        JSONAttributeOptional,
+        ListAttributeOptional,
         String,
+        StringOptional,
     )
     from infrahub.core.relationship import RelationshipManager
 
 
-@runtime_checkable
-class CoreNode(Protocol):
-    id: str
-
-    def get_id(self) -> str: ...
-    def get_kind(self) -> str: ...
-    async def save(self) -> None: ...
-
-
 class BuiltinIPAddress(CoreNode):
     address: IPHost
-    description: String
+    description: StringOptional
     ip_namespace: RelationshipManager
     ip_prefix: RelationshipManager
 
 
 class BuiltinIPNamespace(CoreNode):
     name: String
-    description: String
+    description: StringOptional
     ip_prefixes: RelationshipManager
     ip_addresses: RelationshipManager
 
 
 class BuiltinIPPrefix(CoreNode):
     prefix: IPNetwork
-    description: String
+    description: StringOptional
     member_type: Dropdown
     is_pool: Boolean
-    is_top_level: Boolean
-    utilization: Integer
-    netmask: String
-    hostmask: String
-    network_address: String
-    broadcast_address: String
+    is_top_level: BooleanOptional
+    utilization: IntegerOptional
+    netmask: StringOptional
+    hostmask: StringOptional
+    network_address: StringOptional
+    broadcast_address: StringOptional
     ip_namespace: RelationshipManager
     ip_addresses: RelationshipManager
     resource_pool: RelationshipManager
@@ -69,29 +67,48 @@ class CoreArtifactTarget(CoreNode):
 
 
 class CoreCheck(CoreNode):
-    name: String
-    label: String
+    name: StringOptional
+    label: StringOptional
     origin: String
     kind: String
-    message: String
+    message: StringOptional
     conclusion: Enum
     severity: Enum
-    created_at: DateTime
+    created_at: DateTimeOptional
     validator: RelationshipManager
 
 
 class CoreComment(CoreNode):
     text: String
-    created_at: DateTime
+    created_at: DateTimeOptional
     created_by: RelationshipManager
+
+
+class CoreCredential(CoreNode):
+    name: String
+    label: StringOptional
+    description: StringOptional
+
+
+class CoreGenericAccount(CoreNode):
+    name: String
+    password: HashedPassword
+    label: StringOptional
+    description: StringOptional
+    account_type: Enum
+    role: Enum
+    status: Dropdown
+    tokens: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):
     name: String
-    description: String
+    description: StringOptional
     location: String
-    username: String
-    password: String
+    internal_status: Dropdown
+    operational_status: Dropdown
+    sync_status: Dropdown
+    credential: RelationshipManager
     tags: RelationshipManager
     transformations: RelationshipManager
     queries: RelationshipManager
@@ -101,8 +118,9 @@ class CoreGenericRepository(CoreNode):
 
 class CoreGroup(CoreNode):
     name: String
-    label: String
-    description: String
+    label: StringOptional
+    description: StringOptional
+    group_type: Enum
     members: RelationshipManager
     subscribers: RelationshipManager
     parent: RelationshipManager
@@ -111,12 +129,12 @@ class CoreGroup(CoreNode):
 
 class CoreProfile(CoreNode):
     profile_name: String
-    profile_priority: Integer
+    profile_priority: IntegerOptional
 
 
 class CoreResourcePool(CoreNode):
     name: String
-    description: String
+    description: StringOptional
 
 
 class CoreTaskTarget(CoreNode):
@@ -124,9 +142,9 @@ class CoreTaskTarget(CoreNode):
 
 
 class CoreThread(CoreNode):
-    label: String
+    label: StringOptional
     resolved: Boolean
-    created_at: DateTime
+    created_at: DateTimeOptional
     change: RelationshipManager
     comments: RelationshipManager
     created_by: RelationshipManager
@@ -134,8 +152,8 @@ class CoreThread(CoreNode):
 
 class CoreTransformation(CoreNode):
     name: String
-    label: String
-    description: String
+    label: StringOptional
+    description: StringOptional
     timeout: Integer
     query: RelationshipManager
     repository: RelationshipManager
@@ -143,20 +161,20 @@ class CoreTransformation(CoreNode):
 
 
 class CoreValidator(CoreNode):
-    label: String
+    label: StringOptional
     state: Enum
     conclusion: Enum
-    completed_at: DateTime
-    started_at: DateTime
+    completed_at: DateTimeOptional
+    started_at: DateTimeOptional
     proposed_change: RelationshipManager
     checks: RelationshipManager
 
 
 class CoreWebhook(CoreNode):
     name: String
-    description: String
+    description: StringOptional
     url: URL
-    validate_certificates: Boolean
+    validate_certificates: BooleanOptional
 
 
 class LineageOwner(CoreNode):
@@ -169,42 +187,36 @@ class LineageSource(CoreNode):
 
 class BuiltinTag(CoreNode):
     name: String
-    description: String
+    description: StringOptional
 
 
-class CoreAccount(LineageOwner, LineageSource):
-    name: String
-    password: HashedPassword
-    label: String
-    description: String
-    type: Enum
-    role: Enum
-    tokens: RelationshipManager
+class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
+    pass
 
 
 class CoreArtifact(CoreTaskTarget):
     name: String
     status: Enum
     content_type: Enum
-    checksum: String
-    storage_id: String
-    parameters: JSONAttribute
+    checksum: StringOptional
+    storage_id: StringOptional
+    parameters: JSONAttributeOptional
     object: RelationshipManager
     definition: RelationshipManager
 
 
 class CoreArtifactCheck(CoreCheck):
-    changed: Boolean
-    checksum: String
-    artifact_id: String
-    storage_id: String
-    line_number: Integer
+    changed: BooleanOptional
+    checksum: StringOptional
+    artifact_id: StringOptional
+    storage_id: StringOptional
+    line_number: IntegerOptional
 
 
 class CoreArtifactDefinition(CoreTaskTarget):
     name: String
     artifact_name: String
-    description: String
+    description: StringOptional
     parameters: JSONAttribute
     content_type: Enum
     targets: RelationshipManager
@@ -212,9 +224,9 @@ class CoreArtifactDefinition(CoreTaskTarget):
 
 
 class CoreArtifactThread(CoreThread):
-    artifact_id: String
-    storage_id: String
-    line_number: Integer
+    artifact_id: StringOptional
+    storage_id: StringOptional
+    line_number: IntegerOptional
 
 
 class CoreArtifactValidator(CoreValidator):
@@ -231,11 +243,11 @@ class CoreChangeThread(CoreThread):
 
 class CoreCheckDefinition(CoreTaskTarget):
     name: String
-    description: String
+    description: StringOptional
     file_path: String
     class_name: String
     timeout: Integer
-    parameters: JSONAttribute
+    parameters: JSONAttributeOptional
     repository: RelationshipManager
     query: RelationshipManager
     targets: RelationshipManager
@@ -249,6 +261,7 @@ class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
 class CoreDataCheck(CoreCheck):
     conflicts: JSONAttribute
     keep_branch: Enum
+    enriched_conflict_id: StringOptional
 
 
 class CoreDataValidator(CoreValidator):
@@ -256,14 +269,14 @@ class CoreDataValidator(CoreValidator):
 
 
 class CoreFileCheck(CoreCheck):
-    files: ListAttribute
-    commit: String
+    files: ListAttributeOptional
+    commit: StringOptional
 
 
 class CoreFileThread(CoreThread):
-    file: String
-    commit: String
-    line_number: Integer
+    file: StringOptional
+    commit: StringOptional
+    line_number: IntegerOptional
     repository: RelationshipManager
 
 
@@ -273,11 +286,11 @@ class CoreGeneratorCheck(CoreCheck):
 
 class CoreGeneratorDefinition(CoreTaskTarget):
     name: String
-    description: String
+    description: StringOptional
     parameters: JSONAttribute
     file_path: String
     class_name: String
-    convert_query_response: Boolean
+    convert_query_response: BooleanOptional
     query: RelationshipManager
     repository: RelationshipManager
     targets: RelationshipManager
@@ -300,33 +313,33 @@ class CoreGeneratorValidator(CoreValidator):
 
 class CoreGraphQLQuery(CoreNode):
     name: String
-    description: String
+    description: StringOptional
     query: String
-    variables: JSONAttribute
-    operations: ListAttribute
-    models: ListAttribute
-    depth: Integer
-    height: Integer
+    variables: JSONAttributeOptional
+    operations: ListAttributeOptional
+    models: ListAttributeOptional
+    depth: IntegerOptional
+    height: IntegerOptional
     repository: RelationshipManager
     tags: RelationshipManager
 
 
 class CoreGraphQLQueryGroup(CoreGroup):
-    parameters: JSONAttribute
+    parameters: JSONAttributeOptional
     query: RelationshipManager
 
 
 class CoreIPAddressPool(CoreResourcePool, LineageSource):
     default_address_type: String
-    default_prefix_length: Integer
+    default_prefix_length: IntegerOptional
     resources: RelationshipManager
     ip_namespace: RelationshipManager
 
 
 class CoreIPPrefixPool(CoreResourcePool, LineageSource):
-    default_prefix_length: Integer
+    default_prefix_length: IntegerOptional
     default_member_type: Enum
-    default_prefix_type: String
+    default_prefix_type: StringOptional
     resources: RelationshipManager
     ip_namespace: RelationshipManager
 
@@ -342,9 +355,14 @@ class CoreObjectThread(CoreThread):
     object_path: String
 
 
+class CorePasswordCredential(CoreCredential):
+    username: StringOptional
+    password: StringOptional
+
+
 class CoreProposedChange(CoreTaskTarget):
     name: String
-    description: String
+    description: StringOptional
     source_branch: String
     destination_branch: String
     state: Enum
@@ -358,12 +376,12 @@ class CoreProposedChange(CoreTaskTarget):
 
 class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
     ref: String
-    commit: String
+    commit: StringOptional
 
 
 class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
     default_branch: String
-    commit: String
+    commit: StringOptional
 
 
 class CoreRepositoryValidator(CoreValidator):
@@ -372,6 +390,7 @@ class CoreRepositoryValidator(CoreValidator):
 
 class CoreSchemaCheck(CoreCheck):
     conflicts: JSONAttribute
+    enriched_conflict_id: StringOptional
 
 
 class CoreSchemaValidator(CoreValidator):
@@ -409,9 +428,9 @@ class CoreUserValidator(CoreValidator):
 
 
 class InternalAccountToken(CoreNode):
-    name: String
+    name: StringOptional
     token: String
-    expiration: DateTime
+    expiration: DateTimeOptional
     account: RelationshipManager
 
 
@@ -421,4 +440,4 @@ class InternalRefreshToken(CoreNode):
 
 
 class IpamNamespace(BuiltinIPNamespace):
-    default: Boolean
+    default: BooleanOptional

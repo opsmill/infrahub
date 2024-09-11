@@ -1,11 +1,12 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
-import SlideOver from "@/components/display/slide-over";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
 import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,
+  GENERIC_REPOSITORY_KIND,
   MENU_EXCLUDELIST,
   TASK_TAB,
   TASK_TARGET,
@@ -15,7 +16,6 @@ import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
 import NoDataFound from "@/screens/errors/no-data-found";
-import AddObjectToGroup from "@/screens/groups/add-object-to-group";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
@@ -33,7 +33,6 @@ import {
   getObjectTabs,
   getTabs,
 } from "@/utils/getSchemaObjectColumns";
-import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
@@ -45,6 +44,9 @@ import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
+import { isGeneric } from "@/utils/common";
+import RepositoryActionMenu from "@/screens/repository/repository-action-menu";
 
 type ObjectDetailsProps = {
   schema: IModelSchema;
@@ -67,7 +69,6 @@ export default function ObjectItemDetails({
   const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [showAddToGroupDrawer, setShowAddToGroupDrawer] = useState(false);
   const permission = usePermission();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
@@ -133,35 +134,30 @@ export default function ObjectItemDetails({
         <Tabs
           tabs={tabs}
           rightItems={
-            <>
+            <div className="flex items-center gap-2">
               {schema.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
+
+              {!schema.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
+                <GroupsManagerTriggerButton
+                  schema={schema}
+                  objectId={objectid}
+                  className="text-custom-blue-600 p-4"
+                />
+              )}
 
               <ButtonWithTooltip
                 disabled={!permission.write.allow}
                 tooltipEnabled
                 tooltipContent={permission.write.message ?? "Edit object"}
                 onClick={() => setShowEditDrawer(true)}
-                className="mr-4 rounded-full text-custom-blue-500 p-4"
-                variant={"outline"}
-                size={"icon"}
                 data-testid="edit-button">
-                <Icon icon="mdi:pencil-outline" className="" aria-hidden="true" />
+                <Icon icon="mdi:pencil" className="mr-1.5" aria-hidden="true" /> Edit {schema.label}
               </ButtonWithTooltip>
 
-              {!schema.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
-                <ButtonWithTooltip
-                  disabled={!permission.write.allow}
-                  tooltipEnabled
-                  tooltipContent={permission.write.message ?? "Manage groups"}
-                  onClick={() => setShowAddToGroupDrawer(true)}
-                  className="mr-4 rounded-full text-custom-blue-500 p-4"
-                  variant={"outline"}
-                  size={"icon"}
-                  data-testid="manage-groups">
-                  <Icon icon="mdi:group" className="" aria-hidden="true" />
-                </ButtonWithTooltip>
+              {!isGeneric(schema) && schema.inherit_from?.includes(GENERIC_REPOSITORY_KIND) && (
+                <RepositoryActionMenu repositoryId={objectDetailsData.id} />
               )}
-            </>
+            </div>
           }
         />
       )}
@@ -170,10 +166,7 @@ export default function ObjectItemDetails({
         <dl className="bg-custom-white divide-y">
           <ObjectAttributeRow name="ID" value={objectDetailsData.id} enableCopyToClipboard />
           {attributes.map((attribute) => {
-            if (
-              !objectDetailsData[attribute.name] ||
-              !objectDetailsData[attribute.name].is_visible
-            ) {
+            if (!objectDetailsData[attribute.name]) {
               return null;
             }
 
@@ -286,45 +279,12 @@ export default function ObjectItemDetails({
 
       <SlideOver
         title={
-          <div className="space-y-2">
-            <div className="flex items-start">
-              <div className="flex-grow flex items-center flex-wrap overflow-hidden">
-                <span className="font-semibold text-gray-900 truncate">{schema.label}</span>
-
-                <Icon icon="mdi:chevron" className="w-4 h-4 flex-shrink-0 text-gray-400" />
-
-                <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
-                  {objectDetailsData.display_label}
-                </span>
-              </div>
-
-              <div className="flex items-center ml-3">
-                <Icon icon="mdi:layers-triple" />
-                <span className="ml-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</span>
-              </div>
-            </div>
-
-            <div className="">{schema?.description}</div>
-
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {schema.kind}
-            </span>
-            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              ID: {objectDetailsData.id}
-            </div>
-          </div>
+          <SlideOverTitle
+            schema={schema}
+            currentObjectLabel={objectDetailsData.display_label}
+            title={`Edit ${objectDetailsData.display_label}`}
+            subtitle={schema.description}
+          />
         }
         open={showEditDrawer}
         setOpen={setShowEditDrawer}>
@@ -333,59 +293,6 @@ export default function ObjectItemDetails({
           onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
           objectid={objectid!}
           objectname={objectname!}
-        />
-      </SlideOver>
-
-      <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <div className="flex items-center">
-                <div className="text-base font-semibold leading-6 text-gray-900">
-                  {schema.label}
-                </div>
-                <ChevronRightIcon
-                  className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-                  aria-hidden="true"
-                />
-                <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
-              </div>
-
-              <div className="flex-1"></div>
-
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-
-            <div className="">{schema?.description}</div>
-
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {schema.kind}
-            </span>
-            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              ID: {objectDetailsData.id}
-            </div>
-          </div>
-        }
-        open={showAddToGroupDrawer}
-        setOpen={setShowAddToGroupDrawer}>
-        <AddObjectToGroup
-          closeDrawer={() => setShowAddToGroupDrawer(false)}
-          onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
         />
       </SlideOver>
 

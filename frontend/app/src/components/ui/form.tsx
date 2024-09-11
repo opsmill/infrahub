@@ -16,6 +16,7 @@ import {
   FormProvider,
   useForm,
   useFormContext,
+  UseFormReturn,
 } from "react-hook-form";
 import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
@@ -23,22 +24,23 @@ import Label, { LabelProps } from "@/components/ui/label";
 export type FormRef = ReturnType<typeof useForm>;
 
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: Record<string, unknown>) => Promise<void>;
+  onSubmit?: (v: Record<string, any>) => void;
   defaultValues?: Partial<Record<string, unknown>>;
+  form?: UseFormReturn;
 }
 
 export const Form = React.forwardRef<FormRef, FormProps>(
-  ({ defaultValues, className, children, onSubmit, ...props }, ref) => {
-    const form = useForm({ defaultValues });
+  ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
+    const currentForm = form ?? useForm({ defaultValues });
 
-    useImperativeHandle(ref, () => form, []);
+    useImperativeHandle(ref, () => currentForm);
 
     useEffect(() => {
-      form.reset(defaultValues);
+      currentForm.reset(defaultValues);
     }, [JSON.stringify(defaultValues)]);
 
     return (
-      <FormProvider {...form}>
+      <FormProvider {...currentForm}>
         <form
           onSubmit={(event) => {
             if (event && event.stopPropagation) {
@@ -47,7 +49,7 @@ export const Form = React.forwardRef<FormRef, FormProps>(
 
             if (!onSubmit) return;
 
-            form.handleSubmit(onSubmit)(event);
+            currentForm.handleSubmit(onSubmit)(event);
           }}
           className={classNames("space-y-4", className)}
           {...props}>
@@ -81,10 +83,22 @@ export const FormLabel = ({ ...props }: LabelProps) => {
 export const FormInput = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => {
-  const { id } = useContext(FormFieldContext);
+>(({ className, ...props }, ref) => {
+  const { getFieldState, formState } = useFormContext();
+  const { id, name } = useContext(FormFieldContext);
+  const { error } = getFieldState(name, formState);
 
-  return <Slot ref={ref} id={id} {...props} />;
+  return (
+    <Slot
+      ref={ref}
+      id={id}
+      className={classNames(
+        error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500",
+        className
+      )}
+      {...props}
+    />
+  );
 });
 
 export const FormMessage = ({
@@ -97,16 +111,13 @@ export const FormMessage = ({
 
   const { error } = getFieldState(name, formState);
 
-  const message = error?.type === "required" ? "Required" : error?.message?.toString() ?? children;
+  const message = error?.message?.toString() ?? children;
+
   if (!message) return null;
 
   return (
     <p
-      className={classNames(
-        "absolute -bottom-4 left-2 text-xs mt-1 italic text-gray-600",
-        error && "text-red-600",
-        className
-      )}
+      className={classNames("text-sm text-gray-600", error && "text-red-600", className)}
       data-cy={error && "field-error-message"}
       {...props}>
       {message}

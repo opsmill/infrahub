@@ -1,48 +1,62 @@
 import { Avatar } from "@/components/display/avatar";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
 import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
 import { useAuth } from "@/hooks/useAuth";
-import { useLazyQuery } from "@/hooks/useQuery";
+import useQuery from "@/hooks/useQuery";
 import { userNavigation } from "@/screens/layout/navigation-list";
-import { schemaState } from "@/state/atoms/schema.atom";
-import { classNames, parseJwt } from "@/utils/common";
+import { genericsState, IModelSchema } from "@/state/atoms/schema.atom";
+import { classNames } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
-import { useAtom } from "jotai/index";
 import { Fragment, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useAtomValue } from "jotai/index";
+import { ACCOUNT_OBJECT } from "@/config/constants";
 import { toast } from "react-toastify";
+import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 
 const customId = "profile-alert";
 
 export const AccountMenu = () => {
-  const { isAuthenticated, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
   const location = useLocation();
-  const [schemaList] = useAtom(schemaState);
-  const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
+  const generics = useAtomValue(genericsState);
+  const schema = generics.find((s) => s.kind === ACCOUNT_OBJECT);
 
-  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-  const tokenData = parseJwt(localToken);
-  const accountId = tokenData?.sub;
+  if (!isAuthenticated) {
+    return (
+      <Link
+        to="/signin"
+        state={{ from: location }}
+        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md whitespace-nowrap">
+        Sign in
+      </Link>
+    );
+  }
 
-  const queryString = schema
-    ? getProfileDetails({ ...schema })
-    : // Empty query to make the gql parsing work
-      "query { ok }";
+  if (!schema) {
+    return <Avatar isLoading />;
+  }
 
-  const query = gql`
-    ${queryString}
-  `;
+  return <AccountAvatarWithMenu schema={schema} />;
+};
 
-  const [fetchProfile, { error, loading, data }] = useLazyQuery(query);
+const AccountAvatarWithMenu = ({ schema }: { schema: IModelSchema }) => {
+  const { signOut } = useAuth();
+
+  const query = gql(getProfileDetails({ ...schema }));
+  const { error, loading, data } = useQuery(query);
 
   useEffect(() => {
-    if (schema && accountId) {
-      fetchProfile();
+    if (error) {
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
+        toastId: customId,
+      });
+
+      // Sign out because there is nothing from the API for that user id
+      signOut();
     }
-  }, [schema, accountId]);
+  }, [error]);
 
   if (loading || !schema) {
     return <Avatar isLoading />;
@@ -50,17 +64,7 @@ export const AccountMenu = () => {
 
   const profile = data?.AccountProfile;
 
-  if (error) {
-    toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
-      toastId: customId,
-    });
-
-    // Sign out because there is nothing from the API for that user id
-    signOut();
-    navigate("/");
-  }
-
-  return isAuthenticated ? (
+  return (
     <Menu as="div">
       <Menu.Button
         className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
@@ -103,12 +107,5 @@ export const AccountMenu = () => {
         </Menu.Items>
       </Transition>
     </Menu>
-  ) : (
-    <Link
-      to="/signin"
-      state={{ from: location }}
-      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md whitespace-nowrap">
-      Sign in
-    </Link>
   );
 };

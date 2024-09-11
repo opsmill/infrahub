@@ -2,15 +2,17 @@ import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
 import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
 import { parseJwt } from "@/utils/common";
 import { useAtomValue } from "jotai";
-import { schemaState } from "@/state/atoms/schema.atom";
+import { genericsState } from "@/state/atoms/schema.atom";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { NetworkStatus } from "@apollo/client";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ErrorScreen from "@/screens/errors/error-screen";
+import { Card } from "@/components/ui/card";
+import Content from "../layout/content";
 
 export default function TabProfile() {
-  const nodes = useAtomValue(schemaState);
+  const nodes = useAtomValue(genericsState);
   const schema = nodes.find(({ kind }) => kind === ACCOUNT_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -37,5 +39,11 @@ export default function TabProfile() {
     );
   }
 
-  return <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} hideHeaders />;
+  return (
+    <Content className="p-2">
+      <Card>
+        <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} hideHeaders />
+      </Card>
+    </Content>
+  );
 }

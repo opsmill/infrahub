@@ -1,14 +1,11 @@
-import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import SlideOver from "@/components/display/slide-over";
+import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Filters } from "@/components/filters/filters";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
-  ARTIFACT_OBJECT,
-  DEFAULT_BRANCH_NAME,
+  ACCOUNT_TOKEN_OBJECT,
   MENU_EXCLUDELIST,
   SEARCH_ANY_FILTER,
   SEARCH_FILTERS,
@@ -22,34 +19,35 @@ import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { debounce } from "@/utils/common";
-import { constructPath } from "@/utils/fetch";
-import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
+import { classNames, debounce } from "@/utils/common";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
-import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useObjectItems } from "@/hooks/useObjectItems";
+import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
+import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
+import { ObjectCreateFormTrigger } from "@/components/form/object-create-form-trigger";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
+  onSuccess?: (newObject: any) => void;
   preventBlock?: boolean;
-  overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
+  preventLinks?: boolean;
 };
 
 export default function ObjectItems({
   schema,
-  overrideDetailsViewUrl,
+  onSuccess,
   preventBlock,
+  preventLinks,
 }: ObjectItemsProps) {
   const permission = usePermission();
   const [filters, setFilters] = useFilters();
@@ -57,7 +55,6 @@ export default function ObjectItems({
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -90,7 +87,10 @@ export default function ObjectItems({
 
     try {
       const mutationString = deleteObject({
-        kind: rowToDelete.__typename,
+        kind:
+          rowToDelete.__typename === "AccountTokenNode"
+            ? ACCOUNT_TOKEN_OBJECT
+            : rowToDelete.__typename,
         data: stringifyWithoutQuotes({
           id: rowToDelete?.id,
         }),
@@ -171,21 +171,7 @@ export default function ObjectItems({
 
           <Filters schema={schema} />
 
-          {schema.kind !== ARTIFACT_OBJECT && (
-            <Tooltip
-              enabled={!permission.write.allow}
-              content={permission.write.message ?? undefined}>
-              <Button
-                data-cy="create"
-                data-testid="create-object-button"
-                disabled={!permission.write.allow}
-                onClick={() => setShowCreateDrawer(true)}
-                size="sm">
-                <Icon icon="mdi:plus" className="text-sm" />
-                Add {schema?.label}
-              </Button>
-            </Tooltip>
-          )}
+          <ObjectCreateFormTrigger schema={schema} onSuccess={onSuccess} isLoading={loading} />
         </div>
 
         {loading && !rows && <LoadingScreen />}
@@ -193,42 +179,40 @@ export default function ObjectItems({
         {/* TODO: use new Table component for list */}
         {rows && (
           <div className="overflow-auto">
-            <table className="table-auto border-spacing-0 w-full">
+            <table className="table-auto border-spacing-0 w-full" cellPadding="0">
               <thead className="bg-gray-50 text-left border-y border-gray-300">
                 <tr>
                   {columns?.map((attribute) => (
-                    <th
-                      key={attribute.name}
-                      scope="col"
-                      className="p-2 text-xs font-semibold text-gray-900">
-                      {attribute.label}
+                    <th key={attribute.name} scope="col" className="h-9 font-semibold">
+                      <TextCell>{attribute.label}</TextCell>
                     </th>
                   ))}
                   <th scope="col"></th>
                 </tr>
               </thead>
 
-              <tbody className="bg-custom-white text-left">
+              <tbody className="bg-custom-white">
                 {rows?.map((row: any, index: number) => (
                   <tr
                     key={index}
-                    className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
+                    className={classNames(
+                      "border-b border-gray-200",
+                      !preventLinks && "hover:bg-gray-50"
+                    )}
                     data-cy="object-table-row">
-                    {columns?.map((attribute) => (
-                      <td key={row.id + "-" + attribute.name} className="p-0">
-                        <Link
-                          className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                          to={
-                            overrideDetailsViewUrl
-                              ? overrideDetailsViewUrl(row.id, row.__typename)
-                              : constructPath(getObjectDetailsUrl(row.id, row.__typename))
-                          }>
-                          <div>{getObjectItemDisplayValue(row, attribute)}</div>
-                        </Link>
-                      </td>
-                    ))}
+                    {columns?.map((attribute, index) => {
+                      return (
+                        <td key={index} className="h-9">
+                          {preventLinks ? (
+                            <TextCell key={index}>{getDisplayValue(row, attribute)}</TextCell>
+                          ) : (
+                            <ObjectItemsCell row={row} attribute={attribute} />
+                          )}
+                        </td>
+                      );
+                    })}
 
-                    <td className="text-right w-8">
+                    <td className="h-9 text-right">
                       <ButtonWithTooltip
                         data-cy="delete"
                         data-testid="delete-row-button"
@@ -255,49 +239,23 @@ export default function ObjectItems({
         )}
       </div>
 
-      <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {schema?.label}</span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-
-            <div className="text-sm">{schema?.description}</div>
-
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {schema?.kind}
-            </span>
-          </div>
-        }
-        open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
-        <ObjectForm
-          onSuccess={async () => {
-            setShowCreateDrawer(false);
-            await graphqlClient.refetchQueries({ include: [schema.kind!] });
-          }}
-          onCancel={() => setShowCreateDrawer(false)}
-          kind={schema.kind!}
-        />
-      </SlideOver>
-
       <ModalDelete
         title="Delete"
         description={
-          <>
-            Are you sure you want to remove the object <br /> <b>`{rowToDelete?.display_label}`</b>?
-          </>
+          rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name ? (
+            <>
+              Are you sure you want to remove the <i>{schema.label}</i>
+              <b className="ml-2">
+                &quot;{rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name}
+                &quot;
+              </b>
+              ?
+            </>
+          ) : (
+            <>
+              Are you sure you want to remove this <i>{schema.label}</i>?
+            </>
+          )
         }
         onCancel={() => setDeleteModal(false)}
         onDelete={handleDeleteObject}

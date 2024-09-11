@@ -1,10 +1,11 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
-import { FormFieldProps } from "@/components/form/type";
+import { FormFieldProps, FormAttributeValue } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 const PasswordInputField = ({
-  defaultValue,
+  defaultValue = { source: null, value: null },
   description,
   label,
   name,
@@ -19,20 +20,26 @@ const PasswordInputField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        // Not passing value is needed to prevent error on uncontrolled component
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
-        const { value, ...fieldMethodsWithoutValue } = field;
+        const fieldData: FormAttributeValue = field.value;
 
         return (
-          <div className="relative flex flex-col">
+          <div className="space-y-2">
             <LabelFormField
               label={label}
               unique={unique}
               required={!!rules?.required}
               description={description}
+              fieldData={fieldData}
             />
             <FormInput>
-              <PasswordInput value={value ?? ""} {...fieldMethodsWithoutValue} {...props} />
+              <PasswordInput
+                {...field}
+                value={fieldData?.value?.toString() ?? ""}
+                onChange={(event) => {
+                  field.onChange(updateFormFieldValue(event.target.value, defaultValue));
+                }}
+                {...props}
+              />
             </FormInput>
 
             <FormMessage />

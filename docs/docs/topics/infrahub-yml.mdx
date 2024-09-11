@@ -13,6 +13,7 @@ An external repository can be used to link the following Infrahub objects to an 
 - [Jinja2 Transform](/topics/transformation#rendered-file-jinja2-plugin)
 - [Python Transformation](/topics/transformation#transformpython-python-plugin)
 - [Artifact Definition](/topics/artifact)
+- [Generator Definition](/topics/generator)
 
 :::info
 
@@ -30,7 +31,18 @@ To help with the development process of a repository configuration file, you can
 
 ## GraphQL query {#graphql-query}
 
-This is the easiest type of object to link to Infrahub through an external repository because they do not need to be specified in the `.infrahub.yml` file. When Infrahub creates a Repository or pulls changes from the associated external repository, it will scan all the files in the repository and save any that have a `.gql` extension as GraphQLQuery objects in Infrahub.
+GraphQL queries could be defined in file(s) with a `.gql` extension. Then queries must also be explicitly identified in the `.infrahub.yml` file under `queries`.
+
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  queries:
+    - name: topology_info                      # Here goes the query's name
+      file_path: "topology/topology_info.gql"  # Here is the path to query's file
+  ```
+
+</details>
 
 ## Schema {#schema}
 
@@ -116,3 +128,13 @@ Artifact Definitions can be created as described [here](/topics/artifact). To lo
   ```
 
 </details>
+
+## Generator definition {#generator-definition}
+
+Generator Definitions can be created as described [here](/topics/generator). To load Generator Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Generator Definition in `.infrahub.yml` must include the following:
+
+- `name`: the name of the Generator Definition
+- `file_path`: path to the Generator Python file within this repository
+- `query`: the name of an Infrahub `GraphQL query` to use with the Generator
+- `class_name`: the class defining the generator in the Python file designated by file_path
+- `targets`: the Infrahub Group containing the targets for which we want to run the Generator

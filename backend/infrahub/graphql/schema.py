@@ -16,27 +16,30 @@ from .mutations import (
     BranchRebase,
     BranchUpdate,
     BranchValidate,
-    CoreAccountSelfUpdate,
-    CoreAccountTokenCreate,
-    CoreAccountTokenDelete,
+    DiffUpdateMutation,
+    InfrahubAccountSelfUpdate,
+    InfrahubAccountTokenCreate,
+    InfrahubAccountTokenDelete,
     IPAddressPoolGetResource,
     IPPrefixPoolGetResource,
+    ProcessRepository,
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
+    ResolveDiffConflict,
     SchemaDropdownAdd,
     SchemaDropdownRemove,
     SchemaEnumAdd,
     SchemaEnumRemove,
     TaskCreate,
     TaskUpdate,
+    ValidateRepositoryConnectivity,
 )
 from .parser import extract_selection
 from .queries import (
     AccountToken,
     BranchQueryList,
     DiffSummary,
-    DiffSummaryOld,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -47,6 +50,7 @@ from .queries import (
     Relationship,
     Task,
 )
+from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -69,24 +73,25 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
     async with context.db.start_session() as db:
         results = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, fields=fields, db=db
+            schema=InfrahubKind.GENERICACCOUNT,
+            filters={"ids": [context.account_session.account_id]},
+            fields=fields,
+            db=db,
         )
         if results:
             account_profile = await results[0].to_graphql(db=db, fields=fields)
             return account_profile
 
-        raise NodeNotFoundError(
-            node_type=InfrahubKind.ACCOUNT,
-            identifier=context.account_session.account_id,
-        )
+        raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
 
 
 class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
-    CoreAccountToken = AccountToken
+    InfrahubAccountToken = AccountToken
 
+    DiffTree = DiffTreeQuery
+    DiffTreeSummary = DiffTreeSummaryQuery
     DiffSummary = DiffSummary
-    DiffSummaryOld = DiffSummaryOld
 
     Relationship = Relationship
 
@@ -104,9 +109,9 @@ class InfrahubBaseQuery(ObjectType):
 
 
 class InfrahubBaseMutation(ObjectType):
-    CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
-    CoreAccountSelfUpdate = CoreAccountSelfUpdate.Field()
-    CoreAccountTokenDelete = CoreAccountTokenDelete.Field()
+    InfrahubAccountTokenCreate = InfrahubAccountTokenCreate.Field()
+    InfrahubAccountSelfUpdate = InfrahubAccountSelfUpdate.Field()
+    InfrahubAccountTokenDelete = InfrahubAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
 
     IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
@@ -118,6 +123,11 @@ class InfrahubBaseMutation(ObjectType):
     BranchMerge = BranchMerge.Field()
     BranchUpdate = BranchUpdate.Field()
     BranchValidate = BranchValidate.Field()
+
+    DiffUpdate = DiffUpdateMutation.Field()
+
+    InfrahubRepositoryProcess = ProcessRepository.Field()
+    InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubTaskCreate = TaskCreate.Field()
     InfrahubTaskUpdate = TaskUpdate.Field()
 
@@ -127,3 +137,4 @@ class InfrahubBaseMutation(ObjectType):
     SchemaDropdownRemove = SchemaDropdownRemove.Field()
     SchemaEnumAdd = SchemaEnumAdd.Field()
     SchemaEnumRemove = SchemaEnumRemove.Field()
+    ResolveDiffConflict = ResolveDiffConflict.Field()

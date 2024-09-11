@@ -6,22 +6,19 @@ import { Spinner } from "./spinner";
 
 export interface SearchInputProps extends InputProps {
   loading?: boolean;
+  containerClassName?: string;
 }
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ loading, ...props }, ref) => {
+  ({ containerClassName, className, loading, ...props }, ref) => {
     return (
-      <div className="relative">
+      <div className={classNames("relative", containerClassName)}>
         <Icon
           icon="mdi:magnify"
           className="text-lg text-custom-blue-10 absolute inset-y-0 left-0 pl-2 flex items-center"
           aria-hidden="true"
         />
 
-        <Input
-          ref={ref}
-          {...props}
-          className={classNames("pl-8 leading-6 h-auto", props.className)}
-        />
+        <Input ref={ref} {...props} className={classNames("pl-8 h-auto", className)} />
 
         {loading && <Spinner className="absolute inset-y-0 right-0 pr-2 flex items-center" />}
       </div>

@@ -40,7 +40,7 @@ test.describe("Object update", () => {
 
       await page.getByRole("option", { name: "blue" }).click(); // Removes blue
       await page.getByRole("option", { name: "green" }).click(); // Adds green
-      await page.getByRole("option", { name: "red" }).click(); // Adds red
+      await page.getByRole("option", { name: "red", exact: true }).click(); // Adds red
 
       await page.getByTestId("side-panel-container").getByLabel("Tags").click();
 
@@ -59,7 +59,7 @@ test.describe("Object update", () => {
       await expect(page.getByText("Active")).toBeVisible();
       await expect(page.getByText("Edge Router")).toBeVisible();
       await expect(page.getByRole("link", { name: "green" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "red" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "red", exact: true })).toBeVisible();
       await expect(page.getByRole("link", { name: "blue" })).not.toBeVisible();
 
       // Verify updates in form
@@ -99,9 +99,9 @@ test.describe("Object update", () => {
 
     await test.step("assert initial object values", async () => {
       await expect(page.getByText("Nameatl1-leaf1")).toBeVisible();
-      await expect(page.getByText("Active")).toBeVisible();
-      await expect(page.getByText("Leaf Switch")).toBeVisible();
-      await expect(page.getByRole("link", { name: "AS64496" })).toBeVisible();
+      await expect(page.getByText("StatusActive")).toBeVisible();
+      await expect(page.getByText("RoleLeaf Switch")).toBeVisible();
+      await expect(page.getByText("AsnAS64496 64496")).toBeVisible();
     });
 
     await test.step("edit object values", async () => {
@@ -120,26 +120,9 @@ test.describe("Object update", () => {
     });
 
     await test.step("assert new empty values", async () => {
-      await expect(
-        page
-          .locator("div")
-          .filter({ hasText: /^Status-$/ })
-          .getByRole("definition")
-      ).toBeVisible();
-
-      await expect(
-        page
-          .locator("div")
-          .filter({ hasText: /^Role-$/ })
-          .getByRole("definition")
-      ).toBeVisible();
-
-      await expect(
-        page
-          .locator("div")
-          .filter({ hasText: /^Asn-$/ })
-          .getByRole("definition")
-      ).toBeVisible();
+      await expect(page.getByText("Status-")).toBeVisible();
+      await expect(page.getByText("Role-")).toBeVisible();
+      await expect(page.getByText("Asn-")).toBeVisible();
     });
   });
 });

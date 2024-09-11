@@ -1,0 +1,90 @@
+---
+name: from-observium
+source:
+  name: observium
+  settings:
+    url: "OBSERVIUM_URL"
+    # api_endpoint: "api/v0"
+    # auth_method: "basic"
+    username: "OBSERVIUM_USERNAME"
+    password: "OBSERVIUM_PASSWORD"
+
+destination:
+  name: infrahub
+  settings:
+    url: "http://localhost:8000"
+
+order: [
+  "CoreStandardGroup",
+  "IpamIPAddress",
+  "InfraDevice",
+]
+
+schema_mapping:
+  - name: CoreStandardGroup
+    mapping: groups
+    fields:
+      - name: name
+        mapping: group_name
+      - name: description
+        mapping: group_descr
+
+  # Primary Device IP
+  - name: IpamIPAddress
+    mapping: devices
+    identifiers: ["address"]
+    fields:
+      - name: address
+        mapping: ip
+      - name: description
+        # We are using the field created via the transforms
+        mapping: new_description
+    filters:
+      - field: hostname
+        operation: regex
+        value: "^pe-[0-9]{3}$"
+      - field: ip
+        operation: is_ip_within
+        value: "10.0.0.0/8"
+    transforms:
+      - field: new_description
+        expression: "{{ hostname | upper | replace('.', '-') }}"
+
+  - name: InfraDevice
+    mapping: devices
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: hostname
+      - name: description
+        mapping: description
+      - name: description
+        mapping: upper_serial
+      # /!\ Platform need to exist beforehand !
+      - name: platform
+        mapping: os
+        reference: InfraPlatform
+      # /!\ Manufacturer need to exist beforehand !
+      - name: manufacturer
+        mapping: vendor
+        reference: OrganizationManufacturer
+      - name: type
+        mapping: unknown_hardware
+      - name: primary_address
+        mapping: ip
+        reference: IpamIPAddress
+    filters:
+      - field: device_id
+        operation: ">"
+        value: 100
+      - field: device_id
+        operation: "<="
+        value: 200
+      - field: hostname
+        operation: regex
+        value: "^pe-[0-9]{3}$"
+    transforms:
+      - field: upper_serial
+        expression: "{{ serial.upper() if serial else '' }}"
+      - field: unknown_hardware
+        expression: "{{ hardware if hardware else 'unknown' }}"

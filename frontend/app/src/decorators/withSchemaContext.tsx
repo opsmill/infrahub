@@ -2,6 +2,7 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
 import { Branch } from "@/generated/graphql";
+import { tokenSchema } from "@/screens/user-profile/token-schema";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import {
   IProfileSchema,
@@ -61,7 +62,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
       } = await fetchUrl(CONFIG.SCHEMA_URL(branch?.name));
 
       const hash = schemaData.main;
-      const schema = sortByName(schemaData.nodes || []);
+      const schema = sortByName([...schemaData.nodes, tokenSchema] || []);
       const generics = sortByName(schemaData.generics || []);
       const namespaces = sortByName(schemaData.namespaces || []);
       const profiles = sortByName(schemaData.profiles || []);
@@ -83,7 +84,12 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         ...profiles.map((s) => s.label),
       ];
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
-      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
+      const schemaKindNameMap = {
+        ...R.fromPairs(schemaKindNameTuples),
+        SchemaAttribute: "Attribute",
+        SchemaRelationship: "Relationship",
+        SchemaNode: "Node",
+      };
 
       const schemaLabels = [...schema.map((s) => s.label), ...generics.map((s) => s.label)];
       const schemaKindLabelTuples = R.zip(schemaKinds, schemaLabels);
