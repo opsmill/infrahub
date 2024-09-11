@@ -36,19 +36,31 @@ As a user, it is now easier to manage Git repositories and to understand and tro
 
 Added/changed features include:
 
-  - Improvements to identifying the state of the repository
-  - Additional logging and notifications, for example if authentication to the repository is not working
-  - Deleting a repository will delete the associated resources
-  - The supplied Git URL does not need to have the `.git` suffix, Infrahub will automatically handle this
+- Improvements to identifying the state of the repository
+- Additional logging and notifications, for example if authentication to the repository is not working
+- Deleting a repository will delete the associated resources
+- The supplied Git URL does not need to have the `.git` suffix, Infrahub will automatically handle this
 
 See the documentation for more information on using Git repositories with Infrahub:
 
-- [Guides - Adding/updating external repositories](https://docs.infrahub.app/guides/repository)
-- [Topics - Repository](https://docs.infrahub.app/topics/repository)
+- [Guides - Adding/updating external repositories](/guides/repository)
+- [Topics - Repository](/topics/repository)
 
-#### Integer Resource Pool
+#### Number resource pool
 
-https://opsmill.atlassian.net/browse/IFC-649
+Users can now create a Resource pool for Numbers (integers) as well as IP Addresses/Prefixes.
+
+This will enable users to assign items such as AS Number from a pool, and is managed via a Resource Manager the same way that IP Addresses/Prefixes are:
+
+![](../../media/release_notes/infrahub_0_16_0/number_pool.png)
+
+Adding a Number Pool:
+
+![](../../media/release_notes/infrahub_0_16_0/number_pool_detail.png)
+
+See the Resource Manager documentation for more information on managing and utilizing Resource Pools:
+
+- [Tutorials - Resource Manager](/tutorials/getting-started/resource-manager)
 
 ### Schema
 
@@ -62,7 +74,6 @@ https://opsmill.atlassian.net/browse/IFC-646
 #### Filter Internal Groups
 
 https://github.com/opsmill/infrahub/issues/402
-
 
 ### Other
 
