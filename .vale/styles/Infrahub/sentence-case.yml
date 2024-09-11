@@ -44,6 +44,7 @@ exceptions:
   - IP
   - IPAM
   - IPNetwork
+  - IP Fabric
   - JavaScript
   - JetStream
   - Jinja
@@ -52,6 +53,7 @@ exceptions:
   - NATS
   - Node
   - OpsMill
+  - Pydantic
   - Python
   - RabbitMQ
   - REST

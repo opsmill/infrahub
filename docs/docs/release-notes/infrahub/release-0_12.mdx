@@ -74,7 +74,7 @@ In the example below, all Interfaces will be guaranteed to be unique based on th
         kind: Parent
 ```
 
-##### min_max / max_count for relationships
+##### `min_max` / `max_count` for relationships
 
 On a relationship of cardinality many, it's now possible to define a minimum or maximum number of peers that should be present.
 
@@ -138,7 +138,7 @@ generics:
 
 ### API / GraphQL
 
-#### New DiffSummary query
+#### New `DiffSummary` query
 
 The GraphQL query `DiffSummary` has been refactored to expose more information, it's now possible to query information about the attributes and the relationships in addition to the nodes.
 The previous version of the Query has been migrated to `DiffSummaryOld` and it will be removed in the next release.

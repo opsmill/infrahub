@@ -37,7 +37,7 @@ aio-pika = "~9.4"
 structlog = "24.1.0"
 boto3 = "1.34.129"
 email-validator = "~2.1"
-redis = { version = "^5.0.0", extras = ["hiredis"]}
+redis = { version = "^5.0.0", extras = ["hiredis"] }
 typer = "0.12.3"
 
 # Dependencies specific to the API Server
@@ -47,11 +47,11 @@ graphene = "~3.3"
 gunicorn = "^22.0.0"
 lunr = "^0.7.0.post1"
 starlette-exporter = "~0.23"
-python-multipart = "0.0.9"                            # Required by FastAPI to upload large files
-asgi-correlation-id = "4.2.0"                         # Middleware for FastAPI to generate ID per request
-bcrypt = "~4.1"                                       # Used to hash and validate password
-pyjwt = "~2.8"                                        # Used to manage JWT tokens
-uvicorn = {version = "~0.30", extras = ["standard"]}
+python-multipart = "0.0.9"                             # Required by FastAPI to upload large files
+asgi-correlation-id = "4.2.0"                          # Middleware for FastAPI to generate ID per request
+bcrypt = "~4.1"                                        # Used to hash and validate password
+pyjwt = "~2.8"                                         # Used to manage JWT tokens
+uvicorn = { version = "~0.30", extras = ["standard"] }
 opentelemetry-instrumentation-aio-pika = "^0.45b0"
 opentelemetry-instrumentation-fastapi = "^0.45b0"
 opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
@@ -83,7 +83,7 @@ pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
 deepdiff = "^6.2"
 polyfactory = "^2.16.2"
-towncrier = "24.7.1"
+towncrier = "^24.8"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
@@ -160,7 +160,7 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
     "ignore:Deprecated call to",
-    "ignore:pkg_resources is deprecated as an API",  # Remove on https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2181 has been fixed
+    "ignore:pkg_resources is deprecated as an API",          # Remove on https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2181 has been fixed
 ]
 addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
 junit_duration_report = "call"
@@ -170,10 +170,7 @@ pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
 disable_error_code = ["type-abstract"]
-exclude = [
-    "^backend/tests/scale",
-    "^backend/tests/unit",
-]
+exclude = ["^backend/tests/scale", "^backend/tests/unit"]
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"
@@ -608,8 +605,8 @@ max-complexity = 33
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "C901",   # `generate_site` is too complex (34 > 33)"
-    "E501",   # Line too long
+    "C901", # `generate_site` is too complex (34 > 33)"
+    "E501", # Line too long
 ]
 
 "tasks/**.py" = [
