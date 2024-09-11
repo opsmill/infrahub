@@ -40,7 +40,7 @@ This release focuses on enhancing the user experience and laying the groundwork 
 
 ### Schema
 
-#### Schema Validation
+#### Schema validation
 
 Added a new validation to ensure schemas do not require relationships to one another. This will prevent incompatible schemas from being loaded in the future.
 
@@ -58,13 +58,13 @@ When a relationship references a peer model with a parent (identified by a paren
 
 The form component in the frontend has been refactored to provide a better foundation for future features that could not be supported by the previous version.
 
-### Helm Chart
+### Helm chart
 
 #### Upstream charts
 
 The official helm chart to deploy Infrahub now leverages the upstream charts for Neo4j, Redis, and RabbitMQ instead of defining these components directly. This approach provides more flexibility and allows us to use pod settings such as pod affinity.
 
-### Infrahub Sync
+### Infrahub sync
 
 #### Integration with IP Fabric
 
@@ -95,7 +95,7 @@ query {
 The search anywhere bar in the frontend now leverages a dedicated GraphQL query.  
 This new query can search for objects by their UUID, improving search results.
 
-#### Generate Protocol for Core models
+#### Generate `Protocol` for `Core` models
 
 Protocol for the internal models have been introduced to improve typing and type checking across the backend.
 
@@ -103,17 +103,17 @@ Protocol for the internal models have been introduced to improve typing and type
 
 Internally, Infrahub no longer support Python 3.9 and Pydantic v1.
 
-### Demo Environment
+### Demo environment
 
 #### Cleanup and performance improvement
 
 The script infrastructure_edge.py used to load data in the demo environment has been cleaned up to improve readability and performance. Demo in codespace should start faster now.
 
-#### New Services models
+#### New `Services` models
 
 A new service model has been added to the demo schema
 
-## Migration Guide
+## Migration guide
 
 To migrate your instance of Infrahub to the latest version, please run the following commands and restart all instances of Infrahub.
 
