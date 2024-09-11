@@ -32,9 +32,16 @@ from infrahub_sdk.ctl.utils import catch_exception, execute_graphql_query, parse
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
 from infrahub_sdk.jinja2 import identify_faulty_jinja_code
-from infrahub_sdk.schema import AttributeSchema, GenericSchema, InfrahubRepositoryConfig, NodeSchema, RelationshipSchema
+from infrahub_sdk.schema import (
+    AttributeSchema,
+    GenericSchema,
+    InfrahubRepositoryConfig,
+    InfrahubRepositoryGraphQLConfig,
+    NodeSchema,
+    RelationshipSchema,
+)
 from infrahub_sdk.transforms import get_transform_class_instance
-from infrahub_sdk.utils import get_branch, write_to_file
+from infrahub_sdk.utils import write_to_file
 
 from .exporter import dump
 from .importer import load
@@ -194,7 +201,25 @@ def _run_transform(
     debug: bool,
     repository_config: InfrahubRepositoryConfig,
 ):
-    branch = get_branch(branch)
+    """Executes a transform by querying the GraphQL API then calling the transformer method with data returned from the API.
+
+    Args:
+        query (str): The name of the query to execute. (e.g. tags_query). The query string is acquired later.
+        variables (dict[str, Any]): Variables to use for the GQL Query
+        transformer (Callable): Python function used to transform data from the GQL query into a different structure
+        branch (str): Name of the branch on which the query will be executed. Defaults to None
+        debug (bool): Whether or not to print debug information to the console
+        repository_config (InfrahubRepositoryConfig): InfrahubRepositoryConfig object
+
+    Raises:
+        typer.Exit: Raised if the Query can not be found
+        typer.Abort: Raised if there is an error executing the query
+
+    Returns:
+        Any: Data after transformation has been applied
+    """
+    # Branch is used for gql query and for local branch. I think we probably
+    # branch = get_branch(branch)
 
     try:
         response = execute_graphql_query(
@@ -288,6 +313,7 @@ def transform(
         list_transforms(config=repository_config)
         return
 
+    # Find transform in config file per 'transform_name' passed into this function
     matched = [transform for transform in repository_config.python_transforms if transform.name == transform_name]  # pylint: disable=not-an-iterable
 
     if not matched:
@@ -297,6 +323,7 @@ def transform(
 
     transform_config = matched[0]
 
+    # Load TagsTransform instance
     try:
         transform_instance = get_transform_class_instance(transform_config=transform_config)
     except InfrahubTransformNotFoundError as exc:
@@ -304,8 +331,16 @@ def transform(
         raise typer.Exit(1) from exc
 
     transformer = functools.partial(transform_instance.transform)
+
+    # Load query config
+    query_config_obj = InfrahubRepositoryGraphQLConfig(
+        name=transform_instance.query, file_path=Path(transform_instance.query + ".gql")
+    )
+    repository_config.queries.append(query_config_obj)
+
+    # Run transformation and output transformed data
     result = _run_transform(
-        query=transform_instance.query,
+        query=query_config_obj.name,
         variables=variables_dict,
         transformer=transformer,
         branch=branch,
