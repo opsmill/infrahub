@@ -835,10 +835,10 @@ async def test_schema_branch_validate_menu_placement():
     schema = SchemaBranch(cache={})
     schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(SchemaNotFoundError) as exc:
         schema.validate_menu_placements()
 
-    assert str(exc.value) == "TestSubObject: NoSuchObject is not a valid menu placement"
+    assert exc.value.message == "TestSubObject refers an unexisting menu placement node: NoSuchObject."
 
 
 async def test_schema_branch_validate_same_node_menu_placement():
