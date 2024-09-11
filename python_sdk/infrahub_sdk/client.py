@@ -1096,7 +1096,7 @@ class InfrahubClient(BaseClient):
     async def allocate_next_ip_address(
         self,
         resource_pool: CoreNode,
-        kind: Optional[type[SchemaType]] = None,
+        kind: Optional[type[SchemaType]] = None,  # pylint: disable=unused-argument
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
@@ -2033,7 +2033,7 @@ class InfrahubClientSync(BaseClient):
     def allocate_next_ip_address(
         self,
         resource_pool: CoreNodeSync,
-        kind: Optional[type[SchemaTypeSync]] = None,
+        kind: Optional[type[SchemaTypeSync]] = None,  # pylint: disable=unused-argument
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
