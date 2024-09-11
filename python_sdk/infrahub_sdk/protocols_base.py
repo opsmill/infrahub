@@ -8,9 +8,11 @@ if TYPE_CHECKING:
     from infrahub_sdk.schema import MainSchemaTypes
 
 
+@runtime_checkable
 class RelatedNode(Protocol): ...
 
 
+@runtime_checkable
 class RelatedNodeSync(Protocol): ...
 
 
@@ -123,6 +125,7 @@ class ListAttributeOptional(Attribute):
     value: Optional[list[Any]]
 
 
+@runtime_checkable
 class CoreNodeBase(Protocol):
     _schema: MainSchemaTypes
     id: str
@@ -151,6 +154,7 @@ class CoreNodeBase(Protocol):
     def extract(self, params: dict[str, str]) -> dict[str, Any]: ...
 
 
+@runtime_checkable
 class CoreNode(CoreNodeBase, Protocol):
     async def save(self, allow_upsert: bool = False, update_group_context: Optional[bool] = None) -> None: ...
 
@@ -165,6 +169,7 @@ class CoreNode(CoreNodeBase, Protocol):
     async def remove_relationships(self, relation_to_update: str, related_nodes: list[str]) -> None: ...
 
 
+@runtime_checkable
 class CoreNodeSync(CoreNodeBase, Protocol):
     def save(self, allow_upsert: bool = False, update_group_context: Optional[bool] = None) -> None: ...
 
