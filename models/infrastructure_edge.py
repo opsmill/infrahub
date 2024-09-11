@@ -6,7 +6,7 @@ from typing import Optional, cast
 
 from infrahub_sdk import UUIDT, InfrahubClient, NodeStore
 from infrahub_sdk.batch import InfrahubBatch
-from infrahub_sdk.protocols import CoreAccount, CoreIPPrefixPool, CoreStandardGroup, IpamNamespace
+from infrahub_sdk.protocols import CoreAccount, CoreIPAddressPool, CoreIPPrefixPool, CoreStandardGroup, IpamNamespace
 from infrahub_sdk.protocols_base import CoreNode
 from protocols import (
     InfraAutonomousSystem,
@@ -1756,9 +1756,9 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str, num_site
         resource_pool=supernet_pool, member_type="address", branch=branch
     )
     loopback_pool = await client.create(
-        kind="CoreIPAddressPool",
+        kind=CoreIPAddressPool,
         name="Loopbacks pool",
-        default_address_type=IpamIPAddress,
+        default_address_type="IpamIPAddress",
         default_prefix_length=32,
         ip_namespace=default_ip_namespace,
         resources=[loopback_prefix],
@@ -1792,9 +1792,9 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str, num_site
     )
     await management_prefix.save()
     management_pool = await client.create(
-        kind="CoreIPAddressPool",
+        kind=CoreIPAddressPool,
         name="Management addresses pool",
-        default_address_type=IpamIPAddress,
+        default_address_type="IpamIPAddress",
         default_prefix_length=28,
         ip_namespace=default_ip_namespace,
         resources=[management_prefix],
