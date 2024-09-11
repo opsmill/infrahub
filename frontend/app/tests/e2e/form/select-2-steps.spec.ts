@@ -94,4 +94,38 @@ test.describe("Verifies the object creation", () => {
     await expect(page.getByText("Empty", { exact: true })).toBeVisible();
     await expect(page.getByText("Read-Only Repository", { exact: true })).not.toBeVisible();
   });
+
+  test("verifies values in kind and parent selects", async ({ page }) => {
+    await test.step("got to the edit form", async () => {
+      await page.goto("/objects/InfraInterfaceL3");
+      await page.getByRole("link", { name: "Connected to dfw1-edge2" }).click();
+      await page.getByTestId("edit-button").click();
+    });
+
+    await test.step("check inputs values", async () => {
+      const kindSelector = page
+        .getByTestId("side-panel-container")
+        .getByText("Connected Endpoint Kind ?")
+        .getByText("Kind")
+        .locator("../..")
+        .getByTestId("select-input");
+      await expect(kindSelector).toHaveValue("Interface L3");
+
+      const parentSelector = page
+        .getByTestId("side-panel-container")
+        .getByText("Connected Endpoint Kind ?")
+        .getByText("Device")
+        .locator("../..")
+        .getByTestId("select-input");
+      await expect(parentSelector).toHaveValue("dfw1-edge2");
+
+      const objectSelector = page
+        .getByTestId("side-panel-container")
+        .getByText("Connected Endpoint Kind ?")
+        .getByText("Interface L3")
+        .locator("../..")
+        .getByTestId("select-input");
+      await expect(objectSelector).toHaveValue("Ethernet1");
+    });
+  });
 });
