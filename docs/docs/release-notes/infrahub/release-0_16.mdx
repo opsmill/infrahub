@@ -1,5 +1,5 @@
 ---
-title: Release 0.16 - DEVELOPMENT
+title: Release 0.16
 ---
 <table>
   <tbody>
@@ -26,22 +26,45 @@ title: Release 0.16 - DEVELOPMENT
 
 ## Main changes
 
-### Git Repository Management
+### Unified storage
 
-https://github.com/opsmill/infrahub/issues/3127
+#### Git repository management
 
-### Integer Resource Pool
+The integration with external Git Repositories is very important to Infrahub, and major user experience improvements were implemented in v0.16.
+
+As a user, it is now easier to manage Git repositories and to understand and troubleshoot the situation when things are not working as expected.
+
+Added/changed features include:
+
+  - Improvements to identifying the state of the repository
+  - Additional logging and notifications, for example if authentication to the repository is not working
+  - Deleting a repository will delete the associated resources
+  - The supplied Git URL does not need to have the `.git` suffix, Infrahub will automatically handle this
+
+See the documentation for more information on using Git repositories with Infrahub:
+
+- [Guides - Adding/updating external repositories](https://docs.infrahub.app/guides/repository)
+- [Topics - Repository](https://docs.infrahub.app/topics/repository)
+
+#### Integer Resource Pool
 
 https://opsmill.atlassian.net/browse/IFC-649
 
-### Branch Diff View Improvements
+### Schema
+
+### Frontend
+
+#### Branch Diff View Improvements
 
 https://github.com/opsmill/infrahub/issues/1216
 https://opsmill.atlassian.net/browse/IFC-646
 
-### Filter Internal Groups
+#### Filter Internal Groups
 
 https://github.com/opsmill/infrahub/issues/402
+
+
+### Other
 
 ## Migration Guide
 
