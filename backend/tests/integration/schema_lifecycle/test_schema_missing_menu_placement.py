@@ -26,5 +26,5 @@ class TestSchemaMissingMenuPlacement(TestSchemaLifecycleBase):
         assert response.errors["errors"][0]["extensions"]["code"] == 422
         assert (
             response.errors["errors"][0]["message"]
-            == "InfraBNode refers an unexisting menu placement node: UnexistingNode."
+            == "InfraBNode refers to an invalid menu placement node: UnexistingNode."
         )

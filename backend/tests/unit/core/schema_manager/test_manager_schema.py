@@ -838,7 +838,7 @@ async def test_schema_branch_validate_menu_placement():
     with pytest.raises(SchemaNotFoundError) as exc:
         schema.validate_menu_placements()
 
-    assert exc.value.message == "TestSubObject refers an unexisting menu placement node: NoSuchObject."
+    assert exc.value.message == "TestSubObject refers to an invalid menu placement node: NoSuchObject."
 
 
 async def test_schema_branch_validate_same_node_menu_placement():
