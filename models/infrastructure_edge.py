@@ -8,8 +8,6 @@ from infrahub_sdk import UUIDT, InfrahubClient, NodeStore
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.protocols import CoreAccount, CoreIPPrefixPool, CoreStandardGroup, IpamNamespace
 from infrahub_sdk.protocols_base import CoreNode
-from pydantic import BaseModel, ConfigDict, Field
-
 from protocols import (
     InfraAutonomousSystem,
     InfraBGPSession,
@@ -28,6 +26,7 @@ from protocols import (
     LocationSite,
     OrganizationProvider,
 )
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # pylint: skip-file
