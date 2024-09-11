@@ -65,7 +65,7 @@ async def run(message: messages.RequestGeneratorRun, service: InfrahubServices) 
 
 async def _define_instance(message: messages.RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
     if message.generator_instance:
-        instance: CoreGeneratorInstance = await service.client.get(
+        instance = await service.client.get(
             kind=CoreGeneratorInstance, id=message.generator_instance, branch=message.branch_name
         )
         instance.status.value = GeneratorInstanceStatus.PENDING.value
@@ -75,7 +75,7 @@ async def _define_instance(message: messages.RequestGeneratorRun, service: Infra
         async with lock.registry.get(
             f"{message.target_id}-{message.generator_definition.definition_id}", namespace="generator"
         ):
-            instances: list[CoreGeneratorInstance] = await service.client.filters(
+            instances = await service.client.filters(
                 kind=CoreGeneratorInstance,
                 definition__ids=[message.generator_definition.definition_id],
                 object__ids=[message.target_id],
