@@ -204,7 +204,7 @@
                     "order_weight": 10000
                 }
             ],
-            "label": "Generic repository",
+            "label": "Git Repository",
             "used_by": [
                 "CoreReadOnlyRepository",
                 "CoreRepository"
