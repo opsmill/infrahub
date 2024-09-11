@@ -10,7 +10,7 @@ from infrahub_sdk.protocols import CoreAccount, CoreIPPrefixPool, CoreStandardGr
 from infrahub_sdk.protocols_base import CoreNode
 from pydantic import BaseModel, ConfigDict, Field
 
-from .protocols import (
+from protocols import (
     InfraAutonomousSystem,
     InfraBGPSession,
     InfraCircuit,
