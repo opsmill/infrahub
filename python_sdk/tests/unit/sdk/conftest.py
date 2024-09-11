@@ -71,7 +71,7 @@ def replace_async_return_annotation():
             "list[InfrahubNode]": "list[InfrahubNodeSync]",
             "Optional[InfrahubNode]": "Optional[InfrahubNodeSync]",
             "Optional[type[SchemaType]]": "Optional[type[SchemaTypeSync]]",
-            "Optional[Union[CoreNode, SchemaType]]": "Optional[Union[CoreNodeSync, SchemaTypeSync]]"
+            "Optional[Union[CoreNode, SchemaType]]": "Optional[Union[CoreNodeSync, SchemaTypeSync]]",
         }
         return replacements.get(annotation) or annotation
 

@@ -1003,9 +1003,100 @@ class InfrahubClient(BaseClient):
         )
         return response["DiffSummary"]
 
+    @overload
     async def allocate_next_ip_address(
         self,
         resource_pool: CoreNode,
+        kind: type[SchemaType],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[True] = True,
+    ) -> SchemaType: ...
+
+    @overload
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNode,
+        kind: type[SchemaType],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[False] = False,
+    ) -> Optional[SchemaType]: ...
+
+    @overload
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNode,
+        kind: type[SchemaType],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: bool = ...,
+    ) -> SchemaType: ...
+
+    @overload
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNode,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[True] = True,
+    ) -> CoreNode: ...
+
+    @overload
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNode,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[False] = False,
+    ) -> Optional[CoreNode]: ...
+
+    @overload
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNode,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: bool = ...,
+    ) -> Optional[CoreNode]: ...
+
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNode,
+        kind: Optional[type[SchemaType]] = None,
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
@@ -1014,7 +1105,7 @@ class InfrahubClient(BaseClient):
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Optional[CoreNode]:
+    ) -> Optional[Union[CoreNode, SchemaType]]:
         """Allocate a new IP address by using the provided resource pool.
 
         Args:
@@ -1849,9 +1940,100 @@ class InfrahubClientSync(BaseClient):
         )
         return response["DiffSummary"]
 
+    @overload
     def allocate_next_ip_address(
         self,
         resource_pool: CoreNodeSync,
+        kind: type[SchemaTypeSync],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[True] = True,
+    ) -> SchemaTypeSync: ...
+
+    @overload
+    def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: type[SchemaTypeSync],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[False] = False,
+    ) -> Optional[SchemaTypeSync]: ...
+
+    @overload
+    def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: type[SchemaTypeSync],
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: bool = ...,
+    ) -> SchemaTypeSync: ...
+
+    @overload
+    def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[True] = True,
+    ) -> CoreNodeSync: ...
+
+    @overload
+    def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: Literal[False] = False,
+    ) -> Optional[CoreNodeSync]: ...
+
+    @overload
+    def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: Literal[None] = ...,
+        identifier: Optional[str] = ...,
+        prefix_length: Optional[int] = ...,
+        address_type: Optional[str] = ...,
+        data: Optional[dict[str, Any]] = ...,
+        branch: Optional[str] = ...,
+        timeout: Optional[int] = ...,
+        tracker: Optional[str] = ...,
+        raise_for_error: bool = ...,
+    ) -> Optional[CoreNodeSync]: ...
+
+    def allocate_next_ip_address(
+        self,
+        resource_pool: CoreNodeSync,
+        kind: Optional[type[SchemaTypeSync]] = None,
         identifier: Optional[str] = None,
         prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
@@ -1860,7 +2042,7 @@ class InfrahubClientSync(BaseClient):
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Optional[CoreNodeSync]:
+    ) -> Optional[Union[CoreNodeSync, SchemaTypeSync]]:
         """Allocate a new IP address by using the provided resource pool.
 
         Args:
