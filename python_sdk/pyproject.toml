@@ -308,6 +308,13 @@ max-complexity = 17
 [tool.ruff.lint.per-file-ignores]
 
 
+"infrahub_sdk/client.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "PLR0904",  # Too many public methods
+]
+
 "python_sdk/infrahub_sdk/client.py" = [
     ##################################################################################################
     # Review and change the below later                                                              #
