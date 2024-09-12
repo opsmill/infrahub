@@ -105,16 +105,6 @@ class ProcessRelationsNodeSync(TypedDict):
     related_nodes: list[InfrahubNodeSync]
 
 
-def get_schema_name(schema: Union[type[Union[SchemaType, SchemaTypeSync]], str]) -> str:
-    if hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:  # type: ignore[union-attr]
-        return schema.__name__  # type: ignore[union-attr]
-
-    if isinstance(schema, str):
-        return schema
-
-    raise ValueError("schema must be a protocol or a string")
-
-
 def handle_relogin(func: Callable[..., Coroutine[Any, Any, httpx.Response]]):  # type: ignore[no-untyped-def]
     @wraps(func)
     async def wrapper(client: InfrahubClient, *args: Any, **kwargs: Any) -> httpx.Response:
@@ -355,15 +345,14 @@ class InfrahubClient(BaseClient):
     ) -> Union[InfrahubNode, SchemaType]:
         branch = branch or self.default_branch
 
-        kind_str = get_schema_name(schema=kind)
-        schema = await self.schema.get(kind=kind_str, branch=branch)
+        schema = await self.schema.get(kind=kind, branch=branch)
 
         if not data and not kwargs:
             raise ValueError("Either data or a list of keywords but be provided")
 
         return InfrahubNode(client=self, schema=schema, branch=branch, data=data or kwargs)
 
-    async def delete(self, kind: str, id: str, branch: Optional[str] = None) -> None:
+    async def delete(self, kind: Union[str, type[SchemaType]], id: str, branch: Optional[str] = None) -> None:
         branch = branch or self.default_branch
         schema = await self.schema.get(kind=kind, branch=branch)
 
@@ -417,8 +406,7 @@ class InfrahubClient(BaseClient):
         **kwargs: Any,
     ) -> Union[InfrahubNode, SchemaType]:
         branch = branch or self.default_branch
-        kind_str = get_schema_name(schema=kind)
-        schema = await self.schema.get(kind=kind_str, branch=branch)
+        schema = await self.schema.get(kind=kind, branch=branch)
 
         filters: MutableMapping[str, Any] = {}
 
@@ -450,7 +438,7 @@ class InfrahubClient(BaseClient):
         )
 
         if len(results) == 0:
-            raise NodeNotFoundError(branch_name=branch, node_type=kind_str, identifier=filters)
+            raise NodeNotFoundError(branch_name=branch, node_type=schema.kind, identifier=filters)
         if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
@@ -626,8 +614,7 @@ class InfrahubClient(BaseClient):
         Returns:
             list[InfrahubNodeSync]: List of Nodes that match the given filters.
         """
-        kind_str = get_schema_name(schema=kind)
-        schema = await self.schema.get(kind=kind_str, branch=branch)
+        schema = await self.schema.get(kind=kind, branch=branch)
 
         branch = branch or self.default_branch
         if at:
@@ -1415,15 +1402,14 @@ class InfrahubClientSync(BaseClient):
         **kwargs: Any,
     ) -> Union[InfrahubNodeSync, SchemaTypeSync]:
         branch = branch or self.default_branch
-        kind_str = get_schema_name(schema=kind)
-        schema = self.schema.get(kind=kind_str, branch=branch)
+        schema = self.schema.get(kind=kind, branch=branch)
 
         if not data and not kwargs:
             raise ValueError("Either data or a list of keywords but be provided")
 
         return InfrahubNodeSync(client=self, schema=schema, branch=branch, data=data or kwargs)
 
-    def delete(self, kind: str, id: str, branch: Optional[str] = None) -> None:
+    def delete(self, kind: Union[str, type[SchemaTypeSync]], id: str, branch: Optional[str] = None) -> None:
         branch = branch or self.default_branch
         schema = self.schema.get(kind=kind, branch=branch)
 
@@ -1685,8 +1671,7 @@ class InfrahubClientSync(BaseClient):
         Returns:
             list[InfrahubNodeSync]: List of Nodes that match the given filters.
         """
-        kind_str = get_schema_name(schema=kind)
-        schema = self.schema.get(kind=kind_str, branch=branch)
+        schema = self.schema.get(kind=kind, branch=branch)
 
         branch = branch or self.default_branch
         if at:
@@ -1795,8 +1780,7 @@ class InfrahubClientSync(BaseClient):
         **kwargs: Any,
     ) -> Union[InfrahubNodeSync, SchemaTypeSync]:
         branch = branch or self.default_branch
-        kind_str = get_schema_name(schema=kind)
-        schema = self.schema.get(kind=kind_str, branch=branch)
+        schema = self.schema.get(kind=kind, branch=branch)
 
         filters: MutableMapping[str, Any] = {}
 
@@ -1828,7 +1812,7 @@ class InfrahubClientSync(BaseClient):
         )
 
         if len(results) == 0:
-            raise NodeNotFoundError(branch_name=branch, node_type=kind_str, identifier=filters)
+            raise NodeNotFoundError(branch_name=branch, node_type=schema.kind, identifier=filters)
         if len(results) > 1:
             raise IndexError("More than 1 node returned")
 

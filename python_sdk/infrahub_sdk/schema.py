@@ -17,7 +17,7 @@ from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.utils import duplicates
 
 if TYPE_CHECKING:
-    from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
+    from infrahub_sdk.client import InfrahubClient, InfrahubClientSync, SchemaType, SchemaTypeSync
     from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
 
     InfrahubNodeTypes = Union[InfrahubNode, InfrahubNodeSync]
@@ -511,30 +511,47 @@ class InfrahubSchemaBase:
 
         raise InvalidResponseError(message=f"Invalid response received from server HTTP {response.status_code}")
 
+    @staticmethod
+    def _get_schema_name(schema: Union[type[Union[SchemaType, SchemaTypeSync]], str]) -> str:
+        if hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:  # type: ignore[union-attr]
+            return schema.__name__  # type: ignore[union-attr]
+
+        if isinstance(schema, str):
+            return schema
+
+        raise ValueError("schema must be a protocol or a string")
+
 
 class InfrahubSchema(InfrahubSchemaBase):
     def __init__(self, client: InfrahubClient):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
 
-    async def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> MainSchemaTypes:
+    async def get(
+        self,
+        kind: Union[type[Union[SchemaType, SchemaTypeSync]], str],
+        branch: Optional[str] = None,
+        refresh: bool = False,
+    ) -> MainSchemaTypes:
         branch = branch or self.client.default_branch
+
+        kind_str = self._get_schema_name(schema=kind)
 
         if refresh:
             self.cache[branch] = await self.fetch(branch=branch)
 
-        if branch in self.cache and kind in self.cache[branch]:
-            return self.cache[branch][kind]
+        if branch in self.cache and kind_str in self.cache[branch]:
+            return self.cache[branch][kind_str]
 
         # Fetching the latest schema from the server if we didn't fetch it earlier
         #   because we coulnd't find the object on the local cache
         if not refresh:
             self.cache[branch] = await self.fetch(branch=branch)
 
-        if branch in self.cache and kind in self.cache[branch]:
-            return self.cache[branch][kind]
+        if branch in self.cache and kind_str in self.cache[branch]:
+            return self.cache[branch][kind_str]
 
-        raise SchemaNotFoundError(identifier=kind)
+        raise SchemaNotFoundError(identifier=kind_str)
 
     async def all(
         self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[list[str]] = None
@@ -760,24 +777,31 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         return self.cache[branch]
 
-    def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> MainSchemaTypes:
+    def get(
+        self,
+        kind: Union[type[Union[SchemaType, SchemaTypeSync]], str],
+        branch: Optional[str] = None,
+        refresh: bool = False,
+    ) -> MainSchemaTypes:
         branch = branch or self.client.default_branch
+
+        kind_str = self._get_schema_name(schema=kind)
 
         if refresh:
             self.cache[branch] = self.fetch(branch=branch)
 
-        if branch in self.cache and kind in self.cache[branch]:
-            return self.cache[branch][kind]
+        if branch in self.cache and kind_str in self.cache[branch]:
+            return self.cache[branch][kind_str]
 
         # Fetching the latest schema from the server if we didn't fetch it earlier
         #   because we coulnd't find the object on the local cache
         if not refresh:
             self.cache[branch] = self.fetch(branch=branch)
 
-        if branch in self.cache and kind in self.cache[branch]:
-            return self.cache[branch][kind]
+        if branch in self.cache and kind_str in self.cache[branch]:
+            return self.cache[branch][kind_str]
 
-        raise SchemaNotFoundError(identifier=kind)
+        raise SchemaNotFoundError(identifier=kind_str)
 
     def _get_kind_and_attribute_schema(
         self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None
