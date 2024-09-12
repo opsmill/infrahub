@@ -105,7 +105,7 @@ export type DynamicDropdownFieldProps = FormFieldProps & {
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
-  items: Array<SelectOption>;
+  items: Array<unknown>;
   field?:
     | components["schemas"]["AttributeSchema-Output"]
     | components["schemas"]["RelationshipSchema-Output"];

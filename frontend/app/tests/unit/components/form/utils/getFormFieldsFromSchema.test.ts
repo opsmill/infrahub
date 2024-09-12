@@ -316,11 +316,7 @@ describe("getFormFieldsFromSchema", () => {
           required: expect.any(Function),
         },
       },
-      items: [
-        { id: 1, name: 1 },
-        { id: 2, name: 2 },
-        { id: 3, name: 3 },
-      ],
+      items: [1, 2, 3],
       field: schema.attributes?.[0],
       schema,
       unique: false,

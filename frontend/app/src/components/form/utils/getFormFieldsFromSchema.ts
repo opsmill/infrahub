@@ -17,7 +17,7 @@ import {
   FormFieldValue,
   NumberPoolData,
 } from "@/components/form/type";
-import { getOptionsFromAttribute, getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
+import { getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
 import { isGeneric, sortByOrderWeight } from "@/utils/common";
 import { getFieldDefaultValue } from "@/components/form/utils/getFieldDefaultValue";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
@@ -141,7 +141,7 @@ export const getFormFieldsFromSchema = ({
         field: attribute,
         schema: schema,
         unique: attribute.unique,
-        items: getOptionsFromAttribute(attribute, basicFomFieldProps.defaultValue),
+        items: attribute.enum,
       };
 
       return enumField;
