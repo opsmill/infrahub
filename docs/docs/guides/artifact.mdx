@@ -6,93 +6,15 @@ title: Creating an Artifact
 
 :::note
 
-This guide has the assumption that you followed the [Creating a Jinja Rendered File (Transform)](./jinja2-transform.mdx) or [Creating a Python transform](./python-transform.mdx) guide. This is a prerequisite.
+This guide has the assumption that you followed the [Creating a Jinja Rendered File (Transform)](./jinja2-transform.mdx) or [Creating a Python transform](./python-transform.mdx) guide as well as [Creating a Group](./groups.mdx) guide
+This is a prerequisite.
 
 :::
 
 The goal of this guide is to define an artifact for a Jinja rendered Transform or Python transform in Infrahub. We will be using the following steps.
 
-1. Creating a group
-2. Adding members to the group
-3. Creating an artifact definition
-4. Accessing the artifacts
-
-## Creating a group
-
-Artifacts are defined by grouping a transformation with a group of targets in an Artifact Definition. As the first step we need to create a group, in which we can add the targets for which the artifact needs to be generated. Execute this GraphQL mutation to create the group `TagConfigGroup`.
-
-```GraphQL
-mutation CreateGroup {
-  CoreStandardGroupCreate (data: {name: {value: "TagConfigGroup"}}) {
-    ok
-    object {
-      id
-    }
-  }
-}
-```
-
-Take note of the returned id, we will need it when we add members to this group.
-
-## Adding targets to the group
-
-We will be adding the `red` and `blue` tag to the `TagConfigGroup` group that we created in the previous step.
-
-We need to retrieve the ids of the `red` and `blue` tag. Execute the following GraphQL query and take note of the ids.
-
-```GraphQL
-query {
-  BuiltinTag (name__values: ["red","blue"]) {
-    edges {
-      node {
-        id
-        display_label
-      }
-    }
-  }
-}
-```
-
-Next, we will be adding the tag nodes to the group. We will use the following GraphQL mutation.
-In the mutation, replace the ids:
-
-- The first id needs to be replaced with the id of the group that we created in the first step
-- The second and third id need to be replaced with the ids of the tags from the previous step
-
-```graphql
-mutation UpdateGroupMembers {
-  CoreStandardGroupUpdate (
-    data: {
-      id: "<the name or the id of the group>",
-      members: [
-        {id: "<id of red tag>"},
-        {id: "<id of blue tag>"}]}
-  ) {
-    ok
-  }
-}
-```
-
-The resulting mutation should look like this (note that the ids will be different in your case).
-
-```GraphQL
-mutation UpdateGroupMembers {
-  CoreStandardGroupUpdate(
-    data: {
-      id: "TagConfigGroup",
-      members: [
-        {id: "17a8f438-fe39-d85f-3c3b-c51d66d0603f"},
-        {id: "17a8f437-157a-e023-3c3c-c51f788ddf91"}]}
-  ) {
-    ok
-  }
-}
-```
-
-In the web interface navigate to Standard Groups under the Groups section in the menu on the left.
-Select the `TagConfigGroup` and navigate to the Members tab. We can confirm that the `red` and `blue` tag are now a member of the group.
-
-![Group members](../media/guides/artifact/artifact_group_members.png)
+1. Creating an artifact definition
+2. Accessing the artifacts
 
 ## Creating an artifact definition
 

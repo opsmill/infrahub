@@ -15,27 +15,36 @@ exceptions:
   - Ansible
   - API
   - Attributes
+  - AWS S3
   - Beta
   - BGP
+  - CA certificates
   - CI
   - Codespaces
   - CoreArtifactTarget
   - CoreRepository
+  - CoreGroup
   - Docker Compose
   - E2E
   - Generics
   - Git
   - GitHub
+  - GitHub Codespaces
   - GitLab
   - GitPod
   - GraphQL
   - GraphQLQuery
   - include_in_menu & menu_placement
   - Helm
+  - High Availability
+  - Human Friendly Identifier
   - Infrahub
   - infrahubctl
+  - IPHost
   - IP
   - IPAM
+  - IPNetwork
+  - IP Fabric
   - JavaScript
   - JetStream
   - Jinja
@@ -43,12 +52,15 @@ exceptions:
   - Namespace
   - NATS
   - Node
+  - OpsMill
+  - Pydantic
   - Python
   - RabbitMQ
   - REST
   - RFile
   - SDK
   - TLS
+  - Tony Stark
   - TransformPython
   - Vale
   - VS Code

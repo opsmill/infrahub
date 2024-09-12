@@ -9,7 +9,6 @@ from infrahub.core.query import QueryResult
 from infrahub.core.timestamp import Timestamp
 
 from ..model.path import (
-    BranchTrackingId,
     ConflictSelection,
     EnrichedDiffAttribute,
     EnrichedDiffConflict,
@@ -18,7 +17,7 @@ from ..model.path import (
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
-    NameTrackingId,
+    deserialize_tracking_id,
 )
 
 
@@ -141,7 +140,8 @@ class EnrichedDiffDeserializer:
             )
             current_node_uuid = parent.get("uuid")
 
-    def _get_str_or_none_property_value(self, node: Neo4jNode, property_name: str) -> str | None:
+    @classmethod
+    def _get_str_or_none_property_value(cls, node: Neo4jNode, property_name: str) -> str | None:
         value_raw = node.get(property_name)
         return str(value_raw) if value_raw is not None else None
 
@@ -149,24 +149,24 @@ class EnrichedDiffDeserializer:
         root_uuid = str(root_node.get("uuid"))
         if root_uuid in self._diff_root_map:
             return self._diff_root_map[root_uuid]
+        enriched_root = self.build_diff_root(root_node=root_node)
+        self._diff_root_map[root_uuid] = enriched_root
+        return enriched_root
 
+    @classmethod
+    def build_diff_root(cls, root_node: Neo4jNode) -> EnrichedDiffRoot:
         from_time = Timestamp(str(root_node.get("from_time")))
         to_time = Timestamp(str(root_node.get("to_time")))
-        tracking_id_str = self._get_str_or_none_property_value(node=root_node, property_name="tracking_id")
+        tracking_id_str = cls._get_str_or_none_property_value(node=root_node, property_name="tracking_id")
         tracking_id = None
         if tracking_id_str:
-            for tracking_id_class in (BranchTrackingId, NameTrackingId):
-                try:
-                    tracking_id = tracking_id_class.deserialize(id_string=tracking_id_str)
-                    break
-                except ValueError:
-                    ...
-        enriched_root = EnrichedDiffRoot(
+            tracking_id = deserialize_tracking_id(tracking_id_str=tracking_id_str)
+        return EnrichedDiffRoot(
             base_branch_name=str(root_node.get("base_branch")),
             diff_branch_name=str(root_node.get("diff_branch")),
             from_time=from_time,
             to_time=to_time,
-            uuid=str(root_uuid),
+            uuid=str(root_node.get("uuid")),
             tracking_id=tracking_id,
             num_added=int(root_node.get("num_added")),
             num_updated=int(root_node.get("num_updated")),
@@ -174,8 +174,6 @@ class EnrichedDiffDeserializer:
             num_conflicts=int(root_node.get("num_conflicts")),
             contains_conflict=str(root_node.get("contains_conflict")).lower() == "true",
         )
-        self._diff_root_map[root_uuid] = enriched_root
-        return enriched_root
 
     def _deserialize_diff_node(self, node_node: Neo4jNode, enriched_root: EnrichedDiffRoot) -> EnrichedDiffNode:
         node_uuid = str(node_node.get("uuid"))

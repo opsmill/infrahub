@@ -66,6 +66,15 @@ class NameTrackingId(TrackingId):
     prefix = "name"
 
 
+def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
+    for tracking_id_class in (BranchTrackingId, NameTrackingId):
+        try:
+            return tracking_id_class.deserialize(id_string=tracking_id_str)
+        except ValueError:
+            ...
+    raise ValueError(f"{tracking_id_str} is not a valid TrackingId")
+
+
 @dataclass
 class BaseSummary:
     num_added: int = field(default=0, kw_only=True)

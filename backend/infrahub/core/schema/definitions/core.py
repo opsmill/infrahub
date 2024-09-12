@@ -373,6 +373,7 @@ core_models: dict[str, Any] = {
         {
             "name": "GenericRepository",
             "namespace": "Core",
+            "label": "Git Repository",
             "description": "A Git Repository integrated with Infrahub",
             "include_in_menu": False,
             "default_filter": "name__value",
@@ -384,6 +385,7 @@ core_models: dict[str, Any] = {
             "attributes": [
                 {
                     "name": "name",
+                    "regex": "^[^/]*$",
                     "kind": "Text",
                     "unique": True,
                     "branch": BranchSupportType.AGNOSTIC.value,

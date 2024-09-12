@@ -171,7 +171,7 @@ export default function ObjectItems({
 
           <Filters schema={schema} />
 
-          <ObjectCreateFormTrigger schema={schema} onSuccess={onSuccess} disabled={loading} />
+          <ObjectCreateFormTrigger schema={schema} onSuccess={onSuccess} isLoading={loading} />
         </div>
 
         {loading && !rows && <LoadingScreen />}

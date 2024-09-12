@@ -18,6 +18,7 @@ interface ObjectCreateFormTriggerProps extends ButtonProps {
 export const ObjectCreateFormTrigger = ({
   schema,
   onSuccess,
+  isLoading,
   ...props
 }: ObjectCreateFormTriggerProps) => {
   const permission = usePermission();
@@ -41,7 +42,7 @@ export const ObjectCreateFormTrigger = ({
         <Button
           data-cy="create"
           data-testid="create-object-button"
-          disabled={!isAllowed}
+          disabled={!isAllowed || isLoading}
           onClick={() => setShowCreateDrawer(true)}
           {...props}>
           <Icon icon="mdi:plus" className="text-sm mr-1.5" />

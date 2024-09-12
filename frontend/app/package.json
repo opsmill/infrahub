@@ -64,6 +64,7 @@
     "graphql": "^16.8.1",
     "handlebars": "^4.7.8",
     "jotai": "^2.7.2",
+    "json-to-graphql-query": "^2.2.5",
     "prismjs": "^1.29.0",
     "query-string": "^9.0.0",
     "ramda": "^0.29.1",

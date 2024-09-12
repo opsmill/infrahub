@@ -70,7 +70,7 @@ const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeForm
         <RelationshipField
           name="credential"
           type="relationship"
-          label="Authentification"
+          label="Authentication"
           placeholder="Select your credential"
           relationship={{ peer: "CorePasswordCredential", name: "credential", cardinality: "one" }}
           schema={schema}

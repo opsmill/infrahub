@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graphene import Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
+from graphene import BigInt, Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
@@ -151,7 +151,7 @@ class MacAddressType(BaseAttribute):
 
 
 class NumberAttributeType(BaseAttribute):
-    value = Field(Int)
+    value = Field(BigInt)
 
     class Meta:
         description = "Attribute of type Number"
