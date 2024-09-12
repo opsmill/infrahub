@@ -332,7 +332,8 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/python-sdk',
           },
           items: [
-            // 'release-notes/python-sdk/release-0_13-DRAFT'
+            // 'release-notes/python-sdk/release-1_0-DRAFT',
+            'release-notes/python-sdk/release-0_13'
           ],
         },
       ],
