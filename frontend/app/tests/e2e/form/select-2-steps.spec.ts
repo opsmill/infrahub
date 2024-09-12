@@ -126,6 +126,12 @@ test.describe("Verifies the object creation", () => {
         .locator("../..")
         .getByTestId("select-input");
       await expect(objectSelector).toHaveValue("Ethernet1");
+
+      await page.getByTestId("side-panel-container").getByLabel("Interface L3").click();
+      await expect(page.getByRole("option", { name: "Ethernet1", exact: true })).toBeVisible();
+      await expect(page.getByRole("option", { name: "Ethernet10" })).toBeVisible();
+      await expect(page.getByRole("option", { name: "Loopback0" })).toBeVisible();
+      await expect(page.getByRole("option", { name: "Management0" })).toBeVisible();
     });
   });
 });
