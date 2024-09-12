@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk_internal.utils import extract_fields
 from typing_extensions import Self
 
 from infrahub import config

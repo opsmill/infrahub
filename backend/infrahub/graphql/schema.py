@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphene import ObjectType
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk_internal.utils import extract_fields
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager

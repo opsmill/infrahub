@@ -11,8 +11,8 @@ import git
 from git import Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
-from infrahub_sdk import InfrahubClient  # noqa: TCH002
-from infrahub_sdk.task_report import InfrahubTaskReportLogger  # noqa: TCH002
+from infrahub_sdk_internal import InfrahubClient  # noqa: TCH002
+from infrahub_sdk_internal.task_report import InfrahubTaskReportLogger  # noqa: TCH002
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
@@ -34,7 +34,7 @@ from infrahub.log import get_logger
 from infrahub.services import InfrahubServices  # noqa: TCH001
 
 if TYPE_CHECKING:
-    from infrahub_sdk.branch import BranchData
+    from infrahub_sdk_internal.branch import BranchData
 
 log = get_logger("infrahub.git")
 

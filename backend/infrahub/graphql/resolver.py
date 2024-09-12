@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional
 
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk_internal.utils import extract_fields
 
 from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager

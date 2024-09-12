@@ -13,7 +13,7 @@ from infrahub.core.node import Node
 from .base import TestIpamReconcileBase
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk_internal import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
 

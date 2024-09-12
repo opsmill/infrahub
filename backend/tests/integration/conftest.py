@@ -5,7 +5,7 @@ from typing import Any, AsyncGenerator, Optional
 
 import pytest
 import yaml
-from infrahub_sdk import UUIDT
+from infrahub_sdk_internal import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind

@@ -1,8 +1,8 @@
 from typing import Optional
 
-from infrahub_sdk.client import Config as InfrahubClientConfig
-from infrahub_sdk.client import InfrahubClientSync
-from infrahub_sdk.node import InfrahubNodeSync
+from infrahub_sdk_internal.client import Config as InfrahubClientConfig
+from infrahub_sdk_internal.client import InfrahubClientSync
+from infrahub_sdk_internal.node import InfrahubNodeSync
 from pytest import Config, Item, Session, TestReport
 
 from infrahub.core.constants import InfrahubKind

@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from infrahub_sdk import Timestamp
+from infrahub_sdk_internal import Timestamp
 from neo4j import Record
 
 # pylint: skip-file

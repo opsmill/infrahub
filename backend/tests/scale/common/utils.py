@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 import docker
-from infrahub_sdk import InfrahubClientSync
+from infrahub_sdk_internal import InfrahubClientSync
 from neo4j import GraphDatabase
 from neo4j.exceptions import DriverError, Neo4jError
 

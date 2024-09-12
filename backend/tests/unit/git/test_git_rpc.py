@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, Self
 from unittest.mock import AsyncMock, patch
 
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk_internal import UUIDT, Config, InfrahubClient
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import TracebackType
 
-    from infrahub_sdk.branch import BranchData
+    from infrahub_sdk_internal.branch import BranchData
 
     from tests.conftest import TestHelper
 

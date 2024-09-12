@@ -1,5 +1,5 @@
 from graphql import parse
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk_internal.utils import extract_fields
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind

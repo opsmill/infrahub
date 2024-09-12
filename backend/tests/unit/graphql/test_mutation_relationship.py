@@ -1,5 +1,5 @@
 from graphql import graphql
-from infrahub_sdk import UUIDT
+from infrahub_sdk_internal import UUIDT
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind

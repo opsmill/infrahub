@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, ObjectType, String
 from graphene.types.uuid import UUID
-from infrahub_sdk.utils import extract_fields_first_node
+from infrahub_sdk_internal.utils import extract_fields_first_node
 
 from infrahub.core.constants import TaskConclusion as PyTaskConclusion
 from infrahub.core.manager import NodeManager

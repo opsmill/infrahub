@@ -1,4 +1,4 @@
-from infrahub_sdk.transforms import InfrahubTransform
+from infrahub_sdk_internal.transforms import InfrahubTransform
 
 
 class Transform01(InfrahubTransform):

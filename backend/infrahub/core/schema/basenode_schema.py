@@ -6,7 +6,7 @@ import os
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Union, overload
 
-from infrahub_sdk.utils import compare_lists, intersection
+from infrahub_sdk_internal.utils import compare_lists, intersection
 from pydantic import field_validator
 
 from infrahub.core.constants import RelationshipKind

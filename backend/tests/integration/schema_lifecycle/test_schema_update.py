@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 import pytest
-from infrahub_sdk import InfrahubClient
+from infrahub_sdk_internal import InfrahubClient
 
 from .shared import (
     TestSchemaLifecycleBase,

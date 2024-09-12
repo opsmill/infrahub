@@ -4,7 +4,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 import typer
-from infrahub_sdk.async_typer import AsyncTyper
+from infrahub_sdk_internal.async_typer import AsyncTyper
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler

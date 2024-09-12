@@ -6,8 +6,8 @@ from collections import defaultdict
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
-from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
+from infrahub_sdk_internal.topological_sort import DependencyCycleExistsError, topological_sort
+from infrahub_sdk_internal.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel
 
 from infrahub import lock

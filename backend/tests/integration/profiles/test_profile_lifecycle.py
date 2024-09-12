@@ -1,6 +1,6 @@
 import pytest
 from graphql import graphql
-from infrahub_sdk.client import InfrahubClient
+from infrahub_sdk_internal.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.node import Node

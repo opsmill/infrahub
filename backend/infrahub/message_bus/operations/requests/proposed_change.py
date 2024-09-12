@@ -32,8 +32,8 @@ from infrahub.message_bus.types import (
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 
 if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNode
-    from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
+    from infrahub_sdk_internal.node import InfrahubNode
+    from infrahub_sdk_internal.protocols import CoreGeneratorDefinition, CoreProposedChange
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema_manager import SchemaBranch

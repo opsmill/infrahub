@@ -1,7 +1,7 @@
 import uuid
 
 import pytest
-from infrahub_sdk import UUIDT, InfrahubClient
+from infrahub_sdk_internal import UUIDT, InfrahubClient
 
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations.schema.node_attribute_add import (

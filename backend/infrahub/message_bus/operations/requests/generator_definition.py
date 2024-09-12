@@ -1,6 +1,6 @@
 from typing import Optional
 
-from infrahub_sdk import UUIDT
+from infrahub_sdk_internal import UUIDT
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp

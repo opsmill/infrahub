@@ -1,9 +1,9 @@
 import os
 
-from infrahub_sdk import InfrahubNode
-from infrahub_sdk.exceptions import ModuleImportError
-from infrahub_sdk.protocols import CoreGeneratorInstance
-from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
+from infrahub_sdk_internal import InfrahubNode
+from infrahub_sdk_internal.exceptions import ModuleImportError
+from infrahub_sdk_internal.protocols import CoreGeneratorInstance
+from infrahub_sdk_internal.schema import InfrahubGeneratorDefinitionConfig
 
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind

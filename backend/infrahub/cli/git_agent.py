@@ -5,9 +5,9 @@ import signal
 from typing import TYPE_CHECKING, Any
 
 import typer
-from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.async_typer import AsyncTyper
-from infrahub_sdk.exceptions import Error as SdkError
+from infrahub_sdk_internal import Config, InfrahubClient
+from infrahub_sdk_internal.async_typer import AsyncTyper
+from infrahub_sdk_internal.exceptions import Error as SdkError
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 

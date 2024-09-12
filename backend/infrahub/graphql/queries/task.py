@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 
 from graphene import Field, Int, List, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
+from infrahub_sdk_internal.utils import extract_fields_first_node
 
 from infrahub.core.task import Task as TaskNode
 from infrahub.graphql.types import TaskNodes

@@ -1,7 +1,7 @@
 import time
 from urllib.parse import urlparse
 
-from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk_internal import Config, InfrahubClientSync
 
 
 class LocustInfrahubClient(InfrahubClientSync):

@@ -1,4 +1,4 @@
-from infrahub_sdk import InfrahubClient
+from infrahub_sdk_internal import InfrahubClient
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.git import InfrahubRepository

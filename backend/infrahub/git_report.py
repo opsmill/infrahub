@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.task_report import TaskReport
+from infrahub_sdk_internal.task_report import TaskReport
 
 from infrahub.core.constants import RepositoryOperationalStatus
 

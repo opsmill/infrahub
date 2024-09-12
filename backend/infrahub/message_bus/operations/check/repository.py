@@ -1,6 +1,6 @@
 from typing import List
 
-from infrahub_sdk import UUIDT
+from infrahub_sdk_internal import UUIDT
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind

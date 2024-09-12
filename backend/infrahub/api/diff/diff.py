@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Depends, Request
-from infrahub_sdk.utils import compare_lists
+from infrahub_sdk_internal.utils import compare_lists
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry

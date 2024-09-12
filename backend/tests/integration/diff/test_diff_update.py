@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk_internal.exceptions import GraphQLError
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind, ProposedChangeState
@@ -22,7 +22,7 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk_internal import InfrahubClient
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase

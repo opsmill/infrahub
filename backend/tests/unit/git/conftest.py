@@ -8,9 +8,9 @@ from typing import Dict
 import pytest
 import ujson
 from git import Repo
-from infrahub_sdk import UUIDT, Config, InfrahubClient, InfrahubNode
-from infrahub_sdk import SchemaRoot as ClientSchemaRoot
-from infrahub_sdk.branch import BranchData
+from infrahub_sdk_internal import UUIDT, Config, InfrahubClient, InfrahubNode
+from infrahub_sdk_internal import SchemaRoot as ClientSchemaRoot
+from infrahub_sdk_internal.branch import BranchData
 from pytest_httpx import HTTPXMock
 
 from infrahub.core.constants import InfrahubKind

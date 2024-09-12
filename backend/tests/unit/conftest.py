@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 import pendulum
 import pytest
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk_internal import UUIDT, Config, InfrahubClient
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 

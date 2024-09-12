@@ -8,7 +8,7 @@ from .protocols_base import CoreNode, CoreNodeSync
 
 if TYPE_CHECKING:
     from datetime import datetime
-    from infrahub_sdk.node import RelatedNodeSync, RelationshipManagerSync, RelatedNode, RelationshipManager
+    from infrahub_sdk_internal.node import RelatedNodeSync, RelationshipManagerSync, RelatedNode, RelationshipManager
     from .protocols_base import String, StringOptional, Integer, IntegerOptional, Boolean, BooleanOptional, URL, URLOptional, Dropdown, DropdownOptional, Enum, EnumOptional, DateTime, DateTimeOptional, IPHost, IPHostOptional, IPNetwork, IPNetworkOptional, HashedPassword, HashedPasswordOptional, JSONAttribute, JSONAttributeOptional, ListAttribute, ListAttributeOptional
 
 # pylint: disable=too-many-ancestors
@@ -59,7 +59,7 @@ class {{ model.namespace }}{{ model.name }}({{ model | inheritance }}):
 {% endfor %}
 
 # ---------------------------------------------
-# SYNC 
+# SYNC
 # ---------------------------------------------
 {% for generic in generics %}
 class {{ generic.namespace }}{{ generic.name }}Sync(CoreNodeSync):

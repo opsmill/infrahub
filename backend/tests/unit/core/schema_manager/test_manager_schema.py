@@ -3,7 +3,7 @@ import uuid
 
 import pytest
 from deepdiff import DeepDiff
-from infrahub_sdk.utils import compare_lists
+from infrahub_sdk_internal.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch

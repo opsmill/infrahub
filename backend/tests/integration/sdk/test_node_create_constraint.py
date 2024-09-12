@@ -2,8 +2,8 @@ import re
 from typing import Any, Dict
 
 import pytest
-from infrahub_sdk import InfrahubClient
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk_internal import InfrahubClient
+from infrahub_sdk_internal.exceptions import GraphQLError
 
 from infrahub.core import registry
 from infrahub.core.node import Node

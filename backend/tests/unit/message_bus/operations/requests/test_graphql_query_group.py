@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 import ujson
-from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk_internal import Config, InfrahubClient
 from pytest_httpx import HTTPXMock
 
 from infrahub.database import InfrahubDatabase

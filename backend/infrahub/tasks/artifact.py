@@ -1,6 +1,6 @@
 from typing import Union
 
-from infrahub_sdk import InfrahubNode
+from infrahub_sdk_internal import InfrahubNode
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind

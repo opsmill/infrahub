@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, AsyncGenerator
 
 import pytest
-from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk_internal import Config, InfrahubClient
 
 from infrahub.core.constants import InfrahubKind, ProposedChangeState
 from infrahub.core.manager import NodeManager

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from infrahub_sdk import InfrahubClientSync
+from infrahub_sdk_internal import InfrahubClientSync
 
 from .config import config
 from .utils import prepare_node_attributes

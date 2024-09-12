@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk_internal.exceptions import GraphQLError
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
@@ -18,7 +18,7 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk_internal import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator

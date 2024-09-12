@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from infrahub_sdk import Config, InfrahubClient, NodeNotFoundError
+from infrahub_sdk_internal import Config, InfrahubClient, NodeNotFoundError
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind

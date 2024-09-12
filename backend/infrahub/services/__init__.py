@@ -1,7 +1,7 @@
 from typing import Awaitable, Callable, Optional
 
-from infrahub_sdk import InfrahubClient
-from infrahub_sdk.task_report import TaskReport
+from infrahub_sdk_internal import InfrahubClient
+from infrahub_sdk_internal.task_report import TaskReport
 
 from infrahub.components import ComponentType
 from infrahub.database import InfrahubDatabase

@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
-from infrahub_sdk.batch import BatchTask, InfrahubBatch
+from infrahub_sdk_internal.batch import BatchTask, InfrahubBatch
 from rich.progress import Progress
 
 from infrahub.core.node import Node

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from enum import Enum
 
-from infrahub_sdk.client import NodeDiff  # noqa: TCH002
+from infrahub_sdk_internal.client import NodeDiff  # noqa: TCH002
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus

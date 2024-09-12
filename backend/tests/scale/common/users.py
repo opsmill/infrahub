@@ -1,7 +1,7 @@
 import time
 
 import common.stagers
-from infrahub_sdk import Config
+from infrahub_sdk_internal import Config
 from locust import User, task
 
 from .config import config

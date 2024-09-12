@@ -12,7 +12,7 @@ from graphql.language import (
     SelectionSetNode,
     StringValueNode,
 )
-from infrahub_sdk.utils import deep_merge_dict
+from infrahub_sdk_internal.utils import deep_merge_dict
 
 if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema

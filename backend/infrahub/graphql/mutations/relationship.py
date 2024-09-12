@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
-from infrahub_sdk.utils import compare_lists
+from infrahub_sdk_internal.utils import compare_lists
 
 from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.manager import NodeManager

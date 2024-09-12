@@ -17,7 +17,7 @@ from .base import TestIpamReconcileBase
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk_internal import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
 

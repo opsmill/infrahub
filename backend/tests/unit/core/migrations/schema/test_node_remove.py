@@ -1,4 +1,4 @@
-from infrahub_sdk import UUIDT, InfrahubClient
+from infrahub_sdk_internal import UUIDT, InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch

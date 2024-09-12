@@ -17,8 +17,8 @@ from typing import (
     overload,
 )
 
-from infrahub_sdk import UUIDT
-from infrahub_sdk.utils import intersection, is_valid_uuid
+from infrahub_sdk_internal import UUIDT
+from infrahub_sdk_internal.utils import intersection, is_valid_uuid
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry

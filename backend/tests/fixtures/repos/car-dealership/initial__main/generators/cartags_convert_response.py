@@ -1,4 +1,4 @@
-from infrahub_sdk.generator import InfrahubGenerator
+from infrahub_sdk_internal.generator import InfrahubGenerator
 
 
 class Generator(InfrahubGenerator):

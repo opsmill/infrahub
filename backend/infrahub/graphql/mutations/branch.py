@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import pydantic
 from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, String
-from infrahub_sdk.utils import extract_fields, extract_fields_first_node
+from infrahub_sdk_internal.utils import extract_fields, extract_fields_first_node
 from opentelemetry import trace
 from typing_extensions import Self
 

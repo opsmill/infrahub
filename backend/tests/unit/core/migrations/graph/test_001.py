@@ -1,4 +1,4 @@
-from infrahub_sdk import UUIDT
+from infrahub_sdk_internal import UUIDT
 
 from infrahub.core.migrations.graph import Migration001
 from infrahub.database import InfrahubDatabase

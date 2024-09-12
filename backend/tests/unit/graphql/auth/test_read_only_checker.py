@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from graphql import OperationType
-from infrahub_sdk.analyzer import GraphQLOperation
+from infrahub_sdk_internal.analyzer import GraphQLOperation
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.branch import Branch

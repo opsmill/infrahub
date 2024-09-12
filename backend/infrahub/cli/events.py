@@ -3,7 +3,7 @@ import asyncio
 import typer
 import ujson
 from aio_pika.abc import AbstractIncomingMessage
-from infrahub_sdk.async_typer import AsyncTyper
+from infrahub_sdk_internal.async_typer import AsyncTyper
 from rich import print as rprint
 
 from infrahub import config

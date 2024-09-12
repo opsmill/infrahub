@@ -8,7 +8,7 @@ from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
 
 import pytest
 import ujson
-from infrahub_sdk.utils import str_to_bool
+from infrahub_sdk_internal.utils import str_to_bool
 
 from infrahub import config
 from infrahub.core import registry

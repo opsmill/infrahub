@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Literal, Optional, TypeVar, Union, overload
 
-from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
+from infrahub_sdk_internal.utils import deep_merge_dict, is_valid_uuid
 
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator

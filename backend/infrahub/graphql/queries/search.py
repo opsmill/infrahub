@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 
 from graphene import Boolean, Field, Int, List, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node, is_valid_uuid
+from infrahub_sdk_internal.utils import extract_fields_first_node, is_valid_uuid
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager

@@ -4,7 +4,7 @@ from typing import Any, Optional
 import httpx
 import ujson
 from fastapi import FastAPI
-from infrahub_sdk.types import HTTPMethod
+from infrahub_sdk_internal.types import HTTPMethod
 
 
 async def dummy_async_request(

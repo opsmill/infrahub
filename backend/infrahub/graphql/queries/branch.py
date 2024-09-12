@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import ID, Field, List, String
-from infrahub_sdk.utils import extract_fields_first_node
+from infrahub_sdk_internal.utils import extract_fields_first_node
 
 from infrahub.graphql.types import BranchType
 

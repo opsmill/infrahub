@@ -2,7 +2,7 @@ import logging
 import sys
 
 import typer
-from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk_internal import Config, InfrahubClientSync
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind

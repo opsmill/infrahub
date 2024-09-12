@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk_internal.utils import extract_fields
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality

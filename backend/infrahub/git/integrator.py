@@ -10,20 +10,20 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 import jinja2
 import ujson
 import yaml
-from infrahub_sdk import (
+from infrahub_sdk_internal import (
     InfrahubClient,
     InfrahubNode,
     InfrahubRepositoryConfig,
     ValidationError,
 )
-from infrahub_sdk.schema import (
+from infrahub_sdk_internal.schema import (
     InfrahubCheckDefinitionConfig,
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
 )
-from infrahub_sdk.utils import compare_lists
-from infrahub_sdk.yaml import SchemaFile
+from infrahub_sdk_internal.utils import compare_lists
+from infrahub_sdk_internal.yaml import SchemaFile
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 
@@ -35,9 +35,9 @@ from infrahub.log import get_logger
 if TYPE_CHECKING:
     import types
 
-    from infrahub_sdk.checks import InfrahubCheck
-    from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig
-    from infrahub_sdk.transforms import InfrahubTransform
+    from infrahub_sdk_internal.checks import InfrahubCheck
+    from infrahub_sdk_internal.schema import InfrahubRepositoryArtifactDefinitionConfig
+    from infrahub_sdk_internal.transforms import InfrahubTransform
 
     from infrahub.message_bus import messages
 

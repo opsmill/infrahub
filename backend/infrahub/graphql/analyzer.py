@@ -1,8 +1,8 @@
 from typing import Any, Optional
 
 from graphql import GraphQLSchema, OperationType
-from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk_internal.analyzer import GraphQLQueryAnalyzer
+from infrahub_sdk_internal.utils import extract_fields
 
 from infrahub.core.branch import Branch
 from infrahub.graphql.utils import extract_schema_models

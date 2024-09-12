@@ -1,5 +1,5 @@
 import pytest
-from infrahub_sdk.client import NodeDiff
+from infrahub_sdk_internal.client import NodeDiff
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch

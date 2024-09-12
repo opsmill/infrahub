@@ -1,4 +1,4 @@
-from infrahub_sdk.checks import InfrahubCheck
+from infrahub_sdk_internal.checks import InfrahubCheck
 
 
 class Check(InfrahubCheck):

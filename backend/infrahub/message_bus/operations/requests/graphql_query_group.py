@@ -1,7 +1,7 @@
 from typing import List
 
-from infrahub_sdk import InfrahubClient, InfrahubNode
-from infrahub_sdk.utils import dict_hash
+from infrahub_sdk_internal import InfrahubClient, InfrahubNode
+from infrahub_sdk_internal.utils import dict_hash
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.log import get_logger
