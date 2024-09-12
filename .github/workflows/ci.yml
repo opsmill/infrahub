@@ -24,7 +24,7 @@ env:
   INFRAHUB_IMAGE_VER: "local"
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_TEST_IN_DOCKER: 1
-  VALE_VERSION: "3.0.7"
+  VALE_VERSION: "3.7.1"
   GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
   METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
 
@@ -556,7 +556,8 @@ jobs:
         env:
           VALE_VERSION: ${{ env.VALE_VERSION }}
       - name: "Validate documentation style"
-        run: "./vale ."
+        run: ./vale $(find . -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing-playwright:
     defaults:

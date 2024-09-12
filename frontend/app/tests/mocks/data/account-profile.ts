@@ -1,108 +1,110 @@
+import { gql } from "@apollo/client";
+
 export const profileId = "d07bb58e-8394-4053-a198-9cef84e7d6c0";
 
-export const profileDetailsMocksQuery = `
-query {
-  AccountProfile {
-    id
-    display_label
+export const profileDetailsMocksQuery = gql`
+  query GET_PROFILE_DETAILS {
+    AccountProfile {
+      id
+      display_label
       name {
-          value
-          updated_at
-          is_protected
-          is_visible
-          source {
-            id
-            display_label
-            __typename
-          }
-          owner {
-            id
-            display_label
-            __typename
-          }
+        value
+        updated_at
+        is_protected
+        is_visible
+        source {
+          id
+          display_label
+          __typename
+        }
+        owner {
+          id
+          display_label
+          __typename
+        }
       }
       password {
-          value
-          updated_at
-          is_protected
-          is_visible
-          source {
-            id
-            display_label
-            __typename
-          }
-          owner {
-            id
-            display_label
-            __typename
-          }
+        value
+        updated_at
+        is_protected
+        is_visible
+        source {
+          id
+          display_label
+          __typename
+        }
+        owner {
+          id
+          display_label
+          __typename
+        }
       }
       label {
-          value
-          updated_at
-          is_protected
-          is_visible
-          source {
-            id
-            display_label
-            __typename
-          }
-          owner {
-            id
-            display_label
-            __typename
-          }
+        value
+        updated_at
+        is_protected
+        is_visible
+        source {
+          id
+          display_label
+          __typename
+        }
+        owner {
+          id
+          display_label
+          __typename
+        }
       }
       description {
-          value
-          updated_at
-          is_protected
-          is_visible
-          source {
-            id
-            display_label
-            __typename
-          }
-          owner {
-            id
-            display_label
-            __typename
-          }
+        value
+        updated_at
+        is_protected
+        is_visible
+        source {
+          id
+          display_label
+          __typename
+        }
+        owner {
+          id
+          display_label
+          __typename
+        }
       }
       account_type {
-          value
-          updated_at
-          is_protected
-          is_visible
-          source {
-            id
-            display_label
-            __typename
-          }
-          owner {
-            id
-            display_label
-            __typename
-          }
+        value
+        updated_at
+        is_protected
+        is_visible
+        source {
+          id
+          display_label
+          __typename
+        }
+        owner {
+          id
+          display_label
+          __typename
+        }
       }
       role {
-          value
-          updated_at
-          is_protected
-          is_visible
-          source {
-            id
-            display_label
-            __typename
-          }
-          owner {
-            id
-            display_label
-            __typename
-          }
+        value
+        updated_at
+        is_protected
+        is_visible
+        source {
+          id
+          display_label
+          __typename
+        }
+        owner {
+          id
+          display_label
+          __typename
+        }
       }
+    }
   }
-}
 `;
 
 export const profilesDetailsMocksQuery = `

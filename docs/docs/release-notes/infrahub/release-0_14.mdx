@@ -31,7 +31,7 @@ This release focuses on preparing for the open beta by cleaning up and improving
 
 ### Unified storage
 
-#### Resource Manager
+#### Resource manager
 
 The resource manager simplifies resource management and allocation.
 This initial implementation supports IP Prefixes and IP Addresses, with future support for additional resources like VLAN, IDs, and interfaces.
@@ -62,7 +62,7 @@ Applied to the network industry:
 
 The fields that will compose the `human_friendly_id` must be defined in the schema
 
-##### hfid support in GraphQL
+##### `hfid` support in GraphQL
 
 `hfid` can be used as an alternative to the ID in most GraphQL operations, including:
 
@@ -77,7 +77,7 @@ The fields that will compose the `human_friendly_id` must be defined in the sche
 
 We have significantly improved and added new content to the documentation, including a new FAQ section.
 
-## Breaking Changes
+## Breaking changes
 
 ### Remove support for non-isolated branch
 
@@ -86,7 +86,7 @@ Although useful, it posed challenges for operations dependent on other nodes in 
 
 All branches now operate in isolated mode by default, similar to branches in Git. A branch need to be rebased to stay in sync with main.
 
-## Migration Guide
+## Migration guide
 
 To migrate your instance of Infrahub to the latest version, please run the following commands and restart all instances of Infrahub.
 

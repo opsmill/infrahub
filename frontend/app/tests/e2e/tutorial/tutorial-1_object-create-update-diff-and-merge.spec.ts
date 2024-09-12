@@ -131,6 +131,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Validate merged changes in main", async () => {
       await page.getByTestId("branch-list-display-button").click();
       await page.getByTestId("branch-list-dropdown").getByText("main", { exact: true }).click();
+      await expect(page.getByTestId("branch-list-display-button")).toContainText("main");
       await page.getByTestId("sidebar-menu").getByRole("link", { name: "Tenant" }).click();
       await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");
     });
@@ -149,7 +150,9 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page
         .getByRole("option", { name: format(dateBeforeTest, "h:mm aa"), exact: true })
         .click();
-      await expect(page.getByRole("link", { name: "my-first-tenant" })).not.toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "Changes from branch cr1234" })
+      ).not.toBeVisible();
     });
 
     await test.step("Row my-first-tenant is visible again when we reset date input", async () => {

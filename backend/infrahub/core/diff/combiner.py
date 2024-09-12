@@ -109,8 +109,9 @@ class DiffCombiner:
         }
         return actions_map[(earlier, later)]
 
-    def _combine_conflicts(
-        self, earlier: EnrichedDiffConflict | None, later: EnrichedDiffConflict | None
+    @staticmethod
+    def combine_conflicts(
+        earlier: EnrichedDiffConflict | None, later: EnrichedDiffConflict | None
     ) -> EnrichedDiffConflict | None:
         if later is None:
             return None
@@ -143,8 +144,15 @@ class DiffCombiner:
             later_property = later_props_by_type[earlier_property.property_type]
             if not self._should_include(earlier=earlier_property.action, later=later_property.action):
                 continue
-            combined_conflict = self._combine_conflicts(
-                earlier=earlier_property.conflict, later=later_property.conflict
+            combined_conflict = self.combine_conflicts(earlier=earlier_property.conflict, later=later_property.conflict)
+            combined_properties.add(
+                replace(
+                    later_property,
+                    previous_label=earlier_property.previous_label,
+                    previous_value=earlier_property.previous_value,
+                    action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
+                    conflict=combined_conflict,
+                )
             )
             combined_properties.add(
                 replace(
@@ -225,7 +233,7 @@ class DiffCombiner:
             peer_label=peer_label,
             path_identifier=final_element.path_identifier,
             properties=combined_properties,
-            conflict=self._combine_conflicts(earlier=ordered_elements[0].conflict, later=final_element.conflict),
+            conflict=self.combine_conflicts(earlier=ordered_elements[0].conflict, later=final_element.conflict),
         )
 
     def _combined_cardinality_many_relationship_elements(
@@ -342,9 +350,7 @@ class DiffCombiner:
                     path_identifier=node_pair.later.path_identifier,
                     attributes=combined_attributes,
                     relationships=combined_relationships,
-                    conflict=self._combine_conflicts(
-                        earlier=node_pair.earlier.conflict, later=node_pair.later.conflict
-                    ),
+                    conflict=self.combine_conflicts(earlier=node_pair.earlier.conflict, later=node_pair.later.conflict),
                 )
             )
         return combined_nodes

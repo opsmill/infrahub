@@ -64,6 +64,7 @@
     "graphql": "^16.8.1",
     "handlebars": "^4.7.8",
     "jotai": "^2.7.2",
+    "json-to-graphql-query": "^2.2.5",
     "prismjs": "^1.29.0",
     "query-string": "^9.0.0",
     "ramda": "^0.29.1",
@@ -96,7 +97,7 @@
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",
     "@graphql-codegen/typescript": "^4.0.9",
-    "@playwright/test": "^1.42.1",
+    "@playwright/test": "^1.47.0",
     "@testing-library/react": "^14.2.2",
     "@types/loadable__component": "^5.13.9",
     "@types/node": "^20.12.3",

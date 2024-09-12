@@ -46,10 +46,10 @@ For every attribute the following filters will be generated (replace attribute w
 
 - `attribute__value`: filter for a single attribute value
 - `attribute__values`: (list) filter for multiple attribute values
-- `attribute__is_visible`: (bool) filter for the is_visible property of an attribute
-- `attribute__is_protected`: (bool) filter for the is_protected property of an attribute
-- `attribute__source__id`: filter for the source property of an attribute
-- `attribute__owner__id`: filter for the owner property of an attribute
+- `attribute__is_visible`: (boolean) filter for the `is_visible` property of an attribute
+- `attribute__is_protected`: (boolean) filter for the `is_protected` property of an attribute
+- `attribute__source__id`: filter for the `source` property of an attribute
+- `attribute__owner__id`: filter for the `owner` property of an attribute
 
 ### Relationship filters
 
@@ -215,7 +215,7 @@ The downside of using this method, is that it will not construct Python objects 
 
 By default, the result of a query will include attributes, relationships of cardinality one and relationships of kind Attribute or Parent. Relationships that are included in a query will be automatically initialized which means the ID, type and display name of the peers will be included in the query. But the related node itself will not be included.
 
-To explore this in a bit more details, we are going to assume the following simple schema has been loaded into Infrahub
+To explore this in a bit more details, we are going to assume the following schema has been loaded into Infrahub
 
 ```yaml
 ---
