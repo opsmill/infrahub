@@ -1302,3 +1302,108 @@ async def test_removing_mandatory_relationship_not_allowed(db: InfrahubDatabase,
     assert result.errors is not None
     assert len(result.errors) == 1
     assert result.errors[0].message == "Too few relationships, min 1 at owner"
+
+
+async def test_updating_relationship_when_peer_side_is_required(
+    db: InfrahubDatabase, default_branch, animal_person_schema
+):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+    person2 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person2.new(db=db, name="Jill")
+    await person2.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+    dog2 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog2.new(db=db, name="Apollo", breed="Labrador", owner=person2)
+    await dog2.save(db=db)
+
+    query = """
+    mutation {
+        TestPersonUpdate(data: {
+            id: "%(person_id)s",
+            animals: [
+                {id: "%(animal1_id)s"},
+                {id: "%(animal2_id)s"},
+            ]
+        }) {
+            ok
+        }
+    }
+    """ % {"person_id": person1.id, "animal1_id": dog1.id, "animal2_id": dog2.id}
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors
+    assert len(result.errors) == 1
+    assert f"Node {dog2.id} has 2 peers for person__animal, maximum of 1 allowed" in result.errors[0].message
+
+
+async def test_updating_relationship_when_peer_side_is_optional(
+    db: InfrahubDatabase, default_branch, animal_person_schema
+):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+    person2 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person2.new(db=db, name="Jill")
+    await person2.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+    dog2 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog2.new(db=db, name="Apollo", breed="Labrador", owner=person2)
+    await dog2.save(db=db)
+
+    query = """
+    mutation {
+        TestPersonUpdate(data: {
+            id: "%(person_id)s",
+            best_friends: [
+                {id: "%(animal1_id)s"},
+                {id: "%(animal2_id)s"},
+            ]
+        }) {
+            ok
+        }
+    }
+    """ % {"person_id": person1.id, "animal1_id": dog1.id, "animal2_id": dog2.id}
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data["TestPersonUpdate"]["ok"]
+
+    updated_nodes = await NodeManager.get_many(db=db, ids=[person1.id, person2.id, dog1.id, dog2.id])
+    updated_person1 = updated_nodes[person1.id]
+    best_friends = await updated_person1.best_friends.get(db=db)
+    assert {a.peer_id for a in best_friends} == {dog1.id, dog2.id}
+    updated_person2 = updated_nodes[person2.id]
+    best_friends = await updated_person2.best_friends.get(db=db)
+    assert len(best_friends) == 0
+    updated_dog1 = updated_nodes[dog1.id]
+    best_friend = await updated_dog1.best_friend.get(db=db)
+    assert best_friend.peer_id == person1.id
+    updated_dog2 = updated_nodes[dog2.id]
+    best_friend = await updated_dog2.best_friend.get(db=db)
+    assert best_friend.peer_id == person1.id
