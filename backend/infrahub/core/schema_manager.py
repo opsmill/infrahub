@@ -1058,6 +1058,24 @@ class SchemaBranch:
                     break
                 continue
 
+            # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
+            # then use that attribute as the human_friendly_id
+            if not node.human_friendly_id and node.uniqueness_constraints:
+                for constraint_paths in node.uniqueness_constraints:
+                    if len(constraint_paths) > 1:
+                        continue
+                    constraint_path = constraint_paths[0]
+                    schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                    if (
+                        schema_path.is_type_attribute
+                        and schema_path.attribute_property_name == "value"
+                        and schema_path.attribute_schema
+                    ):
+                        node = self.get(name=name, duplicate=True)
+                        node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
+                        self.set(name=node.kind, schema=node)
+                        break
+
             if node.human_friendly_id and not node.unique_attributes and not node.uniqueness_constraints:
                 uniqueness_constraints: list[str] = []
                 for item in node.human_friendly_id:
