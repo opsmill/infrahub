@@ -586,17 +586,9 @@ max-complexity = 33
     ##################################################################################################
     "ANN001", # Missing type annotation for function argument
     "ANN003", # Missing type annotation for `**kwargs`
-    "ANN202", # Missing return type annotation for private function
     "ANN204", # Missing return type annotation for special method
     "ANN206", # Missing return type annotation for classmethod
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
-]
-
-"backend/infrahub/database/__init__.py" = [
-    ##################################################################################################
-    # Review and change the below later                                                              #
-    ##################################################################################################
-    "ANN201", # Missing return type annotation for public function
 ]
 
 "backend/infrahub/graphql/resolver.py" = [

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar, Union
 
 from neo4j import (
     READ_ACCESS,
@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from .manager import DatabaseManager
 
 validated_database = {}
+R = TypeVar("R")
 
 log = get_logger()
 
@@ -398,9 +399,12 @@ async def get_db(retry: int = 0) -> AsyncDriver:
     return driver
 
 
-def retry_db_transaction(name: str):
-    def func_wrapper(func):
-        async def wrapper(*args: Any, **kwargs):
+def retry_db_transaction(
+    name: str,
+) -> Callable[[Callable[..., Coroutine[Any, Any, R]]], Callable[..., Coroutine[Any, Any, R]]]:
+    def func_wrapper(func: Callable[..., Coroutine[Any, Any, R]]) -> Callable[..., Coroutine[Any, Any, R]]:
+        async def wrapper(*args: Any, **kwargs: Any) -> R:
+            error = Exception()
             for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
                 try:
                     return await func(*args, **kwargs)
@@ -410,11 +414,13 @@ def retry_db_transaction(name: str):
                         f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
                         retry_time=retry_time,
                     )
-                    log.debug("database transaction failed", message=exc.message)
+                    log.debug("Database transaction failed", message=exc.message)
                     TRANSACTION_RETRIES.labels(name).inc()
                     await asyncio.sleep(retry_time)
                     if attempt == config.SETTINGS.database.retry_limit:
-                        raise
+                        error = exc
+                        break
+            raise error
 
         return wrapper
 
