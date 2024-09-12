@@ -10,7 +10,7 @@ class BatchTask:
     task: Callable[[Any], Awaitable[Any]]
     args: tuple[Any, ...]
     kwargs: dict[str, Any]
-    node: Optional[InfrahubNode] = None
+    node: Optional[Any] = None
 
 
 async def execute_batch_task_in_pool(
@@ -43,9 +43,7 @@ class InfrahubBatch:
     def num_tasks(self) -> int:
         return len(self._tasks)
 
-    def add(
-        self, *args: Any, task: Callable[[Any], Awaitable[Any]], node: Optional[InfrahubNode] = None, **kwargs: Any
-    ) -> None:
+    def add(self, *args: Any, task: Callable, node: Optional[Any] = None, **kwargs: Any) -> None:
         self._tasks.append(BatchTask(task=task, node=node, args=args, kwargs=kwargs))
 
     async def execute(self) -> AsyncGenerator:

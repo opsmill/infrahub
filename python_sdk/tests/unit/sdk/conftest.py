@@ -59,10 +59,19 @@ def replace_async_return_annotation():
 
     def replace_annotation(annotation: str) -> str:
         replacements = {
+            "type[SchemaType]": "type[SchemaTypeSync]",
+            "SchemaType": "SchemaTypeSync",
+            "CoreNode": "CoreNodeSync",
+            "Optional[CoreNode]": "Optional[CoreNodeSync]",
+            "Union[str, type[SchemaType]]": "Union[str, type[SchemaTypeSync]]",
+            "Union[InfrahubNode, SchemaType]": "Union[InfrahubNodeSync, SchemaTypeSync]",
+            "Union[list[InfrahubNode], list[SchemaType]]": "Union[list[InfrahubNodeSync], list[SchemaTypeSync]]",
             "InfrahubClient": "InfrahubClientSync",
             "InfrahubNode": "InfrahubNodeSync",
             "list[InfrahubNode]": "list[InfrahubNodeSync]",
             "Optional[InfrahubNode]": "Optional[InfrahubNodeSync]",
+            "Optional[type[SchemaType]]": "Optional[type[SchemaTypeSync]]",
+            "Optional[Union[CoreNode, SchemaType]]": "Optional[Union[CoreNodeSync, SchemaTypeSync]]",
         }
         return replacements.get(annotation) or annotation
 
@@ -89,10 +98,19 @@ def replace_sync_return_annotation() -> str:
 
     def replace_annotation(annotation: str) -> str:
         replacements = {
+            "type[SchemaTypeSync]": "type[SchemaType]",
+            "SchemaTypeSync": "SchemaType",
+            "CoreNodeSync": "CoreNode",
+            "Optional[CoreNodeSync]": "Optional[CoreNode]",
+            "Union[str, type[SchemaTypeSync]]": "Union[str, type[SchemaType]]",
+            "Union[InfrahubNodeSync, SchemaTypeSync]": "Union[InfrahubNode, SchemaType]",
+            "Union[list[InfrahubNodeSync], list[SchemaTypeSync]]": "Union[list[InfrahubNode], list[SchemaType]]",
             "InfrahubClientSync": "InfrahubClient",
             "InfrahubNodeSync": "InfrahubNode",
             "list[InfrahubNodeSync]": "list[InfrahubNode]",
             "Optional[InfrahubNodeSync]": "Optional[InfrahubNode]",
+            "Optional[type[SchemaTypeSync]]": "Optional[type[SchemaType]]",
+            "Optional[Union[CoreNodeSync, SchemaTypeSync]]": "Optional[Union[CoreNode, SchemaType]]",
         }
         return replacements.get(annotation) or annotation
 

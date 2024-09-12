@@ -49,7 +49,7 @@ def load_schemas_from_disk(schemas: list[Path]) -> list[SchemaFile]:
     return schemas_data
 
 
-def load_schemas_from_disk_and_exit(schemas: list[Path]):
+def load_schemas_from_disk_and_exit(schemas: list[Path]) -> list[SchemaFile]:
     has_error = False
     try:
         schemas_data = load_schemas_from_disk(schemas=schemas)

@@ -40,7 +40,7 @@ class UUIDT:
         timestamp: Optional[int] = None,
         hostname: Optional[str] = None,
         random_chars: Optional[str] = None,
-    ):
+    ) -> None:
         self.namespace = namespace or DEFAULT_NAMESPACE
         self.timestamp = timestamp or time.time_ns()
         self.hostname = hostname or HOSTNAME

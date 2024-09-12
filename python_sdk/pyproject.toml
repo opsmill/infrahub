@@ -193,6 +193,7 @@ exclude = [
     "build",
     "dist",
     "examples",
+    "tests"
 ]
 
 
@@ -305,6 +306,26 @@ max-line-length = 150
 max-complexity = 17
 
 [tool.ruff.lint.per-file-ignores]
+
+
+"python_sdk/infrahub_sdk/client.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "PLR0904",  # Too many public methods
+]
+
+
+"python_sdk/infrahub_sdk/**/*.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001",  # Missing type annotation for function argument
+    "ANN201",  # ANN201 Missing return type annotation for public function
+    "ANN202",  # Missing return type annotation for private function
+    "ANN204",  # Missing return type annotation for special method
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+]
 
 "infrahub_sdk/**/*.py" = [
     ##################################################################################################
