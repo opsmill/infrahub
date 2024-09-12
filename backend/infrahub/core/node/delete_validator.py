@@ -1,3 +1,4 @@
+from collections import defaultdict
 from enum import Enum
 from typing import Iterable, Optional, Union
 
@@ -25,7 +26,7 @@ class NodeDeleteIndex:
     def __init__(self, all_schemas_map: dict[str, MainSchemaTypes]) -> None:
         self._all_schemas_map = all_schemas_map
         # {node_schema: {DeleteRelationshipType: {relationship_identifier: peer_node_schema}}}
-        self._dependency_graph: dict[str, dict[DeleteRelationshipType, dict[str, str]]] = {}
+        self._dependency_graph: dict[str, dict[DeleteRelationshipType, dict[str, set[str]]]] = {}
 
     def index(self, start_schemas: Iterable[MainSchemaTypes]) -> None:
         self._index_cascading_deletes(start_schemas=start_schemas)
@@ -37,8 +38,8 @@ class NodeDeleteIndex:
         if kind not in self._dependency_graph:
             self._dependency_graph[kind] = {}
         if relationship_type not in self._dependency_graph[kind]:
-            self._dependency_graph[kind][relationship_type] = {}
-        self._dependency_graph[kind][relationship_type][relationship_identifier] = peer_kind
+            self._dependency_graph[kind][relationship_type] = defaultdict(set)
+        self._dependency_graph[kind][relationship_type][relationship_identifier].add(peer_kind)
 
     def _index_cascading_deletes(self, start_schemas: Iterable[MainSchemaTypes]) -> None:
         kinds_to_check: set[str] = {schema.kind for schema in start_schemas}
@@ -77,11 +78,14 @@ class NodeDeleteIndex:
         full_relationship_identifiers = []
         for node_kind, relationship_type_details in self._dependency_graph.items():
             for relationship_map in relationship_type_details.values():
-                for relationship_identifier, peer_kind in relationship_map.items():
-                    full_relationship_identifiers.append(
-                        FullRelationshipIdentifier(
-                            source_kind=node_kind, identifier=relationship_identifier, destination_kind=peer_kind
-                        )
+                for relationship_identifier, peer_kinds in relationship_map.items():
+                    full_relationship_identifiers.extend(
+                        [
+                            FullRelationshipIdentifier(
+                                source_kind=node_kind, identifier=relationship_identifier, destination_kind=peer_kind
+                            )
+                            for peer_kind in peer_kinds
+                        ]
                     )
         return full_relationship_identifiers
 
