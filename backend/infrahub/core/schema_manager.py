@@ -903,9 +903,12 @@ class SchemaBranch:
             if node.menu_placement:
                 try:
                     placement_node = self.get(name=node.menu_placement, duplicate=False)
-                except SchemaNotFoundError:
-                    raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
-
+                except SchemaNotFoundError as exc:
+                    raise SchemaNotFoundError(
+                        branch_name=self.name,
+                        identifier=node.menu_placement,
+                        message=f"{node.kind} refers to an invalid menu placement node: {node.menu_placement}.",
+                    ) from exc
                 if node == placement_node:
                     raise ValueError(f"{node.kind}: cannot be placed under itself in the menu") from None
 
