@@ -85,6 +85,10 @@ const RelationshipField = ({
 
   const currentParent = data && kind && data[kind]?.edges[0]?.node;
 
+  if (currentParent && !selectedParent) {
+    setSelectedParent(currentParent);
+  }
+
   if (isGeneric) {
     const profiles = store.get(profilesAtom);
     const genericOptions: SelectOption[] = (generic.used_by || [])
