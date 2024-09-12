@@ -1,3 +1,5 @@
+import { RelationshipKind } from "@/screens/objects/types";
+
 export const DEFAULT_BRANCH_NAME = "main";
 
 export const ACCESS_TOKEN_KEY = "access_token";
@@ -193,7 +195,7 @@ export const RELATIONSHIP_VIEW_BLACKLIST = [
   "profiles",
 ];
 
-export const peersKindForForm = ["Attribute", "Parent"];
+export const relationshipKindForForm: Array<RelationshipKind> = ["Attribute", "Parent"];
 
 export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
 

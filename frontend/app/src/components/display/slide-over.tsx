@@ -1,5 +1,5 @@
 import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment } from "react";
+import React, { Fragment, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
@@ -17,6 +17,7 @@ interface Props {
 
 export default function SlideOver(props: Props) {
   const { open, setOpen, title, offset = 0 } = props;
+  const initialFocusRef = useRef(null);
 
   // Need to define full classes so tailwind can compile the css
   const panelWidth = "w-[400px]";
@@ -28,7 +29,7 @@ export default function SlideOver(props: Props) {
 
   return (
     <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={setOpen}>
+      <Dialog as="div" className="relative z-10" onClose={setOpen} initialFocus={initialFocusRef}>
         <Transition.Child
           as={Fragment}
           enter="ease-in-out duration-500"
@@ -47,6 +48,7 @@ export default function SlideOver(props: Props) {
         <div className="before:fixed inset-0 overflow-hidden">
           <div className="absolute inset-0 overflow-hidden">
             <div className="pointer-events-none fixed inset-y-0 right-0 flex">
+              <button type="button" tabIndex={-1} ref={initialFocusRef} />
               <Transition.Child
                 as={Fragment}
                 enter="transform transition ease-in-out duration-500"

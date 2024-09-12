@@ -200,6 +200,7 @@ const Properties = ({ schema }: { schema: IModelSchema }) => {
         <PropertyRow title="Default filter" value={schema.default_filter} />
         <PropertyRow title="Order by" value={schema.order_by} />
         <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
+        <PropertyRow title="Generate profile" value={schema.generate_profile} />
       </div>
 
       <div>

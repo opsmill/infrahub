@@ -14,6 +14,8 @@ test.describe("/proposed-changes diff data", () => {
   });
 
   test("should verify the diff data with conflicts", async ({ page }) => {
+    test.slow();
+
     await test.step("create a new proposed change with reviewers", async () => {
       await page.goto("/proposed-changes");
       await page.getByTestId("add-proposed-changes-button").click();
@@ -31,7 +33,7 @@ test.describe("/proposed-changes diff data", () => {
     await test.step("trigger the diff update", async () => {
       await expect(page.getByText("We are computing the diff")).toBeVisible();
       await page.getByRole("button", { name: "Refresh" }).click();
-      await expect(page.getByText("Diff updated!")).toBeVisible({ timeout: 5 * 60 * 1000 });
+      await expect(page.getByText("Diff updated!")).toBeVisible();
     });
 
     await test.step("check diff data", async () => {
@@ -52,7 +54,7 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("resolve conflict", async () => {
       await page.getByRole("checkbox", { name: "main", exact: true }).click();
-      await expect(page.getByText("Conflict marked as resovled")).toBeVisible();
+      await expect(page.getByText("Conflict marked as resolved")).toBeVisible();
     });
 
     await test.step("filter diff data", async () => {

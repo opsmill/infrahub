@@ -20,13 +20,13 @@ export default defineConfig({
   /* 30s timeout for both assertions and tests (2min in CI) */
   timeout: process.env.CI
     ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
-      ? 4 * 60 * 1000
+      ? 6 * 60 * 1000
       : 2 * 60 * 1000
     : 30 * 1000,
   expect: {
     timeout: process.env.CI
       ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
-        ? 4 * 60 * 1000
+        ? 6 * 60 * 1000
         : 2 * 60 * 1000
       : 30 * 1000,
     toHaveScreenshot: { maxDiffPixels: 5000 },

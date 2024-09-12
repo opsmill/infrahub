@@ -11,3 +11,4 @@ swap:
   (?i:[^/]Graphql): GraphQL
   infrahub(?:\s|$): Infrahub
   (?i:Openconfig): OpenConfig
+  opsmill(?:\s|$): OpsMill

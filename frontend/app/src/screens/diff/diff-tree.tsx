@@ -25,8 +25,6 @@ export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
 
   if (treeData.length <= 1) return null;
 
-  if (treeData.length <= 1) return null;
-
   return (
     <Tree
       itemContent={DiffTreeItem}

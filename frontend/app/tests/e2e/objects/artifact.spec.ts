@@ -13,30 +13,18 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
   });
 
   test("should generate artifacts successfully", async ({ page }) => {
-    let artifactCount = 0;
-    while (artifactCount == 0) {
-      // reload page until we have artifacts defined
-      let json: any;
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
+    await page.goto(
+      '/objects/CoreArtifact?filters=[{"name":"name__value","value":"Startup Config for Edge devices"}]'
+    );
 
-          if (reqData?.operationName === "CoreArtifact" && status === 200) {
-            json = response.json();
-            return true;
-          }
-          return false;
-        }),
-
-        page.goto(
-          // eslint-disable-next-line quotes
-          '/objects/CoreArtifact?filters=[{"name":"name__value","value":"Startup Config for Edge devices"}]'
-        ),
-      ]);
-
-      artifactCount = (await json)?.data?.CoreArtifact?.count;
+    // reload page until we have artifacts defined
+    while (
+      await page.getByRole("link", { name: "startup Config for Edge devices" }).first().isHidden()
+    ) {
+      await page.reload();
+      await expect(page.getByText("Previous")).toBeVisible();
     }
+
     await page.getByRole("link", { name: "startup Config for Edge devices" }).first().click();
     await expect(page.getByText("no aaa root").first()).toBeVisible();
   });

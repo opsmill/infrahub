@@ -8,27 +8,32 @@ The Python SDK (Async or Sync) client can be configured using an instance of the
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
+
   ```python
   from infrahub_sdk import Config, InfrahubClient
   config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
   client = InfrahubClient(config=config)
   ```
+
   </TabItem>
   <TabItem value="Sync">
+
   ```python
   from infrahub_sdk import Config, InfrahubClientSync
   config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
   client = InfrahubClientSync(config=config)
   ```
+
   </TabItem>
 </Tabs>
 
-The following settings can be defined in the Config class
+The following settings can be defined in the `Config` class
 {% for property in properties %}
-
+<!-- vale off -->
 ## {{ property.name }}
 
 **Property**: {{ property.name }}<br />
+<!-- vale on -->
 **Description**: {% if '\n' in property.description %} {% endif %}{{ property.description }}<br />
 **Type**: `{{ property.type }}`<br />
 {% if "default" in property and property.default is not none and property.default != "" and property.type != "object" %}
@@ -40,28 +45,36 @@ The following settings can be defined in the Config class
 **Environment variable**: `{{ property.env_vars | join(", ") | upper | default("", true) }}`<br />
 {% endfor %}
 
+<!-- vale off -->
 ## recorder
 
 **Property**: recorder<br />
+<!-- vale on -->
 **Description**: Select builtin recorder for later replay.<br />
 **Type**: `RecorderType`<br />
 **Default value**: RecorderType.NONE <br />
 
+<!-- vale off -->
 ## custom_recorder
 
 **Property**: custom_recorder<br />
+<!-- vale on -->
 **Description**: Provides a way to record responses from the Infrahub API<br />
 **Type**: `Recorder` (protocol) <br />
 **Default value**: NoRecorder.default <br />
 
+<!-- vale off -->
 ## requester
 
 **Property**: requester<br />
+<!-- vale on -->
 **Type**: `AsyncRequester`<br />
 **Default value**: None <br />
 
+<!-- vale off -->
 ## sync_requester
 
 **Property**: sync_requester<br />
+<!-- vale on -->
 **Type**: `SyncRequester`<br />
 **Default value**: None <br />

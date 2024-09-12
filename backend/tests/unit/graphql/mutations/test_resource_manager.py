@@ -614,8 +614,8 @@ mutation CreateNumberPool(
     $name: String!,
     $node: String!,
     $node_attribute: String!,
-    $start_range: Int!,
-    $end_range: Int!
+    $start_range: BigInt!,
+    $end_range: BigInt!
   ) {
   CoreNumberPoolCreate(
     data: {
@@ -640,8 +640,8 @@ mutation UpdateNumberPool(
     $name: String,
     $node: String,
     $node_attribute: String,
-    $start_range: Int,
-    $end_range: Int
+    $start_range: BigInt,
+    $end_range: BigInt
   ) {
   CoreNumberPoolUpdate(
     data: {
