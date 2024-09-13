@@ -1,4 +1,5 @@
 import logging
+import time
 import uuid
 from collections import defaultdict
 from ipaddress import IPv4Network, IPv6Network
@@ -6,7 +7,13 @@ from typing import Optional, cast
 
 from infrahub_sdk import UUIDT, InfrahubClient, NodeStore
 from infrahub_sdk.batch import InfrahubBatch
-from infrahub_sdk.protocols import CoreAccount, CoreIPAddressPool, CoreIPPrefixPool, CoreStandardGroup, IpamNamespace
+from infrahub_sdk.protocols import (
+    CoreAccount,
+    CoreIPAddressPool,
+    CoreIPPrefixPool,
+    CoreStandardGroup,
+    IpamNamespace,
+)
 from infrahub_sdk.protocols_base import CoreNode
 from protocols import (
     InfraAutonomousSystem,
@@ -27,6 +34,94 @@ from protocols import (
     OrganizationProvider,
 )
 from pydantic import BaseModel, ConfigDict, Field
+
+PROFILES = {
+    "small": {"num_sites": 2, "num_device_per_site": 2, "has_bgp_mesh": False, "has_branch": False},
+    "medium": {"num_sites": 5, "num_device_per_site": 6, "has_bgp_mesh": True, "has_branch": True},
+    "large": {"num_sites": 20, "num_device_per_site": 25, "has_bgp_mesh": False, "has_branch": False},
+    "x-large": {"num_sites": 200, "num_device_per_site": 50, "has_bgp_mesh": False, "has_branch": False},
+}
+
+
+class ConfigError(Exception):
+    pass
+
+
+# Define the global configuration object
+class GlobalConfig:
+    def __init__(self) -> None:
+        self.default_profile_name = "medium"
+        self.num_sites = None
+        self.num_device_per_site = None
+        self.has_bgp_mesh = False
+        self.has_branch = False
+
+    def __set_config(self, num_sites: int, num_device_per_site: int, has_bgp_mesh: bool, has_branch: bool) -> None:
+        # TODO: I guess it could be defined in the attribute itself?
+        # Ensure that num_site is between boudaries
+        if 1 <= int(num_sites) <= 200:
+            self.num_sites = int(num_sites)
+        else:
+            raise ConfigError(f"Value for `num_sites` ({num_sites}) should be between 1 and 200.")
+
+        # Ensure that num_site is between boudaries
+        if 2 <= int(num_device_per_site) <= 100:
+            self.num_device_per_site = int(num_device_per_site)
+        else:
+            raise ConfigError(f"Value for `num_device_per_site` ({num_device_per_site}) should be between 2 and 100.")
+
+        self.has_bgp_mesh = has_bgp_mesh
+        self.has_branch = has_branch
+
+    def load_config(
+        self,
+        profile: str = None,
+        num_sites: int = None,
+        num_device_per_site: int = None,
+        has_bgp_mesh: bool = None,
+        has_branch: bool = None,
+    ) -> None:
+        if profile:
+            # Warn user that we are going to ignore his input
+            if num_sites or num_device_per_site or has_bgp_mesh or has_branch:
+                raise ConfigError("You can't set additional config items if you've already provided a profile.")
+
+            # Make sure profile exists
+            if profile not in PROFILES:
+                raise ConfigError(
+                    f"Value for profile ({profile}) doesn't exist, please pick one among {PROFILES.keys()}."
+                )
+
+            # Load prebuilt profile
+            profile = PROFILES[profile]
+            self.__set_config(
+                profile["num_sites"], profile["num_device_per_site"], profile["has_bgp_mesh"], profile["has_branch"]
+            )
+        else:
+            # Load from manual arguments, if provided
+            # If user only provides a part of the arguments e.g. only `number of site`
+            # we fall back on medium profile by default
+            default_profile = PROFILES[self.default_profile_name]
+
+            self.__set_config(
+                num_sites=num_sites if num_sites is not None else default_profile["num_sites"],
+                num_device_per_site=num_device_per_site
+                if num_device_per_site is not None
+                else default_profile["num_device_per_site"],
+                has_bgp_mesh=has_bgp_mesh if has_bgp_mesh is not None else default_profile["has_bgp_mesh"],
+                has_branch=has_branch if has_branch is not None else default_profile["has_branch"],
+            )
+
+    def __repr__(self) -> str:
+        return f"Config(Sites: {self.num_sites}, Devices per site: {self.num_device_per_site}, BGP mesh: {self.has_bgp_mesh}, Additional branches: {self.has_branch})"
+
+
+def translate_str_to_bool(key: str, value: str) -> bool:
+    if value == "True":
+        return True
+    if value == "False":
+        return False
+    raise TypeError(f"Value for {key} should be 'True' or 'False'")
 
 
 # pylint: skip-file
@@ -1687,11 +1782,48 @@ async def prepare_tags(client: InfrahubClient, log: logging.Logger, branch: str,
 #   infrahubctl run models/infrastructure_edge.py
 #
 # ---------------------------------------------------------------
-async def run(client: InfrahubClient, log: logging.Logger, branch: str, num_sites: int = 5) -> None:
+async def run(
+    client: InfrahubClient,
+    log: logging.Logger,
+    branch: str,
+    profile: str = None,
+    num_sites: int = None,
+    num_device_per_site: int = None,
+    has_bgp_mesh: str = None,
+    has_branch: str = None,
+) -> None:
+    # Create timer to keep track of time elapsed
+    start: float = time.time()
+
+    # ------------------------------------------
+    # Config
+    # ------------------------------------------
+    # Create an instance of the global configuration
+    config = GlobalConfig()
+
+    # Translate str to bool
+    bool_has_bgp_mesh: bool = None
+    if has_bgp_mesh is not None:
+        bool_has_bgp_mesh = translate_str_to_bool("has_bgp_mesh", has_bgp_mesh)
+
+    bool_has_branch: bool = None
+    if has_branch is not None:
+        bool_has_branch = translate_str_to_bool("has_branch", has_branch)
+
+    # Load args into the config
+    try:
+        config.load_config(profile, num_sites, num_device_per_site, bool_has_bgp_mesh, bool_has_branch)
+    except ConfigError as ex:
+        log.fatal(ex)
+        return False  # FIXME: What should I return here for the script to fail properly
+
+    # Print config
+    log.info(f"Loading data with {config}")
+
     # ------------------------------------------
     # Create Continents, Countries
     # ------------------------------------------
-    num_sites = int(num_sites)
+    num_sites = int(config.num_sites)
     log.info("Creating Infrastructure Data")
 
     await generate_continents_countries(client=client, log=log, branch=branch)
@@ -1917,3 +2049,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str, num_site
         await branch_scenario_remove_colt(site_name=sites[0].name, client=client, log=log)
         await branch_scenario_conflict_device(site_name=sites[3].name, client=client, log=log)
         await branch_scenario_conflict_platform(client=client, log=log)
+
+    # Stop the timer and display elapsed time
+    end: float = time.time()
+    log.info(f"Data loaded in {round(end - start)}s")
