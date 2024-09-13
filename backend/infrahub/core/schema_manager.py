@@ -732,9 +732,10 @@ class SchemaBranch:
                         f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
-    def validate_human_friendly_id(self) -> None:
+    def validate_human_friendly_id(self) -> None:  # pylint: disable=too-many-branches
         for name in self.generic_names + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
+            hf_attr_names = set()
 
             if not node_schema.human_friendly_id:
                 continue
@@ -759,6 +760,7 @@ class SchemaBranch:
                             f"{node_schema.kind} HFID is invalid at attribute '{schema_path.attribute_schema.name}', it must end with one of the "
                             f"following properties: {', '.join(required_properties)}"
                         )
+                    hf_attr_names.add(schema_path.attribute_schema.name)
 
                 if schema_path.is_type_relationship and schema_path.relationship_schema:
                     if schema_path.relationship_schema.optional and not (
@@ -771,22 +773,21 @@ class SchemaBranch:
                             f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
                             f"{node_schema.kind}. ({item})"
                         )
-                #     if not schema_path.attribute_schema.unique:
-                #         raise ValueError(
-                #             f"Only unique attribute on related node can be used used in human_friendly_id, "
-                #             f"{schema_path.attribute_schema.name} is not unique on {schema_path.relationship_schema.kind} for "
-                #             f"{node_schema.kind}. ({item})"
-                #         )
 
-                # if (
-                #     schema_path.is_type_attribute
-                #     and len(node_schema.human_friendly_id) == 1
-                #     and not schema_path.attribute_schema.unique
-                # ):
-                #     raise ValueError(
-                #         f"Only unique attribute can be used on their own in human_friendly_id, "
-                #         f"{schema_path.attribute_schema.name} is not unique for {node_schema.kind}. ({item})"
-                #     )
+            # check for uniqueness_constraint with a single attribute
+            if not has_unique_item and node_schema.uniqueness_constraints:
+                for constraint_paths in node_schema.uniqueness_constraints:
+                    if len(constraint_paths) != 1:
+                        continue
+                    constraint_path = constraint_paths[0]
+                    schema_attribute_path = node_schema.parse_schema_path(path=constraint_path, schema=self)
+                    if (
+                        schema_attribute_path.is_type_attribute
+                        and schema_attribute_path.attribute_schema
+                        and schema_attribute_path.attribute_schema.name in hf_attr_names
+                    ):
+                        has_unique_item = True
+                        break
 
             if not has_unique_item:
                 raise ValueError(
