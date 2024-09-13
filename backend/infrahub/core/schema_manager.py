@@ -624,7 +624,7 @@ class SchemaBranch:
         return schema_attribute_path
 
     def sync_uniqueness_constraints_and_unique_attributes(self) -> None:
-        for name in self.all_names:
+        for name in self.generic_names + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.unique_attributes and not node_schema.uniqueness_constraints:
