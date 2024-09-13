@@ -106,7 +106,7 @@ class GlobalConfig:
             # Load from manual arguments, if provided
             # If user only provides a part of the arguments e.g. only `number of site`
             # we fall back on medium profile by default
-            default_profile: dict = PROFILES[self.default_profile_name]
+            default_profile = PROFILES[self.default_profile_name]
 
             self.__set_config(
                 num_sites=num_sites if num_sites is not None else default_profile["num_sites"],
