@@ -185,7 +185,77 @@ async def test_schema_branch_process_inheritance_update_inherited_elements(anima
     assert dog.get_relationship(name="owner").optional is True
 
 
-async def test_schema_branch_process_humain_friendly_id(animal_person_schema_dict):
+@pytest.mark.parametrize(
+    ["uniqueness_constraints", "unique_attributes", "human_friendly_id"],
+    [
+        (None, [], ["name__value"]),
+        ([["breed__value"]], [], ["name__value"]),
+        (None, ["breed"], ["name__value"]),
+        ([["name__value", "breed__value"]], ["breed"], ["name__value"]),
+    ],
+)
+async def test_validate_human_friendly_id_uniqueness_failure(
+    uniqueness_constraints: list[list[str]] | None,
+    unique_attributes: list[str],
+    human_friendly_id: list[str] | None,
+    animal_person_schema_dict,
+):
+    schema = SchemaBranch(cache={}, name="test")
+    for node_schema in animal_person_schema_dict["nodes"]:
+        if node_schema["name"] == "Animal" and node_schema["namespace"] == "Test":
+            node_schema["uniqueness_constraints"] = None
+            node_schema["human_friendly_id"] = None
+        if node_schema["name"] == "Dog" and node_schema["namespace"] == "Test":
+            node_schema["uniqueness_constraints"] = uniqueness_constraints
+            node_schema["human_friendly_id"] = human_friendly_id
+            for attr_schema in node_schema["attributes"]:
+                attr_schema["unique"] = attr_schema["name"] in unique_attributes
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+    with pytest.raises(ValueError, match=r"At least one attribute must be unique in the human_friendly_id"):
+        schema.validate_human_friendly_id()
+
+
+@pytest.mark.parametrize(
+    ["uniqueness_constraints", "unique_attributes", "human_friendly_id"],
+    [
+        (None, ["name"], ["name__value"]),
+        (None, ["name"], ["name__value", "breed__value"]),
+        ([["name__value"]], [], ["name__value", "breed__value"]),
+        ([["name__value", "owner"], ["breed__value"]], [], ["name__value", "breed__value"]),
+    ],
+)
+async def test_validate_human_friendly_id_uniqueness_success(
+    uniqueness_constraints: list[list[str]] | None,
+    unique_attributes: list[str],
+    human_friendly_id: list[str] | None,
+    animal_person_schema_dict,
+):
+    schema = SchemaBranch(cache={}, name="test")
+    for node_schema in animal_person_schema_dict["generics"]:
+        if node_schema["name"] == "Animal" and node_schema["namespace"] == "Test":
+            node_schema["uniqueness_constraints"] = None
+            node_schema["human_friendly_id"] = None
+            for attr_schema in node_schema["attributes"]:
+                attr_schema["unique"] = attr_schema["name"] in unique_attributes
+    for node_schema in animal_person_schema_dict["nodes"]:
+        if node_schema["name"] == "Dog" and node_schema["namespace"] == "Test":
+            node_schema["uniqueness_constraints"] = uniqueness_constraints
+            node_schema["human_friendly_id"] = human_friendly_id
+            for attr_schema in node_schema["attributes"]:
+                attr_schema["unique"] = attr_schema["name"] in unique_attributes
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+    schema.validate_human_friendly_id()
+
+    dog_schema = schema.get("TestDog", duplicate=False)
+    assert dog_schema.uniqueness_constraints == uniqueness_constraints
+    assert dog_schema.human_friendly_id == human_friendly_id
+
+
+async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
@@ -200,6 +270,44 @@ async def test_schema_branch_process_humain_friendly_id(animal_person_schema_dic
 
     assert person.human_friendly_id == ["name__value"]
     assert dog.uniqueness_constraints == [["owner", "name__value"]]
+
+
+async def test_schema_branch_infer_human_friendly_id_from_uniqueness_constraints(animal_person_schema_dict):
+    for node_schema_dict in animal_person_schema_dict["nodes"]:
+        if node_schema_dict["name"] == "Dog" and node_schema_dict["namespace"] == "Test":
+            node_schema_dict["uniqueness_constraints"] = [["name__value"]]
+        if node_schema_dict["name"] == "Cat" and node_schema_dict["namespace"] == "Test":
+            node_schema_dict["uniqueness_constraints"] = [["name__value", "owner"]]
+            node_schema_dict["human_friendly_id"] = None
+        if node_schema_dict["name"] == "Person" and node_schema_dict["namespace"] == "Test":
+            node_schema_dict["uniqueness_constraints"] = [["name__value"]]
+            node_schema_dict["human_friendly_id"] = ["name__value", "other_name__value"]
+    for generic_schema_dict in animal_person_schema_dict["generics"]:
+        if generic_schema_dict["name"] == "Animal" and generic_schema_dict["namespace"] == "Test":
+            generic_schema_dict["human_friendly_id"] = None
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+    schema.process_human_friendly_id()
+
+    animal = schema.get(name="TestAnimal")
+    assert sorted(animal.used_by) == ["TestCat", "TestDog"]
+
+    cat = schema.get(name="TestCat")
+    dog = schema.get(name="TestDog")
+    person = schema.get(name="TestPerson")
+
+    # cat human friendly ID remains None b/c uniqueness_constraint has multiple values
+    assert cat.human_friendly_id is None
+    assert cat.uniqueness_constraints == [["name__value", "owner"]]
+    # dog human friendly ID is set to name__value b/c there is a uniqueness constraint with 1 attribute value
+    assert dog.uniqueness_constraints == [["name__value"]]
+    assert dog.human_friendly_id == ["name__value"]
+    # person human friendly ID and uniqueness_constraints remain as they were set
+    assert person.human_friendly_id == ["name__value", "other_name__value"]
+    assert person.uniqueness_constraints == [["name__value"]]
 
 
 async def test_schema_branch_process_branch_support(schema_all_in_one):
