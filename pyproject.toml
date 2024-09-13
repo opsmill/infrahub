@@ -84,6 +84,7 @@ pytest-codspeed = "^2.2.0"
 deepdiff = "^6.2"
 polyfactory = "^2.16.2"
 towncrier = "^24.8"
+testcontainers = "^4.8.1"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
