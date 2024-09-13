@@ -220,7 +220,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
             number_pool, result = await super().mutate_update(
                 root=root, info=info, data=data, branch=branch, at=at, database=dbt, node=node
             )
-            if number_pool.start_range.value > number_pool.end_range.value:
+            if number_pool.start_range.value > number_pool.end_range.value:  # type: ignore[attr-defined]
                 raise ValidationError(input_value="start_range can't be larger than end_range")
 
         return number_pool, result
