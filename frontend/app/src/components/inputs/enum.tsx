@@ -172,6 +172,7 @@ export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
 
     const handleAddOption = (newOption: unknown) => {
       setLocalItems([...localItems, newOption]);
+      onChange(newOption);
     };
 
     const handleDeleteOption = (deletedItemId: unknown) => {
