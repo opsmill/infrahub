@@ -33,7 +33,7 @@ async def template(message: TransformJinjaTemplate, service: InfrahubServices) -
         await service.reply(message=response, initiator=message)
 
 
-@flow
+@flow(persist_result=True)
 async def transform_render_jinja2_template(message: TransformJinjaTemplateData) -> str:
     service = services.service
     repo = await get_initialized_repo(

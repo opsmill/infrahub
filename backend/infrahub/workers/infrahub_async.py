@@ -1,5 +1,6 @@
 import importlib
 import logging
+import os
 from typing import Any, Optional
 
 import typer
@@ -57,7 +58,8 @@ class InfrahubWorkerAsync(BaseWorker):
         logging.getLogger("aiormq").setLevel(logging.ERROR)
         logging.getLogger("git").setLevel(logging.ERROR)
 
-        config.load_and_exit()
+        config_file = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+        config.load_and_exit(config_file_name=config_file)
 
         self._logger.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
         client = InfrahubClient(
