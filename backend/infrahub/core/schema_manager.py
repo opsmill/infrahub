@@ -489,6 +489,7 @@ class SchemaBranch:
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
+        self.sync_uniqueness_constraints_and_unique_attributes()
         self.validate_uniqueness_constraints()
         self.validate_display_labels()
         self.validate_order_by()
@@ -622,6 +623,43 @@ class SchemaBranch:
 
         return schema_attribute_path
 
+    def sync_uniqueness_constraints_and_unique_attributes(self) -> None:
+        for name in self.all_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            if not node_schema.unique_attributes and not node_schema.uniqueness_constraints:
+                continue
+
+            unique_attrs_in_constraints = set()
+            for constraint_paths in node_schema.uniqueness_constraints or []:
+                if len(constraint_paths) > 1:
+                    continue
+                constraint_path = constraint_paths[0]
+                schema_attribute_path = node_schema.parse_schema_path(path=constraint_path, schema=self)
+                if (
+                    schema_attribute_path.is_type_attribute
+                    and schema_attribute_path.attribute_property_name == "value"
+                    and schema_attribute_path.attribute_schema
+                ):
+                    unique_attrs_in_constraints.add(schema_attribute_path.attribute_schema.name)
+
+            unique_attrs_in_attrs = {attr_schema.name for attr_schema in node_schema.unique_attributes}
+            if unique_attrs_in_attrs == unique_attrs_in_constraints:
+                continue
+
+            attrs_to_make_unique = unique_attrs_in_constraints - unique_attrs_in_attrs
+            attrs_to_add_to_constraints = unique_attrs_in_attrs - unique_attrs_in_constraints
+            node_schema = self.get(name=name, duplicate=True)
+
+            for attr_name in attrs_to_make_unique:
+                attr_schema = node_schema.get_attribute(name=attr_name)
+                attr_schema.unique = True
+            if attrs_to_add_to_constraints:
+                node_schema.uniqueness_constraints = (node_schema.uniqueness_constraints or []) + sorted(
+                    [[f"{attr_name}__value"] for attr_name in attrs_to_add_to_constraints]
+                )
+            self.set(name=name, schema=node_schema)
+
     def validate_uniqueness_constraints(self) -> None:
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
@@ -732,7 +770,7 @@ class SchemaBranch:
                         f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
-    def validate_human_friendly_id(self) -> None:  # pylint: disable=too-many-branches
+    def validate_human_friendly_id(self) -> None:
         for name in self.generic_names + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
             hf_attr_names = set()
@@ -773,21 +811,6 @@ class SchemaBranch:
                             f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
                             f"{node_schema.kind}. ({item})"
                         )
-
-            # check for uniqueness_constraint with a single attribute
-            if not has_unique_item and node_schema.uniqueness_constraints:
-                for constraint_paths in node_schema.uniqueness_constraints:
-                    if len(constraint_paths) != 1:
-                        continue
-                    constraint_path = constraint_paths[0]
-                    schema_attribute_path = node_schema.parse_schema_path(path=constraint_path, schema=self)
-                    if (
-                        schema_attribute_path.is_type_attribute
-                        and schema_attribute_path.attribute_schema
-                        and schema_attribute_path.attribute_schema.name in hf_attr_names
-                    ):
-                        has_unique_item = True
-                        break
 
             if not has_unique_item:
                 raise ValueError(
