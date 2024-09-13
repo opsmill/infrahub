@@ -1,13 +1,14 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { DynamicEnumFieldProps, FormAttributeValue } from "@/components/form/type";
-import { ComboboxProps } from "@/components/ui/combobox";
 import { LabelFormField } from "@/components/form/fields/common";
-import { Select } from "@/components/inputs/select";
+import React from "react";
+
+import { Enum, EnumProps } from "@/components/inputs/enum";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface EnumFieldProps
   extends Omit<DynamicEnumFieldProps, "type">,
-    Omit<ComboboxProps, "defaultValue" | "name" | "items"> {}
+    Omit<EnumProps, "defaultValue" | "name" | "items"> {}
 
 const EnumField = ({
   defaultValue,
@@ -17,6 +18,8 @@ const EnumField = ({
   rules,
   unique,
   items,
+  schema,
+  field: attributeSchema,
   ...props
 }: EnumFieldProps) => {
   return (
@@ -29,30 +32,29 @@ const EnumField = ({
         const fieldData: FormAttributeValue = field.value;
 
         return (
-          <div className="space-y-2">
+          <div>
             <LabelFormField
               label={label}
               unique={unique}
               required={!!rules?.required}
               description={description}
               fieldData={fieldData}
+              className="mb-2"
             />
 
             <FormInput>
-              <Select
-                {...field}
-                value={fieldData?.value}
+              <Enum
+                items={items}
+                fieldSchema={attributeSchema}
+                schema={schema}
+                value={fieldData?.value as string | null}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
                 }}
-                {...props}
-                options={items}
-                enum
-                className="w-full"
               />
             </FormInput>
 
-            <FormMessage />
+            <FormMessage className="mt-2" />
           </div>
         );
       }}
