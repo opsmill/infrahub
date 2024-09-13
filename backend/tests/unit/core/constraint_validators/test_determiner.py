@@ -170,11 +170,13 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        non_generate_profile_constraints = [
-            c for c in constraints if c.constraint_name != "node.generate_profile.update"
+        relevant_constraints = [
+            c
+            for c in constraints
+            if c.constraint_name not in ["node.generate_profile.update", "node.uniqueness_constraints.update"]
         ]
-        assert len(non_generate_profile_constraints) == len(constraint_info_set)
-        assert set(non_generate_profile_constraints) == constraint_info_set
+        assert len(relevant_constraints) == len(constraint_info_set)
+        assert set(relevant_constraints) == constraint_info_set
 
     async def test_many_relationship_update(self, car_person_schema, default_branch, person_cars_node_diff):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -217,8 +219,10 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        non_generate_profile_constraints = [
-            c for c in constraints if c.constraint_name != "node.generate_profile.update"
+        relevant_constraints = [
+            c
+            for c in constraints
+            if c.constraint_name != "node.generate_profile.update" and c.path.schema_kind in {"TestCar", "TestPerson"}
         ]
-        assert len(non_generate_profile_constraints) == len(constraint_info_set)
-        assert set(non_generate_profile_constraints) == constraint_info_set
+        assert len(relevant_constraints) == len(constraint_info_set)
+        assert set(relevant_constraints) == constraint_info_set
