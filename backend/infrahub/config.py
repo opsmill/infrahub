@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional, overload
 
 import toml
 from infrahub_sdk import generate_uuid
@@ -37,6 +37,11 @@ def default_cors_allow_headers() -> list[str]:
 class StorageDriver(str, Enum):
     FileSystemStorage = "local"
     InfrahubS3ObjectStorage = "s3"
+
+
+class Oauth2Provider(str, Enum):
+    NONE = "none"
+    GOOGLE = "google"
 
 
 class TraceExporterType(str, Enum):
@@ -307,6 +312,16 @@ class ExperimentalFeaturesSettings(BaseSettings):
     graphql_enums: bool = False
 
 
+class SecurityOAuth2Settings(BaseSettings):
+    """Common base for Oauth2 providers"""
+
+
+class SecurityOAuth2Google(SecurityOAuth2Settings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_GOOGLE_")
+    client_id: str = Field(..., description="Client ID of the application created in Google Cloud")
+    client_secret: str = Field(..., description="Client secret as defined in Google Cloud")
+
+
 class SecuritySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_SECURITY_")
     access_token_lifetime: int = Field(default=3600, description="Lifetime of access token in seconds")
@@ -316,6 +331,32 @@ class SecuritySettings(BaseSettings):
     secret_key: str = Field(
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
     )
+    oauth2_provider: Oauth2Provider = Field(default=Oauth2Provider.NONE)
+
+    _oauth_settings: None | SecurityOAuth2Settings = None
+
+    @model_validator(mode="after")
+    def check_oauth2_provider_settings(self) -> Self:
+        mapped_providers: dict[Oauth2Provider, type[SecurityOAuth2Settings]] = {
+            Oauth2Provider.NONE: SecurityOAuth2Settings,
+            Oauth2Provider.GOOGLE: SecurityOAuth2Google,
+        }
+
+        self._oauth_settings = mapped_providers[self.oauth2_provider]()
+
+        return self
+
+    @overload
+    def get_oauth_settings(self, provider: Literal[Oauth2Provider.NONE]) -> None: ...
+
+    @overload
+    def get_oauth_settings(self, provider: Literal[Oauth2Provider.GOOGLE]) -> SecurityOAuth2Google: ...
+
+    def get_oauth_settings(
+        self,
+        provider: Oauth2Provider,  # pylint: disable=unused-argument
+    ) -> None | SecurityOAuth2Settings:
+        return self._oauth_settings
 
 
 class TraceSettings(BaseSettings):

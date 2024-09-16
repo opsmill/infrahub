@@ -32,6 +32,8 @@ from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import InfrahubCORSMiddleware
+from infrahub.oauth2.middleware import InfrahubOAuth2Middleware
+from infrahub.oauth2.router import router as oauth2
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
@@ -122,6 +124,7 @@ gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 
 app.include_router(api)
+app.include_router(oauth2)
 
 templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
 
@@ -174,7 +177,7 @@ app.add_middleware(
 )
 app.add_middleware(InfrahubCORSMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=100_000)
-
+app.add_middleware(InfrahubOAuth2Middleware)
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
 app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))
