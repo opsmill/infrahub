@@ -7,6 +7,7 @@ import InputField from "@/components/form/fields/input.field";
 import { isRequired } from "@/components/form/utils/validation";
 import PasswordInputField from "@/components/form/fields/password-input.field";
 import { Form, FormSubmit } from "@/components/ui/form";
+import { GoogleLoginButton } from "@/screens/authentification/components/google-login-button";
 
 function SignInPage() {
   return (
@@ -18,6 +19,10 @@ function SignInPage() {
           <h2 className="my-8 text-2xl font-semibold text-gray-900">Sign in to your account</h2>
 
           <SignInForm />
+
+          <div className="h-px w-full bg-custom-blue-700 my-4" />
+
+          <GoogleLoginButton />
         </div>
       </Card>
     </Content>

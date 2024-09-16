@@ -158,6 +158,10 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    path: "/auth/google",
+    lazy: () => import("@/pages/auth/google"),
+  },
+  {
     path: "/signin",
     lazy: () => import("@/pages/sign-in"),
   },

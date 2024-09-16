@@ -19,6 +19,8 @@ export const CONFIG = {
       return `${INFRAHUB_API_SERVER_URL}/graphql/${branch ?? "main"}?at=${date.toISOString()}`;
     }
   },
+  GOOGLE_OAUTH2_AUTHORIZE_URL: `${INFRAHUB_API_SERVER_URL}/oauth2/google-oauth2/authorize`,
+  GOOGLE_OAUTH2_TOKEN_URL: `${INFRAHUB_API_SERVER_URL}/oauth2/google-oauth2/token`,
   GRAPHQL_WEB_SOCKET_URL: (branch?: string | null) =>
     `${INFRAHUB_WEB_SOCKET_URL}/graphql/${branch ?? "main"}`,
   SCHEMA_URL: (branch?: string | null) =>
