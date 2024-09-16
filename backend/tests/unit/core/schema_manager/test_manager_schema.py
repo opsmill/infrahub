@@ -213,6 +213,7 @@ async def test_validate_human_friendly_id_uniqueness_failure(
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
     schema.process_inheritance()
+    schema.sync_uniqueness_constraints_and_unique_attributes()
     with pytest.raises(ValueError, match=r"At least one attribute must be unique in the human_friendly_id"):
         schema.validate_human_friendly_id()
 
@@ -248,10 +249,10 @@ async def test_validate_human_friendly_id_uniqueness_success(
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
     schema.process_inheritance()
+    schema.sync_uniqueness_constraints_and_unique_attributes()
     schema.validate_human_friendly_id()
 
     dog_schema = schema.get("TestDog", duplicate=False)
-    assert dog_schema.uniqueness_constraints == uniqueness_constraints
     assert dog_schema.human_friendly_id == human_friendly_id
 
 
@@ -1037,6 +1038,48 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     schema.validate_uniqueness_constraints()
+
+
+@pytest.mark.parametrize(
+    ["uniqueness_constraints", "unique_attributes", "expected_constraints", "expected_unique_attributes"],
+    [
+        (None, [], None, []),
+        (None, ["name"], [["name__value"]], ["name"]),
+        ([["name__value"]], ["name"], [["name__value"]], ["name"]),
+        ([["name__value"]], [], [["name__value"]], ["name"]),
+        ([["name__value"]], ["breed"], [["name__value"], ["breed__value"]], ["name", "breed"]),
+        ([["name__value", "owner"]], ["breed"], [["name__value", "owner"], ["breed__value"]], ["breed"]),
+        ([["owner"]], ["name"], [["owner"], ["name__value"]], ["name"]),
+        (None, ["name", "color"], [["color__value"], ["name__value"]], ["name", "color"]),
+        ([["color__value"], ["name__value"]], [], [["color__value"], ["name__value"]], ["name", "color"]),
+    ],
+)
+async def test_synchronize_uniqueness_constraints_and_attributes(
+    uniqueness_constraints: list[list[str]] | None,
+    unique_attributes: list[str],
+    expected_constraints: list[list[str]] | None,
+    expected_unique_attributes: list[str],
+    animal_person_schema_dict,
+):
+    schema = SchemaBranch(cache={}, name="test")
+    for node_schema in animal_person_schema_dict["generics"]:
+        if node_schema["name"] == "Animal" and node_schema["namespace"] == "Test":
+            node_schema["uniqueness_constraints"] = None
+            for attr_schema in node_schema["attributes"]:
+                attr_schema["unique"] = attr_schema["name"] in unique_attributes
+    for node_schema in animal_person_schema_dict["nodes"]:
+        if node_schema["name"] == "Dog" and node_schema["namespace"] == "Test":
+            node_schema["uniqueness_constraints"] = uniqueness_constraints
+            for attr_schema in node_schema["attributes"]:
+                attr_schema["unique"] = attr_schema["name"] in unique_attributes
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+    schema.sync_uniqueness_constraints_and_unique_attributes()
+
+    dog_schema = schema.get("TestDog", duplicate=False)
+    assert dog_schema.uniqueness_constraints == expected_constraints
+    assert {attr_schema.name for attr_schema in dog_schema.unique_attributes} == set(expected_unique_attributes)
 
 
 async def test_validate_exception_ipam_ip_namespace(

@@ -458,12 +458,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             return constraint_paths_groups
 
         for uniqueness_path_group in self.uniqueness_constraints:
-            constraint_paths_groups.append(
-                [
-                    self.parse_schema_path(path=uniqueness_path_part, schema=schema_branch)
-                    for uniqueness_path_part in uniqueness_path_group
-                ]
-            )
+            constraint_paths_group = []
+            for uniqueness_path_part in uniqueness_path_group:
+                constraint_paths_group.append(self.parse_schema_path(path=uniqueness_path_part, schema=schema_branch))
+            if constraint_paths_group not in constraint_paths_groups:
+                constraint_paths_groups.append(constraint_paths_group)
         return constraint_paths_groups
 
 
