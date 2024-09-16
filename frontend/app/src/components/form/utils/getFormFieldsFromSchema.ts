@@ -124,8 +124,8 @@ export const getFormFieldsFromSchema = ({
         field: attribute,
         schema: schema,
         items: (attribute.choices ?? []).map((choice) => ({
-          id: choice.id ?? choice.name,
-          name: choice.label ?? choice.name,
+          value: choice.name,
+          label: choice.label ?? choice.name,
           color: choice.color ?? undefined,
           description: choice.description ?? undefined,
         })),

@@ -1,12 +1,12 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { Select, SelectProps } from "@/components/inputs/select";
 import { DynamicDropdownFieldProps, FormAttributeValue } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import { Dropdown, DropdownProps } from "@/components/inputs/dropdown";
 
 export interface DropdownFieldProps
   extends Omit<DynamicDropdownFieldProps, "type">,
-    Omit<SelectProps, "defaultValue" | "name" | "options"> {}
+    Omit<DropdownProps, "defaultValue" | "name" | "options"> {}
 
 const DropdownField = ({
   defaultValue,
@@ -38,16 +38,13 @@ const DropdownField = ({
             />
 
             <FormInput>
-              <Select
-                {...field}
-                value={fieldData?.value}
+              <Dropdown
+                items={items}
                 {...props}
+                value={fieldData?.value as string | null}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
                 }}
-                options={items}
-                dropdown
-                className="w-full"
               />
             </FormInput>
 

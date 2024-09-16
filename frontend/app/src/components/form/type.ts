@@ -2,8 +2,9 @@ import { FormField } from "@/components/ui/form";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { ComponentProps } from "react";
 import { SelectOption } from "@/components/inputs/select";
-import { components } from "@/infraops";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { DropdownOption } from "@/components/inputs/dropdown";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
 
 type SourceType = "schema" | "user";
 
@@ -96,19 +97,15 @@ export type DynamicNumberFieldProps = FormFieldProps & {
 
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
-  items: Array<SelectOption>;
-  field?:
-    | components["schemas"]["AttributeSchema-Output"]
-    | components["schemas"]["RelationshipSchema-Output"];
+  items: Array<DropdownOption>;
+  field?: AttributeSchema;
   schema?: IModelSchema;
 };
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
   items: Array<unknown>;
-  field?:
-    | components["schemas"]["AttributeSchema-Output"]
-    | components["schemas"]["RelationshipSchema-Output"];
+  field?: AttributeSchema;
   schema?: IModelSchema;
 };
 
@@ -118,7 +115,7 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   peer?: string;
   parent?: string;
   options?: SelectOption[];
-  relationship: components["schemas"]["RelationshipSchema-Output"];
+  relationship: RelationshipSchema;
   schema: IModelSchema;
 };
 
