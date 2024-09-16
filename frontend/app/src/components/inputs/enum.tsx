@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/command";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/graphql/mutations/schema/enum";
+import { isRequired } from "@/components/form/utils/validation";
 
 export interface EnumItemProps extends React.ComponentPropsWithoutRef<typeof CommandItem> {
   fieldSchema: {
@@ -99,7 +100,7 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
   const [addEnum] = useMutation(ENUM_ADD_MUTATION);
 
   return (
-    <div className="p-2">
+    <div className="p-2 pt-0">
       <Button
         className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
         onClick={() => setOpen(!open)}>
@@ -126,6 +127,9 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
               type: field.kind === "Number" ? "Number" : "Text",
               rules: {
                 required: true,
+                validate: {
+                  required: isRequired,
+                },
               },
             },
           ]}
