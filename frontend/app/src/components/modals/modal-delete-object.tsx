@@ -10,6 +10,7 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
+import { useParams } from "react-router-dom";
 
 interface iProps {
   label?: string | null;
@@ -24,6 +25,7 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const { objectKind } = useParams();
 
   const handleDeleteObject = async () => {
     if (!rowToDelete?.id) {
@@ -52,7 +54,7 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
         context: { branch: branch?.name, date },
       });
 
-      graphqlClient.refetchQueries({ include: [rowToDelete.__typename!] });
+      await graphqlClient.refetchQueries({ include: [objectKind!] });
 
       close();
 
