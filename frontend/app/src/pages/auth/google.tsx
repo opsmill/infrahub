@@ -1,19 +1,37 @@
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
-import { fetchUrl } from "@/utils/fetch";
-import { CONFIG } from "@/config/config";
+import { useAuth } from "@/hooks/useAuth";
 
 function AuthGoogle() {
   const [searchParams] = useSearchParams();
-  const code = searchParams.get("code");
-  const state = searchParams.get("state");
+  const { isAuthenticated, signInWithGoogle } = useAuth();
 
   useEffect(() => {
-    if (!code) {
+    const code = searchParams.get("code");
+    const state = searchParams.get("state");
+    const error = searchParams.get("error");
+
+    if (error) {
+      console.error("Google OAuth Error:", error);
       return;
     }
-    fetchUrl(CONFIG.GOOGLE_OAUTH2_TOKEN_URL + "?" + searchParams.toString()).then((r) => r.json());
+
+    if (!code) {
+      console.error("No authorization code found.");
+      return;
+    }
+
+    if (!state) {
+      console.error("No authorization state found.");
+      return;
+    }
+
+    signInWithGoogle({ code, state });
   }, []);
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   return null;
 }

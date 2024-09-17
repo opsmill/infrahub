@@ -26,6 +26,7 @@ export type AuthContextType = {
   isLoading: boolean;
   permissions?: PermissionsType;
   signIn: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
+  signInWithGoogle: (params: {code: string, state: string}, callback?: () => void) => Promise<void>;
   signOut: (callback?: () => void) => void;
   user: User | null;
 };
@@ -85,6 +86,7 @@ export const AuthContext = createContext<AuthContextType>({
     write: false,
   },
   signIn: async () => {},
+  signInWithGoogle: async () => {},
   signOut: () => {},
   user: null,
 });
@@ -120,6 +122,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (callback) callback();
   };
 
+  const signInWithGoogle = async ({code, state}: {code: string, state: string}, callback?: () => void) => {
+    setIsLoading(true);
+    try {
+      const result: components["schemas"]["UserToken"] = await fetchUrl(
+        `${CONFIG.GOOGLE_OAUTH2_TOKEN_URL}?code=${code}&state=${state}`
+      );
+
+      if (!result?.access_token) {
+        toast(<Alert type={ALERT_TYPES.ERROR} message="Google sign-in failed" />, {
+          toastId: "alert-error-google-sign-in",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      setAccessToken(result?.access_token);
+      saveTokensInLocalStorage(result);
+      if (callback) callback();
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="An error occurred during Google sign-in" />, {
+        toastId: "alert-error-google-sign-in",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signOut = () => {
     removeTokensInLocalStorage();
     setAccessToken(null);
@@ -137,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: ADMIN_ROLES.includes(data?.user_claims?.role),
     },
     signIn,
+    signInWithGoogle,
     signOut,
     user: data?.sub ? { id: data?.sub } : null,
   };
