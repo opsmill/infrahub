@@ -5,12 +5,11 @@ import { useAuth } from "@/hooks/useAuth";
 function AuthGoogle() {
   const [searchParams] = useSearchParams();
   const { isAuthenticated, signInWithGoogle } = useAuth();
+  const code = searchParams.get("code");
+  const state = searchParams.get("state");
+  const error = searchParams.get("error");
 
   useEffect(() => {
-    const code = searchParams.get("code");
-    const state = searchParams.get("state");
-    const error = searchParams.get("error");
-
     if (error) {
       console.error("Google OAuth Error:", error);
       return;
@@ -28,6 +27,10 @@ function AuthGoogle() {
 
     signInWithGoogle({ code, state });
   }, []);
+
+  if (error) {
+    return <Navigate to="/signin" replace />;
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
