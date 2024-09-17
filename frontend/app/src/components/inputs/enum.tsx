@@ -6,17 +6,17 @@ import { useMutation } from "@/hooks/useQuery";
 import ModalDelete from "@/components/modals/modal-delete";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import DynamicForm from "@/components/form/dynamic-form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { CommandItem } from "@/components/ui/command";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/graphql/mutations/schema/enum";
 import { isRequired } from "@/components/form/utils/validation";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/components/ui/combobox3";
 
 export interface EnumItemProps extends React.ComponentPropsWithoutRef<typeof CommandItem> {
   fieldSchema: {
@@ -170,7 +170,7 @@ export interface EnumProps {
 }
 
 export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
-  ({ items, value, fieldSchema, schema, className, onChange, ...props }, ref) => {
+  ({ items, value, fieldSchema, schema, onChange, ...props }, ref) => {
     const [localItems, setLocalItems] = useState(items);
     const [open, setOpen] = useState(false);
 
@@ -187,50 +187,33 @@ export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
     };
 
     return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger ref={ref} asChild>
-          <button
-            type="button"
-            role="combobox"
-            className={classNames(
-              "h-10 flex items-center w-full rounded-md border border-gray-300 bg-white p-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-custom-blue-600 focus-visible:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
-              className
-            )}
-            {...props}>
-            {value}
-            <Icon icon="mdi:unfold-more-horizontal" className="ml-auto text-gray-600" />
-          </button>
-        </PopoverTrigger>
+      <Combobox open={open} onOpenChange={setOpen}>
+        <ComboboxTrigger ref={ref} {...props}>
+          {value}
+        </ComboboxTrigger>
 
-        <PopoverContent className="p-0" portal={false}>
-          <Command
-            style={{
-              width: "var(--radix-popover-trigger-width)",
-              maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
-            }}>
-            <CommandInput placeholder="Filter..." />
-            <CommandList>
-              <CommandEmpty>No enum found.</CommandEmpty>
-              {localItems.map((item) => (
-                <EnumItem
-                  key={item?.toString()}
-                  item={item}
-                  currentValue={value}
-                  schema={schema}
-                  fieldSchema={fieldSchema}
-                  onSelect={() => {
-                    onChange(item === value ? null : item);
-                    setOpen(false);
-                  }}
-                  onDelete={handleDeleteOption}
-                />
-              ))}
-            </CommandList>
-          </Command>
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxEmpty>No enum found.</ComboboxEmpty>
+            {localItems.map((item) => (
+              <EnumItem
+                key={item?.toString()}
+                item={item}
+                currentValue={value}
+                schema={schema}
+                fieldSchema={fieldSchema}
+                onSelect={() => {
+                  onChange(item === value ? null : item);
+                  setOpen(false);
+                }}
+                onDelete={handleDeleteOption}
+              />
+            ))}
+          </ComboboxList>
 
           <EnumAddAction schema={schema} field={fieldSchema} addOption={handleAddOption} />
-        </PopoverContent>
-      </Popover>
+        </ComboboxContent>
+      </Combobox>
     );
   }
 );
