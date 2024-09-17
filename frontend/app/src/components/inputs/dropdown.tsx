@@ -1,14 +1,7 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { classNames, getTextColor } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React, { forwardRef, HTMLAttributes, useState } from "react";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { CommandItem } from "@/components/ui/command";
 import { Button } from "@/components/buttons/button-primitive";
 import { useMutation } from "@/hooks/useQuery";
 import { IModelSchema } from "@/state/atoms/schema.atom";
@@ -22,6 +15,13 @@ import {
 } from "@/graphql/mutations/schema/dropdown";
 import { isRequired } from "@/components/form/utils/validation";
 import ModalDelete from "@/components/modals/modal-delete";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/components/ui/combobox3";
 
 export type DropdownOption = {
   value: string;
@@ -76,16 +76,7 @@ export const DropdownItem = React.forwardRef<
         <Icon icon="mdi:check" className={classNames(currentValue !== item.value && "opacity-0")} />
 
         <div className="overflow-hidden">
-          <Badge
-            className="font-medium"
-            style={
-              item?.color
-                ? {
-                    backgroundColor: item.color,
-                    color: getTextColor(item.color),
-                  }
-                : undefined
-            }>
+          <Badge className="font-medium" style={getDropdownStyle(item.color)}>
             {item.label}
           </Badge>
           <p className="text-xs truncate">{item.description}</p>
@@ -234,7 +225,7 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
 };
 
 export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
-  ({ className, items, onChange, value, schema, field, ...props }, ref) => {
+  ({ items, onChange, value, schema, field, ...props }, ref) => {
     const [localItems, setLocalItems] = useState(items);
     const [open, setOpen] = useState(false);
 
@@ -251,62 +242,46 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
     };
 
     const selectItem = localItems.find((item) => item.value === value);
+
     return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild ref={ref} {...props}>
-          <button
-            type="button"
-            role="combobox"
-            className={classNames(
-              "h-10 flex items-center w-full rounded-md border border-gray-300 bg-white p-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-custom-blue-600 focus-visible:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
-              className
-            )}
-            style={
-              selectItem?.color
-                ? {
-                    backgroundColor: selectItem.color,
-                    color: getTextColor(selectItem.color),
-                  }
-                : undefined
-            }>
-            {selectItem?.label}
-            <Icon icon="mdi:unfold-more-horizontal" className="ml-auto text-gray-600" />
-          </button>
-        </PopoverTrigger>
+      <Combobox open={open} onOpenChange={setOpen}>
+        <ComboboxTrigger ref={ref} style={getDropdownStyle(selectItem?.color)} {...props}>
+          {selectItem?.label}
+        </ComboboxTrigger>
 
-        <PopoverContent className="p-0" portal={false}>
-          <Command
-            style={{
-              width: "var(--radix-popover-trigger-width)",
-              maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
-            }}>
-            <CommandInput placeholder="Filter..." />
-
-            <CommandList>
-              <CommandEmpty>No dropdown found.</CommandEmpty>
-
-              {localItems.map((item) => (
-                <DropdownItem
-                  key={item.value}
-                  schema={schema}
-                  fieldSchema={field}
-                  currentValue={selectItem?.value}
-                  onSelect={() => {
-                    onChange(item.value === value ? null : item.value);
-                    setOpen(false);
-                  }}
-                  item={item}
-                  onDelete={handleDeleteOption}
-                />
-              ))}
-            </CommandList>
-          </Command>
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxEmpty>No dropdown found.</ComboboxEmpty>
+            {localItems.map((item) => (
+              <DropdownItem
+                key={item.value}
+                schema={schema}
+                fieldSchema={field}
+                currentValue={selectItem?.value}
+                onSelect={() => {
+                  onChange(item.value === value ? null : item.value);
+                  setOpen(false);
+                }}
+                item={item}
+                onDelete={handleDeleteOption}
+              />
+            ))}
+          </ComboboxList>
 
           {schema && field && (
             <DropdownAddAction schema={schema} field={field} addOption={handleAddOption} />
           )}
-        </PopoverContent>
-      </Popover>
+        </ComboboxContent>
+      </Combobox>
     );
   }
 );
+
+export function getDropdownStyle(color?: string | null) {
+  if (!color) return undefined;
+
+  return {
+    backgroundColor: color,
+    color: getTextColor(color),
+  };
+}
