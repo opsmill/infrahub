@@ -334,6 +334,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           }}
           open={!!relatedRowToDelete}
           setOpen={() => setRelatedRowToDelete(undefined)}
+          confirmLabel="Remove"
         />
       )}
 
