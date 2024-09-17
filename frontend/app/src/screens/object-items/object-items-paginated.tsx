@@ -1,41 +1,30 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Filters } from "@/components/filters/filters";
-import ModalDelete from "@/components/modals/modal-delete";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import {
-  ACCOUNT_OBJECT,
-  ACCOUNT_TOKEN_OBJECT,
   MENU_EXCLUDELIST,
   SEARCH_ANY_FILTER,
   SEARCH_FILTERS,
   SEARCH_PARTIAL_MATCH,
 } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
 import useFilters, { Filter } from "@/hooks/useFilters";
 import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames, debounce } from "@/utils/common";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
-import { stringifyWithoutQuotes } from "@/utils/string";
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import { useObjectItems } from "@/hooks/useObjectItems";
 import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { ObjectCreateFormTrigger } from "@/components/form/object-create-form-trigger";
+import ModalDeleteObject from "@/components/modals/modal-delete-object";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
@@ -53,12 +42,8 @@ export default function ObjectItems({
   const permission = usePermission();
   const [filters, setFilters] = useFilters();
 
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
-
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const kindFilter = filters?.find((filter) => filter.name == "kind__value");
 
@@ -78,52 +63,6 @@ export default function ObjectItems({
   useTitle(`${schema.label || schema.name} list`);
 
   const rows = edges?.map((edge: any) => edge.node);
-
-  const handleDeleteObject = async () => {
-    if (!rowToDelete?.id) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const mutationString = deleteObject({
-        kind:
-          rowToDelete.__typename === "AccountTokenNode"
-            ? ACCOUNT_TOKEN_OBJECT
-            : rowToDelete.__typename,
-        data: stringifyWithoutQuotes({
-          id: rowToDelete?.id,
-        }),
-      });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: { branch: branch?.name, date },
-      });
-
-      graphqlClient.refetchQueries({ include: [schema.kind!] });
-
-      setDeleteModal(false);
-
-      setRowToDelete(undefined);
-
-      toast(
-        <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`Object ${rowToDelete?.display_label} deleted`}
-        />
-      );
-    } catch (error) {
-      console.error("Error while deleting object: ", error);
-    }
-
-    setIsLoading(false);
-  };
 
   const handleSearch: SearchInputProps["onChange"] = (e) => {
     const value = e.target.value as string;
@@ -240,29 +179,11 @@ export default function ObjectItems({
         )}
       </div>
 
-      <ModalDelete
-        title="Delete"
-        description={
-          rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name ? (
-            <>
-              Are you sure you want to remove the <i>{schema.label}</i>
-              <b className="ml-2">
-                &quot;{rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name}
-                &quot;
-              </b>
-              ?
-            </>
-          ) : (
-            <>
-              Are you sure you want to remove this <i>{schema.label}</i>?
-            </>
-          )
-        }
-        onCancel={() => setDeleteModal(false)}
-        onDelete={handleDeleteObject}
+      <ModalDeleteObject
+        label={schema.label ?? schema.kind}
+        rowToDelete={rowToDelete}
         open={!!deleteModal}
-        setOpen={() => setDeleteModal(false)}
-        isLoading={isLoading}
+        close={() => setDeleteModal(false)}
       />
     </>
   );

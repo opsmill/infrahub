@@ -21,15 +21,15 @@ import { useSchema } from "@/hooks/useSchema";
 interface Props {
   objectname: string;
   objectid: string;
-  closeDrawer: () => void;
+  closeModal: () => void;
   onUpdateComplete?: () => void;
   formStructure?: DynamicFieldData[];
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
+  const { objectname, objectid, closeModal, onUpdateComplete } = props;
 
-  const { schema, isProfile } = useSchema(objectname);
+  const { schema } = useSchema(objectname);
 
   if (!schema) {
     return <NoDataFound message={`Schema ${objectname} not found`} />;
@@ -95,7 +95,7 @@ export default function ObjectItemEditComponent(props: Props) {
           toastId: "alert-success-updated",
         });
 
-        closeDrawer();
+        closeModal();
 
         if (onUpdateComplete) onUpdateComplete();
       } catch (e) {
@@ -106,7 +106,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   return (
     <ObjectForm
-      onCancel={closeDrawer}
+      onCancel={closeModal}
       onSubmit={onSubmit}
       onUpdateComplete={onUpdateComplete}
       kind={objectname}
