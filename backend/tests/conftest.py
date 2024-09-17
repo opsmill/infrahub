@@ -9,6 +9,8 @@ from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
 import pytest
 import ujson
 from infrahub_sdk.utils import str_to_bool
+from prefect.logging.loggers import disable_run_logger
+from prefect.testing.utilities import prefect_test_harness
 
 from infrahub import config
 from infrahub.core import registry
@@ -131,6 +133,18 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     default_branch.update_schema_hash()
     return schema_branch
+
+
+@pytest.fixture(scope="session")
+def prefect_test_fixture():
+    with prefect_test_harness():
+        yield
+
+
+@pytest.fixture(scope="session")
+def prefect_test(prefect_test_fixture):
+    with disable_run_logger():
+        yield
 
 
 @pytest.fixture(scope="module", autouse=True)

@@ -5,6 +5,8 @@ import time
 from typing import Any
 
 import httpx
+from prefect import flow, task
+from prefect.logging import get_run_logger
 
 from infrahub import __version__, config
 from infrahub.core import registry, utils
@@ -12,12 +14,13 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.message_bus import messages
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices, services
 
 TELEMETRY_KIND: str = "community"
 TELEMETRY_VERSION: str = "20240524"
 
 
+@task
 async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
     data: dict[str, Any] = {
         "database_type": service.database.db_type.value,
@@ -34,6 +37,7 @@ async def gather_database_information(service: InfrahubServices, branch: Branch)
     return data
 
 
+@task
 async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
     data: dict[str, Any] = {}
     main_schema = registry.schema.get_schema_branch(name=branch.name)
@@ -44,6 +48,7 @@ async def gather_schema_information(service: InfrahubServices, branch: Branch) -
     return data
 
 
+@task
 async def gather_feature_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
     data = {}
     features_to_count = [
@@ -61,6 +66,7 @@ async def gather_feature_information(service: InfrahubServices, branch: Branch) 
     return data
 
 
+@task
 async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     start_time = time.time()
 
@@ -112,3 +118,31 @@ async def push(
             response.raise_for_status()
         except httpx.HTTPError as exc:
             service.log.debug(f"HTTP exception while pushing anonymous telemetry: {exc}")
+
+
+@task(retries=5)
+async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:  # pylint: disable=unused-argument
+    """Send the telemetry data to the specified URL, using HTTP POST."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url=url, json=payload)
+        response.raise_for_status()
+
+
+@flow
+async def send_telemetry_push() -> None:
+    service = services.service
+
+    log = get_run_logger()
+    log.info(f"Pushing anonymous telemetry data to {config.SETTINGS.main.telemetry_endpoint}...")
+
+    data = await gather_anonymous_telemetry_data(service=service)
+    log.info(f"Anonymous usage telemetry gathered in {data['execution_time']} seconds. | {data}")
+
+    payload = {
+        "kind": TELEMETRY_KIND,
+        "payload_format": TELEMETRY_VERSION,
+        "data": data,
+        "checksum": hashlib.sha256(json.dumps(data).encode()).hexdigest(),
+    }
+
+    await post_telemetry_data(service=service, url=config.SETTINGS.main.telemetry_endpoint, payload=payload)
