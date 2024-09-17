@@ -30,6 +30,7 @@ from protocols import (
     InfraVLAN,
     IpamIPAddress,
     IpamIPPrefix,
+    LocationCountry,
     LocationSite,
     OrganizationProvider,
 )
@@ -64,7 +65,7 @@ class GlobalConfig:
         else:
             raise ConfigError(f"Value for `num_sites` ({num_sites}) should be between 1 and 200.")
 
-        # Ensure that num_site is between boudaries
+        # Ensure that num_device_per_site is between boudaries
         if 2 <= int(num_device_per_site) <= 100:
             self.num_device_per_site = int(num_device_per_site)
         else:
@@ -93,15 +94,18 @@ class GlobalConfig:
                 )
 
             # Load prebuilt profile
-            profile = PROFILES[profile]
+            profile_obj: dict = PROFILES[profile]
             self.__set_config(
-                profile["num_sites"], profile["num_device_per_site"], profile["has_bgp_mesh"], profile["has_branch"]
+                profile_obj["num_sites"],
+                profile_obj["num_device_per_site"],
+                profile_obj["has_bgp_mesh"],
+                profile_obj["has_branch"],
             )
         else:
             # Load from manual arguments, if provided
             # If user only provides a part of the arguments e.g. only `number of site`
             # we fall back on medium profile by default
-            default_profile = PROFILES[self.default_profile_name]
+            default_profile: dict = PROFILES[self.default_profile_name]
 
             self.__set_config(
                 num_sites=num_sites if num_sites is not None else default_profile["num_sites"],
@@ -280,15 +284,74 @@ class Vlan(BaseModel):
 
 
 CONTINENT_COUNTRIES = {
-    "North America": ["United States of America", "Canada"],
-    "South America": ["Mexico", "Brazil"],
-    "Africa": ["Morocco", "Senegal"],
-    "Europe": ["France", "Spain", "Italy"],
-    "Asia": ["Japan", "China"],
+    "North America": ["United States of America", "Canada", "Mexico", "Nicaragua", "Haiti", "Puerto Rico"],
+    "South America": ["Brazil", "South Africa", "Argentina", "Chile", "Peru", "Colombia", "Bolivia", "Ecuador"],
+    "Africa": [
+        "Morocco",
+        "Kuwait",
+        "Kenya",
+        "Egypt",
+        "Senegal",
+        "Republic of Congo",
+        "Ethiopia",
+        "Tanzania",
+        "Nigeria",
+        "Ghana",
+    ],
+    "Europe": [
+        "France",
+        "Spain",
+        "Italy",
+        "Finland",
+        "United Kingdom",
+        "Greece",
+        "Iceland",
+        "Germany",
+        "Norway",
+        "Cyprus",
+        "Lithuania",
+        "Serbia",
+        "Slovakia",
+        "Croatia",
+        "Bulgaria",
+        "Latvia",
+        "Poland",
+        "Hungary",
+        "Czech Republic",
+        "Montenegro",
+        "Bosnia and Herzegovina",
+        "Belgium",
+        "Estonia",
+        "Sweden",
+        "Denmark",
+        "Russia",
+        "Portugal",
+        "Netherlands",
+        "Switzerland",
+    ],
+    "Asia": [
+        "Japan",
+        "China",
+        "Taiwan",
+        "India",
+        "Nepal",
+        "Jordan",
+        "Qatar",
+        "Pakistan",
+        "Malaysia",
+        "South Korea",
+        "Turkey",
+        "United Arab Emirates",
+        "Singapore",
+        "Hong Kong",
+        "Thailand",
+    ],
     "Oceania": ["Australia", "New Zealand"],
 }
 
+# Chat GPT came up with the most cliche contact names here
 SITES = [
+    Site(name="sin", country="Singapore", city="Singapore", contact="Siti Tan"),
     Site(name="atl", country="United States of America", city="Atlanta", contact="Bailey Li"),
     Site(name="ord", country="United States of America", city="Chicago", contact="Kayden Kennedy"),
     Site(name="jfk", country="United States of America", city="New York", contact="Micaela Marsh"),
@@ -299,6 +362,195 @@ SITES = [
     Site(name="sfo", country="United States of America", city="San Francisco", contact="Taliyah Sampson"),
     Site(name="iah", country="United States of America", city="Houston", contact="Fernanda Solomon"),
     Site(name="mco", country="United States of America", city="Orlando", contact="Arthur Rose"),
+    Site(name="yyz", country="Canada", city="Toronto", contact="Jaxon Fitzgerald"),
+    Site(name="yvr", country="Canada", city="Vancouver", contact="Addison Harper"),
+    Site(name="lhr", country="United Kingdom", city="London", contact="Isabella Harris"),
+    Site(name="cdg", country="France", city="Paris", contact="Louis Dupont"),
+    Site(name="nrt", country="Japan", city="Tokyo", contact="Haruto Sato"),
+    Site(name="bom", country="India", city="Mumbai", contact="Aryan Patel"),
+    Site(name="hkg", country="Hong Kong", city="Hong Kong", contact="Kai Wong"),
+    Site(name="syd", country="Australia", city="Sydney", contact="Oliver Thompson"),
+    Site(name="mad", country="Spain", city="Madrid", contact="Lucía García"),
+    Site(name="fra", country="Germany", city="Frankfurt", contact="Lukas Müller"),
+    Site(name="ams", country="Netherlands", city="Amsterdam", contact="Emma Visser"),
+    Site(name="mxp", country="Italy", city="Milan", contact="Giulia Rossi"),
+    Site(name="fco", country="Italy", city="Rome", contact="Alessandro Ferrari"),
+    Site(name="osl", country="Norway", city="Oslo", contact="Nora Johansen"),
+    Site(name="hel", country="Finland", city="Helsinki", contact="Oskari Virtanen"),
+    Site(name="cph", country="Denmark", city="Copenhagen", contact="Freja Nielsen"),
+    Site(name="zrh", country="Switzerland", city="Zurich", contact="Jonas Baumann"),
+    Site(name="vce", country="Italy", city="Venice", contact="Sophia Romano"),
+    Site(name="dxb", country="United Arab Emirates", city="Dubai", contact="Zayed Al Nahyan"),
+    Site(name="jnb", country="South Africa", city="Johannesburg", contact="Thandiwe Ndlovu"),
+    Site(name="gva", country="Switzerland", city="Geneva", contact="Chloe Dupont"),
+    Site(name="bcn", country="Spain", city="Barcelona", contact="Carlos Martínez"),
+    Site(name="lis", country="Portugal", city="Lisbon", contact="Maria Silva"),
+    Site(name="ath", country="Greece", city="Athens", contact="Nikos Papadopoulos"),
+    Site(name="ist", country="Turkey", city="Istanbul", contact="Ege Yılmaz"),
+    Site(name="led", country="Russia", city="Saint Petersburg", contact="Vladimir Ivanov"),
+    Site(name="svo", country="Russia", city="Moscow", contact="Olga Kuznetsova"),
+    Site(name="blr", country="India", city="Bengaluru", contact="Neha Reddy"),
+    Site(name="del", country="India", city="Delhi", contact="Rahul Sharma"),
+    Site(name="bkk", country="Thailand", city="Bangkok", contact="Kanya Phrommin"),
+    Site(name="hnd", country="Japan", city="Tokyo", contact="Yuki Tanaka"),
+    Site(name="icn", country="South Korea", city="Seoul", contact="Jihoon Kim"),
+    Site(name="kix", country="Japan", city="Osaka", contact="Rina Matsui"),
+    Site(name="akl", country="New Zealand", city="Auckland", contact="Ethan Brown"),
+    Site(name="kwi", country="Kuwait", city="Kuwait City", contact="Abdullah Al Sabah"),
+    Site(name="cpt", country="South Africa", city="Cape Town", contact="Sipho Khumalo"),
+    Site(name="pvg", country="China", city="Shanghai", contact="Wei Zhang"),
+    Site(name="pek", country="China", city="Beijing", contact="Jia Li"),
+    Site(name="hhg", country="China", city="Hong Kong", contact="Xin Wang"),
+    Site(name="tpe", country="Taiwan", city="Taipei", contact="Mei Chen"),
+    Site(name="cai", country="Egypt", city="Cairo", contact="Ahmed Hassan"),
+    Site(name="lim", country="Peru", city="Lima", contact="Camila Flores"),
+    Site(name="bog", country="Colombia", city="Bogotá", contact="Juan Hernández"),
+    Site(name="lima", country="Peru", city="Lima", contact="Diego Ramos"),
+    Site(name="sao", country="Brazil", city="São Paulo", contact="Gabriela Sousa"),
+    Site(name="gig", country="Brazil", city="Rio de Janeiro", contact="Lucas Costa"),
+    Site(name="mlu", country="United States of America", city="Monroe", contact="Samuel Grant"),
+    Site(name="dtw", country="United States of America", city="Detroit", contact="Aaliyah Wright"),
+    Site(name="pdx", country="United States of America", city="Portland", contact="Hayden Brooks"),
+    Site(name="msp", country="United States of America", city="Minneapolis", contact="Jaxon Young"),
+    Site(name="phx", country="United States of America", city="Phoenix", contact="Peyton Simmons"),
+    Site(name="mia", country="United States of America", city="Miami", contact="Ariana Baker"),
+    Site(name="bos", country="United States of America", city="Boston", contact="Scarlett Cook"),
+    Site(name="las", country="United States of America", city="Las Vegas", contact="Ryder Griffin"),
+    Site(name="clt", country="United States of America", city="Charlotte", contact="Skyler Ortiz"),
+    Site(name="lax", country="United States of America", city="Los Angeles", contact="Noah Johnson"),
+    Site(name="yul", country="Canada", city="Montreal", contact="Zoe Lambert"),
+    Site(name="yyc", country="Canada", city="Calgary", contact="Grayson Scott"),
+    Site(name="yeg", country="Canada", city="Edmonton", contact="Hannah Wright"),
+    Site(name="nbo", country="Kenya", city="Nairobi", contact="Mwangi Otieno"),
+    Site(name="acc", country="Ghana", city="Accra", contact="Kwame Mensah"),
+    Site(name="lca", country="Cyprus", city="Larnaca", contact="Eleni Georgiou"),
+    Site(name="tll", country="Estonia", city="Tallinn", contact="Kristo Vaher"),
+    Site(name="vlc", country="Spain", city="Valencia", contact="Javier Torres"),
+    Site(name="agp", country="Spain", city="Málaga", contact="Alejandro Romero"),
+    Site(name="nap", country="Italy", city="Naples", contact="Valentina Ricci"),
+    Site(name="flr", country="Italy", city="Florence", contact="Lorenzo Bianchi"),
+    Site(name="sna", country="United States of America", city="Santa Ana", contact="Daniel Sanchez"),
+    Site(name="vno", country="Lithuania", city="Vilnius", contact="Austėja Daukšaitė"),
+    Site(name="beg", country="Serbia", city="Belgrade", contact="Nikola Marković"),
+    Site(name="bts", country="Slovakia", city="Bratislava", contact="Jakub Horváth"),
+    Site(name="dbv", country="Croatia", city="Dubrovnik", contact="Ivana Petrovic"),
+    Site(name="zag", country="Croatia", city="Zagreb", contact="Filip Juric"),
+    Site(name="sof", country="Bulgaria", city="Sofia", contact="Georgi Dimitrov"),
+    Site(name="ktm", country="Nepal", city="Kathmandu", contact="Sunita Shrestha"),
+    Site(name="rix", country="Latvia", city="Riga", contact="Kristaps Ozoliņš"),
+    Site(name="waw", country="Poland", city="Warsaw", contact="Zofia Kowalska"),
+    Site(name="gdn", country="Poland", city="Gdańsk", contact="Mateusz Nowak"),
+    Site(name="krk", country="Poland", city="Krakow", contact="Jakub Wiśniewski"),
+    Site(name="bud", country="Hungary", city="Budapest", contact="László Tóth"),
+    Site(name="prg", country="Czech Republic", city="Prague", contact="Petra Novaková"),
+    Site(name="bzv", country="Republic of Congo", city="Brazzaville", contact="Jules Ngoma"),
+    Site(name="los", country="Nigeria", city="Lagos", contact="Chidi Okeke"),
+    Site(name="add", country="Ethiopia", city="Addis Ababa", contact="Selamawit Haile"),
+    Site(name="dar", country="Tanzania", city="Dar es Salaam", contact="Amani Njoroge"),
+    Site(name="ktw", country="Poland", city="Katowice", contact="Alicja Zielińska"),
+    Site(name="spu", country="Croatia", city="Split", contact="Milan Kovac"),
+    Site(name="bio", country="Spain", city="Bilbao", contact="Miguel Fernandez"),
+    Site(name="sjj", country="Bosnia and Herzegovina", city="Sarajevo", contact="Emir Kovačević"),
+    Site(name="tgd", country="Montenegro", city="Podgorica", contact="Jovan Radović"),
+    Site(name="tiv", country="Montenegro", city="Tivat", contact="Milica Petrović"),
+    Site(name="rdu", country="United States of America", city="Raleigh", contact="Thomas Barnes"),
+    Site(name="pit", country="United States of America", city="Pittsburgh", contact="Olivia Greene"),
+    Site(name="slc", country="United States of America", city="Salt Lake City", contact="Brandon Cooper"),
+    Site(name="mci", country="United States of America", city="Kansas City", contact="Samantha Lawrence"),
+    Site(name="sat", country="United States of America", city="San Antonio", contact="Nicole Evans"),
+    Site(name="oma", country="United States of America", city="Omaha", contact="Benjamin Davis"),
+    Site(name="okc", country="United States of America", city="Oklahoma City", contact="Ethan Wood"),
+    Site(name="abq", country="United States of America", city="Albuquerque", contact="Isabella Scott"),
+    Site(name="tul", country="United States of America", city="Tulsa", contact="Carter Morris"),
+    Site(name="hsv", country="United States of America", city="Huntsville", contact="Sophia Price"),
+    Site(name="jan", country="United States of America", city="Jackson", contact="Logan Ross"),
+    Site(name="ric", country="United States of America", city="Richmond", contact="Sydney Peterson"),
+    Site(name="chs", country="United States of America", city="Charleston", contact="Aiden Mitchell"),
+    Site(name="pvd", country="United States of America", city="Providence", contact="Maya Clark"),
+    Site(name="bdl", country="United States of America", city="Hartford", contact="Kaitlyn Howard"),
+    Site(name="bna", country="United States of America", city="Nashville", contact="Savannah Adams"),
+    Site(name="msy", country="United States of America", city="New Orleans", contact="Noah Cooper"),
+    Site(name="aus", country="United States of America", city="Austin", contact="Lily Martinez"),
+    Site(name="lgb", country="United States of America", city="Long Beach", contact="Mason Torres"),
+    Site(name="smf", country="United States of America", city="Sacramento", contact="Abigail Fisher"),
+    Site(name="mem", country="United States of America", city="Memphis", contact="Isaac Jenkins"),
+    Site(name="tpa", country="United States of America", city="Tampa", contact="Jacob Barnes"),
+    Site(name="cle", country="United States of America", city="Cleveland", contact="Ella Simmons"),
+    Site(name="buf", country="United States of America", city="Buffalo", contact="Daniel Bailey"),
+    Site(name="cmh", country="United States of America", city="Columbus", contact="Avery Russell"),
+    Site(name="ind", country="United States of America", city="Indianapolis", contact="Zoey Price"),
+    Site(name="day", country="United States of America", city="Dayton", contact="Brianna Murphy"),
+    Site(name="fll", country="United States of America", city="Fort Lauderdale", contact="Anthony Hayes"),
+    Site(name="rsw", country="United States of America", city="Fort Myers", contact="Sofia Diaz"),
+    Site(name="sdf", country="United States of America", city="Louisville", contact="Charles Bell"),
+    Site(name="ict", country="United States of America", city="Wichita", contact="Eliana Myers"),
+    Site(name="rno", country="United States of America", city="Reno", contact="Alyssa Powell"),
+    Site(name="lga", country="United States of America", city="New York (LaGuardia)", contact="Ella King"),
+    Site(name="ewr", country="United States of America", city="Newark", contact="Caleb Brooks"),
+    Site(name="orh", country="United States of America", city="Worcester", contact="Harper Reed"),
+    Site(name="bgr", country="United States of America", city="Bangor", contact="Isabella Walker"),
+    Site(name="pwm", country="United States of America", city="Portland", contact="Charlotte Baker"),
+    Site(name="ack", country="United States of America", city="Nantucket", contact="Oliver Foster"),
+    Site(name="mht", country="United States of America", city="Manchester", contact="Liam Parker"),
+    Site(name="acy", country="United States of America", city="Atlantic City", contact="Madison Griffin"),
+    Site(name="jnu", country="United States of America", city="Juneau", contact="Ella Sanders"),
+    Site(name="geg", country="United States of America", city="Spokane", contact="Emily Wood"),
+    Site(name="slz", country="Brazil", city="São Luís", contact="Lucas Oliveira"),
+    Site(name="for", country="Brazil", city="Fortaleza", contact="Gabriela Pereira"),
+    Site(name="bel", country="Brazil", city="Belém", contact="Rafael Barbosa"),
+    Site(name="nat", country="Brazil", city="Natal", contact="Isabela Souza"),
+    Site(name="pso", country="Colombia", city="Pasto", contact="Camilo Suarez"),
+    Site(name="mga", country="Nicaragua", city="Managua", contact="Luis Gutierrez"),
+    Site(name="cus", country="Peru", city="Cusco", contact="Carla Espinoza"),
+    Site(name="vvi", country="Bolivia", city="Santa Cruz", contact="Sergio Rivera"),
+    Site(name="cuz", country="Peru", city="Cusco", contact="Vanessa Martinez"),
+    Site(name="uio", country="Ecuador", city="Quito", contact="Santiago Herrera"),
+    Site(name="pap", country="Haiti", city="Port-au-Prince", contact="Jean-Pierre Baptiste"),
+    Site(name="sju", country="Puerto Rico", city="San Juan", contact="Carlos Rodriguez"),
+    Site(name="pbi", country="United States of America", city="West Palm Beach", contact="Tiffany Young"),
+    Site(name="cvg", country="United States of America", city="Cincinnati", contact="Grace Richardson"),
+    Site(name="mdw", country="United States of America", city="Chicago", contact="Brianna Watson"),
+    Site(name="bwi", country="United States of America", city="Baltimore", contact="Gabriel Stevens"),
+    Site(name="phl", country="United States of America", city="Philadelphia", contact="Sophia Hill"),
+    Site(name="lbb", country="United States of America", city="Lubbock", contact="Alyssa Wilson"),
+    Site(name="scl", country="Chile", city="Santiago", contact="Gabriela Salazar"),
+    Site(name="eze", country="Argentina", city="Buenos Aires", contact="Mateo Fernandez"),
+    Site(name="gru", country="Brazil", city="São Paulo", contact="Renata Costa"),
+    Site(name="lpa", country="Spain", city="Las Palmas", contact="Lucia Moreno"),
+    Site(name="dkr", country="Senegal", city="Dakar", contact="Amadou Diop"),
+    Site(name="svq", country="Spain", city="Seville", contact="Diego Ruiz"),
+    Site(name="arn", country="Sweden", city="Stockholm", contact="Erik Lindström"),
+    Site(name="bru", country="Belgium", city="Brussels", contact="Elise Dupont"),
+    Site(name="gla", country="United Kingdom", city="Glasgow", contact="Ewan MacDonald"),
+    Site(name="kef", country="Iceland", city="Reykjavik", contact="Birta Sigurðardóttir"),
+    Site(name="amn", country="Jordan", city="Amman", contact="Layla Haddad"),
+    Site(name="doh", country="Qatar", city="Doha", contact="Mohammed Al-Thani"),
+    Site(name="khi", country="Pakistan", city="Karachi", contact="Ayesha Khan"),
+    Site(name="bne", country="Australia", city="Brisbane", contact="Olivia Taylor"),
+    Site(name="mel", country="Australia", city="Melbourne", contact="Jack Williams"),
+    Site(name="kul", country="Malaysia", city="Kuala Lumpur", contact="Nurul Aisyah"),
+    Site(name="dme", country="Russia", city="Moscow", contact="Olga Ivanova"),
+    Site(name="tls", country="France", city="Toulouse", contact="Camille Dubois"),
+    Site(name="mnl", country="Philippines", city="Manila", contact="Carlos Reyes"),
+    Site(name="sgn", country="Vietnam", city="Ho Chi Minh City", contact="Thanh Nguyen"),
+    Site(name="bhd", country="United Kingdom", city="Belfast", contact="Liam O'Connor"),
+    Site(name="edi", country="United Kingdom", city="Edinburgh", contact="Euan Campbell"),
+    Site(name="gdl", country="Mexico", city="Guadalajara", contact="Diego Hernandez"),
+    Site(name="lih", country="United States of America", city="Lihue", contact="Brody Martinez"),
+    Site(name="hba", country="Australia", city="Hobart", contact="Alice Wilson"),
+    Site(name="maj", country="Marshall Islands", city="Majuro", contact="Pita Lamora"),
+    Site(name="bgi", country="Barbados", city="Bridgetown", contact="Kiera Walker"),
+    Site(name="pos", country="Trinidad and Tobago", city="Port of Spain", contact="Jasmine Lewis"),
+    Site(name="ski", country="Norway", city="Ski", contact="Henrik Solheim"),
+    Site(name="osy", country="North Macedonia", city="Ohrid", contact="Dimitri Petrov"),
+    Site(name="nwi", country="United Kingdom", city="Norwich", contact="Oscar Turner"),
+    Site(name="orn", country="Algeria", city="Oran", contact="Fatima Salah"),
+    Site(name="tgu", country="Honduras", city="Tegucigalpa", contact="Ricardo Morales"),
+    Site(name="hmo", country="Mexico", city="Hermosillo", contact="Valeria Lopez"),
+    Site(name="gua", country="Guatemala", city="Guatemala City", contact="Mariana Castillo"),
+    Site(name="plo", country="Australia", city="Port Lincoln", contact="Tyler Thompson"),
+    Site(name="asm", country="Eritrea", city="Asmara", contact="Abiel Tesfay"),
+    Site(name="luq", country="Argentina", city="San Luis", contact="Sofia Ramos"),
 ]
 
 PLATFORMS = (
@@ -391,9 +643,9 @@ DEVICES = (
 
 
 NETWORKS_SUPERNET = IPv4Network("10.0.0.0/8")
-NETWORKS_SUPERNET_IPV6 = IPv6Network("2001:DB8::/112")
-NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.0.113.0/24")
-MANAGEMENT_NETWORKS = IPv4Network("172.20.20.0/27")
+NETWORKS_SUPERNET_IPV6 = IPv6Network("2001:DB8::/64")
+NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.111.0.0/16")
+MANAGEMENT_NETWORKS = IPv4Network("172.16.0.0/16")
 
 ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
@@ -901,7 +1153,7 @@ async def generate_site(
     account_crm = store.get("CRM Synchronization", kind=CoreAccount)
     internal_as = store.get(kind=InfraAutonomousSystem, key="Duff")
 
-    country = store.get(kind="LocationCountry", key=site.country)
+    country = store.get(kind=LocationCountry, key=site.country)
     # --------------------------------------------------
     # Create the Site
     # --------------------------------------------------
@@ -1649,12 +1901,13 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
 
 
 async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
-    groups = await client.filters(branch=branch, kind="CoreUserGroup", name__value="Administrators")
-    store.set(key=groups[0].name, node=groups[0])
+    # FIXME: For some reason this part doesn't work
+    # groups = await client.filters(branch=branch, kind="CoreUserGroup", name__value="Administrators")
+    # store.set(key=groups[0].name, node=groups[0])
 
     for account in ACCOUNTS:
         data = account.model_dump()
-        data["member_of_groups"] = groups
+        # data["member_of_groups"] = groups
 
         obj = await client.create(branch=branch, kind="CoreAccount", data=data)
         batch.add(task=obj.save, node=obj)
