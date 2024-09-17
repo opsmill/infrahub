@@ -60,7 +60,7 @@ export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProp
           disabled={!permission.write.allow}
           tooltipEnabled
           tooltipContent={permission.write.message ?? "Delete object"}
-          data-testid="edit-button"
+          data-testid="delete-button"
           variant={"danger"}
           size={"square"}
           onClick={() => setShowDeleteModal(true)}>
