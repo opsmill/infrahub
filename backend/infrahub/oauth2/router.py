@@ -132,7 +132,10 @@ async def token(
 ) -> models.UserToken:
     log.info("Original URL")
 
-    token_data = await request.auth.clients[provider].token_data(request)
+    auth_provider = request.auth.clients["google-oauth2"]
+
+    # token_data = await request.auth.clients["google-oauth2"].token_data(request)
+    token_data = await parse_token(request=request, core=auth_provider)
     account = await NodeManager.get_one_by_default_filter(db=db, id=token_data["name"], kind=InfrahubKind.ACCOUNT)
 
     if not account:
