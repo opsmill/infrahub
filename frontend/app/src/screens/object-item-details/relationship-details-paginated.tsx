@@ -79,6 +79,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const handleDeleteRelationship = async (id: string) => {
     if (onDeleteRelationship) {
+      await onDeleteRelationship(relationshipSchema.name, id);
+
       setRelatedRowToDelete(undefined);
 
       return;

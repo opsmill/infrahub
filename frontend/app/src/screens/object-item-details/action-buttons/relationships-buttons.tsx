@@ -4,6 +4,7 @@ import DynamicForm from "@/components/form/dynamic-form";
 import { SelectOption } from "@/components/inputs/select";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
 import { usePermission } from "@/hooks/usePermission";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
@@ -70,7 +71,9 @@ export function RelationshipsButtons() {
         },
       });
 
-      // TODO: REFETCH
+      await graphqlClient.refetchQueries({
+        include: [objectKind!, `GetObjectRelationships_${objectKind}`],
+      });
 
       toast(
         <Alert
