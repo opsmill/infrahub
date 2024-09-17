@@ -93,7 +93,7 @@ export default function ObjectItemDetails({
   const tabs = [
     {
       label: schema?.label,
-      name: schema?.label,
+      name: schema?.name,
     },
     ...getObjectTabs(relationshipsTabs, objectDetailsData),
     // Includes the task tab only for specific objects,
