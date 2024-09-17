@@ -1,12 +1,10 @@
 import React, { forwardRef, useState } from "react";
-import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@/components/buttons/button-primitive";
 import { useMutation } from "@/hooks/useQuery";
 import ModalDelete from "@/components/modals/modal-delete";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import DynamicForm from "@/components/form/dynamic-form";
-import { CommandItem } from "@/components/ui/command";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/graphql/mutations/schema/enum";
 import { isRequired } from "@/components/form/utils/validation";
@@ -14,34 +12,30 @@ import {
   Combobox,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox3";
 
-export interface EnumItemProps extends React.ComponentPropsWithoutRef<typeof CommandItem> {
+export interface EnumItemProps extends React.ComponentPropsWithoutRef<typeof ComboboxItem> {
   fieldSchema: {
     name: string;
   };
-  currentValue: unknown | null;
   schema: IModelSchema;
   onDelete: (id: unknown) => void;
-  item: unknown;
 }
 
-export const EnumItem = React.forwardRef<React.ElementRef<typeof CommandItem>, EnumItemProps>(
-  (
-    { fieldSchema, currentValue, schema, onDelete, className, value, children, item, ...props },
-    ref
-  ) => {
+export const EnumItem = React.forwardRef<React.ElementRef<typeof ComboboxItem>, EnumItemProps>(
+  ({ fieldSchema, schema, onDelete, className, value, children, ...props }, ref) => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [removeEnum, { loading }] = useMutation(ENUM_REMOVE_MUTATION, {
-      variables: { kind: schema.kind, attribute: fieldSchema.name, enum: item },
+      variables: { kind: schema.kind, attribute: fieldSchema.name, enum: value },
     });
 
     const handleDelete = async () => {
       try {
         await removeEnum();
-        onDelete(item);
+        onDelete(value);
       } catch (error) {
         console.error("Error deleting enum:", error);
       }
@@ -49,9 +43,8 @@ export const EnumItem = React.forwardRef<React.ElementRef<typeof CommandItem>, E
 
     return (
       <>
-        <CommandItem ref={ref} {...props}>
-          <Icon icon="mdi:check" className={classNames(currentValue !== item && "opacity-0")} />
-          {item?.toString()}
+        <ComboboxItem ref={ref} value={value} {...props}>
+          {value}
           <Button
             tabIndex={-1}
             variant="ghost"
@@ -63,14 +56,14 @@ export const EnumItem = React.forwardRef<React.ElementRef<typeof CommandItem>, E
             }}>
             <Icon icon="mdi:trash-can-outline" />
           </Button>
-        </CommandItem>
+        </ComboboxItem>
 
         <ModalDelete
           title="Delete"
           description={
             <>
               Are you sure you want to delete the enum{" "}
-              <span className="font-semibold text-gray-800">{item?.toString()}</span>?
+              <span className="font-semibold text-gray-800">{value}</span>?
             </>
           }
           setOpen={setShowDeleteModal}
@@ -198,8 +191,8 @@ export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
             {localItems.map((item) => (
               <EnumItem
                 key={item?.toString()}
-                item={item}
-                currentValue={value}
+                value={item as string}
+                selectedValue={value}
                 schema={schema}
                 fieldSchema={fieldSchema}
                 onSelect={() => {

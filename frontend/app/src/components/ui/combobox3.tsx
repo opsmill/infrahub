@@ -2,7 +2,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
-import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export const Combobox = Popover;
 
@@ -47,6 +53,21 @@ export const ComboboxList = React.forwardRef<
       <CommandInput placeholder="Filter..." />
       <CommandList ref={ref} {...props} />
     </Command>
+  );
+});
+
+export const ComboboxItem = React.forwardRef<
+  React.ElementRef<typeof CommandItem>,
+  React.ComponentPropsWithoutRef<typeof CommandItem> & {
+    selectedValue?: string | null;
+    value: string;
+  }
+>(({ children, selectedValue, ...props }, ref) => {
+  return (
+    <CommandItem ref={ref} {...props}>
+      <Icon icon="mdi:check" className={classNames(selectedValue !== props.value && "opacity-0")} />
+      {children}
+    </CommandItem>
   );
 });
 

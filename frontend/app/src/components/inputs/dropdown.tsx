@@ -19,6 +19,7 @@ import {
   Combobox,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox3";
@@ -39,11 +40,10 @@ export interface DropdownProps extends Omit<HTMLAttributes<HTMLButtonElement>, "
   field?: AttributeSchema;
 }
 
-export interface DropdownItemProps extends React.ComponentPropsWithoutRef<typeof CommandItem> {
+export interface DropdownItemProps extends React.ComponentPropsWithoutRef<typeof ComboboxItem> {
   fieldSchema?: {
     name: string;
   };
-  currentValue: DropdownProps["value"];
   schema?: IModelSchema;
   onDelete: (item: DropdownOption) => void;
   item: DropdownOption;
@@ -52,95 +52,77 @@ export interface DropdownItemProps extends React.ComponentPropsWithoutRef<typeof
 export const DropdownItem = React.forwardRef<
   React.ElementRef<typeof CommandItem>,
   DropdownItemProps
->(
-  (
-    {
-      fieldSchema,
-      currentValue,
-      schema,
-      onDelete,
-      className,
-      value,
-      children,
-      style,
-      item,
-      ...props
-    },
-    ref
-  ) => {
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [removeDropdownOption, { loading }] = useMutation(DROPDOWN_REMOVE_MUTATION);
+>(({ fieldSchema, schema, onDelete, className, item, ...props }, ref) => {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [removeDropdownOption, { loading }] = useMutation(DROPDOWN_REMOVE_MUTATION);
 
-    return (
-      <CommandItem ref={ref} className={classNames("rounded-none", className)} {...props}>
-        <Icon icon="mdi:check" className={classNames(currentValue !== item.value && "opacity-0")} />
+  return (
+    <ComboboxItem ref={ref} className={classNames("rounded-none", className)} {...props}>
+      <div className="overflow-hidden">
+        <Badge className="font-medium" style={getDropdownStyle(item.color)}>
+          {item.label}
+        </Badge>
+        <p className="text-xs truncate">{item.description}</p>
+      </div>
 
-        <div className="overflow-hidden">
-          <Badge className="font-medium" style={getDropdownStyle(item.color)}>
-            {item.label}
-          </Badge>
-          <p className="text-xs truncate">{item.description}</p>
-        </div>
+      {schema && fieldSchema && (
+        <>
+          <Button
+            tabIndex={-1}
+            variant="ghost"
+            size="sm"
+            className="ml-auto text-red-800 h-6"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteModal(true);
+            }}>
+            <Icon icon="mdi:trash-can-outline" />
+          </Button>
 
-        {schema && fieldSchema && (
-          <>
-            <Button
-              tabIndex={-1}
-              variant="ghost"
-              size="sm"
-              className="ml-auto text-red-800 h-6"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDeleteModal(true);
-              }}>
-              <Icon icon="mdi:trash-can-outline" />
-            </Button>
-
-            <ModalDelete
-              title="Delete"
-              description={
-                <>
-                  Are you sure you want to delete the option{" "}
-                  <Badge
-                    className="font-medium"
-                    style={
-                      item?.color
-                        ? {
-                            backgroundColor: item.color,
-                            color: getTextColor(item.color),
-                          }
-                        : undefined
-                    }>
-                    {item.label}
-                  </Badge>{" "}
-                  ?
-                </>
+          <ModalDelete
+            title="Delete"
+            description={
+              <>
+                Are you sure you want to delete the option{" "}
+                <Badge
+                  className="font-medium"
+                  style={
+                    item?.color
+                      ? {
+                          backgroundColor: item.color,
+                          color: getTextColor(item.color),
+                        }
+                      : undefined
+                  }>
+                  {item.label}
+                </Badge>{" "}
+                ?
+              </>
+            }
+            setOpen={setShowDeleteModal}
+            onCancel={() => setShowDeleteModal(false)}
+            onDelete={async () => {
+              try {
+                await removeDropdownOption({
+                  variables: {
+                    kind: schema.kind,
+                    attribute: fieldSchema.name,
+                    dropdown: item.value,
+                  },
+                });
+                onDelete(item);
+              } catch (error) {
+                console.error("Error deleting dropdown item:", error);
               }
-              setOpen={setShowDeleteModal}
-              onCancel={() => setShowDeleteModal(false)}
-              onDelete={async () => {
-                try {
-                  await removeDropdownOption({
-                    variables: {
-                      kind: schema.kind,
-                      attribute: fieldSchema.name,
-                      dropdown: item.value,
-                    },
-                  });
-                  onDelete(item);
-                } catch (error) {
-                  console.error("Error deleting dropdown item:", error);
-                }
-              }}
-              open={showDeleteModal}
-              isLoading={loading}
-            />
-          </>
-        )}
-      </CommandItem>
-    );
-  }
-);
+            }}
+            open={showDeleteModal}
+            isLoading={loading}
+          />
+        </>
+      )}
+    </ComboboxItem>
+  );
+});
 
 interface DropdownAddActionProps {
   schema: IModelSchema;
@@ -257,7 +239,8 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
                 key={item.value}
                 schema={schema}
                 fieldSchema={field}
-                currentValue={selectItem?.value}
+                value={item.value}
+                selectedValue={selectItem?.value}
                 onSelect={() => {
                   onChange(item.value === value ? null : item.value);
                   setOpen(false);
