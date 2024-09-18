@@ -435,7 +435,6 @@ async def test_relationship_one_peer_branch_and_main_update(
         schema_manager=registry.schema,
         from_time=from_time,
     )
-
     diff_parser.parse()
 
     assert diff_parser.get_branches() == {branch.name, default_branch.name}
@@ -548,7 +547,7 @@ async def test_relationship_one_peer_branch_and_main_update(
     root_path = diff_parser.get_diff_root_for_branch(branch=default_branch.name)
     assert root_path.branch == default_branch.name
     nodes_by_id = {n.uuid: n for n in root_path.nodes}
-    assert set(nodes_by_id.keys()) == {car_accord_main.id, person_john_main.id, person_jane_main.id}
+    assert set(nodes_by_id.keys()) == {car_accord_main.id, person_john_main.id}
     # check relationship on car node on main
     car_node = nodes_by_id[car_main.get_id()]
     assert car_node.uuid == car_accord_main.id
@@ -619,34 +618,6 @@ async def test_relationship_one_peer_branch_and_main_update(
         (DatabaseEdgeType.IS_RELATED, DiffAction.REMOVED, car_accord_main.id, None),
         (DatabaseEdgeType.IS_VISIBLE, DiffAction.REMOVED, True, None),
         (DatabaseEdgeType.IS_PROTECTED, DiffAction.REMOVED, False, None),
-    }
-    for prop_diff in single_relationship.properties:
-        assert before_main_change < prop_diff.changed_at < after_main_change
-    # check relationship on added peer on main
-    jane_node = nodes_by_id[person_jane_main.get_id()]
-    assert jane_node.uuid == person_jane_main.get_id()
-    assert jane_node.kind == "TestPerson"
-    assert jane_node.action is DiffAction.UPDATED
-    assert len(jane_node.attributes) == 0
-    assert len(jane_node.relationships) == 1
-    relationship_diff = jane_node.relationships[0]
-    assert relationship_diff.name == "cars"
-    assert relationship_diff.action is DiffAction.UPDATED
-    elements_by_peer_id = {e.peer_id: e for e in relationship_diff.relationships}
-    assert set(elements_by_peer_id.keys()) == {car_accord_main.get_id()}
-    single_relationship = relationship_diff.relationships[0]
-    assert single_relationship.peer_id == car_accord_main.id
-    assert single_relationship.action is DiffAction.ADDED
-    properties_by_type = {p.property_type: p for p in single_relationship.properties}
-    assert set(properties_by_type.keys()) == {
-        DatabaseEdgeType.IS_RELATED,
-        DatabaseEdgeType.IS_PROTECTED,
-        DatabaseEdgeType.IS_VISIBLE,
-    }
-    assert {(p.property_type, p.action, p.previous_value, p.new_value) for p in single_relationship.properties} == {
-        (DatabaseEdgeType.IS_RELATED, DiffAction.ADDED, None, car_accord_main.id),
-        (DatabaseEdgeType.IS_VISIBLE, DiffAction.ADDED, None, True),
-        (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, None, False),
     }
     for prop_diff in single_relationship.properties:
         assert before_main_change < prop_diff.changed_at < after_main_change
@@ -751,21 +722,8 @@ async def test_relationship_one_property_branch_update(
     # check relationship peer on new peer on main
     root_main_path = diff_parser.get_diff_root_for_branch(branch=default_branch.name)
     assert root_main_path.branch == default_branch.name
-    assert len(root_main_path.nodes) == 3
     diff_nodes_by_id = {n.uuid: n for n in root_main_path.nodes}
-    node_diff = diff_nodes_by_id[person_jane_main.id]
-    assert node_diff.uuid == person_jane_main.id
-    assert node_diff.kind == "TestPerson"
-    assert node_diff.action is DiffAction.UPDATED
-    assert len(node_diff.attributes) == 0
-    assert len(node_diff.relationships) == 1
-    relationship_diff = node_diff.relationships[0]
-    assert relationship_diff.name == "cars"
-    assert relationship_diff.action is DiffAction.UPDATED
-    assert len(relationship_diff.relationships) == 1
-    single_relationship_diff = relationship_diff.relationships[0]
-    assert single_relationship_diff.peer_id == car_accord_main.id
-    assert single_relationship_diff.action is DiffAction.ADDED
+    assert set(diff_nodes_by_id.keys()) == {person_john_main.id, car_accord_main.id}
     # check relationship peer on old peer on main
     node_diff = diff_nodes_by_id[person_john_main.id]
     assert node_diff.uuid == person_john_main.id
@@ -950,7 +908,7 @@ async def test_many_relationship_property_update(
     diff_query = await DiffAllPathsQuery.init(
         db=db,
         branch=branch,
-        base_branch=branch,
+        base_branch=default_branch,
     )
     await diff_query.execute(db=db)
 
@@ -966,7 +924,6 @@ async def test_many_relationship_property_update(
     assert diff_parser.get_branches() == {branch.name}
     root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
     assert root_path.branch == branch.name
-    assert len(root_path.nodes) == 2
     nodes_by_id = {n.uuid: n for n in root_path.nodes}
     assert set(nodes_by_id.keys()) == {person_john_main.get_id(), car_accord_main.get_id()}
     john_node = nodes_by_id[person_john_main.get_id()]
@@ -1035,7 +992,7 @@ async def test_cardinality_one_peer_conflicting_updates(
     diff_query = await DiffAllPathsQuery.init(
         db=db,
         branch=branch,
-        base_branch=branch,
+        base_branch=default_branch,
         diff_from=from_time,
     )
     await diff_query.execute(db=db)
@@ -1168,9 +1125,9 @@ async def test_cardinality_one_peer_conflicting_updates(
     # check main
     root_path = diff_parser.get_diff_root_for_branch(branch=default_branch.name)
     assert root_path.branch == default_branch.name
-    assert len(root_path.nodes) == 3
+    assert len(root_path.nodes) == 2
     nodes_by_id = {n.uuid: n for n in root_path.nodes}
-    assert set(nodes_by_id.keys()) == {car_accord_main.get_id(), person_john_main.get_id(), person_jane_main.get_id()}
+    assert set(nodes_by_id.keys()) == {car_accord_main.get_id(), person_john_main.get_id()}
     # check car node on main
     car_node = nodes_by_id[car_accord_main.id]
     assert car_node.action is DiffAction.UPDATED
@@ -1251,36 +1208,6 @@ async def test_cardinality_one_peer_conflicting_updates(
         assert diff_prop.previous_value == previous_value
         assert diff_prop.new_value is None
         assert branch_update_done < diff_prop.changed_at < main_update_done
-    # check jane node on main
-    jane_node = nodes_by_id[person_jane_main.id]
-    assert jane_node.action is DiffAction.UPDATED
-    assert jane_node.attributes == []
-    assert len(jane_node.relationships) == 1
-    assert jane_node.changed_at < from_time
-    cars_rel = jane_node.relationships.pop()
-    assert cars_rel.name == "cars"
-    assert cars_rel.action is DiffAction.UPDATED
-    assert branch_update_done < cars_rel.changed_at < main_update_done
-    assert len(cars_rel.relationships) == 1
-    cars_element = cars_rel.relationships.pop()
-    assert cars_element.peer_id == car_accord_main.id
-    assert cars_element.action is DiffAction.ADDED
-    assert branch_update_done < cars_element.changed_at < main_update_done
-    properties_by_type = {p.property_type: p for p in cars_element.properties}
-    assert set(properties_by_type.keys()) == {
-        DatabaseEdgeType.IS_RELATED,
-        DatabaseEdgeType.IS_VISIBLE,
-        DatabaseEdgeType.IS_PROTECTED,
-    }
-    for prop_type, new_value in [
-        (DatabaseEdgeType.IS_RELATED, car_accord_main.id),
-        (DatabaseEdgeType.IS_VISIBLE, True),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ]:
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.previous_value is None
-        assert diff_prop.new_value == new_value
-        assert branch_update_done < diff_prop.changed_at < main_update_done
 
 
 async def test_relationship_property_owner_conflicting_updates(
@@ -1301,7 +1228,7 @@ async def test_relationship_property_owner_conflicting_updates(
     diff_query = await DiffAllPathsQuery.init(
         db=db,
         branch=branch,
-        base_branch=branch,
+        base_branch=default_branch,
         diff_from=from_time,
     )
     await diff_query.execute(db=db)

@@ -420,10 +420,9 @@ class DiffQueryParser:
             raise RuntimeError("query must be executed before indexing")
 
         for query_result in self.diff_query.get_results():
-            paths = query_result.get_paths(label="full_diff_paths")
-            for path in paths:
-                database_path = DatabasePath.from_cypher_path(cypher_path=path)
-                self._parse_path(database_path=database_path)
+            path = query_result.get_path(label="diff_path")
+            database_path = DatabasePath.from_cypher_path(cypher_path=path)
+            self._parse_path(database_path=database_path)
         self._apply_base_branch_previous_values()
         self._remove_empty_base_diff_root()
         self._finalize()
