@@ -235,11 +235,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await page.getByLabel("Profile Priority").fill("2000");
       await page.getByLabel("MTU").fill("256");
       await page.getByLabel("Enabled").check();
-      await page
-        .locator("div:below(:text('Status'))")
-        .first()
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByLabel("Status").click();
       await page.getByText("Provisioning").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("InfraInterfaceL2 created")).toBeVisible();
@@ -257,11 +253,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     await test.step("fill and submit form", async () => {
       await page.getByLabel("Profile Name *").fill(GENERIC_PROFILE_NAME);
       await page.getByLabel("Profile Priority").fill("2000");
-      await page
-        .locator("div:below(:text('Status'))")
-        .first()
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByLabel("Status").click();
       await page.getByText("Maintenance", { exact: true }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("InfraInterface created")).toBeVisible();
