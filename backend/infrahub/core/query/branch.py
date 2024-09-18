@@ -24,11 +24,13 @@ class AddNodeToBranch(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         query = """
         MATCH (root:Root)
-        MATCH (d) WHERE ID(d) = $node_id
+        MATCH (d) WHERE %(id_func)s(d) = $node_id
         WITH root,d
         CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, to: null, status: $status }]->(root)
-        RETURN ID(r)
-        """
+        RETURN %(id_func)s(r)
+        """ % {
+            "id_func": db.get_id_function_name(),
+        }
 
         self.params["node_id"] = element_id_to_id(self.node_id)
         self.params["now"] = self.at.to_string()
@@ -100,10 +102,12 @@ class RebaseBranchUpdateRelationshipQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         query = """
         MATCH ()-[r]->()
-        WHERE ID(r) IN $ids
+        WHERE %(id_func)s(r) IN $ids
         SET r.from = $at
         SET r.conflict = NULL
-        """
+        """ % {
+            "id_func": db.get_id_function_name(),
+        }
 
         self.add_to_query(query=query)
 
@@ -126,13 +130,13 @@ class RebaseBranchDeleteRelationshipQuery(Query):
         if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
             query = """
             MATCH p = (s)-[r]-(d)
-            WHERE ID(r) IN $ids
+            WHERE %(id_func)s(r) IN $ids
             DELETE r
             """
         else:
             query = """
             MATCH p = (s)-[r]-(d)
-            WHERE ID(r) IN $ids
+            WHERE %(id_func)s(r) IN $ids
             DELETE r
             WITH *
             UNWIND nodes(p) AS n
@@ -140,6 +144,9 @@ class RebaseBranchDeleteRelationshipQuery(Query):
             WHERE NOT exists((n)--())
             DELETE n
             """
+        query %= {
+            "id_func": db.get_id_function_name(),
+        }
 
         self.add_to_query(query=query)
 

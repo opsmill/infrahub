@@ -336,6 +336,11 @@ class InfrahubDatabase:
             """
         return generate_uuid_query
 
+    def get_id_function_name(self) -> str:
+        if self.db_type == DatabaseType.NEO4J:
+            return "elementId"
+        return "ID"
+
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:
     default_db = driver.session()

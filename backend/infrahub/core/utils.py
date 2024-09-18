@@ -27,12 +27,12 @@ async def add_relationship(
     status=RelationshipStatus.ACTIVE,
 ):
     create_rel_query = """
-    MATCH (s) WHERE ID(s) = $src_node_id
-    MATCH (d) WHERE ID(d) = $dst_node_id
+    MATCH (s) WHERE %(id_func)s(s) = $src_node_id
+    MATCH (d) WHERE %(id_func)s(d) = $dst_node_id
     WITH s,d
-    CREATE (s)-[r:%s { branch: $branch, branch_level: $branch_level, from: $at, to: null, status: $status }]->(d)
-    RETURN ID(r)
-    """ % str(rel_type).upper()
+    CREATE (s)-[r:%(rel_type)s { branch: $branch, branch_level: $branch_level, from: $at, to: null, status: $status }]->(d)
+    RETURN %(id_func)s(r)
+    """ % {"id_func": db.get_id_function_name(), "rel_type": str(rel_type).upper()}
 
     at = Timestamp(at)
 

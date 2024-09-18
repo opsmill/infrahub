@@ -391,7 +391,10 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.return_labels = ["s", "d", "rl"]
 
         for prop_name, prop in self.data.properties.items():
-            self.add_to_query("MATCH (prop_%s) WHERE ID(prop_%s) = $prop_%s_id" % (prop_name, prop_name, prop_name))
+            self.add_to_query(
+                "MATCH (prop_%(prop_name)s) WHERE %(id_func)s(prop_%(prop_name)s) = $prop_%(prop_name)s_id"
+                % {"prop_name": prop_name, "id_func": db.get_id_function_name()}
+            )
             self.params[f"prop_{prop_name}_id"] = element_id_to_id(prop.prop_db_id)
             self.return_labels.append(f"prop_{prop_name}")
 
