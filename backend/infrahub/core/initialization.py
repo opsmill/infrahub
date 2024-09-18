@@ -330,7 +330,7 @@ async def create_initial_permissions(db: InfrahubDatabase) -> list[Node]:
 
 async def create_administrator_role(db: InfrahubDatabase, global_permissions: Optional[list[Node]] = None) -> Node:
     role_name = "Administrator"
-    obj = await Node.init(db=db, schema=InfrahubKind.USERROLE)
+    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
     await obj.new(db=db, name=role_name, permissions=global_permissions)
     await obj.save(db=db)
     log.info(f"Created User Role: {role_name}")
@@ -340,7 +340,7 @@ async def create_administrator_role(db: InfrahubDatabase, global_permissions: Op
 
 async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_accounts: list[CoreAccount]) -> Node:
     group_name = "Administrators"
-    group = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name=group_name, roles=[role])
     await group.save(db=db)
     log.info(f"Created User Group: {group_name}")

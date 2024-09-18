@@ -109,11 +109,11 @@ class TestObjectPermissions:
             await obj.save(db=db)
             permissions.append(obj)
 
-        role = await Node.init(db=db, schema=InfrahubKind.USERROLE)
+        role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
         await role.new(db=db, name="admin", permissions=permissions)
         await role.save(db=db)
 
-        group = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
+        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await group.new(db=db, name="admin", roles=[role])
         await group.save(db=db)
 
