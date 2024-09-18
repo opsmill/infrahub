@@ -9,7 +9,7 @@ import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 
 export interface EnumFieldProps
   extends Omit<DynamicEnumFieldProps, "type">,
-    Omit<EnumProps, "defaultValue" | "name" | "items"> {}
+    Omit<EnumProps, "defaultValue" | "value" | "name" | "items"> {}
 
 const EnumField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
@@ -21,7 +21,6 @@ const EnumField = ({
   items,
   schema,
   field: attributeSchema,
-  ...props
 }: EnumFieldProps) => {
   return (
     <FormField
@@ -44,10 +43,10 @@ const EnumField = ({
 
             <FormInput>
               <Enum
-                items={items}
+                items={items as Array<string | number>}
                 fieldSchema={attributeSchema}
                 schema={schema}
-                value={fieldData?.value as string | null}
+                value={fieldData?.value as string | number | null}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
                 }}

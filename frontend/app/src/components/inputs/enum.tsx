@@ -1,6 +1,6 @@
 import React, { forwardRef, useState } from "react";
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@/components/buttons/button-primitive";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { useMutation } from "@/hooks/useQuery";
 import ModalDelete from "@/components/modals/modal-delete";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
@@ -16,20 +16,20 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox3";
+import { AttributeSchema } from "@/screens/schema/types";
 
-export interface EnumItemProps extends React.ComponentPropsWithoutRef<typeof ComboboxItem> {
-  fieldSchema: {
-    name: string;
-  };
+export interface EnumDeleteButtonProps extends ButtonProps {
+  fieldSchema: AttributeSchema;
   schema: IModelSchema;
-  onDelete: (id: unknown) => void;
+  value: string | number;
+  onDelete: (id: string | number) => void;
 }
 
-export const EnumItem = React.forwardRef<React.ElementRef<typeof ComboboxItem>, EnumItemProps>(
+export const EnumDeleteButton = React.forwardRef<HTMLButtonElement, EnumDeleteButtonProps>(
   ({ fieldSchema, schema, onDelete, className, value, children, ...props }, ref) => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [removeEnum, { loading }] = useMutation(ENUM_REMOVE_MUTATION, {
-      variables: { kind: schema.kind, attribute: fieldSchema.name, enum: value },
+      variables: { kind: schema?.kind, attribute: fieldSchema?.name, enum: value },
     });
 
     const handleDelete = async () => {
@@ -43,20 +43,19 @@ export const EnumItem = React.forwardRef<React.ElementRef<typeof ComboboxItem>, 
 
     return (
       <>
-        <ComboboxItem ref={ref} value={value} {...props}>
-          {value}
-          <Button
-            tabIndex={-1}
-            variant="ghost"
-            size="sm"
-            className="ml-auto text-red-800 h-6"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDeleteModal(true);
-            }}>
-            <Icon icon="mdi:trash-can-outline" />
-          </Button>
-        </ComboboxItem>
+        <Button
+          ref={ref}
+          tabIndex={-1}
+          variant="ghost"
+          size="sm"
+          className="ml-auto text-red-800 h-6"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteModal(true);
+          }}
+          {...props}>
+          <Icon icon="mdi:trash-can-outline" />
+        </Button>
 
         <ModalDelete
           title="Delete"
@@ -78,19 +77,16 @@ export const EnumItem = React.forwardRef<React.ElementRef<typeof ComboboxItem>, 
 );
 
 interface EnumAddActionProps {
-  schema: IModelSchema;
-  field: {
-    label?: string;
-    description?: string;
-    kind?: string;
-    name: string;
-  };
-  addOption: (item: unknown) => void;
+  schema?: IModelSchema;
+  field?: AttributeSchema;
+  addOption: (item: string | number) => void;
 }
 
 export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, addOption }) => {
   const [open, setOpen] = useState(false);
   const [addEnum] = useMutation(ENUM_ADD_MUTATION);
+
+  if (!schema || !field) return null;
 
   return (
     <div className="p-2 pt-0">
@@ -136,7 +132,7 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
               },
             });
             if (data?.SchemaEnumAdd?.ok) {
-              addOption(newEnumValue);
+              addOption(newEnumValue as string | number);
               setOpen(false);
             }
           }}
@@ -149,17 +145,12 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
 };
 
 export interface EnumProps {
-  items: Array<unknown>;
-  value: string | null;
-  fieldSchema: {
-    name: string;
-    label?: string;
-    description?: string;
-    kind?: string;
-  };
-  schema: IModelSchema;
+  items: Array<string | number>;
+  value: string | number | null;
+  fieldSchema?: AttributeSchema;
+  schema?: IModelSchema;
   className?: string;
-  onChange: (value: unknown) => void;
+  onChange: (value: string | number | null) => void;
 }
 
 export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
@@ -167,14 +158,14 @@ export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
     const [localItems, setLocalItems] = useState(items);
     const [open, setOpen] = useState(false);
 
-    const handleAddOption = (newOption: unknown) => {
+    const handleAddOption = (newOption: string | number) => {
       setLocalItems([...localItems, newOption]);
       onChange(newOption);
     };
 
-    const handleDeleteOption = (deletedItemId: unknown) => {
-      setLocalItems(localItems.filter((item) => item !== deletedItemId));
-      if (value === deletedItemId) {
+    const handleDeleteOption = (deletedItem: string | number) => {
+      setLocalItems(localItems.filter((item) => item !== deletedItem));
+      if (value === deletedItem) {
         onChange(null);
       }
     };
@@ -189,18 +180,25 @@ export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
           <ComboboxList>
             <ComboboxEmpty>No enum found.</ComboboxEmpty>
             {localItems.map((item) => (
-              <EnumItem
-                key={item?.toString()}
-                value={item as string}
-                selectedValue={value}
-                schema={schema}
-                fieldSchema={fieldSchema}
+              <ComboboxItem
+                key={item.toString()}
+                value={item.toString()}
+                selectedValue={value?.toString()}
                 onSelect={() => {
                   onChange(item === value ? null : item);
                   setOpen(false);
                 }}
-                onDelete={handleDeleteOption}
-              />
+                {...props}>
+                {item}
+                {schema && fieldSchema && (
+                  <EnumDeleteButton
+                    schema={schema}
+                    fieldSchema={fieldSchema}
+                    value={item}
+                    onDelete={handleDeleteOption}
+                  />
+                )}
+              </ComboboxItem>
             ))}
           </ComboboxList>
 
