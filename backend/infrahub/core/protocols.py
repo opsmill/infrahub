@@ -133,6 +133,18 @@ class CoreGroup(CoreNode):
     children: RelationshipManager
 
 
+class CoreMenu(CoreNode):
+    name: String
+    label: StringOptional
+    description: StringOptional
+    icon: StringOptional
+    protected: String
+    order_weight: Integer
+    section: Enum
+    parent: RelationshipManager
+    children: RelationshipManager
+
+
 class CoreProfile(CoreNode):
     profile_name: String
     profile_priority: IntegerOptional
@@ -363,6 +375,10 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
     default_prefix_type: StringOptional
     resources: RelationshipManager
     ip_namespace: RelationshipManager
+
+
+class CoreMenuItem(CoreMenu):
+    pass
 
 
 class CoreNumberPool(CoreResourcePool, LineageSource):

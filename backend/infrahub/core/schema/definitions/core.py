@@ -56,6 +56,41 @@ core_profile_schema_definition: dict[str, Any] = {
     ],
 }
 
+# -----------------------------------------------
+# Menu Items
+# -----------------------------------------------
+generic_menu_item: dict[str, Any] = {
+    "name": "Menu",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "description": "Base node for the menu",
+    "label": "Menu Item",
+    "hierarchical": True,
+    "attributes": [
+        {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
+        {"name": "label", "kind": "Text", "optional": True, "order_weight": 2000},
+        {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
+        {"name": "icon", "kind": "Text", "optional": True, "order_weight": 4000},
+        {"name": "protected", "kind": "Boolean", "default_value": False, "read_only": True, "order_weight": 5000},
+        {"name": "order_weight", "kind": "Number", "default_value": 2000, "order_weight": 6000},
+        {
+            "name": "section",
+            "kind": "Text",
+            "enum": ["object", "internal"],
+            "default_value": "object",
+            "order_weight": 7000,
+        },
+    ],
+}
+
+menu_item: dict[str, Any] = {
+    "name": "MenuItem",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "description": "Menu Item",
+    "label": "Menu Item",
+    "inherit_from": ["CoreMenu"],
+}
 
 core_models: dict[str, Any] = {
     "generics": [
@@ -938,8 +973,10 @@ core_models: dict[str, Any] = {
                 {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
             ],
         },
+        generic_menu_item,
     ],
     "nodes": [
+        menu_item,
         {
             "name": "StandardGroup",
             "namespace": "Core",

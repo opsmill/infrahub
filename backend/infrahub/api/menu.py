@@ -1,19 +1,23 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from infrahub.api.dependencies import get_branch_dep
+from infrahub.api.dependencies import get_branch_dep, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.menu import DEFAULT_MENU
+from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
+    from infrahub.database import InfrahubDatabase
 
 log = get_logger()
 router = APIRouter(prefix="/menu")
@@ -33,6 +37,57 @@ class InterfaceMenu(BaseModel):
 
     def list_title(self) -> str:
         return f"All {self.title}(s)"
+
+
+@dataclass
+class Menu:
+    data: dict[str, NewInterfaceMenu] = field(default_factory=dict)
+
+    def find_menu_item(self, item_name: str) -> NewInterfaceMenu | None:
+        # search at the top level first
+        for name, item in self.data.items():
+            if name == item_name:
+                return item
+
+        # Search amoung the children
+        for item in self.data.values():
+            if not item.children:
+                continue
+            found = self.find_menu_item(item_name=item_name)
+            if found:
+                return found
+
+        return None
+
+    def to_rest(self) -> Menu:
+        return Menu(data=self._sort_menu_items(self.data))
+
+    @staticmethod
+    def _sort_menu_items(items: dict[str, NewInterfaceMenu]) -> dict[str, NewInterfaceMenu]:
+        sorted(items.items(), key=lambda x: (x[1].order_weight, x[0]), reverse=True)
+        return items
+
+
+class NewInterfaceMenu(BaseModel):
+    title: str = Field(..., description="Title of the menu item")
+    path: str = Field(default="", description="URL endpoint if applicable")
+    icon: str = Field(default="", description="The icon to show for the current view")
+    children: dict[str, NewInterfaceMenu] = Field(default_factory=dict, description="Child objects")
+    kind: str = Field(default="")
+    order_weight: int = 5000
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, NewInterfaceMenu):
+            raise NotImplementedError
+        return self.title < other.title
+
+    @classmethod
+    def from_node(cls, obj: CoreMenuItem):
+        return cls(title=obj.label.value or "", icon=obj.icon.value or "", order_weight=obj.order_weight.value)
+
+    @classmethod
+    def from_schema(cls, model: MainSchemaTypes):
+        return cls(title=model.label or model.kind, path=f"/objects/{model.kind}", icon=model.icon or "")
 
 
 def add_to_menu(structure: dict[str, list[InterfaceMenu]], menu_item: InterfaceMenu) -> None:
@@ -231,3 +286,63 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
     menu_items.extend([groups, unified_storage, change_control, deployment, admin])
 
     return menu_items
+
+
+@router.get("/new")
+async def get_new_menu(db: InfrahubDatabase = Depends(get_db), branch: Branch = Depends(get_branch_dep)) -> Menu:
+    log.info("new_menu_request", branch=branch.name)
+
+    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=branch, prefetch_relationships=True)
+    full_schema = registry.schema.get_full(branch=branch, duplicate=False)
+
+    structure = Menu()
+
+    # Process the parent first
+    for item in menu_items:
+        parent = await item.parent.get_peer(db=db)
+        if parent:
+            continue
+        structure.data[item.name.value] = NewInterfaceMenu.from_node(obj=item)
+
+    # Process the children
+    for item in menu_items:
+        parent = await item.parent.get_peer(db=db, peer_type=CoreMenuItem)
+        if not parent:
+            continue
+
+        menu_item = structure.find_menu_item(item_name=parent.name.value)
+        if menu_item:
+            menu_item.children[item.name.value] = NewInterfaceMenu.from_node(obj=item)
+        else:
+            log.warning(
+                "new_menu_request: unable to find the parent menu item",
+                branch=branch.name,
+                menu_item=item.name.value,
+                parent_item=parent.name.value,
+            )
+
+    default_menu = structure.find_menu_item(item_name=DEFAULT_MENU)
+    if not default_menu:
+        raise ValueError("Unable to locate the default menu item")
+
+    for schema in full_schema.values():
+        if schema.include_in_menu is False:
+            continue
+
+        menu_item = NewInterfaceMenu.from_schema(model=schema)
+        if schema.menu_placement:
+            menu_placement = structure.find_menu_item(item_name=schema.menu_placement)
+
+            if menu_placement:
+                menu_placement.children[schema.kind] = menu_item
+                continue
+            log.warning(
+                "new_menu_request: unable to find the menu_placement defined in the schema",
+                branch=branch.name,
+                item=schema.kind,
+                menu_placement=schema.menu_placement,
+            )
+
+        default_menu.children[schema.kind] = menu_item
+
+    return structure.to_rest()

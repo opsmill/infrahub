@@ -43,6 +43,11 @@ RESERVED_ATTR_GEN_NAMES = ["type"]
 NULL_VALUE = "NULL"
 
 
+class MenuSection(InfrahubStringEnum):
+    OBJECT = "object"
+    INTERNAL = "internal"
+
+
 class PermissionLevel(enum.Flag):
     READ = 1
     WRITE = 2

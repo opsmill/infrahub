@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.graph import GRAPH_VERSION
+from infrahub.core.menu import default_menu
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.permissions import CoreGlobalPermission, CoreObjectPermission
@@ -305,6 +306,12 @@ async def create_initial_permission(db: InfrahubDatabase) -> Node:
     return permission
 
 
+async def create_default_menu(db: InfrahubDatabase) -> None:
+    for item in default_menu:
+        obj = await item.to_node(db=db)
+        await obj.save(db=db)
+
+
 async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await permission.new(
@@ -317,6 +324,10 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
 
     role_name = "Super Administrator"
+
+
+async def create_administrator_role(db: InfrahubDatabase, global_permissions: Optional[list[Node]] = None) -> Node:
+    role_name = "Administrator"
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
     await obj.new(db=db, name=role_name, permissions=[permission])
     await obj.save(db=db)
@@ -363,6 +374,11 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
     log.info("Created the Schema in the database", hash=default_branch.active_schema_hash.main)
+
+    # --------------------------------------------------
+    # Create Default Menu
+    # --------------------------------------------------
+    await create_default_menu(db=db)
 
     # --------------------------------------------------
     # Create Default Users and Groups
