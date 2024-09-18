@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.query import Query
 from infrahub.core.registry import registry
 
@@ -57,7 +58,7 @@ class AccountGlobalPermissionQuery(Query):
 
         # ruff: noqa: E501
         query = """
-        MATCH (account:CoreGenericAccount)
+        MATCH (account:%(generic_account_node)s)
         WHERE account.uuid = $account_id
         CALL {
             WITH account
@@ -70,10 +71,16 @@ class AccountGlobalPermissionQuery(Query):
         WITH account, r1 as r
         WHERE r.status = "active"
         WITH account
-        MATCH (account)-[]->(:Relationship {name: "group_member"})<-[]-(:CoreUserGroup)-[]->(:Relationship {name: "role__usergroups"})<-[]-(:CoreUserRole)-[]->(:Relationship {name: "role__permissions"})<-[]-(global_permission:CoreGlobalPermission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(global_permission_name:AttributeValue)
+        MATCH (account)-[]->(:Relationship {name: "group_member"})<-[]-(:%(group_node)s)-[]->(:Relationship {name: "role__accountgroups"})<-[]-(:%(account_role_node)s)-[]->(:Relationship {name: "role__permissions"})<-[]-(global_permission:%(global_permission_node)s)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(global_permission_name:AttributeValue)
         WITH global_permission, global_permission_name
         MATCH (global_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(global_permission_action:AttributeValue)
-        """ % {"branch_filter": branch_filter}
+        """ % {
+            "branch_filter": branch_filter,
+            "generic_account_node": InfrahubKind.GENERICACCOUNT,
+            "account_role_node": InfrahubKind.ACCOUNTROLE,
+            "group_node": InfrahubKind.ACCOUNTGROUP,
+            "global_permission_node": InfrahubKind.GLOBALPERMISSION,
+        }
 
         self.add_to_query(query)
 
@@ -110,7 +117,7 @@ class AccountObjectPermissionQuery(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH (account:CoreGenericAccount)
+        MATCH (account:%(generic_account_node)s)
         WHERE account.uuid = $account_id
         CALL {
             WITH account
@@ -124,11 +131,11 @@ class AccountObjectPermissionQuery(Query):
         WHERE r.status = "active"
         WITH account
         MATCH group_path = (account)-[]->(:Relationship {name: "group_member"})
-            <-[]-(:CoreUserGroup)
-            -[]->(:Relationship {name: "role__usergroups"})
-            <-[]-(:CoreUserRole)
+            <-[]-(:%(account_group_node)s)
+            -[]->(:Relationship {name: "role__accountgroups"})
+            <-[]-(:%(account_role_node)s)
             -[]->(:Relationship {name: "role__permissions"})
-            <-[]-(object_permission:CoreObjectPermission)
+            <-[]-(object_permission:%(object_permission_node)s)
             -[:HAS_ATTRIBUTE]->(:Attribute {name: "branch"})
             -[:HAS_VALUE]->(object_permission_branch:AttributeValue)
         WITH object_permission, object_permission_branch
@@ -142,7 +149,13 @@ class AccountObjectPermissionQuery(Query):
         MATCH decision_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(object_permission_decision:AttributeValue)
             WHERE all(r IN relationships(decision_path) WHERE (%(branch_filter)s) AND r.status = "active")
 
-        """ % {"branch_filter": branch_filter}
+        """ % {
+            "branch_filter": branch_filter,
+            "account_group_node": InfrahubKind.ACCOUNTGROUP,
+            "account_role_node": InfrahubKind.ACCOUNTROLE,
+            "generic_account_node": InfrahubKind.GENERICACCOUNT,
+            "object_permission_node": InfrahubKind.OBJECTPERMISSION,
+        }
 
         self.add_to_query(query)
 

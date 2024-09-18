@@ -878,7 +878,7 @@ core_models: dict[str, Any] = {
         {
             "name": "BasePermission",
             "namespace": "Core",
-            "description": "A permission grants right to a user",
+            "description": "A permission grants right to an account",
             "label": "Base permission",
             "icon": "mdi:user-key",
             "include_in_menu": False,
@@ -886,7 +886,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "roles",
-                    "peer": InfrahubKind.USERROLE,
+                    "peer": InfrahubKind.ACCOUNTROLE,
                     "optional": True,
                     "identifier": "role__permissions",
                     "cardinality": "many",
@@ -2140,10 +2140,10 @@ core_models: dict[str, Any] = {
             ],
         },
         {
-            "name": "UserRole",
+            "name": "AccountRole",
             "namespace": "Core",
-            "description": "A role defines a set of permissions to grant to a group of users",
-            "label": "User role",
+            "description": "A role defines a set of permissions to grant to a group of accounts",
+            "label": "Account role",
             "icon": "mdi:user-badge",
             "include_in_menu": False,
             "order_by": ["name__value"],
@@ -2153,9 +2153,9 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "groups",
-                    "peer": InfrahubKind.USERGROUP,
+                    "peer": InfrahubKind.ACCOUNTGROUP,
                     "optional": True,
-                    "identifier": "role__usergroups",
+                    "identifier": "role__accountgroups",
                     "cardinality": "many",
                     "kind": "Attribute",
                 },
@@ -2170,10 +2170,10 @@ core_models: dict[str, Any] = {
             ],
         },
         {
-            "name": "UserGroup",
+            "name": "AccountGroup",
             "namespace": "Core",
             "description": "A group of users to manage common permissions",
-            "label": "User group",
+            "label": "Account group",
             "icon": "mdi:account-group",
             "include_in_menu": False,
             "order_by": ["name__value"],
@@ -2184,9 +2184,9 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "roles",
-                    "peer": InfrahubKind.USERROLE,
+                    "peer": InfrahubKind.ACCOUNTROLE,
                     "optional": True,
-                    "identifier": "role__usergroups",
+                    "identifier": "role__accountgroups",
                     "cardinality": "many",
                     "kind": "Attribute",
                 }

@@ -6,7 +6,14 @@ from typing import Optional, cast
 
 from infrahub_sdk import UUIDT, InfrahubClient, NodeStore
 from infrahub_sdk.batch import InfrahubBatch
-from infrahub_sdk.protocols import CoreAccount, CoreIPAddressPool, CoreIPPrefixPool, CoreStandardGroup, IpamNamespace
+from infrahub_sdk.protocols import (
+    CoreAccount,
+    CoreAccountGroup,
+    CoreIPAddressPool,
+    CoreIPPrefixPool,
+    CoreStandardGroup,
+    IpamNamespace,
+)
 from infrahub_sdk.protocols_base import CoreNode
 from protocols import (
     InfraAutonomousSystem,
@@ -1554,7 +1561,7 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
 
 
 async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
-    groups = await client.filters(branch=branch, kind="CoreUserGroup", name__value="Administrators")
+    groups = await client.filters(branch=branch, kind=CoreAccountGroup, name__value="Administrators")
     store.set(key=groups[0].name, node=groups[0])
 
     for account in ACCOUNTS:

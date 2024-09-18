@@ -2426,8 +2426,8 @@ async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, 
 @pytest.fixture
 async def register_account_schema(db: InfrahubDatabase) -> None:
     SCHEMAS_TO_REGISTER = [
-        InfrahubKind.USERGROUP,
-        InfrahubKind.USERROLE,
+        InfrahubKind.ACCOUNTGROUP,
+        InfrahubKind.ACCOUNTROLE,
         InfrahubKind.GENERICACCOUNT,
         InfrahubKind.ACCOUNT,
         InfrahubKind.ACCOUNTTOKEN,
@@ -2528,11 +2528,11 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
         await obj.save(db=db)
         permissions.append(obj)
 
-    role = await Node.init(db=db, schema=InfrahubKind.USERROLE)
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
     await role.new(db=db, name="admin", permissions=permissions)
     await role.save(db=db)
 
-    group = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name="admin", roles=[role])
     await group.save(db=db)
 

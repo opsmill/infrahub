@@ -204,6 +204,16 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
     pass
 
 
+class CoreAccountGroup(CoreGroup):
+    roles: RelationshipManager
+
+
+class CoreAccountRole(CoreNode):
+    name: String
+    groups: RelationshipManager
+    permissions: RelationshipManager
+
+
 class CoreArtifact(CoreTaskTarget):
     name: String
     status: Enum
@@ -445,16 +455,6 @@ class CoreTransformPython(CoreTransformation):
     class_name: String
 
 
-class CoreUserGroup(CoreGroup):
-    roles: RelationshipManager
-
-
-class CoreUserRole(CoreNode):
-    name: String
-    groups: RelationshipManager
-    permissions: RelationshipManager
-
-
 class CoreUserValidator(CoreValidator):
     check_definition: RelatedNode
     repository: RelatedNode
@@ -647,6 +647,16 @@ class BuiltinTagSync(CoreNodeSync):
 
 class CoreAccountSync(LineageOwnerSync, LineageSourceSync, CoreGenericAccountSync):
     pass
+
+
+class CoreAccountGroupSync(CoreGroupSync):
+    roles: RelationshipManagerSync
+
+
+class CoreAccountRoleSync(CoreNodeSync):
+    name: String
+    groups: RelationshipManagerSync
+    permissions: RelationshipManagerSync
 
 
 class CoreArtifactSync(CoreTaskTargetSync):
@@ -888,16 +898,6 @@ class CoreTransformJinja2Sync(CoreTransformationSync):
 class CoreTransformPythonSync(CoreTransformationSync):
     file_path: String
     class_name: String
-
-
-class CoreUserGroupSync(CoreGroupSync):
-    roles: RelationshipManagerSync
-
-
-class CoreUserRoleSync(CoreNodeSync):
-    name: String
-    groups: RelationshipManagerSync
-    permissions: RelationshipManagerSync
 
 
 class CoreUserValidatorSync(CoreValidatorSync):

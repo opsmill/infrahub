@@ -198,6 +198,16 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
     pass
 
 
+class CoreAccountGroup(CoreGroup):
+    roles: RelationshipManager
+
+
+class CoreAccountRole(CoreNode):
+    name: String
+    groups: RelationshipManager
+    permissions: RelationshipManager
+
+
 class CoreArtifact(CoreTaskTarget):
     name: String
     status: Enum
@@ -437,16 +447,6 @@ class CoreTransformJinja2(CoreTransformation):
 class CoreTransformPython(CoreTransformation):
     file_path: String
     class_name: String
-
-
-class CoreUserGroup(CoreGroup):
-    roles: RelationshipManager
-
-
-class CoreUserRole(CoreNode):
-    name: String
-    groups: RelationshipManager
-    permissions: RelationshipManager
 
 
 class CoreUserValidator(CoreValidator):
