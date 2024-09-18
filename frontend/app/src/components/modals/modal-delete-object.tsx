@@ -27,6 +27,8 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
   const date = useAtomValue(datetimeAtom);
   const { objectKind } = useParams();
 
+  const objectDisplay = rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name;
+
   const handleDeleteObject = async () => {
     if (!rowToDelete?.id) {
       return;
@@ -60,12 +62,7 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
 
       close();
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`Object ${rowToDelete?.display_label} deleted`}
-        />
-      );
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`Object ${objectDisplay} deleted`} />);
     } catch (error) {
       console.error("Error while deleting object: ", error);
     }
@@ -77,11 +74,11 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
     <ModalDelete
       title="Delete"
       description={
-        rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name ? (
+        objectDisplay ? (
           <>
             Are you sure you want to remove the <i>{label}</i>
             <b className="ml-2">
-              &quot;{rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name}
+              &quot;{objectDisplay}
               &quot;
             </b>
             ?
