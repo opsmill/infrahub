@@ -67,23 +67,9 @@ test.describe("Object update", () => {
       await expect(page.getByLabel("Name *")).toHaveValue("atl1-core1-new-name");
       await expect(page.getByLabel("Description")).toHaveValue("New description");
       await expect(page.getByLabel("Type *")).toHaveValue("MX204");
-      await expect(
-        page
-          .getByTestId("side-panel-container")
-          .getByLabel("Status")
-          .locator("../..")
-          .locator("input")
-      ).toHaveValue("Active");
-      await expect(
-        page
-          .getByTestId("side-panel-container")
-          .getByLabel("Role")
-          .locator("../..")
-          .locator("input")
-      ).toHaveValue("Edge Router");
-      await expect(
-        page.getByTestId("side-panel-container").getByLabel("Asn").locator("../..").locator("input")
-      ).toHaveValue("AS701 701");
+      await expect(page.getByLabel("Status")).toHaveText("Active");
+      await expect(page.getByLabel("Role")).toHaveText("Edge Router");
+      await expect(page.getByLabel("Asn")).toHaveText("AS701 701");
 
       const tabInput = page.getByTestId("side-panel-container").getByText("greenred");
       await tabInput.scrollIntoViewIfNeeded();
@@ -108,13 +94,13 @@ test.describe("Object update", () => {
       await page.getByTestId("edit-button").click();
 
       await page.getByTestId("side-panel-container").getByLabel("Status").click();
-      await page.getByRole("option", { name: "Empty", exact: true }).click();
+      await page.getByRole("option", { name: "Active" }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Role").click();
-      await page.getByRole("option", { name: "Empty", exact: true }).click();
+      await page.getByRole("option", { name: "Leaf Switch" }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Asn").click();
-      await page.getByRole("option", { name: "Empty", exact: true }).click();
+      await page.getByRole("option", { name: "AS64496 64496" }).click();
 
       await page.getByRole("button", { name: "Save" }).click();
     });

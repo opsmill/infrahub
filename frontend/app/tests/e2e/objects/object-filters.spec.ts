@@ -19,12 +19,7 @@ test.describe("Object filters", () => {
     await test.step("start filtering objects", async () => {
       await test.step("select filters", async () => {
         await page.getByTestId("apply-filters").click();
-        await page
-          .getByTestId("side-panel-container")
-          .getByText("Status")
-          .locator("../..")
-          .getByTestId("select-open-option-button")
-          .click();
+        await page.getByLabel("Status").click();
         await page.getByRole("option", { name: "Provisioning In the process" }).click();
 
         const tagsMultiSelectOpenButton = page
@@ -46,13 +41,7 @@ test.describe("Object filters", () => {
       await test.step("verify filter initial value", async () => {
         await page.getByTestId("apply-filters").click();
 
-        await expect(
-          page
-            .getByTestId("side-panel-container")
-            .getByText("Status")
-            .locator("../..")
-            .getByTestId("select-input")
-        ).toHaveValue("Provisioning");
+        await expect(page.getByLabel("Status")).toHaveText("Provisioning");
       });
 
       await expect(page.locator("form")).toContainText("red");
