@@ -54,7 +54,7 @@ export default function ObjectItems({
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns({ schema: schema, forListView: true });
 
-  const { loading, error, data = {} } = useObjectItems(schema, filters);
+  const { loading, error, data = {}, refetch } = useObjectItems(schema, filters);
 
   const result = data && schema?.kind ? data[kindFilter?.value || schema?.kind] ?? {} : {};
 
@@ -184,6 +184,7 @@ export default function ObjectItems({
         rowToDelete={rowToDelete}
         open={!!deleteModal}
         close={() => setDeleteModal(false)}
+        onDelete={refetch}
       />
     </>
   );
