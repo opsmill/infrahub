@@ -2,7 +2,7 @@ import { Button } from "@/components/buttons/button-primitive";
 import InputField from "@/components/form/fields/input.field";
 import NumberField from "@/components/form/fields/number.field";
 import { NodeFormProps } from "@/components/form/node-form";
-import { FormFieldValue } from "@/components/form/type";
+import { FormAttributeValue, FormFieldValue } from "@/components/form/type";
 import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
@@ -35,6 +35,9 @@ import {
   NUMBER_POOL_NODE_FIELD,
 } from "@/screens/resource-manager/constants";
 import { AttributeSchema } from "@/screens/schema/types";
+import { isRequired } from "@/components/form/utils/validation";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -146,7 +149,8 @@ const NodeAttributesSelects = () => {
   const nodes = useAtomValue(schemaState);
 
   const form = useFormContext();
-  const selectedNode: iNodeSchema | undefined = form.watch(NUMBER_POOL_NODE_FIELD);
+  const selectedNodeField: FormAttributeValue = form.watch(NUMBER_POOL_NODE_FIELD);
+  const selectedNode = nodes.find((node) => node.kind === selectedNodeField?.value);
 
   const nodesWithNumberAttributes: Array<iNodeSchema> = nodes.filter((node) =>
     node.attributes?.some(
@@ -161,9 +165,12 @@ const NodeAttributesSelects = () => {
 
   useEffect(() => {
     if (numberAttributeOptions.length === 1) {
-      form.setValue("node_attribute", numberAttributeOptions[0]);
+      form.setValue(
+        NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
+        updateFormFieldValue(numberAttributeOptions[0].name, DEFAULT_FORM_FIELD_VALUE)
+      );
     } else {
-      form.resetField("node_attribute");
+      form.resetField(NUMBER_POOL_NODE_ATTRIBUTE_FIELD);
     }
   }, [selectedNode?.kind]);
 
@@ -171,10 +178,10 @@ const NodeAttributesSelects = () => {
     <>
       <FormField
         name={NUMBER_POOL_NODE_FIELD}
-        rules={{ required: true }}
+        rules={{ validate: { required: isRequired } }}
+        defaultValue={DEFAULT_FORM_FIELD_VALUE}
         render={({ field }) => {
           const [open, setOpen] = useState(false);
-          const selectedNode = field.value as iNodeSchema | null;
 
           return (
             <div className="flex flex-col gap-2">
@@ -203,7 +210,11 @@ const NodeAttributesSelects = () => {
                         selectedValue={selectedNode?.kind}
                         value={node.kind!}
                         onSelect={() => {
-                          field.onChange(node.kind === selectedNode?.kind ? null : node);
+                          const newValue = node.kind === selectedNode?.kind ? null : node.kind;
+                          field.onChange(
+                            updateFormFieldValue(newValue ?? null, DEFAULT_FORM_FIELD_VALUE)
+                          );
+
                           setOpen(false);
                         }}>
                         <div className="w-full flex justify-between">
@@ -223,10 +234,11 @@ const NodeAttributesSelects = () => {
 
       <FormField
         name={NUMBER_POOL_NODE_ATTRIBUTE_FIELD}
-        rules={{ required: true }}
+        rules={{ validate: { required: isRequired } }}
+        defaultValue={DEFAULT_FORM_FIELD_VALUE}
         render={({ field }) => {
           const [open, setOpen] = useState(false);
-          const selectedAttribute = field.value as AttributeSchema | null | undefined;
+          const selectedAttribute: FormFieldValue = field.value;
 
           return (
             <div className="flex flex-col gap-2">
@@ -239,7 +251,11 @@ const NodeAttributesSelects = () => {
               <Combobox open={open} onOpenChange={setOpen}>
                 <FormInput>
                   <ComboboxTrigger disabled={!selectedNode}>
-                    {selectedAttribute?.label}
+                    {
+                      numberAttributeOptions.find(
+                        (attribute) => attribute.name === selectedAttribute?.value
+                      )?.label
+                    }
                   </ComboboxTrigger>
                 </FormInput>
 
@@ -248,10 +264,12 @@ const NodeAttributesSelects = () => {
                     {numberAttributeOptions.map((attribute) => (
                       <ComboboxItem
                         key={attribute.id}
-                        selectedValue={selectedAttribute?.name}
+                        selectedValue={selectedAttribute?.value}
                         value={attribute.name}
                         onSelect={() => {
-                          field.onChange(attribute.name === selectedNode?.name ? null : attribute);
+                          const newValue =
+                            attribute.name === selectedNode?.name ? null : attribute.name;
+                          field.onChange(updateFormFieldValue(newValue, DEFAULT_FORM_FIELD_VALUE));
                           setOpen(false);
                         }}>
                         {attribute.label}

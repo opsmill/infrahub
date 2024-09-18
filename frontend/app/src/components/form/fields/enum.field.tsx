@@ -5,13 +5,14 @@ import React from "react";
 
 import { Enum, EnumProps } from "@/components/inputs/enum";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 
 export interface EnumFieldProps
   extends Omit<DynamicEnumFieldProps, "type">,
     Omit<EnumProps, "defaultValue" | "name" | "items"> {}
 
 const EnumField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
   description,
   label,
   name,

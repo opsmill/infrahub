@@ -3,13 +3,14 @@ import { DynamicDropdownFieldProps, FormAttributeValue } from "@/components/form
 import { LabelFormField } from "@/components/form/fields/common";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 import { Dropdown, DropdownProps } from "@/components/inputs/dropdown";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 
 export interface DropdownFieldProps
   extends Omit<DynamicDropdownFieldProps, "type">,
     Omit<DropdownProps, "defaultValue" | "name" | "options"> {}
 
 const DropdownField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
   description,
   items,
   label,
