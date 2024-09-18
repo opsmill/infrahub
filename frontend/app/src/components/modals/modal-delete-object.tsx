@@ -54,11 +54,11 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
         context: { branch: branch?.name, date },
       });
 
-      await graphqlClient.refetchQueries({ include: [objectKind!] });
-
-      close();
+      if (objectKind) await graphqlClient.refetchQueries({ include: [objectKind!] });
 
       if (onDelete) onDelete();
+
+      close();
 
       toast(
         <Alert
