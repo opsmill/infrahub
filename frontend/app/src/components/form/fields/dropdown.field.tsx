@@ -28,14 +28,13 @@ const DropdownField = ({
         const fieldData: FormAttributeValue = field.value;
 
         return (
-          <div>
+          <div className="flex flex-col gap-2">
             <LabelFormField
               label={label}
               unique={unique}
               required={!!rules?.required}
               description={description}
               fieldData={fieldData}
-              className="mb-2"
             />
 
             <FormInput>
@@ -49,7 +48,7 @@ const DropdownField = ({
               />
             </FormInput>
 
-            <FormMessage className="mt-2" />
+            <FormMessage />
           </div>
         );
       }}

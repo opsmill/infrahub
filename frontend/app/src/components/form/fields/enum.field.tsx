@@ -32,14 +32,13 @@ const EnumField = ({
         const fieldData: FormAttributeValue = field.value;
 
         return (
-          <div>
+          <div className="flex flex-col gap-2">
             <LabelFormField
               label={label}
               unique={unique}
               required={!!rules?.required}
               description={description}
               fieldData={fieldData}
-              className="mb-2"
             />
 
             <FormInput>
@@ -54,7 +53,7 @@ const EnumField = ({
               />
             </FormInput>
 
-            <FormMessage className="mt-2" />
+            <FormMessage />
           </div>
         );
       }}
