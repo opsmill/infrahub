@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -82,11 +82,11 @@ class NewInterfaceMenu(BaseModel):
         return self.title < other.title
 
     @classmethod
-    def from_node(cls, obj: CoreMenuItem):
+    def from_node(cls, obj: CoreMenuItem) -> Self:
         return cls(title=obj.label.value or "", icon=obj.icon.value or "", order_weight=obj.order_weight.value)
 
     @classmethod
-    def from_schema(cls, model: MainSchemaTypes):
+    def from_schema(cls, model: MainSchemaTypes) -> Self:
         return cls(title=model.label or model.kind, path=f"/objects/{model.kind}", icon=model.icon or "")
 
 
@@ -299,7 +299,7 @@ async def get_new_menu(db: InfrahubDatabase = Depends(get_db), branch: Branch = 
 
     # Process the parent first
     for item in menu_items:
-        parent = await item.parent.get_peer(db=db)
+        parent = await item.parent.get_peer(db=db, peer_type=CoreMenuItem)
         if parent:
             continue
         structure.data[item.name.value] = NewInterfaceMenu.from_node(obj=item)
