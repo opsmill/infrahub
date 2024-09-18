@@ -76,12 +76,11 @@ def pytest_sessionstart(session: Session) -> None:
         "default_branch": session.config.option.infrahub_branch,
     }
     if hasattr(session.config.option, "infrahub_key"):
-        client_config = {"api_token": session.config.option.infrahub_key}
+        client_config["api_token"] = session.config.option.infrahub_key
     elif hasattr(session.config.option, "infrahub_username") and hasattr(session.config.option, "infrahub_password"):
-        client_config = {
-            "username": session.config.option.infrahub_username,
-            "password": session.config.option.infrahub_password,
-        }
+        client_config.pop("api_token")
+        client_config["username"] = session.config.option.infrahub_username
+        client_config["password"] = session.config.option.infrahub_password
 
     infrahub_client = InfrahubClientSync(config=client_config)
     session.infrahub_client = infrahub_client  # type: ignore[attr-defined]
