@@ -415,14 +415,14 @@ class InfrahubClient(BaseClient):
                 filters[schema.default_filter] = id
             else:
                 filters["ids"] = [id]
-        elif hfid:
+        if hfid:
             if isinstance(schema, NodeSchema) and schema.human_friendly_id:
                 filters["hfid"] = hfid
             else:
                 raise ValueError("Cannot filter by HFID if the node doesn't have an HFID defined")
-        elif kwargs:
-            filters = kwargs
-        else:
+        if kwargs:
+            filters.update(kwargs)
+        if len(filters) == 0:
             raise ValueError("At least one filter must be provided to get()")
 
         results = await self.filters(
@@ -1789,14 +1789,14 @@ class InfrahubClientSync(BaseClient):
                 filters[schema.default_filter] = id
             else:
                 filters["ids"] = [id]
-        elif hfid:
+        if hfid:
             if isinstance(schema, NodeSchema) and schema.human_friendly_id:
                 filters["hfid"] = hfid
             else:
                 raise ValueError("Cannot filter by HFID if the node doesn't have an HFID defined")
-        elif kwargs:
-            filters = kwargs
-        else:
+        if kwargs:
+            filters.update(kwargs)
+        if len(filters) == 0:
             raise ValueError("At least one filter must be provided to get()")
 
         results = self.filters(
