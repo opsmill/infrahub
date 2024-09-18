@@ -147,7 +147,6 @@ const NodeAttributesSelects = () => {
 
   const form = useFormContext();
   const selectedNode: iNodeSchema | undefined = form.watch(NUMBER_POOL_NODE_FIELD);
-  console.log("selectedNode", selectedNode);
 
   const nodesWithNumberAttributes: Array<iNodeSchema> = nodes.filter((node) =>
     node.attributes?.some(
@@ -159,7 +158,6 @@ const NodeAttributesSelects = () => {
     selectedNode?.attributes?.filter(
       (attribute) => attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER
     ) ?? [];
-  console.log("numberAttributeOptions", numberAttributeOptions);
 
   useEffect(() => {
     if (numberAttributeOptions.length === 1) {
