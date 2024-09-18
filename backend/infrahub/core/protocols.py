@@ -360,6 +360,14 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
     end_range: Integer
 
 
+class CoreObjectPermission(CoreBasePermission):
+    branch: String
+    namespace: String
+    name: String
+    action: Enum
+    decision: Enum
+
+
 class CoreObjectThread(CoreThread):
     object_path: String
 

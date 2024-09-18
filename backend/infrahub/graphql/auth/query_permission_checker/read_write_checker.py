@@ -8,16 +8,15 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class ReadWriteGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
-    async def supports(
-        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch | str | None = None
-    ) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated and not account_session.read_only
 
     async def check(
         self,
         db: InfrahubDatabase,
+        account_session: AccountSession,
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch | str | None = None,
+        branch: Branch,
     ) -> CheckerResolution:
         return CheckerResolution.TERMINATE

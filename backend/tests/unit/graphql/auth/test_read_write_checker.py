@@ -37,5 +37,9 @@ class TestReadWriteAuthChecker:
         self.graphql_query.contains_mutations = contains_mutations
 
         await self.checker.check(
-            db=db, analyzed_query=self.graphql_query, query_parameters=MagicMock(spec=GraphqlParams), branch=branch
+            db=db,
+            account_session=self.account_session,
+            analyzed_query=self.graphql_query,
+            query_parameters=MagicMock(spec=GraphqlParams),
+            branch=branch,
         )

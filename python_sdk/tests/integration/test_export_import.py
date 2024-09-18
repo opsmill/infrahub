@@ -282,7 +282,7 @@ class TestSchemaExportImportBase(TestInfrahubApp):
         with nodes_file.open() as reader:
             while line := reader.readline():
                 nodes_dump.append(ujson.loads(line))
-        assert len(nodes_dump) == len(initial_dataset) + 4  # add number to account for default data
+        assert len(nodes_dump) == len(initial_dataset) + 5  # add number to account for default data
 
         relationships_dump = ujson.loads(relationships_file.read_text())
         assert relationships_dump
@@ -493,7 +493,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
         with nodes_file.open() as reader:
             while line := reader.readline():
                 nodes_dump.append(ujson.loads(line))
-        assert len(nodes_dump) == len(initial_dataset) + 4  # add number to account for default data
+        assert len(nodes_dump) == len(initial_dataset) + 5  # add number to account for default data
 
         # Make sure there are as many relationships as there are in the database
         relationship_count = 0

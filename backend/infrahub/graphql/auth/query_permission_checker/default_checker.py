@@ -9,16 +9,15 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class DefaultGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
-    async def supports(
-        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch | str | None = None
-    ) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return True
 
     async def check(
         self,
         db: InfrahubDatabase,
+        account_session: AccountSession,
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch | str | None = None,
+        branch: Branch,
     ) -> CheckerResolution:
         raise AuthorizationError("Authentication is required to perform this operation")

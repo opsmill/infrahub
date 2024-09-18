@@ -13,17 +13,16 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 class ReadOnlyGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     allowed_readonly_mutations = ["InfrahubAccountSelfUpdate"]
 
-    async def supports(
-        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch | str | None = None
-    ) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated and account_session.read_only
 
     async def check(
         self,
         db: InfrahubDatabase,
+        account_session: AccountSession,
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch | str | None = None,
+        branch: Branch,
     ) -> CheckerResolution:
         for operation in analyzed_query.operations:
             if (

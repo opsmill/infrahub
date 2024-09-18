@@ -366,6 +366,14 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
     end_range: Integer
 
 
+class CoreObjectPermission(CoreBasePermission):
+    branch: String
+    namespace: String
+    name: String
+    action: Enum
+    decision: Enum
+
+
 class CoreObjectThread(CoreThread):
     object_path: String
 
@@ -801,6 +809,14 @@ class CoreNumberPoolSync(CoreResourcePoolSync, LineageSourceSync):
     node_attribute: String
     start_range: Integer
     end_range: Integer
+
+
+class CoreObjectPermissionSync(CoreBasePermissionSync):
+    branch: String
+    namespace: String
+    name: String
+    action: Enum
+    decision: Enum
 
 
 class CoreObjectThreadSync(CoreThreadSync):
