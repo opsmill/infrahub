@@ -9,10 +9,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
 
 export const Combobox = Popover;
 
-export interface ComboboxTriggerProps extends React.HTMLAttributes<HTMLButtonElement> {}
+export interface ComboboxTriggerProps
+  extends PopoverTriggerProps,
+    React.HTMLAttributes<HTMLButtonElement> {}
 
 export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTriggerProps>(
   ({ children, className, ...props }, ref) => {
@@ -26,7 +29,7 @@ export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTrigg
             className
           )}>
           {children}
-          <Icon icon="mdi:unfold-more-horizontal" className="ml-auto text-gray-600" />
+          <Icon icon="mdi:unfold-more-horizontal" className="ml-auto text-gray-600 pl-2" />
         </button>
       </PopoverTrigger>
     );
