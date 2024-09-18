@@ -91,7 +91,7 @@ export function RelationshipsButtons() {
       <ButtonWithTooltip
         disabled={!permission.write.allow}
         tooltipEnabled
-        tooltipContent={permission.write.message ?? "Edit object"}
+        tooltipContent={permission.write.message ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
         data-testid="open-relationship-form-button">
         <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
