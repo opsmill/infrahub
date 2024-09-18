@@ -21,13 +21,13 @@ import { useSchema } from "@/hooks/useSchema";
 interface Props {
   objectname: string;
   objectid: string;
-  closeModal: () => void;
+  closeDrawer: () => void;
   onUpdateComplete?: () => void;
   formStructure?: DynamicFieldData[];
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  const { objectname, objectid, closeModal, onUpdateComplete } = props;
+  const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
 
   const { schema } = useSchema(objectname);
 
@@ -95,7 +95,7 @@ export default function ObjectItemEditComponent(props: Props) {
           toastId: "alert-success-updated",
         });
 
-        closeModal();
+        closeDrawer();
 
         if (onUpdateComplete) onUpdateComplete();
       } catch (e) {
@@ -106,7 +106,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   return (
     <ObjectForm
-      onCancel={closeModal}
+      onCancel={closeDrawer}
       onSubmit={onSubmit}
       onUpdateComplete={onUpdateComplete}
       kind={objectname}

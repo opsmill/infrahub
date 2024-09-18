@@ -80,7 +80,7 @@ export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProp
         open={showEditModal}
         setOpen={setShowEditModal}>
         <ObjectItemEditComponent
-          closeModal={() => setShowEditModal(false)}
+          closeDrawer={() => setShowEditModal(false)}
           onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
           objectid={objectDetailsData.id!}
           objectname={schema.kind!}
