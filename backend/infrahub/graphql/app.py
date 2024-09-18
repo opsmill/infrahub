@@ -294,7 +294,7 @@ class InfrahubGraphQLApp:
         query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
         account_session: AccountSession,
-        branch: Branch | str | None = None,
+        branch: Branch,
     ) -> None:
         await self.permission_checker.check(
             db=db,
