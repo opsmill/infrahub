@@ -21,6 +21,7 @@ const EnumField = ({
   items,
   schema,
   field: attributeSchema,
+  ...props
 }: EnumFieldProps) => {
   return (
     <FormField
@@ -43,6 +44,8 @@ const EnumField = ({
 
             <FormInput>
               <Enum
+                {...field}
+                {...props}
                 items={items as Array<string | number>}
                 fieldSchema={attributeSchema}
                 schema={schema}

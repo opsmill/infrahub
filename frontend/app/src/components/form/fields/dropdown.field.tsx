@@ -40,8 +40,9 @@ const DropdownField = ({
 
             <FormInput>
               <Dropdown
-                items={items}
+                {...field}
                 {...props}
+                items={items}
                 value={fieldData?.value as string | null}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
