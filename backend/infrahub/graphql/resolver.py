@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
 
 
-async def default_resolver(*args: Any, **kwargs):
+async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
     When it returns 4, they are organized as follow

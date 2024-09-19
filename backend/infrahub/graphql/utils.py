@@ -69,7 +69,7 @@ def selected_field_names_fast(
     return selected_field_names(selection_set, context, runtime_type)
 
 
-def selected_field_names_naive(selection_set: SelectionSetNode):
+def selected_field_names_naive(selection_set: SelectionSetNode) -> list:
     """Get the list of field names that are selected at the current level. Does not include nested names.
 
     Limitations:
