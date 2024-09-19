@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.manager import NodeManager
+from infrahub.core.schema import GenericSchema, NodeSchema
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.graphql import GraphqlContext
 
 
@@ -39,6 +41,7 @@ class GetListMixin:
         partial_match = kwargs.pop("partial_match", False)
 
         async with context.db.start_session() as db:
+            schema: MainSchemaTypes = cls._meta.schema
             response: dict[str, Any] = {"edges": []}
             offset = kwargs.pop("offset", None)
             limit = kwargs.pop("limit", None)
@@ -51,9 +54,43 @@ class GetListMixin:
             edges = fields.get("edges", {})
             node_fields = edges.get("node", {})
 
+            permissions = fields.get("permissions")
+            if permissions:
+                response["permissions"] = {}
+                permission_objects = [
+                    {
+                        "node": {
+                            "kind": schema.kind,
+                            "create": "allow",
+                            "delete": "allow",
+                            "update": "allow",
+                            "view": "allow",
+                        }
+                    }
+                ]
+                if isinstance(schema, NodeSchema):
+                    response["permissions"]["count"] = 1
+
+                elif isinstance(schema, GenericSchema):
+                    response["permissions"]["count"] = len(schema.used_by) + 1
+                    for node in schema.used_by:
+                        permission_objects.append(
+                            {
+                                "node": {
+                                    "kind": node,
+                                    "create": "allow",
+                                    "delete": "allow",
+                                    "update": "allow",
+                                    "view": "allow",
+                                }
+                            }
+                        )
+
+                response["permissions"]["edges"] = permission_objects
+
             objs = await NodeManager.query(
                 db=db,
-                schema=cls._meta.schema,
+                schema=schema,
                 filters=filters or None,
                 fields=node_fields,
                 at=context.at,
@@ -72,7 +109,7 @@ class GetListMixin:
                 else:
                     response["count"] = await NodeManager.count(
                         db=db,
-                        schema=cls._meta.schema,
+                        schema=schema,
                         filters=filters,
                         at=context.at,
                         branch=context.branch,

@@ -50,6 +50,7 @@ from .subscription import InfrahubBaseSubscription
 from .types import (
     InfrahubInterface,
     InfrahubObject,
+    PaginatedObjectPermission,
     RelatedIPAddressNodeInput,
     RelatedNodeInput,
     RelatedPrefixNodeInput,
@@ -877,6 +878,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             "edges": graphene.List(of_type=edge),
             "Meta": type("Meta", (object,), meta_attrs),
         }
+
+        if isinstance(schema, (NodeSchema, GenericSchema)):
+            main_attrs["permissions"] = graphene.Field(PaginatedObjectPermission, required=True)
 
         graphql_paginated_object = type(object_name, (InfrahubObject,), main_attrs)
 
