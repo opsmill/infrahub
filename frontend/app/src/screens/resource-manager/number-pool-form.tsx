@@ -28,7 +28,7 @@ import {
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
-} from "@/components/ui/combobox3";
+} from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,

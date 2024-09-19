@@ -22,7 +22,7 @@ import {
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
-} from "@/components/ui/combobox3";
+} from "@/components/ui/combobox";
 
 export type DropdownOption = {
   value: string;

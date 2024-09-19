@@ -15,7 +15,7 @@ import {
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
-} from "@/components/ui/combobox3";
+} from "@/components/ui/combobox";
 import { AttributeSchema } from "@/screens/schema/types";
 
 export interface EnumDeleteButtonProps extends ButtonProps {
