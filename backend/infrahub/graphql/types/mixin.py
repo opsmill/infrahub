@@ -6,22 +6,38 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.schema import GenericSchema, NodeSchema
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import MainSchemaTypes
     from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.types.node import InfrahubObjectOptions
+
+
+class QueryArguments:
+    def __init__(self, partial_match: Any, offset: Any, limit: Any) -> None:
+        self.partial_match = False
+        self.limit: int | None = None
+        self.offset: int | None = None
+        if isinstance(partial_match, bool):
+            self.partial_match = partial_match
+        if isinstance(offset, int):
+            self.offset = offset
+        if isinstance(limit, int):
+            self.limit = limit
 
 
 class GetListMixin:
     """Mixins to Query the list of nodes using the NodeManager."""
 
+    _meta: InfrahubObjectOptions
+
     @classmethod
-    async def get_paginated_list(cls, fields: dict, context: GraphqlContext, **kwargs):
+    async def get_paginated_list(cls, fields: dict, context: GraphqlContext, **kwargs: dict[str, Any]) -> dict:
         partial_match = kwargs.pop("partial_match", False)
+        offset = kwargs.pop("offset", None)
+        limit = kwargs.pop("limit", None)
+        query_args = QueryArguments(partial_match=partial_match, offset=offset, limit=limit)
 
         async with context.db.start_session() as db:
-            schema: MainSchemaTypes = cls._meta.schema
+            schema = cls._meta.schema
             response: dict[str, Any] = {"edges": []}
-            offset = kwargs.pop("offset", None)
-            limit = kwargs.pop("limit", None)
             filters = {
                 key: value
                 for key, value in kwargs.items()
@@ -72,12 +88,12 @@ class GetListMixin:
                 fields=node_fields,
                 at=context.at,
                 branch=context.branch,
-                limit=limit,
-                offset=offset,
+                limit=query_args.limit,
+                offset=query_args.offset,
                 account=context.account_session,
                 include_source=True,
                 include_owner=True,
-                partial_match=partial_match,
+                partial_match=query_args.partial_match,
             )
 
             if "count" in fields:
@@ -90,7 +106,7 @@ class GetListMixin:
                         filters=filters,
                         at=context.at,
                         branch=context.branch,
-                        partial_match=partial_match,
+                        partial_match=query_args.partial_match,
                     )
 
             if objs:
