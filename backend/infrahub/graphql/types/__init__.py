@@ -25,6 +25,7 @@ from .branch import BranchType
 from .interface import InfrahubInterface
 from .mixin import GetListMixin
 from .node import InfrahubObject
+from .permission import PaginatedObjectPermission
 from .relationship import RelationshipNode
 from .standard_node import InfrahubObjectType
 from .task import TaskNodes
@@ -50,6 +51,7 @@ __all__ = [
     "ListAttributeType",
     "MacAddressType",
     "NumberAttributeType",
+    "PaginatedObjectPermission",
     "RelatedIPAddressNodeInput",
     "RelatedNodeInput",
     "RelatedPrefixNodeInput",

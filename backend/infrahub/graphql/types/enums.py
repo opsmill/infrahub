@@ -5,3 +5,5 @@ from infrahub.core import constants
 CheckType = Enum.from_enum(constants.CheckType)
 
 Severity = Enum.from_enum(constants.Severity)
+
+PermissionDecision = Enum.from_enum(constants.PermissionDecision)
