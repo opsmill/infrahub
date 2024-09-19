@@ -365,7 +365,7 @@ max-complexity = 17
 
 [tool.towncrier]
 
-package = "infrahub-sdk"
+package = "infrahub_sdk"
 directory = "changelog"
 filename = "CHANGELOG.md"
 start_string = "<!-- towncrier release notes start -->\n"

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Optional, Union
 
@@ -34,6 +35,7 @@ def pytest_addoption(parser: Parser) -> None:
         action="store",
         dest="infrahub_key",
         metavar="INFRAHUB_TESTS_API_KEY",
+        default=os.getenv("INFRAHUB_API_TOKEN"),
         help="Key to use when querying the Infrahub instance for live testing",
     )
     group.addoption(
@@ -74,12 +76,11 @@ def pytest_sessionstart(session: Session) -> None:
         "default_branch": session.config.option.infrahub_branch,
     }
     if hasattr(session.config.option, "infrahub_key"):
-        client_config = {"api_token": session.config.option.infrahub_key}
+        client_config["api_token"] = session.config.option.infrahub_key
     elif hasattr(session.config.option, "infrahub_username") and hasattr(session.config.option, "infrahub_password"):
-        client_config = {
-            "username": session.config.option.infrahub_username,
-            "password": session.config.option.infrahub_password,
-        }
+        client_config.pop("api_token")
+        client_config["username"] = session.config.option.infrahub_username
+        client_config["password"] = session.config.option.infrahub_password
 
     infrahub_client = InfrahubClientSync(config=client_config)
     session.infrahub_client = infrahub_client  # type: ignore[attr-defined]

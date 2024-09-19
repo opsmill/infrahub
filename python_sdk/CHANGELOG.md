@@ -10,3 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the changes for the upcoming release can be found in <https://github.com/opsmill/infrahub/tree/develop/infrahub/python_sdk/changelog/>.
 
 <!-- towncrier release notes start -->
+
+## [0.13.0](https://github.com/opsmill/infrahub/tree/v0.13.0) - 2024-09-12
+
+### Added
+
+- Add support to search a node by human friendly ID using client's `get` method ([#3908](https://github.com/opsmill/infrahub/issues/3908))
+- Add support for Number resource pool
+
+### Changed
+
+- Fix `infrahubctl` not displaying error message under certain conditions
+
+### Fixed
+
+- Fix fetching relationship attributes when relationship inherits from a generic ([#3900](https://github.com/opsmill/infrahub/issues/3900))
+- Fix the retrieving on schema and nodes on the right branch ([#4056](https://github.com/opsmill/infrahub/issues/4056))
