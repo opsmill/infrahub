@@ -94,7 +94,6 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
   async function onSubmit(formData: any) {
     const updatedObject = getUpdateMutationFromFormData({ formData, fields });
 
-    console.log(updatedObject);
     if (Object.keys(updatedObject).length) {
       try {
         const mutationString = updateObjectWithId({
