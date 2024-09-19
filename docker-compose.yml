@@ -245,3 +245,4 @@ volumes:
   git_data:
   git_remote_data:
   storage_data:
+  workflow_db:
