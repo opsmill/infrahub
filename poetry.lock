@@ -1762,7 +1762,7 @@ testing = ["flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs
 
 [[package]]
 name = "infrahub-sdk"
-version = "0.13.0"
+version = "0.13.1-dev0"
 description = "Python Client to interact with Infrahub"
 optional = false
 python-versions = "^3.9"

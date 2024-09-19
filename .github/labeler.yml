@@ -11,14 +11,6 @@
   - changed-files:
       - any-glob-to-any-file: ["frontend/**"]
 
-"group/python-sdk":
-  - changed-files:
-      - any-glob-to-any-file: ["python_sdk/**"]
-
-"group/sync-engine":
-  - changed-files:
-      - any-glob-to-any-file: ["sync/**"]
-
 "type/documentation":
   - changed-files:
       - any-glob-to-any-file: ["docs/**"]
