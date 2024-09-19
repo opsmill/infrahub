@@ -24,13 +24,12 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType | RelationshipType>;
   currentProfiles?: ProfileData[];
-  isFilterForm?: boolean;
   isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
   onUpdateComplete?: () => void;
 }
 
-const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFormProps) => {
+const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   const { schema, isNode, isGeneric } = useSchema(kind);
 
   if (!schema) {
@@ -39,10 +38,6 @@ const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFor
         message={`Unable to generate the form. We couldn't find a schema for the kind "${kind}". Please check if the kind is correct or contact support if this issue persists.`}
       />
     );
-  }
-
-  if (isFilterForm) {
-    return <NodeForm schema={schema} isFilterForm={isFilterForm} {...props} />;
   }
 
   if ([REPOSITORY_KIND, READONLY_REPOSITORY_KIND].includes(kind)) {
@@ -62,19 +57,10 @@ const ObjectForm = ({ kind, isFilterForm, currentProfiles, ...props }: ObjectFor
   }
 
   if (isNode && schema.generate_profile) {
-    return (
-      <NodeWithProfileForm
-        schema={schema}
-        isFilterForm={isFilterForm}
-        profiles={currentProfiles}
-        {...props}
-      />
-    );
+    return <NodeWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 
-  return (
-    <NodeForm schema={schema} isFilterForm={isFilterForm} profiles={currentProfiles} {...props} />
-  );
+  return <NodeForm schema={schema} profiles={currentProfiles} {...props} />;
 };
 
 export default ObjectForm;

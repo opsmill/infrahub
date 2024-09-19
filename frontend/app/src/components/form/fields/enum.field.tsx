@@ -5,13 +5,14 @@ import React from "react";
 
 import { Enum, EnumProps } from "@/components/inputs/enum";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 
 export interface EnumFieldProps
   extends Omit<DynamicEnumFieldProps, "type">,
-    Omit<EnumProps, "defaultValue" | "name" | "items"> {}
+    Omit<EnumProps, "defaultValue" | "value" | "name" | "items"> {}
 
 const EnumField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
   description,
   label,
   name,
@@ -32,29 +33,30 @@ const EnumField = ({
         const fieldData: FormAttributeValue = field.value;
 
         return (
-          <div>
+          <div className="flex flex-col gap-2">
             <LabelFormField
               label={label}
               unique={unique}
               required={!!rules?.required}
               description={description}
               fieldData={fieldData}
-              className="mb-2"
             />
 
             <FormInput>
               <Enum
-                items={items}
+                {...field}
+                {...props}
+                items={items as Array<string | number>}
                 fieldSchema={attributeSchema}
                 schema={schema}
-                value={fieldData?.value as string | null}
+                value={fieldData?.value as string | number | null}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
                 }}
               />
             </FormInput>
 
-            <FormMessage className="mt-2" />
+            <FormMessage />
           </div>
         );
       }}

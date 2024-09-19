@@ -1,46 +1,41 @@
 import React, { forwardRef, useState } from "react";
-import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@/components/buttons/button-primitive";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { useMutation } from "@/hooks/useQuery";
 import ModalDelete from "@/components/modals/modal-delete";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import DynamicForm from "@/components/form/dynamic-form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/graphql/mutations/schema/enum";
+import { isRequired } from "@/components/form/utils/validation";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/components/ui/combobox";
+import { AttributeSchema } from "@/screens/schema/types";
 
-export interface EnumItemProps extends React.ComponentPropsWithoutRef<typeof CommandItem> {
-  fieldSchema: {
-    name: string;
-  };
-  currentValue: unknown | null;
+export interface EnumDeleteButtonProps extends ButtonProps {
+  fieldSchema: AttributeSchema;
   schema: IModelSchema;
-  onDelete: (id: unknown) => void;
-  item: unknown;
+  value: string | number;
+  onDelete: (id: string | number) => void;
 }
 
-export const EnumItem = React.forwardRef<React.ElementRef<typeof CommandItem>, EnumItemProps>(
-  (
-    { fieldSchema, currentValue, schema, onDelete, className, value, children, item, ...props },
-    ref
-  ) => {
+export const EnumDeleteButton = React.forwardRef<HTMLButtonElement, EnumDeleteButtonProps>(
+  ({ fieldSchema, schema, onDelete, className, value, children, ...props }, ref) => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [removeEnum, { loading }] = useMutation(ENUM_REMOVE_MUTATION, {
-      variables: { kind: schema.kind, attribute: fieldSchema.name, enum: item },
+      variables: { kind: schema?.kind, attribute: fieldSchema?.name, enum: value },
     });
 
     const handleDelete = async () => {
       try {
         await removeEnum();
-        onDelete(item);
+        onDelete(value);
       } catch (error) {
         console.error("Error deleting enum:", error);
       }
@@ -48,28 +43,26 @@ export const EnumItem = React.forwardRef<React.ElementRef<typeof CommandItem>, E
 
     return (
       <>
-        <CommandItem ref={ref} {...props}>
-          <Icon icon="mdi:check" className={classNames(currentValue !== item && "opacity-0")} />
-          {item?.toString()}
-          <Button
-            tabIndex={-1}
-            variant="ghost"
-            size="sm"
-            className="ml-auto text-red-800 h-6"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDeleteModal(true);
-            }}>
-            <Icon icon="mdi:trash-can-outline" />
-          </Button>
-        </CommandItem>
+        <Button
+          ref={ref}
+          tabIndex={-1}
+          variant="ghost"
+          size="sm"
+          className="ml-auto text-red-800 h-6"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteModal(true);
+          }}
+          {...props}>
+          <Icon icon="mdi:trash-can-outline" />
+        </Button>
 
         <ModalDelete
           title="Delete"
           description={
             <>
               Are you sure you want to delete the enum{" "}
-              <span className="font-semibold text-gray-800">{item?.toString()}</span>?
+              <span className="font-semibold text-gray-800">{value}</span>?
             </>
           }
           setOpen={setShowDeleteModal}
@@ -84,22 +77,19 @@ export const EnumItem = React.forwardRef<React.ElementRef<typeof CommandItem>, E
 );
 
 interface EnumAddActionProps {
-  schema: IModelSchema;
-  field: {
-    label?: string;
-    description?: string;
-    kind?: string;
-    name: string;
-  };
-  addOption: (item: unknown) => void;
+  schema?: IModelSchema;
+  field?: AttributeSchema;
+  addOption: (item: string | number) => void;
 }
 
 export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, addOption }) => {
   const [open, setOpen] = useState(false);
   const [addEnum] = useMutation(ENUM_ADD_MUTATION);
 
+  if (!schema || !field) return null;
+
   return (
-    <div className="p-2">
+    <div className="p-2 pt-0">
       <Button
         className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
         onClick={() => setOpen(!open)}>
@@ -126,6 +116,9 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
               type: field.kind === "Number" ? "Number" : "Text",
               rules: {
                 required: true,
+                validate: {
+                  required: isRequired,
+                },
               },
             },
           ]}
@@ -139,7 +132,7 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
               },
             });
             if (data?.SchemaEnumAdd?.ok) {
-              addOption(newEnumValue);
+              addOption(newEnumValue as string | number);
               setOpen(false);
             }
           }}
@@ -152,81 +145,66 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
 };
 
 export interface EnumProps {
-  items: Array<unknown>;
-  value: string | null;
-  fieldSchema: {
-    name: string;
-    label?: string;
-    description?: string;
-    kind?: string;
-  };
-  schema: IModelSchema;
+  items: Array<string | number>;
+  value: string | number | null;
+  fieldSchema?: AttributeSchema;
+  schema?: IModelSchema;
   className?: string;
-  onChange: (value: unknown) => void;
+  onChange: (value: string | number | null) => void;
 }
 
 export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
-  ({ items, value, fieldSchema, schema, className, onChange, ...props }, ref) => {
+  ({ items, value, fieldSchema, schema, onChange, ...props }, ref) => {
     const [localItems, setLocalItems] = useState(items);
     const [open, setOpen] = useState(false);
 
-    const handleAddOption = (newOption: unknown) => {
+    const handleAddOption = (newOption: string | number) => {
       setLocalItems([...localItems, newOption]);
       onChange(newOption);
     };
 
-    const handleDeleteOption = (deletedItemId: unknown) => {
-      setLocalItems(localItems.filter((item) => item !== deletedItemId));
-      if (value === deletedItemId) {
+    const handleDeleteOption = (deletedItem: string | number) => {
+      setLocalItems(localItems.filter((item) => item !== deletedItem));
+      if (value === deletedItem) {
         onChange(null);
       }
     };
 
     return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger ref={ref} asChild>
-          <button
-            type="button"
-            role="combobox"
-            className={classNames(
-              "h-10 flex items-center w-full rounded-md border border-gray-300 bg-white p-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-custom-blue-600 focus-visible:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
-              className
-            )}
-            {...props}>
-            {value}
-            <Icon icon="mdi:unfold-more-horizontal" className="ml-auto text-gray-600" />
-          </button>
-        </PopoverTrigger>
+      <Combobox open={open} onOpenChange={setOpen}>
+        <ComboboxTrigger ref={ref} {...props}>
+          {value}
+        </ComboboxTrigger>
 
-        <PopoverContent className="p-0" portal={false}>
-          <Command
-            style={{
-              width: "var(--radix-popover-trigger-width)",
-              maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
-            }}>
-            <CommandInput placeholder="Filter..." />
-            <CommandList>
-              <CommandEmpty>No enum found.</CommandEmpty>
-              {localItems.map((item) => (
-                <EnumItem
-                  key={item?.toString()}
-                  item={item}
-                  currentValue={value}
-                  schema={schema}
-                  fieldSchema={fieldSchema}
-                  onSelect={() => {
-                    onChange(item === value ? null : item);
-                    setOpen(false);
-                  }}
-                  onDelete={handleDeleteOption}
-                />
-              ))}
-            </CommandList>
-          </Command>
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxEmpty>No enum found.</ComboboxEmpty>
+            {localItems.map((item) => (
+              <ComboboxItem
+                key={item.toString()}
+                value={item.toString()}
+                selectedValue={value?.toString()}
+                onSelect={() => {
+                  onChange(item === value ? null : item);
+                  setOpen(false);
+                }}
+                {...props}>
+                {item}
+                {schema && fieldSchema && (
+                  <EnumDeleteButton
+                    schema={schema}
+                    fieldSchema={fieldSchema}
+                    value={item}
+                    onDelete={handleDeleteOption}
+                  />
+                )}
+              </ComboboxItem>
+            ))}
+          </ComboboxList>
 
           <EnumAddAction schema={schema} field={fieldSchema} addOption={handleAddOption} />
-        </PopoverContent>
-      </Popover>
+        </ComboboxContent>
+      </Combobox>
     );
   }
 );
