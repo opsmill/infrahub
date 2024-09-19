@@ -20,10 +20,6 @@
   description: "Issue related to design or UX"
   color: "3380ff"
 
-- name: "group/python-sdk"
-  description: "Issue related to the Python SDK"
-  color: "56e8e1"
-
 - name: "group/sync-engine"
   description: "Issue related to the Synchronization engine"
   color: "05b259"

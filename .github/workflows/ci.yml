@@ -39,20 +39,18 @@ jobs:
       documentation: ${{ steps.changes.outputs.documentation_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       helm: ${{ steps.changes.outputs.helm_all }}
-      sdk: ${{ steps.changes.outputs.sdk_all }}
-      sync: ${{ steps.changes.outputs.sync_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
       infrahub_poetry_files: ${{ steps.changes.outputs.infrahub_poetry_files }}
-      python_sdk_poetry_files: ${{ steps.changes.outputs.python_sdk_poetry_files }}
-      sync_poetry_files: ${{ steps.changes.outputs.sync_poetry_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: Check for file changes
         uses: dorny/paths-filter@v3
         id: changes
@@ -69,6 +67,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: "Install Helm"
         uses: azure/setup-helm@v4.2.0
       - name: "Linting: helm lint"
@@ -82,6 +82,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: "Setup environment"
         run: "pip install yamllint==1.35.1"
       - name: "Linting: yamllint"
@@ -95,6 +97,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: Install NodeJS
         uses: actions/setup-node@v4
         with:
@@ -116,6 +120,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: "Setup environment"
         run: "pip install ruff==0.5.0"
       - name: "Linting: ruff check"
@@ -131,6 +137,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: "Linting: markdownlint"
         uses: DavidAnson/markdownlint-cli2-action@v16
         with:
@@ -138,7 +146,6 @@ jobs:
           globs: |
             **/*.{md,mdx}
             !changelog/*.md
-            !python_sdk/changelog/*.md
 
   action-lint:
     if: needs.files-changed.outputs.github_workflows == 'true'
@@ -148,6 +155,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: Check workflow files
         run: |
           bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
@@ -167,160 +176,59 @@ jobs:
     with:
       directory: "./"
 
-  python-sdk-poetry-check:
-    if: |
-      needs.files-changed.outputs.python_sdk_poetry_files == 'true' ||
-      github.ref_name == 'stable' ||
-      github.ref_name == 'develop'
-    needs:
-      - "files-changed"
-    uses: "./.github/workflows/poetry-check.yml"
-    with:
-      directory: "./python-sdk/"
+  # TODO NEED TO REVISIT THIS ONE
+  # python-sdk-poetry-check:
+  #   if: |
+  #     needs.files-changed.outputs.python_sdk_poetry_files == 'true' ||
+  #     github.ref_name == 'stable' ||
+  #     github.ref_name == 'develop'
+  #   needs:
+  #     - "files-changed"
+  #   uses: "./.github/workflows/poetry-check.yml"
+  #   with:
+  #     directory: "./python-sdk/"
 
-  sync-poetry-check:
-    if: |
-      needs.files-changed.outputs.sync_poetry_files == 'true' ||
-      github.ref_name == 'stable' ||
-      github.ref_name == 'develop'
-    needs:
-      - "files-changed"
-    uses: "./.github/workflows/poetry-check.yml"
-    with:
-      directory: "./sync/"
+  # TODO NEED TO REVISIT THIS ONE
+  # python-sdk-integration-tests:
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled')
+  #   needs: ["python-sdk-unit-tests"]
+  #   runs-on:
+  #     group: huge-runners
+  #   timeout-minutes: 30
+  #   env:
+  #     INFRAHUB_DB_TYPE: memgraph
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v4"
+  #       with:
+  #         submodules: true
+  #     - name: "Install Invoke"
+  #       run: "pip install toml invoke"
 
-  python-sdk-unit-tests:
-    strategy:
-      matrix:
-        python-version:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.sdk == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      INFRAHUB_DB_TYPE: memgraph
-    defaults:
-      run:
-        working-directory: python_sdk/
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: "Setup environment"
-        run: |
-          pipx install poetry
-          poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
-      - name: "Install Package"
-        run: "poetry install --all-extras"
-      - name: "Mypy Tests"
-        run: "poetry run mypy --show-error-codes infrahub_sdk/"
-      - name: "Pylint Tests"
-        run: "poetry run pylint infrahub_sdk/"
-      - name: "Unit Tests"
-        run: "poetry --directory python_sdk run coverage run --source=infrahub_sdk -m pytest python_sdk/tests/unit/"
-        working-directory: ./
-      - name: "Create coverage file"
-        run: "poetry --directory python_sdk run coverage xml"
-        working-directory: ./
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2
-        continue-on-error: true
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: python-sdk-unit
-          parallel: true
+  #     - name: "Set environment variables"
+  #       run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+  #     - name: "Set environment variables"
+  #       run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+  #     - name: "Clear docker environment"
+  #       run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
-
-  python-sdk-integration-tests:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
-    needs: ["python-sdk-unit-tests"]
-    runs-on:
-      group: huge-runners
-    timeout-minutes: 30
-    env:
-      INFRAHUB_DB_TYPE: memgraph
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
-
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: "Build Test Image"
-        run: "invoke dev.build"
-      - name: "Pull External Docker Images"
-        run: "invoke dev.pull"
-      - name: "Integration Tests"
-        run: "invoke sdk.test-integration"
-      - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2
-        continue-on-error: true
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: python-sdk-integration
-          parallel: true
-
-  infrahub-sync-unit-tests:
-    strategy:
-      matrix:
-        python-version:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.sync == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: sync/
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: "Setup environment"
-        run: |
-          pipx install poetry
-          poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
-      - name: "Install Package"
-        run: "poetry install"
-      - name: "Pylint Tests"
-        run: "poetry run pylint infrahub_sync/"
-      # - name: "Mypy Tests"
-      #   run: "poetry run mypy --show-error-codes infrahub_sync/"
-
+  #     - name: "Build Test Image"
+  #       run: "invoke dev.build"
+  #     - name: "Pull External Docker Images"
+  #       run: "invoke dev.pull"
+  #     - name: "Integration Tests"
+  #       run: "invoke sdk.test-integration"
+  #     - name: "Coveralls : Integration Tests"
+  #       uses: coverallsapp/github-action@v2
+  #       continue-on-error: true
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         flag-name: python-sdk-integration
+  #         parallel: true
 
   backend-tests-unit:
     if: |
@@ -337,6 +245,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Set environment variables"
@@ -384,6 +294,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Set environment variables"
@@ -442,6 +354,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Set environment variables"
@@ -469,6 +383,8 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -495,6 +411,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: Install NodeJS
         uses: actions/setup-node@v4
         with:
@@ -547,6 +465,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: Install NodeJS
         uses: actions/setup-node@v4
         with:
@@ -572,6 +492,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -595,6 +517,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+        with:
+          submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
       # https://github.com/errata-ai/vale-action/issues/103
       - name: Download Vale
@@ -644,7 +568,8 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-
+        with:
+          submodules: true
       - name: Install NodeJS
         uses: actions/setup-node@v4
         with:
@@ -810,6 +735,8 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -855,7 +782,6 @@ jobs:
       - backend-tests-integration
       - backend-tests-unit
       - frontend-tests
-      - python-sdk-integration-tests
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
@@ -888,5 +814,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,python-sdk-unit,python-sdk-integration"
+          carryforward: "backend-unit,backend-integration,frontend-unit"
           parallel-finished: true
