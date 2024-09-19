@@ -37,8 +37,8 @@ async def add_relationship(
     at = Timestamp(at)
 
     params = {
-        "src_node_id": element_id_to_id(src_node_id),
-        "dst_node_id": element_id_to_id(dst_node_id),
+        "src_node_id": db.to_database_id(src_node_id),
+        "dst_node_id": db.to_database_id(dst_node_id),
         "at": at.to_string(),
         "branch": branch_name or registry.default_branch,
         "branch_level": branch_level or 1,
@@ -74,7 +74,7 @@ async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Time
     RETURN %(id_func)s(r)
     """ % {"id_func": db.get_id_function_name()}
 
-    params = {"to": to.to_string(), "ids": [element_id_to_id(_id) for _id in ids]}
+    params = {"to": to.to_string(), "ids": [db.to_database_id(_id) for _id in ids]}
 
     return await db.execute_query(query=query, params=params, name="update_relationships_to")
 
@@ -105,8 +105,8 @@ async def get_paths_between_nodes(
         print(query)
 
     params = {
-        "source_id": element_id_to_id(source_id),
-        "destination_id": element_id_to_id(destination_id),
+        "source_id": db.to_database_id(source_id),
+        "destination_id": db.to_database_id(destination_id),
     }
 
     return await db.execute_query(query=query, params=params, name="get_paths_between_nodes")
@@ -163,13 +163,6 @@ async def delete_all_nodes(db: InfrahubDatabase):
     params: dict = {}
 
     return await db.execute_query(query=query, params=params, name="delete_all_nodes")
-
-
-def element_id_to_id(element_id: str | int) -> str | int:
-    try:
-        return int(element_id)
-    except ValueError:
-        return element_id
 
 
 def extract_field_filters(field_name: str, filters: dict) -> dict[str, Any]:

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 from infrahub import config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.query import Query, QueryType
-from infrahub.core.utils import element_id_to_id
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -32,7 +31,7 @@ class AddNodeToBranch(Query):
             "id_func": db.get_id_function_name(),
         }
 
-        self.params["node_id"] = element_id_to_id(self.node_id)
+        self.params["node_id"] = db.to_database_id(self.node_id)
         self.params["now"] = self.at.to_string()
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -112,7 +111,7 @@ class RebaseBranchUpdateRelationshipQuery(Query):
         self.add_to_query(query=query)
 
         self.params["at"] = self.at.to_string()
-        self.params["ids"] = [element_id_to_id(id) for id in self.ids]
+        self.params["ids"] = [db.to_database_id(id) for id in self.ids]
         self.return_labels = [f"{db.get_id_function_name()}(r)"]
 
 
@@ -150,4 +149,4 @@ class RebaseBranchDeleteRelationshipQuery(Query):
 
         self.add_to_query(query=query)
 
-        self.params["ids"] = [element_id_to_id(id) for id in self.ids]
+        self.params["ids"] = [db.to_database_id(id) for id in self.ids]
