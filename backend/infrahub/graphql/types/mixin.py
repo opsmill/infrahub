@@ -14,29 +14,6 @@ class GetListMixin:
     """Mixins to Query the list of nodes using the NodeManager."""
 
     @classmethod
-    async def get_list(cls, fields: dict, context: GraphqlContext, **kwargs):
-        async with context.db.start_session() as db:
-            filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key in ("ids", "hfid")}
-
-            objs = await NodeManager.query(
-                db=db,
-                schema=cls._meta.schema,
-                filters=filters or None,
-                fields=fields,
-                at=context.at,
-                branch=context.branch,
-                account=context.account_session,
-                include_source=True,
-                include_owner=True,
-            )
-
-            if not objs:
-                return []
-            return [
-                await obj.to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids) for obj in objs
-            ]
-
-    @classmethod
     async def get_paginated_list(cls, fields: dict, context: GraphqlContext, **kwargs):
         partial_match = kwargs.pop("partial_match", False)
 
