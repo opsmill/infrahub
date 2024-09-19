@@ -133,7 +133,7 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
     return schema_branch
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def execute_before_any_test(worker_id, tmpdir_factory):
     config.load_and_exit()
 
