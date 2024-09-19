@@ -65,18 +65,16 @@ async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Time
     if not ids:
         return None
 
-    list_matches = [f"id(r) = {element_id_to_id(id)}" for id in ids]
-
     to = Timestamp(to)
 
-    query = f"""
+    query = """
     MATCH ()-[r]->()
-    WHERE {' or '.join(list_matches)}
+    WHERE %(id_func)s(r) IN $ids
     SET r.to = $to
-    RETURN ID(r)
-    """
+    RETURN %(id_func)s(r)
+    """ % {"id_func": db.get_id_function_name()}
 
-    params = {"to": to.to_string()}
+    params = {"to": to.to_string(), "ids": [element_id_to_id(_id) for _id in ids]}
 
     return await db.execute_query(query=query, params=params, name="update_relationships_to")
 
@@ -98,13 +96,10 @@ async def get_paths_between_nodes(
         relationships_str = ":" + "|".join(relationships)
 
     query = """
-    MATCH p = (s)-[%s*%s]-(d)
-    WHERE ID(s) = $source_id AND ID(d) = $destination_id
+    MATCH p = (s)-[%(rel)s*%(length_limit)s]-(d)
+    WHERE %(id_func)s(s) = $source_id AND %(id_func)s(d) = $destination_id
     RETURN p
-    """ % (
-        relationships_str.upper(),
-        length_limit,
-    )
+    """ % {"rel": relationships_str.upper(), "length_limit": length_limit, "id_func": db.get_id_function_name()}
 
     if print_query:
         print(query)
@@ -170,14 +165,11 @@ async def delete_all_nodes(db: InfrahubDatabase):
     return await db.execute_query(query=query, params=params, name="delete_all_nodes")
 
 
-def element_id_to_id(element_id: Union[str, int]) -> int:
-    if isinstance(element_id, int):
-        return element_id
-
-    if isinstance(element_id, str) and ":" not in element_id:
+def element_id_to_id(element_id: str | int) -> str | int:
+    try:
         return int(element_id)
-
-    return int(element_id.split(":")[2])
+    except ValueError:
+        return element_id
 
 
 def extract_field_filters(field_name: str, filters: dict) -> dict[str, Any]:

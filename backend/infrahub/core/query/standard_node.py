@@ -158,4 +158,4 @@ class StandardNodeGetListQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
-        self.order_by = ["ID(n)"]
+        self.order_by = [f"{db.get_id_function_name()}(n)"]

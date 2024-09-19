@@ -113,7 +113,7 @@ class RebaseBranchUpdateRelationshipQuery(Query):
 
         self.params["at"] = self.at.to_string()
         self.params["ids"] = [element_id_to_id(id) for id in self.ids]
-        self.return_labels = ["ID(r)"]
+        self.return_labels = [f"{db.get_id_function_name}(r)"]
 
 
 class RebaseBranchDeleteRelationshipQuery(Query):
