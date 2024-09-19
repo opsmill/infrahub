@@ -32,7 +32,7 @@ If you'd like to learn more about Infrahub, please refer to the following resour
 
 ## Support and Community
 
-If you need help, support for the open-source Infrahub project is provided on [![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/jXMRp9hXSX) or via [filing an issue on GitHub](https://github.com/opsmill/infrahub/issues).
+If you need help, support for the open-source Infrahub project is provided on [![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/opsmill) or via [filing an issue on GitHub](https://github.com/opsmill/infrahub/issues).
 
 ## Contributing
 
