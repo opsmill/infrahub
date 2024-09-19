@@ -1,1 +1,0 @@
-Fix `infrahubctl` not displaying error message under certain conditions

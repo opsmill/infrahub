@@ -794,7 +794,7 @@ class NodeGetListQuery(Query):
         self.order_by = []
         self.params["node_kind"] = self.schema.kind
 
-        self.return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
+        self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
         where_clause_elements = []
 
         branch_filter, branch_params = self.branch.get_query_filter_path(

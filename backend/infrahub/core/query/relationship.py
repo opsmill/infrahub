@@ -11,7 +11,7 @@ from infrahub.core.constants import RelationshipDirection, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import element_id_to_id, extract_field_filters
+from infrahub.core.utils import extract_field_filters
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -391,8 +391,11 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.return_labels = ["s", "d", "rl"]
 
         for prop_name, prop in self.data.properties.items():
-            self.add_to_query("MATCH (prop_%s) WHERE ID(prop_%s) = $prop_%s_id" % (prop_name, prop_name, prop_name))
-            self.params[f"prop_{prop_name}_id"] = element_id_to_id(prop.prop_db_id)
+            self.add_to_query(
+                "MATCH (prop_%(prop_name)s) WHERE %(id_func)s(prop_%(prop_name)s) = $prop_%(prop_name)s_id"
+                % {"prop_name": prop_name, "id_func": db.get_id_function_name()}
+            )
+            self.params[f"prop_{prop_name}_id"] = db.to_database_id(prop.prop_db_id)
             self.return_labels.append(f"prop_{prop_name}")
 
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)

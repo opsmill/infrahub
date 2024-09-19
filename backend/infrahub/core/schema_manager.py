@@ -489,6 +489,7 @@ class SchemaBranch:
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
+        self.sync_uniqueness_constraints_and_unique_attributes()
         self.validate_uniqueness_constraints()
         self.validate_display_labels()
         self.validate_order_by()
@@ -622,6 +623,43 @@ class SchemaBranch:
 
         return schema_attribute_path
 
+    def sync_uniqueness_constraints_and_unique_attributes(self) -> None:
+        for name in self.generic_names + self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            if not node_schema.unique_attributes and not node_schema.uniqueness_constraints:
+                continue
+
+            unique_attrs_in_constraints = set()
+            for constraint_paths in node_schema.uniqueness_constraints or []:
+                if len(constraint_paths) > 1:
+                    continue
+                constraint_path = constraint_paths[0]
+                schema_attribute_path = node_schema.parse_schema_path(path=constraint_path, schema=self)
+                if (
+                    schema_attribute_path.is_type_attribute
+                    and schema_attribute_path.attribute_property_name == "value"
+                    and schema_attribute_path.attribute_schema
+                ):
+                    unique_attrs_in_constraints.add(schema_attribute_path.attribute_schema.name)
+
+            unique_attrs_in_attrs = {attr_schema.name for attr_schema in node_schema.unique_attributes}
+            if unique_attrs_in_attrs == unique_attrs_in_constraints:
+                continue
+
+            attrs_to_make_unique = unique_attrs_in_constraints - unique_attrs_in_attrs
+            attrs_to_add_to_constraints = unique_attrs_in_attrs - unique_attrs_in_constraints
+            node_schema = self.get(name=name, duplicate=True)
+
+            for attr_name in attrs_to_make_unique:
+                attr_schema = node_schema.get_attribute(name=attr_name)
+                attr_schema.unique = True
+            if attrs_to_add_to_constraints:
+                node_schema.uniqueness_constraints = (node_schema.uniqueness_constraints or []) + sorted(
+                    [[f"{attr_name}__value"] for attr_name in attrs_to_add_to_constraints]
+                )
+            self.set(name=name, schema=node_schema)
+
     def validate_uniqueness_constraints(self) -> None:
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
@@ -735,6 +773,7 @@ class SchemaBranch:
     def validate_human_friendly_id(self) -> None:
         for name in self.generic_names + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
+            hf_attr_names = set()
 
             if not node_schema.human_friendly_id:
                 continue
@@ -759,6 +798,7 @@ class SchemaBranch:
                             f"{node_schema.kind} HFID is invalid at attribute '{schema_path.attribute_schema.name}', it must end with one of the "
                             f"following properties: {', '.join(required_properties)}"
                         )
+                    hf_attr_names.add(schema_path.attribute_schema.name)
 
                 if schema_path.is_type_relationship and schema_path.relationship_schema:
                     if schema_path.relationship_schema.optional and not (
@@ -771,22 +811,6 @@ class SchemaBranch:
                             f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
                             f"{node_schema.kind}. ({item})"
                         )
-                #     if not schema_path.attribute_schema.unique:
-                #         raise ValueError(
-                #             f"Only unique attribute on related node can be used used in human_friendly_id, "
-                #             f"{schema_path.attribute_schema.name} is not unique on {schema_path.relationship_schema.kind} for "
-                #             f"{node_schema.kind}. ({item})"
-                #         )
-
-                # if (
-                #     schema_path.is_type_attribute
-                #     and len(node_schema.human_friendly_id) == 1
-                #     and not schema_path.attribute_schema.unique
-                # ):
-                #     raise ValueError(
-                #         f"Only unique attribute can be used on their own in human_friendly_id, "
-                #         f"{schema_path.attribute_schema.name} is not unique for {node_schema.kind}. ({item})"
-                #     )
 
             if not has_unique_item:
                 raise ValueError(
@@ -903,9 +927,12 @@ class SchemaBranch:
             if node.menu_placement:
                 try:
                     placement_node = self.get(name=node.menu_placement, duplicate=False)
-                except SchemaNotFoundError:
-                    raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
-
+                except SchemaNotFoundError as exc:
+                    raise SchemaNotFoundError(
+                        branch_name=self.name,
+                        identifier=node.menu_placement,
+                        message=f"{node.kind} refers to an invalid menu placement node: {node.menu_placement}.",
+                    ) from exc
                 if node == placement_node:
                     raise ValueError(f"{node.kind}: cannot be placed under itself in the menu") from None
 
@@ -1054,6 +1081,24 @@ class SchemaBranch:
                     self.set(name=node.kind, schema=node)
                     break
                 continue
+
+            # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
+            # then use that attribute as the human_friendly_id
+            if not node.human_friendly_id and node.uniqueness_constraints:
+                for constraint_paths in node.uniqueness_constraints:
+                    if len(constraint_paths) > 1:
+                        continue
+                    constraint_path = constraint_paths[0]
+                    schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                    if (
+                        schema_path.is_type_attribute
+                        and schema_path.attribute_property_name == "value"
+                        and schema_path.attribute_schema
+                    ):
+                        node = self.get(name=name, duplicate=True)
+                        node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
+                        self.set(name=node.kind, schema=node)
+                        break
 
             if node.human_friendly_id and not node.unique_attributes and not node.uniqueness_constraints:
                 uniqueness_constraints: list[str] = []

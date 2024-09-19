@@ -246,6 +246,7 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
+                "uniqueness_constraints": [["name__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -277,6 +278,7 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
                 "branch": BranchSupportType.AWARE.value,
+                "uniqueness_constraints": [["name__value"]],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
@@ -321,6 +323,14 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                         "cardinality": "one",
                         "direction": "outbound",
                     },
+                    {
+                        "name": "best_friend",
+                        "peer": "TestPerson",
+                        "optional": True,
+                        "identifier": "person__animal_friend",
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
                 ],
             },
         ],
@@ -349,6 +359,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Person",
                 "namespace": "Test",
                 "display_labels": ["name__value"],
+                "default_filter": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -361,7 +372,14 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                         "identifier": "person__animal",
                         "cardinality": "many",
                         "direction": "inbound",
-                    }
+                    },
+                    {
+                        "name": "best_friends",
+                        "peer": "TestAnimal",
+                        "identifier": "person__animal_friend",
+                        "cardinality": "many",
+                        "direction": "inbound",
+                    },
                 ],
             },
         ],
@@ -395,6 +413,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
+                "uniqueness_constraints": [["name__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
