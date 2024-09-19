@@ -30,7 +30,7 @@ MEMGRAPH_DOCKER_IMAGE = os.getenv(
 )
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.19.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
-    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.1-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
+    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
 )
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
 
