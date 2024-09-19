@@ -69,7 +69,6 @@ test.describe("Object update", () => {
       await expect(page.getByLabel("Type *")).toHaveValue("MX204");
       await expect(page.getByLabel("Status")).toHaveText("Active");
       await expect(page.getByLabel("Role")).toHaveText("Edge Router");
-          .getByTestId("side-panel-container")
       await expect(
         page.getByTestId("side-panel-container").getByLabel("Asn").locator("../..").locator("input")
       ).toHaveValue("AS701 701");
