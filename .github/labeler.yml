@@ -11,10 +11,6 @@
   - changed-files:
       - any-glob-to-any-file: ["frontend/**"]
 
-"group/python-sdk":
-  - changed-files:
-      - any-glob-to-any-file: ["python_sdk/**"]
-
 "type/documentation":
   - changed-files:
       - any-glob-to-any-file: ["docs/**"]

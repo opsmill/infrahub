@@ -263,6 +263,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # -------------------------------------------
         # Validate Input
         # -------------------------------------------
+        if "updated_at" in fields and "updated_at" not in self._schema.valid_input_names:
+            # FIXME: Allow users to use "updated_at" named attributes until we have proper metadata handling
+            fields.pop("updated_at")
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
                 errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
@@ -422,6 +425,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._existing = True
 
         if updated_at:
+            kwargs["updated_at"] = (
+                updated_at  # FIXME: Allow users to use "updated_at" named attributes until we have proper metadata handling
+            )
             self._updated_at = Timestamp(updated_at)
 
         await self._process_fields(db=db, fields=kwargs)
