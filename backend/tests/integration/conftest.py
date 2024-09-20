@@ -7,6 +7,7 @@ import pytest
 import yaml
 from infrahub_sdk import UUIDT
 from prefect.testing.utilities import prefect_test_harness
+from testcontainers.core.container import DockerContainer
 
 from infrahub import config
 from infrahub.core import registry
@@ -41,8 +42,13 @@ def event_loop():
     loop.close()
 
 
+# This fixture requires settings having already loaded, which is done through neo4j/memgraph fixtures that depend
+# load_settings_before_any_test fixture.
 @pytest.fixture(scope="module")
-async def db() -> AsyncGenerator[InfrahubDatabase, None]:
+async def db(
+    neo4j: Optional[DockerContainer], memgraph: Optional[DockerContainer]
+) -> AsyncGenerator[InfrahubDatabase, None]:
+    assert neo4j is not None or memgraph is not None
     driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver

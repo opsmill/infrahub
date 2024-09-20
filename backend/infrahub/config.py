@@ -185,6 +185,7 @@ class BrokerSettings(BaseSettings):
     password: str = "infrahub"
     address: str = "localhost"
     port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    rabbitmq_http_port: Optional[int] = Field(default=None, ge=1, le=65535)
     namespace: str = "infrahub"
     maximum_message_retries: int = Field(
         default=10, description="The maximum number of retries that are attempted for failed messages"

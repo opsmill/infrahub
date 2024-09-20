@@ -8,9 +8,10 @@ from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
 
 import pytest
 import ujson
-from infrahub_sdk.utils import str_to_bool
 from prefect.logging.loggers import disable_run_logger
 from prefect.testing.utilities import prefect_test_harness
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config
 from infrahub.core import registry
@@ -36,9 +37,14 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 
-BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
-TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
 ResponseClass = TypeVar("ResponseClass")
+INFRAHUB_USE_TEST_CONTAINERS = os.getenv("INFRAHUB_USE_TEST_CONTAINERS", True)
+PORT_NATS = 4222
+PORT_REDIS = 6379
+PORT_CLIENT_RABBITMQ = 5672
+PORT_HTTP_RABBITMQ = 15672
+PORT_BOLT_NEO4J = 7687
+PORT_MEMGRAPH = 7687
 
 
 def pytest_addoption(parser):
@@ -71,8 +77,13 @@ def event_loop():
     loop.close()
 
 
+# This fixture requires settings having already loaded, which is done through neo4j/memgraph fixtures that depend
+# load_settings_before_any_test fixture.
 @pytest.fixture(scope="module")
-async def db() -> AsyncGenerator[InfrahubDatabase, None]:
+async def db(
+    neo4j: Optional[DockerContainer], memgraph: Optional[DockerContainer]
+) -> AsyncGenerator[InfrahubDatabase, None]:
+    assert neo4j is not None or memgraph is not None
     driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
@@ -147,27 +158,174 @@ def prefect_test(prefect_test_fixture):
         yield
 
 
-@pytest.fixture(scope="module", autouse=True)
-def execute_before_any_test(worker_id, tmpdir_factory):
-    config.load_and_exit()
+@pytest.fixture(scope="session")
+def neo4j(request: pytest.FixtureRequest) -> Optional[DockerContainer]:
+    config.SETTINGS.initialize_and_exit()
 
+    if not INFRAHUB_USE_TEST_CONTAINERS or os.getenv("INFRAHUB_DB_TYPE") == "memgraph":
+        return None
+
+    container = (
+        DockerContainer(image=os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.20.0-enterprise"))
+        .with_env("NEO4J_AUTH", "neo4j/admin")
+        .with_env("NEO4J_ACCEPT_LICENSE_AGREEMENT", "yes")
+        .with_env("NEO4J_dbms_security_procedures_unrestricted", "apoc.*")
+        .with_env("NEO4J_dbms_security_auth__minimum__password__length", "4")
+        .with_exposed_ports(PORT_BOLT_NEO4J)
+    )
+
+    def cleanup():
+        container.stop()
+
+    container.start()
+    wait_for_logs(container, "Started.")  # wait_container_is_ready does not seem to be enough
+    request.addfinalizer(cleanup)
+
+    config.SETTINGS.database.address = "localhost"
+    config.SETTINGS.database.port = int(container.get_exposed_port(PORT_BOLT_NEO4J))
+
+    return container
+
+
+@pytest.fixture(scope="session")
+def rabbitmq(request: pytest.FixtureRequest) -> Optional[DockerContainer]:
+    config.SETTINGS.initialize_and_exit()
+
+    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver == config.CacheDriver.NATS:
+        return None
+
+    container = (
+        DockerContainer(image="rabbitmq:3.13.1-management")
+        .with_env("RABBITMQ_DEFAULT_USER", "infrahub")
+        .with_env("RABBITMQ_DEFAULT_PASS", "infrahub")
+        .with_exposed_ports(5672, 15672)
+    )
+
+    def cleanup():
+        container.stop()
+
+    container.start()
+    wait_for_logs(container, "Server startup complete;")  # wait_container_is_ready does not seem to be enough
+    request.addfinalizer(cleanup)
+
+    config.SETTINGS.broker.address = "localhost"
+    config.SETTINGS.broker.port = int(container.get_exposed_port(5672))
+    config.SETTINGS.broker.rabbitmq_http_port = int(container.get_exposed_port(15672))
+
+    return container
+
+
+# NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
+@pytest.fixture(scope="session")
+def redis(request: pytest.FixtureRequest) -> Optional[DockerContainer]:
+    config.SETTINGS.initialize_and_exit()
+
+    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver == config.CacheDriver.NATS:
+        return None
+
+    container = DockerContainer(image="redis:latest").with_exposed_ports(PORT_REDIS)
+
+    def cleanup():
+        container.stop()
+
+    container.start()
+    wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
+    request.addfinalizer(cleanup)
+
+    return container
+
+
+@pytest.fixture(scope="session")
+def memgraph(request: pytest.FixtureRequest) -> Optional[DockerContainer]:
+    config.SETTINGS.initialize_and_exit()
+
+    if not INFRAHUB_USE_TEST_CONTAINERS or os.getenv("INFRAHUB_DB_TYPE") != "memgraph":
+        return None
+
+    memgraph_image = os.getenv(
+        "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
+    )
+
+    container = (
+        DockerContainer(image=memgraph_image, entrypoint=["/usr/bin/supervisord"], init=True)
+        .with_env("MGCONSOLE", "--username neo4j --password admin")
+        .with_env("APP_CYPHER_QUERY_MAX_LEN", 10000)
+        .with_exposed_ports(PORT_MEMGRAPH)
+    )
+
+    def cleanup():
+        container.stop()
+
+    container.start()
+    wait_for_logs(
+        container, "INFO success: lab entered RUNNING state"
+    )  # wait_container_is_ready does not seem to be enough
+
+    request.addfinalizer(cleanup)
+
+    config.SETTINGS.database.address = "localhost"
+    config.SETTINGS.database.port = int(container.get_exposed_port(PORT_MEMGRAPH))
+
+    return container
+
+
+@pytest.fixture(scope="session")
+def nats(request: pytest.FixtureRequest) -> Optional[DockerContainer]:
+    config.SETTINGS.initialize_and_exit()
+
+    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
+        return None
+
+    container = DockerContainer(image="nats:alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
+
+    def cleanup():
+        container.stop()
+
+    container.start()
+    wait_for_logs(container, "Server is ready")  # wait_container_is_ready does not seem to be enough
+    request.addfinalizer(cleanup)
+
+    return container
+
+
+@pytest.fixture(scope="module", autouse=True)
+def load_settings_before_any_test(
+    tmpdir_factory,
+    redis: Optional[DockerContainer],
+    rabbitmq: Optional[DockerContainer],
+    nats: Optional[DockerContainer],
+):
+    # Currently, tests assume cache and broker are always up, thus fixtures are always called even for tests not requiring them.
+    # An improvement would be to have cache and broker fixtures used only for tests which actually need them, as we do with 'db' fixture.
+    # Also note that later call to initialize_lock requires redis fixture.
+    # Above reasons explain why this fixture depend on cache/broker fixtures, despite we have to make extra calls to
+    # 'config.SETTINGS.initialize_and_exit()' in these fixtures.
+
+    # This call should have no effect as settings have already been initialized within either redis/rabbitmq/nats or even neo4j/memgraph fixtures.
+    config.SETTINGS.initialize_and_exit()
+
+    # Cache settings: either Redis or Nats.
+    config.SETTINGS.cache.address = "localhost"
+    if redis is not None:
+        config.SETTINGS.cache.port = int(redis.get_exposed_port(PORT_REDIS))
+    else:
+        assert nats is not None
+        config.SETTINGS.cache.port = int(nats.get_exposed_port(PORT_NATS))
+
+    # Broker settings: either RabbitMQ or Nats.
+    config.SETTINGS.broker.address = "localhost"
+    if rabbitmq is not None:
+        config.SETTINGS.broker.port = int(rabbitmq.get_exposed_port(PORT_CLIENT_RABBITMQ))
+        config.SETTINGS.broker.rabbitmq_http_port = int(rabbitmq.get_exposed_port(PORT_HTTP_RABBITMQ))
+    else:
+        assert nats is not None
+        config.SETTINGS.broker.port = int(nats.get_exposed_port(PORT_NATS))
+
+    # Other settings
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
 
-    if TEST_IN_DOCKER:
-        try:
-            db_id = int(worker_id[2]) + 1
-        except (ValueError, IndexError):
-            db_id = 1
-
-        config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
-        if config.SETTINGS.cache.driver == config.CacheDriver.NATS:
-            config.SETTINGS.cache.address = f"{BUILD_NAME}-message-queue-{db_id}"
-        config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
-        config.SETTINGS.broker.address = f"{BUILD_NAME}-message-queue-{db_id}"
-        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
-    else:
-        storage_dir = tmpdir_factory.mktemp("storage")
-        config.SETTINGS.storage.local._path = str(storage_dir)
+    storage_dir = tmpdir_factory.mktemp("storage")
+    config.SETTINGS.storage.local.path_ = str(storage_dir)
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True
