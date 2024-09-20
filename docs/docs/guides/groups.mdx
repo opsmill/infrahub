@@ -27,7 +27,7 @@ Then we will add members to the group.
 
 Execute this GraphQL mutation to create the group `TagConfigGroup`.
 
-```GraphQL
+```graphql
 mutation CreateGroup {
   CoreStandardGroupCreate (data: {name: {value: "TagConfigGroup"}}) {
     ok
@@ -46,7 +46,7 @@ We will be adding the `red` and `blue` tag to the `TagConfigGroup` group that we
 
 We need to retrieve the ids of the `red` and `blue` tag. Execute the following GraphQL query and take note of the ids.
 
-```GraphQL
+```graphql
 query {
   BuiltinTag (name__values: ["red","blue"]) {
     edges {
@@ -82,7 +82,7 @@ mutation UpdateGroupMembers {
 ![Adding members in group](../media/group_tagconfig_grp_adding_members.png)
 The resulting mutation should look like this (note that the ids will be different in your case).
 
-```GraphQL
+```graphql
 mutation UpdateGroupMembers {
   CoreStandardGroupUpdate(
     data: {
