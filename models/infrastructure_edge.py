@@ -2283,7 +2283,8 @@ async def run(
         log=log,
     )
 
-    await create_bgp_mesh(client=client, branch=branch, log=log, sites=sites)
+    if config.has_bgp_mesh:
+        await create_bgp_mesh(client=client, branch=branch, log=log, sites=sites)
 
     await create_backbone_connectivity(client=client, branch=branch, log=log, num_sites=num_sites)
 
@@ -2295,7 +2296,7 @@ async def run(
     #  Scenario 4 - Create some Relationship One and Attribute conflicts on a device
     #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
-    if branch == "main":
+    if branch == "main" and config.has_branch:
         await branch_scenario_add_upstream(site_name=sites[1].name, client=client, log=log, external_pool=external_pool)
         await branch_scenario_replace_ip_addresses(
             site_name=sites[2].name, client=client, log=log, interconnection_pool=interconnection_pool
@@ -2305,5 +2306,4 @@ async def run(
         await branch_scenario_conflict_platform(client=client, log=log)
 
     # Stop the timer and display elapsed time
-    end: float = time.time()
-    log.info(f"Data loaded in {round(end - start)}s")
+    log.info(f"Data loaded in {round(time.time() - start)}s")
