@@ -348,8 +348,7 @@ def gen_config_env(
         subsettings = getattr(settings, subsetting)
         fetch_fields(subsettings)
 
-    if "PATH" in env_vars:
-        env_vars.remove("PATH")
+    env_vars.discard("PATH")
     if update_docker_file:
         update_docker_compose_env_vars(
             env_vars=sorted(env_vars), env_defaults=env_defaults, enum_mappings=enum_mappings, docker_file=docker_file
