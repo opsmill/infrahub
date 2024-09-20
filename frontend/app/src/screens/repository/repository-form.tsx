@@ -14,8 +14,16 @@ import { DynamicInput } from "@/components/form/dynamic-form";
 import { NodeFormProps } from "@/components/form/node-form";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import RelationshipField from "@/components/form/fields/relationship.field";
+import { Button } from "@/components/buttons/button-primitive";
+import React from "react";
 
-const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeFormProps) => {
+const RepositoryForm = ({
+  onSuccess,
+  schema,
+  currentObject,
+  onSubmit,
+  onCancel,
+}: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
@@ -95,7 +103,15 @@ const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeForm
         </FormGroup>
       )}
 
-      <FormSubmit className="float-right">Save</FormSubmit>
+      <div className="text-right">
+        {onCancel && (
+          <Button variant="outline" className="mr-2" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+
+        <FormSubmit>Save</FormSubmit>
+      </div>
     </Form>
   );
 };
