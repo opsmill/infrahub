@@ -164,8 +164,8 @@ invoke demo.start demo.load-infra-schema demo.load-infra-data
 
 The Infrahub GitHub repository is designed to launch an instance via [GitHub Codespaces](https://docs.github.com/en/codespaces/overview). We have two devcontainer configurations:
 <!-- vale off -->
-- **infrahub:** a deployment running without any [Schema](/tutorials/getting-started/schema) or data pre-installed
-- **infrahub-demo:** a deployment running the [demo environment](/topics/local-demo-environment)
+* **infrahub:** a deployment running without any [Schema](/tutorials/getting-started/schema) or data pre-installed
+* **infrahub-demo:** a deployment running the [demo environment](/topics/local-demo-environment)
 <!-- vale on -->
 |  No Data | Demo Data |
 |---|---|
@@ -187,10 +187,10 @@ A first version of our K8S helm-chart is available in our repository.
 
 The following are required for production deployments using Helm:
 
-- data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
-- multiple replicas of the Infrahub API Server and Infrahub Git Agents should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
-- a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
-- S3 storage should be configured for the Infrahub API Server
+* data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
+* multiple replicas of the Infrahub API Server and Infrahub Git Agents should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
+* a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
+* S3 storage should be configured for the Infrahub API Server
 
 You can use the following values example:
 
