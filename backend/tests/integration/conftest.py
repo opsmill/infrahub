@@ -19,6 +19,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.utils import get_models_dir
+from tests.conftest import PORT_BOLT_NEO4J, PORT_MEMGRAPH
 from tests.helpers.file_repo import FileRepo
 
 
@@ -42,13 +43,17 @@ def event_loop():
     loop.close()
 
 
-# This fixture requires settings having already loaded, which is done through neo4j/memgraph fixtures that depend
-# load_settings_before_any_test fixture.
 @pytest.fixture(scope="module")
 async def db(
-    neo4j: Optional[DockerContainer], memgraph: Optional[DockerContainer]
+    neo4j: Optional[DockerContainer], memgraph: Optional[DockerContainer], reload_settings_before_each_module
 ) -> AsyncGenerator[InfrahubDatabase, None]:
-    assert neo4j is not None or memgraph is not None
+    config.SETTINGS.database.address = "localhost"
+    if neo4j is not None:
+        config.SETTINGS.database.port = int(neo4j.get_exposed_port(PORT_BOLT_NEO4J))
+    else:
+        assert memgraph is not None
+        config.SETTINGS.database.port = int(memgraph.get_exposed_port(PORT_MEMGRAPH))
+
     driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
