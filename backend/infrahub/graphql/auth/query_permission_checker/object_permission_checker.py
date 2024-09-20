@@ -26,31 +26,40 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     ) -> CheckerResolution:
         kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
 
-        # Identify which operation is performed on which kind
-        kind_action_map: dict[str, str] = {}
+        # Identify which operations are performed. As we don't have a mapping between kinds and the
+        # operation we currently require permissions all defined permissions for all objects
+        # within the GraphQL query / mutation
+        actions: set[str] = set()
         for operation in analyzed_query.operations:
             for kind in kinds:
                 if operation.name and operation.name.startswith(kind):
                     # An empty string after prefix removal means a query to "view"
-                    kind_action_map[kind] = operation.name[len(kind) :] or "view"
+                    query_action = operation.name[len(kind) :].lower() or "view"
+                    if query_action == "upsert":
+                        # Require both create and update for Upsert mutations
+                        actions.add("create")
+                        actions.add("update")
+                    else:
+                        actions.add(query_action)
 
         # Infer required permissions from the kind/operation map
         permissions: list[str] = []
-        for kind, action in kind_action_map.items():
-            extracted_words = extract_camelcase_words(kind)
-            permissions.append(
-                str(
-                    # Create a object permission instance just to get its string representation
-                    ObjectPermission(
-                        id="",
-                        branch=branch.name,
-                        namespace=extracted_words[0],
-                        name="".join(extracted_words[1:]),
-                        action=action.lower(),
-                        decision=PermissionDecision.ALLOW.value,
+        for action in actions:
+            for kind in kinds:
+                extracted_words = extract_camelcase_words(kind)
+                permissions.append(
+                    str(
+                        # Create a object permission instance just to get its string representation
+                        ObjectPermission(
+                            id="",
+                            branch=branch.name,
+                            namespace=extracted_words[0],
+                            name="".join(extracted_words[1:]),
+                            action=action.lower(),
+                            decision=PermissionDecision.ALLOW.value,
+                        )
                     )
                 )
-            )
 
         for permission in permissions:
             has_permission = False

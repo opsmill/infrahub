@@ -3,7 +3,7 @@ import { MarkdownEditor } from "@/components/editor";
 import { Select } from "@/components/inputs/select";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
-import { Combobox } from "@/components/ui/combobox";
+import { Combobox } from "@/components/ui/combobox-legacy";
 import {
   Form,
   FormField,

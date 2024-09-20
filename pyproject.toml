@@ -335,10 +335,6 @@ module = "infrahub.graphql.types.attribute"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.types.mixin"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.types.standard_node"
 ignore_errors = true
 
@@ -492,7 +488,6 @@ ignore = [
     "FURB113",  # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB116",  # Replace `bin` call with f-string
     "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
-    "FURB132",  # Use `env_vars.discard("PATH")` instead of check and `remove`
     "FURB140",  # Use `itertools.starmap` instead of the generator
     "FURB171",  # Membership test against single-item container
     "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value in a sequence
@@ -600,21 +595,7 @@ max-complexity = 33
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
 ]
 
-"backend/infrahub/graphql/resolver.py" = [
-    ##################################################################################################
-    # Review and change the below later                                                              #
-    ##################################################################################################
-    "ANN201", # Missing return type annotation for public function
-]
-
 "backend/infrahub/graphql/schema.py" = [
-    ##################################################################################################
-    # Review and change the below later                                                              #
-    ##################################################################################################
-    "ANN201", # Missing return type annotation for public function
-]
-
-"backend/infrahub/graphql/utils.py" = [
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################

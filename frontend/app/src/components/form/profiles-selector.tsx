@@ -8,7 +8,7 @@ import { gql } from "@apollo/client";
 import useQuery from "@/hooks/useQuery";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import Label from "@/components/ui/label";
-import { MultiCombobox } from "@/components/ui/combobox";
+import { MultiCombobox } from "@/components/ui/combobox-legacy";
 
 type ProfilesSelectorProps = {
   schema: iNodeSchema;

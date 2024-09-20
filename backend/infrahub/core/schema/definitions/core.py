@@ -37,6 +37,7 @@ core_profile_schema_definition: dict[str, Any] = {
     "label": "Profile",
     "display_labels": ["profile_name__value"],
     "default_filter": "profile_name__value",
+    "uniqueness_constraints": [["profile_name__value"]],
     "attributes": [
         {
             "name": "profile_name",
@@ -159,6 +160,7 @@ core_models: dict[str, Any] = {
             "icon": "mdi:group",
             "hierarchical": True,
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -294,6 +296,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["label__value"],
             "branch": BranchSupportType.AWARE.value,
             "documentation": "/topics/proposed-change",
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -360,6 +363,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
                 {"name": "description", "kind": "Text", "optional": True, "order_weight": 2000},
@@ -384,6 +388,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "icon": "mdi:source-repository",
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["name__value"], ["location__value"]],
             "documentation": "/topics/repository",
             "attributes": [
                 {
@@ -578,6 +583,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "attributes": [
                 {
@@ -805,6 +811,7 @@ core_models: dict[str, Any] = {
             "human_friendly_id": ["name__value"],
             "icon": "mdi:view-grid-outline",
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "attributes": [
                 {
@@ -834,6 +841,7 @@ core_models: dict[str, Any] = {
             "human_friendly_id": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "documentation": "/topics/auth",
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "password", "kind": "HashedPassword", "unique": False},
@@ -906,6 +914,7 @@ core_models: dict[str, Any] = {
             "icon": "mdi:key-variant",
             "human_friendly_id": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["name__value"]],
             "documentation": "/topics/auth",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
@@ -980,6 +989,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -1009,6 +1019,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["token__value"],
             "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["token__value"]],
             "documentation": "/topics/auth",
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": True},
@@ -1563,6 +1574,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
@@ -1637,6 +1649,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "generate_profile": False,
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "documentation": "/topics/graphql",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1764,6 +1777,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
             "generate_profile": False,
+            "uniqueness_constraints": [["name__value"]],
             "inherit_from": [InfrahubKind.TASKTARGET],
             "documentation": "/topics/artifact",
             "attributes": [
@@ -1806,6 +1820,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [

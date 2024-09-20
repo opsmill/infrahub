@@ -50,6 +50,35 @@ query {
 }
 """
 
+QUERY_GRAPHQL = """
+query {
+  CoreGraphQLQuery {
+    edges {
+      node {
+        display_label
+      }
+    }
+  }
+}
+"""
+
+QUERY_GRAPHQL_AND_REPO = """
+query {
+  CoreGraphQLQuery {
+    edges {
+      node {
+        display_label
+        repository {
+          node {
+            display_label
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
 
 class PermissionsHelper:
     def __init__(self) -> None:
@@ -95,7 +124,15 @@ class TestObjectPermissions:
                 name="any",
                 action=PermissionAction.ANY.value,
                 decision=PermissionDecision.ALLOW.value,
-            )
+            ),
+            ObjectPermission(
+                id="",
+                branch="main",
+                namespace="Core",
+                name="GraphQLQuery",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW.value,
+            ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
             await obj.new(
@@ -157,6 +194,54 @@ class TestObjectPermissions:
         with pytest.raises(
             PermissionDeniedError,
             match="You do not have the following permission: object:main:Core:Repository:view:allow",
+        ):
+            await perms.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                branch=permission_helper.default_branch,
+                query_parameters=gql_params,
+            )
+
+    async def test_first_account_graphql(self, db: InfrahubDatabase) -> None:
+        """The user should have permissions to list GraphQLQueries."""
+        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permission_helper.default_branch)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=QUERY_GRAPHQL, schema=gql_params.schema, branch=permission_helper.default_branch
+        )
+        perms = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True,
+            account_id=permission_helper.first.id,
+            session_id=str(uuid4()),
+            auth_type=AuthType.JWT,
+        )
+
+        await perms.check(
+            db=db,
+            account_session=session,
+            analyzed_query=analyzed_query,
+            branch=permission_helper.default_branch,
+            query_parameters=gql_params,
+        )
+
+    async def test_first_account_graphql_and_repos(self, db: InfrahubDatabase) -> None:
+        """The user should have permissions to list GraphQLQueries but not repositories linked to them"""
+        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permission_helper.default_branch)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=QUERY_GRAPHQL_AND_REPO, schema=gql_params.schema, branch=permission_helper.default_branch
+        )
+        perms = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True,
+            account_id=permission_helper.first.id,
+            session_id=str(uuid4()),
+            auth_type=AuthType.JWT,
+        )
+
+        with pytest.raises(
+            PermissionDeniedError,
+            match="Repository:view:allow",
         ):
             await perms.check(
                 db=db,

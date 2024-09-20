@@ -142,7 +142,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         queue = await self.channel.declare_queue(
             f"{self.settings.namespace}.rpcs",
             durable=True,
-            arguments={"x-max-priority": 5, "x-consumer-timeout": self.DELIVER_TIMEOUT * 1000},
+            arguments={"x-max-priority": 5},
         )
 
         self.delayed_exchange = await self.channel.declare_exchange(

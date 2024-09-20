@@ -1,6 +1,6 @@
 import React, { forwardRef } from "react";
 import { FormFieldValue, NumberPoolData } from "@/components/form/type";
-import { ComboboxList, tComboboxItem } from "@/components/ui/combobox";
+import { ComboboxList, tComboboxItem } from "@/components/ui/combobox-legacy";
 import { Popover, PopoverAnchor, PopoverTrigger } from "@/components/ui/popover";
 import { Slot } from "@radix-ui/react-slot";
 import { Button } from "@/components/buttons/button-primitive";

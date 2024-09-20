@@ -274,8 +274,8 @@ class IPPrefixUtilization(Query):
             -[r_attr:HAS_ATTRIBUTE]->(attr:Attribute)
             -[r_attr_val:HAS_VALUE]->(av:AttributeValue)
         )
-        WHERE ID(r_1) = ID(r_rel1)
-        AND ID(r_2) = ID(r_rel2)
+        WHERE %(id_func)s(r_1) = %(id_func)s(r_rel1)
+        AND %(id_func)s(r_2) = %(id_func)s(r_rel2)
         AND ({rel_filter("r_attr")})
         AND ({rel_filter("r_attr_val")})
         AND attr.name IN ["prefix", "address"]
@@ -301,7 +301,9 @@ class IPPrefixUtilization(Query):
             deepest_branch_details[1] AS branch,
             head(collect(is_active)) AS is_latest_active
         WHERE is_latest_active = TRUE
-        """
+        """ % {
+            "id_func": db.get_id_function_name(),
+        }
         self.return_labels = ["pfx", "child", "av", "branch_level", "branch"]
         self.add_to_query(query)
 

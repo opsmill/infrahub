@@ -86,7 +86,7 @@ function ErrorFallback({ error }: ErrorFallbackProps) {
           If this was unexpected, please reach out to us on{" "}
           <a
             className="underline"
-            href="https://discord.com/channels/1212332642801025064/1212669187198025759"
+            href="https://discord.gg/opsmill"
             target="_blank"
             rel="noreferrer">
             Discord
