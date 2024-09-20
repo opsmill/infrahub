@@ -192,6 +192,13 @@ The following are required for production deployments using Helm:
 * a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
 * S3 storage should be configured for the Infrahub API Server
 
+:::warning
+
+We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis, NFS) for production.
+They are present to ease deployment on non-production environments.
+
+:::
+
 You can use the following values example:
 
 ```yaml
@@ -247,12 +254,17 @@ infrahubGit:
     enabled: true
     storageClassName: standard-rwx # using GCP Filestore
 
-database:
-  persistence:
+neo4j:
+  services:
+    admin:
+      enabled: true
+  volumes:
     data:
-      enabled: true
-    logs:
-      enabled: true
+      mode: dynamic
+      dynamic:
+        storageClassName: premium-rwo
+        requests:
+          storage: 100Gi
 
 nfs-server-provisioner:
   enabled: false
