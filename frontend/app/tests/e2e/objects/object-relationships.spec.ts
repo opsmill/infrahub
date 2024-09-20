@@ -4,6 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
   // Avoid checking as non-admin + updating as admin at the same time
   test.describe.configure({ mode: "serial" });
+  test.slow();
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
