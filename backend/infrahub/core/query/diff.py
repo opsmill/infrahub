@@ -546,23 +546,24 @@ CALL {
         CALL {
             WITH p, q, diff_rel
             OPTIONAL MATCH path = (
-                (q)<-[diff_rel:IS_PART_OF]-(p)-[r_node]-(node)-[r_prop]-(prop)
+                (q)<-[top_diff_rel:IS_PART_OF]-(p)-[r_node]-(node)-[r_prop]-(prop)
             )
-            WHERE type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+            WHERE %(id_func)s(diff_rel) = %(id_func)s(top_diff_rel)
+            AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
             AND any(l in labels(node) WHERE l in ["Attribute", "Relationship"])
             AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
             AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
             AND ALL(
                 r in [r_node, r_prop]
-                WHERE r.from <= $to_time AND r.branch = diff_rel.branch
+                WHERE r.from <= $to_time AND r.branch = top_diff_rel.branch
             )
-            AND diff_rel.from <= r_node.from
-            AND (diff_rel.to IS NULL OR diff_rel.to >= r_node.from)
+            AND top_diff_rel.from <= r_node.from
+            AND (top_diff_rel.to IS NULL OR top_diff_rel.to >= r_node.from)
             AND r_node.from <= r_prop.from
             AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
             AND [%(id_func)s(p), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
-            AND diff_rel.status = r_node.status
-            AND diff_rel.status = r_prop.status
+            AND top_diff_rel.status = r_node.status
+            AND top_diff_rel.status = r_prop.status
             WITH path, node, prop, r_prop, r_node
             ORDER BY
                 %(id_func)s(node),
@@ -614,22 +615,24 @@ CALL {
         CALL {
             WITH root, r_root, p, diff_rel, q
             OPTIONAL MATCH path = (
-                (root:Root)<-[r_root:IS_PART_OF]-(p)-[diff_rel]-(q)-[r_prop]-(prop)
+                (root:Root)<-[mid_r_root:IS_PART_OF]-(p)-[mid_diff_rel]-(q)-[r_prop]-(prop)
             )
-            WHERE type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+            WHERE %(id_func)s(mid_r_root) =  %(id_func)s(r_root)
+            AND %(id_func)s(mid_diff_rel) =  %(id_func)s(diff_rel)
+            AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
             AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
-            AND r_prop.from <= $to_time AND r_prop.branch = diff_rel.branch
-            AND diff_rel.from <= r_prop.from
-            AND (diff_rel.to IS NULL OR diff_rel.to >= r_prop.from)
-            AND [%(id_func)s(p), type(diff_rel)] <> [%(id_func)s(prop), type(r_prop)]
+            AND r_prop.from <= $to_time AND r_prop.branch = mid_diff_rel.branch
+            AND mid_diff_rel.from <= r_prop.from
+            AND (mid_diff_rel.to IS NULL OR mid_diff_rel.to >= r_prop.from)
+            AND [%(id_func)s(p), type(mid_diff_rel)] <> [%(id_func)s(prop), type(r_prop)]
             // exclude paths where an active edge is below a deleted edge
-            AND (diff_rel.status = "active" OR r_prop.status = "deleted")
-            WITH path, prop, r_prop, r_root
+            AND (mid_diff_rel.status = "active" OR r_prop.status = "deleted")
+            WITH path, prop, r_prop, mid_r_root
             ORDER BY
                 %(id_func)s(prop),
-                r_root.branch = diff_rel.branch DESC,
+                mid_r_root.branch = mid_diff_rel.branch DESC,
                 r_prop.from DESC,
-                r_root.from DESC
+                mid_r_root.from DESC
             WITH prop, head(collect(path)) AS latest_prop_path
             RETURN latest_prop_path
         }
@@ -657,16 +660,16 @@ CALL {
         AND ALL(
             r_pair IN [[r_root, r_node], [r_node, diff_rel]]
             // filter out paths where a base branch edge follows a branch edge
-            WHERE (r_pair[0].branch = $base_branch_name OR r_pair[1].branch = $branch_name)
+            WHERE ((r_pair[0]).branch = $base_branch_name OR (r_pair[1]).branch = $branch_name)
             // filter out paths where an active edge follows a deleted edge
-            AND (r_pair[0].status = "active" OR r_pair[1].status = "deleted")
+            AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
             // filter out paths where an earlier from time follows a later from time
-            AND r_pair[0].from <= r_pair[1].from
+            AND (r_pair[0]).from <= (r_pair[1]).from
             // require adjacent edge pairs to have overlapping times, but only if on the same branch
             AND (
-                r_pair[0].branch <> r_pair[1].branch
-                OR r_pair[0].to IS NULL
-                OR r_pair[0].to >= r_pair[1].from
+                (r_pair[0]).branch <> (r_pair[1]).branch
+                OR (r_pair[0]).to IS NULL
+                OR (r_pair[0]).to >= (r_pair[1]).from
             )
         )
         AND [%(id_func)s(n), type(r_node)] <> [%(id_func)s(q), type(diff_rel)]
@@ -691,8 +694,10 @@ CALL {
             WITH n, p, diff_rel_path, drp_relationships[2] as diff_rel, drp_relationships[0] AS r_root, drp_relationships[1] AS r_node
             // get base branch version of the diff path, if it exists
             WITH diff_rel_path, diff_rel, r_root, n, r_node, p
-            OPTIONAL MATCH latest_base_path = (:Root)<-[r_root]-(n)-[r_node]-(p)-[base_diff_rel]->(base_prop)
-            WHERE %(id_func)s(n) <> %(id_func)s(base_prop)
+            OPTIONAL MATCH latest_base_path = (:Root)<-[deep_r_root]-(n)-[deep_r_node]-(p)-[base_diff_rel]->(base_prop)
+            WHERE %(id_func)s(deep_r_node) = %(id_func)s(r_node)
+            AND %(id_func)s(deep_r_root) = %(id_func)s(r_root)
+            AND %(id_func)s(n) <> %(id_func)s(base_prop)
             AND type(base_diff_rel) = type(diff_rel)
             AND all(
                 r in relationships(latest_base_path)
@@ -704,22 +709,24 @@ CALL {
             // get peer node for updated relationship properties
             WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
             OPTIONAL MATCH base_peer_path = (
-                (:Root)<-[r_root]-(n)-[r_node]-(p:Relationship)-[base_r_peer:IS_RELATED]-(base_peer:Node)
+                (:Root)<-[base_r_root]-(n)-[base_r_node]-(p:Relationship)-[base_r_peer:IS_RELATED]-(base_peer:Node)
             )
             WHERE type(diff_rel) <> "IS_RELATED"
-            AND [%(id_func)s(n), type(r_node)] <> [%(id_func)s(base_peer), type(base_r_peer)]
+            AND %(id_func)s(base_r_root) = %(id_func)s(r_root)
+            AND %(id_func)s(base_r_node) = %(id_func)s(r_node)
+            AND [%(id_func)s(n), type(base_r_node)] <> [%(id_func)s(base_peer), type(base_r_peer)]
             AND base_r_peer.from <= $to_time
             // filter out paths where an earlier from time follows a later from time
-            AND r_node.from <= base_r_peer.from
+            AND base_r_node.from <= base_r_peer.from
             // filter out paths where a base branch edge follows a branch edge
-            AND (r_node.branch = $base_branch_name OR base_r_peer.branch = $branch_name)
+            AND (base_r_node.branch = $base_branch_name OR base_r_peer.branch = $branch_name)
             // filter out paths where an active edge follows a deleted edge
-            AND (r_node.status = "active" OR base_r_peer.status = "deleted")
+            AND (base_r_node.status = "active" OR base_r_peer.status = "deleted")
             // require adjacent edge pairs to have overlapping times, but only if on the same branch
             AND (
-                r_node.branch <> base_r_peer.branch
-                OR r_node.to IS NULL
-                OR r_node.to >= base_r_peer.from
+                base_r_node.branch <> base_r_peer.branch
+                OR base_r_node.to IS NULL
+                OR base_r_node.to >= base_r_peer.from
             )
             WITH diff_rel_path, latest_base_path, base_peer_path, base_r_peer, diff_rel
             ORDER BY base_r_peer.branch = diff_rel.branch DESC, base_r_peer.from DESC
@@ -738,7 +745,7 @@ CALL {
 // -------------------------------------
 // Get unique node UUID-attr/rel name pairs to check for updates on main
 // -------------------------------------
-WITH collect(diff_path) AS diff_paths, collect(DISTINCT [nodes(diff_path)[1].uuid, nodes(diff_path)[2].name]) AS node_identifiers_list
+WITH collect(diff_path) AS diff_paths, collect(DISTINCT [(nodes(diff_path)[1]).uuid, (nodes(diff_path)[2]).name]) AS node_identifiers_list
 UNWIND node_identifiers_list AS node_identifiers
 WITH diff_paths, node_identifiers + $node_uuids_and_names_to_check AS node_identifiers
 CALL {
@@ -764,13 +771,13 @@ CALL {
     AND ALL(
         r_pair IN [[r_root, r_node], [r_node, r_prop]]
         // filter out paths where an active edge follows a deleted edge
-        WHERE (r_pair[0].status = "active" OR r_pair[1].status = "deleted")
+        WHERE ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
         // filter out paths where an earlier from time follows a later from time
-        AND r_pair[0].from <= r_pair[1].from
+        AND (r_pair[0]).from <= (r_pair[1]).from
         // require adjacent edge pairs to have overlapping times, but only if on the same branch
         AND (
-            r_pair[0].to IS NULL
-            OR r_pair[0].to >= r_pair[1].from
+            (r_pair[0]).to IS NULL
+            OR (r_pair[0]).to >= (r_pair[1]).from
         )
     )
     // avoid loopback
