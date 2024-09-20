@@ -14,6 +14,8 @@ from infrahub.core.constants import (
     GeneratorInstanceStatus,
     GlobalPermissions,
     InfrahubKind,
+    PermissionAction,
+    PermissionDecision,
     ProposedChangeState,
     RelationshipDeleteBehavior,
     RepositoryInternalStatus,
@@ -35,6 +37,7 @@ core_profile_schema_definition: dict[str, Any] = {
     "label": "Profile",
     "display_labels": ["profile_name__value"],
     "default_filter": "profile_name__value",
+    "uniqueness_constraints": [["profile_name__value"]],
     "attributes": [
         {
             "name": "profile_name",
@@ -157,6 +160,7 @@ core_models: dict[str, Any] = {
             "icon": "mdi:group",
             "hierarchical": True,
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -292,6 +296,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["label__value"],
             "branch": BranchSupportType.AWARE.value,
             "documentation": "/topics/proposed-change",
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -358,6 +363,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
                 {"name": "description", "kind": "Text", "optional": True, "order_weight": 2000},
@@ -382,6 +388,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "icon": "mdi:source-repository",
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["name__value"], ["location__value"]],
             "documentation": "/topics/repository",
             "attributes": [
                 {
@@ -576,6 +583,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "attributes": [
                 {
@@ -803,6 +811,7 @@ core_models: dict[str, Any] = {
             "human_friendly_id": ["name__value"],
             "icon": "mdi:view-grid-outline",
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "attributes": [
                 {
@@ -832,6 +841,7 @@ core_models: dict[str, Any] = {
             "human_friendly_id": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "documentation": "/topics/auth",
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "password", "kind": "HashedPassword", "unique": False},
@@ -876,7 +886,7 @@ core_models: dict[str, Any] = {
         {
             "name": "BasePermission",
             "namespace": "Core",
-            "description": "A permission grants right to a user",
+            "description": "A permission grants right to an account",
             "label": "Base permission",
             "icon": "mdi:user-key",
             "include_in_menu": False,
@@ -884,7 +894,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "roles",
-                    "peer": InfrahubKind.USERROLE,
+                    "peer": InfrahubKind.ACCOUNTROLE,
                     "optional": True,
                     "identifier": "role__permissions",
                     "cardinality": "many",
@@ -904,6 +914,7 @@ core_models: dict[str, Any] = {
             "icon": "mdi:key-variant",
             "human_friendly_id": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["name__value"]],
             "documentation": "/topics/auth",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
@@ -978,6 +989,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -1007,6 +1019,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["token__value"],
             "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
+            "uniqueness_constraints": [["token__value"]],
             "documentation": "/topics/auth",
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": True},
@@ -1561,6 +1574,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
@@ -1635,6 +1649,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "generate_profile": False,
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "documentation": "/topics/graphql",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1762,6 +1777,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
             "generate_profile": False,
+            "uniqueness_constraints": [["name__value"]],
             "inherit_from": [InfrahubKind.TASKTARGET],
             "documentation": "/topics/artifact",
             "attributes": [
@@ -1804,6 +1820,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
@@ -2105,10 +2122,43 @@ core_models: dict[str, Any] = {
             ],
         },
         {
-            "name": "UserRole",
+            "name": "ObjectPermission",
             "namespace": "Core",
-            "description": "A role defines a set of permissions to grant to a group of users",
-            "label": "User role",
+            "description": "A permission that grants rights to perform actions on objects",
+            "label": "Object permission",
+            "include_in_menu": False,
+            "order_by": ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"],
+            "display_labels": ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"],
+            "uniqueness_constraints": [
+                ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"]
+            ],
+            "generate_profile": False,
+            "inherit_from": [InfrahubKind.BASEPERMISSION],
+            "attributes": [
+                {"name": "branch", "kind": "Text", "order_weight": 1000},
+                {"name": "namespace", "kind": "Text", "order_weight": 2000},
+                {"name": "name", "kind": "Text", "order_weight": 3000},
+                {
+                    "name": "action",
+                    "kind": "Text",
+                    "enum": PermissionAction.available_types(),
+                    "default_value": PermissionAction.ANY.value,
+                    "order_weight": 4000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Text",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW.value,
+                    "order_weight": 5000,
+                },
+            ],
+        },
+        {
+            "name": "AccountRole",
+            "namespace": "Core",
+            "description": "A role defines a set of permissions to grant to a group of accounts",
+            "label": "Account role",
             "icon": "mdi:user-badge",
             "include_in_menu": False,
             "order_by": ["name__value"],
@@ -2118,9 +2168,9 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "groups",
-                    "peer": InfrahubKind.USERGROUP,
+                    "peer": InfrahubKind.ACCOUNTGROUP,
                     "optional": True,
-                    "identifier": "role__usergroups",
+                    "identifier": "role__accountgroups",
                     "cardinality": "many",
                     "kind": "Attribute",
                 },
@@ -2135,10 +2185,10 @@ core_models: dict[str, Any] = {
             ],
         },
         {
-            "name": "UserGroup",
+            "name": "AccountGroup",
             "namespace": "Core",
             "description": "A group of users to manage common permissions",
-            "label": "User group",
+            "label": "Account group",
             "icon": "mdi:account-group",
             "include_in_menu": False,
             "order_by": ["name__value"],
@@ -2149,9 +2199,9 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "roles",
-                    "peer": InfrahubKind.USERROLE,
+                    "peer": InfrahubKind.ACCOUNTROLE,
                     "optional": True,
-                    "identifier": "role__usergroups",
+                    "identifier": "role__accountgroups",
                     "cardinality": "many",
                     "kind": "Attribute",
                 }

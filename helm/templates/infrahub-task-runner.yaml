@@ -1,0 +1,97 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-task-runner
+  labels:
+    service: infrahub-task-runner
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.infrahubTaskRunner.replicas | default 1 }}
+  selector:
+    matchLabels:
+      service: infrahub-task-runner
+    {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: infrahub-task-runner
+      {{- with .Values.infrahubTaskRunner.podLabels }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+      {{- with .Values.infrahubTaskRunner.podAnnotations }}
+      annotations:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.infrahubTaskRunner.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.infrahubTaskRunner.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.infrahubTaskRunner.runtimeClassName }}
+      runtimeClassName: {{ . }}
+      {{- end }}
+      containers:
+        - args: {{- toYaml .Values.infrahubTaskRunner.infrahubTaskRunner.args | nindent 12 }}
+          env:
+            {{- include "infrahub-helm.infrahubTaskRunner.defaultEnv" . | nindent 12 }}
+            {{- range $key, $value := .Values.infrahubTaskRunner.infrahubTaskRunner.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- with .Values.infrahubTaskRunner.infrahubTaskRunner.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
+          image: {{ default .Values.global.imageRegistry .Values.infrahubTaskRunner.infrahubTaskRunner.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubTaskRunner.infrahubTaskRunner.imagePullPolicy }}
+          name: infrahub-task-runner
+          resources: {}
+          tty: true
+          volumeMounts:
+            - name: git-data
+              mountPath: /opt/infrahub/git
+            - name: workflow-data
+              mountPath: /opt/infrahub/workflow
+      restartPolicy: Always
+      volumes:
+        {{- if and .Values.infrahubGit.persistence.enabled }}
+        - name: git-data
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.infrahubGit.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "git-data")) . }}
+        {{- else }}
+        - name: git-data
+          emptyDir: {}
+        {{- end }}
+        {{- if and .Values.infrahubTaskRunner.persistence.enabled }}
+        - name: workflow-data
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.infrahubTaskRunner.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "workflow-data")) . }}
+        {{- else }}
+        - name: workflow-data
+          emptyDir: {}
+        {{- end }}
+
+{{- if and .Values.infrahubTaskRunner.persistence.enabled (not .Values.infrahubTaskRunner.persistence.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-workflow-data
+  labels:
+    service: workflow-data
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.infrahubTaskRunner.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.infrahubTaskRunner.persistence.size | quote }}
+  {{- with .Values.infrahubTaskRunner.persistence.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

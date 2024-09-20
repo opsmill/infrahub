@@ -310,3 +310,86 @@ async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person
         "id": new_id,
         "name": {"value": "Bella"},
     }
+
+
+async def test_with_constructed_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
+    """Validate that we can construct an HFID out of the payload without specifying all parts."""
+    person_schema = animal_person_schema.get(name="TestPerson")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="John Snow")
+    await person1.save(db=db)
+
+    query = """
+    mutation UpsertWolf($owner: String!, $weight: BigInt!) {
+        TestDogUpsert(data: {
+            name: { value: "Ghost" },
+            breed: { value: "Direwolf" },
+            color: { value: "White" },
+            owner: { id: $owner },
+            weight: { value: $weight }
+        }) {
+            ok
+            object {
+                id
+                name {
+                    value
+                }
+                color {
+                    value
+                }
+                breed {
+                    value
+                }
+                weight {
+                    value
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    # Create initial node
+    initial_weight = 14
+    create_result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"owner": "John Snow", "weight": initial_weight},
+    )
+
+    # Update previously created node
+    updated_weight = 68
+    update_result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"owner": "John Snow", "weight": updated_weight},
+    )
+
+    assert create_result.errors is None
+    assert create_result.data
+    assert create_result.data["TestDogUpsert"]["ok"] is True
+    ghost_id = create_result.data["TestDogUpsert"]["object"]["id"]
+    assert create_result.data["TestDogUpsert"]["object"] == {
+        "breed": {"value": "Direwolf"},
+        "color": {"value": "White"},
+        "id": ghost_id,
+        "name": {"value": "Ghost"},
+        "weight": {"value": initial_weight},
+    }
+
+    assert update_result.errors is None
+    assert update_result.data
+    assert update_result.data["TestDogUpsert"]["ok"] is True
+    assert ghost_id == update_result.data["TestDogUpsert"]["object"]["id"]
+    assert update_result.data["TestDogUpsert"]["object"] == {
+        "breed": {"value": "Direwolf"},
+        "color": {"value": "White"},
+        "id": ghost_id,
+        "name": {"value": "Ghost"},
+        "weight": {"value": updated_weight},
+    }

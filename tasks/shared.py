@@ -30,9 +30,11 @@ MEMGRAPH_DOCKER_IMAGE = os.getenv(
 )
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
-    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.1-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
+    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
 )
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
+
+TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0-python3.12")
 
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
@@ -53,15 +55,13 @@ TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
 TEST_COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-test-database-memgraph.yml",
-    "development/docker-compose-test-cache.yml",
-    "development/docker-compose-test-message-queue.yml",
+    "development/docker-compose-test-deps.yml",
     TEST_COMPOSE_FILE,
 ]
 TEST_COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-test-database-neo4j.yml",
-    "development/docker-compose-test-cache.yml",
-    "development/docker-compose-test-message-queue.yml",
+    "development/docker-compose-test-deps.yml",
     TEST_COMPOSE_FILE,
 ]
 
@@ -119,6 +119,8 @@ VOLUME_NAMES = [
     "database_logs",
     "git_data",
     "git_remote_data",
+    "workflow_data",
+    "workflow_db",
     "storage_data",
 ]
 
@@ -200,6 +202,7 @@ def get_env_vars(context: Context, namespace: str = "default") -> str:
         "NBR_WORKERS": NBR_WORKERS,
         "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
         "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
+        "TASK_MANAGER_DOCKER_IMAGE": TASK_MANAGER_DOCKER_IMAGE,
         "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
     }
 

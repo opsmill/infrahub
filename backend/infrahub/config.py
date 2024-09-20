@@ -20,6 +20,7 @@ from infrahub.exceptions import InitializationError
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
@@ -60,6 +61,11 @@ class BrokerDriver(str, Enum):
 class CacheDriver(str, Enum):
     Redis = "redis"
     NATS = "nats"
+
+
+class WorkflowDriver(str, Enum):
+    LOCAL = "local"
+    WORKER = "worker"
 
 
 class MainSettings(BaseSettings):
@@ -220,6 +226,24 @@ class CacheSettings(BaseSettings):
         return self.port or default_ports
 
 
+class WorkflowSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
+    enable: bool = True
+    address: str = "localhost"
+    port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    driver: WorkflowDriver = WorkflowDriver.WORKER
+
+    @property
+    def api_endpoint(self) -> str:
+        url = "https://" if self.tls_enabled else "http://"
+        url += self.address
+        if self.port:
+            url += f":{self.port}"
+        url += "/api"
+        return url
+
+
 class ApiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_API_")
     cors_allow_origins: list[str] = Field(
@@ -337,6 +361,7 @@ class TraceSettings(BaseSettings):
 class Override:
     message_bus: Optional[InfrahubMessageBus] = None
     cache: Optional[InfrahubCache] = None
+    workflow: Optional[InfrahubWorkflow] = None
 
 
 @dataclass
@@ -396,6 +421,10 @@ class ConfiguredSettings:
         return self.active_settings.cache
 
     @property
+    def workflow(self) -> WorkflowSettings:
+        return self.active_settings.workflow
+
+    @property
     def miscellaneous(self) -> MiscellaneousSettings:
         return self.active_settings.miscellaneous
 
@@ -437,6 +466,7 @@ class Settings(BaseSettings):
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
     cache: CacheSettings = CacheSettings()
+    workflow: WorkflowSettings = WorkflowSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()

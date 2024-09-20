@@ -35,7 +35,7 @@ class Registry:
     _default_branch: Optional[str] = None
     _default_ipnamespace: Optional[str] = None
     _schema: Optional[SchemaManager] = None
-    default_graphql_type: dict[str, InfrahubObject] = field(default_factory=dict)
+    default_graphql_type: dict[str, InfrahubObject | type[BaseAttribute]] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
     data_type: dict[str, type[InfrahubDataType]] = field(default_factory=dict)
     input_type: dict[str, Union[BaseAttributeCreate, BaseAttributeUpdate]] = field(default_factory=dict)

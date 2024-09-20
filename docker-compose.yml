@@ -103,7 +103,7 @@ x-infrahub-config: &infrahub_config
 
 services:
   message-queue:
-    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.1-management}
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: *broker_username
@@ -144,6 +144,38 @@ services:
     ports:
       - 2004:2004
       - 6362:6362
+
+  task-manager:
+    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0-python3.12}"
+    command: prefect server start --host 0.0.0.0 --ui
+    restart: unless-stopped
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+      PREFECT_WORKER_QUERY_SECONDS: 3
+      PREFECT_AGENT_QUERY_INTERVAL: 3
+    healthcheck:
+      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      - task-manager-db
+
+  task-manager-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=prefect
+    volumes:
+      - workflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   infrahub-server:
     image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.0}"
@@ -213,3 +245,4 @@ volumes:
   git_data:
   git_remote_data:
   storage_data:
+  workflow_db:

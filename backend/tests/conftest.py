@@ -9,6 +9,8 @@ from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
 import pytest
 import ujson
 from infrahub_sdk.utils import str_to_bool
+from prefect.logging.loggers import disable_run_logger
+from prefect.testing.utilities import prefect_test_harness
 
 from infrahub import config
 from infrahub.core import registry
@@ -133,6 +135,18 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
     return schema_branch
 
 
+@pytest.fixture(scope="session")
+def prefect_test_fixture():
+    with prefect_test_harness():
+        yield
+
+
+@pytest.fixture(scope="session")
+def prefect_test(prefect_test_fixture):
+    with disable_run_logger():
+        yield
+
+
 @pytest.fixture(scope="module", autouse=True)
 def execute_before_any_test(worker_id, tmpdir_factory):
     config.load_and_exit()
@@ -232,6 +246,7 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
+                "uniqueness_constraints": [["name__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -263,6 +278,7 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
                 "branch": BranchSupportType.AWARE.value,
+                "uniqueness_constraints": [["name__value"]],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
@@ -307,6 +323,14 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                         "cardinality": "one",
                         "direction": "outbound",
                     },
+                    {
+                        "name": "best_friend",
+                        "peer": "TestPerson",
+                        "optional": True,
+                        "identifier": "person__animal_friend",
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
                 ],
             },
         ],
@@ -335,6 +359,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Person",
                 "namespace": "Test",
                 "display_labels": ["name__value"],
+                "default_filter": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -347,7 +372,14 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                         "identifier": "person__animal",
                         "cardinality": "many",
                         "direction": "inbound",
-                    }
+                    },
+                    {
+                        "name": "best_friends",
+                        "peer": "TestAnimal",
+                        "identifier": "person__animal_friend",
+                        "cardinality": "many",
+                        "direction": "inbound",
+                    },
                 ],
             },
         ],
@@ -381,6 +413,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
+                "uniqueness_constraints": [["name__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},

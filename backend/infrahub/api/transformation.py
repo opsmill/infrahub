@@ -24,11 +24,11 @@ from infrahub.exceptions import TransformError
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
 from infrahub.message_bus.messages import (
-    TransformJinjaTemplate,
-    TransformJinjaTemplateResponse,
     TransformPythonData,
     TransformPythonDataResponse,
 )
+from infrahub.message_bus.messages.transform_jinja_template import TransformJinjaTemplateData
+from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
@@ -134,9 +134,7 @@ async def transform_jinja2(
 
     data = extract_data(query_name=query.name.value, result=result)
 
-    service: InfrahubServices = request.app.state.service
-
-    message = TransformJinjaTemplate(
+    message = TransformJinjaTemplateData(
         repository_id=repository.id,
         repository_name=repository.name.value,
         repository_kind=repository.get_kind(),
@@ -146,5 +144,8 @@ async def transform_jinja2(
         data=data,
     )
 
-    response = await service.message_bus.rpc(message=message, response_class=TransformJinjaTemplateResponse)
-    return PlainTextResponse(content=response.data.rendered_template)
+    service: InfrahubServices = request.app.state.service
+
+    response: str = await service.workflow.execute(workflow=TRANSFORM_JINJA2_RENDER, message=message)  # type: ignore[arg-type]
+
+    return PlainTextResponse(content=response)

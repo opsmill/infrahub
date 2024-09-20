@@ -44,7 +44,11 @@ class TestReadOnlyAuthChecker:
 
         with pytest.raises(PermissionDeniedError):
             await self.checker.check(
-                db=db, analyzed_query=self.graphql_query, query_parameters=self.query_parameters, branch=branch
+                db=db,
+                account_session=self.account_session,
+                analyzed_query=self.graphql_query,
+                query_parameters=self.query_parameters,
+                branch=branch,
             )
 
     async def test_legal_mutation_is_okay(self, db: InfrahubDatabase, branch: Branch):
@@ -53,7 +57,11 @@ class TestReadOnlyAuthChecker:
         self.graphql_query.operations = [GraphQLOperation(name="ThisIsAllowed", operation_type=OperationType.MUTATION)]
 
         await self.checker.check(
-            db=db, analyzed_query=self.graphql_query, query_parameters=self.query_parameters, branch=branch
+            db=db,
+            account_session=self.account_session,
+            analyzed_query=self.graphql_query,
+            query_parameters=self.query_parameters,
+            branch=branch,
         )
 
     async def test_query_is_okay(self, db: InfrahubDatabase, branch: Branch):
@@ -61,5 +69,9 @@ class TestReadOnlyAuthChecker:
         self.graphql_query.operations = [GraphQLOperation(name="ThisIsAQuery", operation_type=OperationType.QUERY)]
 
         await self.checker.check(
-            db=db, analyzed_query=self.graphql_query, query_parameters=self.query_parameters, branch=branch
+            db=db,
+            account_session=self.account_session,
+            analyzed_query=self.graphql_query,
+            query_parameters=self.query_parameters,
+            branch=branch,
         )

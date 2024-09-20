@@ -15,15 +15,14 @@ class CheckerResolution(Enum):
 
 class GraphQLQueryPermissionCheckerInterface(ABC):
     @abstractmethod
-    async def supports(
-        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch | str | None = None
-    ) -> bool: ...
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool: ...
 
     @abstractmethod
     async def check(
         self,
         db: InfrahubDatabase,
+        account_session: AccountSession,
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch | str | None = None,
+        branch: Branch,
     ) -> CheckerResolution: ...

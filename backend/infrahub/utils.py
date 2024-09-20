@@ -2,6 +2,7 @@ import hashlib
 import os
 from enum import Enum, EnumMeta
 from pathlib import Path
+from re import finditer
 from typing import Any, Optional
 
 KWARGS_TO_DROP = ["session"]
@@ -27,6 +28,12 @@ def find_first_file_in_directory(directory: str) -> Optional[str]:
             return filename
 
     return None
+
+
+def extract_camelcase_words(camel_case: str) -> list[str]:
+    """Extract the namespace and the name for a kind given its camel-case form."""
+    matches = finditer(r".+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)", camel_case)
+    return [m.group(0) for m in matches]
 
 
 def format_label(slug: str) -> str:

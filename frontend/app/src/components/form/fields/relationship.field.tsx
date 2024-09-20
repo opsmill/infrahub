@@ -12,6 +12,25 @@ import {
 } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
 import { updateRelationshipFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import useQuery from "@/hooks/useQuery";
+import { getRelationshipParent } from "@/graphql/queries/objects/getRelationshipParent";
+import { gql } from "@apollo/client";
+
+const getGenericParentRelationship = (kind?: string) => {
+  if (!kind) return;
+
+  const nodes = store.get(schemaState);
+  const schemaData = nodes.find((schema) => schema.kind === kind);
+  return schemaData?.relationships?.find((rel) => rel.kind === "Parent");
+};
+
+const getParentRelationship = (peer?: string) => {
+  if (!peer) return;
+
+  const schemaList = useAtomValue(schemaState);
+  const schemaData = schemaList.find((schema) => schema.kind === peer);
+  return schemaData?.relationships?.find((rel) => rel.kind === "Parent");
+};
 
 export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}
 
@@ -37,15 +56,44 @@ const RelationshipField = ({
 
   const generic = generics.find((generic) => generic.kind === relationship.peer);
 
-  if (generic && relationship.cardinality === "one") {
-    const nodes = store.get(schemaState);
-    const profiles = store.get(profilesAtom);
-    const schemaData = schemaList.find((schema) => schema.kind === selectedKind?.id);
-    const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
+  const isGeneric = generic && relationship.cardinality === "one";
 
+  const parentRelationship = isGeneric
+    ? getGenericParentRelationship(selectedKind?.id)
+    : getParentRelationship(relationship?.peer);
+
+  const kind = parentRelationship?.peer;
+  const attribute = parentRelationship?.identifier?.split("__")[1];
+  const id = Array.isArray(defaultValue?.value)
+    ? defaultValue?.value?.map((v) => v.id)[0]
+    : defaultValue?.value?.id;
+
+  const queryString = getRelationshipParent({ kind, attribute: `${attribute}s__ids`, id });
+
+  const query =
+    kind && attribute && id
+      ? gql`
+          ${queryString}
+        `
+      : gql`
+          query {
+            ok
+          }
+        `;
+
+  const { data } = useQuery(query, { skip: !parentRelationship?.kind || !id });
+
+  const currentParent = data && kind && data[kind]?.edges[0]?.node;
+
+  if (currentParent && !selectedParent) {
+    setSelectedParent(currentParent);
+  }
+
+  if (isGeneric) {
+    const profiles = store.get(profilesAtom);
     const genericOptions: SelectOption[] = (generic.used_by || [])
       .map((name: string) => {
-        const relatedSchema = [...nodes, ...profiles].find((s) => s.kind === name);
+        const relatedSchema = [...schemaList, ...profiles].find((s) => s.kind === name);
 
         if (relatedSchema) {
           return {
@@ -129,7 +177,7 @@ const RelationshipField = ({
                     <RelationshipInput
                       {...field}
                       {...props}
-                      value={undefined}
+                      value={currentParent?.id}
                       peer={parentRelationship?.peer}
                       disabled={props.disabled || !selectedKind?.id}
                       onChange={setSelectedParent}
@@ -187,9 +235,6 @@ const RelationshipField = ({
       </div>
     );
   }
-
-  const schemaData = schemaList.find((schema) => schema.kind === relationship?.peer);
-  const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
 
   return (
     <div className="space-y-2">

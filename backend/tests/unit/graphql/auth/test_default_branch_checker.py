@@ -64,6 +64,7 @@ class TestDefaultBranchPermissionChecker:
             ):
                 await self.checker.check(
                     db=db,
+                    account_session=self.account_session,
                     analyzed_query=self.graphql_query,
                     query_parameters=MagicMock(spec=GraphqlParams),
                     branch=branch,

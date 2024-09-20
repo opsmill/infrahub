@@ -13,6 +13,7 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
+from infrahub.core.account import ObjectPermission
 from infrahub.core.attribute import (
     Boolean,
     IntegerOptional,
@@ -22,7 +23,14 @@ from infrahub.core.attribute import (
     StringOptional,
 )
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, GlobalPermissions, InfrahubKind
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    BranchSupportType,
+    GlobalPermissions,
+    InfrahubKind,
+    PermissionAction,
+    PermissionDecision,
+)
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
@@ -2418,8 +2426,8 @@ async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, 
 @pytest.fixture
 async def register_account_schema(db: InfrahubDatabase) -> None:
     SCHEMAS_TO_REGISTER = [
-        InfrahubKind.USERGROUP,
-        InfrahubKind.USERROLE,
+        InfrahubKind.ACCOUNTGROUP,
+        InfrahubKind.ACCOUNTROLE,
         InfrahubKind.GENERICACCOUNT,
         InfrahubKind.ACCOUNT,
         InfrahubKind.ACCOUNTTOKEN,
@@ -2427,6 +2435,7 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
         InfrahubKind.REFRESHTOKEN,
         InfrahubKind.BASEPERMISSION,
         InfrahubKind.GLOBALPERMISSION,
+        InfrahubKind.OBJECTPERMISSION,
     ]
     nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
     generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
@@ -2492,17 +2501,38 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
     """Create a test admin account, group and role with all global permissions."""
     permissions: list[Node] = []
-    for permission in GlobalPermissions:
+    for global_permission in GlobalPermissions:
         obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=format_label(permission.value), action=permission.value)
+        await obj.new(db=db, name=format_label(global_permission.value), action=global_permission.value)
+        await obj.save(db=db)
+        permissions.append(obj)
+    for object_permission in [
+        ObjectPermission(
+            id="",
+            branch="any",
+            namespace="any",
+            name="any",
+            action=PermissionAction.ANY.value,
+            decision=PermissionDecision.ALLOW.value,
+        )
+    ]:
+        obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+        await obj.new(
+            db=db,
+            branch=object_permission.branch,
+            namespace=object_permission.namespace,
+            name=object_permission.name,
+            action=object_permission.action,
+            decision=object_permission.decision,
+        )
         await obj.save(db=db)
         permissions.append(obj)
 
-    role = await Node.init(db=db, schema=InfrahubKind.USERROLE)
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
     await role.new(db=db, name="admin", permissions=permissions)
     await role.save(db=db)
 
-    group = await Node.init(db=db, schema=InfrahubKind.USERGROUP)
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name="admin", roles=[role])
     await group.save(db=db)
 
