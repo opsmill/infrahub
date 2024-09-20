@@ -3,9 +3,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
+  namespace: "{{ .Release.Namespace }}"
   labels:
     service: infrahub-server
   {{- include "infrahub-helm.labels" . | nindent 4 }}
+  annotations:
+  {{- include "infrahub-helm.annotations" . | nindent 4 }}
 spec:
   replicas: {{ .Values.infrahubServer.replicas | default 1 }}
   selector:
@@ -26,6 +29,9 @@ spec:
       {{- end }}
       {{- with .Values.infrahubServer.runtimeClassName }}
       runtimeClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.infrahubServer.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
         - args: {{- toYaml .Values.infrahubServer.infrahubServer.args | nindent 12 }}
@@ -61,7 +67,12 @@ spec:
               name: {{ quote .name }}
           {{- end }}
           {{- end }}
-          resources: {}
+          {{- with .Values.infrahubServer.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.infrahubServer.infrahubServer.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
           tty: true
           volumeMounts:
             - mountPath: /opt/infrahub/storage
@@ -82,9 +93,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
+  namespace: "{{ .Release.Namespace }}"
   labels:
     service: infrahub-server
   {{- include "infrahub-helm.labels" . | nindent 4 }}
+  annotations:
+  {{- include "infrahub-helm.annotations" . | nindent 4 }}
 spec:
   type: {{ .Values.infrahubServer.type }}
   selector:
@@ -99,9 +113,12 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-storage-data
+  namespace: "{{ .Release.Namespace }}"
   labels:
     service: infrahub-server-storage-data
   {{- include "infrahub-helm.labels" . | nindent 4 }}
+  annotations:
+  {{- include "infrahub-helm.annotations" . | nindent 4 }}
 spec:
   accessModes:
     - {{ .Values.infrahubServer.persistence.accessMode }}
