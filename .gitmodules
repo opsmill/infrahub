@@ -1,0 +1,3 @@
+[submodule "python_sdk"]
+	path = python_sdk
+	url = git@github.com:opsmill/infrahub-sdk-python.git

@@ -35,7 +35,8 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
-
+        with:
+          submodules: true
       - name: Install Helm
         uses: azure/setup-helm@v4.2.0
 
