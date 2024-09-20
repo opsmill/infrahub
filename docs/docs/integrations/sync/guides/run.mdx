@@ -17,7 +17,7 @@ To create a new configuration, please refer to the guide [Creating a new Sync In
 
 ### Command
 
-```bash
+```shell
 infrahub-sync generate --name <sync_project_name> --directory <your_configuration_directory>
 ```
 
@@ -34,7 +34,7 @@ The `diff` command lets you see the differences between your source and destinat
 
 ### Command
 
-```bash
+```shell
 infrahub-sync diff --name <sync_project_name> --directory <your_configuration_directory>
 ```
 
@@ -51,7 +51,7 @@ Once you're ready to synchronize the data between your source and destination, y
 
 ### Command
 
-```bash
+```shell
 infrahub-sync sync --name <sync_project_name> --directory <your_configuration_directory>
 ```
 
@@ -71,6 +71,6 @@ The `sync` command also supports additional flags for displaying progress and ma
 
 For example:
 
-```bash
+```shell
 infrahub-sync sync --name my_project --directory configs --diff --show-progress
 ```

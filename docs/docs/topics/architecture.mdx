@@ -85,7 +85,7 @@ Any Git server. The most popular being: GitHub, GitLab, or Bitbucket.
 Infrahub supports TLS connections toward the dependencies above.
 The following configuration variables are available to configure TLS:
 
-```bash
+```shell
 INFRAHUB_BROKER_TLS_CA_FILE=/opt/ssl/ca.pem # File path to a CA certificate or bundle in PEM format
 INFRAHUB_BROKER_TLS_ENABLED=true # Boolean to enable TLS connections (allowed values: 1, True, true, 0, False, false)
 INFRAHUB_BROKER_TLS_INSECURE=true # Boolean to ignore certificate verification, useful for self-signed certificates (CA is not verified, expiry is not verified, hostname is not verified)
@@ -102,7 +102,7 @@ INFRAHUB_DB_TLS_INSECURE
 
 You can configure TLS for Neo4j using the following Docker environment variables:
 
-```bash
+```shell
 NEO4J_dbms_ssl_policy_bolt_enabled=true
 NEO4J_dbms_ssl_policy_bolt_base__directory=/opt/ssl
 NEO4J_dbms_ssl_policy_bolt_private__key=cert.key
