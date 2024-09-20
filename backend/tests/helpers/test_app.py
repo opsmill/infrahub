@@ -110,5 +110,4 @@ class TestInfrahubApp(TestInfrahub):
             password=config.SETTINGS.initial.admin_password,
             token_value=api_token,
         )
-
         await initialization(db=db)

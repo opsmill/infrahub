@@ -6,6 +6,7 @@ from typing import Any, AsyncGenerator, Optional
 import pytest
 import yaml
 from infrahub_sdk import UUIDT
+from testcontainers.core.container import DockerContainer
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -32,8 +33,9 @@ def event_loop():
     loop.close()
 
 
+# Here load_settings in needed because we want to have parameters already loaded. yes.
 @pytest.fixture(scope="module")
-async def db() -> AsyncGenerator[InfrahubDatabase, None]:
+async def db(neo4j: DockerContainer, memgraph: DockerContainer) -> AsyncGenerator[InfrahubDatabase, None]:
     driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
