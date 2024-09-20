@@ -15,10 +15,11 @@ type TabsProps = {
   tabs: Tab[];
   rightItems?: any;
   qsp?: string;
+  className?: string;
 };
 
 export const Tabs = (props: TabsProps) => {
-  const { qsp, tabs, rightItems } = props;
+  const { qsp, tabs, rightItems, className } = props;
 
   const [qspTab, setQspTab] = useQueryParam(qsp ?? QSP.TAB, StringParam);
 
@@ -31,7 +32,11 @@ export const Tabs = (props: TabsProps) => {
   };
 
   return (
-    <div className="bg-custom-white flex items-center border-b border-gray-200">
+    <div
+      className={classNames(
+        "bg-custom-white flex items-center border-b border-gray-200",
+        className
+      )}>
       <div className="flex-1">
         <div className="">
           <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">

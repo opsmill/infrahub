@@ -5,7 +5,6 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import {
-  ACCOUNT_OBJECT,
   ACCOUNT_TOKEN_OBJECT,
   MENU_EXCLUDELIST,
   SEARCH_ANY_FILTER,
@@ -64,6 +63,10 @@ export default function ObjectItems({
 
   if (schema && MENU_EXCLUDELIST.includes(schema.kind as string) && !preventBlock) {
     return <Navigate to="/" />;
+  }
+
+  if (!schema.kind) {
+    return <ErrorScreen message="No schema available for this object." />;
   }
 
   // Get all the needed columns (attributes + relationships)

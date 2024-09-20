@@ -146,6 +146,10 @@ export const router = createBrowserRouter([
             ],
           },
           {
+            path: "role-management",
+            lazy: () => import("@/pages/role-management"),
+          },
+          {
             path: "/",
             lazy: () => import("@/pages/homepage"),
           },
