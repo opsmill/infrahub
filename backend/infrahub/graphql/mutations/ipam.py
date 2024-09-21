@@ -64,7 +64,6 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def mutate_delete(
         cls,
-        root,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -73,7 +72,7 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
         if data["id"] == registry.default_ipnamespace:
             raise ValueError("Cannot delete default IPAM namespace")
 
-        return await super().mutate_delete(root=root, info=info, data=data, branch=branch, at=at)
+        return await super().mutate_delete(info=info, data=data, branch=branch, at=at)
 
 
 class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
@@ -98,7 +97,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     @retry_db_transaction(name="ipaddress_create")
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -125,7 +123,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     @retry_db_transaction(name="ipaddress_update")
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -165,7 +162,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def mutate_upsert(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -178,7 +174,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         await validate_namespace(db=db, data=data)
         prefix, result, created = await super().mutate_upsert(
-            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
+            info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
@@ -186,13 +182,12 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def mutate_delete(
         cls,
-        root,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
         at: str,
     ):
-        return await super().mutate_delete(root=root, info=info, data=data, branch=branch, at=at)
+        return await super().mutate_delete(info=info, data=data, branch=branch, at=at)
 
 
 class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
@@ -217,7 +212,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     @retry_db_transaction(name="ipprefix_create")
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -244,7 +238,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     @retry_db_transaction(name="ipprefix_update")
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -284,7 +277,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def mutate_upsert(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -297,7 +289,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         await validate_namespace(db=db, data=data)
         prefix, result, created = await super().mutate_upsert(
-            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
+            info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
@@ -306,7 +298,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     @retry_db_transaction(name="ipprefix_delete")
     async def mutate_delete(
         cls,
-        root,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
