@@ -634,16 +634,6 @@ max-complexity = 33
     "E501", # Line too long
 ]
 
-"tasks/**.py" = [
-    ##################################################################################################
-    # Review and change the below later                                                              #
-    ##################################################################################################
-    "ANN001", # Missing type annotation for function argument
-    "ANN201", # Missing return type annotation for public function
-    "ANN202", # Missing return type annotation for private function
-]
-
-
 "utilities/**.py" = [
     ##################################################################################################
     # Review and change the below later                                                              #
