@@ -196,6 +196,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
             {"name": "firstname", "kind": "Text"},
             {"name": "lastname", "kind": "Text"},
             {"name": "age", "kind": "Number"},
+            {"name": "color", "kind": "Text", "enum": ["blue", "red"], "default_value": "red"},
+            {"name": "height", "kind": "Number", "enum": [170, 180], "default_value": 170},
         ],
     }
 
@@ -223,6 +225,24 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
+
+    # Display Labels with an ENUM String
+    schema_01["display_labels"] = ["firstname__value", "color__value"]
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(db=db, schema=node_schema)
+    await obj.new(db=db, firstname="John", lastname="Doe", age=99, color="red")
+    assert await obj.render_display_label(db=db) == "John red"
+
+    # Display Labels with an ENUM Number
+    schema_01["display_labels"] = ["firstname__value", "height__value"]
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(db=db, schema=node_schema)
+    await obj.new(db=db, firstname="John", lastname="Doe", age=99, height=180)
+    assert await obj.render_display_label(db=db) == "John 180"
 
 
 async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
