@@ -4,6 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
   // Avoid checking as non-admin + updating as admin at the same time
   test.describe.configure({ mode: "serial" });
+  test.slow();
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
@@ -18,12 +19,14 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
-        await page.getByText("Devices5").click();
       });
 
       await test.step("all buttons are disabled", async () => {
         await expect(page.getByTestId("edit-button")).toBeDisabled();
         await expect(page.getByTestId("manage-groups")).toBeDisabled();
+        await expect(page.getByTestId("delete-button")).toBeDisabled();
+
+        await page.getByText("Devices5").click();
         await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
       });
     });
