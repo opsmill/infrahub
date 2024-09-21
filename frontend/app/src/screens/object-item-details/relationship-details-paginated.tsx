@@ -1,20 +1,17 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { RoundedButton } from "@/components/buttons/rounded-button";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import { SelectOption } from "@/components/inputs/select";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link as StyledLink } from "@/components/ui/link";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
 import { usePermission } from "@/hooks/usePermission";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
-import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { schemaState } from "@/state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { constructPath } from "@/utils/fetch";
@@ -22,15 +19,13 @@ import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
-import { useMutation } from "@/hooks/useQuery";
-import { EyeSlashIcon, LockClosedIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ObjectAttributeRow } from "./object-attribute-row";
-import DynamicForm from "@/components/form/dynamic-form";
 import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 
 type iRelationDetailsProps = {
@@ -59,46 +54,17 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const permission = usePermission();
 
   const schemaList = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const [addRelationship] = useMutation(ADD_RELATIONSHIP);
-
-  const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
   const parentSchema = schemaList.find((s) => s.kind === objectKind);
-  const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
   const columns = getSchemaObjectColumns({
     schema: relationshipSchemaData,
     forListView: mode === "TABLE",
   });
-
-  let options: SelectOption[] = [];
-
-  if (generic) {
-    (generic.used_by || []).forEach((kind) => {
-      const relatedSchema = schemaList.find((s) => s.kind === kind);
-
-      if (relatedSchema) {
-        options.push({
-          id: relatedSchema.kind,
-          name: relatedSchema.name,
-        });
-      }
-    });
-  } else {
-    const relatedSchema = schemaList.find((s) => s.kind === relationshipSchema.peer);
-
-    if (relatedSchema) {
-      options.push({
-        id: relatedSchema.kind,
-        name: relatedSchema.label ?? relatedSchema.name,
-      });
-    }
-  }
 
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
@@ -114,8 +80,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const handleDeleteRelationship = async (id: string) => {
     if (onDeleteRelationship) {
       await onDeleteRelationship(relationshipSchema.name, id);
-
-      setShowAddDrawer(false);
 
       setRelatedRowToDelete(undefined);
 
@@ -143,8 +107,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       context: { branch: branch?.name, date },
     });
 
-    setShowAddDrawer(false);
-
     setRelatedRowToDelete(undefined);
 
     if (refetch) {
@@ -157,33 +119,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         message={`Association with ${relationshipSchema.peer} removed`}
       />
     );
-  };
-
-  const handleSubmit = async (data: any) => {
-    const { relation } = data;
-
-    if (relation?.id || relation?.from_pool) {
-      await addRelationship({
-        variables: {
-          objectId: objectid,
-          relationshipIds: [relation],
-          relationshipName: relationshipSchema.name,
-        },
-      });
-
-      if (refetch) {
-        refetch();
-      }
-
-      toast(
-        <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`Association with ${relationshipSchema.peer} added`}
-        />
-      );
-
-      setShowAddDrawer(false);
-    }
   };
 
   // TODO: Refactor reltionships components to compute the correct columns
@@ -379,52 +314,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         </>
       )}
 
-      {mode === "TABLE" && (
-        <div className="absolute bottom-4 right-4 z-10">
-          <RoundedButton
-            disabled={!permission.write.allow}
-            onClick={() => setShowAddDrawer(true)}
-            className="p-3 ml-2 bg-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
-            data-testid="open-relationship-form-button">
-            <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
-          </RoundedButton>
-        </div>
-      )}
-
-      <SlideOver
-        title={
-          parentSchema && (
-            <SlideOverTitle
-              schema={parentSchema}
-              currentObjectLabel={relationshipSchema.label}
-              title={`Associate a new ${relationshipSchema.label}`}
-              subtitle={`Add a new ${relationshipSchema.label} to the current object`}
-            />
-          )
-        }
-        open={showAddDrawer}
-        setOpen={setShowAddDrawer}>
-        <DynamicForm
-          fields={[
-            {
-              name: "relation",
-              label: relationshipSchema.label,
-              type: "relationship",
-              relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
-              schema: relationshipSchemaData,
-              options,
-            },
-          ]}
-          onSubmit={async ({ relation }) => {
-            await handleSubmit({ relation: relation.value });
-          }}
-          onCancel={() => {
-            setShowAddDrawer(false);
-          }}
-          className="w-full p-4"
-        />
-      </SlideOver>
-
       {relatedRowToDelete && (
         <ModalDelete
           title="Delete"
@@ -445,6 +334,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           }}
           open={!!relatedRowToDelete}
           setOpen={() => setRelatedRowToDelete(undefined)}
+          confirmLabel="Remove"
         />
       )}
 
