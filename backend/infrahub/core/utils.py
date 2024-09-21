@@ -255,5 +255,5 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
                 super_class.__init_subclass_with_meta__(**options)
 
     @classmethod
-    def __init_subclass_with_meta__(cls, **meta_options):
+    def __init_subclass_with_meta__(cls, **meta_options) -> None:
         """This method just terminates the super() chain"""

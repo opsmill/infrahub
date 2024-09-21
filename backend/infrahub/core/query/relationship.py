@@ -37,7 +37,7 @@ class RelData:
     status: str
 
     @classmethod
-    def from_db(cls, obj: Neo4jRelationship):
+    def from_db(cls, obj: Neo4jRelationship) -> RelData:
         return cls(db_id=obj.element_id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
 
 
