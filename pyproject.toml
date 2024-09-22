@@ -590,8 +590,14 @@ max-complexity = 33
     "ANN001", # Missing type annotation for function argument
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN204", # Missing return type annotation for special method
-    "ANN206", # Missing return type annotation for classmethod
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+]
+
+"backend/infrahub/graphql/mutations/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN206", # Missing return type annotation for classmethod
 ]
 
 "backend/infrahub/graphql/schema.py" = [

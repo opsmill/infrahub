@@ -44,7 +44,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
         cls, _meta=None, default_filter=None, **options
-    ):
+    ) -> None:
         if not _meta:
             _meta = BaseNodeOptions(cls)
 
