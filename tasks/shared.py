@@ -25,9 +25,7 @@ INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 INFRAHUB_USE_NATS = bool(os.getenv("INFRAHUB_USE_NATS", False))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
-MEMGRAPH_DOCKER_IMAGE = os.getenv(
-    "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
-)
+MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.19.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
     "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
