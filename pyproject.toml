@@ -78,7 +78,7 @@ pre-commit = "^2.20.0"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
-ruff = "0.5.0"
+ruff = "0.6.6"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
@@ -469,6 +469,7 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
+    "ASYNC110", # Use `anyio.Event` instead of awaiting `anyio.sleep` in a `while` loop
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
     "ASYNC251", # Async functions should not call `time.sleep`
     "B007",     # Loop control variable not used within loop body
@@ -479,6 +480,8 @@ ignore = [
     "C403",     # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",     # Unnecessary `list` call within `sorted()`
+    "C420",     # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
+    "E721",     # Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
     "FURB110",  # Replace ternary `if` expression with `or` operator
     "FURB113",  # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB116",  # Replace `bin` call with f-string
@@ -532,9 +535,9 @@ ignore = [
     "RUF015",   # Prefer `next(...)` over single element slice
     "RUF019",   # Unnecessary key check before dictionary access
     "RUF021",   # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
-    "RUF025",   # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
     "RUF027",   # Possible f-string without an `f` prefix
     "RUF029",   # Function is declared `async`, but doesn't `await` or use `async` features.
+    "RUF031",   # [*] Avoid parentheses for tuples in subscripts.
     "S101",     # Use of `assert` detected
     "S105",     # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",     # Probable insecure usage of temporary file or directory
@@ -547,6 +550,7 @@ ignore = [
     "SIM105",   # Use `contextlib.suppress(SchemaNotFoundError)` instead of `try`-`except`-`pass`
     "SIM110",   # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
     "SIM114",   # Combine `if` branches using logical `or` operator
+    "SIM115",   # Use a context manager for opening files
     "SIM117",   # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SIM201",   # Use `backup_path.suffix != ".backup"` instead of `not backup_path.suffix == ".backup"`
