@@ -247,6 +247,8 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
+      - name: "Make repository folder writable"
+        run: chmod 777 .
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Set environment variables"
@@ -296,6 +298,8 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
+      - name: "Make repository folder writable"
+        run: chmod 777 .
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Set environment variables"
@@ -356,6 +360,8 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
+      - name: "Make repository folder writable"
+        run: chmod 777 .
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Set environment variables"
