@@ -45,7 +45,6 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -56,7 +55,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
         cleanup_payload(data)
         # Create the object in the database
-        obj, result = await super().mutate_create(root, info, data, branch, at)
+        obj, result = await super().mutate_create(info, data, branch, at)
         obj = cast(CoreGenericRepository, obj)
 
         # First check the connectivity to the remote repository
@@ -120,7 +119,6 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -142,7 +140,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 include_source=True,
             )
         if node.get_kind() != InfrahubKind.READONLYREPOSITORY:
-            return await super().mutate_update(root, info, data, branch, at, database=context.db, node=node)
+            return await super().mutate_update(info, data, branch, at, database=context.db, node=node)
 
         node = cast(CoreReadOnlyRepository, node)
         current_commit = node.commit.value
@@ -154,7 +152,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if data.ref and data.ref.value:
             new_ref = data.ref.value
 
-        obj, result = await super().mutate_update(root, info, data, branch, at, database=context.db, node=node)
+        obj, result = await super().mutate_update(info, data, branch, at, database=context.db, node=node)
         obj = cast(CoreReadOnlyRepository, obj)
 
         send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
