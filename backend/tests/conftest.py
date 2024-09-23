@@ -35,11 +35,12 @@ from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import services
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from infrahub.utils import str_to_bool
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 
 ResponseClass = TypeVar("ResponseClass")
-INFRAHUB_USE_TEST_CONTAINERS = os.getenv("INFRAHUB_USE_TEST_CONTAINERS", True)
+INFRAHUB_USE_TEST_CONTAINERS = str_to_bool(os.getenv("INFRAHUB_USE_TEST_CONTAINERS", "true"))
 PORT_NATS = 4222
 PORT_REDIS = 6379
 PORT_CLIENT_RABBITMQ = 5672
@@ -165,7 +166,7 @@ def prefect_test(prefect_test_fixture):
 
 @pytest.fixture(scope="session")
 def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[DockerContainer]:
-    if not INFRAHUB_USE_TEST_CONTAINERS or os.getenv("INFRAHUB_DB_TYPE") == "memgraph":
+    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
     container = (
@@ -229,7 +230,7 @@ def redis(request: pytest.FixtureRequest, load_settings_before_session) -> Optio
 
 @pytest.fixture(scope="session")
 def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[DockerContainer]:
-    if not INFRAHUB_USE_TEST_CONTAINERS or os.getenv("INFRAHUB_DB_TYPE") != "memgraph":
+    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
         return None
 
     memgraph_image = os.getenv(

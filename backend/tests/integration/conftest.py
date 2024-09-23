@@ -1,13 +1,12 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, Optional
 
 import pytest
 import yaml
 from infrahub_sdk import UUIDT
 from prefect.testing.utilities import prefect_test_harness
-from testcontainers.core.container import DockerContainer
 
 from infrahub import config
 from infrahub.core import registry
@@ -17,9 +16,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import InfrahubDatabase
 from infrahub.utils import get_models_dir
-from tests.conftest import PORT_BOLT_NEO4J, PORT_MEMGRAPH
 from tests.helpers.file_repo import FileRepo
 
 
@@ -41,24 +39,6 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
-
-
-@pytest.fixture(scope="module")
-async def db(
-    neo4j: Optional[DockerContainer], memgraph: Optional[DockerContainer], reload_settings_before_each_module
-) -> AsyncGenerator[InfrahubDatabase, None]:
-    config.SETTINGS.database.address = "localhost"
-    if neo4j is not None:
-        config.SETTINGS.database.port = int(neo4j.get_exposed_port(PORT_BOLT_NEO4J))
-    else:
-        assert memgraph is not None
-        config.SETTINGS.database.port = int(memgraph.get_exposed_port(PORT_MEMGRAPH))
-
-    driver = InfrahubDatabase(driver=await get_db(retry=1))
-
-    yield driver
-
-    await driver.close()
 
 
 async def load_infrastructure_schema(db: InfrahubDatabase):

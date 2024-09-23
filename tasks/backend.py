@@ -48,11 +48,16 @@ def format_all(context: Context):
 # Testing tasks
 # ----------------------------------------------------------------------------
 @task
-def ruff(context: Context):
+def ruff(context: Context, docker: bool = False):
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"poetry run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+
+    if docker:
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run  {build_test_envs()} infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -65,28 +70,37 @@ def mypy(context: Context, docker: bool = False):
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"poetry run mypy --show-error-codes {MAIN_DIRECTORY}"
 
+    if docker:
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
+        print(exec_cmd)
+
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
 @task
-def pylint(context: Context):
+def pylint(context: Context, docker: bool = False):
     """This will run pylint for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with pylint")
     exec_cmd = f"poetry run pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
-    print(exec_cmd)
+
+    if docker:
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
 @task
-def lint(context: Context):
+def lint(context: Context, docker: bool = False):
     """This will run all linter."""
-    ruff(context)
-    mypy(context)
-    pylint(context)
+    ruff(context, docker=docker)
+    mypy(context, docker=docker)
+    pylint(context, docker=docker)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
@@ -117,7 +131,6 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE):
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
-        # TODO: Should we remove extra --neo4j parameter? Seems redondant with INFRAHUB_DB_TYPE.
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")
