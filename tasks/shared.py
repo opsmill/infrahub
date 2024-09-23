@@ -186,12 +186,22 @@ def check_environment(context: Context) -> dict:
     return params
 
 
+def dumb_terminal() -> bool:
+    return os.getenv("TERM", "").lower() == "dumb"
+
+
 def get_compose_cmd(namespace: Namespace) -> str:
-    profile = ""
+    options = []
+
     if namespace == Namespace.DEV:
-        profile = "--profile dev"
-    if profile:
-        return f"docker compose {profile}"
+        options.append("--profile dev")
+
+    if dumb_terminal():
+        options.append("--ansi never")
+
+    if len(options) > 0:
+        return f"docker compose {' '.join(options)}"
+
     return "docker compose"
 
 
