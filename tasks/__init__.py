@@ -26,14 +26,12 @@ def yamllint(context: Context):
 @task(name="format")
 def format_all(context: Context):
     main.format_all(context)
-    sdk.format_all(context)
     backend.format_all(context)
 
 
 @task(name="lint")
 def lint_all(context: Context):
     yamllint(context)
-    sdk.lint(context)
     backend.lint(context)
 
 
