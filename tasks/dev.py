@@ -23,9 +23,11 @@ from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
     PYTHON_VER,
+    Namespace,
     build_compose_files_cmd,
     build_dev_compose_files_cmd,
     execute_command,
+    get_compose_cmd,
     get_env_vars,
 )
 from .utils import ESCAPED_REPO_PATH
@@ -34,7 +36,7 @@ if TYPE_CHECKING:
     from invoke.context import Context
 
 
-NAMESPACE = "DEV"
+NAMESPACE = Namespace.DEV
 
 
 @task(optional=["database"])
@@ -62,7 +64,8 @@ def debug(context: Context, database: str = INFRAHUB_DATABASE):
     """Start a local instance of Infrahub in debug mode."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        command = f"{get_env_vars(context, namespace=NAMESPACE)} docker compose {compose_files_cmd} -p {BUILD_NAME} up"
+        compose_cmd = get_compose_cmd(namespace=NAMESPACE)
+        command = f"{get_env_vars(context, namespace=NAMESPACE)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME} up"
         execute_command(context=context, command=command)
 
 
@@ -71,8 +74,9 @@ def deps(context: Context, database: str = INFRAHUB_DATABASE):
     """Start local instances of dependencies (Databases and Message Bus)."""
     with context.cd(ESCAPED_REPO_PATH):
         dev_compose_files_cmd = build_dev_compose_files_cmd(database=database)
+        compose_cmd = get_compose_cmd(namespace=NAMESPACE)
         command = (
-            f"{get_env_vars(context, namespace=NAMESPACE)} docker compose {dev_compose_files_cmd} -p {BUILD_NAME} up -d"
+            f"{get_env_vars(context, namespace=NAMESPACE)} {compose_cmd} {dev_compose_files_cmd} -p {BUILD_NAME} up -d"
         )
         execute_command(context=context, command=command)
 
@@ -93,7 +97,8 @@ def infra_git_create(
     """Load some demo data."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
-        base_cmd = f"{get_env_vars(context, namespace=NAMESPACE)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+        compose_cmd = get_compose_cmd(namespace=NAMESPACE)
+        base_cmd = f"{get_env_vars(context, namespace=NAMESPACE)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
         execute_command(
             context=context,
             command=f"{base_cmd} run infrahub-git infrahubctl repository add {name} {location}",
@@ -106,7 +111,8 @@ def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
     REPO_NAME = "infrahub-demo-edge"
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
-        base_cmd = f"{get_env_vars(context, namespace=NAMESPACE)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+        compose_cmd = get_compose_cmd(namespace=NAMESPACE)
+        base_cmd = f"{get_env_vars(context, namespace=NAMESPACE)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
         execute_command(
             context=context,
             command=f"{base_cmd} run infrahub-git cp -r backend/tests/fixtures/repos/{REPO_NAME}/initial__main /remote/{REPO_NAME}",

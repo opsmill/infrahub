@@ -21,13 +21,14 @@ from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
     PYTHON_VER,
+    Namespace,
     build_compose_files_cmd,
     execute_command,
     get_env_vars,
 )
 from .utils import ESCAPED_REPO_PATH
 
-NAMESPACE = "DEMO"
+NAMESPACE = Namespace.DEFAULT
 
 
 @task(optional=["database"])

@@ -17,6 +17,12 @@ class DatabaseType(str, Enum):
     MEMGRAPH = "memgraph"
 
 
+class Namespace(str, Enum):
+    DEFAULT = "default"  # aka demo
+    DEV = "dev"
+    TEST = "test"
+
+
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
@@ -180,6 +186,15 @@ def check_environment(context: Context) -> dict:
     return params
 
 
+def get_compose_cmd(namespace: Namespace) -> str:
+    profile = ""
+    if namespace == Namespace.DEV:
+        profile = "--profile dev"
+    if profile:
+        return f"docker compose {profile}"
+    return "docker compose"
+
+
 def execute_command(context: Context, command: str, print_cmd: bool = False) -> Optional[Result]:
     params = check_environment(context=context)
 
@@ -193,7 +208,7 @@ def execute_command(context: Context, command: str, print_cmd: bool = False) -> 
     return context.run(command, pty=params["pty"])
 
 
-def get_env_vars(context: Context, namespace: str = "default") -> str:
+def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> str:
     ENV_VARS_DICT = {
         "IMAGE_NAME": IMAGE_NAME,
         "IMAGE_VER": IMAGE_VER,
@@ -206,7 +221,7 @@ def get_env_vars(context: Context, namespace: str = "default") -> str:
         "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
     }
 
-    if namespace == "DEV" and not REQUESTED_IMAGE_VER:
+    if namespace == Namespace.DEV and not REQUESTED_IMAGE_VER:
         ENV_VARS_DICT["IMAGE_VER"] = "local"
 
     if DATABASE_DOCKER_IMAGE:
@@ -218,7 +233,7 @@ def get_env_vars(context: Context, namespace: str = "default") -> str:
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 
-def build_compose_files_cmd(database: str, namespace: str = "") -> str:
+def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFAULT) -> str:
     if database not in SUPPORTED_DATABASES:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
@@ -233,7 +248,7 @@ def build_compose_files_cmd(database: str, namespace: str = "") -> str:
     else:
         COMPOSE_FILES.append(DEFAULT_FILE_NAME)
 
-    if "local" in IMAGE_VER or (namespace == "DEV" and not REQUESTED_IMAGE_VER):
+    if "local" in IMAGE_VER or (namespace == Namespace.DEV and not REQUESTED_IMAGE_VER):
         COMPOSE_FILES.append(LOCAL_FILE_NAME)
 
     if os.getenv("CI") is not None:
