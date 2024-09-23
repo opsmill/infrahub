@@ -46,7 +46,7 @@ def build(
     python_ver: str = PYTHON_VER,
     nocache: bool = False,
     database: str = INFRAHUB_DATABASE,
-):
+) -> None:
     """Build an image with the provided name and python version.
 
     Args:
@@ -60,7 +60,7 @@ def build(
 
 
 @task(optional=["database"])
-def debug(context: Context, database: str = INFRAHUB_DATABASE):
+def debug(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Start a local instance of Infrahub in debug mode."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -70,7 +70,7 @@ def debug(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(optional=["database"])
-def deps(context: Context, database: str = INFRAHUB_DATABASE):
+def deps(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Start local instances of dependencies (Databases and Message Bus)."""
     with context.cd(ESCAPED_REPO_PATH):
         dev_compose_files_cmd = build_dev_compose_files_cmd(database=database)
@@ -82,7 +82,7 @@ def deps(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task
-def destroy(context: Context, database: str = INFRAHUB_DATABASE):
+def destroy(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Destroy all containers and volumes."""
     destroy_environment(context=context, database=database, namespace=NAMESPACE)
 
@@ -91,9 +91,9 @@ def destroy(context: Context, database: str = INFRAHUB_DATABASE):
 def infra_git_create(
     context: Context,
     database: str = INFRAHUB_DATABASE,
-    name="demo-edge",
-    location="/remote/infrahub-demo-edge",
-):
+    name: str = "demo-edge",
+    location: str = "/remote/infrahub-demo-edge",
+) -> None:
     """Load some demo data."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
@@ -106,7 +106,7 @@ def infra_git_create(
 
 
 @task(optional=["database"])
-def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
+def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load some demo data."""
     REPO_NAME = "infrahub-demo-edge"
     with context.cd(ESCAPED_REPO_PATH):
@@ -132,50 +132,50 @@ def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(optional=["database"])
-def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
+def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load infrastructure demo data."""
     load_infrastructure_data(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE):
+def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load the base schema for infrastructure."""
     load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def pull(context: Context, database: str = INFRAHUB_DATABASE):
+def pull(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Pull external containers from registry."""
     pull_images(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def restart(context: Context, database: str = INFRAHUB_DATABASE):
+def restart(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Restart Infrahub API Server and Git Agent within docker compose."""
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def status(context: Context, database: str = INFRAHUB_DATABASE):
+def status(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Display the status of all containers."""
     show_service_status(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False):
+def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False) -> None:
     """Start a local instance of Infrahub within docker compose."""
     start_services(context=context, database=database, namespace=NAMESPACE, wait=wait)
 
 
 @task(optional=["database"])
-def stop(context: Context, database: str = INFRAHUB_DATABASE):
+def stop(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Stop the running instance of Infrahub."""
     stop_services(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def migrate(context: Context, database: str = INFRAHUB_DATABASE):
+def migrate(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Apply the latest database migrations."""
     migrate_database(context=context, database=database, namespace=NAMESPACE)
     update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
@@ -189,12 +189,12 @@ def get_version_from_pyproject() -> str:
 
 
 @task
-def update_helm_chart(context, chart_file: Optional[str] = "helm/Chart.yaml"):
+def update_helm_chart(context: Context, chart_file: Optional[str] = "helm/Chart.yaml") -> None:
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     version = get_version_from_pyproject()
     version_pattern = r"^appVersion:\s*[\d\.\-a-zA-Z]+"
 
-    def replace_version(match):
+    def replace_version(match: str) -> str:
         return f"appVersion: {version}"
 
     chart_path = Path(chart_file)
@@ -207,12 +207,12 @@ def update_helm_chart(context, chart_file: Optional[str] = "helm/Chart.yaml"):
 
 
 @task
-def update_docker_compose(context, docker_file: Optional[str] = "docker-compose.yml"):
+def update_docker_compose(context: Context, docker_file: Optional[str] = "docker-compose.yml") -> None:
     """Update docker-compose.yml with the current version from pyproject.toml."""
     version = get_version_from_pyproject()
     version_pattern = r"registry.opsmill.io/opsmill/infrahub:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
 
-    def replace_version(match):
+    def replace_version(match: str) -> str:
         return f"registry.opsmill.io/opsmill/infrahub:${{VERSION:-{version}}}"
 
     docker_path = Path(docker_file)
@@ -223,7 +223,7 @@ def update_docker_compose(context, docker_file: Optional[str] = "docker-compose.
     print(f"{docker_file} updated with version {version}")
 
 
-def get_enum_mappings():
+def get_enum_mappings() -> dict:
     """Extracts enum mappings dynamically."""
     from infrahub.config import BrokerDriver, CacheDriver, StorageDriver, TraceExporterType, TraceTransportProtocol
     from infrahub.database.constants import DatabaseType
@@ -316,7 +316,7 @@ def update_docker_compose_env_vars(
 @task
 def gen_config_env(
     context: Context, docker_file: Optional[str] = "docker-compose.yml", update_docker_file: Optional[bool] = False
-):
+) -> None:
     """Generate list of env vars required for configuration and update docker file.yml if need be."""
     from pydantic_settings import BaseSettings
     from pydantic_settings.sources import EnvSettingsSource
@@ -336,7 +336,7 @@ def gen_config_env(
     settings = Settings()
     env_defaults = {}
 
-    def fetch_fields(subset: BaseSettings):
+    def fetch_fields(subset: BaseSettings) -> None:
         env_settings = EnvSettingsSource(
             subset.__class__,
             env_prefix=subset.model_config.get("env_prefix"),

@@ -315,7 +315,7 @@ def build_test_scale_compose_files_cmd(
     return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
 
 
-def build_test_envs():
+def build_test_envs() -> str:
     if GITHUB_ACTION:
         return f"-e {' -e '.join(GITHUB_ENVS_TO_PASS)}"
 

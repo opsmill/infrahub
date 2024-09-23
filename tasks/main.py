@@ -11,7 +11,7 @@ NAMESPACE = "MAIN"
 # ----------------------------------------------------------------------------
 
 
-def _format_ruff(context: Context):
+def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
@@ -22,7 +22,7 @@ def _format_ruff(context: Context):
 
 
 @task(name="format", default=True)
-def format_all(context: Context):
+def format_all(context: Context) -> None:
     """This will run all formatters."""
 
     _format_ruff(context)
