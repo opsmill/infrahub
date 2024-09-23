@@ -88,7 +88,7 @@ export default function SlideOver(props: Props) {
         title="Closing form"
         description={"Are you sure you want to close this form? All unsaved changes will be lost."}
         onCancel={() => setOpen(true)}
-        onConfirm={() => setPreventClose(false)}
+        onDelete={() => setPreventClose(false)}
         open={!open && preventClose}
         setOpen={() => setPreventClose(false)}
         confirmLabel="Close"
