@@ -5,6 +5,7 @@ import { SelectOption } from "@/components/inputs/select";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { DropdownOption } from "@/components/inputs/dropdown";
 import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
+import { Node } from "@/utils/getObjectItemDisplayValue";
 
 type SourceType = "schema" | "user";
 
@@ -55,21 +56,32 @@ export type FormAttributeValue =
   | EmptyFieldValue
   | AttributeValueFormPool;
 
-export type RelationshipValueFormPool = {
-  source: PoolSource;
-  value: { id: string } | { from_pool: { id: string } };
-};
-
-export type RelationshipValueFormUser = {
+export type RelationshipOneValueFromUser = {
   source: {
     type: SourceType;
   };
-  value: { id: string } | Array<{ id: string }> | null;
+  value: Node | null;
 };
 
+export type RelationshipManyValueFromUser = {
+  source: {
+    type: SourceType;
+  };
+  value: Array<Node> | null;
+};
+
+export type RelationshipValueFromPool = {
+  source: PoolSource;
+  value: { from_pool: { id: string } } | Node;
+};
+
+export type RelationshipValueFromUser =
+  | RelationshipOneValueFromUser
+  | RelationshipManyValueFromUser;
+
 export type FormRelationshipValue =
-  | RelationshipValueFormUser
-  | RelationshipValueFormPool
+  | RelationshipValueFromUser
+  | RelationshipValueFromPool
   | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
@@ -119,6 +131,16 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   schema: IModelSchema;
 };
 
+export type DynamicRelationshipManyFieldProps = Omit<FormFieldProps, "defaultValue"> & {
+  type: "relationship";
+  defaultValue?: RelationshipManyValueFromUser;
+  peer?: string;
+  parent?: string;
+  options?: SelectOption[];
+  relationship: RelationshipSchema;
+  schema: IModelSchema;
+};
+
 export type DynamicFieldProps =
   | DynamicInputFieldProps
   | DynamicNumberFieldProps
@@ -128,7 +150,7 @@ export type DynamicFieldProps =
 
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue
-): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
+): fieldData is RelationshipValueFromPool => fieldData.source?.type === "pool";
 
 export type NumberPoolData = {
   id: string;

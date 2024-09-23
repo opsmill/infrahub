@@ -39,8 +39,10 @@ export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTrigg
 export const ComboboxContent = React.forwardRef<
   React.ElementRef<typeof PopoverContent>,
   React.ComponentPropsWithoutRef<typeof PopoverContent>
->(({ ...props }, ref) => {
-  return <PopoverContent ref={ref} className={classNames("p-0")} portal={false} {...props} />;
+>(({ className, ...props }, ref) => {
+  return (
+    <PopoverContent ref={ref} className={classNames("p-0", className)} portal={false} {...props} />
+  );
 });
 
 export const ComboboxList = React.forwardRef<

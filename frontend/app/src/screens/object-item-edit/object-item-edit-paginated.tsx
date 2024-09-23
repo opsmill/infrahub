@@ -108,7 +108,7 @@ export default function ObjectItemEditComponent(props: Props) {
     <ObjectForm
       onCancel={closeDrawer}
       onSubmit={onSubmit}
-      onUpdateComplete={onUpdateComplete}
+      onSuccess={onUpdateComplete}
       kind={objectname}
       currentObject={objectDetailsData}
       currentProfiles={objectProfiles}

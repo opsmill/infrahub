@@ -8,7 +8,7 @@ import React from "react";
 import {
   AttributeValueFromProfile,
   FormFieldValue,
-  RelationshipValueFormPool,
+  RelationshipValueFromPool,
 } from "@/components/form/type";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
@@ -51,7 +51,7 @@ export const LabelFormField = ({
       )}
 
       {fieldData?.source?.type === "pool" && (
-        <PoolSourceBadge fieldData={fieldData as RelationshipValueFormPool} />
+        <PoolSourceBadge fieldData={fieldData as RelationshipValueFromPool} />
       )}
     </div>
   );
@@ -81,7 +81,7 @@ const ProfileSourceBadge = ({ fieldData }: { fieldData: AttributeValueFromProfil
   );
 };
 
-const PoolSourceBadge = ({ fieldData }: { fieldData: RelationshipValueFormPool }) => {
+const PoolSourceBadge = ({ fieldData }: { fieldData: RelationshipValueFromPool }) => {
   return (
     <Tooltip
       enabled
