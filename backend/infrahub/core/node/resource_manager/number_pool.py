@@ -42,7 +42,6 @@ class CoreNumberPool(Node):
 
     async def get_next(self, db: InfrahubDatabase, branch: Branch) -> int:
         query = await NumberPoolGetUsed.init(db=db, branch=branch, pool=self, branch_agnostic=True)
-
         await query.execute(db=db)
         taken = [result.get_as_optional_type("av.value", return_type=int) for result in query.results]
         next_number = find_next_free(
