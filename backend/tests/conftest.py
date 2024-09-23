@@ -8,6 +8,7 @@ from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
 
 import pytest
 import ujson
+from infrahub_sdk.utils import str_to_bool
 from prefect.logging.loggers import disable_run_logger
 from prefect.testing.utilities import prefect_test_harness
 from testcontainers.core.container import DockerContainer
@@ -35,7 +36,6 @@ from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import services
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub.utils import str_to_bool
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 
