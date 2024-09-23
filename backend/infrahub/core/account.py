@@ -186,8 +186,6 @@ class AccountObjectPermissionQuery(Query):
 
 
 async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
-    branch = await registry.get_branch(db=db, branch=branch)
-
     query1 = await AccountGlobalPermissionQuery.init(db=db, branch=branch, account_id=account_id, branch_agnostic=True)
     await query1.execute(db=db)
     global_permissions = query1.get_permissions()
