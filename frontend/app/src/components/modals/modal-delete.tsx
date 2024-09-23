@@ -12,6 +12,7 @@ interface iProps {
   onDelete: () => void;
   onCancel: () => void;
   children?: ReactNode;
+  confirmLabel?: string;
 }
 
 export default function ModalDelete({
@@ -23,6 +24,7 @@ export default function ModalDelete({
   setOpen,
   isLoading,
   children,
+  confirmLabel,
 }: iProps) {
   const cancelButtonRef = useRef(null);
 
@@ -84,7 +86,7 @@ export default function ModalDelete({
                     isLoading={isLoading}
                     data-cy="modal-delete-confirm"
                     data-testid="modal-delete-confirm">
-                    Delete
+                    {confirmLabel ?? "Delete"}
                   </Button>
                   <Button onClick={onCancel} ref={cancelButtonRef}>
                     Cancel

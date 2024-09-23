@@ -6,7 +6,7 @@ import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import ModalConfirm from "../modals/modal-confirm";
+import ModalDelete from "../modals/modal-delete";
 
 interface Props {
   open: boolean;
@@ -84,13 +84,14 @@ export default function SlideOver(props: Props) {
         </Dialog>
       </Transition.Root>
 
-      <ModalConfirm
-        title="Confirm"
+      <ModalDelete
+        title="Closing form"
         description={"Are you sure you want to close this form? All unsaved changes will be lost."}
         onCancel={() => setOpen(true)}
         onConfirm={() => setPreventClose(false)}
         open={!open && preventClose}
         setOpen={() => setPreventClose(false)}
+        confirmLabel="Close"
       />
     </SlideOverContext.Provider>
   );
