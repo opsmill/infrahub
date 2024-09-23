@@ -37,8 +37,8 @@ async def test_diff_attribute_branch_update(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -103,8 +103,8 @@ async def test_attribute_property_main_update(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=default_branch.name,
+        base_branch=default_branch,
+        diff_branch=default_branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -155,8 +155,8 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -202,8 +202,8 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -275,8 +275,8 @@ async def test_node_base_delete_branch_update(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -322,8 +322,8 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -373,8 +373,8 @@ async def test_attribute_property_multiple_branch_updates(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -430,8 +430,8 @@ async def test_relationship_one_peer_branch_and_main_update(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -653,8 +653,8 @@ async def test_relationship_one_property_branch_update(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -822,8 +822,8 @@ async def test_add_node_branch(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -914,8 +914,8 @@ async def test_many_relationship_property_update(
 
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -998,8 +998,8 @@ async def test_cardinality_one_peer_conflicting_updates(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -1234,8 +1234,8 @@ async def test_relationship_property_owner_conflicting_updates(
     await diff_query.execute(db=db)
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -1370,8 +1370,8 @@ async def test_agnostic_source_relationship_update(
 
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )
@@ -1429,8 +1429,8 @@ async def test_agnostic_owner_relationship_added(
 
     diff_parser = DiffQueryParser(
         diff_query=diff_query,
-        base_branch_name=default_branch.name,
-        diff_branch_name=branch.name,
+        base_branch=default_branch,
+        diff_branch=branch,
         schema_manager=registry.schema,
         from_time=from_time,
     )

@@ -9,7 +9,7 @@ from ..model.path import (
     EnrichedDiffNode,
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
-    EnrichedDiffRoot,
+    EnrichedDiffs,
     EnrichedDiffSingleRelationship,
 )
 
@@ -17,99 +17,108 @@ from ..model.path import (
 class EnrichedDiffSaveQuery(Query):
     name = "enriched_diff_save"
     type = QueryType.WRITE
+    insert_return = False
 
-    def __init__(self, enriched_diff_root: EnrichedDiffRoot, **kwargs: Any) -> None:
+    def __init__(self, enriched_diffs: EnrichedDiffs, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.enriched_diff_root = enriched_diff_root
+        self.enriched_diffs = enriched_diffs
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
-        self.params = self._build_diff_root_params(enriched_diff=self.enriched_diff_root)
+        self.params = self._build_diff_root_params(enriched_diffs=self.enriched_diffs)
         # ruff: noqa: E501
         query = """
-        MERGE (diff_root:DiffRoot {
-            base_branch: $diff_root_props.base_branch,
-            diff_branch: $diff_root_props.diff_branch,
-            from_time: $diff_root_props.from_time,
-            to_time: $diff_root_props.to_time,
-            uuid: $diff_root_props.uuid,
-            num_added: $diff_root_props.num_added,
-            num_updated: $diff_root_props.num_updated,
-            num_removed: $diff_root_props.num_removed,
-            num_conflicts: $diff_root_props.num_conflicts,
-            contains_conflict: $diff_root_props.contains_conflict
-        })
-        SET diff_root.tracking_id = $diff_root_props.tracking_id
-        WITH diff_root
-        UNWIND $node_maps AS node_map
-        CREATE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
-        SET diff_node = node_map.node_properties
-        // node conflict
-        FOREACH (i in CASE WHEN node_map.conflict_params IS NOT NULL THEN [1] ELSE [] END |
-            CREATE (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
-            SET diff_node_conflict = node_map.conflict_params
-        )
-
-        // attributes
-        WITH diff_root, diff_node, node_map
+        UNWIND [$base_branch_diff, $diff_branch_diff] AS diff_root_map
         CALL {
-            WITH diff_node, node_map
-            UNWIND node_map.attributes AS node_attribute
-            CREATE (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
-            SET diff_attribute = node_attribute.node_properties
-
-            // node attribute properties
-            WITH diff_attribute, node_attribute
-            UNWIND node_attribute.properties AS attr_property
-            CREATE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty)
-            SET diff_attr_prop = attr_property.node_properties
-            // attribute property conflict
-            FOREACH (i in CASE WHEN attr_property.conflict_params IS NOT NULL THEN [1] ELSE [] END |
-                CREATE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attribute_property_conflict:DiffConflict)
-                SET diff_attribute_property_conflict = attr_property.conflict_params
-            )
-        }
-
-        // relationships
-        WITH diff_root, diff_node, node_map
-        CALL {
-            WITH diff_node, node_map
-            UNWIND node_map.relationships as node_relationship
-            CREATE (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
-            SET diff_relationship = node_relationship.node_properties
-
-            // node single relationships
-            WITH diff_relationship, node_relationship
-            UNWIND node_relationship.relationships as node_single_relationship
-            CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_relationship_element:DiffRelationshipElement)
-            SET diff_relationship_element = node_single_relationship.node_properties
-            // single relationship conflict
-            FOREACH (i in CASE WHEN node_single_relationship.conflict_params IS NOT NULL THEN [1] ELSE [] END |
-                CREATE (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(diff_relationship_conflict:DiffConflict)
-                SET diff_relationship_conflict = node_single_relationship.conflict_params
+            WITH diff_root_map
+            MERGE (diff_root:DiffRoot {
+                base_branch: diff_root_map.diff_root_props.base_branch,
+                diff_branch: diff_root_map.diff_root_props.diff_branch,
+                from_time: diff_root_map.diff_root_props.from_time,
+                to_time: diff_root_map.diff_root_props.to_time,
+                uuid: diff_root_map.diff_root_props.uuid,
+                num_added: diff_root_map.diff_root_props.num_added,
+                num_updated: diff_root_map.diff_root_props.num_updated,
+                num_removed: diff_root_map.diff_root_props.num_removed,
+                num_conflicts: diff_root_map.diff_root_props.num_conflicts,
+                contains_conflict: diff_root_map.diff_root_props.contains_conflict
+            })
+            SET diff_root.tracking_id = diff_root_map.diff_root_props.tracking_id
+            WITH diff_root, diff_root_map
+            UNWIND diff_root_map.node_maps AS node_map
+            CREATE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
+            SET diff_node = node_map.node_properties
+            // node conflict
+            FOREACH (i in CASE WHEN node_map.conflict_params IS NOT NULL THEN [1] ELSE [] END |
+                CREATE (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
+                SET diff_node_conflict = node_map.conflict_params
             )
 
-            // node relationship properties
-            WITH diff_relationship_element, node_single_relationship
-            UNWIND node_single_relationship.properties as node_relationship_property
-            CREATE (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(diff_relationship_property:DiffProperty)
-            SET diff_relationship_property = node_relationship_property.node_properties
-            // relationship property conflict
-            FOREACH (i in CASE WHEN node_relationship_property.conflict_params IS NOT NULL THEN [1] ELSE [] END |
-                CREATE (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(diff_relationship_property_conflict:DiffConflict)
-                SET diff_relationship_property_conflict = node_relationship_property.conflict_params
-            )
+            // attributes
+            WITH diff_root, diff_root_map, diff_node, node_map
+            CALL {
+                WITH diff_node, node_map
+                UNWIND node_map.attributes AS node_attribute
+                CREATE (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
+                SET diff_attribute = node_attribute.node_properties
+
+                // node attribute properties
+                WITH diff_attribute, node_attribute
+                UNWIND node_attribute.properties AS attr_property
+                CREATE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty)
+                SET diff_attr_prop = attr_property.node_properties
+                // attribute property conflict
+                FOREACH (i in CASE WHEN attr_property.conflict_params IS NOT NULL THEN [1] ELSE [] END |
+                    CREATE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attribute_property_conflict:DiffConflict)
+                    SET diff_attribute_property_conflict = attr_property.conflict_params
+                )
+            }
+
+            // relationships
+            WITH diff_root, diff_root_map, diff_node, node_map
+            CALL {
+                WITH diff_node, node_map
+                UNWIND node_map.relationships as node_relationship
+                CREATE (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
+                SET diff_relationship = node_relationship.node_properties
+
+                // node single relationships
+                WITH diff_relationship, node_relationship
+                UNWIND node_relationship.relationships as node_single_relationship
+                CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_relationship_element:DiffRelationshipElement)
+                SET diff_relationship_element = node_single_relationship.node_properties
+                // single relationship conflict
+                FOREACH (i in CASE WHEN node_single_relationship.conflict_params IS NOT NULL THEN [1] ELSE [] END |
+                    CREATE (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(diff_relationship_conflict:DiffConflict)
+                    SET diff_relationship_conflict = node_single_relationship.conflict_params
+                )
+
+                // node relationship properties
+                WITH diff_relationship_element, node_single_relationship
+                UNWIND node_single_relationship.properties as node_relationship_property
+                CREATE (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(diff_relationship_property:DiffProperty)
+                SET diff_relationship_property = node_relationship_property.node_properties
+                // relationship property conflict
+                FOREACH (i in CASE WHEN node_relationship_property.conflict_params IS NOT NULL THEN [1] ELSE [] END |
+                    CREATE (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(diff_relationship_property_conflict:DiffConflict)
+                    SET diff_relationship_property_conflict = node_relationship_property.conflict_params
+                )
+            }
+            WITH diff_root, diff_root_map
+            UNWIND diff_root_map.node_parent_links AS node_parent_link
+            CALL {
+                WITH diff_root, node_parent_link
+                MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: node_parent_link.parent_uuid})-[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: node_parent_link.relationship_name})
+                MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode {uuid: node_parent_link.child_uuid})
+                MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(child_node)
+            }
         }
-        WITH diff_root
-        UNWIND $node_parent_links AS node_parent_link
-        CALL {
-            WITH diff_root, node_parent_link
-            MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: node_parent_link.parent_uuid})-[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: node_parent_link.relationship_name})
-            MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode {uuid: node_parent_link.child_uuid})
-            MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(child_node)
-        }
+        MATCH (base_diff_node {uuid: $base_branch_diff.diff_root_props.uuid})
+        MATCH (branch_diff_node {uuid: $diff_branch_diff.diff_root_props.uuid})
+        MERGE (base_diff_node)-[:DIFF_HAS_PARTNER]-(branch_diff_node)
+        SET (base_diff_node).partner_uuid = (branch_diff_node).uuid
+        SET (branch_diff_node).partner_uuid = (base_diff_node).uuid
         """
         self.add_to_query(query=query)
-        self.return_labels = ["diff_root.uuid"]
 
     def _build_conflict_params(self, enriched_conflict: EnrichedDiffConflict) -> dict[str, Any]:
         return {
@@ -261,26 +270,32 @@ class EnrichedDiffSaveQuery(Query):
                 parent_links.extend(self._build_node_parent_links(enriched_node=child_node))
         return parent_links
 
-    def _build_diff_root_params(self, enriched_diff: EnrichedDiffRoot) -> dict[str, Any]:
+    def _build_diff_root_params(self, enriched_diffs: EnrichedDiffs) -> dict[str, Any]:
         params: dict[str, Any] = {}
-        params["diff_root_props"] = {
-            "base_branch": enriched_diff.base_branch_name,
-            "diff_branch": enriched_diff.diff_branch_name,
-            "from_time": enriched_diff.from_time.to_string(),
-            "to_time": enriched_diff.to_time.to_string(),
-            "uuid": enriched_diff.uuid,
-            "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
-            "num_added": enriched_diff.num_added,
-            "num_updated": enriched_diff.num_updated,
-            "num_removed": enriched_diff.num_removed,
-            "num_conflicts": enriched_diff.num_conflicts,
-            "contains_conflict": enriched_diff.contains_conflict,
-        }
-        node_maps = []
-        node_parent_links = []
-        for node in enriched_diff.nodes:
-            node_maps.append(self._build_diff_node_params(enriched_node=node))
-            node_parent_links.extend(self._build_node_parent_links(enriched_node=node))
-        params["node_maps"] = node_maps
-        params["node_parent_links"] = node_parent_links
+        for enriched_diff, param_key in (
+            (enriched_diffs.base_branch_diff, "base_branch_diff"),
+            (enriched_diffs.diff_branch_diff, "diff_branch_diff"),
+        ):
+            diff_params: dict[str, Any] = {}
+            diff_params["diff_root_props"] = {
+                "base_branch": enriched_diff.base_branch_name,
+                "diff_branch": enriched_diff.diff_branch_name,
+                "from_time": enriched_diff.from_time.to_string(),
+                "to_time": enriched_diff.to_time.to_string(),
+                "uuid": enriched_diff.uuid,
+                "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
+                "num_added": enriched_diff.num_added,
+                "num_updated": enriched_diff.num_updated,
+                "num_removed": enriched_diff.num_removed,
+                "num_conflicts": enriched_diff.num_conflicts,
+                "contains_conflict": enriched_diff.contains_conflict,
+            }
+            node_maps = []
+            node_parent_links = []
+            for node in enriched_diff.nodes:
+                node_maps.append(self._build_diff_node_params(enriched_node=node))
+                node_parent_links.extend(self._build_node_parent_links(enriched_node=node))
+            diff_params["node_maps"] = node_maps
+            diff_params["node_parent_links"] = node_parent_links
+            params[param_key] = diff_params
         return params

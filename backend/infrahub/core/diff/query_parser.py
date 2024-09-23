@@ -19,6 +19,7 @@ from .model.path import (
 )
 
 if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
     from infrahub.core.query.diff import DiffAllPathsQuery
     from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.core.schema_manager import SchemaManager
@@ -390,18 +391,22 @@ class DiffQueryParser:
     def __init__(
         self,
         diff_query: DiffAllPathsQuery,
-        base_branch_name: str,
-        diff_branch_name: str,
+        base_branch: Branch,
+        diff_branch: Branch,
         schema_manager: SchemaManager,
         from_time: Timestamp,
         to_time: Optional[Timestamp] = None,
     ) -> None:
         self.diff_query = diff_query
-        self.base_branch_name = base_branch_name
-        self.diff_branch_name = diff_branch_name
+        self.base_branch_name = base_branch.name
+        self.diff_branch_name = diff_branch.name
         self.schema_manager = schema_manager
         self.from_time = from_time
         self.to_time = to_time or Timestamp()
+        if diff_branch.name == base_branch.name:
+            self.diff_branch_create_time = from_time
+        else:
+            self.diff_branch_create_time = Timestamp(diff_branch.get_created_at())
         self._diff_root_by_branch: dict[str, DiffRootIntermediate] = {}
         self._final_diff_root_by_branch: dict[str, DiffRoot] = {}
 
@@ -435,7 +440,7 @@ class DiffQueryParser:
     def _get_diff_root(self, database_path: DatabasePath) -> DiffRootIntermediate:
         branch = database_path.deepest_branch
         if branch not in self._diff_root_by_branch:
-            self._diff_root_by_branch[branch] = DiffRootIntermediate(uuid=database_path.root_id, branch=branch)
+            self._diff_root_by_branch[branch] = DiffRootIntermediate(uuid=str(uuid4()), branch=branch)
         return self._diff_root_by_branch[branch]
 
     def _get_diff_node(self, database_path: DatabasePath, diff_root: DiffRootIntermediate) -> DiffNodeIntermediate:
@@ -590,17 +595,21 @@ class DiffQueryParser:
                     ordered_diff_values = property_diff.get_ordered_values_asc()
                     if not ordered_diff_values:
                         continue
-                    if ordered_diff_values[-1].changed_at >= self.from_time:
+                    if ordered_diff_values[-1].changed_at >= self.diff_branch_create_time:
                         return
             for relationship_diff in node_diff.relationships_by_name.values():
                 for diff_relationship_property_list in relationship_diff.properties_by_db_id.values():
                     for diff_relationship_property in diff_relationship_property_list:
-                        if diff_relationship_property.changed_at >= self.from_time:
+                        if diff_relationship_property.changed_at >= self.diff_branch_create_time:
                             return
         del self._diff_root_by_branch[self.base_branch_name]
 
     def _finalize(self) -> None:
         for branch, diff_root_intermediate in self._diff_root_by_branch.items():
+            if branch == self.base_branch_name:
+                from_time = self.diff_branch_create_time
+            else:
+                from_time = self.from_time
             self._final_diff_root_by_branch[branch] = diff_root_intermediate.to_diff_root(
-                from_time=self.from_time, to_time=self.to_time
+                from_time=from_time, to_time=self.to_time
             )

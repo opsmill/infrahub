@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -32,6 +32,7 @@ class TestDiffCoordinatorLocks:
         return branch_1
 
     async def get_diff_coordinator(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
+        config.SETTINGS.database.max_depth_search_hierarchy = 10
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
         mock_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
@@ -54,8 +55,7 @@ class TestDiffCoordinatorLocks:
         )
         assert len(results) == 2
         assert results[0] == results[1]
-        # called once to calculate diff on main and once to calculate diff on the branch
-        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
+        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 1
         # called instead of calculating the diff again
         diff_coordinator.diff_repo.get_one.assert_awaited_once()
 
@@ -82,11 +82,13 @@ class TestDiffCoordinatorLocks:
         assert len(results) == 2
         assert results[0].to_time != results[1].to_time
         assert results[0].uuid != results[1].uuid
+        assert results[0].partner_uuid != results[1].partner_uuid
         results[0].to_time = results[1].to_time
         results[0].uuid = results[1].uuid
+        results[0].partner_uuid = results[1].partner_uuid
         assert results[0] == results[1]
-        # called once to calculate diff on main and once to calculate diff on the branch for each request
-        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 4
+        # called once to calculate diff on main and once to calculate diff on the branch
+        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
         # not called because diffs are calculated both times
         diff_coordinator.diff_repo.get_one.assert_not_awaited()
 
@@ -108,13 +110,15 @@ class TestDiffCoordinatorLocks:
         assert len(results) == 2
         assert results[0].to_time != results[1].to_time
         assert results[0].uuid != results[1].uuid
+        assert results[0].partner_uuid != results[1].partner_uuid
         assert results[0].tracking_id != results[1].tracking_id
         results[0].to_time = results[1].to_time
         results[0].uuid = results[1].uuid
+        results[0].partner_uuid = results[1].partner_uuid
         results[0].tracking_id = results[1].tracking_id
         assert results[0] == results[1]
-        # called once to calculate diff on main and once to calculate diff on the branch for each request
-        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 4
+        # called once to calculate diff on main and once to calculate diff on the branch
+        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
         # not called because diffs are calculated both times
         diff_coordinator.diff_repo.get_one.assert_not_awaited()
 
@@ -136,12 +140,14 @@ class TestDiffCoordinatorLocks:
         assert len(results) == 2
         assert results[0].to_time != results[1].to_time
         assert results[0].uuid != results[1].uuid
+        assert results[0].partner_uuid != results[1].partner_uuid
         assert results[0].tracking_id != results[1].tracking_id
         results[0].to_time = results[1].to_time
         results[0].uuid = results[1].uuid
+        results[0].partner_uuid = results[1].partner_uuid
         results[0].tracking_id = results[1].tracking_id
         assert results[0] == results[1]
-        # called once to calculate diff on main and once to calculate diff on the branch for each request
-        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 4
+        # called once to calculate diff on main and once to calculate diff on the branch
+        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
         # not called because diffs are calculated both times
         diff_coordinator.diff_repo.get_one.assert_not_awaited()

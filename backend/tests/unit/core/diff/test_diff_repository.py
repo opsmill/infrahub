@@ -13,6 +13,7 @@ from infrahub.core.diff.model.path import (
     BranchTrackingId,
     EnrichedDiffNode,
     EnrichedDiffRoot,
+    EnrichedDiffs,
     NameTrackingId,
 )
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
@@ -98,6 +99,28 @@ class TestDiffRepositorySaveAndLoad:
                     nodes_to_check.append(child_node)
         return all_nodes
 
+    async def _save_single_diff(
+        self, diff_repository: DiffRepository, enriched_diff: EnrichedDiffRoot
+    ) -> EnrichedDiffs:
+        base_diff = EnrichedRootFactory.build(
+            base_branch_name=enriched_diff.base_branch_name,
+            diff_branch_name=enriched_diff.base_branch_name,
+            from_time=enriched_diff.from_time,
+            to_time=enriched_diff.to_time,
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=enriched_diff.tracking_id,
+            partner_uuid=enriched_diff.uuid,
+        )
+        enriched_diff.partner_uuid = base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            diff_branch_diff=enriched_diff,
+            base_branch_diff=base_diff,
+        )
+        await diff_repository.save(enriched_diffs=enriched_diffs)
+        return enriched_diffs
+
     async def test_get_non_existent_diff(self, diff_repository: DiffRepository, reset_database):
         right_now = Timestamp()
         enriched_diffs = await diff_repository.get(
@@ -118,7 +141,7 @@ class TestDiffRepositorySaveAndLoad:
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
 
-        await diff_repository.save(enriched_diff=enriched_diff)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
 
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
@@ -141,7 +164,7 @@ class TestDiffRepositorySaveAndLoad:
                 uuid=root_uuid,
                 nodes={EnrichedNodeFactory.build(relationships={})},
             )
-            await diff_repository.save(enriched_diff=enriched_diff)
+            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
 
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
@@ -171,7 +194,7 @@ class TestDiffRepositorySaveAndLoad:
                     uuid=root_uuid,
                     nodes={EnrichedNodeFactory.build(relationships={})},
                 )
-                await diff_repository.save(enriched_diff=enriched_diff)
+                await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
 
         start_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
         end_time = start_time.add(months=1)
@@ -205,7 +228,7 @@ class TestDiffRepositorySaveAndLoad:
             uuid=root_uuid,
             nodes={EnrichedNodeFactory.build(relationships={})},
         )
-        await diff_repository.save(enriched_diff=enriched_diff)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
 
         # both before
         retrieved = await diff_repository.get(
@@ -269,7 +292,7 @@ class TestDiffRepositorySaveAndLoad:
                 nodes=nodes,
             )
             enriched_diffs.append(enriched_diff)
-            await diff_repository.save(enriched_diff=enriched_diff)
+            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
 
         parent_node = EnrichedNodeFactory.build()
         middle_parent_rel = EnrichedRelationshipGroupFactory.build(nodes={parent_node})
@@ -286,7 +309,7 @@ class TestDiffRepositorySaveAndLoad:
             to_time=Timestamp(self.diff_to_time),
             nodes=other_nodes | {parent_node, middle_node, leaf_node},
         )
-        await diff_repository.save(enriched_diff=this_diff)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=this_diff)
         diff_branch_names = [e.diff_branch_name for e in enriched_diffs] + ["diff"]
 
         # get parent node
@@ -566,7 +589,7 @@ class TestDiffRepositorySaveAndLoad:
                 to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
                 nodes=nodes,
             )
-            await diff_repository.save(enriched_diff=enriched_diff)
+            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
             diffs_to_retrieve.append(enriched_diff)
         for i in range(5):
             nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
@@ -577,7 +600,7 @@ class TestDiffRepositorySaveAndLoad:
                 to_time=Timestamp(start_time.add(days=3, minutes=(i * 30) + 29)),
                 nodes=nodes,
             )
-            await diff_repository.save(enriched_diff=enriched_diff)
+            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
 
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
@@ -587,38 +610,6 @@ class TestDiffRepositorySaveAndLoad:
         )
         assert len(retrieved) == 5
         assert set(retrieved) == set(diffs_to_retrieve)
-
-    async def test_retrieve_overlapping_diffs_excludes_duplicates(
-        self, diff_repository: DiffRepository, reset_database
-    ):
-        for i in range(5):
-            nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-            incremental_enriched_diff = EnrichedRootFactory.build(
-                base_branch_name=self.base_branch_name,
-                diff_branch_name=self.diff_branch_name,
-                from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
-                to_time=Timestamp(self.diff_from_time.add(minutes=(i * 30) + 29)),
-                nodes=nodes,
-            )
-            await diff_repository.save(enriched_diff=incremental_enriched_diff)
-        nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-        super_enriched_diff = EnrichedRootFactory.build(
-            base_branch_name=self.base_branch_name,
-            diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_from_time.add(minutes=(4 * 30) + 29)),
-            nodes=nodes,
-        )
-        await diff_repository.save(enriched_diff=super_enriched_diff)
-
-        retrieved = await diff_repository.get(
-            base_branch_name=self.base_branch_name,
-            diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_from_time.add(minutes=(4 * 30) + 29)),
-        )
-        assert len(retrieved) == 1
-        assert retrieved[0] == super_enriched_diff
 
     async def test_delete_diff_by_uuid(self, diff_repository: DiffRepository, reset_database):
         diffs: list[EnrichedDiffRoot] = []
@@ -632,7 +623,7 @@ class TestDiffRepositorySaveAndLoad:
                 to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
                 nodes=nodes,
             )
-            await diff_repository.save(enriched_diff=enriched_diff)
+            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
             diffs.append(enriched_diff)
 
         diff_to_delete = diffs.pop()
@@ -662,7 +653,7 @@ class TestDiffRepositorySaveAndLoad:
                 to_time=Timestamp(end_time.add(minutes=(i * 30) + 29)),
                 nodes=nodes,
             )
-            await diff_repository.save(enriched_diff=enriched_diff)
+            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
         nodes = self._build_nodes(num_nodes=2, num_sub_fields=2)
         branch_tracked_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
@@ -672,7 +663,7 @@ class TestDiffRepositorySaveAndLoad:
             nodes=nodes,
             tracking_id=branch_tracking_id,
         )
-        await diff_repository.save(enriched_diff=branch_tracked_diff)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=branch_tracked_diff)
         name_tracked_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
@@ -681,7 +672,7 @@ class TestDiffRepositorySaveAndLoad:
             nodes=nodes,
             tracking_id=name_tracking_id,
         )
-        await diff_repository.save(enriched_diff=name_tracked_diff)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=name_tracked_diff)
 
         retrieved_branch_diff = await diff_repository.get_one(
             tracking_id=branch_tracking_id,

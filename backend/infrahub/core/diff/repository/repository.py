@@ -4,7 +4,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ResourceNotFoundError
 
-from ..model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot, TimeRange, TrackingId
+from ..model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot, EnrichedDiffs, TimeRange, TrackingId
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
@@ -33,7 +33,7 @@ class DiffRepository:
         limit: int | None = None,
         offset: int | None = None,
         tracking_id: TrackingId | None = None,
-        diff_id: str | None = None,
+        diff_ids: list[str] | None = None,
         include_empty: bool = False,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
@@ -49,7 +49,7 @@ class DiffRepository:
             limit=final_limit,
             offset=offset,
             tracking_id=tracking_id,
-            diff_id=diff_id,
+            diff_ids=diff_ids,
         )
         await query.execute(db=self.db)
         diff_roots = await self.deserializer.deserialize(
@@ -58,6 +58,49 @@ class DiffRepository:
         if not include_empty:
             diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
         return diff_roots
+
+    async def get_pairs(
+        self,
+        base_branch_name: str,
+        diff_branch_name: str,
+        from_time: Timestamp,
+        to_time: Timestamp,
+    ) -> list[EnrichedDiffs]:
+        max_depth = config.SETTINGS.database.max_depth_search_hierarchy
+        query = await EnrichedDiffGetQuery.init(
+            db=self.db,
+            base_branch_name=base_branch_name,
+            diff_branch_names=[diff_branch_name],
+            from_time=from_time,
+            to_time=to_time,
+            max_depth=max_depth,
+        )
+        await query.execute(db=self.db)
+        diff_branch_roots = await self.deserializer.deserialize(
+            database_results=query.get_results(), include_parents=True
+        )
+        diffs_by_uuid = {dbr.uuid: dbr for dbr in diff_branch_roots}
+        base_partner_query = await EnrichedDiffGetQuery.init(
+            db=self.db,
+            base_branch_name=base_branch_name,
+            diff_branch_names=[base_branch_name],
+            max_depth=max_depth,
+            diff_ids=[d.partner_uuid for d in diffs_by_uuid.values()],
+        )
+        await base_partner_query.execute(db=self.db)
+        base_branch_roots = await self.deserializer.deserialize(
+            database_results=base_partner_query.get_results(), include_parents=True
+        )
+        diffs_by_uuid.update({bbr.uuid: bbr for bbr in base_branch_roots})
+        return [
+            EnrichedDiffs(
+                base_branch_name=base_branch_name,
+                diff_branch_name=diff_branch_name,
+                base_branch_diff=diffs_by_uuid[dbr.partner_uuid],
+                diff_branch_diff=dbr,
+            )
+            for dbr in diff_branch_roots
+        ]
 
     async def get_one(
         self,
@@ -71,7 +114,7 @@ class DiffRepository:
             base_branch_name=registry.default_branch,
             diff_branch_names=[diff_branch_name],
             tracking_id=tracking_id,
-            diff_id=diff_id,
+            diff_ids=[diff_id] if diff_id else None,
             filters=filters,
             include_parents=include_parents,
             include_empty=True,
@@ -87,8 +130,8 @@ class DiffRepository:
             raise ResourceNotFoundError(f"Multiple diffs for {error_str}")
         return enriched_diffs[0]
 
-    async def save(self, enriched_diff: EnrichedDiffRoot) -> None:
-        query = await EnrichedDiffSaveQuery.init(db=self.db, enriched_diff_root=enriched_diff)
+    async def save(self, enriched_diffs: EnrichedDiffs) -> None:
+        query = await EnrichedDiffSaveQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await query.execute(db=self.db)
 
     async def summary(

@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
-from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -73,6 +72,15 @@ def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
         except ValueError:
             ...
     raise ValueError(f"{tracking_id_str} is not a valid TrackingId")
+
+
+@dataclass
+class NodeFieldSpecifier:
+    node_uuid: str
+    field_name: str
+
+    def __hash__(self) -> int:
+        return hash(f"{self.node_uuid}:{self.field_name}")
 
 
 @dataclass
@@ -366,6 +374,7 @@ class EnrichedDiffRoot(BaseSummary):
     from_time: Timestamp
     to_time: Timestamp
     uuid: str
+    partner_uuid: str
     tracking_id: TrackingId | None = field(default=None, kw_only=True)
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
@@ -399,13 +408,16 @@ class EnrichedDiffRoot(BaseSummary):
         return all_conflicts
 
     @classmethod
-    def from_calculated_diff(cls, calculated_diff: DiffRoot, base_branch_name: str) -> EnrichedDiffRoot:
+    def from_calculated_diff(
+        cls, calculated_diff: DiffRoot, base_branch_name: str, partner_uuid: str
+    ) -> EnrichedDiffRoot:
         return EnrichedDiffRoot(
             base_branch_name=base_branch_name,
             diff_branch_name=calculated_diff.branch,
             from_time=calculated_diff.from_time,
             to_time=calculated_diff.to_time,
-            uuid=str(uuid4()),
+            uuid=calculated_diff.uuid,
+            partner_uuid=partner_uuid,
             nodes={EnrichedDiffNode.from_calculated_node(calculated_node=n) for n in calculated_diff.nodes},
         )
 
@@ -450,6 +462,15 @@ class EnrichedDiffRoot(BaseSummary):
 
         return parent
 
+    def get_node_field_specifiers(self) -> set[NodeFieldSpecifier]:
+        specifiers = set()
+        for node in self.nodes:
+            for attribute in node.attributes:
+                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute.name))
+            for relationship in node.relationships:
+                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=relationship.name))
+        return specifiers
+
 
 @dataclass
 class EnrichedDiffs:
@@ -461,10 +482,14 @@ class EnrichedDiffs:
     @classmethod
     def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffs:
         base_branch_diff = EnrichedDiffRoot.from_calculated_diff(
-            calculated_diff=calculated_diffs.base_branch_diff, base_branch_name=calculated_diffs.base_branch_name
+            calculated_diff=calculated_diffs.base_branch_diff,
+            base_branch_name=calculated_diffs.base_branch_name,
+            partner_uuid=calculated_diffs.diff_branch_diff.uuid,
         )
         diff_branch_diff = EnrichedDiffRoot.from_calculated_diff(
-            calculated_diff=calculated_diffs.diff_branch_diff, base_branch_name=calculated_diffs.base_branch_name
+            calculated_diff=calculated_diffs.diff_branch_diff,
+            base_branch_name=calculated_diffs.base_branch_name,
+            partner_uuid=calculated_diffs.base_branch_diff.uuid,
         )
         return EnrichedDiffs(
             base_branch_name=calculated_diffs.base_branch_name,

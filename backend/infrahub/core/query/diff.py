@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
+from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
@@ -508,13 +509,13 @@ class DiffAllPathsQuery(DiffQuery):
         self,
         base_branch: Branch,
         branch_support: list[BranchSupportType] | None = None,
-        node_uuids_and_names_to_check: list[tuple[str, str]] | None = None,
+        node_field_specifiers: list[tuple[str, str]] | None = None,
         *args,
         **kwargs,
     ):
         self.base_branch = base_branch
         self.branch_support = branch_support or [BranchSupportType.AWARE]
-        self.node_uuids_and_names_to_check: list[tuple[str, str]] = node_uuids_and_names_to_check or []
+        self.node_field_specifiers: list[tuple[str, str]] = node_field_specifiers or []
 
         super().__init__(*args, **kwargs)
 
@@ -523,10 +524,11 @@ class DiffAllPathsQuery(DiffQuery):
             {
                 "base_branch_name": self.base_branch.name,
                 "branch_name": self.branch.name,
+                "branch_create_time": self.branch.created_at if self.branch.name != registry.default_branch else None,
                 "from_time": self.diff_from.to_string(),
                 "to_time": self.diff_to.to_string(),
                 "branch_support": [item.value for item in self.branch_support],
-                "node_uuids_and_names_to_check": self.node_uuids_and_names_to_check,
+                "node_field_specifiers": self.node_field_specifiers,
             }
         )
         query = """
@@ -701,7 +703,10 @@ CALL {
             AND type(base_diff_rel) = type(diff_rel)
             AND all(
                 r in relationships(latest_base_path)
-                WHERE r.branch = $base_branch_name AND r.from <= $from_time
+                WHERE r.branch = $base_branch_name AND (
+                    ($branch_create_time IS NULL AND r.from <= $branch_create_time)
+                    OR (r.from <= $from_time)
+                )
             )
             WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
             ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
@@ -745,51 +750,62 @@ CALL {
 // -------------------------------------
 // Get unique node UUID-attr/rel name pairs to check for updates on main
 // -------------------------------------
-WITH collect(diff_path) AS diff_paths, collect(DISTINCT [(nodes(diff_path)[1]).uuid, (nodes(diff_path)[2]).name]) AS node_identifiers_list
-UNWIND node_identifiers_list AS node_identifiers
-WITH diff_paths, node_identifiers + $node_uuids_and_names_to_check AS node_identifiers
+WITH collect(diff_path) AS diff_paths, collect([(nodes(diff_path)[1]).uuid, (nodes(diff_path)[2]).name]) AS node_identifiers_list
+WITH
+    diff_paths,
+    CASE
+        // this is [NULL] instead of NULL or [] to make sure the subquery below returns a row
+        WHEN $base_branch_name = $branch_name THEN [NULL]
+        ELSE node_identifiers_list + $node_field_specifiers END
+    AS node_identifiers_list
 CALL {
-    // -------------------------------------
-    // Get latest changes on base branch in our timeframe for each uuid-name pair
-    // -------------------------------------
-    WITH node_identifiers
-    WITH node_identifiers[0] AS node_uuid, node_identifiers[1] AS attr_rel_name
-    OPTIONAL MATCH
-        path = (r:Root)<-[r_root:IS_PART_OF {branch: $base_branch_name}]-
-        (n:Node {uuid: node_uuid})-[r_node {branch: $base_branch_name}]-
-        (attr_rel {name: attr_rel_name})-[r_prop {branch: $base_branch_name}]-(prop)
-    // path must include a change during our timeframe
-    WHERE any(
-        r in [r_root, r_node, r_prop]
-        WHERE $from_time <= r.from < $to_time
-        AND (r.to IS NULL OR ($from_time <= r.to < $to_time))
-    )
-    // filter types and labels
-    AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
-    AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
-    AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
-    AND ALL(
-        r_pair IN [[r_root, r_node], [r_node, r_prop]]
-        // filter out paths where an active edge follows a deleted edge
-        WHERE ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
-        // filter out paths where an earlier from time follows a later from time
-        AND (r_pair[0]).from <= (r_pair[1]).from
-        // require adjacent edge pairs to have overlapping times, but only if on the same branch
-        AND (
-            (r_pair[0]).to IS NULL
-            OR (r_pair[0]).to >= (r_pair[1]).from
+    WITH node_identifiers_list
+    UNWIND node_identifiers_list AS node_identifiers
+    WITH DISTINCT node_identifiers AS node_identifiers
+    CALL {
+        // -------------------------------------
+        // Get latest changes on base branch in our timeframe for each uuid-name pair
+        // -------------------------------------
+        WITH node_identifiers
+        WITH node_identifiers[0] AS node_uuid, node_identifiers[1] AS attr_rel_name
+        OPTIONAL MATCH
+            path = (r:Root)<-[r_root:IS_PART_OF {branch: $base_branch_name}]-
+            (n:Node {uuid: node_uuid})-[r_node {branch: $base_branch_name}]-
+            (attr_rel {name: attr_rel_name})-[r_prop {branch: $base_branch_name}]-(prop)
+        // path must include a change during our timeframe
+        WHERE any(
+            r in [r_root, r_node, r_prop]
+            WHERE $branch_create_time <= r.from < $to_time
+            AND (r.to IS NULL OR ($branch_create_time <= r.to < $to_time))
         )
-    )
-    // avoid loopback
-    AND [%(id_func)s(n), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
-    WITH path, r_root, r_node, attr_rel, r_prop, prop
-    ORDER BY
-        %(id_func)s(attr_rel) DESC,
-        type(r_prop) DESC,
-        r_prop.from DESC,
-        r_node.from DESC,
-        r_root.from DESC
-    WITH %(id_func)s(attr_rel) AS attr_rel_id, type(r_prop) AS type_r_prop, head(collect(path)) AS latest_base_path
+        // filter types and labels
+        AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+        AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+        AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
+        AND ALL(
+            r_pair IN [[r_root, r_node], [r_node, r_prop]]
+            // filter out paths where an active edge follows a deleted edge
+            WHERE ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
+            // filter out paths where an earlier from time follows a later from time
+            AND (r_pair[0]).from <= (r_pair[1]).from
+            // require adjacent edge pairs to have overlapping times, but only if on the same branch
+            AND (
+                (r_pair[0]).to IS NULL
+                OR (r_pair[0]).to >= (r_pair[1]).from
+            )
+        )
+        // avoid loopback
+        AND [%(id_func)s(n), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
+        WITH path, r_root, r_node, attr_rel, r_prop, prop
+        ORDER BY
+            %(id_func)s(attr_rel) DESC,
+            type(r_prop) DESC,
+            r_prop.from DESC,
+            r_node.from DESC,
+            r_root.from DESC
+        WITH %(id_func)s(attr_rel) AS attr_rel_id, type(r_prop) AS type_r_prop, head(collect(path)) AS latest_base_path
+        RETURN latest_base_path
+    }
     RETURN latest_base_path
 }
 WITH diff_paths, collect(latest_base_path) AS latest_base_paths
@@ -798,4 +814,4 @@ UNWIND all_diff_paths AS diff_path
         """ % {"id_func": db.get_id_function_name()}
 
         self.add_to_query(query)
-        self.return_labels = ["diff_path"]
+        self.return_labels = ["DISTINCT diff_path AS diff_path"]
