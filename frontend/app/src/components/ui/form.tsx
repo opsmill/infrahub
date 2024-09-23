@@ -20,6 +20,8 @@ import {
 } from "react-hook-form";
 import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
+import { SlideOverContext } from "../display/slide-over";
+import { FormFieldValue } from "../form/type";
 
 export type FormRef = ReturnType<typeof useForm>;
 
@@ -32,12 +34,34 @@ export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "on
 export const Form = React.forwardRef<FormRef, FormProps>(
   ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
     const currentForm = form ?? useForm({ defaultValues });
+    const slideOverContext = useContext(SlideOverContext);
 
     useImperativeHandle(ref, () => currentForm);
 
     useEffect(() => {
       currentForm.reset(defaultValues);
     }, [JSON.stringify(defaultValues)]);
+
+    // Callback version of watch.  It's your responsibility to unsubscribe when done.
+    useEffect(() => {
+      // Stop logic if there is no context to prevent the slide over close
+      if (!slideOverContext?.setPreventClose) return;
+
+      const subscription = currentForm.watch((formData: Record<string, FormFieldValue>) => {
+        const updatedValue = Object.entries(formData).find(
+          ([key, field]: [string, FormFieldValue]) => {
+            const defaultValue = defaultValues && defaultValues[key];
+
+            return (defaultValue?.value || field.value) && defaultValue?.value !== field.value;
+          }
+        );
+
+        if (updatedValue && slideOverContext.setPreventClose)
+          slideOverContext.setPreventClose(true);
+      });
+
+      return () => subscription.unsubscribe();
+    }, [currentForm.watch]);
 
     return (
       <FormProvider {...currentForm}>
@@ -46,6 +70,8 @@ export const Form = React.forwardRef<FormRef, FormProps>(
             if (event && event.stopPropagation) {
               event.stopPropagation();
             }
+
+            if (slideOverContext?.setPreventClose) slideOverContext?.setPreventClose(false);
 
             if (!onSubmit) return;
 

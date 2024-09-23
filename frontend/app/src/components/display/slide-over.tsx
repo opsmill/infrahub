@@ -1,11 +1,12 @@
 import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment, useRef } from "react";
+import React, { Fragment, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import ModalConfirm from "../modals/modal-confirm";
 
 interface Props {
   open: boolean;
@@ -15,9 +16,16 @@ interface Props {
   offset?: number;
 }
 
+interface SlideOverContextProps {
+  setPreventClose?: (value: boolean) => void;
+}
+
+export const SlideOverContext = React.createContext<SlideOverContextProps>({});
+
 export default function SlideOver(props: Props) {
   const { open, setOpen, title, offset = 0 } = props;
   const initialFocusRef = useRef(null);
+  const [preventClose, setPreventClose] = useState(false);
 
   // Need to define full classes so tailwind can compile the css
   const panelWidth = "w-[400px]";
@@ -28,51 +36,63 @@ export default function SlideOver(props: Props) {
   };
 
   return (
-    <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={setOpen} initialFocus={initialFocusRef}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-in-out duration-500"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in-out duration-500"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0">
-          <div
-            className="fixed inset-0 bg-black bg-opacity-40 transition-opacity"
-            data-cy="side-panel-background"
-            data-testid="side-panel-background"
-          />
-        </Transition.Child>
+    <SlideOverContext.Provider
+      value={{ setPreventClose: (value: boolean) => setPreventClose(value) }}>
+      <Transition.Root show={open || (!open && preventClose)} as={Fragment}>
+        <Dialog as="div" className="relative z-10" onClose={setOpen} initialFocus={initialFocusRef}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-in-out duration-500"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in-out duration-500"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0">
+            <div
+              className="fixed inset-0 bg-black bg-opacity-40 transition-opacity"
+              data-cy="side-panel-background"
+              data-testid="side-panel-background"
+            />
+          </Transition.Child>
 
-        <div className="before:fixed inset-0 overflow-hidden">
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="pointer-events-none fixed inset-y-0 right-0 flex">
-              <button type="button" tabIndex={-1} ref={initialFocusRef} />
-              <Transition.Child
-                as={Fragment}
-                enter="transform transition ease-in-out duration-500"
-                enterFrom="translate-x-full"
-                enterTo={`${offestWidth[offset]}`}
-                leave="transform transition ease-in-out duration-500"
-                leaveFrom={`${offestWidth[offset]}`}
-                leaveTo="translate-x-full">
-                <Dialog.Panel
-                  className={`bg-custom-white pointer-events-auto shadow-xl flex flex-col ${panelWidth} ${offestWidth[offset]}`}
-                  data-testid="side-panel-container">
-                  <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b">
-                    <div className="w-full">
-                      <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>
+          <div className="before:fixed inset-0 overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden">
+              <div className="pointer-events-none fixed inset-y-0 right-0 flex">
+                <button type="button" tabIndex={-1} ref={initialFocusRef} />
+                <Transition.Child
+                  as={Fragment}
+                  enter="transform transition ease-in-out duration-500"
+                  enterFrom="translate-x-full"
+                  enterTo={`${offestWidth[offset]}`}
+                  leave="transform transition ease-in-out duration-500"
+                  leaveFrom={`${offestWidth[offset]}`}
+                  leaveTo="translate-x-full">
+                  <Dialog.Panel
+                    className={`bg-custom-white pointer-events-auto shadow-xl flex flex-col ${panelWidth} ${offestWidth[offset]}`}
+                    data-testid="side-panel-container">
+                    <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b">
+                      <div className="w-full">
+                        <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>
+                      </div>
                     </div>
-                  </div>
-                  {props.children}
-                </Dialog.Panel>
-              </Transition.Child>
+                    {props.children}
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
             </div>
           </div>
-        </div>
-      </Dialog>
-    </Transition.Root>
+        </Dialog>
+      </Transition.Root>
+
+      <ModalConfirm
+        title="Confirm"
+        description={"Are you sure you want to close this form? All unsaved changes will be lost."}
+        onCancel={() => setOpen(true)}
+        onConfirm={() => setPreventClose(false)}
+        open={!open && preventClose}
+        setOpen={() => setPreventClose(false)}
+      />
+    </SlideOverContext.Provider>
   );
 }
 
