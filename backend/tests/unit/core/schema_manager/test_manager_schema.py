@@ -193,6 +193,7 @@ async def test_schema_branch_process_inheritance_update_inherited_elements(anima
         (None, ["breed"], ["name__value"]),
         ([["name__value", "breed__value"]], ["breed"], ["name__value"]),
         (None, ["name"], ["name__value"]),
+        (None, [], ["name__value", "breed__value"]),
     ],
 )
 async def test_validate_human_friendly_id_assign_uniquess_constraints(
