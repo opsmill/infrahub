@@ -174,7 +174,7 @@ export const SCHEMA_ATTRIBUTE_KIND = {
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 
 export const relationshipsForListView = {
-  one: ["Attribute", "Hierarchy"],
+  one: ["Attribute", "Hierarchy", "Parent"],
   many: ["Attribute"],
 };
 
