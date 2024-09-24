@@ -1,29 +1,19 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
-import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
+import SlideOver from "@/components/display/slide-over";
 import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
-import {
-  ARTIFACT_DEFINITION_OBJECT,
-  DEFAULT_BRANCH_NAME,
-  GENERIC_REPOSITORY_KIND,
-  MENU_EXCLUDELIST,
-  TASK_TAB,
-  TASK_TARGET,
-} from "@/config/constants";
+import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
-import { Generate } from "@/screens/artifacts/generate";
 import NoDataFound from "@/screens/errors/no-data-found";
-import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
 import { TaskItems } from "@/screens/tasks/task-items";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, IModelSchema, schemaState } from "@/state/atoms/schema.atom";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
@@ -37,16 +27,14 @@ import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
-import { isGeneric } from "@/utils/common";
-import RepositoryActionMenu from "@/screens/repository/repository-action-menu";
+import { ActionButtons } from "./action-buttons";
 
 type ObjectDetailsProps = {
   schema: IModelSchema;
@@ -54,6 +42,7 @@ type ObjectDetailsProps = {
   taskData?: Object;
   hideHeaders?: boolean;
 };
+
 export default function ObjectItemDetails({
   schema,
   objectDetailsData,
@@ -63,18 +52,13 @@ export default function ObjectItemDetails({
   const location = useLocation();
   const { pathname } = location;
 
-  const objectname = schema.kind;
-  const objectid = objectDetailsData.id;
-
   const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
-  const [showEditDrawer, setShowEditDrawer] = useState(false);
   const permission = usePermission();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
   const [schemaList] = useAtom(schemaState);
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericList] = useAtom(genericsState);
 
   const refetchRef = useRef(null);
@@ -95,7 +79,7 @@ export default function ObjectItemDetails({
   useTitle(
     objectDetailsData?.display_label
       ? `${objectDetailsData?.display_label} details`
-      : `${schemaKindName[objectname]} details`
+      : `${schema.label} details`
   );
 
   if (!objectDetailsData) {
@@ -109,7 +93,7 @@ export default function ObjectItemDetails({
   const tabs = [
     {
       label: schema?.label,
-      name: schema?.label,
+      name: schema?.name,
     },
     ...getObjectTabs(relationshipsTabs, objectDetailsData),
     // Includes the task tab only for specific objects,
@@ -133,32 +117,7 @@ export default function ObjectItemDetails({
       {!hideHeaders && (
         <Tabs
           tabs={tabs}
-          rightItems={
-            <div className="flex items-center gap-2">
-              {schema.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
-
-              {!schema.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
-                <GroupsManagerTriggerButton
-                  schema={schema}
-                  objectId={objectid}
-                  className="text-custom-blue-600 p-4"
-                />
-              )}
-
-              <ButtonWithTooltip
-                disabled={!permission.write.allow}
-                tooltipEnabled
-                tooltipContent={permission.write.message ?? "Edit object"}
-                onClick={() => setShowEditDrawer(true)}
-                data-testid="edit-button">
-                <Icon icon="mdi:pencil" className="mr-1.5" aria-hidden="true" /> Edit {schema.label}
-              </ButtonWithTooltip>
-
-              {!isGeneric(schema) && schema.inherit_from?.includes(GENERIC_REPOSITORY_KIND) && (
-                <RepositoryActionMenu repositoryId={objectDetailsData.id} />
-              )}
-            </div>
-          }
+          rightItems={<ActionButtons schema={schema} objectDetailsData={objectDetailsData} />}
         />
       )}
 
@@ -276,25 +235,6 @@ export default function ObjectItemDetails({
           <TaskItemDetails ref={refetchRef} />
         </div>
       )}
-
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={objectDetailsData.display_label}
-            title={`Edit ${objectDetailsData.display_label}`}
-            subtitle={schema.description}
-          />
-        }
-        open={showEditDrawer}
-        setOpen={setShowEditDrawer}>
-        <ObjectItemEditComponent
-          closeDrawer={() => setShowEditDrawer(false)}
-          onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
-          objectid={objectid!}
-          objectname={objectname!}
-        />
-      </SlideOver>
 
       <SlideOver
         title={

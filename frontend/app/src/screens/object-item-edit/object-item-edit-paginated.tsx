@@ -29,7 +29,7 @@ interface Props {
 export default function ObjectItemEditComponent(props: Props) {
   const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
 
-  const { schema, isProfile } = useSchema(objectname);
+  const { schema } = useSchema(objectname);
 
   if (!schema) {
     return <NoDataFound message={`Schema ${objectname} not found`} />;

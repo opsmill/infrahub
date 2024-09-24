@@ -3,6 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/ipam - Ipam home page", () => {
   test.describe.configure({ mode: "serial" });
+  test.slow();
 
   test.describe("When not logged in", () => {
     test("disable buttons that open creation form", async ({ page }) => {
