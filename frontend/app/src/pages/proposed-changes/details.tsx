@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { useSchema } from "@/hooks/useSchema";
+import NoDataFound from "@/screens/errors/no-data-found";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -117,12 +118,6 @@ export function Component() {
     return <LoadingScreen className="m-auto h-auto" />;
   }
 
-  if (error) {
-    return (
-      <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
-    );
-  }
-
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT]?.edges?.[0]?.node;
 
   const tabs = [
@@ -157,6 +152,37 @@ export function Component() {
       count: (data && data[TASK_OBJECT]?.count) ?? 0,
     },
   ];
+
+  if (error || (!loading && !proposedChangesData)) {
+    return (
+      <Content>
+        <Content.Title
+          title={
+            <div className="flex items-center gap-2">
+              <Link
+                className="no-underline hover:underline"
+                to={constructPath("/proposed-changes")}>
+                Proposed changes
+              </Link>
+            </div>
+          }
+          reload={() => client.reFetchObservableQueries()}
+          isReloadLoading={loading}>
+          <ObjectHelpButton
+            documentationUrl={schema?.documentation}
+            kind={PROPOSED_CHANGES_OBJECT}
+            className="ml-auto"
+          />
+        </Content.Title>
+
+        {error && (
+          <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
+        )}
+
+        {!loading && !proposedChangesData && <NoDataFound message="No proposed changes found." />}
+      </Content>
+    );
+  }
 
   return (
     <Content>
