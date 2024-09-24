@@ -21,7 +21,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
 import { SlideOverContext } from "../display/slide-over";
-import { FormFieldValue } from "../form/type";
 
 export type FormRef = ReturnType<typeof useForm>;
 
@@ -34,6 +33,7 @@ export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "on
 export const Form = React.forwardRef<FormRef, FormProps>(
   ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
     const currentForm = form ?? useForm({ defaultValues });
+
     const slideOverContext = useContext(SlideOverContext);
 
     useImperativeHandle(ref, () => currentForm);
@@ -46,24 +46,10 @@ export const Form = React.forwardRef<FormRef, FormProps>(
       // Stop logic if there is no context to prevent the slide over close
       if (!slideOverContext?.setPreventClose) return;
 
-      const subscription = currentForm.watch((formData: Record<string, FormFieldValue>) => {
-        const updatedValue = Object.entries(formData).find(
-          ([key, field]: [string, FormFieldValue]) => {
-            const defaultValue = defaultValues && defaultValues[key];
+      if (!currentForm.formState.isDirty) return;
 
-            return (defaultValue?.value || field.value) && defaultValue?.value !== field.value;
-          }
-        );
-
-        if (updatedValue && slideOverContext.setPreventClose) console.log("SET TRUE NOW");
-
-        slideOverContext.setPreventClose(true);
-      });
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    }, [currentForm.watch]);
+      slideOverContext?.setPreventClose(true);
+    }, [currentForm.formState.isDirty]);
 
     return (
       <FormProvider {...currentForm}>
