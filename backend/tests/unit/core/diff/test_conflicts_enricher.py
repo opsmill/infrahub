@@ -208,6 +208,7 @@ class TestConflictsEnricher:
                         peer_id=new_base_peer_id, properties=base_properties, action=DiffAction.UPDATED
                     )
                 },
+                cardinality=RelationshipCardinality.ONE,
             )
         }
         base_nodes = {
@@ -235,6 +236,7 @@ class TestConflictsEnricher:
                         peer_id=previous_peer_id, properties=branch_properties, action=DiffAction.REMOVED
                     )
                 },
+                cardinality=RelationshipCardinality.ONE,
             )
         }
         branch_nodes = {
