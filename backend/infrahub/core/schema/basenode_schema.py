@@ -143,9 +143,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         elements_diff = HashableModelDiff()
         if present_local:
-            elements_diff.added = {name: None for name in present_local}
+            elements_diff.added = dict.fromkeys(present_local)
         if present_other:
-            elements_diff.removed = {name: None for name in present_other}
+            elements_diff.removed = dict.fromkeys(present_other)
 
         # Process element b
         for name in sorted(present_both):

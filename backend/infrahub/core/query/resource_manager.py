@@ -211,7 +211,7 @@ class NumberPoolGetUsed(Query):
         query = """
         MATCH (pool:%(number_pool)s { uuid: $pool_id })-[r:IS_RESERVED]->(av:AttributeValue )
         WHERE
-            av.value >= $start_range and av.value <= $end_range
+            toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
             AND
             %(branch_filter)s
         """ % {"branch_filter": branch_filter, "number_pool": InfrahubKind.NUMBERPOOL}

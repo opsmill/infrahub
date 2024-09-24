@@ -4,6 +4,9 @@ global:
   kubernetesClusterDomain: cluster.local
   infrahubRepository: opsmill/infrahub
   imagePullPolicy: IfNotPresent
+  commonLabels: {}
+  commonAnnotations: {}
+  podLabels: {}
 
 # ----------- Cache -----------
 redis:
@@ -58,6 +61,7 @@ infrahubGit:
     size: 100Mi
     accessMode: ReadWriteMany
     storageClassName: nfs
+  resources: {}
   infrahubGit:
     args:
       - infrahub
@@ -120,11 +124,13 @@ infrahubServer:
   ingress:
     enabled: true
     hostname: infrahub-cluster.local
+    annotations:
   persistence:
     enabled: true
     size: 100Mi
     accessMode: ReadWriteMany
     storageClassName: nfs
+  resources: {}
   infrahubServer:
     args:
       - gunicorn

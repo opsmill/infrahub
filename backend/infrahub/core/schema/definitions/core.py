@@ -1823,6 +1823,7 @@ core_models: dict[str, Any] = {
             "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
+            "documentation": "/topics/generator",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -1870,6 +1871,7 @@ core_models: dict[str, Any] = {
             "branch": BranchSupportType.LOCAL.value,
             "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
+            "documentation": "/topics/generator",
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
