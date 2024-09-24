@@ -59,13 +59,11 @@ export const Form = React.forwardRef<FormRef, FormProps>(
               event.stopPropagation();
             }
 
+            if (onSubmit) currentForm.handleSubmit(onSubmit)(event);
+
             if (slideOverContext?.setPreventClose) {
               slideOverContext?.setPreventClose(false);
             }
-
-            if (!onSubmit) return;
-
-            currentForm.handleSubmit(onSubmit)(event);
           }}
           className={classNames("space-y-4", className)}
           {...props}>
