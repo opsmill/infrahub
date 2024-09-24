@@ -448,7 +448,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 await self.log.warning(
                     f"Unable to find the schema {schema}", repository=self.name, branch=branch_name, commit=commit
                 )
-                continue
 
             if full_schema.is_file():
                 schema_file = SchemaFile(identifier=str(schema), location=full_schema)
@@ -464,7 +463,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     schema_file.load_content()
                     schemas_data.append(schema_file)
 
-        has_error = False
         for schema_file in schemas_data:
             if schema_file.valid:
                 continue
@@ -474,10 +472,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 branch=branch_name,
                 commit=commit,
             )
-            has_error = True
-
-        if has_error:
-            return
 
         # Valid data format of content
         for schema_file in schemas_data:
@@ -490,10 +484,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     branch=branch_name,
                     commit=commit,
                 )
-                has_error = True
-
-        if has_error:
-            return
+                raise ValidationError(
+                    identifier=str(self.id),
+                    message=f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
+                ) from exc
 
         response = await self.sdk.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
 
@@ -513,7 +507,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 f"Unable to load the schema : {', '.join(error_messages)}", repository=self.name, commit=commit
             )
 
-            return
+            raise ValidationError(
+                identifier=str(self.id), message=f"Unable to load the schema : {', '.join(error_messages)}"
+            )
 
         for schema_file in schemas_data:
             await self.log.info(
@@ -618,7 +614,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 await self.log.warning(
                     self.name, import_type="check_definition", file=check.file_path.as_posix(), error=str(exc)
                 )
-                continue
+                raise
 
             checks.extend(
                 await self.get_check_definition(
@@ -803,7 +799,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 await self.log.warning(
                     self.name, import_type="python_transform", file=transform.file_path.as_posix(), error=str(exc)
                 )
-                continue
+                raise
 
             transforms.extend(
                 await self.get_python_transforms(
@@ -899,6 +895,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 repository=self.name,
                 branch=branch_name,
             )
+            raise
         return checks
 
     async def get_python_transforms(
@@ -931,6 +928,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 repository=self.name,
                 branch=branch_name,
             )
+            raise
 
         return transforms
 
