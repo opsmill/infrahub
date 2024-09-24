@@ -1108,7 +1108,7 @@ class NodeGetListQuery(Query):
                     continue
                 field = self.schema.get_field(field_name, raise_on_error=False)
                 for field_attr_name, field_attr_value in attr_filters.items():
-                    field_requirements_map[(field_name, field_attr_name)] = FieldAttributeRequirement(
+                    field_requirements_map[field_name, field_attr_name] = FieldAttributeRequirement(
                         field_name=field_name,
                         field=field,
                         field_attr_name=field_attr_name,
@@ -1138,7 +1138,7 @@ class NodeGetListQuery(Query):
                 ),
             )
             field_req.types.append(FieldAttributeRequirementType.ORDER)
-            field_requirements_map[(order_by_field_name, order_by_attr_property_name)] = field_req
+            field_requirements_map[order_by_field_name, order_by_attr_property_name] = field_req
             index += 1
 
         return list(field_requirements_map.values())
