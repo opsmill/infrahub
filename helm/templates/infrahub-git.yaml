@@ -3,9 +3,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-git
+  namespace: "{{ .Release.Namespace }}"
   labels:
     service: infrahub-git
   {{- include "infrahub-helm.labels" . | nindent 4 }}
+  annotations:
+  {{- include "infrahub-helm.annotations" . | nindent 4 }}
 spec:
   replicas: {{ .Values.infrahubGit.replicas | default 1 }}
   selector:
@@ -34,6 +37,9 @@ spec:
       {{- with .Values.infrahubGit.runtimeClassName }}
       runtimeClassName: {{ . }}
       {{- end }}
+      {{- with .Values.infrahubGit.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - args: {{- toYaml .Values.infrahubGit.infrahubGit.args | nindent 12 }}
           env:
@@ -50,7 +56,12 @@ spec:
           image: {{ default .Values.global.imageRegistry .Values.infrahubGit.infrahubGit.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubGit.infrahubGit.imagePullPolicy }}
           name: infrahub-git
-          resources: {}
+          {{- with .Values.infrahubGit.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.infrahubGit.infrahubGit.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
           tty: true
           volumeMounts:
             - name: git-data
@@ -72,9 +83,12 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-git-data
+  namespace: "{{ .Release.Namespace }}"
   labels:
     service: git-data
   {{- include "infrahub-helm.labels" . | nindent 4 }}
+  annotations:
+  {{- include "infrahub-helm.annotations" . | nindent 4 }}
 spec:
   accessModes:
     - {{ .Values.infrahubGit.persistence.accessMode }}

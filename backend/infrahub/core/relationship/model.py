@@ -734,6 +734,8 @@ class RelationshipManager:
         if not isinstance(data, list):
             data = [data]
 
+        await rm._validate_hierarchy()
+
         for item in data:
             if not isinstance(item, (rm.rel_class, str, dict)) and not hasattr(item, "_schema"):
                 raise ValidationError({rm.name: f"Invalid data provided to form a relationship {item}"})
@@ -966,6 +968,8 @@ class RelationshipManager:
         else:
             list_data = data
 
+        await self._validate_hierarchy()
+
         # Reset the list of relationship and save the previous one to see if we can reuse some
         previous_relationships = {rel.peer_id: rel for rel in await self.get_relationships(db=db) if rel.peer_id}
         self._relationships.clear()
@@ -1022,6 +1026,8 @@ class RelationshipManager:
         """Add a new relationship to the list of existing ones, avoid duplication."""
         if not isinstance(data, (self.rel_class, dict)) and not hasattr(data, "_schema"):
             raise ValidationError({self.name: f"Invalid data provided to form a relationship {data}"})
+
+        await self._validate_hierarchy()
 
         previous_relationships = {rel.peer_id for rel in await self.get_relationships(db=db) if rel.peer_id}
 
@@ -1148,3 +1154,14 @@ class RelationshipManager:
             return None
 
         return await relationships[0].to_graphql(fields=fields, db=db, related_node_ids=related_node_ids)
+
+    async def _validate_hierarchy(self) -> None:
+        schema = self.node.get_schema()
+        if schema.is_profile_schema or not schema.hierarchy:  # type: ignore[union-attr]
+            return
+
+        if self.name == "parent" and not schema.parent:  # type: ignore[union-attr]
+            raise ValidationError({self.name: f"Not supported to assign a value to parent for {schema.kind}"})
+
+        if self.name == "children" and not schema.children:  # type: ignore[union-attr]
+            raise ValidationError({self.name: f"Not supported to assign some children for {schema.kind}"})

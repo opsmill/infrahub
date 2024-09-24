@@ -182,7 +182,6 @@ class RelationshipQuery(Query):
             "branch_level": self.branch.hierarchy_level,
             "status": status.value,
             "from": self.at.to_string(),
-            "to": None,
         }
         if self.schema.hierarchical:
             rel_prop_dict["hierarchy"] = self.schema.hierarchical
@@ -267,7 +266,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
     def query_add_node_property_create(self, name: str) -> None:
         query = """
-        CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(%s)
+        CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(%s)
         """ % (
             name.upper(),
             name,
@@ -335,7 +334,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def query_add_flag_property_create(self, name: str) -> None:
         query = """
-        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(prop_%s)
+        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(prop_%s)
         """ % (
             name.upper(),
             name,
@@ -349,7 +348,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def query_add_node_property_create(self, name: str) -> None:
         query = """
-        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(prop_%s)
+        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(prop_%s)
         """ % (
             "HAS_" + name.upper(),
             name,

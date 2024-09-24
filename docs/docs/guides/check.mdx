@@ -25,7 +25,7 @@ As the first step we need to have some data in the database to actually query.
 Create three tags, called "color-red", "color-green", "blue", either using the frontend or by submitting three GraphQL mutations as per below (just swapping out the name of the color each time).
 Note that the "blue" tag is following a different naming scheme compared to the other tags. This is on purpose and is needed for the rest of the guide.
 
-```GraphQL
+```graphql
 mutation CreateTags {
   BuiltinTagCreate(
       data: {name: {value: "color-red"}, description: {value: "The red tag"}}
@@ -40,7 +40,7 @@ mutation CreateTags {
 
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
-```GraphQL
+```graphql
 query TagsQuery {
   BuiltinTag {
     edges {
@@ -102,7 +102,7 @@ Response to the tags query:
 
 Create a local directory on your computer.
 
-```bash
+```shell
 mkdir tags_check
 ```
 
@@ -207,7 +207,7 @@ Within the `tags_check` folder you should now have 3 files:
 
 Before we can test our transform we must add the files to a local Git repository.
 
-```bash
+```shell
 git init --initial-branch=main
 git add .
 git commit -m "First commit"
@@ -217,14 +217,14 @@ git commit -m "First commit"
 
 Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available checks.
 
-```bash title="❯ infrahubctl check --list"
+```shell title="❯ infrahubctl check --list"
 Python checks defined in repository: 1
 check_color_tags_name (tags_check.py::ColorTagsCheck) Target: -global-
 ```
 
 Run the check by specifying the name of the check as an argument.
 
-```bash title="❯ infrahubctl check check_color_tags_name"
+```shell title="❯ infrahubctl check check_color_tags_name"
 [09:23:25] INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
            ERROR    tags_check::ColorTagsCheck: FAILED
            ERROR      Invalid tag name: blue
@@ -352,7 +352,7 @@ We need to modify the GraphQL query with the `name` parameter. The GraphQL query
 
 Replace the contents of the `tags_check.gql` file with the following contents.
 
-```GraphQL
+```graphql
 query TagsQuery($name: String!) {
   BuiltinTag(name__value: $name) {
     edges {
@@ -371,7 +371,7 @@ query TagsQuery($name: String!) {
 
 ### 5. Test the `check_color_tags_name` check
 
-```bash title="❯ infrahubctl check check_color_tags_name"
+```shell title="❯ infrahubctl check check_color_tags_name"
 ``[11:50:43] INFO     HTTP Request: GET http://localhost:8000/api/schema/?branch=main "HTTP/1.1 200 OK"
            INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
            INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
@@ -493,7 +493,7 @@ We now have 2 targeted checks defined, each targeting its own set of tags, with 
 
 Verify that we have 2 checks defined using the `infrahubctl` command.
 
-```bash title="❯ infrahubctl check --list"
+```shell title="❯ infrahubctl check --list"
 Python checks defined in repository: 2
 check_color_tags_name (tags_check.py::ColorTagsCheck) Target: ColorTags
 check_number_tags_name (tags_check.py::NumberTagsCheck) Target: NumberTags
@@ -501,7 +501,7 @@ check_number_tags_name (tags_check.py::NumberTagsCheck) Target: NumberTags
 
 Check that the `check_color_tags_name` fails because of the tag `blue` not complying with the naming scheme:
 
-```bash title="❯ infrahubctl check check_color_tags_name"
+```shell title="❯ infrahubctl check check_color_tags_name"
 [14:04:50] INFO     HTTP Request: GET http://localhost:8000/api/schema/?branch=main "HTTP/1.1 200 OK
 [14:04:51] INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
            INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
@@ -518,7 +518,7 @@ Check that the `check_color_tags_name` fails because of the tag `blue` not compl
 
 Check that the `check_number_tags_name` succeeds:
 
-```bash title="❯ infrahubctl check check_number_tags_name"
+```shell title="❯ infrahubctl check check_number_tags_name"
 [14:09:32] INFO     HTTP Request: GET http://localhost:8000/api/schema/?branch=main "HTTP/1.1 200 OK"
            INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
            INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"

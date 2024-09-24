@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, overload
 
 from infrahub_sdk import UUIDT
@@ -614,7 +615,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 raise ValidationError("Only Attribute can be used in Display Label")
 
             attr = getattr(self, item_elements[0])
-            display_elements.append(getattr(attr, item_elements[1]))
+            attr_value = getattr(attr, item_elements[1])
+            if isinstance(attr_value, Enum):
+                display_elements.append(attr_value.value)
+            else:
+                display_elements.append(attr_value)
 
         if not display_elements or all(de is None for de in display_elements):
             return ""

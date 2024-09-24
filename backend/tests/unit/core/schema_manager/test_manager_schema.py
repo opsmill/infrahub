@@ -192,19 +192,22 @@ async def test_schema_branch_process_inheritance_update_inherited_elements(anima
         ([["breed__value"]], [], ["name__value"]),
         (None, ["breed"], ["name__value"]),
         ([["name__value", "breed__value"]], ["breed"], ["name__value"]),
+        (None, ["name"], ["name__value"]),
+        (None, [], ["name__value", "breed__value"]),
     ],
 )
-async def test_validate_human_friendly_id_uniqueness_failure(
+async def test_validate_human_friendly_id_assign_uniquess_constraints(
     uniqueness_constraints: list[list[str]] | None,
     unique_attributes: list[str],
     human_friendly_id: list[str] | None,
     animal_person_schema_dict,
 ):
     schema = SchemaBranch(cache={}, name="test")
-    for node_schema in animal_person_schema_dict["nodes"]:
+    for node_schema in animal_person_schema_dict["generics"]:
         if node_schema["name"] == "Animal" and node_schema["namespace"] == "Test":
             node_schema["uniqueness_constraints"] = None
             node_schema["human_friendly_id"] = None
+    for node_schema in animal_person_schema_dict["nodes"]:
         if node_schema["name"] == "Dog" and node_schema["namespace"] == "Test":
             node_schema["uniqueness_constraints"] = uniqueness_constraints
             node_schema["human_friendly_id"] = human_friendly_id
@@ -213,9 +216,12 @@ async def test_validate_human_friendly_id_uniqueness_failure(
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
     schema.process_inheritance()
-    schema.sync_uniqueness_constraints_and_unique_attributes()
-    with pytest.raises(ValueError, match=r"At least one attribute must be unique in the human_friendly_id"):
-        schema.validate_human_friendly_id()
+    schema.validate_human_friendly_id()
+    schema.process_human_friendly_id()
+
+    dog_node = schema.get("TestDog")
+    expected_uniqueness_constraints = uniqueness_constraints or [human_friendly_id]
+    assert dog_node.uniqueness_constraints == expected_uniqueness_constraints
 
 
 @pytest.mark.parametrize(

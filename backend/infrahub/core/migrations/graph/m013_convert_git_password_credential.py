@@ -100,10 +100,10 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
         WHERE git_attr_name.name = "name"
         CALL {
             WITH git_repo
-            MATCH path1 = (git_repo)-[r1:HAS_ATTRIBUTE]-(git_attr_name:Attribute)-[r2:HAS_VALUE]->(git_name_value:AttributeValue)
-            WHERE git_attr_name.name = "name"
+            MATCH path1 = (git_repo)-[r1:HAS_ATTRIBUTE]-(git_attr_name2:Attribute)-[r2:HAS_VALUE]->(git_name_value2:AttributeValue)
+            WHERE git_attr_name2.name = "name"
               AND all(r IN relationships(path1) WHERE %(filters)s)
-            RETURN git_repo as n1, r1 as r11, r2 as r22, git_name_value as av1
+            RETURN git_repo as n1, r1 as r11, r2 as r22, git_name_value2 as av1
             ORDER BY r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
