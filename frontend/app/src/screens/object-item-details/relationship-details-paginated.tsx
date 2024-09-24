@@ -64,6 +64,15 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const columns = getSchemaObjectColumns({
     schema: relationshipSchemaData,
     forListView: mode === "TABLE",
+  }).filter((column) => {
+    if (column.isAttribute) return true;
+
+    return relationshipsData?.some((relationship: { node: any }) => {
+      const relatedObject = relationship.node[column.name]?.node;
+      if (!relatedObject) return true;
+
+      return relatedObject.id !== objectid;
+    });
   });
 
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
