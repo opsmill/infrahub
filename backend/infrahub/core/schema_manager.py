@@ -778,7 +778,6 @@ class SchemaBranch:
             if not node_schema.human_friendly_id:
                 continue
 
-            has_unique_item = False
             allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_ATTR
             for item in node_schema.human_friendly_id:
                 schema_path = self.validate_schema_path(
@@ -787,9 +786,6 @@ class SchemaBranch:
                     allowed_path_types=allowed_types,
                     element_name="human_friendly_id",
                 )
-
-                if schema_path.attribute_schema.unique:
-                    has_unique_item = True
 
                 if schema_path.is_type_attribute:
                     required_properties = tuple(schema_path.attribute_schema.get_class().get_allowed_property_in_path())
@@ -811,11 +807,6 @@ class SchemaBranch:
                             f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
                             f"{node_schema.kind}. ({item})"
                         )
-
-            if not has_unique_item:
-                raise ValueError(
-                    f"At least one attribute must be unique in the human_friendly_id for {node_schema.kind}."
-                )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
@@ -1100,7 +1091,7 @@ class SchemaBranch:
                         self.set(name=node.kind, schema=node)
                         break
 
-            if node.human_friendly_id and not node.unique_attributes and not node.uniqueness_constraints:
+            if node.human_friendly_id and not node.uniqueness_constraints:
                 uniqueness_constraints: list[str] = []
                 for item in node.human_friendly_id:
                     schema_attribute_path = node.parse_schema_path(path=item, schema=self)
