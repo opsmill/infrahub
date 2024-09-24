@@ -62,7 +62,7 @@ class RabbitMQManager:
     @property
     def base_url(self) -> str:
         scheme = "https" if self.settings.tls_enabled else "http"
-        port = f"1{self.settings.service_port}"
+        port = f"{self.settings.rabbitmq_http_port}"
         return f"{scheme}://{self.settings.address}:{port}/api"
 
     async def create_virtual_host(self) -> None:

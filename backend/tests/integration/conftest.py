@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, Optional
 
 import pytest
 import yaml
@@ -16,7 +16,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import InfrahubDatabase
 from infrahub.utils import get_models_dir
 from tests.helpers.file_repo import FileRepo
 
@@ -39,15 +39,6 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
-
-
-@pytest.fixture(scope="module")
-async def db() -> AsyncGenerator[InfrahubDatabase, None]:
-    driver = InfrahubDatabase(driver=await get_db(retry=1))
-
-    yield driver
-
-    await driver.close()
 
 
 async def load_infrastructure_schema(db: InfrahubDatabase):

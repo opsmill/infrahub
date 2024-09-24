@@ -53,7 +53,7 @@ def ruff(context: Context, docker: bool = False) -> None:
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"poetry run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
@@ -69,7 +69,7 @@ def mypy(context: Context, docker: bool = False) -> None:
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
-    exec_cmd = f"mypy --show-error-codes {MAIN_DIRECTORY}"
+    exec_cmd = f"poetry run mypy --show-error-codes {MAIN_DIRECTORY}"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
@@ -85,7 +85,7 @@ def pylint(context: Context, docker: bool = False) -> None:
     """This will run pylint for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with pylint")
-    exec_cmd = f"pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
+    exec_cmd = f"poetry run pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
@@ -109,13 +109,11 @@ def lint(context: Context, docker: bool = False) -> None:
 @task(optional=["database"])
 def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         if database == "neo4j":
             exec_cmd += " --neo4j"
-        print(f"{base_cmd} {exec_cmd}")
-        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
+        print(f"{exec_cmd}")
+        return execute_command(context=context, command=f"{exec_cmd}")
 
 
 @task(optional=["database"])
@@ -133,13 +131,11 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[R
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
             exec_cmd += " --neo4j"
-        print(f"{base_cmd} {exec_cmd}")
-        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
+        print(f"{exec_cmd=}")
+        return execute_command(context=context, command=f"{exec_cmd}")
 
 
 @task
