@@ -90,7 +90,7 @@ async def db(
         assert memgraph is not None
         config.SETTINGS.database.port = int(memgraph.get_exposed_port(PORT_MEMGRAPH))
 
-    driver = InfrahubDatabase(driver=await get_db(retry=1))
+    driver = InfrahubDatabase(driver=await get_db(retry=5))
 
     yield driver
 
@@ -233,12 +233,10 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
         return None
 
-    memgraph_image = os.getenv(
-        "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
-    )
+    memgraph_image = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 
     container = (
-        DockerContainer(image=memgraph_image, entrypoint=["/usr/bin/supervisord"], init=True)
+        DockerContainer(image=memgraph_image, init=True)
         .with_env("MGCONSOLE", "--username neo4j --password admin")
         .with_env("APP_CYPHER_QUERY_MAX_LEN", 10000)
         .with_exposed_ports(PORT_MEMGRAPH)
@@ -248,9 +246,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
         container.stop()
 
     container.start()
-    wait_for_logs(
-        container, "INFO success: lab entered RUNNING state"
-    )  # wait_container_is_ready does not seem to be enough
+    wait_for_logs(container, "To get started with Memgraph")  # wait_container_is_ready does not seem to be enough
 
     request.addfinalizer(cleanup)
 
