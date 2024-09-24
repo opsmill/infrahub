@@ -17,7 +17,7 @@ import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
@@ -113,7 +113,7 @@ export function Component() {
     },
   });
 
-  if (networkStatus === NetworkStatus.loading) {
+  if (loading || networkStatus === NetworkStatus.loading) {
     return <LoadingScreen className="m-auto h-auto" />;
   }
 
@@ -124,10 +124,6 @@ export function Component() {
   }
 
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT]?.edges?.[0]?.node;
-
-  if (!proposedChangesData) {
-    return <Navigate to={constructPath("/proposed-changes")} />;
-  }
 
   const tabs = [
     {
