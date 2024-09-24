@@ -114,7 +114,7 @@ export function Component() {
     },
   });
 
-  if (loading || networkStatus === NetworkStatus.loading) {
+  if (networkStatus === NetworkStatus.loading) {
     return <LoadingScreen className="m-auto h-auto" />;
   }
 
