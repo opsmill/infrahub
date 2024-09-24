@@ -14,20 +14,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     permission_required = "global:edit_default_branch:allow"
     exempt_operations = ["BranchCreate"]
 
-    def __init__(self) -> None:
-        self.can_edit_default_branch: bool = False
-
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        self.can_edit_default_branch = False
-
-        if registry.permission_backends and account_session.authenticated:
-            for permission_backend in registry.permission_backends:
-                self.can_edit_default_branch = await permission_backend.has_permission(
-                    db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
-                )
-                if self.can_edit_default_branch:
-                    break
-
         return account_session.authenticated
 
     async def check(
@@ -38,6 +25,14 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
+        can_edit_default_branch = False
+        for permission_backend in registry.permission_backends:
+            can_edit_default_branch = await permission_backend.has_permission(
+                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+            )
+            if can_edit_default_branch:
+                break
+
         operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in (
             GLOBAL_BRANCH_NAME,
             registry.default_branch,
@@ -48,7 +43,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         )
 
         if (
-            not self.can_edit_default_branch
+            not can_edit_default_branch
             and operates_on_default_branch
             and analyzed_query.contains_mutation
             and not is_exempt_operation
