@@ -2,7 +2,6 @@ from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.database import InfrahubDatabase
 
 from .model.path import (
     EnrichedDiffAttribute,
