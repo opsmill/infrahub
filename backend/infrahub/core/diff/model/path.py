@@ -462,15 +462,6 @@ class EnrichedDiffRoot(BaseSummary):
 
         return parent
 
-    def get_node_field_specifiers(self) -> set[NodeFieldSpecifier]:
-        specifiers = set()
-        for node in self.nodes:
-            for attribute in node.attributes:
-                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute.name))
-            for relationship in node.relationships:
-                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=relationship.name))
-        return specifiers
-
 
 @dataclass
 class EnrichedDiffs:

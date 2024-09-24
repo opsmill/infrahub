@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from infrahub import lock
+from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 
@@ -279,7 +280,9 @@ class DiffCoordinator:
                 if previous_diffs is None:
                     node_field_specifiers = set()
                 else:
-                    node_field_specifiers = previous_diffs.diff_branch_diff.get_node_field_specifiers()
+                    node_field_specifiers = self._get_node_field_specifiers(
+                        enriched_diff=previous_diffs.diff_branch_diff
+                    )
                 diff_request = EnrichedDiffRequest(
                     base_branch=diff_request.base_branch,
                     diff_branch=diff_request.diff_branch,
@@ -308,7 +311,7 @@ class DiffCoordinator:
             diff_branch=diff_request.diff_branch,
             from_time=diff_request.from_time,
             to_time=diff_request.to_time,
-            extra_node_specifiers=diff_request.node_field_specifiers,
+            previous_node_specifiers=diff_request.node_field_specifiers,
         )
         enriched_diff_pair = await self.diff_enricher.enrich(calculated_diffs=calculated_diff_pair)
         return enriched_diff_pair
@@ -332,3 +335,17 @@ class DiffCoordinator:
         if sorted_time_ranges[-1].to_time < to_time:
             missing_time_ranges.append(TimeRange(from_time=sorted_time_ranges[-1].to_time, to_time=to_time))
         return missing_time_ranges
+
+    def _get_node_field_specifiers(self, enriched_diff: EnrichedDiffRoot) -> set[NodeFieldSpecifier]:
+        specifiers = set()
+        schema_branch = registry.schema.get_schema_branch(name=enriched_diff.diff_branch_name)
+        for node in enriched_diff.nodes:
+            for attribute in node.attributes:
+                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute.name))
+            if not node.relationships:
+                continue
+            node_schema = schema_branch.get_node(name=node.kind, duplicate=False)
+            for relationship in node.relationships:
+                relationship_schema = node_schema.get_relationship(name=relationship.name)
+                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=relationship_schema.get_identifier()))
+        return specifiers
