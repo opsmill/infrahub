@@ -78,7 +78,7 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
 1. Open the [GraphQL Interface](http://localhost:8000/graphql).
 2. If needed, i.e., your repository is private, create a Credential object to hold your username / password.
 
-```GraphQL
+```graphql
   # Endpoint: http://127.0.0.1:8000/graphql/main
   mutation {
     CorePasswordCredentialCreate(
@@ -101,7 +101,7 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
 <Tabs>
   <TabItem value="Repository" default>
 
-```GraphQL
+```graphql
   # Endpoint: http://127.0.0.1:8000/graphql/main
   mutation {
     CoreRepositoryCreate(
@@ -123,7 +123,7 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
   <TabItem value="Read-only Repository">
     **Make sure that you are on the correct Infrahub branch.** Unlike a Repository, a Read-only Repository will only pull files into the Infrahub branch on which it was created.
 
-```GraphQL
+```graphql
   # Endpoint : http://127.0.0.1:8000/graphql/<branch>
   mutation {
     CoreReadOnlyRepositoryCreate(
@@ -238,7 +238,7 @@ Unlike `Repository`, Infrahub does not automatically update `Read-only Repositor
 1. Open the [GraphQL Interface](http://localhost:8000/graphql).
 2. Copy-paste the correct mutation from below and complete the information
 
-```GraphQL
+```graphql
   # Endpoint : http://127.0.0.1:8000/graphql/main
   mutation {
     CoreReadOnlyRepositoryUpdate(
@@ -310,7 +310,7 @@ RUN update-ca-certificates
 
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
-```bash
+```shell
 INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 
@@ -354,7 +354,7 @@ RUN git config --global http.sslVerify "false"
 
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
-```bash
+```shell
 INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 
@@ -398,7 +398,7 @@ RUN git config --global http.proxy http://user:password@internal.proxy:8080
 
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
-```bash
+```shell
 INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 
