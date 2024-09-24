@@ -67,7 +67,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }).filter((column) => {
     if (column.isAttribute) return true;
 
-    return relationshipsData.some((relationship: { node: any }) => {
+    return relationshipsData?.some((relationship: { node: any }) => {
       const relatedObject = relationship.node[column.name]?.node;
       if (!relatedObject) return true;
 
