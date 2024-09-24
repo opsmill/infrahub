@@ -42,7 +42,6 @@ export const Form = React.forwardRef<FormRef, FormProps>(
       currentForm.reset(defaultValues);
     }, [JSON.stringify(defaultValues)]);
 
-    // Callback version of watch.  It's your responsibility to unsubscribe when done.
     useEffect(() => {
       // Stop logic if there is no context to prevent the slide over close
       if (!slideOverContext?.setPreventClose) return;
@@ -56,11 +55,14 @@ export const Form = React.forwardRef<FormRef, FormProps>(
           }
         );
 
-        if (updatedValue && slideOverContext.setPreventClose)
-          slideOverContext.setPreventClose(true);
+        if (updatedValue && slideOverContext.setPreventClose) console.log("SET TRUE NOW");
+
+        slideOverContext.setPreventClose(true);
       });
 
-      return () => subscription.unsubscribe();
+      return () => {
+        subscription.unsubscribe();
+      };
     }, [currentForm.watch]);
 
     return (
@@ -71,7 +73,9 @@ export const Form = React.forwardRef<FormRef, FormProps>(
               event.stopPropagation();
             }
 
-            if (slideOverContext?.setPreventClose) slideOverContext?.setPreventClose(false);
+            if (slideOverContext?.setPreventClose) {
+              slideOverContext?.setPreventClose(false);
+            }
 
             if (!onSubmit) return;
 

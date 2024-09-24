@@ -35,9 +35,13 @@ export default function SlideOver(props: Props) {
     1: "-translate-x-[400px]",
   };
 
+  const context = {
+    isOpen: open || (!open && preventClose),
+    setPreventClose: (value: boolean) => setPreventClose(value),
+  };
+
   return (
-    <SlideOverContext.Provider
-      value={{ setPreventClose: (value: boolean) => setPreventClose(value) }}>
+    <SlideOverContext.Provider value={context}>
       <Transition.Root show={open || (!open && preventClose)} as={Fragment}>
         <Dialog as="div" className="relative z-10" onClose={setOpen} initialFocus={initialFocusRef}>
           <Transition.Child

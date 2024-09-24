@@ -37,14 +37,14 @@ export const Filters = ({ schema }: FiltersProps) => {
   const handleSubmit = (formData: Record<string, FormFieldValue>) => {
     const newFilters = getFiltersFromFormData(formData);
 
+    setShowFilters(false);
+
     setPagination({
       ...pagination,
       offset: 0,
     });
 
     setFilters(newFilters);
-
-    setShowFilters(false);
   };
 
   const currentFilters = filters.filter((filter) => !SEARCH_FILTERS.includes(filter.name));
@@ -84,7 +84,7 @@ export const Filters = ({ schema }: FiltersProps) => {
           kind={schema?.kind}
           isFilterForm
           submitLabel="Apply filters"
-          currentObject={getObjectFromFilters(schema, currentFilters)}
+          currentObject={getObjectFromFilters(schema, showFilters ? currentFilters : [])}
         />
       </SlideOver>
     </div>
