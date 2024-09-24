@@ -8,9 +8,9 @@ import { useState } from "react";
 import ObjectForm from "@/components/form/object-form";
 import usePagination from "@/hooks/usePagination";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { getFiltersFromFormData } from "@/components/filters/utils/getFiltersFromFormData";
 import { FormFieldValue } from "@/components/form/type";
 import { getObjectFromFilters } from "@/components/filters/utils/getObjectFromFilters";
-import { getFiltersFromFormData } from "./utils/getFiltersFromFormData";
 
 type FiltersProps = {
   schema: IModelSchema;
