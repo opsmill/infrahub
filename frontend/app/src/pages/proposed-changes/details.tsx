@@ -22,7 +22,6 @@ import { StringParam, useQueryParam } from "use-query-params";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
 import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-change-details";
-import { NetworkStatus } from "@apollo/client";
 import { CoreProposedChange } from "@/generated/graphql";
 import { Badge } from "@/components/ui/badge";
 import { getObjectDetailsUrl } from "@/utils/objects";
@@ -106,15 +105,14 @@ export function Component() {
   const { proposedChangeId } = useParams();
   const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
-  const { loading, networkStatus, error, data, client } = useQuery(GET_PROPOSED_CHANGE_DETAILS, {
-    notifyOnNetworkStatusChange: true,
+  const { loading, error, data, client } = useQuery(GET_PROPOSED_CHANGE_DETAILS, {
     variables: {
       id: proposedChangeId,
       nodeId: proposedChangeId, // Used for tasks, which is a different type
     },
   });
 
-  if (networkStatus === NetworkStatus.loading) {
+  if (loading) {
     return <LoadingScreen className="m-auto h-auto" />;
   }
 
@@ -153,7 +151,7 @@ export function Component() {
     },
   ];
 
-  if (error || (!loading && !proposedChangesData)) {
+  if (error || !proposedChangesData) {
     return (
       <Content>
         <Content.Title
@@ -179,7 +177,7 @@ export function Component() {
           <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
         )}
 
-        {!loading && !proposedChangesData && <NoDataFound message="No proposed changes found." />}
+        {!proposedChangesData && <NoDataFound message="No proposed changes found." />}
       </Content>
     );
   }
