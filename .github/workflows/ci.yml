@@ -238,7 +238,7 @@ jobs:
       group: huge-runners
     timeout-minutes: 45
     env:
-      INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -328,7 +328,7 @@ jobs:
           flag-name: backend-integration
           parallel: true
 
-  backend-tests-neo4j:
+  backend-tests-memgraph:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -342,9 +342,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: backend-tests-unit-neo4j
+          - name: backend-tests-unit-memgraph
             env:
-              INFRAHUB_DB_TYPE: neo4j
+              INFRAHUB_DB_TYPE: memgraph
           - name: backend-tests-unit-nats
             env:
               INFRAHUB_DB_TYPE: memgraph
@@ -737,7 +737,7 @@ jobs:
     runs-on:
       group: huge-runners
     env:
-      INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
