@@ -537,7 +537,6 @@ ignore = [
     "RUF021",   # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
     "RUF027",   # Possible f-string without an `f` prefix
     "RUF029",   # Function is declared `async`, but doesn't `await` or use `async` features.
-    "RUF031",   # [*] Avoid parentheses for tuples in subscripts.
     "S101",     # Use of `assert` detected
     "S105",     # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",     # Probable insecure usage of temporary file or directory

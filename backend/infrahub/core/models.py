@@ -417,7 +417,7 @@ class HashableModel(BaseModel):
         sub_items = {}
         for item in items:
             if item.id and item.id in shared_ids:
-                sub_items[(item.id,)] = item
+                sub_items[item.id,] = item
                 continue
             sub_items[item._sorting_id] = item
 
