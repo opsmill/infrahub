@@ -37,14 +37,14 @@ export const Filters = ({ schema }: FiltersProps) => {
   const handleSubmit = (formData: Record<string, FormFieldValue>) => {
     const newFilters = getFiltersFromFormData(formData);
 
-    setShowFilters(false);
-
     setPagination({
       ...pagination,
       offset: 0,
     });
 
     setFilters(newFilters);
+
+    setShowFilters(false);
   };
 
   const currentFilters = filters.filter((filter) => !SEARCH_FILTERS.includes(filter.name));
