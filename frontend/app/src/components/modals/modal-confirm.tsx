@@ -9,10 +9,10 @@ interface iProps {
   isLoading?: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
-  description: string | React.ReactNode;
+  description?: string | React.ReactNode;
   onConfirm: Function;
   onCancel: Function;
-  children: ReactNode;
+  children?: ReactNode;
   icon?: string;
 }
 
