@@ -17,17 +17,17 @@ import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
 import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-change-details";
-import { NetworkStatus } from "@apollo/client";
 import { CoreProposedChange } from "@/generated/graphql";
 import { Badge } from "@/components/ui/badge";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { useSchema } from "@/hooks/useSchema";
+import NoDataFound from "@/screens/errors/no-data-found";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -105,29 +105,18 @@ export function Component() {
   const { proposedChangeId } = useParams();
   const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
-  const { loading, networkStatus, error, data, client } = useQuery(GET_PROPOSED_CHANGE_DETAILS, {
-    notifyOnNetworkStatusChange: true,
+  const { loading, error, data, client } = useQuery(GET_PROPOSED_CHANGE_DETAILS, {
     variables: {
       id: proposedChangeId,
       nodeId: proposedChangeId, // Used for tasks, which is a different type
     },
   });
 
-  if (networkStatus === NetworkStatus.loading) {
+  if (loading) {
     return <LoadingScreen className="m-auto h-auto" />;
   }
 
-  if (error) {
-    return (
-      <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
-    );
-  }
-
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT]?.edges?.[0]?.node;
-
-  if (!proposedChangesData) {
-    return <Navigate to={constructPath("/proposed-changes")} />;
-  }
 
   const tabs = [
     {
@@ -161,6 +150,37 @@ export function Component() {
       count: (data && data[TASK_OBJECT]?.count) ?? 0,
     },
   ];
+
+  if (error || !proposedChangesData) {
+    return (
+      <Content>
+        <Content.Title
+          title={
+            <div className="flex items-center gap-2">
+              <Link
+                className="no-underline hover:underline"
+                to={constructPath("/proposed-changes")}>
+                Proposed changes
+              </Link>
+            </div>
+          }
+          reload={() => client.reFetchObservableQueries()}
+          isReloadLoading={loading}>
+          <ObjectHelpButton
+            documentationUrl={schema?.documentation}
+            kind={PROPOSED_CHANGES_OBJECT}
+            className="ml-auto"
+          />
+        </Content.Title>
+
+        {error && (
+          <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
+        )}
+
+        {!proposedChangesData && <NoDataFound message="No proposed changes found." />}
+      </Content>
+    );
+  }
 
   return (
     <Content>
