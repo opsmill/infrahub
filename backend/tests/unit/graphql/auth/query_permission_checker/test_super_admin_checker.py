@@ -97,43 +97,27 @@ class TestSuperAdminPermission:
 
     async def test_account_with_permission(self, db: InfrahubDatabase):
         checker = SuperAdminPermissionChecker()
-        graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
-        graphql_query.operation_name = "Foo"
-        graphql_query.operations = [MagicMock()]
-        graphql_query.operations[0].name = "BuiltinTagCreate"
-
         session = AccountSession(
             authenticated=True, account_id=permission_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         resolution = await checker.check(
             db=db,
             account_session=session,
-            analyzed_query=graphql_query,
+            analyzed_query=AsyncMock(spec=InfrahubGraphQLQueryAnalyzer),
             query_parameters=MagicMock(spec=GraphqlParams),
             branch=permission_helper.default_branch,
         )
         assert resolution == CheckerResolution.TERMINATE
 
-    @pytest.mark.parametrize(
-        "operation_name,checker_resolution",
-        [("BranchMerge", None), ("BuiltinTagCreate", CheckerResolution.NEXT_CHECKER)],
-    )
-    async def test_account_without_permission(
-        self, operation_name: str, checker_resolution: None | CheckerResolution, db: InfrahubDatabase
-    ):
+    async def test_account_without_permission(self, db: InfrahubDatabase):
         checker = SuperAdminPermissionChecker()
-        graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
-        graphql_query.operation_name = "Foo"
-        graphql_query.operations = [MagicMock()]
-        graphql_query.operations[0].name = "BuiltinTagCreate"
-
         session = AccountSession(
             authenticated=True, account_id=permission_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         resolution = await checker.check(
             db=db,
             account_session=session,
-            analyzed_query=graphql_query,
+            analyzed_query=AsyncMock(spec=InfrahubGraphQLQueryAnalyzer),
             query_parameters=MagicMock(spec=GraphqlParams),
             branch=permission_helper.default_branch,
         )
