@@ -59,7 +59,6 @@ const getQuery = (schema?: IModelSchema, filters?: Array<Filter>) => {
 };
 
 export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) => {
-  console.log("getQuery(schema, filters): ", getQuery(schema, filters));
   const query = gql`
     ${getQuery(schema, filters)}
   `;

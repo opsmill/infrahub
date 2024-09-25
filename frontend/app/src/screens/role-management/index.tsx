@@ -1,44 +1,65 @@
-import { Tabs } from "@/components/tabs";
-import { Accounts } from "./accounts";
-import { Groups } from "./groups";
-import { Roles } from "./roles";
-import { Permissions } from "./permissions";
-import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "@/config/qsp";
-import { ReactNode } from "react";
+import { Tabs } from "@/components/tabs-routes";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
   ACCOUNT_PERMISSION_OBJECT,
   ACCOUNT_ROLE_OBJECT,
 } from "@/config/constants";
+import { GET_ROLE_MANAGEMENT_COUNTS } from "@/graphql/queries/role-management/getCounts";
+import useQuery from "@/hooks/useQuery";
 
-const content: Record<string, ReactNode> = {
-  [ACCOUNT_OBJECT]: <Accounts />,
-  [ACCOUNT_GROUP_OBJECT]: <Groups />,
-  [ACCOUNT_ROLE_OBJECT]: <Roles />,
-  [ACCOUNT_PERMISSION_OBJECT]: <Permissions />,
-};
+import { constructPath } from "@/utils/fetch";
+import { Icon } from "@iconify-icon/react";
+import { Outlet } from "react-router-dom";
 
 export function RoleManagementRoot() {
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const { loading, data, error } = useQuery(GET_ROLE_MANAGEMENT_COUNTS);
 
   const tabs = [
     {
-      name: ACCOUNT_OBJECT,
-      label: "Accounts",
+      to: constructPath("/role-management"),
+      label: (
+        <div className="flex items-center gap-2">
+          <Icon icon={"mdi:user-outline"} />
+          Accounts
+        </div>
+      ),
+      count: data && data[ACCOUNT_OBJECT]?.count,
+      isLoading: loading,
+      error: !!error,
     },
     {
-      name: ACCOUNT_GROUP_OBJECT,
-      label: "Groups",
+      to: constructPath("/role-management/groups"),
+      label: (
+        <div className="flex items-center gap-2">
+          <Icon icon={"mdi:user-multiple-outline"} />
+          Groups
+        </div>
+      ),
+      count: data && data[ACCOUNT_GROUP_OBJECT]?.count,
+      isLoading: loading,
     },
     {
-      name: ACCOUNT_ROLE_OBJECT,
-      label: "Roles",
+      to: constructPath("/role-management/roles"),
+      label: (
+        <div className="flex items-center gap-2">
+          <Icon icon={"mdi:user-circle-outline"} />
+          Roles
+        </div>
+      ),
+      count: data && data[ACCOUNT_ROLE_OBJECT]?.count,
+      isLoading: loading,
     },
     {
-      name: ACCOUNT_PERMISSION_OBJECT,
-      label: "Permissions",
+      to: constructPath("/role-management/permissions"),
+      label: (
+        <div className="flex items-center gap-2">
+          <Icon icon={"mdi:ticket-account-outline"} />
+          Permissions
+        </div>
+      ),
+      count: data && data[ACCOUNT_PERMISSION_OBJECT]?.count,
+      isLoading: loading,
     },
   ];
 
@@ -46,7 +67,9 @@ export function RoleManagementRoot() {
     <div>
       <Tabs tabs={tabs} className="pr-2" />
 
-      <div className="p-4">{qspTab ? content[qspTab] : content[ACCOUNT_OBJECT]}</div>
+      <div className="p-4">
+        <Outlet />
+      </div>
     </div>
   );
 }

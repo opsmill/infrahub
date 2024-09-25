@@ -148,6 +148,24 @@ export const router = createBrowserRouter([
           {
             path: "role-management",
             lazy: () => import("@/pages/role-management"),
+            children: [
+              {
+                index: true,
+                lazy: () => import("@/screens/role-management/accounts"),
+              },
+              {
+                path: "groups",
+                lazy: () => import("@/screens/role-management/groups"),
+              },
+              {
+                path: "roles",
+                lazy: () => import("@/screens/role-management/roles"),
+              },
+              {
+                path: "permissions",
+                lazy: () => import("@/screens/role-management/permissions"),
+              },
+            ],
           },
           {
             path: "/",
