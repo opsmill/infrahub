@@ -59,6 +59,7 @@ opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
 opentelemetry-exporter-otlp-proto-http = "^1.24.0"
 nats-py = "^2.7.2"
 netaddr = "1.3.0"
+authlib = "1.3.2"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
