@@ -1,7 +1,10 @@
+import copy
 import logging
+import random
 import time
 import uuid
 from collections import defaultdict
+from enum import Enum
 from ipaddress import IPv4Network, IPv6Network
 from typing import Optional, cast
 
@@ -37,6 +40,7 @@ from protocols import (
 )
 from pydantic import BaseModel, ConfigDict, Field
 
+# TODO: Review values for the profiles here
 PROFILES = {
     "small": {"num_sites": 2, "num_device_per_site": 2, "has_bgp_mesh": False, "has_branch": False},
     "medium": {"num_sites": 5, "num_device_per_site": 6, "has_bgp_mesh": True, "has_branch": True},
@@ -162,6 +166,7 @@ class Device(BaseModel):
     role: str
     tags: list[str]
     platform: str
+    _idx: int
 
     @property
     def l2_interface_names(self) -> list[str]:
@@ -285,74 +290,15 @@ class Vlan(BaseModel):
 
 
 CONTINENT_COUNTRIES = {
-    "North America": ["United States of America", "Canada", "Mexico", "Nicaragua", "Haiti", "Puerto Rico"],
-    "South America": ["Brazil", "South Africa", "Argentina", "Chile", "Peru", "Colombia", "Bolivia", "Ecuador"],
-    "Africa": [
-        "Morocco",
-        "Kuwait",
-        "Kenya",
-        "Egypt",
-        "Senegal",
-        "Republic of Congo",
-        "Ethiopia",
-        "Tanzania",
-        "Nigeria",
-        "Ghana",
-    ],
-    "Europe": [
-        "France",
-        "Spain",
-        "Italy",
-        "Finland",
-        "United Kingdom",
-        "Greece",
-        "Iceland",
-        "Germany",
-        "Norway",
-        "Cyprus",
-        "Lithuania",
-        "Serbia",
-        "Slovakia",
-        "Croatia",
-        "Bulgaria",
-        "Latvia",
-        "Poland",
-        "Hungary",
-        "Czech Republic",
-        "Montenegro",
-        "Bosnia and Herzegovina",
-        "Belgium",
-        "Estonia",
-        "Sweden",
-        "Denmark",
-        "Russia",
-        "Portugal",
-        "Netherlands",
-        "Switzerland",
-    ],
-    "Asia": [
-        "Japan",
-        "China",
-        "Taiwan",
-        "India",
-        "Nepal",
-        "Jordan",
-        "Qatar",
-        "Pakistan",
-        "Malaysia",
-        "South Korea",
-        "Turkey",
-        "United Arab Emirates",
-        "Singapore",
-        "Hong Kong",
-        "Thailand",
-    ],
+    "North America": ["United States of America", "Canada"],
+    "South America": ["Mexico", "Brazil"],
+    "Africa": ["Morocco", "Senegal"],
+    "Europe": ["France", "Spain", "Italy"],
+    "Asia": ["Japan", "China"],
     "Oceania": ["Australia", "New Zealand"],
 }
 
-# Chat GPT came up with the most cliche contact names here
 SITES = [
-    Site(name="sin", country="Singapore", city="Singapore", contact="Siti Tan"),
     Site(name="atl", country="United States of America", city="Atlanta", contact="Bailey Li"),
     Site(name="ord", country="United States of America", city="Chicago", contact="Kayden Kennedy"),
     Site(name="jfk", country="United States of America", city="New York", contact="Micaela Marsh"),
@@ -363,195 +309,6 @@ SITES = [
     Site(name="sfo", country="United States of America", city="San Francisco", contact="Taliyah Sampson"),
     Site(name="iah", country="United States of America", city="Houston", contact="Fernanda Solomon"),
     Site(name="mco", country="United States of America", city="Orlando", contact="Arthur Rose"),
-    Site(name="yyz", country="Canada", city="Toronto", contact="Jaxon Fitzgerald"),
-    Site(name="yvr", country="Canada", city="Vancouver", contact="Addison Harper"),
-    Site(name="lhr", country="United Kingdom", city="London", contact="Isabella Harris"),
-    Site(name="cdg", country="France", city="Paris", contact="Louis Dupont"),
-    Site(name="nrt", country="Japan", city="Tokyo", contact="Haruto Sato"),
-    Site(name="bom", country="India", city="Mumbai", contact="Aryan Patel"),
-    Site(name="hkg", country="Hong Kong", city="Hong Kong", contact="Kai Wong"),
-    Site(name="syd", country="Australia", city="Sydney", contact="Oliver Thompson"),
-    Site(name="mad", country="Spain", city="Madrid", contact="Lucía García"),
-    Site(name="fra", country="Germany", city="Frankfurt", contact="Lukas Müller"),
-    Site(name="ams", country="Netherlands", city="Amsterdam", contact="Emma Visser"),
-    Site(name="mxp", country="Italy", city="Milan", contact="Giulia Rossi"),
-    Site(name="fco", country="Italy", city="Rome", contact="Alessandro Ferrari"),
-    Site(name="osl", country="Norway", city="Oslo", contact="Nora Johansen"),
-    Site(name="hel", country="Finland", city="Helsinki", contact="Oskari Virtanen"),
-    Site(name="cph", country="Denmark", city="Copenhagen", contact="Freja Nielsen"),
-    Site(name="zrh", country="Switzerland", city="Zurich", contact="Jonas Baumann"),
-    Site(name="vce", country="Italy", city="Venice", contact="Sophia Romano"),
-    Site(name="dxb", country="United Arab Emirates", city="Dubai", contact="Zayed Al Nahyan"),
-    Site(name="jnb", country="South Africa", city="Johannesburg", contact="Thandiwe Ndlovu"),
-    Site(name="gva", country="Switzerland", city="Geneva", contact="Chloe Dupont"),
-    Site(name="bcn", country="Spain", city="Barcelona", contact="Carlos Martínez"),
-    Site(name="lis", country="Portugal", city="Lisbon", contact="Maria Silva"),
-    Site(name="ath", country="Greece", city="Athens", contact="Nikos Papadopoulos"),
-    Site(name="ist", country="Turkey", city="Istanbul", contact="Ege Yılmaz"),
-    Site(name="led", country="Russia", city="Saint Petersburg", contact="Vladimir Ivanov"),
-    Site(name="svo", country="Russia", city="Moscow", contact="Olga Kuznetsova"),
-    Site(name="blr", country="India", city="Bengaluru", contact="Neha Reddy"),
-    Site(name="del", country="India", city="Delhi", contact="Rahul Sharma"),
-    Site(name="bkk", country="Thailand", city="Bangkok", contact="Kanya Phrommin"),
-    Site(name="hnd", country="Japan", city="Tokyo", contact="Yuki Tanaka"),
-    Site(name="icn", country="South Korea", city="Seoul", contact="Jihoon Kim"),
-    Site(name="kix", country="Japan", city="Osaka", contact="Rina Matsui"),
-    Site(name="akl", country="New Zealand", city="Auckland", contact="Ethan Brown"),
-    Site(name="kwi", country="Kuwait", city="Kuwait City", contact="Abdullah Al Sabah"),
-    Site(name="cpt", country="South Africa", city="Cape Town", contact="Sipho Khumalo"),
-    Site(name="pvg", country="China", city="Shanghai", contact="Wei Zhang"),
-    Site(name="pek", country="China", city="Beijing", contact="Jia Li"),
-    Site(name="hhg", country="China", city="Hong Kong", contact="Xin Wang"),
-    Site(name="tpe", country="Taiwan", city="Taipei", contact="Mei Chen"),
-    Site(name="cai", country="Egypt", city="Cairo", contact="Ahmed Hassan"),
-    Site(name="lim", country="Peru", city="Lima", contact="Camila Flores"),
-    Site(name="bog", country="Colombia", city="Bogotá", contact="Juan Hernández"),
-    Site(name="lima", country="Peru", city="Lima", contact="Diego Ramos"),
-    Site(name="sao", country="Brazil", city="São Paulo", contact="Gabriela Sousa"),
-    Site(name="gig", country="Brazil", city="Rio de Janeiro", contact="Lucas Costa"),
-    Site(name="mlu", country="United States of America", city="Monroe", contact="Samuel Grant"),
-    Site(name="dtw", country="United States of America", city="Detroit", contact="Aaliyah Wright"),
-    Site(name="pdx", country="United States of America", city="Portland", contact="Hayden Brooks"),
-    Site(name="msp", country="United States of America", city="Minneapolis", contact="Jaxon Young"),
-    Site(name="phx", country="United States of America", city="Phoenix", contact="Peyton Simmons"),
-    Site(name="mia", country="United States of America", city="Miami", contact="Ariana Baker"),
-    Site(name="bos", country="United States of America", city="Boston", contact="Scarlett Cook"),
-    Site(name="las", country="United States of America", city="Las Vegas", contact="Ryder Griffin"),
-    Site(name="clt", country="United States of America", city="Charlotte", contact="Skyler Ortiz"),
-    Site(name="lax", country="United States of America", city="Los Angeles", contact="Noah Johnson"),
-    Site(name="yul", country="Canada", city="Montreal", contact="Zoe Lambert"),
-    Site(name="yyc", country="Canada", city="Calgary", contact="Grayson Scott"),
-    Site(name="yeg", country="Canada", city="Edmonton", contact="Hannah Wright"),
-    Site(name="nbo", country="Kenya", city="Nairobi", contact="Mwangi Otieno"),
-    Site(name="acc", country="Ghana", city="Accra", contact="Kwame Mensah"),
-    Site(name="lca", country="Cyprus", city="Larnaca", contact="Eleni Georgiou"),
-    Site(name="tll", country="Estonia", city="Tallinn", contact="Kristo Vaher"),
-    Site(name="vlc", country="Spain", city="Valencia", contact="Javier Torres"),
-    Site(name="agp", country="Spain", city="Málaga", contact="Alejandro Romero"),
-    Site(name="nap", country="Italy", city="Naples", contact="Valentina Ricci"),
-    Site(name="flr", country="Italy", city="Florence", contact="Lorenzo Bianchi"),
-    Site(name="sna", country="United States of America", city="Santa Ana", contact="Daniel Sanchez"),
-    Site(name="vno", country="Lithuania", city="Vilnius", contact="Austėja Daukšaitė"),
-    Site(name="beg", country="Serbia", city="Belgrade", contact="Nikola Marković"),
-    Site(name="bts", country="Slovakia", city="Bratislava", contact="Jakub Horváth"),
-    Site(name="dbv", country="Croatia", city="Dubrovnik", contact="Ivana Petrovic"),
-    Site(name="zag", country="Croatia", city="Zagreb", contact="Filip Juric"),
-    Site(name="sof", country="Bulgaria", city="Sofia", contact="Georgi Dimitrov"),
-    Site(name="ktm", country="Nepal", city="Kathmandu", contact="Sunita Shrestha"),
-    Site(name="rix", country="Latvia", city="Riga", contact="Kristaps Ozoliņš"),
-    Site(name="waw", country="Poland", city="Warsaw", contact="Zofia Kowalska"),
-    Site(name="gdn", country="Poland", city="Gdańsk", contact="Mateusz Nowak"),
-    Site(name="krk", country="Poland", city="Krakow", contact="Jakub Wiśniewski"),
-    Site(name="bud", country="Hungary", city="Budapest", contact="László Tóth"),
-    Site(name="prg", country="Czech Republic", city="Prague", contact="Petra Novaková"),
-    Site(name="bzv", country="Republic of Congo", city="Brazzaville", contact="Jules Ngoma"),
-    Site(name="los", country="Nigeria", city="Lagos", contact="Chidi Okeke"),
-    Site(name="add", country="Ethiopia", city="Addis Ababa", contact="Selamawit Haile"),
-    Site(name="dar", country="Tanzania", city="Dar es Salaam", contact="Amani Njoroge"),
-    Site(name="ktw", country="Poland", city="Katowice", contact="Alicja Zielińska"),
-    Site(name="spu", country="Croatia", city="Split", contact="Milan Kovac"),
-    Site(name="bio", country="Spain", city="Bilbao", contact="Miguel Fernandez"),
-    Site(name="sjj", country="Bosnia and Herzegovina", city="Sarajevo", contact="Emir Kovačević"),
-    Site(name="tgd", country="Montenegro", city="Podgorica", contact="Jovan Radović"),
-    Site(name="tiv", country="Montenegro", city="Tivat", contact="Milica Petrović"),
-    Site(name="rdu", country="United States of America", city="Raleigh", contact="Thomas Barnes"),
-    Site(name="pit", country="United States of America", city="Pittsburgh", contact="Olivia Greene"),
-    Site(name="slc", country="United States of America", city="Salt Lake City", contact="Brandon Cooper"),
-    Site(name="mci", country="United States of America", city="Kansas City", contact="Samantha Lawrence"),
-    Site(name="sat", country="United States of America", city="San Antonio", contact="Nicole Evans"),
-    Site(name="oma", country="United States of America", city="Omaha", contact="Benjamin Davis"),
-    Site(name="okc", country="United States of America", city="Oklahoma City", contact="Ethan Wood"),
-    Site(name="abq", country="United States of America", city="Albuquerque", contact="Isabella Scott"),
-    Site(name="tul", country="United States of America", city="Tulsa", contact="Carter Morris"),
-    Site(name="hsv", country="United States of America", city="Huntsville", contact="Sophia Price"),
-    Site(name="jan", country="United States of America", city="Jackson", contact="Logan Ross"),
-    Site(name="ric", country="United States of America", city="Richmond", contact="Sydney Peterson"),
-    Site(name="chs", country="United States of America", city="Charleston", contact="Aiden Mitchell"),
-    Site(name="pvd", country="United States of America", city="Providence", contact="Maya Clark"),
-    Site(name="bdl", country="United States of America", city="Hartford", contact="Kaitlyn Howard"),
-    Site(name="bna", country="United States of America", city="Nashville", contact="Savannah Adams"),
-    Site(name="msy", country="United States of America", city="New Orleans", contact="Noah Cooper"),
-    Site(name="aus", country="United States of America", city="Austin", contact="Lily Martinez"),
-    Site(name="lgb", country="United States of America", city="Long Beach", contact="Mason Torres"),
-    Site(name="smf", country="United States of America", city="Sacramento", contact="Abigail Fisher"),
-    Site(name="mem", country="United States of America", city="Memphis", contact="Isaac Jenkins"),
-    Site(name="tpa", country="United States of America", city="Tampa", contact="Jacob Barnes"),
-    Site(name="cle", country="United States of America", city="Cleveland", contact="Ella Simmons"),
-    Site(name="buf", country="United States of America", city="Buffalo", contact="Daniel Bailey"),
-    Site(name="cmh", country="United States of America", city="Columbus", contact="Avery Russell"),
-    Site(name="ind", country="United States of America", city="Indianapolis", contact="Zoey Price"),
-    Site(name="day", country="United States of America", city="Dayton", contact="Brianna Murphy"),
-    Site(name="fll", country="United States of America", city="Fort Lauderdale", contact="Anthony Hayes"),
-    Site(name="rsw", country="United States of America", city="Fort Myers", contact="Sofia Diaz"),
-    Site(name="sdf", country="United States of America", city="Louisville", contact="Charles Bell"),
-    Site(name="ict", country="United States of America", city="Wichita", contact="Eliana Myers"),
-    Site(name="rno", country="United States of America", city="Reno", contact="Alyssa Powell"),
-    Site(name="lga", country="United States of America", city="New York (LaGuardia)", contact="Ella King"),
-    Site(name="ewr", country="United States of America", city="Newark", contact="Caleb Brooks"),
-    Site(name="orh", country="United States of America", city="Worcester", contact="Harper Reed"),
-    Site(name="bgr", country="United States of America", city="Bangor", contact="Isabella Walker"),
-    Site(name="pwm", country="United States of America", city="Portland", contact="Charlotte Baker"),
-    Site(name="ack", country="United States of America", city="Nantucket", contact="Oliver Foster"),
-    Site(name="mht", country="United States of America", city="Manchester", contact="Liam Parker"),
-    Site(name="acy", country="United States of America", city="Atlantic City", contact="Madison Griffin"),
-    Site(name="jnu", country="United States of America", city="Juneau", contact="Ella Sanders"),
-    Site(name="geg", country="United States of America", city="Spokane", contact="Emily Wood"),
-    Site(name="slz", country="Brazil", city="São Luís", contact="Lucas Oliveira"),
-    Site(name="for", country="Brazil", city="Fortaleza", contact="Gabriela Pereira"),
-    Site(name="bel", country="Brazil", city="Belém", contact="Rafael Barbosa"),
-    Site(name="nat", country="Brazil", city="Natal", contact="Isabela Souza"),
-    Site(name="pso", country="Colombia", city="Pasto", contact="Camilo Suarez"),
-    Site(name="mga", country="Nicaragua", city="Managua", contact="Luis Gutierrez"),
-    Site(name="cus", country="Peru", city="Cusco", contact="Carla Espinoza"),
-    Site(name="vvi", country="Bolivia", city="Santa Cruz", contact="Sergio Rivera"),
-    Site(name="cuz", country="Peru", city="Cusco", contact="Vanessa Martinez"),
-    Site(name="uio", country="Ecuador", city="Quito", contact="Santiago Herrera"),
-    Site(name="pap", country="Haiti", city="Port-au-Prince", contact="Jean-Pierre Baptiste"),
-    Site(name="sju", country="Puerto Rico", city="San Juan", contact="Carlos Rodriguez"),
-    Site(name="pbi", country="United States of America", city="West Palm Beach", contact="Tiffany Young"),
-    Site(name="cvg", country="United States of America", city="Cincinnati", contact="Grace Richardson"),
-    Site(name="mdw", country="United States of America", city="Chicago", contact="Brianna Watson"),
-    Site(name="bwi", country="United States of America", city="Baltimore", contact="Gabriel Stevens"),
-    Site(name="phl", country="United States of America", city="Philadelphia", contact="Sophia Hill"),
-    Site(name="lbb", country="United States of America", city="Lubbock", contact="Alyssa Wilson"),
-    Site(name="scl", country="Chile", city="Santiago", contact="Gabriela Salazar"),
-    Site(name="eze", country="Argentina", city="Buenos Aires", contact="Mateo Fernandez"),
-    Site(name="gru", country="Brazil", city="São Paulo", contact="Renata Costa"),
-    Site(name="lpa", country="Spain", city="Las Palmas", contact="Lucia Moreno"),
-    Site(name="dkr", country="Senegal", city="Dakar", contact="Amadou Diop"),
-    Site(name="svq", country="Spain", city="Seville", contact="Diego Ruiz"),
-    Site(name="arn", country="Sweden", city="Stockholm", contact="Erik Lindström"),
-    Site(name="bru", country="Belgium", city="Brussels", contact="Elise Dupont"),
-    Site(name="gla", country="United Kingdom", city="Glasgow", contact="Ewan MacDonald"),
-    Site(name="kef", country="Iceland", city="Reykjavik", contact="Birta Sigurðardóttir"),
-    Site(name="amn", country="Jordan", city="Amman", contact="Layla Haddad"),
-    Site(name="doh", country="Qatar", city="Doha", contact="Mohammed Al-Thani"),
-    Site(name="khi", country="Pakistan", city="Karachi", contact="Ayesha Khan"),
-    Site(name="bne", country="Australia", city="Brisbane", contact="Olivia Taylor"),
-    Site(name="mel", country="Australia", city="Melbourne", contact="Jack Williams"),
-    Site(name="kul", country="Malaysia", city="Kuala Lumpur", contact="Nurul Aisyah"),
-    Site(name="dme", country="Russia", city="Moscow", contact="Olga Ivanova"),
-    Site(name="tls", country="France", city="Toulouse", contact="Camille Dubois"),
-    Site(name="mnl", country="Philippines", city="Manila", contact="Carlos Reyes"),
-    Site(name="sgn", country="Vietnam", city="Ho Chi Minh City", contact="Thanh Nguyen"),
-    Site(name="bhd", country="United Kingdom", city="Belfast", contact="Liam O'Connor"),
-    Site(name="edi", country="United Kingdom", city="Edinburgh", contact="Euan Campbell"),
-    Site(name="gdl", country="Mexico", city="Guadalajara", contact="Diego Hernandez"),
-    Site(name="lih", country="United States of America", city="Lihue", contact="Brody Martinez"),
-    Site(name="hba", country="Australia", city="Hobart", contact="Alice Wilson"),
-    Site(name="maj", country="Marshall Islands", city="Majuro", contact="Pita Lamora"),
-    Site(name="bgi", country="Barbados", city="Bridgetown", contact="Kiera Walker"),
-    Site(name="pos", country="Trinidad and Tobago", city="Port of Spain", contact="Jasmine Lewis"),
-    Site(name="ski", country="Norway", city="Ski", contact="Henrik Solheim"),
-    Site(name="osy", country="North Macedonia", city="Ohrid", contact="Dimitri Petrov"),
-    Site(name="nwi", country="United Kingdom", city="Norwich", contact="Oscar Turner"),
-    Site(name="orn", country="Algeria", city="Oran", contact="Fatima Salah"),
-    Site(name="tgu", country="Honduras", city="Tegucigalpa", contact="Ricardo Morales"),
-    Site(name="hmo", country="Mexico", city="Hermosillo", contact="Valeria Lopez"),
-    Site(name="gua", country="Guatemala", city="Guatemala City", contact="Mariana Castillo"),
-    Site(name="plo", country="Australia", city="Port Lincoln", contact="Tyler Thompson"),
-    Site(name="asm", country="Eritrea", city="Asmara", contact="Abiel Tesfay"),
-    Site(name="luq", country="Argentina", city="San Luis", contact="Sofia Ramos"),
 ]
 
 PLATFORMS = (
@@ -585,9 +342,34 @@ PLATFORMS = (
     ),
 )
 
-DEVICES = (
-    Device(
-        name="edge1",
+
+class DevicePatternName(str, Enum):
+    LEAF = "LEAF"
+    CORE = "CORE"
+    EDGE = "EDGE"
+
+
+DEVICE_PATTERNS = {
+    DevicePatternName.LEAF: Device(
+        name="leaf",
+        status="active",
+        type="7010TX-48",
+        profile="profile1",
+        role="leaf",
+        tags=["red", "green"],
+        platform="Arista EOS",
+    ),
+    DevicePatternName.CORE: Device(
+        name="core",
+        status="active",
+        type="MX204",
+        profile="profile1",
+        role="core",
+        tags=["blue"],
+        platform="Juniper JunOS",
+    ),
+    DevicePatternName.EDGE: Device(
+        name="edge",
         status="active",
         type="7280R3",
         profile="profile1",
@@ -595,56 +377,79 @@ DEVICES = (
         tags=["red", "green"],
         platform="Arista EOS",
     ),
-    Device(
-        name="edge2",
-        status="active",
-        type="ASR1002-HX",
-        profile="profile1",
-        role="edge",
-        tags=["red", "blue", "green"],
-        platform="Cisco IOS",
-    ),
-    Device(
-        name="core1",
-        status="drained",
-        type="MX204",
-        profile="profile1",
-        role="core",
-        tags=["blue"],
-        platform="Juniper JunOS",
-    ),
-    Device(
-        name="core2",
-        status="provisioning",
-        type="MX204",
-        profile="profile1",
-        role="core",
-        tags=["red"],
-        platform="Juniper JunOS",
-    ),
-    Device(
-        name="leaf1",
-        status="active",
-        type="7010TX-48",
-        profile="profile1",
-        role="leaf",
-        tags=["red", "green"],
-        platform="Arista EOS",
-    ),
-    Device(
-        name="leaf2",
-        status="active",
-        type="7010TX-48",
-        profile="profile1",
-        role="leaf",
-        tags=["red", "green"],
-        platform="Arista EOS",
-    ),
-)
+}
+
+DEVICE_STATUSES = ["active", "provisioning", "drained"]
+
+
+class SiteDesign:
+    def __init__(self, number_of_device: int) -> None:
+        """Takes the number of devices that need to be created on a given site.
+        This method will decide how many device of each type to create and return all those objects as a list."""
+        if number_of_device > 0:
+            self.number_of_device = number_of_device
+        else:
+            raise ValueError("number_of_device must be non-negative")
+
+        # There is a special case where there are 6 device...
+        if number_of_device == 6:
+            # Two of each
+            self.num_edge_device = 2
+            self.num_core_device = 2
+            self.num_leaf_device = 2
+
+        # Otherwise we try to compute something that makes a little bit of sense...
+        else:
+            # First we decide how many edge device we will spin
+            # The rule is the following:
+            # - between 0 -> 50 = 2 edges
+            # - then we add 2 edges every 50 devices
+            num_edge_device: int = 2
+            num_edge_device += (self.number_of_device // 50) * 2
+            self.num_edge_device = num_edge_device
+
+            # Second goes core device, we take one third of the remaining device allocation
+            self.num_core_device: int = (self.number_of_device - self.num_edge_device) // 3
+
+            # Finally we allocate what's remaining as leaf
+            self.num_leaf_device: int = self.number_of_device - self.num_edge_device - self.num_core_device
+
+    def device_generator(self, number: int, device_pattern_name: DevicePatternName) -> list[Device]:
+        """Generate a list of devices following the pattern provided."""
+        result: list[Device] = []
+
+        for i in range(1, number + 1):
+            # Take the pattern as baseline
+            current_device: Device = copy.copy(DEVICE_PATTERNS[device_pattern_name])
+
+            # Start the tweaking
+            current_device.name += str(i)
+            current_device._idx = i
+            current_device.status = random.choice(DEVICE_STATUSES)
+
+            # Add it to the list
+            result.append(current_device)
+
+        # Return devices
+        return result
+
+    def implement(self) -> list[Device]:
+        # Build the list of device
+        result: list[Device] = []
+
+        # Generate the list and return it
+        result.extend(self.device_generator(self.num_edge_device, DevicePatternName.EDGE))
+        result.extend(self.device_generator(self.num_core_device, DevicePatternName.CORE))
+        result.extend(self.device_generator(self.num_leaf_device, DevicePatternName.LEAF))
+
+        return result
+
+    def __repr__(self) -> str:
+        return f"SiteDesign(Edge device: {self.num_edge_device}, Core device: {self.num_core_device}, Leaf device: {self.num_leaf_device})"
 
 
 NETWORKS_SUPERNET = IPv4Network("10.0.0.0/8")
-NETWORKS_SUPERNET_IPV6 = IPv6Network("2001:DB8::/64")
+NETWORKS_SUPERNET_IPV6 = IPv6Network("2001:DB8::/100")
 NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.111.0.0/16")
 MANAGEMENT_NETWORKS = IPv4Network("172.16.0.0/16")
 
@@ -883,6 +688,32 @@ VLANS = (
 )
 
 store = NodeStore()
+
+
+async def find_and_connect_interfaces(
+    batch: InfrahubBatch,
+    log: logging.Logger,
+    interface_kind: InfraInterfaceL2 | InfraInterfaceL3,
+    first_device_name: str,
+    first_interface_name: str,
+    second_device_name: str,
+    second_interface_name: str,
+) -> None:
+    # Connecting first interface to second interface
+    first_interface = store.get(kind=interface_kind, key=first_interface_name)
+    second_interface = store.get(kind=interface_kind, key=second_interface_name)
+
+    first_interface.description.value = f"Connected to {second_device_name}::{second_interface_name}"
+    first_interface.connected_endpoint = second_interface
+    batch.add(task=first_interface.save, node=first_interface)
+
+    # Adjust description on second interface
+    second_interface.description.value = f"Connected to {first_device_name}::{first_interface_name}"
+    batch.add(task=second_interface.save, node=second_interface)
+
+    log.info(
+        f" - Connected '{first_device_name}::{first_interface_name}' <> '{second_device_name}::{second_interface_name}'"
+    )
 
 
 async def apply_interface_profiles(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
@@ -1147,6 +978,7 @@ async def generate_site(
     loopback_pool: CoreNode,
     management_pool: CoreNode,
     external_pool: CoreNode,
+    site_design: SiteDesign,
 ) -> str:
     group_eng = store.get("Engineering Team", kind=CoreAccount)
     group_ops = store.get("Operation Team", kind=CoreAccount)
@@ -1174,11 +1006,33 @@ async def generate_site(
     # --------------------------------------------------
     # Create the site specific IP prefixes
     # --------------------------------------------------
-    peer_networks: list[IpamIPPrefix] = [
-        await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, kind=IpamIPPrefix, branch=branch),
-        await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, kind=IpamIPPrefix, branch=branch),
-    ]
-    peer_network_hosts = {0: peer_networks[0].prefix.value.hosts(), 1: peer_networks[1].prefix.value.hosts()}
+    # TODO: Refactor that part for the sake of readability
+    # Here we dispatch to every p2p a /31 prefixe
+    # Between two edges we have 2 p2p connections so 2 prefixes
+    # So far we connect edge1<->edge2 then edge3<->edge4 ...
+    peer_networks: list[IpamIPPrefix] = []
+    peer_network_hosts = {
+        # 0: {0: peer_networks[0].prefix.value.hosts(), 1: peer_networks[1].prefix.value.hosts()},
+        # ^ Device id                                   ^ interface id
+    }
+
+    # Here we need as much prefix as we have edge device
+    for i in range(site_design.num_edge_device):
+        peer_networks.append(
+            await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, kind=IpamIPPrefix, branch=branch)
+        )
+
+    # Then we prepare all ips for all interfaces
+    # TODO: Refactor that part for the sake of readability
+    for i in range(1, site_design.num_edge_device, 2):
+        peer_network_hosts[i] = {
+            0: peer_networks[i - 1].prefix.value.hosts(),
+            1: peer_networks[i].prefix.value.hosts(),
+        }
+        peer_network_hosts[i + 1] = {
+            0: peer_networks[i - 1].prefix.value.hosts(),
+            1: peer_networks[i].prefix.value.hosts(),
+        }
 
     group_core_router_members: list[str] = []
     group_edge_router_members: list[str] = []
@@ -1187,7 +1041,14 @@ async def generate_site(
     group_upstream_interfaces_members = []
     group_backbone_interfaces_members = []
 
-    for idx, device in enumerate(DEVICES):
+    # --------------------------------------------------
+    # Create devices
+    # --------------------------------------------------
+    # Craft the list of devices
+    devices: list[Device] = site_design.implement()
+
+    # TODO: There is room for improvement here, batch those device together
+    for device in devices:
         device_name = f"{site.name}-{device.name}"
         platform_id = store.get(kind=InfraPlatform, key=device.platform).id
 
@@ -1258,6 +1119,7 @@ async def generate_site(
         await obj.save()
 
         # L3 Interfaces
+        # TODO: There is room for improvement here
         for intf_idx, intf_name in enumerate(device.l3_interface_names):
             intf_role = INTERFACE_L3_ROLES_MAPPING[device.role][intf_idx]
 
@@ -1281,7 +1143,8 @@ async def generate_site(
             subnet = None
             address = None
             if intf_role == "peer":
-                address = f"{str(next(peer_network_hosts[intf_idx]))}/31"
+                # TODO: Refactor that part for the sake of readability
+                address = f"{str(next(peer_network_hosts[device._idx][intf_idx]))}/31"
 
             if intf_role == "upstream":
                 group_upstream_interfaces_members.append(intf.id)
@@ -1450,46 +1313,67 @@ async def generate_site(
 
     await generate_site_mlag_domain(client=client, log=log, branch=branch, site=site)
 
+    # Create a batch for all those connections
+    batch_interface: InfrahubBatch = await client.create_batch()
+
     # --------------------------------------------------
-    # Connect both devices within the Site together with 2 interfaces
+    # Connect edge devices 2 by 2
     # --------------------------------------------------
-    for idx in range(2):
-        intf1_l3 = store.get(kind=InfraInterfaceL3, key=f"{site.name}-edge1-l3-{idx}")
-        intf2_l3 = store.get(kind=InfraInterfaceL3, key=f"{site.name}-edge2-l3-{idx}")
+    for idx in range(1, site_design.num_edge_device, 2):
+        # Connecting eth 0 to eth 0
+        await find_and_connect_interfaces(
+            batch_interface,
+            log,
+            InfraInterfaceL3,
+            f"{site.name}-edge{idx}",
+            f"{site.name}-edge{idx}-l3-0",
+            f"{site.name}-edge{idx + 1}",
+            f"{site.name}-edge{idx + 1}-l3-0",
+        )
 
-        intf1_l3.description.value = f"Connected to {site.name}-edge2 {intf2_l3.name.value}"
-        intf1_l3.connected_endpoint = intf2_l3  # type: ignore[assignment]
-        await intf1_l3.save()
-
-        intf2_l3.description.value = f"Connected to {site.name}-edge1 {intf1_l3.name.value}"
-        await intf2_l3.save()
-
-        log.info(
-            f" - Connected '{site.name}-edge1::{intf1_l3.name.value}' <> '{site.name}-edge2::{intf2_l3.name.value}'"
+        # Connecting eth 1 to eth 1
+        await find_and_connect_interfaces(
+            batch_interface,
+            log,
+            InfraInterfaceL3,
+            f"{site.name}-edge{idx}",
+            f"{site.name}-edge{idx}-l3-1",
+            f"{site.name}-edge{idx + 1}",
+            f"{site.name}-edge{idx + 1}-l3-1",
         )
 
     # --------------------------------------------------
-    # Connect both leaf devices within a Site together with the 2 peer interfaces
+    # Connect leaf devices 2 by 2
     # --------------------------------------------------
-    for idx in range(2):
-        intf1_l2 = store.get(kind=InfraInterfaceL2, key=f"{site.name}-leaf1-l2-Ethernet{idx + 1}")
-        intf2_l2 = store.get(kind=InfraInterfaceL2, key=f"{site.name}-leaf2-l2-Ethernet{idx + 1}")
-
-        intf1_l2.description.value = f"Connected to {site.name}-leaf2 {intf2_l2.name.value}"
-        intf1_l2.connected_endpoint = intf2_l2  # type: ignore[assignment]
-        await intf1_l2.save()
-
-        intf2_l2.description.value = f"Connected to {site.name}-leaf1 {intf1_l2.name.value}"
-        await intf2_l2.save()
-
-        log.info(
-            f" - Connected '{site.name}-leaf1::{intf1_l2.name.value}' <> '{site.name}-leaf2::{intf2_l2.name.value}'"
+    for idx in range(1, site_design.num_leaf_device, 2):
+        # Connecting eth 1 to eth 1
+        await find_and_connect_interfaces(
+            batch_interface,
+            log,
+            InfraInterfaceL2,
+            f"{site.name}-leaf{idx}",
+            f"{site.name}-leaf{idx}-l2-Ethernet1",
+            f"{site.name}-leaf{idx + 1}",
+            f"{site.name}-leaf{idx + 1}-l2-Ethernet1",
         )
+
+        # Connecting eth 2 to eth 2
+        await find_and_connect_interfaces(
+            batch_interface,
+            log,
+            InfraInterfaceL2,
+            f"{site.name}-leaf{idx}",
+            f"{site.name}-leaf{idx}-l2-Ethernet2",
+            f"{site.name}-leaf{idx + 1}",
+            f"{site.name}-leaf{idx + 1}-l2-Ethernet2",
+        )
+
+    async for node, _ in batch_interface.execute():
+        log.info(f"- Saving {node._schema.kind} - {node.name.value}")
 
     # --------------------------------------------------
     # Update all the group we may have touched during the site creation
     # --------------------------------------------------
-
     if group_edge_router_members:
         group_edge_router = store.get(kind=CoreStandardGroup, key="edge_router")
         await group_edge_router.add_relationships(relation_to_update="members", related_nodes=group_edge_router_members)
@@ -1503,6 +1387,7 @@ async def generate_site(
         await group_cisco_devices.add_relationships(
             relation_to_update="members", related_nodes=group_cisco_devices_members
         )
+
     if group_arista_devices_members:
         group_arista_devices = store.get(kind=CoreStandardGroup, key="arista_devices")
         await group_arista_devices.add_relationships(
@@ -1519,41 +1404,6 @@ async def generate_site(
         group_backbone_interfaces = store.get(kind=CoreStandardGroup, key="backbone_interfaces")
         await group_backbone_interfaces.add_relationships(
             relation_to_update="members", related_nodes=group_backbone_interfaces_members
-        )
-
-    # --------------------------------------------------
-    # Create iBGP Sessions within the Site
-    # --------------------------------------------------
-    for idx in range(2):
-        if idx == 0:
-            device1 = f"{site.name}-{DEVICES[0].name}"
-            device2 = f"{site.name}-{DEVICES[1].name}"
-        elif idx == 1:
-            device1 = f"{site.name}-{DEVICES[1].name}"
-            device2 = f"{site.name}-{DEVICES[0].name}"
-
-        peer_group_name = "POP_INTERNAL"
-
-        loopback1 = store.get(key=f"{device1}-loopback", kind=InfraInterfaceL3, raise_when_missing=True)
-        loopback2 = store.get(key=f"{device2}-loopback", kind=InfraInterfaceL3, raise_when_missing=True)
-
-        obj = await client.create(
-            branch=branch,
-            kind=InfraBGPSession,
-            type="INTERNAL",
-            local_as=internal_as.id,
-            local_ip=loopback1.id,
-            remote_as=internal_as.id,
-            remote_ip=loopback2.id,
-            peer_group=store.get(key=peer_group_name, raise_when_missing=True).id,
-            device=store.get(kind=InfraDevice, key=device1, raise_when_missing=True).id,
-            status=ACTIVE_STATUS,
-            role=BACKBONE_ROLE,
-        )
-        await obj.save()
-
-        log.info(
-            f" - Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
         )
 
     return site.name
@@ -1902,15 +1752,11 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
 
 
 async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
-    # FIXME: For some reason this part doesn't work
-    # groups = await client.filters(branch=branch, kind="CoreUserGroup", name__value="Administrators")
-    # store.set(key=groups[0].name, node=groups[0])
+    groups = await client.filters(branch=branch, kind=CoreAccountGroup, name__value="Administrators")
+    store.set(key=groups[0].name, node=groups[0])
 
     for account in ACCOUNTS:
-        data = account.model_dump()
-        # data["member_of_groups"] = groups
-
-        obj = await client.create(branch=branch, kind="CoreAccount", data=data)
+        obj = await client.create(branch=branch, kind="CoreAccount", data=account.model_dump())
         batch.add(task=obj.save, node=obj)
         store.set(key=account.name, node=obj)
 
@@ -2034,6 +1880,12 @@ async def prepare_tags(client: InfrahubClient, log: logging.Logger, branch: str,
 # Use the `infrahubctl run` command line to execute this script
 #
 #   infrahubctl run models/infrastructure_edge.py
+#
+# You can also provide inputs to the script in order to generate more or less data
+#
+#   infrahubctl run models/infrastructure_edge.py profile="large"
+#   infrahubctl run models/infrastructure_edge.py num_sites=10 num_device_per_site=14
+#   infrahubctl run models/infrastructure_edge.py has_bgp_mesh=False has_branch=False
 #
 # ---------------------------------------------------------------
 async def run(
@@ -2214,7 +2066,7 @@ async def run(
         kind=CoreIPPrefixPool,
         name="Internal networks pool (IPv6)",
         default_prefix_type="IpamIPPrefix",
-        default_prefix_length=120,
+        default_prefix_length=110,
         default_member_type="address",
         ip_namespace=default_ip_namespace,
         resources=[ipv6_supernet_prefix],
@@ -2264,6 +2116,11 @@ async def run(
     # ------------------------------------------
     log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
     sites = site_generator(nbr_site=num_sites)
+
+    # Compute the design to follow for each site
+    site_design: SiteDesign = SiteDesign(config.num_device_per_site)
+    log.info(f"following {site_design}")
+
     for site in sites:
         response = await generate_site(
             client=client,
@@ -2274,6 +2131,7 @@ async def run(
             loopback_pool=loopback_pool,
             management_pool=management_pool,
             external_pool=external_pool,
+            site_design=site_design,
         )
         log.info(f"{response} - Creation Completed")
 
