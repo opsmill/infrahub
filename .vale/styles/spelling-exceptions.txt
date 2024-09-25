@@ -43,6 +43,7 @@ graphiql
 graphql
 greymatter
 hfid
+hfids
 hostname
 httpx
 human_friendly_id
