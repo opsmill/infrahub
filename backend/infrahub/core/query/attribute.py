@@ -46,7 +46,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -95,7 +95,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -132,7 +132,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -161,7 +161,7 @@ class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 

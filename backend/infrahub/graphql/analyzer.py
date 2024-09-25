@@ -1,9 +1,6 @@
 from typing import Any, Optional
 
-from graphql import (
-    GraphQLSchema,
-    OperationType,
-)
+from graphql import GraphQLSchema, OperationType
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
@@ -12,8 +9,17 @@ from infrahub.graphql.utils import extract_schema_models
 
 
 class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
-    def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[Branch] = None):
+    def __init__(
+        self,
+        query: str,
+        query_variables: Optional[dict[str, Any]] = None,
+        schema: Optional[GraphQLSchema] = None,
+        operation_name: Optional[str] = None,
+        branch: Optional[Branch] = None,
+    ):
         self.branch: Optional[Branch] = branch
+        self.operation_name: Optional[str] = operation_name
+        self.query_variables: dict[str, Any] = query_variables or {}
         super().__init__(query=query, schema=schema)
 
     async def get_models_in_use(self, types: dict[str, Any]) -> set[str]:

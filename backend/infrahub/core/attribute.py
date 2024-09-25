@@ -151,7 +151,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return self.branch
 
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         registry.attribute[cls.__name__] = cls
 
@@ -549,7 +549,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return changed
 
-    def get_db_node_type(self):
+    def get_db_node_type(self) -> AttributeDBNodeType:
         return AttributeDBNodeType.DEFAULT
 
     def get_create_data(self) -> AttributeCreateData:
@@ -840,7 +840,7 @@ class IPNetwork(BaseAttribute):
 
         return ipaddress.ip_network(str(self.value)).with_prefixlen
 
-    def get_db_node_type(self):
+    def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
             return AttributeDBNodeType.IPNETWORK
         return AttributeDBNodeType.DEFAULT
@@ -966,7 +966,7 @@ class IPHost(BaseAttribute):
 
         return ipaddress.ip_interface(str(self.value)).with_prefixlen
 
-    def get_db_node_type(self):
+    def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
             return AttributeDBNodeType.IPHOST
         return AttributeDBNodeType.DEFAULT

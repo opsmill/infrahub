@@ -11,7 +11,9 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-async def group_add_subscriber(client: InfrahubClient, group: InfrahubNode, subscribers: List[str], branch: str):
+async def group_add_subscriber(
+    client: InfrahubClient, group: InfrahubNode, subscribers: List[str], branch: str
+) -> dict:
     subscribers_str = ["{ id: " + f'"{subscriber}"' + " }" for subscriber in subscribers]
     query = """
     mutation {

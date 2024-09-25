@@ -110,6 +110,7 @@ export const FormInput = React.forwardRef<
         error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500",
         className
       )}
+      aria-invalid={!!error}
       {...props}
     />
   );

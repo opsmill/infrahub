@@ -7,11 +7,9 @@ from typing_extensions import Self
 if TYPE_CHECKING:
     from neo4j import AsyncResult, AsyncSession, AsyncTransaction, Record
 
+    from infrahub.core.schema_manager import SchemaBranch
+
 # pylint: disable=redefined-builtin
-
-
-@runtime_checkable
-class SchemaBranch(Protocol): ...
 
 
 @runtime_checkable

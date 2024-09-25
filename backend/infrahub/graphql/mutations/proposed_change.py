@@ -45,7 +45,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     @retry_db_transaction(name="proposed_change_create")
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -57,7 +56,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
         async with db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_create(
-                root=root, info=info, data=data, branch=branch, at=at, database=dbt
+                info=info, data=data, branch=branch, at=at, database=dbt
             )
             destination_branch = proposed_change.destination_branch.value
             source_branch = await _get_source_branch(db=dbt, name=proposed_change.source_branch.value)
@@ -87,7 +86,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     @retry_db_transaction(name="proposed_change_update")
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -117,7 +115,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         merger: Optional[BranchMerger] = None
         async with context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_update(
-                root=root, info=info, data=data, branch=branch, at=at, database=dbt, node=obj
+                info=info, data=data, branch=branch, at=at, database=dbt, node=obj
             )
 
             if updated_state == ProposedChangeState.MERGED:

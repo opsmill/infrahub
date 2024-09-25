@@ -267,16 +267,16 @@ describe("getFormFieldsFromSchema", () => {
       },
       items: [
         {
-          id: "prefix",
+          value: "prefix",
+          label: "Prefix",
           description: "Prefix serves as container for other prefixes",
           color: "#ed6a5a",
-          name: "Prefix",
         },
         {
-          id: "address",
+          value: "address",
+          label: "Address",
           description: "Prefix serves as subnet for IP addresses",
           color: "#f4f1bb",
-          name: "Address",
         },
       ],
       field: schema.attributes?.[0],
@@ -316,11 +316,7 @@ describe("getFormFieldsFromSchema", () => {
           required: expect.any(Function),
         },
       },
-      items: [
-        { id: 1, name: 1 },
-        { id: 2, name: 2 },
-        { id: 3, name: 3 },
-      ],
+      items: [1, 2, 3],
       field: schema.attributes?.[0],
       schema,
       unique: false,

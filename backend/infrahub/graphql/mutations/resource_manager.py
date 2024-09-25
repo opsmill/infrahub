@@ -171,7 +171,6 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -197,12 +196,11 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         if data["start_range"].value > data["end_range"].value:
             raise ValidationError(input_value="start_range can't be larger than end_range")
 
-        return await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
+        return await super().mutate_create(info=info, data=data, branch=branch, at=at)
 
     @classmethod
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -218,9 +216,9 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
 
         async with context.db.start_transaction() as dbt:
             number_pool, result = await super().mutate_update(
-                root=root, info=info, data=data, branch=branch, at=at, database=dbt, node=node
+                info=info, data=data, branch=branch, at=at, database=dbt, node=node
             )
-            if number_pool.start_range.value > number_pool.end_range.value:
+            if number_pool.start_range.value > number_pool.end_range.value:  # type: ignore[attr-defined]
                 raise ValidationError(input_value="start_range can't be larger than end_range")
 
         return number_pool, result

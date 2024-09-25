@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from graphene import BigInt, Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 
@@ -70,7 +72,7 @@ class BaseAttribute(ObjectType):
     is_from_profile = Field(Boolean)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         registry.default_graphql_type[cls.__name__] = cls
 

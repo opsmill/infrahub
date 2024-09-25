@@ -9,12 +9,12 @@ from infrahub.utils import InfrahubStringEnum
 from .schema import FlagProperty, NodeProperty, SchemaElementPathType, UpdateSupport, UpdateValidationErrorType
 
 __all__ = [
-    "InfrahubKind",
     "FlagProperty",
+    "InfrahubKind",
     "NodeProperty",
+    "SchemaElementPathType",
     "UpdateSupport",
     "UpdateValidationErrorType",
-    "SchemaElementPathType",
 ]
 
 
@@ -48,6 +48,23 @@ class PermissionLevel(enum.Flag):
     WRITE = 2
     ADMIN = 3
     DEFAULT = 0
+
+
+class GlobalPermissions(InfrahubStringEnum):
+    EDIT_DEFAULT_BRANCH = "edit_default_branch"
+
+
+class PermissionAction(InfrahubStringEnum):
+    ANY = "any"
+    ADD = "create"
+    CHANGE = "update"
+    DELETE = "delete"
+    VIEW = "view"
+
+
+class PermissionDecision(InfrahubStringEnum):
+    ALLOW = "allow"
+    DENY = "deny"
 
 
 class AccountRole(InfrahubStringEnum):

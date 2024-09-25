@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
 import pytest
+from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
 from pydantic import BaseModel
 
 from infrahub import config, lock
@@ -33,7 +34,6 @@ from infrahub.pytest_plugin import InfrahubBackendPlugin
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
-    from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema_manager import SchemaBranch
@@ -76,9 +76,7 @@ async def cancel(message: messages.RequestProposedChangeCancel, service: Infrahu
         title="Canceling proposed change",
     ) as task_report:
         await task_report.info("Canceling proposed change as the source branch was deleted", id=message.proposed_change)
-        proposed_change: CoreProposedChange = await service.client.get(
-            kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change
-        )
+        proposed_change = await service.client.get(kind=CoreProposedChange, id=message.proposed_change)
         proposed_change.state.value = ProposedChangeState.CANCELED.value
         await proposed_change.save()
 

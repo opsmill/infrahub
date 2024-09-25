@@ -12,10 +12,10 @@ from pydantic import field_validator
 from infrahub.core.constants import RelationshipKind
 from infrahub.core.models import HashableModelDiff
 
-from .attribute_schema import AttributeSchema  # noqa: TCH001
+from .attribute_schema import AttributeSchema
 from .filter import FilterSchema  # noqa: TCH001
 from .generated.base_node_schema import GeneratedBaseNodeSchema
-from .relationship_schema import RelationshipSchema  # noqa: TCH001
+from .relationship_schema import RelationshipSchema
 
 if TYPE_CHECKING:
     from typing_extensions import Self

@@ -126,7 +126,7 @@ services:
       retries: 3
 
   database:
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.19.0-community}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/${INFRAHUB_DB_PASSWORD:-admin}
@@ -144,6 +144,38 @@ services:
     ports:
       - 2004:2004
       - 6362:6362
+
+  task-manager:
+    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0-python3.12}"
+    command: prefect server start --host 0.0.0.0 --ui
+    restart: unless-stopped
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+      PREFECT_WORKER_QUERY_SECONDS: 3
+      PREFECT_AGENT_QUERY_INTERVAL: 3
+    healthcheck:
+      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      - task-manager-db
+
+  task-manager-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=prefect
+    volumes:
+      - workflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   infrahub-server:
     image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.1}"
@@ -213,3 +245,4 @@ volumes:
   git_data:
   git_remote_data:
   storage_data:
+  workflow_db:

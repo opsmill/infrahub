@@ -1,5 +1,5 @@
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreGroup
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
@@ -74,7 +74,7 @@ INTERFACE_ROLES = {
 log = get_logger()
 
 
-async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
+async def load_data(db: InfrahubDatabase, nbr_devices: int = 0) -> None:
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
@@ -82,7 +82,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
     # tags_dict = {}
 
     for group in GROUPS:
-        obj = await Node.init(db=db, schema=InfrahubKind.GENERICGROUP)
+        obj = await Node.init(db=db, schema=CoreGroup)
         await obj.new(db=db, description=group[0], name=group[1])
         await obj.save(db=db)
         groups_dict[group[1]] = obj
@@ -112,10 +112,10 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
         role = None
         if device[4]:
             role = device[4]
-        obj = await Node.init(db=db, schema="InfraDevice")
-        await obj.new(db=db, name=device[0], status=status, type=device[2], role=role, site=site_hq)
+        device_obj = await Node.init(db=db, schema="InfraDevice")
+        await device_obj.new(db=db, name=device[0], status=status, type=device[2], role=role, site=site_hq)
 
-        await obj.save(db=db)
+        await device_obj.save(db=db)
         log.info(f"- Created Device: {device[0]}")
 
         # Add a special interface for spine1
@@ -152,7 +152,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
             intf = await Node.init(db=db, schema="InfraInterfaceL3")
             await intf.new(
                 db=db,
-                device=obj,
+                device=device_obj,
                 name=intf_name,
                 speed=10000,
                 enabled=enabled,

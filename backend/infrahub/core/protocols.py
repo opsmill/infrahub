@@ -66,6 +66,10 @@ class CoreArtifactTarget(CoreNode):
     artifacts: RelationshipManager
 
 
+class CoreBasePermission(CoreNode):
+    roles: RelationshipManager
+
+
 class CoreCheck(CoreNode):
     name: StringOptional
     label: StringOptional
@@ -194,6 +198,16 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
     pass
 
 
+class CoreAccountGroup(CoreGroup):
+    roles: RelationshipManager
+
+
+class CoreAccountRole(CoreNode):
+    name: String
+    groups: RelationshipManager
+    permissions: RelationshipManager
+
+
 class CoreArtifact(CoreTaskTarget):
     name: String
     status: Enum
@@ -311,6 +325,11 @@ class CoreGeneratorValidator(CoreValidator):
     definition: RelationshipManager
 
 
+class CoreGlobalPermission(CoreBasePermission):
+    name: String
+    action: Dropdown
+
+
 class CoreGraphQLQuery(CoreNode):
     name: String
     description: StringOptional
@@ -349,6 +368,14 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
     node_attribute: String
     start_range: Integer
     end_range: Integer
+
+
+class CoreObjectPermission(CoreBasePermission):
+    branch: String
+    namespace: String
+    name: String
+    action: Enum
+    decision: Enum
 
 
 class CoreObjectThread(CoreThread):

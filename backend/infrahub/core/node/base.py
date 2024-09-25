@@ -14,7 +14,7 @@ class BaseOptions:
     def __init__(self, class_type):
         self.class_type = class_type
 
-    def freeze(self):
+    def freeze(self) -> None:
         self._frozen = True
 
     def __setattr__(self, name, value):
@@ -36,7 +36,7 @@ class BaseNode(SubclassWithMeta):
     #     return type(class_name, (cls,), {"Meta": options})
 
     @classmethod
-    def __init_subclass_with_meta__(cls, name=None, description=None, _meta=None, **_kwargs):
+    def __init_subclass_with_meta__(cls, name=None, description=None, _meta=None, **_kwargs) -> None:
         assert "_meta" not in cls.__dict__, "Can't assign meta directly"
         if not _meta:
             return

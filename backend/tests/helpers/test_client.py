@@ -15,7 +15,7 @@ async def dummy_async_request(
 
 
 class InfrahubTestClient(httpx.AsyncClient):
-    def __init__(self, app: FastAPI, base_url: str = ""):
+    def __init__(self, app: FastAPI, base_url: str = "") -> None:
         self.loop = asyncio.get_event_loop()
         super().__init__(app=app, base_url=base_url)
 

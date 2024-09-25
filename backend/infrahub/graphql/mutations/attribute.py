@@ -12,7 +12,7 @@ class BaseAttributeCreate(InputObjectType):
     owner = String(required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         registry.input_type[cls.__name__] = cls
 
@@ -25,7 +25,7 @@ class BaseAttributeUpdate(InputObjectType):
     owner = String(required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         registry.input_type[cls.__name__] = cls
 

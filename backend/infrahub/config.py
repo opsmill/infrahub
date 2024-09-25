@@ -20,6 +20,7 @@ from infrahub.exceptions import InitializationError
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
@@ -62,6 +63,11 @@ class CacheDriver(str, Enum):
     NATS = "nats"
 
 
+class WorkflowDriver(str, Enum):
+    LOCAL = "local"
+    WORKER = "worker"
+
+
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     docs_index_path: str = Field(
@@ -76,6 +82,10 @@ class MainSettings(BaseSettings):
     telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
     telemetry_interval: int = Field(
         default=3600 * 24, ge=60, description="Time (in seconds) between telemetry usage push"
+    )
+    permission_backends: list[str] = Field(
+        default=["infrahub.permissions.LocalPermissionBackend"],
+        description="List of modules to handle permissions, they will be run in the given order",
     )
 
 
@@ -175,6 +185,7 @@ class BrokerSettings(BaseSettings):
     password: str = "infrahub"
     address: str = "localhost"
     port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    rabbitmq_http_port: Optional[int] = Field(default=None, ge=1, le=65535)
     namespace: str = "infrahub"
     maximum_message_retries: int = Field(
         default=10, description="The maximum number of retries that are attempted for failed messages"
@@ -214,6 +225,24 @@ class CacheSettings(BaseSettings):
         if self.driver == CacheDriver.NATS:
             return self.port or 4222
         return self.port or default_ports
+
+
+class WorkflowSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
+    enable: bool = True
+    address: str = "localhost"
+    port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    driver: WorkflowDriver = WorkflowDriver.WORKER
+
+    @property
+    def api_endpoint(self) -> str:
+        url = "https://" if self.tls_enabled else "http://"
+        url += self.address
+        if self.port:
+            url += f":{self.port}"
+        url += "/api"
+        return url
 
 
 class ApiSettings(BaseSettings):
@@ -333,6 +362,7 @@ class TraceSettings(BaseSettings):
 class Override:
     message_bus: Optional[InfrahubMessageBus] = None
     cache: Optional[InfrahubCache] = None
+    workflow: Optional[InfrahubWorkflow] = None
 
 
 @dataclass
@@ -392,6 +422,10 @@ class ConfiguredSettings:
         return self.active_settings.cache
 
     @property
+    def workflow(self) -> WorkflowSettings:
+        return self.active_settings.workflow
+
+    @property
     def miscellaneous(self) -> MiscellaneousSettings:
         return self.active_settings.miscellaneous
 
@@ -433,6 +467,7 @@ class Settings(BaseSettings):
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
     cache: CacheSettings = CacheSettings()
+    workflow: WorkflowSettings = WorkflowSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
