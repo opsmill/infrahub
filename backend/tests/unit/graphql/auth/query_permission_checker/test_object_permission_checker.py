@@ -7,11 +7,7 @@ import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import (
-    InfrahubKind,
-    PermissionAction,
-    PermissionDecision,
-)
+from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
