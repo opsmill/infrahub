@@ -8,7 +8,6 @@ node_indexes: list[IndexItem] = [
     IndexItem(name="node_kind", label="Node", properties=["kind"], type=IndexType.RANGE),
     IndexItem(name="attr_name", label="Attribute", properties=["name"], type=IndexType.RANGE),
     IndexItem(name="attr_uuid", label="Attribute", properties=["uuid"], type=IndexType.RANGE),
-    IndexItem(name="attr_value", label="AttributeValue", properties=["value"], type=IndexType.RANGE),
     IndexItem(name="attr_ipnet_bin", label="AttributeIPNetwork", properties=["binary_address"], type=IndexType.RANGE),
     IndexItem(name="attr_iphost_bin", label="AttributeIPHost", properties=["binary_address"], type=IndexType.RANGE),
     IndexItem(name="rel_uuid", label="Relationship", properties=["uuid"], type=IndexType.RANGE),

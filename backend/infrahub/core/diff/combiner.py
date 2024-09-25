@@ -107,7 +107,7 @@ class DiffCombiner:
             (DiffAction.REMOVED, DiffAction.ADDED): DiffAction.UPDATED,
             (DiffAction.REMOVED, DiffAction.UPDATED): DiffAction.UPDATED,
         }
-        return actions_map[(earlier, later)]
+        return actions_map[earlier, later]
 
     @staticmethod
     def combine_conflicts(

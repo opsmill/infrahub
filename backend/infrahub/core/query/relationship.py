@@ -11,7 +11,7 @@ from infrahub.core.constants import RelationshipDirection, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import element_id_to_id, extract_field_filters
+from infrahub.core.utils import extract_field_filters
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -37,7 +37,7 @@ class RelData:
     status: str
 
     @classmethod
-    def from_db(cls, obj: Neo4jRelationship):
+    def from_db(cls, obj: Neo4jRelationship) -> RelData:
         return cls(db_id=obj.element_id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
 
 
@@ -182,7 +182,6 @@ class RelationshipQuery(Query):
             "branch_level": self.branch.hierarchy_level,
             "status": status.value,
             "from": self.at.to_string(),
-            "to": None,
         }
         if self.schema.hierarchical:
             rel_prop_dict["hierarchy"] = self.schema.hierarchical
@@ -267,7 +266,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
     def query_add_node_property_create(self, name: str) -> None:
         query = """
-        CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(%s)
+        CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(%s)
         """ % (
             name.upper(),
             name,
@@ -335,7 +334,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def query_add_flag_property_create(self, name: str) -> None:
         query = """
-        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(prop_%s)
+        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(prop_%s)
         """ % (
             name.upper(),
             name,
@@ -349,7 +348,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def query_add_node_property_create(self, name: str) -> None:
         query = """
-        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(prop_%s)
+        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(prop_%s)
         """ % (
             "HAS_" + name.upper(),
             name,
@@ -391,8 +390,11 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.return_labels = ["s", "d", "rl"]
 
         for prop_name, prop in self.data.properties.items():
-            self.add_to_query("MATCH (prop_%s) WHERE ID(prop_%s) = $prop_%s_id" % (prop_name, prop_name, prop_name))
-            self.params[f"prop_{prop_name}_id"] = element_id_to_id(prop.prop_db_id)
+            self.add_to_query(
+                "MATCH (prop_%(prop_name)s) WHERE %(id_func)s(prop_%(prop_name)s) = $prop_%(prop_name)s_id"
+                % {"prop_name": prop_name, "id_func": db.get_id_function_name()}
+            )
+            self.params[f"prop_{prop_name}_id"] = db.to_database_id(prop.prop_db_id)
             self.return_labels.append(f"prop_{prop_name}")
 
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)

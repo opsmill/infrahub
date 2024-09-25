@@ -19,7 +19,7 @@ DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
 
 
 @task
-def build(context: Context):
+def build(context: Context) -> None:
     """Build documentation website."""
     exec_cmd = "npm run build"
 
@@ -31,49 +31,49 @@ def build(context: Context):
 
 
 @task
-def generate(context: Context):
+def generate(context: Context) -> None:
     """Generate all documentation output from code."""
     _generate(context=context)
 
 
 @task
-def generate_schema(context: Context):
+def generate_schema(context: Context) -> None:
     """Generate documentation for the schema."""
     _generate_infrahub_schema_documentation()
 
 
 @task
-def generate_infrahub_cli(context: Context):
+def generate_infrahub_cli(context: Context) -> None:
     """Generate documentation for the infrahub cli."""
     _generate_infrahub_cli_documentation(context=context)
 
 
 @task
-def generate_infrahubctl(context: Context):
+def generate_infrahubctl(context: Context) -> None:
     """Generate documentation for the infrahubctl cli."""
     _generate_infrahubctl_documentation(context=context)
 
 
 @task
-def generate_repository(context: Context):
+def generate_repository(context: Context) -> None:
     """Generate documentation for the repository configuration file."""
     _generate_infrahub_repository_configuration_documentation(context=context)
 
 
 @task
-def generate_python_sdk(context: Context):
+def generate_python_sdk(context: Context) -> None:
     """Generate documentation for the Python SDK."""
     _generate_infrahub_sdk_configuration_documentation(context=context)
 
 
 @task
-def generate_bus_events(context: Context):
+def generate_bus_events(context: Context) -> None:
     """Generate documentation for the Bus events."""
     _generate_infrahub_events_documentation(context=context)
 
 
 @task
-def install(context: Context):
+def install(context: Context) -> None:
     """Install documentation dependencies."""
     exec_cmd = "npm install"
 
@@ -85,7 +85,7 @@ def install(context: Context):
 
 
 @task
-def validate(context: Context, docker: bool = False):
+def validate(context: Context, docker: bool = False) -> None:
     """Validate that the generated documentation is committed to Git."""
 
     if docker:
@@ -103,7 +103,7 @@ def validate(context: Context, docker: bool = False):
 
 
 @task
-def serve(context: Context):
+def serve(context: Context) -> None:
     """Run documentation server in development mode."""
 
     exec_cmd = "npm run serve"
@@ -113,7 +113,7 @@ def serve(context: Context):
 
 
 @task
-def vale(context: Context):
+def vale(context: Context) -> None:
     """Run vale to validate the documentation."""
     has_vale = check_if_command_available(context=context, command_name="vale")
 
@@ -128,7 +128,7 @@ def vale(context: Context):
 
 
 @task
-def markdownlint(context: Context):
+def markdownlint(context: Context) -> None:
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
@@ -141,7 +141,7 @@ def markdownlint(context: Context):
 
 
 @task
-def format_markdownlint(context: Context):
+def format_markdownlint(context: Context) -> None:
     """Run markdownlint-cli2 to format all .md/mdx files."""
 
     print(" - [docs] Format code with markdownlint-cli2")
@@ -151,19 +151,19 @@ def format_markdownlint(context: Context):
 
 
 @task
-def format(context: Context):
+def format(context: Context) -> None:
     """This will run all formatter."""
     format_markdownlint(context)
 
 
 @task
-def lint(context: Context):
+def lint(context: Context) -> None:
     """This will run all linter."""
     markdownlint(context)
     vale(context)
 
 
-def _generate_infrahub_cli_documentation(context: Context):
+def _generate_infrahub_cli_documentation(context: Context) -> None:
     """Generate the documentation for infrahub cli using typer-cli."""
 
     CLI_COMMANDS = (
@@ -179,7 +179,7 @@ def _generate_infrahub_cli_documentation(context: Context):
             context.run(exec_cmd)
 
 
-def _generate(context: Context):
+def _generate(context: Context) -> None:
     """Generate documentation output from code."""
     _generate_infrahub_cli_documentation(context=context)
     _generate_infrahubctl_documentation(context=context)
@@ -189,7 +189,7 @@ def _generate(context: Context):
     _generate_infrahub_events_documentation()
 
 
-def _generate_infrahubctl_documentation(context: Context):
+def _generate_infrahubctl_documentation(context: Context) -> None:
     """Generate the documentation for infrahubctl using typer-cli."""
     from infrahub_sdk.ctl.cli import app
 
@@ -330,9 +330,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     for name, definition in schema["$defs"].items():
         for property, value in definition["properties"].items():
-            definitions[name]["properties"][property]["required"] = (
-                True if property in definition["required"] else False
-            )
+            definitions[name]["properties"][property]["required"] = property in definition["required"]
             if "anyOf" in value:
                 definitions[name]["properties"][property]["type"] = ", ".join(
                     [i["type"] for i in value["anyOf"] if i["type"] != "null"]

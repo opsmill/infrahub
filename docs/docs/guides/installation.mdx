@@ -8,16 +8,11 @@ import ReferenceLink from "../../src/components/Card";
 
 # Installing Infrahub
 
-Infrahub is deployed as a container-based architecture, comprised of multiple components. The main components are:
+Infrahub is deployed as a container-based architecture, and can be deployed for testing or production use in a number of different ways:
 
-- A **Frontend** written in React.
-- An **API server** written in Python with FastAPI.
-- A **Git agent** to manage the interaction with external Git repositories.
-- A **Graph database** based on `Neo4j`.
-- A **Message bus** based on `RabbitMQ`.
-- A **Cache** based on `redis`.
-
-Refer to [Architecture](/topics/architecture) for a more in-depth view of the components' interaction.
+* [Quick start via curl](#quick-start-via-curl)
+* [Docker Compose](#docker-compose)
+* [K8s with Helm charts](#k8s-with-helm-charts)
 
 ## Hardware requirements
 
@@ -25,24 +20,30 @@ Please ensure the systems on which you want to install Infrahub meet the [hardwa
 
 ## Quick start via curl
 
-To quickly test Infrahub locally:
+To quickly spin up Infrahub locally:
 
-```bash
-curl https://infrahub.opsmill.io | docker compose -f - up -d
+```shell
+curl https://infrahub.opsmill.io | sudo docker compose -f - up -d
 ```
 
 Alternative examples:
 
-```bash
-curl https://infrahub.opsmill.io/develop | docker compose -f - up -d
-curl https://infrahub.opsmill.io/0.15.2 | docker compose -f - up -d
+```shell
+curl https://infrahub.opsmill.io/develop | sudo docker compose -f - up -d
+curl https://infrahub.opsmill.io/0.15.2 | sudo docker compose -f - up -d
+```
+
+To spin down and remove an Infrahub environment:
+
+```shell
+curl https://infrahub.opsmill.io | sudo docker compose -f - down -v
 ```
 
 ## From Git repository
 
 Create the base directory for the Infrahub installation. For this guide, we'll use `/opt/infrahub`.
 
-```bash
+```shell
 sudo mkdir -p /opt/infrahub/
 cd /opt/infrahub/
 ```
@@ -55,15 +56,15 @@ Depending on your system configuration, you might have to give other users write
 
 Usage of the `/opt/infrahub` directory is merely a suggestion. You can use any directory on your system, especially for development or demo purposes.
 
-```bash
+```shell
 mkdir -p ~/source/infrahub/
 cd ~/source/infrahub/
 ```
 
-Next, clone the `stable` branch of the Infrahub GitHub repository into the current directory. (This branch always holds the current stable release)
+Next, clone the Infrahub GitHub repository into the current directory.
 
-```bash
-git clone -b stable --depth 1 https://github.com/opsmill/infrahub.git
+```shell
+git clone --recursive --depth 1 https://github.com/opsmill/infrahub.git
 ```
 
 :::note
@@ -74,7 +75,7 @@ The command above utilizes a "shallow clone" to retrieve only the most recent co
 
 The `git clone` command should generate output similar to the following:
 
-```bash
+```shell
 Cloning into '.'...
 remote: Enumerating objects: 1312, done.
 remote: Counting objects: 100% (1312/1312), done.
@@ -90,9 +91,9 @@ The recommended way to run Infrahub is to use the Docker Compose files included 
 
 The pre-requisites for this type of deployment are to have:
 
-- [Invoke](https://www.pyinvoke.org) (version 2 minimum)
-- [Toml](https://toml.io/en/)
-- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
+* [Invoke](https://www.pyinvoke.org) (version 2 minimum)
+* [Toml](https://toml.io/en/)
+* [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
 
 <Tabs>
 <TabItem value="MacOS" default>
@@ -101,8 +102,8 @@ The pre-requisites for this type of deployment are to have:
 On MacOS, Python is installed by default so you should be able to install `invoke` directly.
 Invoke works best when you install it in the main Python environment, but you can also install it in a virtual environment if you prefer. To install `invoke` and `toml`, run the following command:
 
-```bash
-pip install invoke toml
+```shell
+pip3 install invoke toml
 ```
 
 #### Docker
@@ -110,14 +111,8 @@ pip install invoke toml
 To install Docker, follow the [official instructions on the Docker website](https://docs.docker.com/desktop/install/mac-install/) for your platform.
 </TabItem>
 <TabItem value="Windows">
-On Windows, install a Linux VM via WSL2 and follow the installation guide for Ubuntu.
+On Windows, install a Linux VM via [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) and follow the installation guide for Ubuntu.
 
-:::warning
-
-The native support on Windows is currently under investigation and is being tracked in [issue 794](https://github.com/opsmill/infrahub/issues/794).
-Please add a comment to the issue if this is something that would be useful to you.
-
-:::
 </TabItem>
 <TabItem value="Ubuntu">
 :::warning
@@ -129,7 +124,18 @@ On Ubuntu, depending on which distribution you're running, there is a good chanc
 #### Invoke
 
 Invoke is a Python package commonly installed by running `pip install invoke toml`.
-If Python is not already installed on your system, install it first with `sudo apt install python3-pip`.
+If Python pip is not already installed on your system, install it first with `sudo apt install python3-pip`.
+
+:::note
+
+Ensure that the path to your python binaries are defined in your shell's `$PATH` variable. On Ubuntu 22.04, an example could be:
+
+```shell
+echo 'export PATH="$PATH:~/.local/bin"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+:::
 
 #### Docker
 
@@ -145,10 +151,11 @@ Please reach out if you need some help and feel free to send a PR with the insta
 </TabItem>
 </Tabs>
 
-Once docker desktop and invoke are installed you can build, start, and initialize the Infrahub demo environment with the following command:
+Once docker desktop and invoke are installed you can start and initialize the Infrahub demo environment with the following command:
 
-```bash
-invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```shell
+cd infrahub
+invoke demo.start demo.load-infra-schema demo.load-infra-data
 ```
 
 <ReferenceLink title="Check the documentation of the demo environment for more information" url="/topics/local-demo-environment" />
@@ -157,8 +164,8 @@ invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 
 The Infrahub GitHub repository is designed to launch an instance via [GitHub Codespaces](https://docs.github.com/en/codespaces/overview). We have two devcontainer configurations:
 <!-- vale off -->
-- **infrahub:** a deployment running without any [Schema](/tutorials/getting-started/schema) or data pre-installed
-- **infrahub-demo:** a deployment running the [demo environment](/topics/local-demo-environment)
+* **infrahub:** a deployment running without any [Schema](/tutorials/getting-started/schema) or data pre-installed
+* **infrahub-demo:** a deployment running the [demo environment](/topics/local-demo-environment)
 <!-- vale on -->
 |  No Data | Demo Data |
 |---|---|
@@ -180,10 +187,17 @@ A first version of our K8S helm-chart is available in our repository.
 
 The following are required for production deployments using Helm:
 
-- data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
-- multiple replicas of the Infrahub API Server and Infrahub Git Agents should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
-- a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
-- S3 storage should be configured for the Infrahub API Server
+* data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
+* multiple replicas of the Infrahub API Server and Infrahub Git Agents should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
+* a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
+* S3 storage should be configured for the Infrahub API Server
+
+:::warning
+
+We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis, NFS) for production.
+They are present to ease deployment on non-production environments.
+
+:::
 
 You can use the following values example:
 
@@ -240,23 +254,28 @@ infrahubGit:
     enabled: true
     storageClassName: standard-rwx # using GCP Filestore
 
-database:
-  persistence:
+neo4j:
+  services:
+    admin:
+      enabled: true
+  volumes:
     data:
-      enabled: true
-    logs:
-      enabled: true
+      mode: dynamic
+      dynamic:
+        storageClassName: premium-rwo
+        requests:
+          storage: 100Gi
 
 nfs-server-provisioner:
   enabled: false
 ```
 
-```bash
+```shell
 helm install infrahub -f values.yml path/to/infrahub/chart
 ```
 
 You can also install the chart using the OpsMill registry.
 
-```bash
+```shell
 helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub
 ```

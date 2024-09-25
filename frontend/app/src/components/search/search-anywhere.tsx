@@ -54,7 +54,7 @@ type SearchModalProps = {
 export function SearchAnywhere({ className = "" }: SearchModalProps) {
   let [isOpen, setIsOpen] = useState(false);
 
-  function closeModal() {
+  function closeDrawer() {
     setIsOpen(false);
   }
 
@@ -85,7 +85,7 @@ export function SearchAnywhere({ className = "" }: SearchModalProps) {
       </div>
 
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog onClose={closeModal}>
+        <Dialog onClose={closeDrawer}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -107,7 +107,7 @@ export function SearchAnywhere({ className = "" }: SearchModalProps) {
                 leave="ease-in duration-200"
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95">
-                <SearchAnywhereDialog onSelection={closeModal} />
+                <SearchAnywhereDialog onSelection={closeDrawer} />
               </Transition.Child>
             </div>
           </div>

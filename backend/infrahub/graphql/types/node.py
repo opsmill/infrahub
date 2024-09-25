@@ -11,7 +11,7 @@ from .mixin import GetListMixin
 
 
 class InfrahubObjectOptions(ObjectTypeOptions):
-    schema: Optional[MainSchemaTypes] = None
+    schema: MainSchemaTypes
 
 
 class InfrahubObject(ObjectType, GetListMixin):

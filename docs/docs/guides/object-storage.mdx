@@ -74,7 +74,7 @@ You might have to change the X-INFRAHUB-KEY header value to the API token of you
 
 :::
 
-```sh
+```shell
 curl -X POST --header "Content-Type: application/json" --header "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" http://localhost:8000/api/storage/upload/content --data '{"content": "interface Ethernet1\n  description: Connected to Ethernet2"}'
 ```
 
@@ -84,6 +84,6 @@ curl -X POST --header "Content-Type: application/json" --header "X-INFRAHUB-KEY:
 
 Retrieving the object works as described in the previous step.
 
-```sh
+```shell
 curl --header "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" http://localhost:8000/api/storage/object/17d19962-4420-4972-334d-c51beb03e477
 ```

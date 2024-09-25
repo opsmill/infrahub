@@ -626,6 +626,10 @@ async def test_number_pool_utilization(db: InfrahubDatabase, default_branch: Bra
         },
     )
 
+    assert not first.errors
+    assert not second.errors
+    assert not third.errors
+
     assert first.data
     assert second.data
     assert third.data

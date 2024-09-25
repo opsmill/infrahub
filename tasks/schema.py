@@ -11,14 +11,14 @@ INFRAHUB_DIRECTORY = f"{REPO_BASE}/generated/infrahub"
 
 
 @task
-def generate_jsonschema(context: Context):
+def generate_jsonschema(context: Context) -> None:
     """Generate JSON schemas into ./generated"""
 
     generate_sdk_repository_config()
     generate_infrahub_node_schema()
 
 
-def generate_infrahub_node_schema():
+def generate_infrahub_node_schema() -> None:
     from infrahub.api.schema import SchemaLoadAPI
 
     schema_dir = Path(f"{INFRAHUB_DIRECTORY}/schema")
@@ -33,7 +33,7 @@ def generate_infrahub_node_schema():
     write(file_path=schema_dir / "develop.json", content=content)
 
 
-def generate_sdk_repository_config():
+def generate_sdk_repository_config() -> None:
     from infrahub_sdk.schema import InfrahubRepositoryConfig
 
     repository_dir = Path(f"{SDK_DIRECTORY}/repository-config")

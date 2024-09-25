@@ -32,7 +32,7 @@ class InfrahubDataType:
     pydantic: type
 
     @classmethod
-    def __init_subclass__(cls, **kwargs: typing.Any):
+    def __init_subclass__(cls, **kwargs: typing.Any) -> None:
         super().__init_subclass__(**kwargs)
         registry.data_type[cls.label] = cls
 

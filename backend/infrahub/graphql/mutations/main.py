@@ -65,14 +65,10 @@ class InfrahubMutationMixin:
         validate_mutation_permissions(operation=cls.__name__, account_session=context.account_session)
 
         if "Create" in cls.__name__:
-            obj, mutation = await cls.mutate_create(
-                root=root, info=info, branch=context.branch, at=context.at, **kwargs
-            )
+            obj, mutation = await cls.mutate_create(info=info, branch=context.branch, at=context.at, **kwargs)
             action = MutationAction.ADDED
         elif "Update" in cls.__name__:
-            obj, mutation = await cls.mutate_update(
-                root=root, info=info, branch=context.branch, at=context.at, **kwargs
-            )
+            obj, mutation = await cls.mutate_update(info=info, branch=context.branch, at=context.at, **kwargs)
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
             node_manager = NodeManager()
@@ -82,16 +78,14 @@ class InfrahubMutationMixin:
                 MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
-                root=root, info=info, branch=context.branch, at=context.at, node_getters=node_getters, **kwargs
+                info=info, branch=context.branch, at=context.at, node_getters=node_getters, **kwargs
             )
             if created:
                 action = MutationAction.ADDED
             else:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
-            obj, mutation = await cls.mutate_delete(
-                root=root, info=info, branch=context.branch, at=context.at, **kwargs
-            )
+            obj, mutation = await cls.mutate_delete(info=info, branch=context.branch, at=context.at, **kwargs)
             action = MutationAction.REMOVED
         else:
             raise ValueError(
@@ -147,7 +141,6 @@ class InfrahubMutationMixin:
     @classmethod
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -206,7 +199,6 @@ class InfrahubMutationMixin:
     @retry_db_transaction(name="object_update")
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -285,7 +277,6 @@ class InfrahubMutationMixin:
     @retry_db_transaction(name="object_upsert")
     async def mutate_upsert(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
@@ -308,21 +299,20 @@ class InfrahubMutationMixin:
 
         if node:
             updated_obj, mutation = await cls.mutate_update(
-                root=root, info=info, data=data, branch=branch, at=at, database=db, node=node
+                info=info, data=data, branch=branch, at=at, database=db, node=node
             )
             return updated_obj, mutation, False
         # We need to convert the InputObjectType into a dict in order to remove hfid that isn't a valid input when creating the object
         data_dict = dict(data)
         if "hfid" in data:
             del data_dict["hfid"]
-        created_obj, mutation = await cls.mutate_create(root=root, info=info, data=data_dict, branch=branch, at=at)
+        created_obj, mutation = await cls.mutate_create(info=info, data=data_dict, branch=branch, at=at)
         return created_obj, mutation, True
 
     @classmethod
     @retry_db_transaction(name="object_delete")
     async def mutate_delete(
         cls,
-        root,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,

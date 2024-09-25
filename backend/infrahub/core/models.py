@@ -417,7 +417,7 @@ class HashableModel(BaseModel):
         sub_items = {}
         for item in items:
             if item.id and item.id in shared_ids:
-                sub_items[(item.id,)] = item
+                sub_items[item.id,] = item
                 continue
             sub_items[item._sorting_id] = item
 
@@ -513,9 +513,7 @@ class HashableModel(BaseModel):
         in_both, local_only, other_only = compare_lists(
             list1=list(self.model_fields.keys()), list2=list(other.model_fields.keys())
         )
-        diff_result = HashableModelDiff(
-            added={item: None for item in local_only}, removed={item: None for item in other_only}
-        )
+        diff_result = HashableModelDiff(added=dict.fromkeys(local_only), removed=dict.fromkeys(other_only))
 
         for field_name in in_both:
             if field_name.startswith("_") or field_name in self._exclude_from_hash:

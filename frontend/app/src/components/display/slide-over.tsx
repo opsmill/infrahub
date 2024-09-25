@@ -78,7 +78,7 @@ export default function SlideOver(props: Props) {
 
 type SlideOverTitleProps = {
   schema: IModelSchema;
-  currentObjectLabel?: string;
+  currentObjectLabel?: string | null;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
 };

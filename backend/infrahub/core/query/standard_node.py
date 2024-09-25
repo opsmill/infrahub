@@ -109,13 +109,10 @@ class StandardNodeGetItemQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
-        query = (
-            """
-            MATCH (n:%s)
-            WHERE ID(n) = $node_id OR n.uuid = $node_id
-            """
-            % self.node_type
-        )
+        query = """
+            MATCH (n:%(node_type)s)
+            WHERE %(id_func)s(n) = $node_id OR n.uuid = $node_id
+            """ % {"node_type": self.node_type, "id_func": db.get_id_function_name()}
 
         self.params["node_id"] = self.node_id
         self.add_to_query(query)
@@ -161,4 +158,4 @@ class StandardNodeGetListQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
-        self.order_by = ["ID(n)"]
+        self.order_by = [f"{db.get_id_function_name()}(n)"]

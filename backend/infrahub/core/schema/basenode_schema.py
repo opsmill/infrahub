@@ -143,9 +143,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         elements_diff = HashableModelDiff()
         if present_local:
-            elements_diff.added = {name: None for name in present_local}
+            elements_diff.added = dict.fromkeys(present_local)
         if present_other:
-            elements_diff.removed = {name: None for name in present_other}
+            elements_diff.removed = dict.fromkeys(present_other)
 
         # Process element b
         for name in sorted(present_both):
@@ -458,12 +458,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             return constraint_paths_groups
 
         for uniqueness_path_group in self.uniqueness_constraints:
-            constraint_paths_groups.append(
-                [
-                    self.parse_schema_path(path=uniqueness_path_part, schema=schema_branch)
-                    for uniqueness_path_part in uniqueness_path_group
-                ]
-            )
+            constraint_paths_group = []
+            for uniqueness_path_part in uniqueness_path_group:
+                constraint_paths_group.append(self.parse_schema_path(path=uniqueness_path_part, schema=schema_branch))
+            if constraint_paths_group not in constraint_paths_groups:
+                constraint_paths_groups.append(constraint_paths_group)
         return constraint_paths_groups
 
 

@@ -40,6 +40,18 @@ helm.sh/chart: {{ include "infrahub-helm.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if gt (len .Values.global.commonLabels) 0 }}
+{{ .Values.global.commonLabels | toYaml }}
+{{- end }}
+{{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "infrahub-helm.annotations" -}}
+{{- if gt (len .Values.global.commonAnnotations) 0 -}}
+{{ .Values.global.commonAnnotations | toYaml }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -48,6 +60,9 @@ Selector labels
 {{- define "infrahub-helm.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "infrahub-helm.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if gt (len .Values.global.podLabels) 0 }}
+{{ .Values.global.podLabels | toYaml }}
+{{- end }}
 {{- end }}
 
 {{/*

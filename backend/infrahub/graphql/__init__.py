@@ -7,6 +7,7 @@ from starlette.background import BackgroundTasks
 
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import InitializationError
 
 from .manager import GraphQLSchemaManager
 
@@ -37,6 +38,16 @@ class GraphqlContext:
     account_session: Optional[AccountSession] = None
     background: Optional[BackgroundTasks] = None
     request: Optional[HTTPConnection] = None
+
+    @property
+    def active_account_session(self) -> AccountSession:
+        """Return an account session or raise an error
+
+        Eventualy this property should be removed, that can be done after self.account_session is no longer optional
+        """
+        if self.account_session:
+            return self.account_session
+        raise InitializationError("GraphQLContext doesn't contain an account_session")
 
 
 def prepare_graphql_params(
