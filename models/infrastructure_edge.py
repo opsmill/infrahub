@@ -40,12 +40,13 @@ from protocols import (
 )
 from pydantic import BaseModel, ConfigDict, Field
 
-# TODO: Review values for the profiles here
 PROFILES = {
-    "small": {"num_sites": 2, "num_device_per_site": 2, "has_bgp_mesh": False, "has_branch": False},
+    "small": {"num_sites": 2, "num_device_per_site": 6, "has_bgp_mesh": False, "has_branch": False},
     "medium": {"num_sites": 5, "num_device_per_site": 6, "has_bgp_mesh": True, "has_branch": True},
-    "large": {"num_sites": 20, "num_device_per_site": 25, "has_bgp_mesh": False, "has_branch": False},
-    "x-large": {"num_sites": 200, "num_device_per_site": 50, "has_bgp_mesh": False, "has_branch": False},
+    "large": {"num_sites": 10, "num_device_per_site": 26, "has_bgp_mesh": False, "has_branch": False},
+    "x-large": {"num_sites": 50, "num_device_per_site": 52, "has_bgp_mesh": False, "has_branch": False},
+    "xx-large": {"num_sites": 100, "num_device_per_site": 102, "has_bgp_mesh": False, "has_branch": False},
+    "ultimate": {"num_sites": 200, "num_device_per_site": 204, "has_bgp_mesh": True, "has_branch": True},
 }
 
 
@@ -65,16 +66,16 @@ class GlobalConfig:
     def __set_config(self, num_sites: int, num_device_per_site: int, has_bgp_mesh: bool, has_branch: bool) -> None:
         # TODO: I guess it could be defined in the attribute itself?
         # Ensure that num_site is between boudaries
-        if 1 <= int(num_sites) <= 200:
+        if 2 <= int(num_sites) <= 200:
             self.num_sites = int(num_sites)
         else:
-            raise ConfigError(f"Value for `num_sites` ({num_sites}) should be between 1 and 200.")
+            raise ConfigError(f"Value for `num_sites` ({num_sites}) should be between 2 and 200.")
 
         # Ensure that num_device_per_site is between boudaries
-        if 2 <= int(num_device_per_site) <= 100:
+        if 6 <= int(num_device_per_site) <= 204:
             self.num_device_per_site = int(num_device_per_site)
         else:
-            raise ConfigError(f"Value for `num_device_per_site` ({num_device_per_site}) should be between 2 and 100.")
+            raise ConfigError(f"Value for `num_device_per_site` ({num_device_per_site}) should be between 6 and 204.")
 
         self.has_bgp_mesh = has_bgp_mesh
         self.has_branch = has_branch
