@@ -10,7 +10,7 @@ from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
-class MergeBranchChecker(GraphQLQueryPermissionCheckerInterface):
+class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     permission_required = f"global:{GlobalPermissions.MERGE_BRANCH.value}:allow"
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
@@ -24,7 +24,6 @@ class MergeBranchChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
-        # Branch merge requested
         if "BranchMerge" in [operation.name for operation in analyzed_query.operations]:
             can_merge_branch = False
             for permission_backend in registry.permission_backends:

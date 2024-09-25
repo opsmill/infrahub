@@ -7,7 +7,7 @@ from ..auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPe
 from ..auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
 from ..auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from ..auth.query_permission_checker.default_checker import DefaultGraphQLPermissionChecker
-from ..auth.query_permission_checker.merge_operation_checker import MergeBranchChecker
+from ..auth.query_permission_checker.merge_operation_checker import MergeBranchPermissionChecker
 from ..auth.query_permission_checker.object_permission_checker import ObjectPermissionChecker
 from ..auth.query_permission_checker.read_only_checker import ReadOnlyGraphQLPermissionChecker
 from ..auth.query_permission_checker.read_write_checker import ReadWriteGraphQLPermissionChecker
@@ -24,7 +24,7 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
             # This checker never raises, it either terminates the checker chains (user is super admin) or go to the next one
             SuperAdminPermissionChecker(),
             DefaultBranchPermissionChecker(),
-            MergeBranchChecker(),
+            MergeBranchPermissionChecker(),
             ObjectPermissionChecker(),
             ReadWriteGraphQLPermissionChecker(),  # Deprecated, will be replace by either a global permission or object permissions
             ReadOnlyGraphQLPermissionChecker(),  # Deprecated, will be replace by either a global permission or object permissions
