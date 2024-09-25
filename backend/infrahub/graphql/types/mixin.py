@@ -51,20 +51,22 @@ class GetListMixin:
             edges = fields.get("edges", {})
             node_fields = edges.get("node", {})
 
-            objs = await NodeManager.query(
-                db=db,
-                schema=cls._meta.schema,
-                filters=filters or None,
-                fields=node_fields,
-                at=context.at,
-                branch=context.branch,
-                limit=limit,
-                offset=offset,
-                account=context.account_session,
-                include_source=True,
-                include_owner=True,
-                partial_match=partial_match,
-            )
+            objs = []
+            if edges or "hfid" in filters:
+                objs = await NodeManager.query(
+                    db=db,
+                    schema=cls._meta.schema,
+                    filters=filters or None,
+                    fields=node_fields,
+                    at=context.at,
+                    branch=context.branch,
+                    limit=limit,
+                    offset=offset,
+                    account=context.account_session,
+                    include_source=True,
+                    include_owner=True,
+                    partial_match=partial_match,
+                )
 
             if "count" in fields:
                 if filters.get("hfid"):
