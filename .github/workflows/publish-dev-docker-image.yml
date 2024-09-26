@@ -8,7 +8,7 @@ on:
       publish:
         type: boolean
         description: Publish the image
-        default: true
+        default: false
         required: true
       commit:
         type: string
@@ -68,7 +68,7 @@ jobs:
     needs: meta_data
     secrets: inherit
     with:
-      publish: ${{ inputs.publish == '' && true }}
+      publish: ${{ inputs.publish }}
       version: dev-${{ needs.meta_data.outputs.short_ref }}
       ref: ${{ needs.meta_data.outputs.ref }}
       tags: ${{needs.meta_data.outputs.tags}}
