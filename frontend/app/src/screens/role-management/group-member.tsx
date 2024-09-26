@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/display/avatar";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface GroupMembersProps {
   members: Array<string>;
@@ -11,15 +12,16 @@ export function GroupMembers({ members }: GroupMembersProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center relative w-28 h-12">
+      <div className="flex items-center relative w-32 h-12">
         {trimedMembers.map((member, index) => (
-          <Avatar
-            name={member}
-            key={index}
-            size={"md"}
-            className="absolute border"
-            style={{ left: `${20 * index}px` }}
-          />
+          <Tooltip enabled key={index} content={member}>
+            <Avatar
+              name={member}
+              size={"md"}
+              className="absolute border"
+              style={{ left: `${25 * index}px` }}
+            />
+          </Tooltip>
         ))}
       </div>
 
