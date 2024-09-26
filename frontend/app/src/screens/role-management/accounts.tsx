@@ -5,9 +5,15 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import { ACCOUNT_OBJECT } from "@/config/constants";
 import ErrorScreen from "../errors/error-screen";
 import { Pagination } from "@/components/ui/pagination";
+import ModalDeleteObject from "@/components/modals/modal-delete-object";
+import { useState } from "react";
+import { useAtomValue } from "jotai";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 
 function Accounts() {
-  const { loading, data, error } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS);
+  const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS);
+  const schemaKindName = useAtomValue(schemaKindNameState);
+  const [rowToDelete, setRowToDelete] = useState(null);
 
   const columns = [
     {
@@ -45,11 +51,26 @@ function Accounts() {
   if (loading) return <LoadingScreen message="Retrieving accounts..." />;
 
   return (
-    <div>
-      <Table columns={columns} rows={rows ?? []} className="border-0" />
+    <>
+      <div>
+        <Table
+          columns={columns}
+          rows={rows ?? []}
+          className="border-0"
+          onDelete={(data) => setRowToDelete(data.values)}
+        />
 
-      <Pagination count={data && data[ACCOUNT_OBJECT]?.count} />
-    </div>
+        <Pagination count={data && data[ACCOUNT_OBJECT]?.count} />
+      </div>
+
+      <ModalDeleteObject
+        label={schemaKindName[ACCOUNT_OBJECT]}
+        rowToDelete={rowToDelete}
+        open={!!rowToDelete}
+        close={() => setRowToDelete(null)}
+        onDelete={refetch}
+      />
+    </>
   );
 }
 
