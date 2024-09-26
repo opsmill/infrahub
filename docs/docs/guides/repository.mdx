@@ -83,14 +83,14 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
   mutation {
     CorePasswordCredentialCreate(
       data: {
-        name: {value: "My Git Credential"},
+        name: {value: "my-git-credential"},
         username: {value: "MY_USERNAME"},
         password: {value: "MY_TOKEN_OR_PASSWORD"}
       }
     ) {
       ok
       object {
-        id
+        hfid
       }
     }
   }
@@ -108,7 +108,8 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
       data: {
         name: {value: "My Git Repository"},
         location: {value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git"},
-        # credential: {id: "CREDENTIAL_ID_FROM_PREVIOUS_REQUEST"} <-- optional: This needs to be the credential id created at step 2
+        # The HFID returned during step 2 will be the name of the credentials
+        credential: {hfid: "my-git-credential"}
       }
     ) {
       ok
