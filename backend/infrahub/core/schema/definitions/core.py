@@ -891,6 +891,15 @@ core_models: dict[str, Any] = {
             "icon": "mdi:user-key",
             "include_in_menu": False,
             "generate_profile": False,
+            "attributes": [
+                {
+                    "name": "identifier",
+                    "kind": "Text",
+                    "read_only": True,
+                    "optional": True,
+                    "allow_override": AllowOverrideType.NONE,
+                }
+            ],
             "relationships": [
                 {
                     "name": "roles",
@@ -2108,8 +2117,8 @@ core_models: dict[str, Any] = {
             "description": "A permission that grants global rights to perform actions in Infrahub",
             "label": "Global permission",
             "include_in_menu": False,
-            "order_by": ["name__value", "action__value"],
-            "display_labels": ["name__value"],
+            "order_by": ["name__value", "action__value", "decision__value"],
+            "display_labels": ["name__value", "decision__value"],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
             "branch": BranchSupportType.AGNOSTIC.value,
@@ -2120,6 +2129,13 @@ core_models: dict[str, Any] = {
                     "kind": "Dropdown",
                     "choices": [{"name": permission.value} for permission in GlobalPermissions],
                     "order_weight": 2000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Text",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW.value,
+                    "order_weight": 3000,
                 },
             ],
         },
