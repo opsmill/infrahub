@@ -67,9 +67,7 @@ export function RoleManagementRoot() {
     <div>
       <Tabs tabs={tabs} className="pr-2" />
 
-      <div className="p-4">
-        <Outlet />
-      </div>
+      <Outlet />
     </div>
   );
 }

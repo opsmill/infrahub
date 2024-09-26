@@ -1,9 +1,9 @@
 import { Pill } from "@/components/display/pill";
 import { classNames } from "@/utils/common";
 import { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { Link, useMatch } from "react-router-dom";
 
-type Tab = {
+type TabProps = {
   to: string;
   label: ReactNode;
   count?: number;
@@ -12,14 +12,35 @@ type Tab = {
   error?: boolean;
 };
 
+function Tab({ to, label, isLoading, error, count }: TabProps) {
+  const match = useMatch(to);
+
+  return (
+    <Link
+      to={to}
+      className={classNames(
+        "flex items-center whitespace-nowrap border-b-2 py-2 px-4 text-sm font-medium cursor-pointer",
+        match
+          ? "border-custom-blue-500 text-custom-blue-600 bg-custom-blue-600/10"
+          : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+      )}>
+      {label}
+
+      <Pill className="ml-2" data-cy="tab-counter" isLoading={isLoading} error={error}>
+        {count}
+      </Pill>
+    </Link>
+  );
+}
+
 type TabsProps = {
-  tabs: Tab[];
+  tabs: TabProps[];
   rightItems?: any;
   qsp?: string;
   className?: string;
 };
 
-export const Tabs = (props: TabsProps) => {
+export function Tabs(props: TabsProps) {
   const { tabs, rightItems, className } = props;
 
   return (
@@ -31,32 +52,8 @@ export const Tabs = (props: TabsProps) => {
       <div className="flex-1">
         <div className="">
           <nav className="-mb-px flex" aria-label="Tabs">
-            {tabs.map((tab: Tab, index: number) => {
-              console.log("tab.isLoading: ", tab.isLoading);
-
-              return (
-                <NavLink
-                  key={index}
-                  to={tab.to}
-                  className={({ isActive }) =>
-                    classNames(
-                      "flex items-center whitespace-nowrap border-b-2 py-2 px-4 text-sm font-medium cursor-pointer",
-                      isActive
-                        ? "border-custom-blue-500 text-custom-blue-600 bg-custom-blue-600/10"
-                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                    )
-                  }>
-                  {tab.label}
-
-                  <Pill
-                    className="ml-2"
-                    data-cy="tab-counter"
-                    isLoading={tab.isLoading}
-                    error={tab.error}>
-                    {tab.count}
-                  </Pill>
-                </NavLink>
-              );
+            {tabs.map((tab: TabProps, index: number) => {
+              return <Tab {...tab} key={index} />;
             })}
           </nav>
         </div>
@@ -64,4 +61,4 @@ export const Tabs = (props: TabsProps) => {
       <div>{rightItems}</div>
     </div>
   );
-};
+}
