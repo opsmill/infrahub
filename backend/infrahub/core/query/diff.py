@@ -718,7 +718,7 @@ CALL {
             )
         )
         AND [%(id_func)s(n), type(r_node)] <> [%(id_func)s(q), type(diff_rel)]
-        WITH diff_rel_path, r_root, n, r_node, p, diff_rel
+        WITH diff_rel_path, r_root, n, r_node, p, diff_rel, from_time
         ORDER BY
             %(id_func)s(n) DESC,
             %(id_func)s(p) DESC,
