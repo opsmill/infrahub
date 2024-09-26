@@ -21,7 +21,12 @@ async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, cr
 
 async def test_has_permission_global(db: InfrahubDatabase, default_branch: Branch, create_test_admin, first_account):
     backend = LocalPermissionBackend()
-    permission = GlobalPermission(id="", action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, name="Edit default branch")
+    permission = GlobalPermission(
+        id="",
+        action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+        decision=PermissionDecision.ALLOW.value,
+        name="Edit default branch",
+    )
 
     assert await backend.has_permission(
         db=db, account_id=create_test_admin.id, permission=str(permission), branch=default_branch

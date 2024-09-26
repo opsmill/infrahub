@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.account import ObjectPermission, fetch_permissions
+from infrahub.core.account import GlobalPermission, ObjectPermission, fetch_permissions
 from infrahub.core.constants import PermissionDecision
 
 from .backend import PermissionBackend
@@ -55,6 +55,22 @@ class LocalPermissionBackend(PermissionBackend):
 
         return most_specific_permission == PermissionDecision.ALLOW.value
 
+    def resolve_global_permission(self, permissions: list[GlobalPermission], permission_to_check: str) -> bool:
+        if not permission_to_check.startswith("global:"):
+            return False
+
+        _, action, _ = permission_to_check.split(":")
+        grant_permission = False
+
+        for permission in permissions:
+            if permission.action == action:
+                # Early exit on deny as deny preempt allow
+                if permission.action == PermissionDecision.DENY.value:
+                    return False
+                grant_permission = True
+
+        return grant_permission
+
     async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions:
         return await fetch_permissions(db=db, account_id=account_id, branch=branch)
 
@@ -62,7 +78,9 @@ class LocalPermissionBackend(PermissionBackend):
         granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
 
         if permission.startswith("global:"):
-            return permission in [str(p) for p in granted_permissions["global_permissions"]]
+            return self.resolve_global_permission(
+                permissions=granted_permissions["global_permissions"], permission_to_check=permission
+            )
 
         return self.resolve_object_permission(
             permissions=granted_permissions["object_permissions"], permission_to_check=permission
