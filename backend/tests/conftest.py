@@ -2,6 +2,7 @@ import asyncio
 import importlib
 import os
 import sys
+import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
@@ -9,6 +10,8 @@ from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
 import pytest
 import ujson
 from infrahub_sdk.utils import str_to_bool
+from neo4j import GraphDatabase
+from neo4j.exceptions import ServiceUnavailable
 from prefect.logging.loggers import disable_run_logger
 from prefect.testing.utilities import prefect_test_harness
 from testcontainers.core.container import DockerContainer
@@ -228,6 +231,23 @@ def redis(request: pytest.FixtureRequest, load_settings_before_session) -> Optio
     return container
 
 
+def wait_for_memgraph_ready(host, port, timeout=15):
+    # Not retrieving host/port from config.SETTINGS here as they are set later in `db`fixture.
+    URI = f"{config.SETTINGS.database.protocol}://{host}:{port}"
+
+    start_time = time.time()
+
+    with GraphDatabase.driver(URI) as client:
+        while time.time() - start_time < timeout:
+            try:
+                client.verify_connectivity()
+                return True
+            except ServiceUnavailable:
+                time.sleep(1)
+
+    raise TimeoutError(f"memgraph took more than {timeout} seconds to start.")
+
+
 @pytest.fixture(scope="session")
 def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[DockerContainer]:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
@@ -237,7 +257,6 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
 
     container = (
         DockerContainer(image=memgraph_image, init=True)
-        .with_env("MGCONSOLE", "--username neo4j --password admin")
         .with_env("APP_CYPHER_QUERY_MAX_LEN", 10000)
         .with_exposed_ports(PORT_MEMGRAPH)
     )
@@ -246,7 +265,9 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
         container.stop()
 
     container.start()
-    wait_for_logs(container, "To get started with Memgraph")  # wait_container_is_ready does not seem to be enough
+
+    # Waiting for logs is not enough to make sure memgraph is available.
+    wait_for_memgraph_ready(host="localhost", port=container.get_exposed_port(PORT_MEMGRAPH))
 
     request.addfinalizer(cleanup)
 
