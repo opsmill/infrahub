@@ -18,12 +18,17 @@ import { BadgeCopy } from "@/components/ui/badge-copy";
 const icons: Record<string, ReactNode> = {
   [GLOBAL_PERMISSION_OBJECT]: (
     <Pill className="flex items-center justify-center w-6 h-6 bg-custom-blue-500/20">
-      <Icon icon={"mdi:lock-outline"} />
+      <Icon icon={"mdi:lock-outline"} className="text-red-900" />
     </Pill>
   ),
-  [OBJECT_PERMISSION_OBJECT]: (
-    <Pill className="flex items-center justify-center w-6 h-6 bg-green-500/20">
-      <Icon icon={"mdi:lock-check-outline"} />
+  [`${OBJECT_PERMISSION_OBJECT}_allow`]: (
+    <Pill className="flex items-center justify-center w-6 h-6 bg-green-500/40">
+      <Icon icon={"mdi:lock-plus-outline"} className="text-green-900" />
+    </Pill>
+  ),
+  [`${OBJECT_PERMISSION_OBJECT}_deny`]: (
+    <Pill className="flex items-center justify-center w-6 h-6 bg-red-500/40">
+      <Icon icon={"mdi:lock-minus-outline"} className="text-red-900" />
     </Pill>
   ),
 };
@@ -49,12 +54,18 @@ function Permissions() {
   const rows =
     data &&
     data[ACCOUNT_PERMISSION_OBJECT]?.edges.map((edge) => {
+      const iconKey = edge?.node?.decision?.value
+        ? `${edge?.node?.__typename}_${edge?.node?.decision?.value}`
+        : edge?.node?.__typename;
+
+      const icon = icons[iconKey];
+
       return {
         id: edge?.node?.id,
         values: {
           display_label: (
             <div className="flex items-center gap-2">
-              {icons[edge?.node?.__typename]} {edge?.node?.display_label}
+              {icon} {edge?.node?.display_label}
             </div>
           ),
           description: edge?.node?.description?.value,

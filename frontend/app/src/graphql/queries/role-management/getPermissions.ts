@@ -10,6 +10,11 @@ export const GET_ROLE_MANAGEMENT_PERMISSIONS = gql`
           roles {
             count
           }
+          ... on CoreObjectPermission {
+            decision {
+              value
+            }
+          }
           __typename
         }
       }
