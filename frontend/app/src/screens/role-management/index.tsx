@@ -54,7 +54,7 @@ export function RoleManagementRoot() {
       to: constructPath("/role-management/permissions"),
       label: (
         <div className="flex items-center gap-2">
-          <Icon icon={"mdi:shield-account-outline"} />
+          <Icon icon={"mdi:ticket-confirmation-outline"} />
           Permissions
         </div>
       ),
