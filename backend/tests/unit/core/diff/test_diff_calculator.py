@@ -1,13 +1,14 @@
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.model.path import NodeFieldSpecifier
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -1578,3 +1579,121 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     assert property_diff.new_value == "Little Alfred"
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
+
+
+async def test_branch_relationship_delete_with_property_update(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+    persons = []
+    for i in range(3):
+        person = await Node.init(db=db, schema=person_schema, branch=default_branch)
+        await person.new(db=db, name=f"Person{i}")
+        await person.save(db=db)
+        persons.append(person)
+    dogs = []
+    for i in range(3):
+        dog = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+        await dog.new(db=db, name=f"Dog{i}", breed=f"Breed{i}", owner=persons[i], best_friend=persons[i])
+        await dog.save(db=db)
+        dogs.append(dog)
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp()
+    dog_branch = await NodeManager.get_one(db=db, branch=branch, id=dogs[0].id)
+    before_branch_change = Timestamp()
+    await dog_branch.best_friend.update(db=db, data=[None])
+    await dog_branch.save(db=db)
+    after_branch_change = Timestamp()
+
+    dog_main = await NodeManager.get_one(db=db, id=dogs[0].id)
+    before_main_change = Timestamp()
+    await dog_main.best_friend.update(db=db, data={"id": persons[0].id, "_relation__is_visible": False})
+    await dog_main.save(db=db)
+    after_main_change = Timestamp()
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+    )
+
+    base_diff = calculated_diffs.base_branch_diff
+    assert base_diff.branch == default_branch.name
+    node_diffs_by_id = {n.uuid: n for n in base_diff.nodes}
+    node_diff = node_diffs_by_id[dog_main.id]
+    assert node_diff.uuid == dog_main.id
+    assert node_diff.kind == "TestDog"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    rel_diffs_by_name = {r.name: r for r in node_diff.relationships}
+    rel_diff = rel_diffs_by_name["best_friend"]
+    assert rel_diff.cardinality is RelationshipCardinality.ONE
+    assert rel_diff.action is DiffAction.UPDATED
+    assert len(rel_diff.relationships) == 1
+    rel_elements_by_peer_id = {e.peer_id: e for e in rel_diff.relationships}
+    rel_element_diff = rel_elements_by_peer_id[persons[0].id]
+    assert rel_element_diff.action is DiffAction.UPDATED
+    prop_diff_by_type = {p.property_type: p for p in rel_element_diff.properties}
+    prop_diff = prop_diff_by_type[DatabaseEdgeType.IS_VISIBLE]
+    assert prop_diff.action is DiffAction.UPDATED
+    assert prop_diff.new_value is False
+    assert prop_diff.previous_value is True
+    assert before_main_change < prop_diff.changed_at < after_main_change
+    for prop_diff in prop_diff_by_type.values():
+        if prop_diff.property_type is DatabaseEdgeType.IS_VISIBLE:
+            continue
+        assert prop_diff.action is DiffAction.UNCHANGED
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    assert branch_diff.branch == branch.name
+    node_diffs_by_id = {n.uuid: n for n in branch_diff.nodes}
+    assert set(node_diffs_by_id.keys()) == {dog_branch.id, persons[0].id}
+    dog_node = node_diffs_by_id[dog_branch.id]
+    assert dog_node.action is DiffAction.UPDATED
+    assert len(dog_node.attributes) == 0
+    assert len(dog_node.relationships) == 1
+    rel_diffs_by_name = {r.name: r for r in dog_node.relationships}
+    rel_diff = rel_diffs_by_name["best_friend"]
+    assert rel_diff.cardinality is RelationshipCardinality.ONE
+    assert rel_diff.action is DiffAction.REMOVED
+    assert len(rel_diff.relationships) == 1
+    rel_elements_by_peer_id = {e.peer_id: e for e in rel_diff.relationships}
+    rel_element_diff = rel_elements_by_peer_id[persons[0].id]
+    assert rel_element_diff.action is DiffAction.REMOVED
+    prop_diff_by_type = {p.property_type: p for p in rel_element_diff.properties}
+    assert len(prop_diff_by_type) == 3
+    for property_type, previous_value in [
+        (DatabaseEdgeType.IS_RELATED, persons[0].id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        prop_diff = prop_diff_by_type[property_type]
+        assert prop_diff.action is DiffAction.REMOVED
+        assert prop_diff.new_value is None
+        assert prop_diff.previous_value == previous_value
+        assert before_branch_change < prop_diff.changed_at < after_branch_change
+    person_node = node_diffs_by_id[persons[0].id]
+    assert person_node.action is DiffAction.UPDATED
+    assert len(person_node.attributes) == 0
+    assert len(person_node.relationships) == 1
+    rel_diffs_by_name = {r.name: r for r in person_node.relationships}
+    rel_diff = rel_diffs_by_name["best_friends"]
+    assert rel_diff.cardinality is RelationshipCardinality.MANY
+    assert rel_diff.action is DiffAction.UPDATED
+    assert len(rel_diff.relationships) == 1
+    rel_elements_by_peer_id = {e.peer_id: e for e in rel_diff.relationships}
+    rel_element_diff = rel_elements_by_peer_id[dog_branch.id]
+    assert rel_element_diff.action is DiffAction.REMOVED
+    prop_diff_by_type = {p.property_type: p for p in rel_element_diff.properties}
+    assert len(prop_diff_by_type) == 3
+    for property_type, previous_value in [
+        (DatabaseEdgeType.IS_RELATED, dog_branch.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        prop_diff = prop_diff_by_type[property_type]
+        assert prop_diff.action is DiffAction.REMOVED
+        assert prop_diff.new_value is None
+        assert prop_diff.previous_value == previous_value
+        assert before_branch_change < prop_diff.changed_at < after_branch_change

@@ -634,7 +634,22 @@ CALL {
             AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
             RETURN root, r_root, p, diff_rel, q
         }
-        WITH root, r_root, p, diff_rel, q
+        WITH root, r_root, p, diff_rel, q, from_time
+        // -------------------------------------
+        // Exclude attributes/relationship under nodes deleted on this branch in the timeframe
+        // because those were all handled above at the node level
+        // -------------------------------------
+        CALL {
+            WITH root, p, from_time
+            OPTIONAL MATCH (root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(p)
+            WHERE from_time <= r_root_deleted.from <= $to_time
+            WITH r_root_deleted
+            ORDER BY r_root_deleted.status DESC
+            LIMIT 1
+            RETURN COALESCE(r_root_deleted.status = "deleted", FALSE) AS node_deleted
+        }
+        WITH root, r_root, p, diff_rel, q, node_deleted
+        WHERE node_deleted = FALSE
         // -------------------------------------
         // Get every path on this branch under each attribute/relationship
         // -------------------------------------
@@ -717,6 +732,37 @@ CALL {
         // Add base branch paths, if they exist, to capture previous values
         // Add peer-side of any relationships to get the peer's ID
         // -------------------------------------
+        WITH n, p, from_time, diff_rel, diff_rel_path
+        CALL {
+            // -------------------------------------
+            // Exclude properties under nodes and attributes/relationship deleted
+            // on this branch in the timeframe because those were all handled above
+            // -------------------------------------
+            WITH n, p, from_time
+            CALL {
+                WITH n, from_time
+                OPTIONAL MATCH (root:Root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(n)
+                WHERE from_time <= r_root_deleted.from <= $to_time
+                WITH r_root_deleted
+                ORDER BY r_root_deleted.status DESC
+                LIMIT 1
+                RETURN COALESCE(r_root_deleted.status = "deleted", FALSE) AS node_deleted
+            }
+            WITH n, p, from_time, node_deleted
+            CALL {
+                WITH n, p, from_time
+                OPTIONAL MATCH (n)-[r_node_deleted {branch: $branch_name}]-(p)
+                WHERE from_time <= r_node_deleted.from <= $to_time
+                AND type(r_node_deleted) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+                WITH r_node_deleted
+                ORDER BY r_node_deleted.status DESC
+                LIMIT 1
+                RETURN COALESCE(r_node_deleted.status = "deleted", FALSE) AS field_deleted
+            }
+            RETURN node_deleted OR field_deleted AS node_or_field_deleted
+        }
+        WITH n, p, diff_rel, diff_rel_path, node_or_field_deleted
+        WHERE node_or_field_deleted = FALSE
         WITH n, p, type(diff_rel) AS drt, head(collect(diff_rel_path)) AS deepest_diff_path
         CALL {
             WITH n, p, deepest_diff_path

@@ -97,7 +97,11 @@ class ConflictsEnricher:
         for property_type in common_property_types:
             base_property = base_property_map[property_type]
             branch_property = branch_property_map[property_type]
-            if base_property.new_value != branch_property.new_value:
+            same_value = base_property.new_value == branch_property.new_value or (
+                base_property.action is DiffAction.UNCHANGED
+                and base_property.previous_value == branch_property.previous_value
+            )
+            if not same_value:
                 self._add_property_conflict(
                     base_property=base_property,
                     branch_property=branch_property,
