@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.account import GlobalPermission, ObjectPermission, fetch_permissions
+from infrahub.core.account import ObjectPermission, fetch_permissions
 from infrahub.core.constants import PermissionDecision
 
 from .backend import PermissionBackend
