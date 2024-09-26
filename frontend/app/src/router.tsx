@@ -162,8 +162,12 @@ export const router = createBrowserRouter([
                 lazy: () => import("@/screens/role-management/roles"),
               },
               {
-                path: "permissions",
-                lazy: () => import("@/screens/role-management/permissions"),
+                path: "global-permissions",
+                lazy: () => import("@/screens/role-management/global-permissions"),
+              },
+              {
+                path: "object-permissions",
+                lazy: () => import("@/screens/role-management/object-permissions"),
               },
             ],
           },

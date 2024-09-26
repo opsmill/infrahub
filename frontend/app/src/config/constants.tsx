@@ -19,10 +19,10 @@ export const ACCOUNT_OBJECT = "CoreAccount";
 export const ACCOUNT_GROUP_OBJECT = "CoreAccountGroup";
 
 export const ACCOUNT_ROLE_OBJECT = "CoreAccountRole";
-export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
-export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 
 export const ACCOUNT_PERMISSION_OBJECT = "CoreBasePermission";
+export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
+export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 
 export const GENERIC_REPOSITORY_KIND = "CoreGenericRepository";
 

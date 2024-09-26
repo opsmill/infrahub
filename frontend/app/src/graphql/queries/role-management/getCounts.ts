@@ -8,7 +8,10 @@ export const GET_ROLE_MANAGEMENT_COUNTS = gql`
     CoreAccountGroup {
       count
     }
-    CoreBasePermission {
+    CoreGlobalPermission {
+      count
+    }
+    CoreObjectPermission {
       count
     }
     CoreAccount {

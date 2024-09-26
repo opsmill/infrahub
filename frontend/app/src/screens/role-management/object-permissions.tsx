@@ -1,14 +1,9 @@
 import { useQuery } from "@apollo/client";
 import { Table } from "@/components/table/table";
 import LoadingScreen from "../loading-screen/loading-screen";
-import {
-  ACCOUNT_PERMISSION_OBJECT,
-  GLOBAL_PERMISSION_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-} from "@/config/constants";
+import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
 import ErrorScreen from "../errors/error-screen";
 import { Pagination } from "@/components/ui/pagination";
-import { GET_ROLE_MANAGEMENT_PERMISSIONS } from "@/graphql/queries/role-management/getPermissions";
 import { Pill } from "@/components/display/pill";
 import { ReactNode, useState } from "react";
 import { Icon } from "@iconify-icon/react";
@@ -16,19 +11,15 @@ import { BadgeCopy } from "@/components/ui/badge-copy";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/graphql/queries/role-management/getObjectPermissions";
 
 const icons: Record<string, ReactNode> = {
-  [GLOBAL_PERMISSION_OBJECT]: (
-    <Pill className="flex items-center justify-center w-6 h-6 bg-custom-blue-500/20">
-      <Icon icon={"mdi:lock-outline"} className="text-red-900" />
-    </Pill>
-  ),
-  [`${OBJECT_PERMISSION_OBJECT}_allow`]: (
+  allow: (
     <Pill className="flex items-center justify-center w-6 h-6 bg-green-500/40">
       <Icon icon={"mdi:lock-plus-outline"} className="text-green-900" />
     </Pill>
   ),
-  [`${OBJECT_PERMISSION_OBJECT}_deny`]: (
+  deny: (
     <Pill className="flex items-center justify-center w-6 h-6 bg-red-500/40">
       <Icon icon={"mdi:lock-minus-outline"} className="text-red-900" />
     </Pill>
@@ -36,7 +27,7 @@ const icons: Record<string, ReactNode> = {
 };
 
 function Permissions() {
-  const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_PERMISSIONS);
+  const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const [rowToDelete, setRowToDelete] = useState(null);
 
@@ -44,6 +35,22 @@ function Permissions() {
     {
       name: "name",
       label: "Name",
+    },
+    {
+      name: "branch",
+      label: "Branch",
+    },
+    {
+      name: "namespace",
+      label: "Namespace",
+    },
+    {
+      name: "action",
+      label: "Action",
+    },
+    {
+      name: "decision",
+      label: "Decision",
     },
     {
       name: "roles",
@@ -57,11 +64,8 @@ function Permissions() {
 
   const rows =
     data &&
-    data[ACCOUNT_PERMISSION_OBJECT]?.edges.map((edge) => {
-      const iconKey = edge?.node?.decision?.value
-        ? `${edge?.node?.__typename}_${edge?.node?.decision?.value}`
-        : edge?.node?.__typename;
-
+    data[OBJECT_PERMISSION_OBJECT]?.edges.map((edge) => {
+      const iconKey = edge?.node?.decision?.value;
       const icon = icons[iconKey];
 
       return {
@@ -73,7 +77,10 @@ function Permissions() {
               {icon} {edge?.node?.display_label}
             </div>
           ),
-          description: edge?.node?.description?.value,
+          branch: edge?.node?.branch?.value,
+          namespace: edge?.node?.namespace?.value,
+          action: edge?.node?.action?.value,
+          decision: edge?.node?.decision?.value,
           roles: <Pill>{edge?.node?.roles?.count}</Pill>,
           identifier: <BadgeCopy value="test" />,
         },
@@ -94,11 +101,11 @@ function Permissions() {
           onDelete={(data) => setRowToDelete(data.values)}
         />
 
-        <Pagination count={data && data[ACCOUNT_PERMISSION_OBJECT]?.count} />
+        <Pagination count={data && data[OBJECT_PERMISSION_OBJECT]?.count} />
       </div>
 
       <ModalDeleteObject
-        label={schemaKindName[ACCOUNT_PERMISSION_OBJECT]}
+        label={schemaKindName[OBJECT_PERMISSION_OBJECT]}
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}

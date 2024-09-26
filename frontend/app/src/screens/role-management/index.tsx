@@ -2,8 +2,9 @@ import { Tabs } from "@/components/tabs-routes";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
-  ACCOUNT_PERMISSION_OBJECT,
   ACCOUNT_ROLE_OBJECT,
+  GLOBAL_PERMISSION_OBJECT,
+  OBJECT_PERMISSION_OBJECT,
 } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_COUNTS } from "@/graphql/queries/role-management/getCounts";
 import useQuery from "@/hooks/useQuery";
@@ -51,14 +52,25 @@ export function RoleManagementRoot() {
       isLoading: loading,
     },
     {
-      to: constructPath("/role-management/permissions"),
+      to: constructPath("/role-management/global-permissions"),
       label: (
         <div className="flex items-center gap-2">
           <Icon icon={"mdi:ticket-confirmation-outline"} />
-          Permissions
+          Global Permissions
         </div>
       ),
-      count: data && data[ACCOUNT_PERMISSION_OBJECT]?.count,
+      count: data && data[GLOBAL_PERMISSION_OBJECT]?.count,
+      isLoading: loading,
+    },
+    {
+      to: constructPath("/role-management/object-permissions"),
+      label: (
+        <div className="flex items-center gap-2">
+          <Icon icon={"mdi:ticket-outline"} />
+          Object Permissions
+        </div>
+      ),
+      count: data && data[OBJECT_PERMISSION_OBJECT]?.count,
       isLoading: loading,
     },
   ];

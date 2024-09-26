@@ -1,19 +1,14 @@
 import { gql } from "@apollo/client";
 
-export const GET_ROLE_MANAGEMENT_PERMISSIONS = gql`
+export const GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS = gql`
   query {
-    CoreBasePermission {
+    CoreGlobalPermission {
       edges {
         node {
           id
           display_label
           roles {
             count
-          }
-          ... on CoreObjectPermission {
-            decision {
-              value
-            }
           }
           __typename
         }
