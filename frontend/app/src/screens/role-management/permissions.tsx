@@ -11,9 +11,12 @@ import ErrorScreen from "../errors/error-screen";
 import { Pagination } from "@/components/ui/pagination";
 import { GET_ROLE_MANAGEMENT_PERMISSIONS } from "@/graphql/queries/role-management/getPermissions";
 import { Pill } from "@/components/display/pill";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Icon } from "@iconify-icon/react";
 import { BadgeCopy } from "@/components/ui/badge-copy";
+import ModalDeleteObject from "@/components/modals/modal-delete-object";
+import { useAtomValue } from "jotai";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 
 const icons: Record<string, ReactNode> = {
   [GLOBAL_PERMISSION_OBJECT]: (
@@ -34,7 +37,9 @@ const icons: Record<string, ReactNode> = {
 };
 
 function Permissions() {
-  const { loading, data, error } = useQuery(GET_ROLE_MANAGEMENT_PERMISSIONS);
+  const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_PERMISSIONS);
+  const schemaKindName = useAtomValue(schemaKindNameState);
+  const [rowToDelete, setRowToDelete] = useState(null);
 
   const columns = [
     {
@@ -80,11 +85,26 @@ function Permissions() {
   if (loading) return <LoadingScreen message="Retrieving accounts..." />;
 
   return (
-    <div>
-      <Table columns={columns} rows={rows ?? []} className="border-0" />
+    <>
+      <div>
+        <Table
+          columns={columns}
+          rows={rows ?? []}
+          className="border-0"
+          onDelete={(data) => setRowToDelete(data.values)}
+        />
 
-      <Pagination count={data && data[ACCOUNT_OBJECT]?.count} />
-    </div>
+        <Pagination count={data && data[ACCOUNT_OBJECT]?.count} />
+      </div>
+
+      <ModalDeleteObject
+        label={schemaKindName[ACCOUNT_OBJECT]}
+        rowToDelete={rowToDelete}
+        open={!!rowToDelete}
+        close={() => setRowToDelete(null)}
+        onDelete={refetch}
+      />
+    </>
   );
 }
 
