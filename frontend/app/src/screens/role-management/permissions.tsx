@@ -2,7 +2,6 @@ import { useQuery } from "@apollo/client";
 import { Table } from "@/components/table/table";
 import LoadingScreen from "../loading-screen/loading-screen";
 import {
-  ACCOUNT_OBJECT,
   ACCOUNT_PERMISSION_OBJECT,
   GLOBAL_PERMISSION_OBJECT,
   OBJECT_PERMISSION_OBJECT,
@@ -43,7 +42,7 @@ function Permissions() {
 
   const columns = [
     {
-      name: "display_label",
+      name: "name",
       label: "Name",
     },
     {
@@ -68,7 +67,8 @@ function Permissions() {
       return {
         id: edge?.node?.id,
         values: {
-          display_label: (
+          display_label: edge?.node?.display_label,
+          name: (
             <div className="flex items-center gap-2">
               {icon} {edge?.node?.display_label}
             </div>
@@ -94,11 +94,11 @@ function Permissions() {
           onDelete={(data) => setRowToDelete(data.values)}
         />
 
-        <Pagination count={data && data[ACCOUNT_OBJECT]?.count} />
+        <Pagination count={data && data[ACCOUNT_PERMISSION_OBJECT]?.count} />
       </div>
 
       <ModalDeleteObject
-        label={schemaKindName[ACCOUNT_OBJECT]}
+        label={schemaKindName[ACCOUNT_PERMISSION_OBJECT]}
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}

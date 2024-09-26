@@ -1,7 +1,7 @@
 import { useQuery } from "@apollo/client";
 import { Table } from "@/components/table/table";
 import LoadingScreen from "../loading-screen/loading-screen";
-import { ACCOUNT_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/config/constants";
+import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
 import ErrorScreen from "../errors/error-screen";
 import { Pagination } from "@/components/ui/pagination";
 import { GET_ROLE_MANAGEMENT_ROLES } from "@/graphql/queries/role-management/getRoles";
@@ -61,11 +61,11 @@ function Roles() {
           onDelete={(data) => setRowToDelete(data.values)}
         />
 
-        <Pagination count={data && data[ACCOUNT_OBJECT]?.count} />
+        <Pagination count={data && data[ACCOUNT_ROLE_OBJECT]?.count} />
       </div>
 
       <ModalDeleteObject
-        label={schemaKindName[ACCOUNT_OBJECT]}
+        label={schemaKindName[ACCOUNT_ROLE_OBJECT]}
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}
