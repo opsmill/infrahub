@@ -9,7 +9,6 @@ import { DurationDisplay } from "@/components/display/duration-display";
 import { Id } from "@/components/ui/id";
 import { QSP } from "@/config/qsp";
 import { getTasksItems } from "@/graphql/queries/tasks/getTasksItems";
-import usePagination from "@/hooks/usePagination";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { constructPath } from "@/utils/fetch";
@@ -24,22 +23,12 @@ interface TaskItemsProps {
 export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) => {
   const { objectid, proposedChangeId } = useParams();
   const location = useLocation();
-  const [pagination] = usePagination();
 
   const { pathname } = location;
-
-  const filtersString = [
-    // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
-  ].join(",");
 
   const queryString = getTasksItems({
     kind: TASK_OBJECT,
     relatedNode: objectid || proposedChangeId,
-    filters: filtersString,
   });
 
   const query = gql`

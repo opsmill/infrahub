@@ -54,6 +54,7 @@ mutation {
     ok
     object {
       id
+      hfid
       name {
         value
       }
@@ -65,16 +66,14 @@ mutation {
 }
 ```
 
-Copy the ID of the newly created interface, we'll need it for the next query.
-
 Add a new IP address connected to the new interface.
 
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/cr1234
 mutation {
-  InfraIPAddressCreate(
+  IpamIPAddressCreate(
     data: {
-      interface: { id: "<INTERFACE Ethernet0 UUID>" },
+      interface: { hfid: ["ord1-edge1", "Ethernet0"]},
       address: { value: "192.168.0.2/24" }
     }
   ) {

@@ -25,6 +25,7 @@
     "tsconfig.json"
   ],
   "rules": {
+    "react/prop-types": "off",
     "quotes": [
       "error",
       "double",
