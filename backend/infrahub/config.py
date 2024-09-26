@@ -10,12 +10,12 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
-from pydantic import AliasChoices, Field, ValidationError, model_validator
+from pydantic import AliasChoices, BaseModel, Field, PrivateAttr, ValidationError, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
 from infrahub.database.constants import DatabaseType
-from infrahub.exceptions import InitializationError
+from infrahub.exceptions import InitializationError, ProcessingError
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
@@ -33,6 +33,38 @@ def default_cors_allow_methods() -> list[str]:
 
 def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
+
+
+class SSOProtocol(str, Enum):
+    OAUTH2 = "oauth2"
+
+
+class Oauth2Provider(str, Enum):
+    GOOGLE = "google"
+    CUSTOM = "custom"
+
+
+class SSOInfo(BaseModel):
+    providers: list[OAuth2ProviderInfo] = Field(default_factory=list)
+
+    @computed_field
+    def enabled(self) -> bool:
+        return bool(self.providers)
+
+
+class OAuth2ProviderInfo(BaseModel):
+    name: str
+    display_label: str
+    icon: str
+    protocol: SSOProtocol
+
+    @computed_field
+    def authorize_path(self) -> str:
+        return f"/api/oauth2/{self.name}/authorize"
+
+    @computed_field
+    def token_path(self) -> str:
+        return f"/api/oauth2/{self.name}/token"
 
 
 class StorageDriver(str, Enum):
@@ -297,6 +329,50 @@ class InitialSettings(BaseSettings):
         return self
 
 
+class SecurityOAuth2BaseSettings(BaseSettings):
+    """Baseclass for typing"""
+
+    icon: str = Field(default="mdi:account-key")
+
+
+class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
+    """Common base for Oauth2 providers"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_CUSTOM_")
+
+    client_id: str = Field(..., description="Client ID of the application created in the auth provider")
+    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    authorization_url: str = Field(...)
+    token_url: str = Field(...)
+    userinfo_url: str = Field(...)
+    scope: list[str] = Field(...)
+    display_label: str = Field(default="Single Sign on")
+
+    @property
+    def scope_as_str(self) -> str:
+        return " ".join(self.scope)
+
+
+class SecurityOAuth2Custom(SecurityOAuth2BaseSettings):
+    """Common base for Oauth2 providers"""
+
+    display_label: str = Field(default="Custom SSO")
+
+
+def _google_oauth2_default_scopes() -> list[str]:
+    return ["openid", "profile", "email"]
+
+
+class SecurityOAuth2Google(SecurityOAuth2Settings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_GOOGLE_")
+    authorization_url: str = Field(default="https://accounts.google.com/o/oauth2/auth")
+    token_url: str = Field(default="https://oauth2.googleapis.com/token")
+    userinfo_url: str = Field(default="https://www.googleapis.com/oauth2/v3/userinfo")
+    icon: str = Field(default="mdi:google")
+    scope: list[str] = Field(default_factory=_google_oauth2_default_scopes)
+    display_label: str = Field(default="Google")
+
+
 class MiscellaneousSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_MISC_")
     print_query_details: bool = False
@@ -341,6 +417,41 @@ class SecuritySettings(BaseSettings):
     secret_key: str = Field(
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
     )
+    oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
+    _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
+
+    @model_validator(mode="after")
+    def check_oauth2_provider_settings(self) -> Self:
+        mapped_providers: dict[Oauth2Provider, type[SecurityOAuth2BaseSettings]] = {
+            Oauth2Provider.CUSTOM: SecurityOAuth2Settings,
+            Oauth2Provider.GOOGLE: SecurityOAuth2Google,
+        }
+        for oauth2_provider in self.oauth2_providers:
+            provider = mapped_providers[oauth2_provider]()
+            if isinstance(provider, SecurityOAuth2Settings):
+                self._oauth2_settings[oauth2_provider.value] = provider
+
+        return self
+
+    def get_provider(self, provider: str) -> SecurityOAuth2Settings:
+        if provider in self._oauth2_settings:
+            return self._oauth2_settings[provider]
+
+        raise ProcessingError(message=f"The provider {provider} has not been initialized")
+
+    @property
+    def public_sso_config(self) -> SSOInfo:
+        return SSOInfo(
+            providers=[
+                OAuth2ProviderInfo(
+                    name=provider,
+                    display_label=self._oauth2_settings[provider].display_label,
+                    icon=self._oauth2_settings[provider].icon,
+                    protocol=SSOProtocol.OAUTH2,
+                )
+                for provider in self._oauth2_settings
+            ]
+        )
 
 
 class TraceSettings(BaseSettings):
