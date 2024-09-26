@@ -23,12 +23,10 @@ class SuperAdminPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
-        is_super_admin = False
         for permission_backend in registry.permission_backends:
-            is_super_admin = await permission_backend.has_permission(
+            if await permission_backend.has_permission(
                 db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
-            )
-            if is_super_admin:
-                break
+            ):
+                return CheckerResolution.TERMINATE
 
-        return CheckerResolution.TERMINATE if is_super_admin else CheckerResolution.NEXT_CHECKER
+        return CheckerResolution.NEXT_CHECKER
