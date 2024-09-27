@@ -19,20 +19,72 @@ async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, cr
     assert not permissions["global_permissions"]
 
 
-async def test_has_permission_global(db: InfrahubDatabase, default_branch: Branch, create_test_admin, first_account):
+async def test_has_permission_global(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    create_test_admin: CoreAccount,
+    first_account: CoreAccount,
+    second_account: CoreAccount,
+):
     backend = LocalPermissionBackend()
-    permission = GlobalPermission(
+
+    allow_default_branch_edition = GlobalPermission(
         id="",
         action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
         decision=PermissionDecision.ALLOW.value,
         name="Edit default branch",
     )
 
+    role1_permissions = []
+    for p in [allow_default_branch_edition]:
+        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        await obj.new(db=db, name=p.name, action=p.action, decision=p.decision)
+        await obj.save(db=db)
+        role1_permissions.append(obj)
+
+    role1 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role1.new(db=db, name="anything but tags", permissions=role1_permissions)
+    await role1.save(db=db)
+
+    group1 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group1.new(db=db, name="group1", roles=[role1])
+    await group1.save(db=db)
+
+    await group1.members.add(db=db, data={"id": first_account.id})
+    await group1.members.save(db=db)
+
+    role2_permissions = []
+    for p in [
+        allow_default_branch_edition,
+        GlobalPermission(
+            id="",
+            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+            decision=PermissionDecision.DENY.value,
+            name="Edit default branch",
+        ),
+    ]:
+        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        await obj.new(db=db, name=p.name, action=p.action, decision=p.decision)
+        await obj.save(db=db)
+        role2_permissions.append(obj)
+
+    role2 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role2.new(db=db, name="only tags", permissions=role2_permissions)
+    await role2.save(db=db)
+
+    group2 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group2.new(db=db, name="group2", roles=[role2])
+    await group2.save(db=db)
+
+    await group2.members.add(db=db, data={"id": second_account.id})
+    await group2.members.save(db=db)
+
     assert await backend.has_permission(
-        db=db, account_id=create_test_admin.id, permission=str(permission), branch=default_branch
+        db=db, account_id=first_account.id, permission=str(allow_default_branch_edition), branch=default_branch
     )
     assert not await backend.has_permission(
-        db=db, account_id=first_account.id, permission=str(permission), branch=default_branch
+        db=db, account_id=second_account.id, permission=str(allow_default_branch_edition), branch=default_branch
     )
 
 

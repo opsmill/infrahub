@@ -65,7 +65,7 @@ class LocalPermissionBackend(PermissionBackend):
         for permission in permissions:
             if permission.action == action:
                 # Early exit on deny as deny preempt allow
-                if permission.action == PermissionDecision.DENY.value:
+                if permission.decision == PermissionDecision.DENY.value:
                     return False
                 grant_permission = True
 
