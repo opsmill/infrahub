@@ -1,6 +1,5 @@
 import copy
 import logging
-import random
 import time
 import uuid
 from collections import defaultdict
@@ -358,7 +357,7 @@ DEVICE_PATTERNS = {
         profile="profile1",
         role="leaf",
         tags=["red", "green"],
-        platform="Arista EOS",
+        platform="Cisco IOS",
     ),
     DevicePatternName.CORE: Device(
         name="core",
@@ -426,7 +425,6 @@ class SiteDesign:
             # Start the tweaking
             current_device.name += str(i)
             current_device._idx = i
-            current_device.status = random.choice(DEVICE_STATUSES)
 
             # Add it to the list
             result.append(current_device)

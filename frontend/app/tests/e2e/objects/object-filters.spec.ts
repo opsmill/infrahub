@@ -19,8 +19,8 @@ test.describe("Object filters", () => {
     await test.step("start filtering objects", async () => {
       await test.step("select filters", async () => {
         await page.getByTestId("apply-filters").click();
-        await page.getByLabel("Status").click();
-        await page.getByRole("option", { name: "Provisioning In the process" }).click();
+        await page.getByLabel("Role").click();
+        await page.getByRole("option", { name: "Edge Router" }).click();
 
         const tagsMultiSelectOpenButton = page
           .getByTestId("side-panel-container")
