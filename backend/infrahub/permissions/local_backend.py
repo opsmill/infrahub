@@ -14,7 +14,8 @@ if TYPE_CHECKING:
 
 
 class LocalPermissionBackend(PermissionBackend):
-    wildcard_values = ["any", "*"]
+    wildcard_values = ["*"]
+    wildcard_actions = ["any"]
 
     def compute_specificity(self, permission: ObjectPermission) -> int:
         specificity = 0
@@ -24,7 +25,7 @@ class LocalPermissionBackend(PermissionBackend):
             specificity += 1
         if permission.name not in self.wildcard_values:
             specificity += 1
-        if permission.action not in self.wildcard_values:
+        if permission.action not in self.wildcard_actions:
             specificity += 1
         return specificity
 
@@ -42,7 +43,7 @@ class LocalPermissionBackend(PermissionBackend):
                 permission.branch in [branch, *self.wildcard_values]
                 and permission.namespace in [namespace, *self.wildcard_values]
                 and permission.name in [name, *self.wildcard_values]
-                and permission.action in [action, *self.wildcard_values]
+                and permission.action in [action, *self.wildcard_actions]
             ):
                 # Compute the specifity of a permission to keep the decision of the most specific if two or more permissions overlap
                 specificity = self.compute_specificity(permission=permission)
