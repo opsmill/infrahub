@@ -31,7 +31,7 @@ test.describe("/ipam/prefixes - Prefix list", () => {
     });
 
     await test.step("go to any sub prefix list of any children prefix", async () => {
-      await page.getByRole("link", { name: "2001:db8::/120" }).click();
+      await page.getByRole("link", { name: "2001:db8::/110" }).click();
       await expect(page.getByTestId("ipam-main-content")).toContainText("Showing 0 of 0 results");
       await expect(page.url()).toContain("ipam-tab=prefix-details");
     });
@@ -39,7 +39,7 @@ test.describe("/ipam/prefixes - Prefix list", () => {
     await test.step("use breadcrumb to go back to parent prefix", async () => {
       await page
         .getByTestId("ipam-main-content")
-        .getByRole("link", { name: "2001:db8::/110" })
+        .getByRole("link", { name: "2001:db8::/100" })
         .click();
       await expect(page.getByTestId("ipam-main-content")).toContainText("Showing 1 to ");
       await expect(page.url()).toContain("ipam-tab=prefix-details");

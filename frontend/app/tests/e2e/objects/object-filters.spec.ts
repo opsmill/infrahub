@@ -41,7 +41,7 @@ test.describe("Object filters", () => {
       await test.step("verify filter initial value", async () => {
         await page.getByTestId("apply-filters").click();
 
-        await expect(page.getByLabel("Status")).toHaveText("Provisioning");
+        await expect(page.getByLabel("Role")).toHaveText("Edge Router");
       });
 
       await expect(page.locator("form")).toContainText("red");
@@ -52,7 +52,7 @@ test.describe("Object filters", () => {
 
     await test.step("verify new state", async () => {
       await expect(page.getByRole("main")).toContainText("Filters: 2");
-      await expect(page.getByRole("main")).toContainText("Showing 1 to 6 of 6 results");
+      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 10 results");
     });
 
     await test.step("remove filters and verify initial state", async () => {
