@@ -891,6 +891,15 @@ core_models: dict[str, Any] = {
             "icon": "mdi:user-key",
             "include_in_menu": False,
             "generate_profile": False,
+            "attributes": [
+                {
+                    "name": "identifier",
+                    "kind": "Text",
+                    "read_only": True,
+                    "optional": True,
+                    "allow_override": AllowOverrideType.NONE,
+                }
+            ],
             "relationships": [
                 {
                     "name": "roles",
