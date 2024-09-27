@@ -10,6 +10,9 @@ export const GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS = gql`
           roles {
             count
           }
+          identifier {
+            value
+          }
           __typename
         }
       }

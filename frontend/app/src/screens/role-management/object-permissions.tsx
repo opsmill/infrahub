@@ -82,7 +82,7 @@ function Permissions() {
           action: edge?.node?.action?.value,
           decision: edge?.node?.decision?.value,
           roles: <Pill>{edge?.node?.roles?.count}</Pill>,
-          identifier: <BadgeCopy value="test" />,
+          identifier: <BadgeCopy value={edge?.node?.identifier?.value} />,
         },
       };
     });

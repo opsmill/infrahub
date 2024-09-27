@@ -51,7 +51,7 @@ function GlobalPermissions() {
           ),
           description: edge?.node?.description?.value,
           roles: <Pill>{edge?.node?.roles?.count}</Pill>,
-          identifier: <BadgeCopy value="test" />,
+          identifier: <BadgeCopy value={edge?.node?.identifier?.value} />,
         },
       };
     });
