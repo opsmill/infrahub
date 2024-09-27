@@ -13,6 +13,7 @@ from .model.path import (
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
+    EnrichedDiffs,
     EnrichedDiffSingleRelationship,
 )
 
@@ -356,16 +357,33 @@ class DiffCombiner:
             parent_rel = child_node.get_relationship(name=parent_rel_name)
             parent_rel.nodes.add(parent_node)
 
-    async def combine(self, earlier_diff: EnrichedDiffRoot, later_diff: EnrichedDiffRoot) -> EnrichedDiffRoot:
-        self._initialize(earlier_diff=earlier_diff, later_diff=later_diff)
-        filtered_node_pairs = self._filter_nodes_to_keep(earlier_diff=earlier_diff, later_diff=later_diff)
-        combined_nodes = self._combine_nodes(node_pairs=filtered_node_pairs)
-        self._link_child_nodes(nodes=combined_nodes)
-        return EnrichedDiffRoot(
-            uuid=str(uuid4()),
-            base_branch_name=later_diff.base_branch_name,
-            diff_branch_name=later_diff.diff_branch_name,
-            from_time=earlier_diff.from_time,
-            to_time=later_diff.to_time,
-            nodes=combined_nodes,
+    async def combine(self, earlier_diffs: EnrichedDiffs, later_diffs: EnrichedDiffs) -> EnrichedDiffs:
+        combined_diffs: list[EnrichedDiffRoot] = []
+        for earlier, later in (
+            (earlier_diffs.base_branch_diff, later_diffs.base_branch_diff),
+            (earlier_diffs.diff_branch_diff, later_diffs.diff_branch_diff),
+        ):
+            self._initialize(earlier_diff=earlier, later_diff=later)
+            filtered_node_pairs = self._filter_nodes_to_keep(earlier_diff=earlier, later_diff=later)
+            combined_nodes = self._combine_nodes(node_pairs=filtered_node_pairs)
+            self._link_child_nodes(nodes=combined_nodes)
+            combined_diffs.append(
+                EnrichedDiffRoot(
+                    uuid=str(uuid4()),
+                    partner_uuid=later.partner_uuid,
+                    base_branch_name=later.base_branch_name,
+                    diff_branch_name=later.diff_branch_name,
+                    from_time=earlier.from_time,
+                    to_time=later.to_time,
+                    nodes=combined_nodes,
+                )
+            )
+        base_branch_diff, diff_branch_diff = combined_diffs  # pylint: disable=unbalanced-tuple-unpacking
+        base_branch_diff.partner_uuid = diff_branch_diff.uuid
+        diff_branch_diff.partner_uuid = base_branch_diff.uuid
+        return EnrichedDiffs(
+            base_branch_name=later_diffs.base_branch_name,
+            diff_branch_name=later_diffs.diff_branch_name,
+            base_branch_diff=base_branch_diff,
+            diff_branch_diff=diff_branch_diff,
         )
