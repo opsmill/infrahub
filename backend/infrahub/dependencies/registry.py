@@ -11,6 +11,7 @@ from .builder.constraint.schema.relationship_optional import SchemaRelationshipO
 from .builder.constraint.schema.uniqueness import SchemaUniquenessConstraintDependency
 from .builder.diff.calculator import DiffCalculatorDependency
 from .builder.diff.combiner import DiffCombinerDependency
+from .builder.diff.conflict_transferer import DiffConflictTransfererDependency
 from .builder.diff.coordinator import DiffCoordinatorDependency
 from .builder.diff.data_check_synchronizer import DiffDataCheckSynchronizerDependency
 from .builder.diff.enricher.aggregated import DiffAggregatedEnricherDependency
@@ -41,6 +42,7 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(DiffCalculatorDependency)
     component_registry.track_dependency(DiffCombinerDependency)
     component_registry.track_dependency(DiffRepositoryDependency)
+    component_registry.track_dependency(DiffConflictTransfererDependency)
     component_registry.track_dependency(DiffCoordinatorDependency)
     component_registry.track_dependency(DiffDataCheckSynchronizerDependency)
     return component_registry

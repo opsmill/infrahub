@@ -16,13 +16,14 @@ from .m011_remove_profile_relationship_schema import Migration011
 from .m012_convert_account_generic import Migration012
 from .m013_convert_git_password_credential import Migration013
 from .m014_remove_index_attr_value import Migration014
+from .m015_diff_format_update import Migration015
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
 
-    from ..shared import GraphMigration, InternalSchemaMigration
+    from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
 
-MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration]]] = [
+MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration, ArbitraryMigration]]] = [
     Migration001,
     Migration002,
     Migration003,
@@ -37,10 +38,13 @@ MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration]]] = [
     Migration012,
     Migration013,
     Migration014,
+    Migration015,
 ]
 
 
-async def get_graph_migrations(root: Root) -> Sequence[Union[GraphMigration, InternalSchemaMigration]]:
+async def get_graph_migrations(
+    root: Root,
+) -> Sequence[Union[GraphMigration, InternalSchemaMigration, ArbitraryMigration]]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()
