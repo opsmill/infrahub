@@ -3,7 +3,7 @@ import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails"
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import { userNavigation } from "@/screens/layout/navigation-list";
-import { genericsState, IModelSchema } from "@/state/atoms/schema.atom";
+import { IModelSchema, schemaState } from "@/state/atoms/schema.atom";
 import { classNames } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
@@ -20,8 +20,8 @@ export const AccountMenu = () => {
   const { isAuthenticated } = useAuth();
 
   const location = useLocation();
-  const generics = useAtomValue(genericsState);
-  const schema = generics.find((s) => s.kind === ACCOUNT_OBJECT);
+  const schemas = useAtomValue(schemaState);
+  const schema = schemas.find((s) => s.kind === ACCOUNT_OBJECT);
 
   if (!isAuthenticated) {
     return (
