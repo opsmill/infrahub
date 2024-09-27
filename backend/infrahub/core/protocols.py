@@ -67,6 +67,7 @@ class CoreArtifactTarget(CoreNode):
 
 
 class CoreBasePermission(CoreNode):
+    identifier: StringOptional
     roles: RelationshipManager
 
 

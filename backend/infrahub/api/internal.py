@@ -20,6 +20,7 @@ class ConfigAPI(BaseModel):
     logging: LoggingSettings
     analytics: AnalyticsSettings
     experimental_features: ExperimentalFeaturesSettings
+    sso: config.SSOInfo
 
 
 class InfoAPI(BaseModel):
@@ -34,6 +35,7 @@ async def get_config() -> ConfigAPI:
         logging=config.SETTINGS.logging,
         analytics=config.SETTINGS.analytics,
         experimental_features=config.SETTINGS.experimental_features,
+        sso=config.SETTINGS.security.public_sso_config,
     )
 
 

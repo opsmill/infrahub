@@ -13,4 +13,4 @@ async def test_config_endpoint(db: InfrahubDatabase, client, client_headers, def
 
     config = response.json()
 
-    assert sorted(config.keys()) == ["analytics", "experimental_features", "logging", "main"]
+    assert sorted(config.keys()) == ["analytics", "experimental_features", "logging", "main", "sso"]
