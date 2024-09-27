@@ -1,7 +1,7 @@
 import { Tabs } from "@/components/tabs-routes";
 import {
   ACCOUNT_GROUP_OBJECT,
-  ACCOUNT_OBJECT,
+  ACCOUNT_GENERIC_OBJECT,
   ACCOUNT_ROLE_OBJECT,
   GLOBAL_PERMISSION_OBJECT,
   OBJECT_PERMISSION_OBJECT,
@@ -25,7 +25,7 @@ export function RoleManagementRoot() {
           Accounts
         </div>
       ),
-      count: data && data[ACCOUNT_OBJECT]?.count,
+      count: data && data[ACCOUNT_GENERIC_OBJECT]?.count,
       isLoading: loading,
       error: !!error,
     },

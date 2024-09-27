@@ -3,14 +3,14 @@ import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails"
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import { userNavigation } from "@/screens/layout/navigation-list";
-import { IModelSchema, schemaState } from "@/state/atoms/schema.atom";
+import { genericsState, IModelSchema } from "@/state/atoms/schema.atom";
 import { classNames } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { Fragment, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtomValue } from "jotai/index";
-import { ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 
@@ -20,8 +20,8 @@ export const AccountMenu = () => {
   const { isAuthenticated } = useAuth();
 
   const location = useLocation();
-  const schemas = useAtomValue(schemaState);
-  const schema = schemas.find((s) => s.kind === ACCOUNT_OBJECT);
+  const generics = useAtomValue(genericsState);
+  const schema = generics.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
   if (!isAuthenticated) {
     return (

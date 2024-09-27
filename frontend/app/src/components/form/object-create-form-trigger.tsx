@@ -3,7 +3,7 @@ import { Button, ButtonProps } from "../buttons/button-primitive";
 import { Tooltip } from "../ui/tooltip";
 import { usePermission } from "@/hooks/usePermission";
 import { useState } from "react";
-import { ACCOUNT_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { isGeneric } from "@/utils/common";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
@@ -30,8 +30,8 @@ export const ObjectCreateFormTrigger = ({
   }
 
   const isAccount: boolean =
-    schema.kind === ACCOUNT_OBJECT ||
-    (!isGeneric(schema) && !!schema.inherit_from?.includes(ACCOUNT_OBJECT));
+    schema.kind === ACCOUNT_GENERIC_OBJECT ||
+    (!isGeneric(schema) && !!schema.inherit_from?.includes(ACCOUNT_GENERIC_OBJECT));
 
   const isAllowed = isAccount ? permission.isAdmin.allow : permission.write.allow;
   const tooltipMessage = isAccount ? permission.isAdmin.message : permission.isAdmin.message;
