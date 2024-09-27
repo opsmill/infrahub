@@ -451,8 +451,13 @@ class SiteDesign:
 
 NETWORKS_SUPERNET = IPv4Network("10.0.0.0/8")
 NETWORKS_SUPERNET_IPV6 = IPv6Network("2001:DB8::/100")
-NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.111.0.0/16")
 MANAGEMENT_NETWORKS = IPv4Network("172.16.0.0/16")
+
+# Here with current logic we allocate 3 /29 per edge device
+# We have max 10 edges on a single site, max 200 sites
+# 3*10*200 = 6000 -> we need to be able to fit 6000 /29
+# Thus we need a /16
+NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.111.0.0/16")
 
 ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
@@ -2034,7 +2039,7 @@ async def run(
         kind=CoreIPAddressPool,
         name="Management addresses pool",
         default_address_type="IpamIPAddress",
-        default_prefix_length=28,
+        default_prefix_length=16,
         ip_namespace=default_ip_namespace,
         resources=[management_prefix],
         branch=branch,
