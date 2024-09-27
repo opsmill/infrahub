@@ -303,6 +303,19 @@ class GitSettings(BaseSettings):
     )
 
 
+class HTTPSettings(BaseSettings):
+    """The HTTP settings control how Infrahub interacts with external HTTP servers
+
+    This can be things like webhooks and OAuth2 providers"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_HTTP_")
+    timeout: int = Field(default=10, description="Default connection timeout in seconds")
+    tls_insecure: bool = Field(
+        default=False,
+        description="Indicates if Infrahub will validate server certificates or if the validation is ignored.",
+    )
+
+
 class InitialSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_INITIAL_")
     default_branch: str = Field(
@@ -521,6 +534,10 @@ class ConfiguredSettings:
         return self.active_settings.git
 
     @property
+    def http(self) -> HTTPSettings:
+        return self.active_settings.http
+
+    @property
     def database(self) -> DatabaseSettings:
         return self.active_settings.database
 
@@ -575,6 +592,7 @@ class Settings(BaseSettings):
     main: MainSettings = MainSettings()
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
+    http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
     cache: CacheSettings = CacheSettings()
