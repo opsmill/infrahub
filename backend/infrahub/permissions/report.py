@@ -23,7 +23,7 @@ async def report_schema_permissions(
 
     restrict_changes = False
     if branch.name == registry.default_branch:
-        restrict_changes = await perm_backend.resolve_global_permission(
+        restrict_changes = perm_backend.resolve_global_permission(
             permissions=permissions["global_permissions"],
             permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
         )

@@ -77,11 +77,8 @@ class LocalPermissionBackend(PermissionBackend):
     async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool:
         granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
 
-        if permission.startswith("global:"):
-            return self.resolve_global_permission(
-                permissions=granted_permissions["global_permissions"], permission_to_check=permission
-            )
-
-        return self.resolve_object_permission(
+        return self.resolve_global_permission(
+            permissions=granted_permissions["global_permissions"], permission_to_check=permission
+        ) or self.resolve_object_permission(
             permissions=granted_permissions["object_permissions"], permission_to_check=permission
         )
