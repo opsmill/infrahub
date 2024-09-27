@@ -89,6 +89,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                     parent = enriched_diff_root.add_parent(
                         node_id=current_node.uuid,
                         parent_id=str(ancestor.uuid),
+                        parent_db_id=ancestor.db_id,
                         parent_kind=ancestor.kind,
                         parent_label="",
                         parent_rel_name=parent_rel.name,
@@ -147,6 +148,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
             enriched_diff_root.add_parent(
                 node_id=node.uuid,
                 parent_id=str(peer_parent.peer_id),
+                parent_db_id=peer_parent.peer_db_id,
                 parent_kind=peer_parent.peer_kind,
                 parent_label="",
                 parent_rel_name=parent_rel.name,

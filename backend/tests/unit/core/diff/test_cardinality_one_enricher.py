@@ -99,6 +99,7 @@ class TestDiffCardinalityOneEnricher:
         assert has_source_prop_2 in diff_properties
         assert (
             EnrichedDiffProperty(
+                db_id=is_related_prop_2.db_id,
                 property_type=DatabaseEdgeType.IS_RELATED,
                 changed_at=is_related_prop_2.changed_at,
                 previous_value=peer_id_1,
@@ -188,6 +189,7 @@ class TestDiffCardinalityOneEnricher:
         assert len(diff_properties) == 2
         assert (
             EnrichedDiffProperty(
+                db_id=has_owner_prop_2.db_id,
                 property_type=DatabaseEdgeType.HAS_OWNER,
                 changed_at=timestamp,
                 previous_value=owner_1,
@@ -199,6 +201,7 @@ class TestDiffCardinalityOneEnricher:
         )
         assert (
             EnrichedDiffProperty(
+                db_id=is_related_prop_2.db_id,
                 property_type=DatabaseEdgeType.IS_RELATED,
                 changed_at=timestamp,
                 previous_value=peer_id_1,

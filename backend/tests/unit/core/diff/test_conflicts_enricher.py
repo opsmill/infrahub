@@ -95,9 +95,11 @@ class TestConflictsEnricher:
                 assert node.conflict == EnrichedDiffConflict(
                     uuid=node.conflict.uuid,
                     base_branch_action=DiffAction.UPDATED,
+                    base_branch_db_id=base_conflict_node.db_id,
                     base_branch_value=None,
                     base_branch_changed_at=base_conflict_node.changed_at,
                     diff_branch_action=DiffAction.REMOVED,
+                    diff_branch_db_id=branch_conflict_node.db_id,
                     diff_branch_value=None,
                     diff_branch_changed_at=branch_conflict_node.changed_at,
                     selected_branch=None,
@@ -172,9 +174,11 @@ class TestConflictsEnricher:
                         assert prop.conflict == EnrichedDiffConflict(
                             uuid=prop.conflict.uuid,
                             base_branch_action=DiffAction.UPDATED,
+                            base_branch_db_id=base_conflict_property.db_id,
                             base_branch_value=base_conflict_property.new_value,
                             base_branch_changed_at=base_conflict_property.changed_at,
                             diff_branch_action=DiffAction.UPDATED,
+                            diff_branch_db_id=branch_conflict_property.db_id,
                             diff_branch_value=branch_conflict_property.new_value,
                             diff_branch_changed_at=branch_conflict_property.changed_at,
                             selected_branch=None,
@@ -200,14 +204,13 @@ class TestConflictsEnricher:
             base_conflict_property,
             EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
         }
+        base_relationship_element = EnrichedRelationshipElementFactory.build(
+            peer_id=new_base_peer_id, properties=base_properties, action=DiffAction.UPDATED
+        )
         base_relationships = {
             EnrichedRelationshipGroupFactory.build(
                 name=relationship_name,
-                relationships={
-                    EnrichedRelationshipElementFactory.build(
-                        peer_id=new_base_peer_id, properties=base_properties, action=DiffAction.UPDATED
-                    )
-                },
+                relationships={base_relationship_element},
             )
         }
         base_nodes = {
@@ -227,14 +230,13 @@ class TestConflictsEnricher:
             branch_conflict_property,
             EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_OWNER),
         }
+        branch_relationship_element = EnrichedRelationshipElementFactory.build(
+            peer_id=previous_peer_id, properties=branch_properties, action=DiffAction.REMOVED
+        )
         branch_relationships = {
             EnrichedRelationshipGroupFactory.build(
                 name=relationship_name,
-                relationships={
-                    EnrichedRelationshipElementFactory.build(
-                        peer_id=previous_peer_id, properties=branch_properties, action=DiffAction.REMOVED
-                    )
-                },
+                relationships={base_relationship_element},
             )
         }
         branch_nodes = {
@@ -268,9 +270,11 @@ class TestConflictsEnricher:
                         assert rel_element.conflict == EnrichedDiffConflict(
                             uuid=rel_element.conflict.uuid,
                             base_branch_action=DiffAction.UPDATED,
+                            base_branch_db_id=base_relationship_element.db_id,
                             base_branch_value=new_base_peer_id,
                             base_branch_changed_at=base_conflict_property.changed_at,
                             diff_branch_action=DiffAction.REMOVED,
+                            diff_branch_db_id=branch_relationship_element.db_id,
                             diff_branch_value=None,
                             diff_branch_changed_at=branch_conflict_property.changed_at,
                             selected_branch=None,
@@ -393,10 +397,12 @@ class TestConflictsEnricher:
                             assert element_prop.conflict == EnrichedDiffConflict(
                                 uuid=element_prop.conflict.uuid,
                                 base_branch_action=DiffAction.ADDED,
+                                base_branch_db_id=base_conflict_property_1.db_id,
                                 base_branch_value=base_property_value_1,
                                 base_branch_changed_at=base_conflict_property_1.changed_at,
                                 diff_branch_action=DiffAction.UPDATED,
                                 diff_branch_value=branch_property_value_1,
+                                diff_branch_db_id=branch_conflict_property_1.db_id,
                                 diff_branch_changed_at=branch_conflict_property_1.changed_at,
                                 selected_branch=None,
                             )
@@ -410,9 +416,11 @@ class TestConflictsEnricher:
                             assert element_prop.conflict == EnrichedDiffConflict(
                                 uuid=element_prop.conflict.uuid,
                                 base_branch_action=DiffAction.UPDATED,
+                                base_branch_db_id=base_conflict_property_2.db_id,
                                 base_branch_value=base_property_value_2,
                                 base_branch_changed_at=base_conflict_property_2.changed_at,
                                 diff_branch_action=DiffAction.REMOVED,
+                                diff_branch_db_id=branch_conflict_property_2.db_id,
                                 diff_branch_value=branch_property_value_2,
                                 diff_branch_changed_at=branch_conflict_property_2.changed_at,
                                 selected_branch=None,

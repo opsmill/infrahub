@@ -84,6 +84,7 @@ class NodeAttributesFromDB:
 
 @dataclass
 class PeerInfo:
+    db_id: str
     uuid: str
     kind: str
 
@@ -1301,6 +1302,7 @@ class NodeGetHierarchyQuery(Query):
         for result in self.get_results_group_by(("peer", "uuid")):
             peer_node = result.get("peer")
             yield PeerInfo(
+                db_id=peer_node.element_id,
                 uuid=peer_node.get("uuid"),
                 kind=peer_node.get("kind"),
             )

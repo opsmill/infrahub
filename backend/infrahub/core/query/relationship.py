@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Generator, Optional, Union
 
 from infrahub_sdk import UUIDT
@@ -73,16 +73,16 @@ class RelationshipPeerData:
     properties: dict[str, Union[FlagPropertyData, NodePropertyData]]
     """UUID of the Relationship Node."""
 
-    rel_node_id: Optional[UUID] = None
+    rel_node_id: UUID
     """UUID of the Relationship Node."""
 
-    peer_db_id: Optional[str] = None
+    peer_db_id: str
     """Internal DB ID of the Peer Node."""
 
-    rel_node_db_id: Optional[str] = None
+    rel_node_db_id: str
     """Internal DB ID of the Relationship Node."""
 
-    rels: Optional[list[RelData]] = None
+    rels: list[RelData] = field(default_factory=list)
     """Both relationships pointing at this Relationship Node."""
 
     updated_at: Optional[str] = None
@@ -603,12 +603,12 @@ class RelationshipGetPeerQuery(Query):
             if filter_field_name not in peer_schema.valid_input_names:
                 continue
 
-            field = peer_schema.get_field(filter_field_name)
+            field_schema = peer_schema.get_field(filter_field_name)
 
             subquery, subquery_params, subquery_result_name = await build_subquery_filter(
                 db=db,
                 node_alias="peer",
-                field=field,
+                field=field_schema,
                 name=filter_field_name,
                 filter_name=filter_next_name,
                 filter_value=peer_filter_value,
@@ -663,11 +663,11 @@ class RelationshipGetPeerQuery(Query):
             for order_by_value in peer_schema.order_by:
                 order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
 
-                field = peer_schema.get_field(order_by_field_name)
+                field_schema = peer_schema.get_field(order_by_field_name)
 
                 subquery, subquery_params, subquery_result_name = await build_subquery_order(
                     db=db,
-                    field=field,
+                    field=field_schema,
                     node_alias="peer",
                     name=order_by_field_name,
                     order_by=order_by_next_name,
@@ -696,6 +696,7 @@ class RelationshipGetPeerQuery(Query):
             data = RelationshipPeerData(
                 source_id=result.get_node("source_node").get("uuid"),
                 peer_id=result.get_node("peer").get("uuid"),
+                peer_db_id=result.get_node("peer").element_id,
                 peer_kind=result.get_node("peer").get("kind"),
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),

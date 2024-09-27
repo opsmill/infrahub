@@ -184,6 +184,7 @@ class DiffCombiner:
                 continue
             combined_action = self._combine_actions(earlier=earlier_attribute.action, later=later_attribute.action)
             combined_attribute = EnrichedDiffAttribute(
+                db_id=later_attribute.db_id,
                 name=later_attribute.name,
                 changed_at=later_attribute.changed_at,
                 action=combined_action,
@@ -214,6 +215,7 @@ class DiffCombiner:
         final_element = ordered_elements[-1]
         peer_id = final_element.peer_id
         peer_label = final_element.peer_label
+        db_id = final_element.db_id
         # if this relationship is removed and was updated earlier, use the previous peer ID from the update
         if combined_action is DiffAction.REMOVED:
             for element in ordered_elements:
@@ -225,8 +227,10 @@ class DiffCombiner:
                     ):
                         peer_id = prop.previous_value
                         peer_label = prop.previous_label
+                        db_id = element.db_id
                         break
         return EnrichedDiffSingleRelationship(
+            db_id=db_id,
             changed_at=final_element.changed_at,
             action=combined_action,
             peer_id=peer_id,
@@ -251,6 +255,7 @@ class DiffCombiner:
             if not self._should_include(earlier=earlier_element.action, later=later_element.action):
                 continue
             combined_element = EnrichedDiffSingleRelationship(
+                db_id=later_element.db_id,
                 changed_at=later_element.changed_at,
                 action=self._combine_actions(earlier=earlier_element.action, later=later_element.action),
                 peer_id=later_element.peer_id,
@@ -342,6 +347,7 @@ class DiffCombiner:
             combined_action = self._combine_actions(earlier=node_pair.earlier.action, later=node_pair.later.action)
             combined_nodes.add(
                 EnrichedDiffNode(
+                    db_id=node_pair.later.db_id,
                     uuid=node_pair.later.uuid,
                     kind=node_pair.later.kind,
                     label=node_pair.later.label,

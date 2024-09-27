@@ -100,9 +100,11 @@ class ConflictSelection(Enum):
 class EnrichedDiffConflict:
     uuid: str
     base_branch_action: DiffAction
+    base_branch_db_id: str
     base_branch_value: str | None
     diff_branch_action: DiffAction
     diff_branch_value: str | None
+    diff_branch_db_id: str
     base_branch_label: str | None = field(default=None, kw_only=True)
     diff_branch_label: str | None = field(default=None, kw_only=True)
     base_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
@@ -112,6 +114,7 @@ class EnrichedDiffConflict:
 
 @dataclass
 class EnrichedDiffProperty:
+    db_id: str
     property_type: DatabaseEdgeType
     changed_at: Timestamp
     previous_value: str | None
@@ -128,6 +131,7 @@ class EnrichedDiffProperty:
     @classmethod
     def from_calculated_property(cls, calculated_property: DiffProperty) -> EnrichedDiffProperty:
         return EnrichedDiffProperty(
+            db_id=calculated_property.db_id,
             property_type=calculated_property.property_type,
             changed_at=calculated_property.changed_at,
             previous_value=str(calculated_property.previous_value)
@@ -140,6 +144,7 @@ class EnrichedDiffProperty:
 
 @dataclass
 class EnrichedDiffAttribute(BaseSummary):
+    db_id: str
     name: str
     path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp
@@ -155,6 +160,7 @@ class EnrichedDiffAttribute(BaseSummary):
     @classmethod
     def from_calculated_attribute(cls, calculated_attribute: DiffAttribute) -> EnrichedDiffAttribute:
         return EnrichedDiffAttribute(
+            db_id=calculated_attribute.db_id,
             name=calculated_attribute.name,
             changed_at=calculated_attribute.changed_at,
             action=calculated_attribute.action,
@@ -167,6 +173,7 @@ class EnrichedDiffAttribute(BaseSummary):
 
 @dataclass
 class EnrichedDiffSingleRelationship(BaseSummary):
+    db_id: str
     changed_at: Timestamp
     action: DiffAction
     peer_id: str
@@ -194,6 +201,7 @@ class EnrichedDiffSingleRelationship(BaseSummary):
     @classmethod
     def from_calculated_element(cls, calculated_element: DiffSingleRelationship) -> EnrichedDiffSingleRelationship:
         return EnrichedDiffSingleRelationship(
+            db_id=calculated_element.db_id,
             changed_at=calculated_element.changed_at,
             action=calculated_element.action,
             peer_id=calculated_element.peer_id,
@@ -254,6 +262,7 @@ class ParentNodeInfo:
 
 @dataclass
 class EnrichedDiffNode(BaseSummary):
+    db_id: str
     uuid: str
     kind: str
     label: str
@@ -343,6 +352,7 @@ class EnrichedDiffNode(BaseSummary):
     @classmethod
     def from_calculated_node(cls, calculated_node: DiffNode) -> EnrichedDiffNode:
         return EnrichedDiffNode(
+            db_id=calculated_node.db_id,
             uuid=calculated_node.uuid,
             kind=calculated_node.kind,
             label="",
@@ -413,6 +423,7 @@ class EnrichedDiffRoot(BaseSummary):
         self,
         node_id: str,
         parent_id: str,
+        parent_db_id: str,
         parent_kind: str,
         parent_label: str,
         parent_rel_name: str,
@@ -423,6 +434,7 @@ class EnrichedDiffRoot(BaseSummary):
         if not self.has_node(node_uuid=parent_id):
             parent = EnrichedDiffNode(
                 uuid=parent_id,
+                db_id=parent_db_id,
                 kind=parent_kind,
                 label=parent_label,
                 action=DiffAction.UNCHANGED,
@@ -484,6 +496,7 @@ class CalculatedDiffs:
 
 @dataclass
 class DiffProperty:
+    db_id: str
     property_type: DatabaseEdgeType
     changed_at: Timestamp
     previous_value: Any
@@ -493,6 +506,7 @@ class DiffProperty:
 
 @dataclass
 class DiffAttribute:
+    db_id: str
     uuid: str
     name: str
     changed_at: Timestamp
@@ -502,6 +516,7 @@ class DiffAttribute:
 
 @dataclass
 class DiffSingleRelationship:
+    db_id: str
     changed_at: Timestamp
     action: DiffAction
     peer_id: str
@@ -519,6 +534,7 @@ class DiffRelationship:
 
 @dataclass
 class DiffNode:
+    db_id: str
     uuid: str
     kind: str
     changed_at: Timestamp
@@ -599,6 +615,10 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return str(self.node_node.get("uuid"))
 
     @property
+    def node_db_id(self) -> str:
+        return self.node_node.element_id
+
+    @property
     def node_kind(self) -> str:
         return str(self.node_node.get("kind"))
 
@@ -619,6 +639,10 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return str(self.attribute_node.get("uuid"))
 
     @property
+    def attribute_db_id(self) -> str:
+        return self.attribute_node.element_id
+
+    @property
     def attribute_changed_at(self) -> Timestamp:
         return Timestamp(self.path_to_attribute.get("from"))
 
@@ -635,7 +659,7 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return DatabaseEdgeType(self.path_to_property.type)
 
     @property
-    def property_id(self) -> str:
+    def property_db_id(self) -> str:
         return self.property_node.element_id
 
     @property

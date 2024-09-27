@@ -64,7 +64,17 @@ class TrackedStatusUpdates:
 
 
 @dataclass
+class PropertyDetails:
+    db_id: str
+    action: DiffAction
+    changed_at: Timestamp
+    previous_value: Any
+    new_value: Any
+
+
+@dataclass
 class DiffValueIntermediate:
+    db_id: str
     changed_at: Timestamp
     status: RelationshipStatus
     value: Any
@@ -97,7 +107,7 @@ class DiffPropertyIntermediate:
             return None
         return ordered_values[0]
 
-    def get_property_details(self, from_time: Timestamp) -> tuple[DiffAction, Timestamp, Any, Any]:
+    def get_property_details(self, from_time: Timestamp) -> PropertyDetails:
         """Returns action, timestamp, previous_value, new_value"""
         ordered_values = self.get_ordered_values_asc()
         previous: Any = None
@@ -115,13 +125,22 @@ class DiffPropertyIntermediate:
             else:
                 action = DiffAction.REMOVED
                 previous = lone_value.value
-            return (action, lone_value.changed_at, previous, new)
+            return PropertyDetails(
+                db_id=lone_value.db_id,
+                action=action,
+                changed_at=lone_value.changed_at,
+                previous_value=previous,
+                new_value=new,
+            )
         previous_value = ordered_values[0].value
         previous_status = ordered_values[0].status
+        previous_db_id = ordered_values[0].db_id
         new_diff_value = ordered_values[-1]
         new_value = new_diff_value.value
         new_status = new_diff_value.status
+        new_db_id = new_diff_value.db_id
         action = DiffAction.UPDATED
+        db_id = new_db_id
         if previous_value in (None, "NULL") and new_value not in (None, "NULL"):
             action = DiffAction.ADDED
         elif (previous_value not in (None, "NULL") and new_value in (None, "NULL")) or (
@@ -129,25 +148,34 @@ class DiffPropertyIntermediate:
             new_status,
         ) == (RelationshipStatus.ACTIVE, RelationshipStatus.DELETED):
             action = DiffAction.REMOVED
+            db_id = previous_db_id
             if new_value != "NULL":
                 new_value = None
         elif previous_value == new_value or {previous_value, new_value} <= {None, "NULL"}:
             action = DiffAction.UNCHANGED
-        return (action, new_diff_value.changed_at, previous_value, new_value)
-
-    def to_diff_property(self, from_time: Timestamp) -> DiffProperty:
-        action, changed_at, previous_value, new_value = self.get_property_details(from_time=from_time)
-        return DiffProperty(
-            property_type=self.property_type,
-            changed_at=changed_at,
+        return PropertyDetails(
+            db_id=db_id,
             action=action,
+            changed_at=new_diff_value.changed_at,
             previous_value=previous_value,
             new_value=new_value,
+        )
+
+    def to_diff_property(self, from_time: Timestamp) -> DiffProperty:
+        property_details = self.get_property_details(from_time=from_time)
+        return DiffProperty(
+            db_id=property_details.db_id,
+            property_type=self.property_type,
+            changed_at=property_details.changed_at,
+            action=property_details.action,
+            previous_value=property_details.previous_value,
+            new_value=property_details.new_value,
         )
 
 
 @dataclass
 class DiffAttributeIntermediate(TrackedStatusUpdates):
+    db_id: str
     uuid: str
     name: str
     properties_by_type: dict[DatabaseEdgeType, DiffPropertyIntermediate] = field(default_factory=dict)
@@ -161,7 +189,12 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
         properties = [prop.to_diff_property(from_time=from_time) for prop in self.properties_by_type.values()]
         action, changed_at = self.get_action_and_timestamp(from_time=from_time)
         return DiffAttribute(
-            uuid=self.uuid, name=self.name, changed_at=changed_at, action=action, properties=properties
+            db_id=self.db_id,
+            uuid=self.uuid,
+            name=self.name,
+            changed_at=changed_at,
+            action=action,
+            properties=properties,
         )
 
 
@@ -183,6 +216,7 @@ class DiffRelationshipPropertyIntermediate:
 
 @dataclass
 class DiffSingleRelationshipIntermediate:
+    db_id: str
     peer_id: str
     last_changed_at: Timestamp
     ordered_properties_by_type: dict[DatabaseEdgeType, list[DiffRelationshipPropertyIntermediate]] = field(
@@ -191,7 +225,7 @@ class DiffSingleRelationshipIntermediate:
 
     @classmethod
     def from_properties(
-        cls, properties: list[DiffRelationshipPropertyIntermediate]
+        cls, db_id: str, properties: list[DiffRelationshipPropertyIntermediate]
     ) -> DiffSingleRelationshipIntermediate:
         if not properties:
             raise DiffNoChildPathError()
@@ -212,6 +246,7 @@ class DiffSingleRelationshipIntermediate:
                 ordered_properties_by_type[property_key] = []
             ordered_properties_by_type[property_key].append(chronological_property)
         return cls(
+            db_id=db_id,
             peer_id=peer_id,
             last_changed_at=last_changed_at,
             ordered_properties_by_type=ordered_properties_by_type,
@@ -220,8 +255,9 @@ class DiffSingleRelationshipIntermediate:
     def _get_single_relationship_final_property(
         self, chronological_properties: list[DiffRelationshipPropertyIntermediate], from_time: Timestamp
     ) -> DiffProperty:
-        property_type = DatabaseEdgeType(chronological_properties[0].property_type)
+        property_type = chronological_properties[0].property_type
         changed_at = chronological_properties[-1].changed_at
+        previous_db_id = chronological_properties[0].db_id
         previous_value = None
         first_diff_prop = chronological_properties[0]
         if first_diff_prop.status is RelationshipStatus.DELETED or first_diff_prop.changed_at < from_time:
@@ -229,6 +265,7 @@ class DiffSingleRelationshipIntermediate:
         new_value = None
         last_diff_prop = chronological_properties[-1]
         changed_at = last_diff_prop.changed_at
+        db_id = last_diff_prop.db_id
         if last_diff_prop is first_diff_prop:
             if last_diff_prop.status is RelationshipStatus.DELETED:
                 previous_value = last_diff_prop.value
@@ -243,9 +280,11 @@ class DiffSingleRelationshipIntermediate:
             action = DiffAction.ADDED
         elif previous_value not in (None, "NULL") and new_value in (None, "NULL"):
             action = DiffAction.REMOVED
+            db_id = previous_db_id
         elif previous_value == new_value or {previous_value, new_value} <= {None, "NULL"}:
             action = DiffAction.UNCHANGED
         return DiffProperty(
+            db_id=db_id,
             property_type=property_type,
             changed_at=changed_at,
             previous_value=previous_value,
@@ -283,7 +322,7 @@ class DiffSingleRelationshipIntermediate:
         else:
             action = DiffAction.UPDATED
         return DiffSingleRelationship(
-            peer_id=peer_id, changed_at=last_changed_at, action=action, properties=final_properties
+            db_id=self.db_id, peer_id=peer_id, changed_at=last_changed_at, action=action, properties=final_properties
         )
 
 
@@ -303,7 +342,7 @@ class DiffRelationshipIntermediate:
             value = database_path.peer_id
         else:
             value = database_path.property_value
-        db_id = database_path.attribute_node.element_id
+        db_id = database_path.attribute_db_id
         if db_id not in self.properties_by_db_id:
             self.properties_by_db_id[db_id] = set()
         self.properties_by_db_id[db_id].add(
@@ -318,8 +357,10 @@ class DiffRelationshipIntermediate:
 
     def _index_relationships(self) -> None:
         self._single_relationship_list = [
-            DiffSingleRelationshipIntermediate.from_properties(list(single_relationship_properties))
-            for single_relationship_properties in self.properties_by_db_id.values()
+            DiffSingleRelationshipIntermediate.from_properties(
+                db_id=db_id, properties=list(single_relationship_properties)
+            )
+            for db_id, single_relationship_properties in self.properties_by_db_id.items()
         ]
 
     def to_diff_relationship(self, from_time: Timestamp) -> DiffRelationship:
@@ -349,6 +390,7 @@ class DiffRelationshipIntermediate:
 
 @dataclass
 class DiffNodeIntermediate(TrackedStatusUpdates):
+    db_id: str
     uuid: str
     kind: str
     attributes_by_name: dict[str, DiffAttributeIntermediate] = field(default_factory=dict)
@@ -359,6 +401,7 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
         relationships = [rel.to_diff_relationship(from_time=from_time) for rel in self.relationships_by_name.values()]
         action, changed_at = self.get_action_and_timestamp(from_time=from_time)
         return DiffNode(
+            db_id=self.db_id,
             uuid=self.uuid,
             kind=self.kind,
             changed_at=changed_at,
@@ -443,6 +486,7 @@ class DiffQueryParser:
         node_id = database_path.node_id
         if node_id not in diff_root.nodes_by_id:
             diff_root.nodes_by_id[node_id] = DiffNodeIntermediate(
+                db_id=database_path.node_db_id,
                 uuid=node_id,
                 kind=database_path.node_kind,
             )
@@ -472,6 +516,7 @@ class DiffQueryParser:
         attribute_name = database_path.attribute_name
         if attribute_name not in diff_node.attributes_by_name:
             diff_node.attributes_by_name[attribute_name] = DiffAttributeIntermediate(
+                db_id=database_path.attribute_db_id,
                 uuid=database_path.attribute_id,
                 name=attribute_name,
             )
@@ -488,6 +533,7 @@ class DiffQueryParser:
         diff_property = diff_attribute.properties_by_type[property_type]
         diff_property.add_value(
             diff_value=DiffValueIntermediate(
+                db_id=database_path.property_db_id,
                 changed_at=database_path.property_changed_at,
                 status=database_path.property_status,
                 value=database_path.property_value,

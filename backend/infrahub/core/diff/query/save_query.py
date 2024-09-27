@@ -116,12 +116,14 @@ class EnrichedDiffSaveQuery(Query):
             "uuid": enriched_conflict.uuid,
             "base_branch_action": enriched_conflict.base_branch_action.value,
             "base_branch_value": enriched_conflict.base_branch_value,
+            "base_branch_db_id": enriched_conflict.base_branch_db_id,
             "base_branch_changed_at": enriched_conflict.base_branch_changed_at.to_string()
             if enriched_conflict.base_branch_changed_at
             else None,
             "base_branch_label": enriched_conflict.base_branch_label,
             "diff_branch_action": enriched_conflict.diff_branch_action.value,
             "diff_branch_value": enriched_conflict.diff_branch_value,
+            "diff_branch_db_id": enriched_conflict.diff_branch_db_id,
             "diff_branch_changed_at": enriched_conflict.diff_branch_changed_at.to_string()
             if enriched_conflict.diff_branch_changed_at
             else None,
@@ -135,6 +137,7 @@ class EnrichedDiffSaveQuery(Query):
             conflict_params = self._build_conflict_params(enriched_conflict=enriched_property.conflict)
         return {
             "node_properties": {
+                "db_id": enriched_property.db_id,
                 "property_type": enriched_property.property_type.value,
                 "changed_at": enriched_property.changed_at.to_string(),
                 "previous_value": enriched_property.previous_value,
@@ -153,6 +156,7 @@ class EnrichedDiffSaveQuery(Query):
         ]
         return {
             "node_properties": {
+                "db_id": enriched_attribute.db_id,
                 "name": enriched_attribute.name,
                 "changed_at": enriched_attribute.changed_at.to_string(),
                 "action": enriched_attribute.action.value,
@@ -177,6 +181,7 @@ class EnrichedDiffSaveQuery(Query):
             conflict_params = self._build_conflict_params(enriched_conflict=enriched_single_relationship.conflict)
         return {
             "node_properties": {
+                "db_id": enriched_single_relationship.db_id,
                 "changed_at": enriched_single_relationship.changed_at.to_string(),
                 "action": enriched_single_relationship.action,
                 "peer_id": enriched_single_relationship.peer_id,
@@ -228,6 +233,7 @@ class EnrichedDiffSaveQuery(Query):
             conflict_params = self._build_conflict_params(enriched_conflict=enriched_node.conflict)
         return {
             "node_properties": {
+                "db_id": enriched_node.db_id,
                 "uuid": enriched_node.uuid,
                 "kind": enriched_node.kind,
                 "label": enriched_node.label,

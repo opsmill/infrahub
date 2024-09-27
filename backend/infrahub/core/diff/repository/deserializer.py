@@ -132,6 +132,7 @@ class EnrichedDiffDeserializer:
             enriched_root.add_parent(
                 node_id=current_node_uuid,
                 parent_id=parent.get("uuid"),
+                parent_db_id=parent.get("db_id"),
                 parent_kind=parent.get("kind"),
                 parent_label=parent.get("label"),
                 parent_rel_name=rel.get("name"),
@@ -183,6 +184,7 @@ class EnrichedDiffDeserializer:
 
         timestamp_str = self._get_str_or_none_property_value(node=node_node, property_name="changed_at")
         enriched_node = EnrichedDiffNode(
+            db_id=str(node_node.get("db_id")),
             uuid=node_uuid,
             kind=str(node_node.get("kind")),
             label=str(node_node.get("label")),
@@ -208,6 +210,7 @@ class EnrichedDiffDeserializer:
             return self._diff_node_attr_map[attr_key]
 
         enriched_attr = EnrichedDiffAttribute(
+            db_id=str(diff_attr_node.get("db_id")),
             name=str(diff_attr_node.get("name")),
             changed_at=Timestamp(str(diff_attr_node.get("changed_at"))),
             path_identifier=str(diff_attr_node.get("path_identifier")),
@@ -268,6 +271,7 @@ class EnrichedDiffDeserializer:
 
         peer_label = self._get_str_or_none_property_value(node=relationship_element_node, property_name="peer_label")
         enriched_rel_element = EnrichedDiffSingleRelationship(
+            db_id=str(relationship_element_node.get("db_id")),
             changed_at=Timestamp(str(relationship_element_node.get("changed_at"))),
             action=DiffAction(str(relationship_element_node.get("action"))),
             peer_id=diff_element_peer_id,
@@ -289,6 +293,7 @@ class EnrichedDiffDeserializer:
         previous_label = self._get_str_or_none_property_value(node=property_node, property_name="previous_label")
         new_label = self._get_str_or_none_property_value(node=property_node, property_name="new_label")
         return EnrichedDiffProperty(
+            db_id=str(property_node.get("db_id")),
             property_type=DatabaseEdgeType(str(property_node.get("property_type"))),
             changed_at=Timestamp(str(property_node.get("changed_at"))),
             previous_value=previous_value,
@@ -364,10 +369,12 @@ class EnrichedDiffDeserializer:
             uuid=str(diff_conflict_node.get("uuid")),
             base_branch_action=DiffAction(str(diff_conflict_node.get("base_branch_action"))),
             base_branch_value=base_branch_value,
+            base_branch_db_id=str(diff_conflict_node.get("base_branch_db_id")),
             base_branch_changed_at=Timestamp(base_timestamp_str) if base_timestamp_str else None,
             base_branch_label=base_branch_label,
             diff_branch_action=DiffAction(str(diff_conflict_node.get("diff_branch_action"))),
             diff_branch_value=diff_branch_value,
+            diff_branch_db_id=str(diff_conflict_node.get("diff_branch_db_id")),
             diff_branch_label=diff_branch_label,
             diff_branch_changed_at=Timestamp(diff_timestamp_str) if diff_timestamp_str else None,
             selected_branch=ConflictSelection(selected_branch) if selected_branch else None,

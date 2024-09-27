@@ -96,6 +96,7 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
                 continue
             consolidated_properties.add(
                 EnrichedDiffProperty(
+                    db_id=latest_prop.db_id,
                     property_type=prop_type,
                     changed_at=latest_prop.changed_at,
                     previous_value=earliest_prop.previous_value,
@@ -122,6 +123,7 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
                 consolidated_element_action = latest_element.action
             diff_relationship.relationships = {
                 EnrichedDiffSingleRelationship(
+                    db_id=latest_element.db_id,
                     changed_at=latest_element.changed_at,
                     action=consolidated_element_action,
                     peer_id=latest_element.peer_id,

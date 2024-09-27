@@ -130,6 +130,7 @@ class TestDiffCombiner:
             action=action_1, attributes=set(), relationships=set(), conflict=node_1_conflict
         )
         diff_node_2 = EnrichedNodeFactory.build(
+            db_id=diff_node_1.db_id,
             uuid=diff_node_1.uuid,
             kind=diff_node_1.kind,
             action=action_2,
@@ -146,6 +147,7 @@ class TestDiffCombiner:
         self.expected_combined.uuid = combined.uuid
         self.expected_combined.nodes = {
             EnrichedDiffNode(
+                db_id=diff_node_2.db_id,
                 uuid=diff_node_2.uuid,
                 kind=diff_node_2.kind,
                 label=diff_node_2.label,
@@ -233,6 +235,7 @@ class TestDiffCombiner:
             action=DiffAction.ADDED, attributes={added_attribute_1, attr_earlier_only}, relationships=set()
         )
         later_node_1 = EnrichedNodeFactory.build(
+            db_id=earlier_node_1.db_id,
             uuid=earlier_node_1.uuid,
             kind=earlier_node_1.kind,
             action=DiffAction.UPDATED,
@@ -265,6 +268,7 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED, attributes={updated_attribute_1}, relationships=set()
         )
         later_node_2 = EnrichedNodeFactory.build(
+            db_id=earlier_node_2.db_id,
             uuid=earlier_node_2.uuid,
             kind=earlier_node_2.kind,
             action=DiffAction.UPDATED,
@@ -277,6 +281,7 @@ class TestDiffCombiner:
         self.diff_root_2.nodes = {later_node_1, later_node_2}
 
         expected_added_combined_property = EnrichedDiffProperty(
+            db_id=added_attr_owner_property_2.db_id,
             property_type=added_attr_owner_property_2.property_type,
             changed_at=added_attr_owner_property_2.changed_at,
             previous_value=added_attr_owner_property_1.previous_value,
@@ -287,6 +292,7 @@ class TestDiffCombiner:
             action=DiffAction.ADDED,
         )
         expected_updated_combined_property = EnrichedDiffProperty(
+            db_id=updated_attr_value_property_2.db_id,
             property_type=updated_attr_value_property_2.property_type,
             changed_at=updated_attr_value_property_2.changed_at,
             previous_value=updated_attr_value_property_1.previous_value,
@@ -297,6 +303,7 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED,
         )
         expected_added_combined_attr = EnrichedDiffAttribute(
+            db_id=added_attribute_2.db_id,
             name=added_attr_name,
             changed_at=added_attribute_2.changed_at,
             action=DiffAction.ADDED,
@@ -304,6 +311,7 @@ class TestDiffCombiner:
             properties={earlier_only_property, later_only_property, expected_added_combined_property},
         )
         expected_updated_combined_attr = EnrichedDiffAttribute(
+            db_id=updated_attribute_2.db_id,
             name=updated_attr_name,
             changed_at=updated_attribute_2.changed_at,
             action=DiffAction.UPDATED,
@@ -312,6 +320,7 @@ class TestDiffCombiner:
         )
         expected_nodes = {
             EnrichedDiffNode(
+                db_id=later_node_1.db_id,
                 uuid=later_node_1.uuid,
                 kind=later_node_1.kind,
                 label=later_node_1.label,
@@ -321,6 +330,7 @@ class TestDiffCombiner:
                 attributes={attr_earlier_only, attr_later_only, expected_added_combined_attr},
             ),
             EnrichedDiffNode(
+                db_id=later_node_2.db_id,
                 uuid=later_node_2.uuid,
                 kind=later_node_2.kind,
                 label=later_node_2.label,
@@ -405,6 +415,7 @@ class TestDiffCombiner:
         self.diff_root_2.nodes = {later_node}
 
         expected_peer_property = EnrichedDiffProperty(
+            db_id=later_peer_property.db_id,
             property_type=DatabaseEdgeType.IS_RELATED,
             changed_at=later_peer_property.changed_at,
             previous_value=old_peer_id,
@@ -416,6 +427,7 @@ class TestDiffCombiner:
             ),
         )
         expected_relationship_element = EnrichedDiffSingleRelationship(
+            db_id=later_element.db_id,
             changed_at=later_element.changed_at,
             action=DiffAction.UPDATED,
             peer_id=new_peer_id,
@@ -434,6 +446,7 @@ class TestDiffCombiner:
             relationships={expected_relationship_element},
         )
         expected_node = EnrichedDiffNode(
+            db_id=later_node.db_id,
             uuid=later_node.uuid,
             kind="TestCar",
             label=later_node.label,
@@ -469,6 +482,7 @@ class TestDiffCombiner:
             removed_props_2.add(r2)
             expected_removed_props.add(
                 EnrichedDiffProperty(
+                    db_id=r2.db_id,
                     property_type=rpt,
                     changed_at=r2.changed_at,
                     previous_value=r1.previous_value,
@@ -494,6 +508,7 @@ class TestDiffCombiner:
             added_props_2.add(a2)
             expected_added_props.add(
                 EnrichedDiffProperty(
+                    db_id=a2.db_id,
                     property_type=rpt,
                     changed_at=a2.changed_at,
                     previous_value=None,
@@ -557,6 +572,7 @@ class TestDiffCombiner:
         self.diff_root_2.nodes = {node_2}
 
         expected_removed_element = EnrichedDiffSingleRelationship(
+            db_id=removed_element_2.db_id,
             changed_at=removed_element_2.changed_at,
             action=DiffAction.REMOVED,
             peer_id=removed_element_peer_id,
@@ -565,6 +581,7 @@ class TestDiffCombiner:
             properties=expected_removed_props,
         )
         expected_added_element = EnrichedDiffSingleRelationship(
+            db_id=added_element_2.db_id,
             changed_at=added_element_2.changed_at,
             action=DiffAction.ADDED,
             peer_id=added_element_peer_id,
@@ -573,6 +590,7 @@ class TestDiffCombiner:
             properties=expected_added_props,
         )
         expected_updated_element = EnrichedDiffSingleRelationship(
+            db_id=updated_element_2.db_id,
             changed_at=updated_element_2.changed_at,
             action=DiffAction.UPDATED,
             peer_id=updated_element_peer_id,
@@ -580,6 +598,7 @@ class TestDiffCombiner:
             path_identifier=updated_element_2.path_identifier,
             properties={
                 EnrichedDiffProperty(
+                    db_id=updated_property_2.db_id,
                     property_type=DatabaseEdgeType.HAS_OWNER,
                     changed_at=updated_property_2.changed_at,
                     previous_value=updated_property_1.previous_value,
@@ -599,6 +618,7 @@ class TestDiffCombiner:
             relationships={expected_added_element, expected_removed_element, expected_updated_element},
         )
         expected_node = EnrichedDiffNode(
+            db_id=node_2.db_id,
             uuid=node_1.uuid,
             kind="TestPerson",
             label=node_2.label,
@@ -663,6 +683,7 @@ class TestDiffCombiner:
             nodes={later_parent_node},
         )
         expected_node = EnrichedDiffNode(
+            db_id=later_node.db_id,
             uuid=later_node.uuid,
             kind="TestCar",
             label=later_node.label,
@@ -828,6 +849,7 @@ class TestDiffCombiner:
             nodes={expected_parent_node},
         )
         expected_child_node = EnrichedDiffNode(
+            db_id=child_node_2.db_id,
             uuid=child_node_uuid,
             kind=child_node_2.kind,
             label=child_node_2.label,
@@ -897,6 +919,7 @@ class TestDiffCombiner:
             nodes={expected_parent_2},
         )
         expected_child_node = EnrichedDiffNode(
+            db_id=child_node_2.db_id,
             uuid=child_node_uuid,
             kind=child_node_2.kind,
             label=child_node_2.label,
