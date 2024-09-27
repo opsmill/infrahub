@@ -39,6 +39,7 @@ export function RoleManagementRoot() {
       ),
       count: data && data[ACCOUNT_GROUP_OBJECT]?.count,
       isLoading: loading,
+      error: !!error,
     },
     {
       to: constructPath("/role-management/roles"),
@@ -50,6 +51,7 @@ export function RoleManagementRoot() {
       ),
       count: data && data[ACCOUNT_ROLE_OBJECT]?.count,
       isLoading: loading,
+      error: !!error,
     },
     {
       to: constructPath("/role-management/global-permissions"),
@@ -61,6 +63,7 @@ export function RoleManagementRoot() {
       ),
       count: data && data[GLOBAL_PERMISSION_OBJECT]?.count,
       isLoading: loading,
+      error: !!error,
     },
     {
       to: constructPath("/role-management/object-permissions"),
@@ -72,6 +75,7 @@ export function RoleManagementRoot() {
       ),
       count: data && data[OBJECT_PERMISSION_OBJECT]?.count,
       isLoading: loading,
+      error: !!error,
     },
   ];
 
