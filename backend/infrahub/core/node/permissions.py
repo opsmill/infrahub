@@ -22,7 +22,7 @@ class CoreGlobalPermission(Node):
 
         if fields:
             if "identifier" in fields:
-                response["identifier"] = {"value": f"global:{self.action.value}:{self.decision.value.value}"}  # type: ignore[attr-defined]
+                response["identifier"] = {"value": f"global:{self.action.value}:allow"}  # type: ignore[attr-defined]
 
         return response
 
