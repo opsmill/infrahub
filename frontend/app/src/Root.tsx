@@ -3,7 +3,6 @@ import { CONFIG } from "@/config/config";
 import { useSetAtom } from "jotai";
 import { ReactNode, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import reportWebVitals from "./reportWebVitals";
 import { Config, configState } from "./state/atoms/config.atom";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { fetchUrl } from "@/utils/fetch";
@@ -63,8 +62,3 @@ export const Root = ({ children }: { children?: ReactNode }) => {
 
   return children;
 };
-
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
