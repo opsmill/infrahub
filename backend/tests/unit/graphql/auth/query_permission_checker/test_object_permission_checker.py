@@ -121,7 +121,7 @@ class TestObjectPermissions:
                 id="",
                 branch="main",
                 namespace="Builtin",
-                name="any",
+                name="*",
                 action=PermissionAction.ANY.value,
                 decision=PermissionDecision.ALLOW.value,
             ),

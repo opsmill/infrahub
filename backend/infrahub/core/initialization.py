@@ -308,9 +308,9 @@ async def create_initial_permissions(db: InfrahubDatabase) -> list[Node]:
         # Allow anything for now to not break existing behaviour
         ObjectPermission(
             id="",
-            branch="any",
-            namespace="any",
-            name="any",
+            branch="*",
+            namespace="*",
+            name="*",
             action=PermissionAction.ANY.value,
             decision=PermissionDecision.ALLOW.value,
         )

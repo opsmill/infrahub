@@ -2546,9 +2546,9 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     for object_permission in [
         ObjectPermission(
             id="",
-            branch="any",
-            namespace="any",
-            name="any",
+            branch="*",
+            namespace="*",
+            name="*",
             action=PermissionAction.ANY.value,
             decision=PermissionDecision.ALLOW.value,
         )
