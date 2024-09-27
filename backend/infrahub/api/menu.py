@@ -199,7 +199,7 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
         children=[
             InterfaceMenu(
                 title="Role Management",
-                path=f"/role-management",
+                path="/role-management",
                 icon=_extract_node_icon(full_schema[InfrahubKind.BASEPERMISSION]),
             ),
             InterfaceMenu(
