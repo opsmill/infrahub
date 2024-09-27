@@ -24,6 +24,10 @@ function GlobalPermissions() {
       label: "Name",
     },
     {
+      name: "action",
+      label: "Action",
+    },
+    {
       name: "roles",
       label: "Roles",
     },
