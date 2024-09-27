@@ -1,4 +1,5 @@
 import copy
+import re
 import uuid
 
 import pytest
@@ -1155,11 +1156,17 @@ async def test_validate_exception_ipam_ip_namespace(
         ),
         (
             [["mybool__value", "status__name__value"]],
-            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node, only the relationship",
+            "InfraGenericInterface.uniqueness_constraints: cannot use status relationship, relationship must be mandatory. (`status__name__value`)",
         ),
         (
             [["mybool", "status__name__value"]],
-            "InfraGenericInterface uniqueness contraint is invalid at attribute 'mybool', it must end with one of the following properties: value",
+            "InfraGenericInterface.uniqueness_constraints: invalid attribute, "
+            "it must end with one of the following properties: value. (`mybool`)",
+        ),
+        (
+            [["status__name"]],
+            "InfraGenericInterface.uniqueness_constraints: cannot use status relationship, "
+            "relationship must be mandatory. (`status__name`)",
         ),
     ],
 )
@@ -1170,7 +1177,7 @@ async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniquene
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    with pytest.raises(ValueError, match=expected_error):
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
         schema.validate_uniqueness_constraints()
 
 
@@ -1263,6 +1270,11 @@ async def test_validate_order_by_success(schema_all_in_one, order_by):
             "InfraGenericInterface.order_by: cannot use badges relationship, relationship must be of cardinality one",
         ),
         (["status__name__nothing"], "InfraGenericInterface.order_by: nothing is not a valid property of name"),
+        (
+            ["my_generic_name"],
+            "InfraGenericInterface.order_by: invalid attribute, it must end "
+            "with one of the following properties: value. (`my_generic_name`)",
+        ),
     ],
 )
 async def test_validate_order_by_error(schema_all_in_one, order_by, expected_error):
@@ -1272,7 +1284,7 @@ async def test_validate_order_by_error(schema_all_in_one, order_by, expected_err
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    with pytest.raises(ValueError, match=expected_error):
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
         schema.validate_order_by()
 
 

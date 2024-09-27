@@ -5,8 +5,12 @@ from graphql import graphql
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
+from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
+from tests.constants import TestKind
+from tests.helpers.schema import TICKET
 
 
 async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
@@ -392,4 +396,53 @@ async def test_with_constructed_hfid(db: InfrahubDatabase, default_branch, anima
         "id": ghost_id,
         "name": {"value": "Ghost"},
         "weight": {"value": updated_weight},
+    }
+
+
+async def test_with_constructed_hfid_with_numbers(
+    db: InfrahubDatabase, default_branch: Branch, data_schema: None
+) -> None:
+    """Validate that we can construct an HFID out of the payload without specifying all parts."""
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[TICKET]), branch=default_branch.name)
+
+    first_ticket = await Node.init(schema=TestKind.TICKET, db=db)
+    await first_ticket.new(db=db, title="first", ticket_id=1, description="Add more info")
+    await first_ticket.save(db=db)
+
+    query = """
+    mutation UpsertTicket {
+        TestingTicketUpsert(data: {
+            title: { value: "first" },
+            ticket_id: { value: 1 },
+            description: { value: "Here is the update" },
+        }) {
+            ok
+            object {
+                id
+                title {
+                    value
+                }
+                description {
+                    value
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    update_result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+    )
+
+    assert update_result.errors is None
+    assert update_result.data
+    assert update_result.data["TestingTicketUpsert"]["ok"] is True
+    assert update_result.data["TestingTicketUpsert"]["object"] == {
+        "title": {"value": "first"},
+        "description": {"value": "Here is the update"},
+        "id": first_ticket.id,
     }
