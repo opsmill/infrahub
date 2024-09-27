@@ -84,14 +84,14 @@ def event_loop():
 
 @pytest.fixture(scope="module")
 async def db(
-    neo4j: Optional[DockerContainer], memgraph: Optional[DockerContainer], reload_settings_before_each_module
+    neo4j: Optional[int], memgraph: Optional[int], reload_settings_before_each_module
 ) -> AsyncGenerator[InfrahubDatabase, None]:
     config.SETTINGS.database.address = "localhost"
     if neo4j is not None:
-        config.SETTINGS.database.port = int(neo4j.get_exposed_port(PORT_BOLT_NEO4J))
+        config.SETTINGS.database.port = neo4j
     elif INFRAHUB_USE_TEST_CONTAINERS:
         assert memgraph is not None
-        config.SETTINGS.database.port = int(memgraph.get_exposed_port(PORT_MEMGRAPH))
+        config.SETTINGS.database.port = memgraph
 
     driver = InfrahubDatabase(driver=await get_db(retry=5))
 
@@ -168,7 +168,7 @@ def prefect_test(prefect_test_fixture):
 
 
 @pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[DockerContainer]:
+def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[int]:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -188,7 +188,7 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optio
     wait_for_logs(container, "Started.")  # wait_container_is_ready does not seem to be enough
     request.addfinalizer(cleanup)
 
-    return container
+    return int(container.get_exposed_port(PORT_BOLT_NEO4J))
 
 
 @pytest.fixture(scope="session")
@@ -249,7 +249,7 @@ def wait_for_memgraph_ready(host, port, timeout=15):
 
 
 @pytest.fixture(scope="session")
-def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[DockerContainer]:
+def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[int]:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
         return None
 
@@ -271,7 +271,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
 
     request.addfinalizer(cleanup)
 
-    return container
+    return int(container.get_exposed_port(PORT_MEMGRAPH))
 
 
 @pytest.fixture(scope="session")
