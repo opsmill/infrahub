@@ -89,7 +89,7 @@ async def db(
     config.SETTINGS.database.address = "localhost"
     if neo4j is not None:
         config.SETTINGS.database.port = int(neo4j.get_exposed_port(PORT_BOLT_NEO4J))
-    else:
+    elif INFRAHUB_USE_TEST_CONTAINERS:
         assert memgraph is not None
         config.SETTINGS.database.port = int(memgraph.get_exposed_port(PORT_MEMGRAPH))
 
@@ -314,7 +314,7 @@ def reload_settings_before_each_module(
     config.SETTINGS.cache.address = "localhost"
     if redis is not None:
         config.SETTINGS.cache.port = int(redis.get_exposed_port(PORT_REDIS))
-    else:
+    elif INFRAHUB_USE_TEST_CONTAINERS:
         assert nats is not None
         config.SETTINGS.cache.port = int(nats.get_exposed_port(PORT_NATS))
 
@@ -323,7 +323,7 @@ def reload_settings_before_each_module(
     if rabbitmq is not None:
         config.SETTINGS.broker.port = int(rabbitmq.get_exposed_port(PORT_CLIENT_RABBITMQ))
         config.SETTINGS.broker.rabbitmq_http_port = int(rabbitmq.get_exposed_port(PORT_HTTP_RABBITMQ))
-    else:
+    elif INFRAHUB_USE_TEST_CONTAINERS:
         assert nats is not None
         config.SETTINGS.broker.port = int(nats.get_exposed_port(PORT_NATS))
 
