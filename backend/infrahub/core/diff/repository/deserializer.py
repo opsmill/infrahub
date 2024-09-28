@@ -167,6 +167,7 @@ class EnrichedDiffDeserializer:
             from_time=from_time,
             to_time=to_time,
             uuid=str(root_node.get("uuid")),
+            partner_uuid=str(root_node.get("partner_uuid")),
             tracking_id=tracking_id,
             num_added=int(root_node.get("num_added")),
             num_updated=int(root_node.get("num_updated")),

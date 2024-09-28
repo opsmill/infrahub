@@ -36,7 +36,7 @@ async def test_relationship_init(
     assert rel.node_id == person_jack_main.id
 
     rel_node = await rel.get_node(db=db)
-    assert type(rel_node) == Node
+    assert type(rel_node) is Node
     assert rel_node.id == person_jack_main.id
 
 
