@@ -4,7 +4,6 @@ import platform
 import time
 from typing import Any
 
-import httpx
 from prefect import flow, task
 from prefect.logging import get_run_logger
 
@@ -13,6 +12,7 @@ from infrahub.core import registry, utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GRAPH_SCHEMA
+from infrahub.exceptions import HTTPServerError
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices, services
 
@@ -111,21 +111,19 @@ async def push(
         "data": data,
         "checksum": hashlib.sha256(json.dumps(data).encode()).hexdigest(),
     }
-
-    async with httpx.AsyncClient(timeout=5.0) as client:
-        try:
-            response = await client.post(config.SETTINGS.main.telemetry_endpoint, json=payload)
-            response.raise_for_status()
-        except httpx.HTTPError as exc:
-            service.log.debug(f"HTTP exception while pushing anonymous telemetry: {exc}")
+    try:
+        response = await service.http.post(url=config.SETTINGS.main.telemetry_endpoint, json=payload)
+    except HTTPServerError as exc:
+        service.log.debug(f"HTTP exception while pushing anonymous telemetry: {exc}")
+    if not response.is_success:
+        service.log.debug("HTTP exception while pushing anonymous telemetry", status_code=response.status_code)
 
 
 @task(retries=5)
-async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:  # pylint: disable=unused-argument
+async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:
     """Send the telemetry data to the specified URL, using HTTP POST."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url=url, json=payload)
-        response.raise_for_status()
+    response = await service.http.post(url=url, json=payload)
+    response.raise_for_status()
 
 
 @flow
