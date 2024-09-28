@@ -97,7 +97,7 @@
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",
     "@graphql-codegen/typescript": "^4.0.9",
-    "@playwright/test": "^1.47.0",
+    "@playwright/test": "^1.47.2",
     "@testing-library/react": "^14.2.2",
     "@types/loadable__component": "^5.13.9",
     "@types/node": "^20.12.3",
@@ -110,7 +110,7 @@
     "@types/sha1": "^1.1.5",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@vitest/coverage-v8": "^1.4.0",
-    "cypress": "^13.7.2",
+    "cypress": "^13.15.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-cypress": "^2.15.1",
