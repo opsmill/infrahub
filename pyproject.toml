@@ -535,7 +535,6 @@ ignore = [
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF013",   # PEP 484 prohibits implicit `Optional`
     "RUF015",   # Prefer `next(...)` over single element slice
-    "RUF019",   # Unnecessary key check before dictionary access
     "RUF021",   # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
     "RUF027",   # Possible f-string without an `f` prefix
     "RUF029",   # Function is declared `async`, but doesn't `await` or use `async` features.
