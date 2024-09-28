@@ -40,12 +40,13 @@ from .queries.diff.diff import (
 )
 from .resolver import (
     ancestors_resolver,
+    default_paginated_list_resolver,
     default_resolver,
     descendants_resolver,
     many_relationship_resolver,
     single_relationship_resolver,
 )
-from .schema import InfrahubBaseMutation, InfrahubBaseQuery, account_resolver, default_paginated_list_resolver
+from .schema import InfrahubBaseMutation, InfrahubBaseQuery, account_resolver
 from .subscription import InfrahubBaseSubscription
 from .types import (
     InfrahubInterface,

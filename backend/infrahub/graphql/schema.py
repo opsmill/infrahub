@@ -35,7 +35,6 @@ from .mutations import (
     TaskUpdate,
     ValidateRepositoryConnectivity,
 )
-from .parser import extract_selection
 from .queries import (
     AccountPermissions,
     AccountToken,
@@ -60,12 +59,6 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=unused-argument
-
-
-async def default_paginated_list_resolver(root: dict, info: GraphQLResolveInfo, **kwargs):
-    fields = await extract_selection(info.field_nodes[0], schema=info.return_type.graphene_type._meta.schema)
-
-    return await info.return_type.graphene_type.get_paginated_list(**kwargs, fields=fields, context=info.context)
 
 
 async def account_resolver(root, info: GraphQLResolveInfo):
