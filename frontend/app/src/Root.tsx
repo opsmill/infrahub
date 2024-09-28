@@ -7,11 +7,6 @@ import { Config, configState } from "./state/atoms/config.atom";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { fetchUrl } from "@/utils/fetch";
 
-import { addCollection } from "@iconify-icon/react";
-import mdiIcons from "@iconify-json/mdi/icons.json";
-
-addCollection(mdiIcons);
-
 export const Root = ({ children }: { children?: ReactNode }) => {
   const setConfig = useSetAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);

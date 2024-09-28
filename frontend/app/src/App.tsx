@@ -9,9 +9,13 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { router } from "@/router";
 import ErrorFallback from "@/screens/errors/error-fallback";
 import { store } from "@/state";
+import { addCollection } from "@iconify-icon/react";
+import mdiIcons from "@iconify-json/mdi/icons.json";
 
 import "./styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
+
+addCollection(mdiIcons);
 
 export function App() {
   return (
