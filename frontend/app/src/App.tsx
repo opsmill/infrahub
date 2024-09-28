@@ -16,8 +16,8 @@ import "react-toastify/dist/ReactToastify.css";
 export function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AuthProvider>
-        <Provider store={store}>
+      <Provider store={store}>
+        <AuthProvider>
           <ApolloProvider client={graphqlClient}>
             <ToastContainer
               hideProgressBar={true}
@@ -29,8 +29,8 @@ export function App() {
             />
             <RouterProvider router={router} />
           </ApolloProvider>
-        </Provider>
-      </AuthProvider>
+        </AuthProvider>
+      </Provider>
     </ErrorBoundary>
   );
 }
