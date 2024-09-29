@@ -38,9 +38,9 @@ test.describe("/signin", () => {
     });
 
     test("should redirect to the initial page after login", async ({ page }) => {
-      await page.goto(
-        "/objects/BuiltinTag?branch=atl1-delete-upstream&at=2024-05-01T13%3A40%3A00.000Z"
-      );
+      const date = encodeURIComponent(new Date().toISOString());
+      const initialPage = `/objects/BuiltinTag?branch=atl1-delete-upstream&at=${date}`;
+      await page.goto(initialPage);
 
       await page.getByRole("link", { name: "Sign in" }).click();
       await expect(page.getByText("Sign in to your account")).toBeVisible();
@@ -49,9 +49,7 @@ test.describe("/signin", () => {
       await page.getByRole("button", { name: "Sign in" }).click();
 
       await expect(page.getByTestId("current-user-avatar-button")).toBeVisible();
-      await expect(page.url()).toContain(
-        "/objects/BuiltinTag?branch=atl1-delete-upstream&at=2024-05-01T13%3A40%3A00.000Z"
-      );
+      await expect(page.url()).toContain(initialPage);
     });
   });
 
