@@ -3962,13 +3962,13 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.0.1"
+version = "3.0.3"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "prefect-3.0.1-py3-none-any.whl", hash = "sha256:210d9ef3d15dfa9c7b9aa6432112377d11ce3399dcda07d597f212b0ddf8f55b"},
-    {file = "prefect-3.0.1.tar.gz", hash = "sha256:745db70b35218cd9577cd352c27c58a5c6aaa46c7f0d8cb1b1fe18ad019eebc2"},
+    {file = "prefect-3.0.3-py3-none-any.whl", hash = "sha256:3291a5e687ff968249ab8996702cbf07f665b96cc1b9b996dc4dfc975810a5bd"},
+    {file = "prefect-3.0.3.tar.gz", hash = "sha256:69759beb93f974467f13df9e31ff047b77c71b1dab5869ed67207ab477b7e1be"},
 ]
 
 [package.dependencies]
@@ -4039,7 +4039,7 @@ github = ["prefect-github (>=0.3.0rc1)"]
 gitlab = ["prefect-gitlab (>=0.3.0rc1)"]
 kubernetes = ["prefect-kubernetes (>=0.4.0rc1)"]
 ray = ["prefect-ray (>=0.4.0rc1)"]
-redis = ["redis (>=5.0.1)"]
+redis = ["prefect-redis (>=0.2.0)"]
 shell = ["prefect-shell (>=0.3.0rc1)"]
 slack = ["prefect-slack (>=0.3.0rc1)"]
 snowflake = ["prefect-snowflake (>=0.28.0rc1)"]
@@ -6495,4 +6495,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "a098ee689d51a0e75af317dbb744d6b4a62d4ab76953191a7e07869dd1680072"
+content-hash = "05e464858af1c43b306a03946f7ff9f7fc07cd0a8b5b0434e5cdc13f01f41d61"

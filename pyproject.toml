@@ -39,7 +39,7 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"] }
 typer = "0.12.3"
-prefect = "3.0.1"
+prefect = "3.0.3"
 
 # Dependencies specific to the API Server
 fastapi = "~0.112"
