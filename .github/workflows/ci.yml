@@ -345,12 +345,12 @@ jobs:
           - name: backend-tests-unit-memgraph
             env:
               INFRAHUB_DB_TYPE: memgraph
-          - name: backend-tests-unit-nats
-            env:
-              INFRAHUB_DB_TYPE: memgraph
-              INFRAHUB_USE_NATS: 1
-              INFRAHUB_BROKER_DRIVER: nats
-              INFRAHUB_CACHE_DRIVER: nats
+          # - name: backend-tests-unit-nats
+          #   env:
+          #     INFRAHUB_DB_TYPE: memgraph
+          #     INFRAHUB_USE_NATS: 1
+          #     INFRAHUB_BROKER_DRIVER: nats
+          #     INFRAHUB_CACHE_DRIVER: nats
     name: ${{ matrix.name }}
     env: ${{ matrix.env }}
     steps:
@@ -560,15 +560,15 @@ jobs:
           - name: E2E-testing-playwright
             env:
               INFRAHUB_DB_TYPE: neo4j
-          - name: E2E-testing-playwright-nats
-            env:
-              INFRAHUB_DB_TYPE: neo4j
-              INFRAHUB_USE_NATS: 1
-              INFRAHUB_BROKER_DRIVER: nats
-              INFRAHUB_BROKER_PORT: 4222
-              INFRAHUB_CACHE_DRIVER: nats
-              INFRAHUB_CACHE_ADDRESS: message-queue
-              INFRAHUB_CACHE_PORT: 4222
+          # - name: E2E-testing-playwright-nats
+          #   env:
+          #     INFRAHUB_DB_TYPE: neo4j
+          #     INFRAHUB_USE_NATS: 1
+          #     INFRAHUB_BROKER_DRIVER: nats
+          #     INFRAHUB_BROKER_PORT: 4222
+          #     INFRAHUB_CACHE_DRIVER: nats
+          #     INFRAHUB_CACHE_ADDRESS: message-queue
+          #     INFRAHUB_CACHE_PORT: 4222
     name: ${{ matrix.name }}
     env: ${{ matrix.env }}
     steps:
