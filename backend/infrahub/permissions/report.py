@@ -19,31 +19,30 @@ async def report_schema_permissions(
     db: InfrahubDatabase, schemas: list[MainSchemaTypes], account_session: AccountSession, branch: Branch
 ) -> list[KindPermissions]:
     permissions = await fetch_permissions(account_id=account_session.account_id, db=db, branch=branch)
+    perm_backend = LocalPermissionBackend()
 
     restrict_changes = False
     if branch.name == registry.default_branch:
-        restrict_changes = True
-        for global_permission in permissions["global_permissions"]:
-            if global_permission.action == GlobalPermissions.EDIT_DEFAULT_BRANCH.value:
-                restrict_changes = False
-
-    checker = LocalPermissionBackend()
+        restrict_changes = not perm_backend.resolve_global_permission(
+            permissions=permissions["global_permissions"],
+            permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
+        )
 
     permission_objects: list[KindPermissions] = []
 
     for node in schemas:
         permission_base = f"object:{branch.name}:{node.namespace}:{node.name}"
 
-        has_create = checker.resolve_object_permission(
+        has_create = perm_backend.resolve_object_permission(
             permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:create:allow"
         )
-        has_delete = checker.resolve_object_permission(
+        has_delete = perm_backend.resolve_object_permission(
             permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:delete:allow"
         )
-        has_update = checker.resolve_object_permission(
+        has_update = perm_backend.resolve_object_permission(
             permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:update:allow"
         )
-        has_view = checker.resolve_object_permission(
+        has_view = perm_backend.resolve_object_permission(
             permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:view:allow"
         )
 

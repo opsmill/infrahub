@@ -893,12 +893,19 @@ core_models: dict[str, Any] = {
             "generate_profile": False,
             "attributes": [
                 {
+                    "name": "decision",
+                    "kind": "Text",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW.value,
+                    "order_weight": 5000,
+                },
+                {
                     "name": "identifier",
                     "kind": "Text",
                     "read_only": True,
                     "optional": True,
                     "allow_override": AllowOverrideType.NONE,
-                }
+                },
             ],
             "relationships": [
                 {
@@ -2155,13 +2162,6 @@ core_models: dict[str, Any] = {
                     "enum": PermissionAction.available_types(),
                     "default_value": PermissionAction.ANY.value,
                     "order_weight": 4000,
-                },
-                {
-                    "name": "decision",
-                    "kind": "Text",
-                    "enum": PermissionDecision.available_types(),
-                    "default_value": PermissionDecision.ALLOW.value,
-                    "order_weight": 5000,
                 },
             ],
         },

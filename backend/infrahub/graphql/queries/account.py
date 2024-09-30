@@ -72,6 +72,7 @@ class AccountGlobalPermissionNode(ObjectType):
     id = Field(String, required=True)
     name = Field(String, required=True)
     action = Field(String, required=True)
+    decision = Field(String, required=True)
     identifier = Field(String, required=True)
 
 
@@ -131,7 +132,15 @@ async def resolve_account_permissions(
         global_list = permissions["global_permissions"]
         response["global_permissions"] = {"count": len(global_list)}
         response["global_permissions"]["edges"] = [
-            {"node": {"id": obj.id, "name": obj.name, "action": obj.action, "identifier": str(obj)}}
+            {
+                "node": {
+                    "id": obj.id,
+                    "name": obj.name,
+                    "action": obj.action,
+                    "decision": obj.decision,
+                    "identifier": str(obj),
+                }
+            }
             for obj in global_list
         ]
     if "object_permissions" in fields:

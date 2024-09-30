@@ -19,23 +19,21 @@ if TYPE_CHECKING:
 @dataclass
 class Permission:
     id: str
+    name: str
     action: str
+    decision: str
 
 
 @dataclass
 class GlobalPermission(Permission):
-    name: str
-
     def __str__(self) -> str:
-        return f"global:{self.action}:allow"
+        return f"global:{self.action}:{self.decision}"
 
 
 @dataclass
 class ObjectPermission(Permission):
     branch: str
     namespace: str
-    name: str
-    decision: str
 
     def __str__(self) -> str:
         return f"object:{self.branch}:{self.namespace}:{self.name}:{self.action}:{self.decision}"
@@ -83,6 +81,8 @@ class AccountGlobalPermissionQuery(Query):
         WHERE all(r IN relationships(group_path) WHERE (%(branch_filter)s) AND r.status = "active")
         MATCH action_path = (global_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(global_permission_action:AttributeValue)
         WHERE all(r IN relationships(action_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH decision_path = (global_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(global_permission_decision:AttributeValue)
+        WHERE all(r IN relationships(decision_path) WHERE (%(branch_filter)s) AND r.status = "active")
         """ % {
             "branch_filter": branch_filter,
             "generic_account_node": InfrahubKind.GENERICACCOUNT,
@@ -93,7 +93,12 @@ class AccountGlobalPermissionQuery(Query):
 
         self.add_to_query(query)
 
-        self.return_labels = ["global_permission", "global_permission_name", "global_permission_action"]
+        self.return_labels = [
+            "global_permission",
+            "global_permission_name",
+            "global_permission_action",
+            "global_permission_decision",
+        ]
 
     def get_permissions(self) -> list[GlobalPermission]:
         permissions: list[GlobalPermission] = []
@@ -104,6 +109,7 @@ class AccountGlobalPermissionQuery(Query):
                     id=result.get("global_permission").get("uuid"),
                     name=result.get("global_permission_name").get("value"),
                     action=result.get("global_permission_action").get("value"),
+                    decision=result.get("global_permission_decision").get("value"),
                 )
             )
 
@@ -157,7 +163,6 @@ class AccountObjectPermissionQuery(Query):
             WHERE all(r IN relationships(action_path) WHERE (%(branch_filter)s) AND r.status = "active")
         MATCH decision_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(object_permission_decision:AttributeValue)
             WHERE all(r IN relationships(decision_path) WHERE (%(branch_filter)s) AND r.status = "active")
-
         """ % {
             "branch_filter": branch_filter,
             "account_group_node": InfrahubKind.ACCOUNTGROUP,
