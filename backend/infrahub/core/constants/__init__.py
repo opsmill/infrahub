@@ -52,6 +52,7 @@ class PermissionLevel(enum.Flag):
 
 class GlobalPermissions(InfrahubStringEnum):
     EDIT_DEFAULT_BRANCH = "edit_default_branch"
+    SUPER_ADMIN = "super_admin"
 
 
 class PermissionAction(InfrahubStringEnum):
