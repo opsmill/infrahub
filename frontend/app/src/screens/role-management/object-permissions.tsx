@@ -16,12 +16,12 @@ import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/graphql/queries/role-m
 const icons: Record<string, ReactNode> = {
   allow: (
     <Pill className="flex items-center justify-center w-6 h-6 bg-green-500/40">
-      <Icon icon={"mdi:lock-plus-outline"} className="text-green-900" />
+      <Icon icon={"mdi:lock-open-check-outline"} className="text-green-900" />
     </Pill>
   ),
   deny: (
     <Pill className="flex items-center justify-center w-6 h-6 bg-red-500/40">
-      <Icon icon={"mdi:lock-minus-outline"} className="text-red-900" />
+      <Icon icon={"mdi:lock-remove-outline"} className="text-red-900" />
     </Pill>
   ),
 };

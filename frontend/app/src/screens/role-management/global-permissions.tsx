@@ -41,7 +41,7 @@ function GlobalPermissions() {
           name: (
             <div className="flex items-center gap-2">
               <Pill className="flex items-center justify-center w-6 h-6 bg-custom-blue-500/20">
-                <Icon icon={"mdi:lock-outline"} className="text-red-900" />
+                <Icon icon={"mdi:lock-outline"} className="text-custom-blue-900" />
               </Pill>
 
               {edge?.node?.display_label}
