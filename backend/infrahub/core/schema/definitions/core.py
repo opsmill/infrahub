@@ -891,6 +891,22 @@ core_models: dict[str, Any] = {
             "icon": "mdi:user-key",
             "include_in_menu": False,
             "generate_profile": False,
+            "attributes": [
+                {
+                    "name": "decision",
+                    "kind": "Text",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW.value,
+                    "order_weight": 5000,
+                },
+                {
+                    "name": "identifier",
+                    "kind": "Text",
+                    "read_only": True,
+                    "optional": True,
+                    "allow_override": AllowOverrideType.NONE,
+                },
+            ],
             "relationships": [
                 {
                     "name": "roles",
@@ -1823,6 +1839,7 @@ core_models: dict[str, Any] = {
             "uniqueness_constraints": [["name__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
+            "documentation": "/topics/generator",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -1870,6 +1887,7 @@ core_models: dict[str, Any] = {
             "branch": BranchSupportType.LOCAL.value,
             "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
+            "documentation": "/topics/generator",
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
@@ -2144,13 +2162,6 @@ core_models: dict[str, Any] = {
                     "enum": PermissionAction.available_types(),
                     "default_value": PermissionAction.ANY.value,
                     "order_weight": 4000,
-                },
-                {
-                    "name": "decision",
-                    "kind": "Text",
-                    "enum": PermissionDecision.available_types(),
-                    "default_value": PermissionDecision.ALLOW.value,
-                    "order_weight": 5000,
                 },
             ],
         },

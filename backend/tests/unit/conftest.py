@@ -43,6 +43,7 @@ from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.protocols_base import CoreNode
+from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -2072,6 +2073,42 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
 
 
 @pytest.fixture
+async def location_generic_protocol():
+    class LocationGeneric(CoreNode):
+        name: String
+        status: StringOptional
+        things: RelationshipManager
+        parent: RelationshipManager
+        children: RelationshipManager
+
+    return LocationGeneric
+
+
+@pytest.fixture
+async def location_site_protocol(location_generic_protocol):
+    class LocationSite(location_generic_protocol):
+        pass
+
+    return LocationSite
+
+
+@pytest.fixture
+async def location_region_protocol(location_generic_protocol):
+    class LocationRegion(location_generic_protocol):
+        pass
+
+    return LocationRegion
+
+
+@pytest.fixture
+async def location_rack_protocol(location_generic_protocol):
+    class LocationRack(location_generic_protocol):
+        pass
+
+    return LocationRack
+
+
+@pytest.fixture
 async def hierarchical_location_schema(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple, register_core_models_schema
 ) -> None: ...
@@ -2503,15 +2540,20 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     permissions: list[Node] = []
     for global_permission in GlobalPermissions:
         obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=format_label(global_permission.value), action=global_permission.value)
+        await obj.new(
+            db=db,
+            name=format_label(global_permission.value),
+            action=global_permission.value,
+            decision=PermissionDecision.ALLOW.value,
+        )
         await obj.save(db=db)
         permissions.append(obj)
     for object_permission in [
         ObjectPermission(
             id="",
-            branch="any",
-            namespace="any",
-            name="any",
+            branch="*",
+            namespace="*",
+            name="*",
             action=PermissionAction.ANY.value,
             decision=PermissionDecision.ALLOW.value,
         )

@@ -78,13 +78,13 @@ nodes:
 
 Create a branch `network-device-schema` in Infrahub
 
-```bash
+```shell
 infrahubctl branch create network-device-schema
 ```
 
 Load the schema into Infrahub in the `network-device-schema` branch
 
-```bash
+```shell
 infrahubctl schema load --branch network-device-schema /tmp/schema_guide.yml
 ```
 
@@ -158,13 +158,13 @@ nodes:
 
 Create a new branch to load the new version of our schema
 
-```bash
+```shell
 infrahubctl branch create network-device-relations
 ```
 
 Load the schema in the branch
 
-```bash
+```shell
 infrahubctl schema load --branch network-device-relations /tmp/schema_guide.yml
 ```
 
@@ -255,13 +255,13 @@ nodes:
 
 Create a new branch to load the new version of our schema
 
-```bash
+```shell
 infrahubctl branch create network-device-generics
 ```
 
 Load the schema in the branch
 
-```bash
+```shell
 infrahubctl schema load --branch network-device-generics /tmp/schema_guide.yml
 ```
 
@@ -387,11 +387,11 @@ nodes:
 
 Use the `infrahubctl schema check` command to validate the schema and to get a `diff` of the schema changes that will be performed
 
-```bash
+```shell
 infrahubctl schema check --branch network-device-generics /tmp/schema_guide.yml
 ```
 
-```bash
+```shell
  schema '/tmp/schema_guide.yml' is Valid!
 diff:
         added: {}
@@ -455,7 +455,7 @@ diff:
 
 Load the schema into `network-device-generics` branch in Infrahub
 
-```bash
+```shell
 infrahubctl schema load --branch network-device-generics /tmp/schema_guide.yml
 ```
 

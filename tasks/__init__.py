@@ -16,7 +16,7 @@ ns.add_collection(schema)
 
 
 @task
-def yamllint(context: Context):
+def yamllint(context: Context) -> None:
     """This will run yamllint to validate formatting of all yaml files."""
 
     exec_cmd = "yamllint -s ."
@@ -24,16 +24,14 @@ def yamllint(context: Context):
 
 
 @task(name="format")
-def format_all(context: Context):
+def format_all(context: Context) -> None:
     main.format_all(context)
-    sdk.format_all(context)
     backend.format_all(context)
 
 
 @task(name="lint")
-def lint_all(context: Context):
+def lint_all(context: Context) -> None:
     yamllint(context)
-    sdk.lint(context)
     backend.lint(context)
 
 

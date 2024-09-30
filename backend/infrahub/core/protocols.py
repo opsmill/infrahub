@@ -67,6 +67,8 @@ class CoreArtifactTarget(CoreNode):
 
 
 class CoreBasePermission(CoreNode):
+    decision: Enum
+    identifier: StringOptional
     roles: RelationshipManager
 
 
@@ -375,7 +377,6 @@ class CoreObjectPermission(CoreBasePermission):
     namespace: String
     name: String
     action: Enum
-    decision: Enum
 
 
 class CoreObjectThread(CoreThread):

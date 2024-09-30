@@ -86,7 +86,7 @@ class SchemaAttributeUpdateQuery(Query):
 
         query = """
         MERGE (new_value: AttributeValue { value: $attr_new_value, is_default: false })
-        CREATE (attr)-[:HAS_VALUE { branch: rel.branch, branch_level: rel.branch_level, status: "active", from: $at, to: null } ]->(new_value)
+        CREATE (attr)-[:HAS_VALUE { branch: rel.branch, branch_level: rel.branch_level, status: "active", from: $at } ]->(new_value)
         SET rel.to = $at
         """
         self.add_to_query(query)

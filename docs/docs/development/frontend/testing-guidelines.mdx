@@ -30,7 +30,7 @@ E2E tests are located in `/frontend/app/tests/e2e`.
 
 [Playwright](https://playwright.dev/docs/codegen) can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
 
-```bash
+```shell
 npx playwright codegen
 ```
 
@@ -81,7 +81,7 @@ page.getByRole("button", { name: "Save" });
 
 2. Structure tests with steps for better readability:
 
-```bash
+```shell
 # headless mode
 npm run test:e2e
 
@@ -97,13 +97,13 @@ npm run test:e2e:ui
 
 ## Integration tests
 
-```bash
+```shell
 npm run cypress:run:component
 ```
 
 ## Unit tests
 
-```bash
+```shell
 npm run test
 
 # same with coverage

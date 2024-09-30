@@ -595,31 +595,55 @@ class SchemaBranch:
         if not (SchemaElementPathType.ATTR & allowed_path_types) and schema_attribute_path.is_type_attribute:
             raise ValueError(f"{error_header}: this property only supports relationships not attributes")
 
-        if not (SchemaElementPathType.ALL_RELS & allowed_path_types) and schema_attribute_path.is_type_relationship:
+        if not (SchemaElementPathType.REL & allowed_path_types) and schema_attribute_path.is_type_relationship:
             raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
 
-        if schema_attribute_path.is_type_relationship and schema_attribute_path.relationship_schema:
-            if (
-                schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.ONE
-                and not SchemaElementPathType.REL_ONE & allowed_path_types
-            ):
+        if not (SchemaElementPathType.ATTR_NO_PROP & allowed_path_types) and schema_attribute_path.is_type_attribute:
+            required_properties = tuple(
+                schema_attribute_path.attribute_schema.get_class().get_allowed_property_in_path()
+            )
+            if schema_attribute_path.attribute_property_name not in required_properties:
                 raise ValueError(
-                    f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
-                    " relationship must be of cardinality many"
+                    f"{error_header}: invalid attribute, it must end with one of the following properties:"
+                    f" {', '.join(required_properties)}. (`{path}`)"
                 )
+
+        if schema_attribute_path.is_type_relationship:
+            if schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.ONE:
+                if not SchemaElementPathType.REL_ONE & allowed_path_types:
+                    raise ValueError(
+                        f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
+                        f" relationship must be of cardinality many. (`{path}`)"
+                    )
+                if (
+                    not SchemaElementPathType.REL_ONE_OPTIONAL & allowed_path_types
+                    and schema_attribute_path.relationship_schema.optional
+                    and not (
+                        schema_attribute_path.relationship_schema.name == "ip_namespace"
+                        and isinstance(node_schema, NodeSchema)
+                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
+                    )
+                ):
+                    raise ValueError(
+                        f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
+                        f" relationship must be mandatory. (`{path}`)"
+                    )
+
             if (
                 schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.MANY
                 and not SchemaElementPathType.REL_MANY & allowed_path_types
             ):
                 raise ValueError(
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
-                    " relationship must be of cardinality one"
+                    f" relationship must be of cardinality one (`{path}`)"
                 )
 
-            if schema_attribute_path.has_property and not SchemaElementPathType.RELS_ATTR & allowed_path_types:
-                raise ValueError(f"{error_header}: cannot use attributes of related node, only the relationship")
+            if schema_attribute_path.has_property and not SchemaElementPathType.REL_ATTR & allowed_path_types:
+                raise ValueError(
+                    f"{error_header}: cannot use attributes of related node, only the relationship. (`{path}`)"
+                )
             if not schema_attribute_path.has_property and not SchemaElementPathType.RELS_NO_ATTR & allowed_path_types:
-                raise ValueError(f"{error_header}: Must use attributes of related node")
+                raise ValueError(f"{error_header}: Must use attributes of related node. (`{path}`)")
 
         return schema_attribute_path
 
@@ -669,33 +693,14 @@ class SchemaBranch:
 
             for constraint_paths in node_schema.uniqueness_constraints:
                 for constraint_path in constraint_paths:
-                    schema_path = self.validate_schema_path(
+                    element_name = "uniqueness_constraints"
+                    self.validate_schema_path(
                         node_schema=node_schema,
                         path=constraint_path,
-                        allowed_path_types=SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_NO_ATTR,
-                        element_name="uniqueness_constraints",
+                        allowed_path_types=SchemaElementPathType.ATTR_WITH_PROP
+                        | SchemaElementPathType.REL_ONE_MANDATORY_NO_ATTR,
+                        element_name=element_name,
                     )
-
-                    if schema_path.is_type_attribute:
-                        required_properties = tuple(
-                            schema_path.attribute_schema.get_class().get_allowed_property_in_path()
-                        )
-                        if schema_path.attribute_property_name not in required_properties:
-                            raise ValueError(
-                                f"{node_schema.kind} uniqueness contraint is invalid at attribute '{schema_path.attribute_schema.name}', it must "
-                                f"end with one of the following properties: {', '.join(required_properties)}"
-                            )
-
-                    if schema_path.is_type_relationship and schema_path.relationship_schema:
-                        if schema_path.relationship_schema.optional and not (
-                            schema_path.relationship_schema.name == "ip_namespace"
-                            and isinstance(node_schema, NodeSchema)
-                            and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
-                        ):
-                            raise ValueError(
-                                f"Only mandatory relation of cardinality one can be used in uniqueness_constraints,"
-                                f" {schema_path.relationship_schema.name} is not mandatory. ({constraint_path})"
-                            )
 
     def validate_display_labels(self) -> None:
         for name in self.all_names:
@@ -727,13 +732,14 @@ class SchemaBranch:
             if not node_schema.order_by:
                 continue
 
-            allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE
+            allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
             for order_by_path in node_schema.order_by:
+                element_name = "order_by"
                 self.validate_schema_path(
                     node_schema=node_schema,
                     path=order_by_path,
                     allowed_path_types=allowed_types,
-                    element_name="order_by",
+                    element_name=element_name,
                 )
 
     def validate_default_filters(self) -> None:
@@ -778,44 +784,17 @@ class SchemaBranch:
             if not node_schema.human_friendly_id:
                 continue
 
-            has_unique_item = False
-            allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_ATTR
-            for item in node_schema.human_friendly_id:
+            allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR
+            for hfid_path in node_schema.human_friendly_id:
                 schema_path = self.validate_schema_path(
                     node_schema=node_schema,
-                    path=item,
+                    path=hfid_path,
                     allowed_path_types=allowed_types,
                     element_name="human_friendly_id",
                 )
 
-                if schema_path.attribute_schema.unique:
-                    has_unique_item = True
-
                 if schema_path.is_type_attribute:
-                    required_properties = tuple(schema_path.attribute_schema.get_class().get_allowed_property_in_path())
-                    if schema_path.attribute_property_name not in required_properties:
-                        raise ValueError(
-                            f"{node_schema.kind} HFID is invalid at attribute '{schema_path.attribute_schema.name}', it must end with one of the "
-                            f"following properties: {', '.join(required_properties)}"
-                        )
                     hf_attr_names.add(schema_path.attribute_schema.name)
-
-                if schema_path.is_type_relationship and schema_path.relationship_schema:
-                    if schema_path.relationship_schema.optional and not (
-                        schema_path.relationship_schema.name == "ip_namespace"
-                        and isinstance(node_schema, NodeSchema)
-                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
-                    ):
-                        raise ValueError(
-                            f"Only mandatory relationship of cardinality one can be used in human_friendly_id, "
-                            f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
-                            f"{node_schema.kind}. ({item})"
-                        )
-
-            if not has_unique_item:
-                raise ValueError(
-                    f"At least one attribute must be unique in the human_friendly_id for {node_schema.kind}."
-                )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
@@ -1100,7 +1079,7 @@ class SchemaBranch:
                         self.set(name=node.kind, schema=node)
                         break
 
-            if node.human_friendly_id and not node.unique_attributes and not node.uniqueness_constraints:
+            if node.human_friendly_id and not node.uniqueness_constraints:
                 uniqueness_constraints: list[str] = []
                 for item in node.human_friendly_id:
                     schema_attribute_path = node.parse_schema_path(path=item, schema=self)

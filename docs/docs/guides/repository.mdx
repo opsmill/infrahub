@@ -78,19 +78,19 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
 1. Open the [GraphQL Interface](http://localhost:8000/graphql).
 2. If needed, i.e., your repository is private, create a Credential object to hold your username / password.
 
-```GraphQL
+```graphql
   # Endpoint: http://127.0.0.1:8000/graphql/main
   mutation {
     CorePasswordCredentialCreate(
       data: {
-        name: {value: "My Git Credential"},
+        name: {value: "my-git-credential"},
         username: {value: "MY_USERNAME"},
         password: {value: "MY_TOKEN_OR_PASSWORD"}
       }
     ) {
       ok
       object {
-        id
+        hfid
       }
     }
   }
@@ -101,14 +101,15 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
 <Tabs>
   <TabItem value="Repository" default>
 
-```GraphQL
+```graphql
   # Endpoint: http://127.0.0.1:8000/graphql/main
   mutation {
     CoreRepositoryCreate(
       data: {
         name: {value: "My Git Repository"},
         location: {value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git"},
-        # credential: {id: "CREDENTIAL_ID_FROM_PREVIOUS_REQUEST"} <-- optional: This needs to be the credential id created at step 2
+        # The HFID returned during step 2 will be the name of the credentials
+        credential: {hfid: "my-git-credential"}
       }
     ) {
       ok
@@ -123,7 +124,7 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
   <TabItem value="Read-only Repository">
     **Make sure that you are on the correct Infrahub branch.** Unlike a Repository, a Read-only Repository will only pull files into the Infrahub branch on which it was created.
 
-```GraphQL
+```graphql
   # Endpoint : http://127.0.0.1:8000/graphql/<branch>
   mutation {
     CoreReadOnlyRepositoryCreate(
@@ -131,7 +132,8 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
         name: {value: "My Git Repository"},
         location: {value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git"},
         ref: { value: "BRANCH/TAG/COMMIT_TO_TRACK" },
-        # credential: {id: "CREDENTIAL_ID_FROM_PREVIOUS_REQUEST"} <-- optional: This needs to be the credential id created at step 2
+        # Optional: the HFID returned during step 2 will be the name of the credentials
+        credential: {hfid: "my-git-credential"}
       }
     ) {
       ok
@@ -154,7 +156,7 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 ### Via the Infrahub SDK
 
 1. Install and setup the [Infrahub SDK](/python-sdk)
-2. If needed, i.e., your repository is private, create a Credential object to hold your username / password.
+2. If needed, i.e., your repository is private, create a Credential object to hold your username / password. We highly recommend to provide credentials for Repository to allow branch creation from Infrahub.
 
 ```python
   # Create credential object ...
@@ -180,7 +182,8 @@ The repository should be visible under [Unified Storage / Repository](http://loc
       "CoreRepository",
       name="My Git repository",
       location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
-      # credential=credential,  <-- optional: This needs to be the credential object created at step 2
+      # The credential object created at step 2
+      credential=credential,
   )
 
   # and save it ...
@@ -193,11 +196,12 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 ```python
   # Create repository object ...
   repository = client.create(
-      "CoreRepository",
+      "CoreReadOnlyRepository",
       name="My Git repository",
       location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
       ref="BRANCH/TAG/COMMIT_TO_TRACK",
-      # credential=credential,  <-- optional: This needs to be the credential object created at step 2
+      # Optional: the credential object created at step 2
+      credential=credential,
   )
 
   # and save it ...
@@ -238,7 +242,7 @@ Unlike `Repository`, Infrahub does not automatically update `Read-only Repositor
 1. Open the [GraphQL Interface](http://localhost:8000/graphql).
 2. Copy-paste the correct mutation from below and complete the information
 
-```GraphQL
+```graphql
   # Endpoint : http://127.0.0.1:8000/graphql/main
   mutation {
     CoreReadOnlyRepositoryUpdate(
@@ -310,7 +314,7 @@ RUN update-ca-certificates
 
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
-```bash
+```shell
 INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 
@@ -354,7 +358,7 @@ RUN git config --global http.sslVerify "false"
 
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
-```bash
+```shell
 INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 
@@ -398,7 +402,7 @@ RUN git config --global http.proxy http://user:password@internal.proxy:8080
 
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
-```bash
+```shell
 INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
 ```
 

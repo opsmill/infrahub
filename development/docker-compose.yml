@@ -113,6 +113,7 @@ services:
         condition: service_healthy
       task-manager:
         condition: service_healthy
+        required: false
     environment:
       <<: *infrahub_config
       INFRAHUB_CONFIG: /source/development/infrahub.toml
@@ -169,7 +170,9 @@ services:
     labels:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
       com.github.job: "${JOB_NAME:-unknown}"
+
   task-runner-internal:
+    profiles: [dev]
     deploy:
       mode: replicated
       replicas: 1

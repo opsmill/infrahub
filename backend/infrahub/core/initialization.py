@@ -18,6 +18,7 @@ from infrahub.core.constants import (
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
+from infrahub.core.node.permissions import CoreGlobalPermission, CoreObjectPermission
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -106,6 +107,8 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
     registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    registry.node[InfrahubKind.GLOBALPERMISSION] = CoreGlobalPermission
+    registry.node[InfrahubKind.OBJECTPERMISSION] = CoreObjectPermission
 
     # ---------------------------------------------------
     # Instantiate permission backends
@@ -296,7 +299,12 @@ async def create_initial_permissions(db: InfrahubDatabase) -> list[Node]:
 
     for global_permission in GlobalPermissions:
         obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=format_label(global_permission.value), action=global_permission.value)
+        await obj.new(
+            db=db,
+            name=format_label(global_permission.value),
+            action=global_permission.value,
+            decision=PermissionDecision.ALLOW.value,
+        )
         await obj.save(db=db)
         objs.append(obj)
         log.info(f"Created global permission: {global_permission}")
@@ -305,9 +313,9 @@ async def create_initial_permissions(db: InfrahubDatabase) -> list[Node]:
         # Allow anything for now to not break existing behaviour
         ObjectPermission(
             id="",
-            branch="any",
-            namespace="any",
-            name="any",
+            branch="*",
+            namespace="*",
+            name="*",
             action=PermissionAction.ANY.value,
             decision=PermissionDecision.ALLOW.value,
         )

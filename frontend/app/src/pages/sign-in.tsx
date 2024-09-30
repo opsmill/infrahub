@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-verti.svg";
 import Content from "@/screens/layout/content";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import InputField from "@/components/form/fields/input.field";
 import { isRequired } from "@/components/form/utils/validation";
 import PasswordInputField from "@/components/form/fields/password-input.field";
@@ -25,11 +25,13 @@ function SignInPage() {
 }
 
 const SignInForm = () => {
-  let navigate = useNavigate();
   let location = useLocation();
-  const { signIn } = useAuth();
+  const { isAuthenticated, signIn } = useAuth();
 
-  const from = (location.state?.from?.pathname || "/") + (location.state?.from?.search ?? "");
+  if (isAuthenticated) {
+    const from = (location.state?.from?.pathname || "/") + (location.state?.from?.search ?? "");
+    return <Navigate to={from} replace />;
+  }
 
   return (
     <Form
@@ -39,7 +41,7 @@ const SignInForm = () => {
           username: formData.username.value as string,
           password: formData.password.value as string,
         };
-        await signIn(data, () => navigate(from));
+        await signIn(data);
       }}>
       <InputField name="username" label="Username" rules={{ validate: { required: isRequired } }} />
 
@@ -54,12 +56,4 @@ const SignInForm = () => {
   );
 };
 
-export function Component() {
-  const { isAuthenticated } = useAuth();
-
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <SignInPage />;
-}
+export const Component = SignInPage;

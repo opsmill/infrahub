@@ -106,9 +106,7 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Item removed from the group"} />);
   };
 
-  // const count = data[schemaData?.kind].count;
   const count = data[objectKind]?.edges[0]?.node[relationshipTab]?.count;
-  // const relationshipsData = data[schemaData?.kind]?.edges;
   const relationshipsData = data[objectKind]?.edges[0]?.node[relationshipTab]?.edges;
 
   return (

@@ -21,13 +21,14 @@ from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
     PYTHON_VER,
+    Namespace,
     build_compose_files_cmd,
     execute_command,
     get_env_vars,
 )
 from .utils import ESCAPED_REPO_PATH
 
-NAMESPACE = "DEMO"
+NAMESPACE = Namespace.DEFAULT
 
 
 @task(optional=["database"])
@@ -37,7 +38,7 @@ def build(
     python_ver: str = PYTHON_VER,
     nocache: bool = False,
     database: str = INFRAHUB_DATABASE,
-):
+) -> None:
     """Build an image with the provided name and python version.
 
     Args:
@@ -51,7 +52,7 @@ def build(
 
 
 @task(optional=["database"])
-def pull(context: Context, database: str = INFRAHUB_DATABASE):
+def pull(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Pull external containers from registry."""
     pull_images(context=context, database=database, namespace=NAMESPACE)
 
@@ -62,38 +63,38 @@ def pull(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(optional=["database"])
-def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False):
+def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False) -> None:
     """Start a local instance of Infrahub within docker compose."""
     start_services(context=context, database=database, namespace=NAMESPACE, wait=wait)
 
 
 @task(optional=["database"])
-def restart(context: Context, database: str = INFRAHUB_DATABASE):
+def restart(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Restart Infrahub API Server and Git Agent within docker compose."""
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def stop(context: Context, database: str = INFRAHUB_DATABASE):
+def stop(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Stop the running instance of Infrahub."""
     stop_services(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def destroy(context: Context, database: str = INFRAHUB_DATABASE):
+def destroy(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Destroy all containers and volumes."""
     destroy_environment(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def migrate(context: Context, database: str = INFRAHUB_DATABASE):
+def migrate(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Apply the latest database migrations."""
     migrate_database(context=context, database=database, namespace=NAMESPACE)
     update_core_schema(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def cli_server(context: Context, database: str = INFRAHUB_DATABASE):
+def cli_server(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -102,7 +103,7 @@ def cli_server(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(optional=["database"])
-def cli_git(context: Context, database: str = INFRAHUB_DATABASE):
+def cli_git(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -111,19 +112,19 @@ def cli_git(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(optional=["database"])
-def status(context: Context, database: str = INFRAHUB_DATABASE):
+def status(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Display the status of all containers."""
     show_service_status(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE):
+def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load the base schema for infrastructure."""
     load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
-def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
+def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load infrastructure demo data."""
     load_infrastructure_data(context=context, database=database, namespace=NAMESPACE)

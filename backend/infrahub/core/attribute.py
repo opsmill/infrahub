@@ -151,7 +151,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return self.branch
 
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         registry.attribute[cls.__name__] = cls
 

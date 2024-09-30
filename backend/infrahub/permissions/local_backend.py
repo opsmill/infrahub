@@ -14,7 +14,8 @@ if TYPE_CHECKING:
 
 
 class LocalPermissionBackend(PermissionBackend):
-    wildcard_values = ["any", "*"]
+    wildcard_values = ["*"]
+    wildcard_actions = ["any"]
 
     def compute_specificity(self, permission: ObjectPermission) -> int:
         specificity = 0
@@ -24,7 +25,7 @@ class LocalPermissionBackend(PermissionBackend):
             specificity += 1
         if permission.name not in self.wildcard_values:
             specificity += 1
-        if permission.action not in self.wildcard_values:
+        if permission.action not in self.wildcard_actions:
             specificity += 1
         return specificity
 
@@ -42,7 +43,7 @@ class LocalPermissionBackend(PermissionBackend):
                 permission.branch in [branch, *self.wildcard_values]
                 and permission.namespace in [namespace, *self.wildcard_values]
                 and permission.name in [name, *self.wildcard_values]
-                and permission.action in [action, *self.wildcard_values]
+                and permission.action in [action, *self.wildcard_actions]
             ):
                 # Compute the specifity of a permission to keep the decision of the most specific if two or more permissions overlap
                 specificity = self.compute_specificity(permission=permission)
@@ -54,15 +55,30 @@ class LocalPermissionBackend(PermissionBackend):
 
         return most_specific_permission == PermissionDecision.ALLOW.value
 
+    def resolve_global_permission(self, permissions: list[GlobalPermission], permission_to_check: str) -> bool:
+        if not permission_to_check.startswith("global:"):
+            return False
+
+        _, action, _ = permission_to_check.split(":")
+        grant_permission = False
+
+        for permission in permissions:
+            if permission.action == action:
+                # Early exit on deny as deny preempt allow
+                if permission.decision == PermissionDecision.DENY.value:
+                    return False
+                grant_permission = True
+
+        return grant_permission
+
     async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions:
         return await fetch_permissions(db=db, account_id=account_id, branch=branch)
 
     async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool:
         granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
-        global_permissions: list[GlobalPermission] = granted_permissions["global_permissions"]
-        object_permissions: list[ObjectPermission] = granted_permissions["object_permissions"]
 
-        if permission.startswith("global:"):
-            return permission in [str(p) for p in global_permissions]
-
-        return self.resolve_object_permission(permissions=object_permissions, permission_to_check=permission)
+        return self.resolve_global_permission(
+            permissions=granted_permissions["global_permissions"], permission_to_check=permission
+        ) or self.resolve_object_permission(
+            permissions=granted_permissions["object_permissions"], permission_to_check=permission
+        )

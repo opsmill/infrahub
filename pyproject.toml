@@ -39,7 +39,7 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"] }
 typer = "0.12.3"
-prefect = "3.0.1"
+prefect = "3.0.3"
 
 # Dependencies specific to the API Server
 fastapi = "~0.112"
@@ -59,6 +59,7 @@ opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
 opentelemetry-exporter-otlp-proto-http = "^1.24.0"
 nats-py = "^2.7.2"
 netaddr = "1.3.0"
+authlib = "1.3.2"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
@@ -78,7 +79,7 @@ pre-commit = "^2.20.0"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
-ruff = "0.5.0"
+ruff = "0.6.6"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
@@ -86,6 +87,7 @@ deepdiff = "^6.2"
 polyfactory = "^2.16.2"
 towncrier = "^24.8"
 pytest-env = "^1.1.3"
+testcontainers = "^4.8.1"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
@@ -171,8 +173,8 @@ addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --jun
 junit_duration_report = "call"
 
 [tool.pytest_env]
-PREFECT_LOGGING_LEVEL="CRITICAL"
-INFRAHUB_LOG_LEVEL="CRITICAL"
+PREFECT_LOGGING_LEVEL = "CRITICAL"
+INFRAHUB_LOG_LEVEL = "CRITICAL"
 
 [tool.mypy]
 pretty = true
@@ -469,6 +471,7 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
+    "ASYNC110", # Use `anyio.Event` instead of awaiting `anyio.sleep` in a `while` loop
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
     "ASYNC251", # Async functions should not call `time.sleep`
     "B007",     # Loop control variable not used within loop body
@@ -479,6 +482,8 @@ ignore = [
     "C403",     # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",     # Unnecessary `list` call within `sorted()`
+    "C420",     # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
+    "E721",     # Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
     "FURB110",  # Replace ternary `if` expression with `or` operator
     "FURB113",  # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB116",  # Replace `bin` call with f-string
@@ -510,7 +515,6 @@ ignore = [
     "PLR6301",  # Method could be a function, class method, or static method
     "PLW0603",  # Using the global statement to update `SETTINGS` is discouraged
     "PLW1508",  # Invalid type for environment variable default; expected `str` or `None`
-    "PLW3201",  # Bad or misspelled dunder method name `__init_subclass_with_meta__`
     "PTH100",   # `os.path.abspath()` should be replaced by `Path.resolve()`
     "PTH102",   # `os.mkdir()` should be replaced by `Path.mkdir()`
     "PTH103",   # `os.makedirs()` should be replaced by `Path.mkdir(parents=True)`
@@ -530,9 +534,7 @@ ignore = [
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF013",   # PEP 484 prohibits implicit `Optional`
     "RUF015",   # Prefer `next(...)` over single element slice
-    "RUF019",   # Unnecessary key check before dictionary access
     "RUF021",   # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
-    "RUF025",   # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
     "RUF027",   # Possible f-string without an `f` prefix
     "RUF029",   # Function is declared `async`, but doesn't `await` or use `async` features.
     "S101",     # Use of `assert` detected
@@ -547,10 +549,10 @@ ignore = [
     "SIM105",   # Use `contextlib.suppress(SchemaNotFoundError)` instead of `try`-`except`-`pass`
     "SIM110",   # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
     "SIM114",   # Combine `if` branches using logical `or` operator
+    "SIM115",   # Use a context manager for opening files
     "SIM117",   # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SIM201",   # Use `backup_path.suffix != ".backup"` instead of `not backup_path.suffix == ".backup"`
-    "SIM210",   # Remove unnecessary `True if ... else False`
     "SIM300",   # Yoda condition detected
     "SIM401",   # Use `property["items"].get("format", None)` instead of an `if` block
     "SIM910",   #  Use `data.get("identifier")` instead of `data.get("identifier", None)`
@@ -577,6 +579,12 @@ max-line-length = 150
 # Target max-complexity=10
 max-complexity = 33
 
+[tool.ruff.lint.pylint]
+
+allow-dunder-method-names = [
+    "__init_subclass_with_meta__", # Dunder method used within Graphene
+]
+
 [tool.ruff.lint.per-file-ignores]
 
 "backend/infrahub/**.py" = [
@@ -586,8 +594,14 @@ max-complexity = 33
     "ANN001", # Missing type annotation for function argument
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN204", # Missing return type annotation for special method
-    "ANN206", # Missing return type annotation for classmethod
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+]
+
+"backend/infrahub/graphql/mutations/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN206", # Missing return type annotation for classmethod
 ]
 
 "backend/infrahub/graphql/schema.py" = [
@@ -623,16 +637,6 @@ max-complexity = 33
     "C901", # `generate_site` is too complex (34 > 33)"
     "E501", # Line too long
 ]
-
-"tasks/**.py" = [
-    ##################################################################################################
-    # Review and change the below later                                                              #
-    ##################################################################################################
-    "ANN001", # Missing type annotation for function argument
-    "ANN201", # Missing return type annotation for public function
-    "ANN202", # Missing return type annotation for private function
-]
-
 
 "utilities/**.py" = [
     ##################################################################################################

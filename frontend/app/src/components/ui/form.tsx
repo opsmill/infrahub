@@ -20,6 +20,7 @@ import {
 } from "react-hook-form";
 import { Spinner } from "@/components/ui/spinner";
 import Label, { LabelProps } from "@/components/ui/label";
+import { SlideOverContext } from "../display/slide-over";
 
 export type FormRef = ReturnType<typeof useForm>;
 
@@ -33,11 +34,22 @@ export const Form = React.forwardRef<FormRef, FormProps>(
   ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
     const currentForm = form ?? useForm({ defaultValues });
 
+    const slideOverContext = useContext(SlideOverContext);
+
     useImperativeHandle(ref, () => currentForm);
 
     useEffect(() => {
       currentForm.reset(defaultValues);
     }, [JSON.stringify(defaultValues)]);
+
+    useEffect(() => {
+      // Stop logic if there is no context to prevent the slide over close
+      if (!slideOverContext?.setPreventClose) return;
+
+      if (!currentForm.formState.isDirty) return;
+
+      slideOverContext?.setPreventClose(true);
+    }, [currentForm.formState.isDirty]);
 
     return (
       <FormProvider {...currentForm}>
@@ -47,9 +59,11 @@ export const Form = React.forwardRef<FormRef, FormProps>(
               event.stopPropagation();
             }
 
-            if (!onSubmit) return;
+            if (onSubmit) currentForm.handleSubmit(onSubmit)(event);
 
-            currentForm.handleSubmit(onSubmit)(event);
+            if (slideOverContext?.setPreventClose) {
+              slideOverContext?.setPreventClose(false);
+            }
           }}
           className={classNames("space-y-4", className)}
           {...props}>
