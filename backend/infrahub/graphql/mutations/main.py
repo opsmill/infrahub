@@ -23,10 +23,9 @@ from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.events import EventMeta, NodeMutatedEvent
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_log_data, get_logger
-from infrahub.message_bus import Meta, messages
-from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
@@ -101,15 +100,16 @@ class InfrahubMutationMixin:
 
             data = await obj.to_graphql(db=context.db, filter_sensitive=True)
 
-            message = messages.EventNodeMutated(
+            event = NodeMutatedEvent(
                 branch=context.branch.name,
                 kind=obj._schema.kind,
                 node_id=obj.id,
                 data=data,
-                action=action.value,
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                action=action,
+                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
-            context.background.add_task(services.send, message)
+
+            context.background.add_task(context.service.event.send, event)
 
         return mutation
 
