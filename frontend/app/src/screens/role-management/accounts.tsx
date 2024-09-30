@@ -2,7 +2,7 @@ import { useQuery } from "@apollo/client";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/graphql/queries/role-management/getAccounts";
 import { Table } from "@/components/table/table";
 import LoadingScreen from "../loading-screen/loading-screen";
-import { ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import ErrorScreen from "../errors/error-screen";
 import { Pagination } from "@/components/ui/pagination";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
@@ -36,7 +36,7 @@ function Accounts() {
 
   const rows =
     data &&
-    data[ACCOUNT_OBJECT]?.edges.map((edge) => ({
+    data[ACCOUNT_GENERIC_OBJECT]?.edges.map((edge) => ({
       id: edge?.node?.id,
       values: {
         display_label: edge?.node?.display_label,
@@ -60,11 +60,11 @@ function Accounts() {
           onDelete={(data) => setRowToDelete(data.values)}
         />
 
-        <Pagination count={data && data[ACCOUNT_OBJECT]?.count} />
+        <Pagination count={data && data[ACCOUNT_GENERIC_OBJECT]?.count} />
       </div>
 
       <ModalDeleteObject
-        label={schemaKindName[ACCOUNT_OBJECT]}
+        label={schemaKindName[ACCOUNT_GENERIC_OBJECT]}
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}

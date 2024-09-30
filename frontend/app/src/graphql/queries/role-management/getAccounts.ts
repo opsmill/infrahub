@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 
 export const GET_ROLE_MANAGEMENT_ACCOUNTS = gql`
   query GET_ROLE_MANAGEMENT_ACCOUNTS {
-    CoreAccount {
+    CoreGenericAccount {
       count
       edges {
         node {
