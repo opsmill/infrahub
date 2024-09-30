@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Role management - READ", () => {
   test("should read correctly the different views", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("http://localhost:8080/role-management");
+      await page.goto("/role-management");
     });
 
     await test.step("check counts", async () => {
