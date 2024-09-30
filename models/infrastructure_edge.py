@@ -707,12 +707,12 @@ async def find_and_connect_interfaces(
     first_interface = store.get(kind=interface_kind, key=first_interface_name)
     second_interface = store.get(kind=interface_kind, key=second_interface_name)
 
-    first_interface.description.value = f"Connected to {second_device_name}::{second_interface_name}"
+    first_interface.description.value = f"Connected to {second_device_name}::{second_interface.name.value}"
     first_interface.connected_endpoint = second_interface
     batch.add(task=first_interface.save, node=first_interface)
 
     # Adjust description on second interface
-    second_interface.description.value = f"Connected to {first_device_name}::{first_interface_name}"
+    second_interface.description.value = f"Connected to {first_device_name}::{first_interface.name.value}"
     batch.add(task=second_interface.save, node=second_interface)
 
     log.info(
