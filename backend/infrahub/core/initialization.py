@@ -292,8 +292,8 @@ async def create_ipam_namespace(
     return obj
 
 
-async def create_initial_permission(db: InfrahubDatabase) -> CoreGlobalPermission:
-    permission: CoreGlobalPermission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+async def create_initial_permission(db: InfrahubDatabase) -> Node:
+    permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await permission.new(
         db=db,
         name=format_label(GlobalPermissions.SUPER_ADMIN.value),
@@ -306,7 +306,7 @@ async def create_initial_permission(db: InfrahubDatabase) -> CoreGlobalPermissio
 
 
 async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
-    permission: CoreGlobalPermission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await permission.new(
         db=db,
         name=format_label(GlobalPermissions.SUPER_ADMIN.value),
