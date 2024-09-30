@@ -79,7 +79,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
         await expect(page.getByRole("alert")).toContainText("Association with InfraDevice added");
         await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 10 results");
         await expect(page.getByLabel("Tabs")).toContainText("Devices10");
-        await expect(page.getByRole("cell", { name: "ord1-edge2" })).toBeVisible();
+        await expect(page.getByRole("cell", { name: "ord1-leaf2" })).toBeVisible();
       });
     });
 
