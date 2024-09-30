@@ -152,38 +152,38 @@ export const router = createBrowserRouter([
                 ],
               },
               {
+                path: "role-management",
+                lazy: () => import("@/pages/role-management"),
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/screens/role-management/accounts"),
+                  },
+                  {
+                    path: "groups",
+                    lazy: () => import("@/screens/role-management/groups"),
+                  },
+                  {
+                    path: "roles",
+                    lazy: () => import("@/screens/role-management/roles"),
+                  },
+                  {
+                    path: "global-permissions",
+                    lazy: () => import("@/screens/role-management/global-permissions"),
+                  },
+                  {
+                    path: "object-permissions",
+                    lazy: () => import("@/screens/role-management/object-permissions"),
+                  },
+                ],
+              },
+              {
                 path: "/",
                 lazy: () => import("@/pages/homepage"),
               },
               {
                 path: "*",
                 element: <Navigate to="/" />,
-              },
-            ],
-          },
-          {
-            path: "role-management",
-            lazy: () => import("@/pages/role-management"),
-            children: [
-              {
-                index: true,
-                lazy: () => import("@/screens/role-management/accounts"),
-              },
-              {
-                path: "groups",
-                lazy: () => import("@/screens/role-management/groups"),
-              },
-              {
-                path: "roles",
-                lazy: () => import("@/screens/role-management/roles"),
-              },
-              {
-                path: "global-permissions",
-                lazy: () => import("@/screens/role-management/global-permissions"),
-              },
-              {
-                path: "object-permissions",
-                lazy: () => import("@/screens/role-management/object-permissions"),
               },
             ],
           },
