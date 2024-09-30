@@ -66,6 +66,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         raise InitializationError("The node has not been saved yet and doesn't have an id")
 
+    def get_updated_at(self) -> Timestamp | None:
+        return self._updated_at
+
     async def get_hfid(self, db: InfrahubDatabase, include_kind: bool = False) -> Optional[list[str]]:
         """Return the Human friendly id of the node."""
         if not self._schema.human_friendly_id:
