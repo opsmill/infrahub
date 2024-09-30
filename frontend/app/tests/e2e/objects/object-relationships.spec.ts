@@ -19,7 +19,6 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
-        await page.getByText("Devices10").click();
       });
 
       await test.step("all buttons are disabled", async () => {
@@ -27,7 +26,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
         await expect(page.getByTestId("manage-groups")).toBeDisabled();
         await expect(page.getByTestId("delete-button")).toBeDisabled();
 
-        await page.getByText("Devices5").click();
+        await page.getByText("Devices10").click();
         await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
       });
     });
