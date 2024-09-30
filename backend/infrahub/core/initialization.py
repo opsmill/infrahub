@@ -299,7 +299,12 @@ async def create_initial_permissions(db: InfrahubDatabase) -> list[Node]:
 
     for global_permission in GlobalPermissions:
         obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=format_label(global_permission.value), action=global_permission.value)
+        await obj.new(
+            db=db,
+            name=format_label(global_permission.value),
+            action=global_permission.value,
+            decision=PermissionDecision.ALLOW.value,
+        )
         await obj.save(db=db)
         objs.append(obj)
         log.info(f"Created global permission: {global_permission}")
