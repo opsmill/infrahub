@@ -9,12 +9,11 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_account,
-    create_administrator_role,
-    create_administrators_group,
     create_default_branch,
     create_global_branch,
-    create_initial_permissions,
     create_root_node,
+    create_super_administrator_role,
+    create_super_administrators_group,
     initialization,
 )
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -116,8 +115,7 @@ class TestInfrahubApp(TestInfrahub):
         admin_account = await create_account(
             db=db, name="admin", password=config.SETTINGS.initial.admin_password, token_value=api_token
         )
-        global_permissions = await create_initial_permissions(db=db)
-        administrator_role = await create_administrator_role(db=db, global_permissions=global_permissions)
-        await create_administrators_group(db=db, role=administrator_role, admin_accounts=[admin_account])
+        administrator_role = await create_super_administrator_role(db=db)
+        await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=[admin_account])
 
         await initialization(db=db)
