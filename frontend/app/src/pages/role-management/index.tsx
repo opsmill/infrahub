@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import Content from "@/screens/layout/content";
-import { RoleManagementRoot } from "@/screens/role-management";
+import { RoleManagementNavigation } from "@/screens/role-management";
+import { Outlet } from "react-router-dom";
 
 function RoleManagement() {
   return (
@@ -12,7 +13,9 @@ function RoleManagement() {
           className="border-b-0"
         />
 
-        <RoleManagementRoot />
+        <RoleManagementNavigation />
+
+        <Outlet />
       </Card>
     </Content>
   );

@@ -11,9 +11,8 @@ import useQuery from "@/hooks/useQuery";
 
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
-import { Outlet } from "react-router-dom";
 
-export function RoleManagementRoot() {
+export function RoleManagementNavigation() {
   const { loading, data, error } = useQuery(GET_ROLE_MANAGEMENT_COUNTS);
 
   const tabs = [
@@ -82,8 +81,6 @@ export function RoleManagementRoot() {
   return (
     <div>
       <Tabs tabs={tabs} className="pr-2" />
-
-      <Outlet />
     </div>
   );
 }
