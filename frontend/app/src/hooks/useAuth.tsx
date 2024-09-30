@@ -19,6 +19,11 @@ type User = {
   id: string;
 };
 
+type UserToken = {
+  access_token: string;
+  refresh_token: string;
+};
+
 export type AuthContextType = {
   accessToken: string | null;
   data?: any;
@@ -27,6 +32,7 @@ export type AuthContextType = {
   permissions?: PermissionsType;
   signIn: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
   signOut: (callback?: () => void) => void;
+  setToken: (token: UserToken) => void;
   user: User | null;
 };
 
@@ -86,6 +92,7 @@ export const AuthContext = createContext<AuthContextType>({
   },
   signIn: async () => {},
   signOut: () => {},
+  setToken: () => {},
   user: null,
 });
 
@@ -93,6 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
   const [accessToken, setAccessToken] = useState(localToken);
   const [isLoading, setIsLoading] = useState(false);
+
+  const setToken = (token: UserToken) => {
+    setAccessToken(token.access_token);
+    saveTokensInLocalStorage(token);
+  };
 
   const signIn = async (data: { username: string; password: string }, callback?: () => void) => {
     const payload = {
@@ -115,8 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setAccessToken(result?.access_token);
-    saveTokensInLocalStorage(result);
+    setToken(result);
     if (callback) callback();
   };
 
@@ -138,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signIn,
     signOut,
+    setToken,
     user: data?.sub ? { id: data?.sub } : null,
   };
 

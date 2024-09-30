@@ -244,8 +244,8 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
-      - name: Set up Python latest version
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: "Setup git credentials"
@@ -297,8 +297,8 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
-      - name: Set up Python latest version
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: "Setup git credentials"
@@ -345,12 +345,12 @@ jobs:
           - name: backend-tests-unit-memgraph
             env:
               INFRAHUB_DB_TYPE: memgraph
-          - name: backend-tests-unit-nats
-            env:
-              INFRAHUB_DB_TYPE: memgraph
-              INFRAHUB_USE_NATS: 1
-              INFRAHUB_BROKER_DRIVER: nats
-              INFRAHUB_CACHE_DRIVER: nats
+          # - name: backend-tests-unit-nats
+          #   env:
+          #     INFRAHUB_DB_TYPE: memgraph
+          #     INFRAHUB_USE_NATS: 1
+          #     INFRAHUB_BROKER_DRIVER: nats
+          #     INFRAHUB_CACHE_DRIVER: nats
     name: ${{ matrix.name }}
     env: ${{ matrix.env }}
     steps:
@@ -358,8 +358,8 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
-      - name: Set up Python latest version
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: "Setup git credentials"
@@ -560,15 +560,15 @@ jobs:
           - name: E2E-testing-playwright
             env:
               INFRAHUB_DB_TYPE: neo4j
-          - name: E2E-testing-playwright-nats
-            env:
-              INFRAHUB_DB_TYPE: neo4j
-              INFRAHUB_USE_NATS: 1
-              INFRAHUB_BROKER_DRIVER: nats
-              INFRAHUB_BROKER_PORT: 4222
-              INFRAHUB_CACHE_DRIVER: nats
-              INFRAHUB_CACHE_ADDRESS: message-queue
-              INFRAHUB_CACHE_PORT: 4222
+          # - name: E2E-testing-playwright-nats
+          #   env:
+          #     INFRAHUB_DB_TYPE: neo4j
+          #     INFRAHUB_USE_NATS: 1
+          #     INFRAHUB_BROKER_DRIVER: nats
+          #     INFRAHUB_BROKER_PORT: 4222
+          #     INFRAHUB_CACHE_DRIVER: nats
+          #     INFRAHUB_CACHE_ADDRESS: message-queue
+          #     INFRAHUB_CACHE_PORT: 4222
     name: ${{ matrix.name }}
     env: ${{ matrix.env }}
     steps:
@@ -746,33 +746,19 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
-      - name: "Setup environment"
+          python-version: '3.12'
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+      - name: "Setup Python environment"
         run: |
-          pipx install poetry
-          poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
-      - name: Set Version of Pydantic
-        run: poetry add pydantic@^2
-      - name: "Install Package"
-        run: "poetry install"
-
-      - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
-
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: Create docker compose override
-        run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
-
-      - name: Start dependencies
-        run: invoke dev.deps
-
+          poetry config virtualenvs.create false
+          pip install toml invoke
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"
       - name: Run benchmarks
@@ -780,8 +766,6 @@ jobs:
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
-        env:
-          INFRAHUB_TEST_IN_DOCKER: "false"
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:

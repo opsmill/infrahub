@@ -201,6 +201,10 @@ export const router = createBrowserRouter([
         path: "/signin",
         lazy: () => import("@/pages/sign-in"),
       },
+      {
+        path: "auth/:protocol/:provider/callback",
+        lazy: () => import("@/pages/auth-callback"),
+      },
     ],
   },
 ]);
