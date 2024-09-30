@@ -1,10 +1,17 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from fastapi.testclient import TestClient
 
-from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
-from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import messages
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
+    from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
@@ -13,7 +20,7 @@ async def base_authentication(
     default_branch: Branch,
     create_test_admin,
     register_core_models_schema,
-):
+) -> None:
     pass
 
 
@@ -212,3 +219,29 @@ async def test_query_endpoint_wrong_branch(
         )
 
     assert response.status_code == 400
+
+
+async def test_query_endpoint_missing_privs(
+    db: InfrahubDatabase,
+    client: TestClient,
+    first_account: Node,
+    default_branch: Branch,
+    car_person_data: dict[str, Node],
+    base_authentication: None,
+) -> None:
+    with client:
+        token = client.post(
+            "/api/auth/login", json={"username": first_account.name.value, "password": first_account.password.value}
+        )
+        assert token.status_code == 200
+        access_token = token.json()["access_token"]
+
+        response = client.post(
+            "/api/query/query01",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    assert response.status_code == 403
+    error = response.json()
+    assert error["errors"]
+    assert "You do not have the following permission" in error["errors"][0]["message"]
