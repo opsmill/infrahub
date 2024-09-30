@@ -16,6 +16,8 @@ export const GET_ROLE_MANAGEMENT_ACCOUNTS = gql`
           }
           status {
             value
+            color
+            description
           }
         }
       }

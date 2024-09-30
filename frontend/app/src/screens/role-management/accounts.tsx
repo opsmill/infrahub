@@ -9,6 +9,7 @@ import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { ColorDisplay } from "@/components/display/color-display";
 
 function Accounts() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS);
@@ -42,7 +43,13 @@ function Accounts() {
         display_label: edge?.node?.display_label,
         description: edge?.node?.description?.value,
         account_type: edge?.node?.account_type?.value,
-        status: edge?.node?.status?.value,
+        status: (
+          <ColorDisplay
+            color={edge?.node?.status?.color}
+            value={edge?.node?.status?.value}
+            description={edge?.node?.status?.description}
+          />
+        ),
       },
     }));
 
