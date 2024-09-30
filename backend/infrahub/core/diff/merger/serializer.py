@@ -2,8 +2,7 @@ from typing import Any
 
 from infrahub.core.constants import DiffAction
 
-from ..model.path import ConflictSelection, EnrichedDiffRoot, EnrichedDiffConflict
-
+from ..model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot
 
 
 class DiffMergeSerializer:
@@ -12,7 +11,7 @@ class DiffMergeSerializer:
             return action
         if conflict.selected_branch is ConflictSelection.BASE_BRANCH:
             return conflict.base_branch_action
-        elif conflict.selected_branch is ConflictSelection.DIFF_BRANCH:
+        if conflict.selected_branch is ConflictSelection.DIFF_BRANCH:
             return conflict.diff_branch_action
         raise ValueError(f"conflict {conflict.uuid} does not have a branch selection")
 

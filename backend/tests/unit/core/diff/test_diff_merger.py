@@ -7,7 +7,12 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.merger.serializer import DiffMergeSerializer
-from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffNode, EnrichedDiffRoot
+from infrahub.core.diff.model.path import (
+    BranchTrackingId,
+    ConflictSelection,
+    EnrichedDiffNode,
+    EnrichedDiffRoot,
+)
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -15,7 +20,7 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
-from tests.unit.core.diff.factories import EnrichedNodeFactory, EnrichedRootFactory
+from tests.unit.core.diff.factories import EnrichedConflictFactory, EnrichedNodeFactory, EnrichedRootFactory
 
 
 class TestMergeDiff:
@@ -172,3 +177,45 @@ class TestMergeDiff:
         ]
         with pytest.raises(NodeNotFoundError):
             await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id, raise_on_error=True)
+
+    @pytest.mark.parametrize(
+        "conflict_selection,expect_deleted",
+        [(ConflictSelection.DIFF_BRANCH, True), (ConflictSelection.BASE_BRANCH, False)],
+    )
+    async def test_merge_node_deleted_with_conflict(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        person_node_main: Node,
+        source_branch: Branch,
+        mock_diff_repository: DiffRepository,
+        diff_merger: DiffMerger,
+        empty_diff_root: EnrichedDiffRoot,
+        conflict_selection: ConflictSelection,
+        expect_deleted: bool,
+    ):
+        person_node_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
+        await person_node_branch.delete(db=db)
+        deleted_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.REMOVED)
+        node_conflict = EnrichedConflictFactory.build(
+            base_branch_action=DiffAction.UPDATED,
+            diff_branch_action=DiffAction.REMOVED,
+            selected_branch=conflict_selection,
+        )
+        deleted_node_diff.conflict = node_conflict
+        empty_diff_root.nodes = {deleted_node_diff}
+        mock_diff_repository.get_one.return_value = empty_diff_root
+        at = Timestamp()
+
+        await diff_merger.merge_graph(at=at)
+
+        mock_diff_repository.get_one.assert_awaited_once_with(
+            diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)
+        )
+        if expect_deleted:
+            with pytest.raises(NodeNotFoundError):
+                await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id, raise_on_error=True)
+        else:
+            target_car = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_branch.id)
+            assert target_car.id == person_node_branch.id
+            assert target_car.get_updated_at() < at
