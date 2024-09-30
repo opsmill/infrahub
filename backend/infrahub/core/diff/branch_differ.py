@@ -278,7 +278,7 @@ class BranchDiffer:
                 property_name=conflict.property_name,
             )
             for branch, change in changes.items():
-                if response.path in change and change[response.path]:
+                if change.get(response.path):
                     response.changes.append(
                         BranchChanges(
                             branch=branch,
