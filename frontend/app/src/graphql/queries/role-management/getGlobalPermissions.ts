@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
 export const GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS = gql`
-  query {
+  query GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS {
     CoreGlobalPermission {
       edges {
         node {
