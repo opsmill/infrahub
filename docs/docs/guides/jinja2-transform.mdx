@@ -162,6 +162,10 @@ jinja2_transforms:
     description: "short description" # (optional)
     query: "tags_query"              # Name or ID of the GraphQLQuery
     template_path: "tags_tpl.j2"     # Path to the main Jinja2 template
+
+queries:
+  - name: tags_query                 # Name of the GraphQLQuery
+    file_path: "tags_query.gql"      # Path to the main Jinja2 template
 ```
 
 > The main Jinja2 template can import other templates

@@ -83,14 +83,14 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
   mutation {
     CorePasswordCredentialCreate(
       data: {
-        name: {value: "My Git Credential"},
+        name: {value: "my-git-credential"},
         username: {value: "MY_USERNAME"},
         password: {value: "MY_TOKEN_OR_PASSWORD"}
       }
     ) {
       ok
       object {
-        id
+        hfid
       }
     }
   }
@@ -108,7 +108,8 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
       data: {
         name: {value: "My Git Repository"},
         location: {value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git"},
-        # credential: {id: "CREDENTIAL_ID_FROM_PREVIOUS_REQUEST"} <-- optional: This needs to be the credential id created at step 2
+        # The HFID returned during step 2 will be the name of the credentials
+        credential: {hfid: "my-git-credential"}
       }
     ) {
       ok
@@ -131,7 +132,8 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
         name: {value: "My Git Repository"},
         location: {value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git"},
         ref: { value: "BRANCH/TAG/COMMIT_TO_TRACK" },
-        # credential: {id: "CREDENTIAL_ID_FROM_PREVIOUS_REQUEST"} <-- optional: This needs to be the credential id created at step 2
+        # Optional: the HFID returned during step 2 will be the name of the credentials
+        credential: {hfid: "my-git-credential"}
       }
     ) {
       ok
@@ -154,7 +156,7 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 ### Via the Infrahub SDK
 
 1. Install and setup the [Infrahub SDK](/python-sdk)
-2. If needed, i.e., your repository is private, create a Credential object to hold your username / password.
+2. If needed, i.e., your repository is private, create a Credential object to hold your username / password. We highly recommend to provide credentials for Repository to allow branch creation from Infrahub.
 
 ```python
   # Create credential object ...
@@ -180,7 +182,8 @@ The repository should be visible under [Unified Storage / Repository](http://loc
       "CoreRepository",
       name="My Git repository",
       location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
-      # credential=credential,  <-- optional: This needs to be the credential object created at step 2
+      # The credential object created at step 2
+      credential=credential,
   )
 
   # and save it ...
@@ -193,11 +196,12 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 ```python
   # Create repository object ...
   repository = client.create(
-      "CoreRepository",
+      "CoreReadOnlyRepository",
       name="My Git repository",
       location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
       ref="BRANCH/TAG/COMMIT_TO_TRACK",
-      # credential=credential,  <-- optional: This needs to be the credential object created at step 2
+      # Optional: the credential object created at step 2
+      credential=credential,
   )
 
   # and save it ...

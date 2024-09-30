@@ -16,6 +16,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffNode,
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
+    EnrichedDiffs,
     EnrichedDiffSingleRelationship,
 )
 from infrahub.core.schema.node_schema import NodeSchema
@@ -87,7 +88,20 @@ class TestDiffCombiner:
         self.schema_manager.get_node_schema.side_effect = mock_get_node_schema
 
     async def __call_system_under_test(self, diff_1, diff_2):
-        return await self.combiner.combine(earlier_diff=diff_1, later_diff=diff_2)
+        enriched_diffs_1 = EnrichedDiffs(
+            base_branch_name=self.base_branch,
+            diff_branch_name=self.diff_branch,
+            base_branch_diff=EnrichedRootFactory.build(nodes=set()),
+            diff_branch_diff=diff_1,
+        )
+        enriched_diffs_2 = EnrichedDiffs(
+            base_branch_name=self.base_branch,
+            diff_branch_name=self.diff_branch,
+            base_branch_diff=EnrichedRootFactory.build(nodes=set()),
+            diff_branch_diff=diff_2,
+        )
+        combined_diffs = await self.combiner.combine(earlier_diffs=enriched_diffs_1, later_diffs=enriched_diffs_2)
+        return combined_diffs.diff_branch_diff
 
     @pytest.mark.parametrize(
         "action_1,action_2",
@@ -109,6 +123,7 @@ class TestDiffCombiner:
         combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
 
         self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
     @pytest.mark.parametrize(
@@ -144,6 +159,7 @@ class TestDiffCombiner:
         combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
 
         self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
         self.expected_combined.nodes = {
             EnrichedDiffNode(
                 uuid=diff_node_2.uuid,
@@ -191,6 +207,7 @@ class TestDiffCombiner:
         combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
 
         self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
         expected_parent_node = replace(parent_node_2)
         expected_rel = replace(relationship_2, nodes={expected_parent_node})
         expected_child_node = replace(
@@ -335,6 +352,7 @@ class TestDiffCombiner:
         combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
 
         self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
     async def test_relationship_one_combined(self, with_schema_manager):
@@ -448,7 +466,7 @@ class TestDiffCombiner:
         combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
 
         self.expected_combined.uuid = combined.uuid
-
+        self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
     async def test_relationship_many_combined(self, with_schema_manager):
@@ -613,7 +631,7 @@ class TestDiffCombiner:
         combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
 
         self.expected_combined.uuid = combined.uuid
-
+        self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
     async def test_relationship_with_only_nodes(self, with_schema_manager):
@@ -677,7 +695,7 @@ class TestDiffCombiner:
         combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
 
         self.expected_combined.uuid = combined.uuid
-
+        self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
     async def test_early_conflict_removed(self):
@@ -838,6 +856,7 @@ class TestDiffCombiner:
             relationships={expected_relationship},
         )
         self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
         self.expected_combined.nodes = {expected_parent_node, expected_child_node}
         assert combined == self.expected_combined
 
@@ -907,5 +926,6 @@ class TestDiffCombiner:
             relationships={expected_child_rel},
         )
         self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
         self.expected_combined.nodes = {expected_parent_1, expected_parent_2, expected_child_node}
         assert combined == self.expected_combined

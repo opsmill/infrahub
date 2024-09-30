@@ -39,7 +39,7 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"] }
 typer = "0.12.3"
-prefect = "3.0.1"
+prefect = "3.0.3"
 
 # Dependencies specific to the API Server
 fastapi = "~0.112"
@@ -515,7 +515,6 @@ ignore = [
     "PLR6301",  # Method could be a function, class method, or static method
     "PLW0603",  # Using the global statement to update `SETTINGS` is discouraged
     "PLW1508",  # Invalid type for environment variable default; expected `str` or `None`
-    "PLW3201",  # Bad or misspelled dunder method name `__init_subclass_with_meta__`
     "PTH100",   # `os.path.abspath()` should be replaced by `Path.resolve()`
     "PTH102",   # `os.mkdir()` should be replaced by `Path.mkdir()`
     "PTH103",   # `os.makedirs()` should be replaced by `Path.mkdir(parents=True)`
@@ -535,7 +534,6 @@ ignore = [
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF013",   # PEP 484 prohibits implicit `Optional`
     "RUF015",   # Prefer `next(...)` over single element slice
-    "RUF019",   # Unnecessary key check before dictionary access
     "RUF021",   # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
     "RUF027",   # Possible f-string without an `f` prefix
     "RUF029",   # Function is declared `async`, but doesn't `await` or use `async` features.
@@ -580,6 +578,12 @@ max-line-length = 150
 [tool.ruff.lint.mccabe]
 # Target max-complexity=10
 max-complexity = 33
+
+[tool.ruff.lint.pylint]
+
+allow-dunder-method-names = [
+    "__init_subclass_with_meta__", # Dunder method used within Graphene
+]
 
 [tool.ruff.lint.per-file-ignores]
 

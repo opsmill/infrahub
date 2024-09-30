@@ -172,3 +172,18 @@ class InternalSchemaMigration(BaseModel):
                 return result
 
         return result
+
+
+class ArbitraryMigration(BaseModel):
+    name: str = Field(..., description="Name of the migration")
+    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @classmethod
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
+        return cls(**kwargs)  # type: ignore[arg-type]
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()
+
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()

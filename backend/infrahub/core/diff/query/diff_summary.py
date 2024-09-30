@@ -68,7 +68,7 @@ class DiffSummaryQuery(Query):
             "from_time": self.from_time.to_string(),
             "to_time": self.to_time.to_string(),
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
-            "diff_id": None,
+            "diff_ids": None,
         }
 
         # ruff: noqa: E501

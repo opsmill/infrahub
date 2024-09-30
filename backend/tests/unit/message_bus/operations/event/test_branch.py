@@ -49,6 +49,7 @@ async def test_merged(default_branch: Branch):
             from_time=right_now,
             to_time=right_now,
             uuid=str(uuid4()),
+            partner_uuid=str(uuid4()),
             tracking_id=BranchTrackingId(name=str(uuid4())),
         )
         for _ in range(2)
@@ -60,6 +61,7 @@ async def test_merged(default_branch: Branch):
             from_time=right_now,
             to_time=right_now,
             uuid=str(uuid4()),
+            partner_uuid=str(uuid4()),
         )
         for _ in range(2)
     ]
@@ -99,6 +101,7 @@ async def test_rebased(default_branch: Branch):
             from_time=right_now,
             to_time=right_now,
             uuid=str(uuid4()),
+            partner_uuid=str(uuid4()),
         )
         for _ in range(2)
     ]

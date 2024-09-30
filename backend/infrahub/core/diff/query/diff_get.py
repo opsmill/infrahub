@@ -1,5 +1,6 @@
 from typing import Any
 
+from infrahub import config
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -15,20 +16,9 @@ QUERY_MATCH_NODES = """
     AND diff_root.from_time >= $from_time
     AND diff_root.to_time <= $to_time
     AND ($tracking_id IS NULL OR diff_root.tracking_id = $tracking_id)
-    AND ($diff_id IS NULL OR diff_root.uuid = $diff_id)
+    AND ($diff_ids IS NULL OR diff_root.uuid IN $diff_ids)
     WITH diff_root
     ORDER BY diff_root.base_branch, diff_root.diff_branch, diff_root.from_time, diff_root.to_time
-    WITH diff_root.base_branch AS bb, diff_root.diff_branch AS db, collect(diff_root) AS same_branch_diff_roots
-    WITH reduce(
-        non_overlapping = [], dr in same_branch_diff_roots |
-        CASE
-            WHEN size(non_overlapping) = 0 THEN [dr]
-            WHEN dr.from_time >= (non_overlapping[-1]).from_time AND dr.to_time <= (non_overlapping[-1]).to_time THEN non_overlapping
-            WHEN (non_overlapping[-1]).from_time >= dr.from_time AND (non_overlapping[-1]).to_time <= dr.to_time THEN non_overlapping[..-1] + [dr]
-            ELSE non_overlapping + [dr]
-        END
-    ) AS non_overlapping_diff_roots
-    UNWIND non_overlapping_diff_roots AS diff_root
     // get all the nodes attached to the diffs
     OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
     """
@@ -45,12 +35,12 @@ class EnrichedDiffGetQuery(Query):
         self,
         base_branch_name: str,
         diff_branch_names: list[str],
-        filters: EnrichedDiffQueryFilters,
         max_depth: int,
+        filters: EnrichedDiffQueryFilters | None = None,
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
-        diff_id: str | None = None,
+        diff_ids: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -60,7 +50,7 @@ class EnrichedDiffGetQuery(Query):
         self.to_time: Timestamp = to_time or Timestamp()
         self.max_depth = max_depth
         self.tracking_id = tracking_id
-        self.diff_id = diff_id
+        self.diff_ids = diff_ids
         self.filters = filters or EnrichedDiffQueryFilters()
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
@@ -70,8 +60,8 @@ class EnrichedDiffGetQuery(Query):
             "from_time": self.from_time.to_string(),
             "to_time": self.to_time.to_string(),
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
-            "diff_id": self.diff_id,
-            "limit": self.limit,
+            "diff_ids": self.diff_ids,
+            "limit": self.limit or config.SETTINGS.database.query_size_limit,
             "offset": self.offset,
         }
         # ruff: noqa: E501

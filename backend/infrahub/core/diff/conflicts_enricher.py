@@ -2,7 +2,6 @@ from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.database import InfrahubDatabase
 
 from .model.path import (
     EnrichedDiffAttribute,
@@ -16,10 +15,9 @@ from .model.path import (
 
 
 class ConflictsEnricher:
-    def __init__(self, db: InfrahubDatabase) -> None:
+    def __init__(self) -> None:
         self._base_branch_name: str | None = None
         self._diff_branch_name: str | None = None
-        self.schema_manager = db.schema
 
     @property
     def base_branch_name(self) -> str:
@@ -66,7 +64,6 @@ class ConflictsEnricher:
             base_relationship = base_relationship_map[relationship_name]
             branch_relationship = branch_relationship_map[relationship_name]
             self._add_relationship_conflicts(
-                branch_node=branch_node,
                 base_relationship=base_relationship,
                 branch_relationship=branch_relationship,
             )
@@ -100,7 +97,11 @@ class ConflictsEnricher:
         for property_type in common_property_types:
             base_property = base_property_map[property_type]
             branch_property = branch_property_map[property_type]
-            if base_property.new_value != branch_property.new_value:
+            same_value = base_property.new_value == branch_property.new_value or (
+                base_property.action is DiffAction.UNCHANGED
+                and base_property.previous_value == branch_property.previous_value
+            )
+            if not same_value:
                 self._add_property_conflict(
                     base_property=base_property,
                     branch_property=branch_property,
@@ -110,15 +111,10 @@ class ConflictsEnricher:
 
     def _add_relationship_conflicts(
         self,
-        branch_node: EnrichedDiffNode,
         base_relationship: EnrichedDiffRelationship,
         branch_relationship: EnrichedDiffRelationship,
     ) -> None:
-        node_schema = self.schema_manager.get_node_schema(
-            name=branch_node.kind, branch=self.diff_branch_name, duplicate=False
-        )
-        relationship_schema = node_schema.get_relationship(name=branch_relationship.name)
-        is_cardinality_one = relationship_schema.cardinality is RelationshipCardinality.ONE
+        is_cardinality_one = branch_relationship.cardinality is RelationshipCardinality.ONE
         if is_cardinality_one:
             if not base_relationship.relationships or not branch_relationship.relationships:
                 return

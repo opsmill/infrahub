@@ -285,8 +285,13 @@ class QueryResult:
             if isinstance(item, Neo4jNode):
                 yield item
 
+    def get_path(self, label: str) -> Neo4jPath:
+        path = self.get(label=label)
+        if isinstance(path, Neo4jPath):
+            return path
+        raise ValueError(f"{label} is not a Path")
+
     def get_paths(self, label: str) -> Generator[Neo4jPath, None, None]:
-        """Return all nodes."""
         for path in self.get(label=label):
             if isinstance(path, Neo4jPath):
                 yield path
