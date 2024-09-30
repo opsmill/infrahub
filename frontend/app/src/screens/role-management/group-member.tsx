@@ -25,7 +25,7 @@ export function GroupMembers({ members }: GroupMembersProps) {
         ))}
       </div>
 
-      {lengthDiff && (
+      {!!lengthDiff && (
         <Avatar text={`+ ${lengthDiff}`} size={"md"} variant={"active"} className="z-10" />
       )}
     </div>
