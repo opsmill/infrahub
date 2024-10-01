@@ -3,48 +3,30 @@ import Kbd from "@/components/ui/kbd";
 import { classNames } from "@/utils/common";
 import { Combobox, Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import {
-  ChangeEventHandler,
-  Fragment,
-  MouseEventHandler,
-  ReactNode,
-  forwardRef,
-  useEffect,
-  useState,
-} from "react";
+import { Fragment, ReactNode, forwardRef, useEffect, useState } from "react";
 import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { SearchActions } from "./search-actions";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
 import { Card } from "@/components/ui/card";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 
-type SearchInputProps = {
-  className?: string;
-  value?: string;
-  onChange?: ChangeEventHandler<HTMLInputElement>;
-  onClick?: MouseEventHandler<HTMLDivElement>;
-};
-
-const SearchTrigger = ({ value, onChange, onClick, className = "" }: SearchInputProps) => {
+const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
   return (
-    <div className={classNames("relative", className)} onClick={onClick}>
-      <Icon
-        icon="mdi:magnify"
-        className="text-lg text-custom-blue-10 absolute inset-y-0 left-0 pl-2 flex items-center"
-        aria-hidden="true"
-      />
-
-      <Input
-        placeholder="Search anywhere"
-        onChange={onChange}
-        value={value}
-        className="w-full px-8 py-2"
-      />
-
-      <div className="absolute inset-y-0 right-2 flex items-center">
-        <Kbd keys="command">K</Kbd>
+    <Button
+      variant="ghost"
+      className={classNames(
+        "px-3 py-2 gap-3 bg-neutral-100 shadow-none text-neutral-800 justify-between",
+        className
+      )}
+      {...props}>
+      <div className="flex items-center gap-2">
+        <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
+        <span className="text-neutral-700 text-sm">Search</span>
       </div>
-    </div>
+
+      <Kbd keys="command">K</Kbd>
+    </Button>
   );
 };
 
@@ -75,14 +57,7 @@ export function SearchAnywhere({ className = "" }: SearchModalProps) {
 
   return (
     <>
-      <div className={className}>
-        <SearchTrigger
-          value=""
-          className="w-full max-w-lg"
-          onClick={openModal}
-          onChange={openModal}
-        />
-      </div>
+      <SearchAnywhereTriggerButton onClick={openModal} onChange={openModal} className={className} />
 
       <Transition appear show={isOpen} as={Fragment}>
         <Dialog onClose={closeDrawer}>

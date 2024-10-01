@@ -36,7 +36,7 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
 
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setIsOpen(true)}>
-            <Icon icon="mdi:access-point" className="text-lg mr-2" />
+            <Icon icon="mdi:access-point" className="text-lg" />
             Check connectivity
           </DropdownMenuItem>
 
@@ -152,7 +152,7 @@ const ReimportLastCommitAction = ({ repositoryId }: { repositoryId: string }) =>
 
   return (
     <DropdownMenuItem onClick={() => reimportLastCommit()}>
-      <Icon icon="mdi:reload" className="text-lg mr-2" />
+      <Icon icon="mdi:reload" className="text-lg" />
       Reimport last commit
     </DropdownMenuItem>
   );
