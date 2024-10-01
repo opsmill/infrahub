@@ -13,7 +13,7 @@ test.describe("when searching an object", () => {
     await page.goto("/");
 
     await test.step("open search anywhere modal with click", async () => {
-      await page.getByPlaceholder("Search anywhere").click();
+      await page.getByTestId("search-anywhere-trigger").click();
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 
@@ -23,7 +23,7 @@ test.describe("when searching an object", () => {
     });
 
     await test.step("open search anywhere modal when typing on header input", async () => {
-      await page.getByPlaceholder("Search anywhere").fill("e");
+      await page.keyboard.press("Enter");
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
   });
@@ -33,7 +33,7 @@ test.describe("when searching an object", () => {
     await expect(page.getByTestId("sidebar-menu")).toBeVisible(); // Wait for schema to load
 
     await test.step("open search anywhere modal with click", async () => {
-      await page.getByPlaceholder("Search anywhere").click();
+      await page.getByTestId("search-anywhere-trigger").click();
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 
@@ -50,7 +50,7 @@ test.describe("when searching an object", () => {
     await page.goto("/");
 
     await test.step("open search anywhere modal", async () => {
-      await page.getByPlaceholder("Search anywhere").click();
+      await page.getByTestId("search-anywhere-trigger").click();
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 
@@ -67,7 +67,7 @@ test.describe("when searching an object", () => {
     await page.goto("/");
 
     await test.step("open search anywhere modal", async () => {
-      await page.getByPlaceholder("Search anywhere").click();
+      await page.getByTestId("search-anywhere-trigger").click();
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 
@@ -86,7 +86,7 @@ test.describe("when searching an object", () => {
     const uuid = (await page.locator("dd").first().textContent()) as string;
 
     await test.step("open search anywhere modal", async () => {
-      await page.getByPlaceholder("Search anywhere").click();
+      await page.getByTestId("search-anywhere-trigger").click();
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 

@@ -19,6 +19,7 @@ const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
         "px-3 py-2 gap-3 bg-neutral-100 shadow-none text-neutral-800 justify-between",
         className
       )}
+      data-testid="search-anywhere-trigger"
       {...props}>
       <div className="flex items-center gap-2">
         <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
