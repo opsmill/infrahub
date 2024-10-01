@@ -3,8 +3,9 @@ import pytest
 from graphql import graphql
 
 from infrahub.auth import AccountSession, AuthType
+from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind
+from infrahub.core.constants import AccountRole, GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
@@ -47,7 +48,9 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
     assert updated_account.description.value == new_description
 
 
-async def test_permissions(db: InfrahubDatabase, default_branch: Branch, authentication_base, first_account):
+async def test_permissions(
+    db: InfrahubDatabase, default_branch: Branch, authentication_base, session_admin, first_account
+):
     query = """
     query {
         InfrahubPermissions {
@@ -58,20 +61,19 @@ async def test_permissions(db: InfrahubDatabase, default_branch: Branch, authent
                     }
                 }
             }
+            object_permissions {
+                edges {
+                    node {
+                        identifier
+                    }
+                }
+            }
         }
     }
     """
 
-    account = await NodeManager.get_one_by_hfid(
-        db=db, kind=InfrahubKind.ACCOUNT, hfid=["test-admin"], raise_on_error=True
-    )
     gql_params = prepare_graphql_params(
-        db=db,
-        include_subscription=False,
-        branch=default_branch,
-        account_session=AccountSession(
-            authenticated=True, account_id=account.id, role=account.role.value, auth_type=AuthType.JWT
-        ),
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
     )
 
     result = await graphql(
@@ -80,7 +82,30 @@ async def test_permissions(db: InfrahubDatabase, default_branch: Branch, authent
 
     assert result.errors is None
     perms = [edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]]
-    assert sorted(perms) == sorted([f"global:{p.value}:allow" for p in GlobalPermissions])
+    assert perms == [
+        str(
+            GlobalPermission(
+                id="",
+                name=GlobalPermissions.SUPER_ADMIN.value,
+                action=GlobalPermissions.SUPER_ADMIN.value,
+                decision=PermissionDecision.ALLOW.value,
+            )
+        )
+    ]
+
+    perms = [edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]]
+    assert perms == [
+        str(
+            ObjectPermission(
+                id="",
+                branch="*",
+                namespace="*",
+                name="*",
+                action=PermissionAction.ANY.value,
+                decision=PermissionDecision.ALLOW.value,
+            )
+        )
+    ]
 
     gql_params = prepare_graphql_params(
         db=db,
