@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
+    from tests.unit.graphql.conftest import PermissionsHelper
 
 
 QUERY_TAGS = """
@@ -63,39 +64,17 @@ query {
 """
 
 
-class PermissionsHelper:
-    def __init__(self) -> None:
-        self._first: None | CoreAccount = None
-        self._default_branch: None | Branch = None
-
-    @property
-    def default_branch(self) -> Branch:
-        if self._default_branch:
-            return self._default_branch
-
-        raise NotImplementedError()
-
-    @property
-    def first(self) -> CoreAccount:
-        if self._first:
-            return self._first
-
-        raise NotImplementedError()
-
-
-permission_helper = PermissionsHelper()
-
-
 class TestObjectPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
         register_core_models_schema: None,
         default_branch: Branch,
+        permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
     ):
-        permission_helper._first = first_account
-        permission_helper._default_branch = default_branch
+        permissions_helper._first = first_account
+        permissions_helper._default_branch = default_branch
         registry.permission_backends = [LocalPermissionBackend()]
 
         permissions = []
@@ -156,16 +135,18 @@ class TestObjectPermissions:
         await group.members.add(db=db, data={"id": first_account.id})
         await group.members.save(db=db)
 
-    async def test_first_account_tags_main_branch(self, db: InfrahubDatabase) -> None:
+    async def test_first_account_tags_main_branch(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
+    ) -> None:
         """In the main branch the first account doesn't have the permission to make changes"""
         session = AccountSession(
             authenticated=True,
-            account_id=permission_helper.first.id,
+            account_id=permissions_helper.first.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
         gql_params = prepare_graphql_params(
-            db=db, include_mutation=True, branch=permission_helper.default_branch, account_session=session
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
 
         result = await graphql(
@@ -181,12 +162,14 @@ class TestObjectPermissions:
             "node": {"kind": "BuiltinTag", "create": "DENY", "update": "DENY", "delete": "DENY", "view": "ALLOW"}
         }
 
-    async def test_first_account_tags_non_main_branch(self, db: InfrahubDatabase) -> None:
+    async def test_first_account_tags_non_main_branch(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
+    ) -> None:
         """In other branches the permissions for the first account is less restrictive"""
         branch2 = await create_branch(branch_name="pr-12345", db=db)
         session = AccountSession(
             authenticated=True,
-            account_id=permission_helper.first.id,
+            account_id=permissions_helper.first.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
@@ -205,16 +188,18 @@ class TestObjectPermissions:
             "node": {"kind": "BuiltinTag", "create": "ALLOW", "update": "DENY", "delete": "ALLOW", "view": "ALLOW"}
         }
 
-    async def test_first_account_list_permissions_for_generics(self, db: InfrahubDatabase) -> None:
+    async def test_first_account_list_permissions_for_generics(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
+    ) -> None:
         """In the main branch the first account doesn't have the permission to make changes"""
         session = AccountSession(
             authenticated=True,
-            account_id=permission_helper.first.id,
+            account_id=permissions_helper.first.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
         gql_params = prepare_graphql_params(
-            db=db, include_mutation=True, branch=permission_helper.default_branch, account_session=session
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
 
         result = await graphql(
