@@ -7,14 +7,12 @@ from graphene.types.objecttype import ObjectTypeOptions
 
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema
 
-from .mixin import GetListMixin
-
 
 class InfrahubObjectOptions(ObjectTypeOptions):
-    schema: Optional[MainSchemaTypes] = None
+    schema: MainSchemaTypes
 
 
-class InfrahubObject(ObjectType, GetListMixin):
+class InfrahubObject(ObjectType):
     @classmethod
     def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
         cls,

@@ -12,7 +12,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-async def checks(message: messages.RequestRepositoryChecks, service: InfrahubServices):
+async def checks(message: messages.RequestRepositoryChecks, service: InfrahubServices) -> None:
     """Request to start validation checks on a specific repository."""
     log.info("Running repository checks", repository_id=message.repository, proposed_change_id=message.proposed_change)
 
@@ -94,7 +94,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
         await service.send(message=event)
 
 
-async def user_checks(message: messages.RequestRepositoryUserChecks, service: InfrahubServices):
+async def user_checks(message: messages.RequestRepositoryUserChecks, service: InfrahubServices) -> None:
     """Request to start validation checks on a specific repository for User-defined checks."""
     async with service.task_report(
         related_node=message.proposed_change,

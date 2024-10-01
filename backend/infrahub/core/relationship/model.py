@@ -985,7 +985,7 @@ class RelationshipManager:
                     self._relationships.append(previous_relationships[str(item_id)])
                     continue
 
-            if isinstance(item, type(None)):
+            if item is None:
                 if previous_relationships:
                     for rel in previous_relationships.values():
                         await rel.delete(db=db)

@@ -423,15 +423,17 @@ class DiffQueryParser:
     def get_node_field_specifiers_for_branch(self, branch_name: str) -> set[NodeFieldSpecifier]:
         if branch_name not in self._diff_root_by_branch:
             return set()
-        node_field_specifiers = set()
+        node_field_specifiers: set[NodeFieldSpecifier] = set()
         diff_root = self._diff_root_by_branch[branch_name]
         for node in diff_root.nodes_by_id.values():
-            for attribute_name in node.attributes_by_name:
-                node_field_specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute_name))
-            for relationship_diff in node.relationships_by_name.values():
-                node_field_specifiers.add(
-                    NodeFieldSpecifier(node_uuid=node.uuid, field_name=relationship_diff.identifier)
-                )
+            node_field_specifiers.update(
+                NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute_name)
+                for attribute_name in node.attributes_by_name
+            )
+            node_field_specifiers.update(
+                NodeFieldSpecifier(node_uuid=node.uuid, field_name=relationship_diff.identifier)
+                for relationship_diff in node.relationships_by_name.values()
+            )
         return node_field_specifiers
 
     def read_result(self, query_result: QueryResult) -> None:

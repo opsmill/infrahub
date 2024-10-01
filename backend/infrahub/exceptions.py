@@ -293,3 +293,20 @@ class DiffRangeValidationError(DiffError): ...
 
 
 class DiffFromRequiredOnDefaultBranchError(DiffError): ...
+
+
+class HTTPServerError(Error):
+    """Errors raised when communicating with external HTTP servers"""
+
+    HTTP_CODE = 502
+
+    def __init__(self, message: str):
+        self.message = message
+
+
+class HTTPServerTimeoutError(HTTPServerError):
+    HTTP_CODE = 504
+
+
+class HTTPServerSSLError(HTTPServerError):
+    HTTP_CODE = 503

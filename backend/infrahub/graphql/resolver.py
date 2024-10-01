@@ -8,16 +8,18 @@ from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDire
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 
+from .parser import extract_selection
+from .permissions import get_permissions
 from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.graphql import GraphqlContext
 
 
-async def default_resolver(*args, **kwargs):
+async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
     When it returns 4, they are organized as follow
@@ -92,6 +94,71 @@ async def default_resolver(*args, **kwargs):
             return None
 
         return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
+
+
+async def default_paginated_list_resolver(
+    root: dict,  # pylint: disable=unused-argument
+    info: GraphQLResolveInfo,
+    offset: int | None = None,
+    limit: int | None = None,
+    partial_match: bool = False,
+    **kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    schema: MainSchemaTypes = info.return_type.graphene_type._meta.schema
+    fields = await extract_selection(info.field_nodes[0], schema=schema)
+
+    context: GraphqlContext = info.context
+    async with context.db.start_session() as db:
+        response: dict[str, Any] = {"edges": []}
+        filters = {
+            key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
+        }
+
+        edges = fields.get("edges", {})
+        node_fields = edges.get("node", {})
+
+        permissions = fields.get("permissions")
+        if permissions:
+            response["permissions"] = await get_permissions(db=db, schema=schema, context=context)
+
+        objs = []
+        if edges or "hfid" in filters:
+            objs = await NodeManager.query(
+                db=db,
+                schema=schema,
+                filters=filters or None,
+                fields=node_fields,
+                at=context.at,
+                branch=context.branch,
+                limit=limit,
+                offset=offset,
+                account=context.account_session,
+                include_source=True,
+                include_owner=True,
+                partial_match=partial_match,
+            )
+
+        if "count" in fields:
+            if filters.get("hfid"):
+                response["count"] = len(objs)
+            else:
+                response["count"] = await NodeManager.count(
+                    db=db,
+                    schema=schema,
+                    filters=filters,
+                    at=context.at,
+                    branch=context.branch,
+                    partial_match=partial_match,
+                )
+
+        if objs:
+            objects = [
+                {"node": await obj.to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids)}
+                for obj in objs
+            ]
+            response["edges"] = objects
+
+        return response
 
 
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:

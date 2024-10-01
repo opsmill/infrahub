@@ -1,16 +1,14 @@
-import { BUTTON_TYPES, Button } from "@/components/buttons/button";
-import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import { SEARCH_FILTERS } from "@/config/constants";
 import useFilters from "@/hooks/useFilters";
 import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
-import ObjectForm from "@/components/form/object-form";
+import React, { useState } from "react";
 import usePagination from "@/hooks/usePagination";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { getFiltersFromFormData } from "@/components/filters/utils/getFiltersFromFormData";
 import { FormFieldValue } from "@/components/form/type";
-import { getObjectFromFilters } from "@/components/filters/utils/getObjectFromFilters";
+import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
+import { FilterForm } from "@/components/filters/filter-form";
 
 type FiltersProps = {
   schema: IModelSchema;
@@ -32,8 +30,6 @@ export const Filters = ({ schema }: FiltersProps) => {
     setFilters(newFilters);
   };
 
-  const handleShowFilters = () => setShowFilters(true);
-
   const handleSubmit = (formData: Record<string, FormFieldValue>) => {
     const newFilters = getFiltersFromFormData(formData);
 
@@ -50,26 +46,22 @@ export const Filters = ({ schema }: FiltersProps) => {
   const currentFilters = filters.filter((filter) => !SEARCH_FILTERS.includes(filter.name));
 
   return (
-    <div className="flex flex-1">
-      <div className="flex flex-1 items-center">
+    <>
+      <div className="flex-grow flex items-center gap-1">
         <ButtonWithTooltip
           tooltipEnabled
           tooltipContent="Apply filters"
-          buttonType={BUTTON_TYPES.INVISIBLE}
-          className="h-full rounded-r-md border border-transparent"
-          type="submit"
+          variant="ghost"
+          size="icon"
           data-testid="apply-filters"
-          onClick={handleShowFilters}>
+          onClick={() => setShowFilters(true)}>
           <Icon icon={"mdi:filter-outline"} className="text-custom-blue-100" />
         </ButtonWithTooltip>
 
         <span className="text-xs">Filters: {currentFilters.length}</span>
 
         {!!currentFilters.length && (
-          <Button
-            onClick={removeFilters}
-            buttonType={BUTTON_TYPES.INVISIBLE}
-            data-testid="remove-filters">
+          <Button onClick={removeFilters} variant="ghost" size="icon" data-testid="remove-filters">
             <Icon icon="mdi:close" className="text-gray-400" />
           </Button>
         )}
@@ -79,14 +71,13 @@ export const Filters = ({ schema }: FiltersProps) => {
         title={<SlideOverTitle schema={schema} currentObjectLabel="All" title="Apply filters" />}
         open={showFilters}
         setOpen={setShowFilters}>
-        <ObjectForm
-          onSubmit={({ formData }) => handleSubmit(formData)}
-          kind={schema?.kind}
-          isFilterForm
-          submitLabel="Apply filters"
-          currentObject={getObjectFromFilters(schema, currentFilters)}
+        <FilterForm
+          filters={filters}
+          schema={schema}
+          onSubmit={handleSubmit}
+          onCancel={() => setShowFilters(false)}
         />
       </SlideOver>
-    </div>
+    </>
   );
 };

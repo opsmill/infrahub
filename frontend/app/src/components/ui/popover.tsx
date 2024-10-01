@@ -10,18 +10,22 @@ export const PopoverAnchor = PopoverPrimitive.Anchor;
 
 export const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
-  PopoverPrimitive.PopoverContentProps
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
-    <PopoverPrimitive.Content
-      ref={ref}
-      align={align}
-      sideOffset={sideOffset}
-      className={classNames(
-        "z-50 rounded-md border p-2 bg-custom-white shadow-xl outline-none text-sm",
-        className
-      )}
-      {...props}
-    />
-  </PopoverPrimitive.Portal>
-));
+  PopoverPrimitive.PopoverContentProps & { portal?: boolean }
+>(({ className, align = "center", sideOffset = 4, portal = true, ...props }, ref) => {
+  const Wrapper = portal ? PopoverPrimitive.Portal : React.Fragment;
+
+  return (
+    <Wrapper>
+      <PopoverPrimitive.Content
+        ref={ref}
+        align={align}
+        sideOffset={sideOffset}
+        className={classNames(
+          "z-10 rounded-md border p-2 bg-custom-white shadow-xl outline-none text-sm",
+          className
+        )}
+        {...props}
+      />
+    </Wrapper>
+  );
+});

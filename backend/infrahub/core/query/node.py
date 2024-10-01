@@ -122,7 +122,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         at = self.at or self.node._at
         self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
@@ -355,7 +355,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -385,7 +385,7 @@ class NodeCheckIDQuery(Query):
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["uuid"] = self.node_id
 
         query = """
@@ -424,7 +424,7 @@ class NodeListGetAttributeQuery(Query):
 
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -563,7 +563,7 @@ class NodeListGetRelationshipsQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
@@ -1108,7 +1108,7 @@ class NodeGetListQuery(Query):
                     continue
                 field = self.schema.get_field(field_name, raise_on_error=False)
                 for field_attr_name, field_attr_value in attr_filters.items():
-                    field_requirements_map[(field_name, field_attr_name)] = FieldAttributeRequirement(
+                    field_requirements_map[field_name, field_attr_name] = FieldAttributeRequirement(
                         field_name=field_name,
                         field=field,
                         field_attr_name=field_attr_name,
@@ -1138,7 +1138,7 @@ class NodeGetListQuery(Query):
                 ),
             )
             field_req.types.append(FieldAttributeRequirementType.ORDER)
-            field_requirements_map[(order_by_field_name, order_by_attr_property_name)] = field_req
+            field_requirements_map[order_by_field_name, order_by_attr_property_name] = field_req
             index += 1
 
         return list(field_requirements_map.values())

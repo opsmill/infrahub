@@ -4,8 +4,18 @@ services:
     volumes:
       - ../:/source
       - "storage_data:/opt/infrahub/storage"
+      - "workflow_data:/opt/infrahub/workflow"
+
   infrahub-git:
     volumes:
       - ../:/source
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
+      - "workflow_data:/opt/infrahub/workflow"
+
+  task-runner-internal:
+    volumes:
+      - ../:/source
+      - "git_data:/opt/infrahub/git"
+      - "git_remote_data:/remote"
+      - "workflow_data:/opt/infrahub/workflow"

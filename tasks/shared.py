@@ -17,6 +17,12 @@ class DatabaseType(str, Enum):
     MEMGRAPH = "memgraph"
 
 
+class Namespace(str, Enum):
+    DEFAULT = "default"  # aka demo
+    DEV = "dev"
+    TEST = "test"
+
+
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
@@ -26,11 +32,13 @@ INFRAHUB_USE_NATS = bool(os.getenv("INFRAHUB_USE_NATS", False))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.19.0-enterprise")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
     "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
 )
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
+
+TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0.3-python3.12")
 
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
@@ -51,15 +59,13 @@ TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
 TEST_COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-test-database-memgraph.yml",
-    "development/docker-compose-test-cache.yml",
-    "development/docker-compose-test-message-queue.yml",
+    "development/docker-compose-test-deps.yml",
     TEST_COMPOSE_FILE,
 ]
 TEST_COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-test-database-neo4j.yml",
-    "development/docker-compose-test-cache.yml",
-    "development/docker-compose-test-message-queue.yml",
+    "development/docker-compose-test-deps.yml",
     TEST_COMPOSE_FILE,
 ]
 
@@ -117,6 +123,8 @@ VOLUME_NAMES = [
     "database_logs",
     "git_data",
     "git_remote_data",
+    "workflow_data",
+    "workflow_db",
     "storage_data",
 ]
 
@@ -176,6 +184,25 @@ def check_environment(context: Context) -> dict:
     return params
 
 
+def dumb_terminal() -> bool:
+    return os.getenv("TERM", "").lower() == "dumb"
+
+
+def get_compose_cmd(namespace: Namespace) -> str:
+    options = []
+
+    if namespace == Namespace.DEV:
+        options.append("--profile dev")
+
+    if dumb_terminal():
+        options.append("--ansi never")
+
+    if len(options) > 0:
+        return f"docker compose {' '.join(options)}"
+
+    return "docker compose"
+
+
 def execute_command(context: Context, command: str, print_cmd: bool = False) -> Optional[Result]:
     params = check_environment(context=context)
 
@@ -189,7 +216,7 @@ def execute_command(context: Context, command: str, print_cmd: bool = False) -> 
     return context.run(command, pty=params["pty"])
 
 
-def get_env_vars(context: Context, namespace: str = "default") -> str:
+def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> str:
     ENV_VARS_DICT = {
         "IMAGE_NAME": IMAGE_NAME,
         "IMAGE_VER": IMAGE_VER,
@@ -198,10 +225,11 @@ def get_env_vars(context: Context, namespace: str = "default") -> str:
         "NBR_WORKERS": NBR_WORKERS,
         "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
         "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
+        "TASK_MANAGER_DOCKER_IMAGE": TASK_MANAGER_DOCKER_IMAGE,
         "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
     }
 
-    if namespace == "DEV" and not REQUESTED_IMAGE_VER:
+    if namespace == Namespace.DEV and not REQUESTED_IMAGE_VER:
         ENV_VARS_DICT["IMAGE_VER"] = "local"
 
     if DATABASE_DOCKER_IMAGE:
@@ -213,7 +241,7 @@ def get_env_vars(context: Context, namespace: str = "default") -> str:
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 
-def build_compose_files_cmd(database: str, namespace: str = "") -> str:
+def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFAULT) -> str:
     if database not in SUPPORTED_DATABASES:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
@@ -228,7 +256,7 @@ def build_compose_files_cmd(database: str, namespace: str = "") -> str:
     else:
         COMPOSE_FILES.append(DEFAULT_FILE_NAME)
 
-    if "local" in IMAGE_VER or (namespace == "DEV" and not REQUESTED_IMAGE_VER):
+    if "local" in IMAGE_VER or (namespace == Namespace.DEV and not REQUESTED_IMAGE_VER):
         COMPOSE_FILES.append(LOCAL_FILE_NAME)
 
     if os.getenv("CI") is not None:
@@ -295,7 +323,7 @@ def build_test_scale_compose_files_cmd(
     return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
 
 
-def build_test_envs():
+def build_test_envs() -> str:
     if GITHUB_ACTION:
         return f"-e {' -e '.join(GITHUB_ENVS_TO_PASS)}"
 

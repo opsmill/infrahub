@@ -38,6 +38,7 @@ async def test_schema_models_generics(
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,
+        InfrahubKind.ACCOUNTGROUP,
         "EdgedTestPerson",
         "NestedEdgedCoreGroup",
         "NestedEdgedTestCar",

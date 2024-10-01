@@ -337,11 +337,12 @@ class DiffCoordinator:
         return missing_time_ranges
 
     def _get_node_field_specifiers(self, enriched_diff: EnrichedDiffRoot) -> set[NodeFieldSpecifier]:
-        specifiers = set()
+        specifiers: set[NodeFieldSpecifier] = set()
         schema_branch = registry.schema.get_schema_branch(name=enriched_diff.diff_branch_name)
         for node in enriched_diff.nodes:
-            for attribute in node.attributes:
-                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute.name))
+            specifiers.update(
+                NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute.name) for attribute in node.attributes
+            )
             if not node.relationships:
                 continue
             node_schema = schema_branch.get_node(name=node.kind, duplicate=False)

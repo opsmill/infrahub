@@ -30,10 +30,10 @@ from infrahub.core.constants import (
     RelationshipKind,
     UpdateSupport,
 )
-from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TCH001
+from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.core.schema.filter import FilterSchema
-from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TCH001
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import ATTRIBUTE_KIND_LABELS
 
 

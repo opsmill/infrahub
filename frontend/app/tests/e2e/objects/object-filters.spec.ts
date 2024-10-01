@@ -19,12 +19,7 @@ test.describe("Object filters", () => {
     await test.step("start filtering objects", async () => {
       await test.step("select filters", async () => {
         await page.getByTestId("apply-filters").click();
-        await page
-          .getByTestId("side-panel-container")
-          .getByText("Status")
-          .locator("../..")
-          .getByTestId("select-open-option-button")
-          .click();
+        await page.getByLabel("Status").click();
         await page.getByRole("option", { name: "Provisioning In the process" }).click();
 
         const tagsMultiSelectOpenButton = page
@@ -46,13 +41,7 @@ test.describe("Object filters", () => {
       await test.step("verify filter initial value", async () => {
         await page.getByTestId("apply-filters").click();
 
-        await expect(
-          page
-            .getByTestId("side-panel-container")
-            .getByText("Status")
-            .locator("../..")
-            .getByTestId("select-input")
-        ).toHaveValue("Provisioning");
+        await expect(page.getByLabel("Status")).toHaveText("Provisioning");
       });
 
       await expect(page.locator("form")).toContainText("red");
@@ -99,12 +88,7 @@ test.describe("Object filters", () => {
     await page.getByTestId("apply-filters").click();
     await expect(page.getByTestId("side-panel-container").getByText("Object")).toBeVisible();
 
-    const kindSelector = page
-      .getByTestId("side-panel-container")
-      .getByText("Kind")
-      .locator("../..")
-      .getByTestId("select-open-option-button");
-    await kindSelector.click();
+    await page.getByLabel("kind").click();
     await expect(page.getByRole("option", { name: "Tag Builtin", exact: true })).toBeVisible();
   });
 
@@ -116,13 +100,8 @@ test.describe("Object filters", () => {
       await expect(page.getByText("Select an object type")).not.toBeVisible();
     });
 
-    const kindSelector = page
-      .getByTestId("side-panel-container")
-      .getByText("Kind")
-      .locator("../..");
-
     await test.step("filter objects", async () => {
-      await kindSelector.getByTestId("select-open-option-button").click();
+      await page.getByLabel("kind").click();
       await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
       await page.getByRole("button", { name: "Apply filters" }).click();
       await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 510 results");
@@ -130,8 +109,7 @@ test.describe("Object filters", () => {
 
     await test.step("verify filter initial value", async () => {
       await page.getByTestId("apply-filters").click();
-      await kindSelector.getByTestId("select-input");
-      await expect(kindSelector.getByTestId("select-input")).toHaveValue("Interface L2");
+      await expect(page.getByLabel("Kind")).toContainText("Interface L2 Infra");
     });
   });
 });

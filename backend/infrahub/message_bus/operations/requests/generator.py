@@ -6,7 +6,7 @@ from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
 
 from infrahub import lock
-from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
+from infrahub.core.constants import GeneratorInstanceStatus
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.repository import get_initialized_repo
 from infrahub.message_bus import messages
@@ -65,8 +65,8 @@ async def run(message: messages.RequestGeneratorRun, service: InfrahubServices) 
 
 async def _define_instance(message: messages.RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
     if message.generator_instance:
-        instance: CoreGeneratorInstance = await service.client.get(
-            kind=InfrahubKind.GENERATORINSTANCE, id=message.generator_instance, branch=message.branch_name
+        instance = await service.client.get(
+            kind=CoreGeneratorInstance, id=message.generator_instance, branch=message.branch_name
         )
         instance.status.value = GeneratorInstanceStatus.PENDING.value
         await instance.update(do_full_update=True)
@@ -75,8 +75,8 @@ async def _define_instance(message: messages.RequestGeneratorRun, service: Infra
         async with lock.registry.get(
             f"{message.target_id}-{message.generator_definition.definition_id}", namespace="generator"
         ):
-            instances: list[CoreGeneratorInstance] = await service.client.filters(
-                kind=InfrahubKind.GENERATORINSTANCE,
+            instances = await service.client.filters(
+                kind=CoreGeneratorInstance,
                 definition__ids=[message.generator_definition.definition_id],
                 object__ids=[message.target_id],
                 branch=message.branch_name,
@@ -87,7 +87,7 @@ async def _define_instance(message: messages.RequestGeneratorRun, service: Infra
                 await instance.update(do_full_update=True)
             else:
                 instance = await service.client.create(
-                    kind=InfrahubKind.GENERATORINSTANCE,
+                    kind=CoreGeneratorInstance,
                     branch=message.branch_name,
                     data={
                         "name": f"{message.generator_definition.definition_name}: {message.target_name}",

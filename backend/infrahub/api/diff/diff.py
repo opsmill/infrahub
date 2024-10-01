@@ -195,7 +195,7 @@ async def get_diff_artifacts(
         if not target:
             continue
         definition_id = node.elements["definition"].peer.new.id
-        artifacts_in_main[(target.id, definition_id)] = node
+        artifacts_in_main[target.id, definition_id] = node
 
     for node in payload[branch.name]:
         if "storage_id" not in node.elements or "checksum" not in node.elements:
@@ -231,7 +231,7 @@ async def get_diff_artifacts(
             and (target.id, node.elements["definition"].peer.new.id) in artifacts_in_main
         ):
             diff_artifact.action = DiffAction.UPDATED
-            node_in_main = artifacts_in_main[(target.id, node.elements["definition"].peer.new.id)]
+            node_in_main = artifacts_in_main[target.id, node.elements["definition"].peer.new.id]
             diff_artifact.item_previous = BranchDiffArtifactStorage(
                 storage_id=node_in_main.elements["storage_id"].value.value.new,
                 checksum=node_in_main.elements["checksum"].value.value.new,

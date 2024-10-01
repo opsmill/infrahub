@@ -1,10 +1,4 @@
-import {
-  genericsState,
-  iGenericSchema,
-  iNodeSchema,
-  profilesAtom,
-  schemaState,
-} from "@/state/atoms/schema.atom";
+import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
 import { AuthContextType } from "@/hooks/useAuth";
 import {
@@ -17,8 +11,8 @@ import {
   FormFieldValue,
   NumberPoolData,
 } from "@/components/form/type";
-import { getOptionsFromAttribute, getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
-import { isGeneric, sortByOrderWeight } from "@/utils/common";
+import { getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
+import { sortByOrderWeight } from "@/utils/common";
 import { getFieldDefaultValue } from "@/components/form/utils/getFieldDefaultValue";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { store } from "@/state";
@@ -26,7 +20,6 @@ import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { ProfileData } from "@/components/form/object-form";
 import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
-import { Filter } from "@/hooks/useFilters";
 import { getRelationshipParent } from "@/components/form/utils/getRelationshipParent";
 import { isRequired } from "@/components/form/utils/validation";
 import { getRelationshipsForForm } from "@/components/form/utils/getRelationshipsForForm";
@@ -37,7 +30,6 @@ type GetFormFieldsFromSchema = {
   initialObject?: Record<string, AttributeType | RelationshipType>;
   auth?: AuthContextType;
   isFilterForm?: boolean;
-  filters?: Array<Filter>;
   pools?: Array<NumberPoolData>;
   isUpdate?: boolean;
 };
@@ -48,7 +40,6 @@ export const getFormFieldsFromSchema = ({
   initialObject,
   auth,
   isFilterForm,
-  filters,
   pools = [],
   isUpdate,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
@@ -124,8 +115,8 @@ export const getFormFieldsFromSchema = ({
         field: attribute,
         schema: schema,
         items: (attribute.choices ?? []).map((choice) => ({
-          id: choice.id ?? choice.name,
-          name: choice.label ?? choice.name,
+          value: choice.name,
+          label: choice.label ?? choice.name,
           color: choice.color ?? undefined,
           description: choice.description ?? undefined,
         })),
@@ -141,7 +132,7 @@ export const getFormFieldsFromSchema = ({
         field: attribute,
         schema: schema,
         unique: attribute.unique,
-        items: getOptionsFromAttribute(attribute, basicFomFieldProps.defaultValue),
+        items: attribute.enum,
       };
 
       return enumField;
@@ -167,41 +158,6 @@ export const getFormFieldsFromSchema = ({
 
     return field;
   });
-
-  // Allow kind filter for generic
-  if (isFilterForm && isGeneric(schema) && schema.used_by?.length) {
-    const kindFilter = filters?.find((filter) => filter.name == "kind__value");
-    const nodes = store.get(schemaState);
-    const profiles = store.get(profilesAtom);
-    const schemas = [...nodes, ...profiles];
-
-    const items = schema.used_by
-      .map((kind) => {
-        if (!schemas) return null;
-
-        const relatedSchema = schemas.find((schema) => schema.kind === kind);
-
-        if (!relatedSchema) return null;
-
-        return {
-          id: relatedSchema.kind as string,
-          name: relatedSchema.label ?? relatedSchema.name,
-          badge: relatedSchema.namespace,
-        };
-      })
-      .filter((n) => n !== null);
-
-    const genericKindField: DynamicDropdownFieldProps = {
-      name: "kind",
-      label: "Kind",
-      description: "Select a kind to filter nodes",
-      type: "Dropdown",
-      defaultValue: kindFilter ? { source: { type: "user" }, value: kindFilter.value } : undefined,
-      items,
-    };
-
-    return [genericKindField, ...formFields];
-  }
 
   return formFields;
 };

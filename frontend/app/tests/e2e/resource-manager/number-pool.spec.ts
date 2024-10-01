@@ -13,8 +13,8 @@ test.describe("/resource-manager - Resource Manager", () => {
     await expect(page.getByText("Name *")).toBeVisible();
     await page.getByLabel("Name *").fill("number pool test");
     await page.getByLabel("Node *").click();
-    await page.getByText("Interface L2", { exact: true }).click();
-    await page.getByLabel("Attribute *").click();
+    await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
+    await page.getByText("Number Attribute *").click();
     await page.getByRole("option", { name: "Speed" }).click();
     await page.getByLabel("Start range *").fill("1");
     await page.getByLabel("End range *").fill("10");

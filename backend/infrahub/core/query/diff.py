@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
@@ -66,7 +66,7 @@ class DiffNodeQuery(DiffQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         # TODO need to improve the query to capture an object that has been deleted into the branch
         # TODO probably also need to consider a node what was merged already
 
@@ -132,7 +132,7 @@ class DiffAttributeQuery(DiffQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         # TODO need to improve the query to capture an object that has been deleted into the branch
 
         rels_filters, rels_params = self.branch.get_query_filter_relationships_diff(
@@ -195,7 +195,7 @@ class DiffRelationshipQuery(DiffQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         where_clause = ""
         if self.namespaces_include:
             where_clause += "(src.namespace IN $namespaces_include OR dst.namespace IN $namespaces_include) AND "
@@ -257,7 +257,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
     name: str = "diff_relationship_property"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
             rel_labels=["r"], start_time=self.diff_from, end_time=self.diff_to
         )
@@ -307,7 +307,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
 
         super().__init__(order_by=["a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -358,7 +358,7 @@ class DiffNodePropertiesByIDSQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -412,7 +412,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -464,7 +464,7 @@ class DiffCountChanges(Query):
         self.diff_to = diff_to
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params = {
             "from_time": self.diff_from.to_string(),
             "to_time": self.diff_to.to_string(),
@@ -511,8 +511,7 @@ class DiffAllPathsQuery(DiffQuery):
         branch_support: list[BranchSupportType] | None = None,
         current_node_field_specifiers: list[tuple[str, str]] | None = None,
         new_node_field_specifiers: list[tuple[str, str]] | None = None,
-        *args,
-        **kwargs,
+        **kwargs: Any,
     ):
         self.base_branch = base_branch
         self.diff_branch_create_time = diff_branch_create_time
@@ -520,9 +519,9 @@ class DiffAllPathsQuery(DiffQuery):
         self.current_node_field_specifiers = current_node_field_specifiers
         self.new_node_field_specifiers = new_node_field_specifiers
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         from_str = self.diff_from.to_string()
         self.params.update(
             {

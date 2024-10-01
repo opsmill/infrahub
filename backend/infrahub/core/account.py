@@ -1,15 +1,214 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.query import Query
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.permissions.constants import AssignedPermissions
+
 
 # pylint: disable=redefined-builtin
+
+
+@dataclass
+class Permission:
+    id: str
+    name: str
+    action: str
+    decision: str
+
+
+@dataclass
+class GlobalPermission(Permission):
+    def __str__(self) -> str:
+        return f"global:{self.action}:{self.decision}"
+
+
+@dataclass
+class ObjectPermission(Permission):
+    branch: str
+    namespace: str
+
+    def __str__(self) -> str:
+        return f"object:{self.branch}:{self.namespace}:{self.name}:{self.action}:{self.decision}"
+
+
+class AccountGlobalPermissionQuery(Query):
+    name: str = "account_global_permissions"
+
+    def __init__(self, account_id: str, **kwargs: Any):
+        self.account_id = account_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params["account_id"] = self.account_id
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        MATCH (account:%(generic_account_node)s)
+        WHERE account.uuid = $account_id
+        CALL {
+            WITH account
+            MATCH (account)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN account as account1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH account, r1 as r
+        WHERE r.status = "active"
+        WITH account
+        MATCH group_path = (account)-[]->(:Relationship {name: "group_member"})
+            <-[]-(:%(group_node)s)
+            -[]->(:Relationship {name: "role__accountgroups"})
+            <-[]-(:%(account_role_node)s)
+            -[]->(:Relationship {name: "role__permissions"})
+            <-[]-(global_permission:%(global_permission_node)s)
+            -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
+            -[:HAS_VALUE]->(global_permission_name:AttributeValue)
+        WITH global_permission, global_permission_name
+        WHERE all(r IN relationships(group_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH action_path = (global_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(global_permission_action:AttributeValue)
+        WHERE all(r IN relationships(action_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH decision_path = (global_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(global_permission_decision:AttributeValue)
+        WHERE all(r IN relationships(decision_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        """ % {
+            "branch_filter": branch_filter,
+            "generic_account_node": InfrahubKind.GENERICACCOUNT,
+            "account_role_node": InfrahubKind.ACCOUNTROLE,
+            "group_node": InfrahubKind.ACCOUNTGROUP,
+            "global_permission_node": InfrahubKind.GLOBALPERMISSION,
+        }
+
+        self.add_to_query(query)
+
+        self.return_labels = [
+            "global_permission",
+            "global_permission_name",
+            "global_permission_action",
+            "global_permission_decision",
+        ]
+
+    def get_permissions(self) -> list[GlobalPermission]:
+        permissions: list[GlobalPermission] = []
+
+        for result in self.get_results():
+            permissions.append(
+                GlobalPermission(
+                    id=result.get("global_permission").get("uuid"),
+                    name=result.get("global_permission_name").get("value"),
+                    action=result.get("global_permission_action").get("value"),
+                    decision=result.get("global_permission_decision").get("value"),
+                )
+            )
+
+        return permissions
+
+
+class AccountObjectPermissionQuery(Query):
+    name: str = "account_object_permissions"
+
+    def __init__(self, account_id: str, **kwargs: Any):
+        self.account_id = account_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params["account_id"] = self.account_id
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        query = """
+        MATCH (account:%(generic_account_node)s)
+        WHERE account.uuid = $account_id
+        CALL {
+            WITH account
+            MATCH (account)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN account as account1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH account, r1 as r
+        WHERE r.status = "active"
+        WITH account
+        MATCH group_path = (account)-[]->(:Relationship {name: "group_member"})
+            <-[]-(:%(account_group_node)s)
+            -[]->(:Relationship {name: "role__accountgroups"})
+            <-[]-(:%(account_role_node)s)
+            -[]->(:Relationship {name: "role__permissions"})
+            <-[]-(object_permission:%(object_permission_node)s)
+            -[:HAS_ATTRIBUTE]->(:Attribute {name: "branch"})
+            -[:HAS_VALUE]->(object_permission_branch:AttributeValue)
+        WITH object_permission, object_permission_branch
+        WHERE all(r IN relationships(group_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH namespace_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(object_permission_namespace:AttributeValue)
+            WHERE all(r IN relationships(namespace_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH name_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(object_permission_name:AttributeValue)
+            WHERE all(r IN relationships(name_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH action_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(object_permission_action:AttributeValue)
+            WHERE all(r IN relationships(action_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        MATCH decision_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(object_permission_decision:AttributeValue)
+            WHERE all(r IN relationships(decision_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        """ % {
+            "branch_filter": branch_filter,
+            "account_group_node": InfrahubKind.ACCOUNTGROUP,
+            "account_role_node": InfrahubKind.ACCOUNTROLE,
+            "generic_account_node": InfrahubKind.GENERICACCOUNT,
+            "object_permission_node": InfrahubKind.OBJECTPERMISSION,
+        }
+
+        self.add_to_query(query)
+
+        self.return_labels = [
+            "object_permission",
+            "object_permission_branch",
+            "object_permission_namespace",
+            "object_permission_name",
+            "object_permission_action",
+            "object_permission_decision",
+        ]
+
+    def get_permissions(self) -> list[ObjectPermission]:
+        permissions: list[ObjectPermission] = []
+        for result in self.get_results():
+            permissions.append(
+                ObjectPermission(
+                    id=result.get("object_permission").get("uuid"),
+                    branch=result.get("object_permission_branch").get("value"),
+                    namespace=result.get("object_permission_namespace").get("value"),
+                    name=result.get("object_permission_name").get("value"),
+                    action=result.get("object_permission_action").get("value"),
+                    decision=result.get("object_permission_decision").get("value"),
+                )
+            )
+
+        return permissions
+
+
+async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
+    query1 = await AccountGlobalPermissionQuery.init(db=db, branch=branch, account_id=account_id, branch_agnostic=True)
+    await query1.execute(db=db)
+    global_permissions = query1.get_permissions()
+
+    query2 = await AccountObjectPermissionQuery.init(db=db, branch=branch, account_id=account_id)
+    await query2.execute(db=db)
+    object_permissions = query2.get_permissions()
+
+    return {"global_permissions": global_permissions, "object_permissions": object_permissions}
 
 
 class AccountTokenValidateQuery(Query):

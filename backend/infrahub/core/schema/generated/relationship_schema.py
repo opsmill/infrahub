@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import Field
 
@@ -15,10 +15,10 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipKind,
 )
-
-# noqa: TCH001
 from infrahub.core.models import HashableModel
-from infrahub.core.schema.filter import FilterSchema  # noqa: TCH001
+
+if TYPE_CHECKING:
+    from infrahub.core.schema.filter import FilterSchema
 
 
 class GeneratedRelationshipSchema(HashableModel):

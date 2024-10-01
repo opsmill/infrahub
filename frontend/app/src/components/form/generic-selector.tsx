@@ -1,4 +1,4 @@
-import { Combobox, tComboboxItem } from "@/components/ui/combobox";
+import { Combobox, tComboboxItem } from "@/components/ui/combobox-legacy";
 import { useId } from "react";
 import Label from "@/components/ui/label";
 import { useAtomValue } from "jotai/index";

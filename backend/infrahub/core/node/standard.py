@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
-from uuid import UUID  # noqa: TCH003
+from uuid import UUID
 
 import ujson
 from infrahub_sdk import UUIDT

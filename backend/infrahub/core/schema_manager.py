@@ -163,7 +163,7 @@ class SchemaBranch:
             "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
         }
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         self._graphql_manager = None
         self._graphql_schema = None
 
@@ -756,7 +756,7 @@ class SchemaBranch:
                 element_name="default_filter",
             )
 
-    def validate_default_values(self):
+    def validate_default_values(self) -> None:
         for name in self.generic_names + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
             for node_attr in node_schema.local_attributes:

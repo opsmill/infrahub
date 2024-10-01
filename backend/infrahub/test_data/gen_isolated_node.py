@@ -15,7 +15,7 @@ class GenerateIsolatedNodes(DataGenerator):
         self,
         nbr_tags: int = 100,
         nbr_repository: int = 100,
-    ):
+    ) -> None:
         """Generate a large number of Tags and Repositories"""
         default_branch = await registry.get_branch(db=self.db)
 

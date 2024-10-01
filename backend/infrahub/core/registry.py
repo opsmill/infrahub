@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
     from infrahub.graphql.types import InfrahubObject
+    from infrahub.permissions import PermissionBackend
     from infrahub.storage import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
 
@@ -34,7 +35,7 @@ class Registry:
     _default_branch: Optional[str] = None
     _default_ipnamespace: Optional[str] = None
     _schema: Optional[SchemaManager] = None
-    default_graphql_type: dict[str, InfrahubObject] = field(default_factory=dict)
+    default_graphql_type: dict[str, InfrahubObject | type[BaseAttribute]] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
     data_type: dict[str, type[InfrahubDataType]] = field(default_factory=dict)
     input_type: dict[str, Union[BaseAttributeCreate, BaseAttributeUpdate]] = field(default_factory=dict)
@@ -45,6 +46,7 @@ class Registry:
     _branch_object: Optional[type[Branch]] = None
     _manager: Optional[type[NodeManager]] = None
     _storage: Optional[InfrahubObjectStorage] = None
+    permission_backends: list[PermissionBackend] = field(default_factory=list)
 
     @property
     def branch_object(self) -> type[Branch]:
