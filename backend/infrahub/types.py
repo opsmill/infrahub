@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from infrahub.graphql.types.attribute import BaseAttribute as BaseAttributeType
 
 DEFAULT_MODULE_ATTRIBUTE = "infrahub.core.attribute"
-DEFAULT_MODULE_GRAPHQL_INPUT = "infrahub.graphql.mutations"
+DEFAULT_MODULE_GRAPHQL_INPUT = "infrahub.graphql.mutations.attribute"
 DEFAULT_MODULE_GRAPHQL_QUERY = "infrahub.graphql.types"
 
 
