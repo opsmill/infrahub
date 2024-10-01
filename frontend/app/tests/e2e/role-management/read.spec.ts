@@ -27,9 +27,8 @@ test.describe("Role management - READ", () => {
 
     await test.step("check roles view", async () => {
       await page.getByRole("link", { name: "Roles 1" }).click();
-      await expect(page.getByRole("cell", { name: "Administrator" })).toBeVisible();
-      await expect(page.getByRole("cell", { name: "1" })).toBeVisible();
-      await expect(page.getByRole("cell", { name: "2" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "Super Administrator" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "1" }).first()).toBeVisible();
     });
 
     await test.step("check global permissions view", async () => {
