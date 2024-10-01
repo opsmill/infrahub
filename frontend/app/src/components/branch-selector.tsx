@@ -9,12 +9,13 @@ import { useAtomValue } from "jotai/index";
 import React, { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import { Button, ButtonWithTooltip } from "./buttons/button-primitive";
+import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
 import BranchCreateForm from "./form/branch-create-form";
 import { ComboboxItem } from "@/components/ui/combobox";
 import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command";
 import { useSetAtom } from "jotai";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { constructPath } from "@/utils/fetch";
 
 export default function BranchSelector() {
   const currentBranch = useAtomValue(currentBranchAtom);
@@ -35,7 +36,8 @@ export default function BranchSelector() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-8 w-[205px] border-neutral-200 rounded-lg p-0 shadow-none">
+          className="h-8 w-[205px] border-neutral-200 rounded-lg p-0 shadow-none"
+          data-testid="branch-selector-trigger">
           <div className="inline-flex items-center gap-1.5 px-3 flex-grow border-r h-full truncate">
             <Icon icon="mdi:source-branch" />
             <span className="truncate">{currentBranch?.name}</span>
@@ -55,9 +57,10 @@ export default function BranchSelector() {
               setDisplayForm(false);
               setIsOpen(false);
             }}
+            data-testid="branch-create-form"
           />
         ) : (
-          <BranchSelect onBranchChange={() => setIsOpen(false)} setFormOpen={setDisplayForm} />
+          <BranchSelect setPopoverOpen={setIsOpen} setFormOpen={setDisplayForm} />
         )}
       </PopoverContent>
     </Popover>
@@ -65,10 +68,10 @@ export default function BranchSelector() {
 }
 
 function BranchSelect({
-  onBranchChange,
+  setPopoverOpen,
   setFormOpen,
 }: {
-  onBranchChange: (branch: Branch) => void;
+  setPopoverOpen: (open: boolean) => void;
   setFormOpen: (open: boolean) => void;
 }) {
   const branches = useAtomValue(branchesState);
@@ -82,36 +85,49 @@ function BranchSelect({
       setBranchInQueryString(branch.name);
     }
     setCurrentBranch(branch);
-    onBranchChange(branch);
+    setPopoverOpen(false);
   };
 
   return (
-    <Command
-      style={{
-        minWidth: "var(--radix-popover-trigger-width)",
-        maxHeight: "min(var(--radix-popover-content-available-height), 500px)",
-      }}>
-      <div className="flex gap-2 mb-2">
-        <CommandInput
-          autoFocus
-          className="bg-neutral-100 text-neutral-800 rounded-lg border-none h-8 flex-grow"
-          placeholder="Search"
-        />
-
-        <BranchFormTriggerButton setOpen={setFormOpen} />
-      </div>
-
-      <CommandList className="p-0">
-        <CommandEmpty>No branch found</CommandEmpty>
-        {branchesToSelectOptions(branches).map((branch) => (
-          <BranchOption
-            key={branch.name}
-            branch={branch}
-            onChange={() => handleBranchChange(branch)}
+    <>
+      <Command
+        style={{
+          minWidth: "var(--radix-popover-trigger-width)",
+          maxHeight: "min(var(--radix-popover-content-available-height), 500px)",
+        }}>
+        <div className="flex gap-2 mb-2">
+          <CommandInput
+            autoFocus
+            className="bg-neutral-100 text-neutral-800 rounded-lg border-none h-8 flex-grow"
+            placeholder="Search"
+            data-testid="branch-search-input"
           />
-        ))}
-      </CommandList>
-    </Command>
+
+          <BranchFormTriggerButton setOpen={setFormOpen} />
+        </div>
+
+        <CommandList className="p-0" data-testid="branch-list">
+          <CommandEmpty>No branch found</CommandEmpty>
+          {branchesToSelectOptions(branches).map((branch) => (
+            <BranchOption
+              key={branch.name}
+              branch={branch}
+              onChange={() => handleBranchChange(branch)}
+            />
+          ))}
+        </CommandList>
+      </Command>
+      <div className="p-2 pb-0 border-t border-neutral-200 -mx-2 mt-2">
+        <LinkButton
+          to={constructPath("/branches")}
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs justify-start"
+          onClick={() => setPopoverOpen(false)}>
+          View all branches
+        </LinkButton>
+      </div>
+    </>
   );
 }
 
