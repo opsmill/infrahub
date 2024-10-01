@@ -308,6 +308,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             // 'release-notes/infrahub/release-1_0-DRAFT',
+            'release-notes/infrahub/release-0_16_2',
             'release-notes/infrahub/release-0_16_1',
             'release-notes/infrahub/release-0_16',
             'release-notes/infrahub/release-0_15_3',
