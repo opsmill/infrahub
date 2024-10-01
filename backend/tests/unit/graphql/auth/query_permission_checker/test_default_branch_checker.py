@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, Mock, PropertyMock
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -72,22 +72,22 @@ class TestDefaultBranchPermission:
         assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
-        "contains_mutations,branch_name",
+        "contains_mutation,branch_name",
         [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
     )
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutations: bool, branch_name: str
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutation: bool, branch_name: str
     ):
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
 
-        graphql_query = Mock(spec=InfrahubGraphQLQueryAnalyzer)
-        graphql_query.branch = Mock()
+        graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
+        graphql_query.branch = MagicMock()
         graphql_query.branch.name = branch_name
+        graphql_query.contains_mutation = contains_mutation
         graphql_query.operation_name = "CreateTags"
-        type(graphql_query).contains_mutations = PropertyMock(return_value=contains_mutations)
 
         resolution = await checker.check(
             db=db,
@@ -99,24 +99,24 @@ class TestDefaultBranchPermission:
         assert resolution == CheckerResolution.NEXT_CHECKER
 
     @pytest.mark.parametrize(
-        "contains_mutations,branch_name",
+        "contains_mutation,branch_name",
         [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
     )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutations: bool, branch_name: str
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutation: bool, branch_name: str
     ):
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
 
-        graphql_query = Mock(spec=InfrahubGraphQLQueryAnalyzer)
-        graphql_query.branch = Mock()
+        graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
+        graphql_query.branch = MagicMock()
         graphql_query.branch.name = branch_name
+        graphql_query.contains_mutation = contains_mutation
         graphql_query.operation_name = "CreateTags"
-        type(graphql_query).contains_mutations = PropertyMock(return_value=contains_mutations)
 
-        if not contains_mutations or branch_name != "main":
+        if not contains_mutation or branch_name != "main":
             resolution = await checker.check(
                 db=db,
                 account_session=session,
