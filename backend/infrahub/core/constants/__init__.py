@@ -54,6 +54,7 @@ class GlobalPermissions(InfrahubStringEnum):
     EDIT_DEFAULT_BRANCH = "edit_default_branch"
     SUPER_ADMIN = "super_admin"
     MERGE_BRANCH = "merge_branch"
+    MERGE_PROPOSED_CHANGE = "merge_proposed_change"
 
 
 class PermissionAction(InfrahubStringEnum):

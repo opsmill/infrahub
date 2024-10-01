@@ -5,7 +5,7 @@ from graphql import GraphQLResolveInfo
 
 from infrahub import lock
 from infrahub.core.branch import Branch
-from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
+from infrahub.core.constants import CheckType, GlobalPermissions, InfrahubKind, ProposedChangeState, ValidatorConclusion
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
@@ -95,6 +95,22 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     ):
         context: GraphqlContext = info.context
 
+        has_merge_permission = False
+        for permission_backend in registry.permission_backends:
+            has_merge_permission = await permission_backend.has_permission(
+                db=context.db,
+                account_id=context.active_account_session.account_id,
+                permission=f"global:{GlobalPermissions.SUPER_ADMIN.value}:allow",
+                branch=branch,
+            ) or await permission_backend.has_permission(
+                db=context.db,
+                account_id=context.active_account_session.account_id,
+                permission=f"global:{GlobalPermissions.MERGE_PROPOSED_CHANGE.value}:allow",
+                branch=branch,
+            )
+            if has_merge_permission:
+                break
+
         obj = await NodeManager.get_one_by_id_or_default_filter(
             db=context.db,
             kind=cls._meta.schema.kind,
@@ -119,6 +135,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             )
 
             if updated_state == ProposedChangeState.MERGED:
+                if not has_merge_permission:
+                    raise ValidationError("You do not have the permission to merge proposed changes")
+
                 conflict_resolution: dict[str, bool] = {}
                 source_branch = await Branch.get_by_name(db=dbt, name=proposed_change.source_branch.value)
                 validations = await proposed_change.validations.get_peers(db=dbt)
