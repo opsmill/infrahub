@@ -14,19 +14,23 @@ test.describe("/signin", () => {
     test("should log in the user", async ({ page }) => {
       await page.goto("/");
 
-      await page.getByRole("link", { name: "Sign in" }).click();
+      await page.getByRole("button", { name: "Log in anonymous" }).click();
+      await page.getByRole("menuitem", { name: "Log in" }).click();
+
       await expect(page.getByText("Sign in to your account")).toBeVisible();
       await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
       await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
       await page.getByRole("button", { name: "Sign in" }).click();
 
-      await expect(page.getByTestId("current-user-avatar-button")).toBeVisible();
+      await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
     });
 
     test("should display an error message when authentication fails", async ({ page }) => {
       await page.goto("/");
 
-      await page.getByRole("link", { name: "Sign in" }).click();
+      await page.getByRole("button", { name: "Log in anonymous" }).click();
+      await page.getByRole("menuitem", { name: "Log in" }).click();
+
       await expect(page.getByText("Sign in to your account")).toBeVisible();
       await page.getByLabel("Username").fill("wrong username");
       await page.getByLabel("Password").fill("wrong password");
@@ -42,13 +46,15 @@ test.describe("/signin", () => {
       const initialPage = `/objects/BuiltinTag?branch=atl1-delete-upstream&at=${date}`;
       await page.goto(initialPage);
 
-      await page.getByRole("link", { name: "Sign in" }).click();
+      await page.getByRole("button", { name: "Log in anonymous" }).click();
+      await page.getByRole("menuitem", { name: "Log in" }).click();
+
       await expect(page.getByText("Sign in to your account")).toBeVisible();
       await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
       await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
       await page.getByRole("button", { name: "Sign in" }).click();
 
-      await expect(page.getByTestId("current-user-avatar-button")).toBeVisible();
+      await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
       await expect(page.url()).toContain(initialPage);
     });
   });
@@ -59,10 +65,10 @@ test.describe("/signin", () => {
     test("should log out the user", async ({ page }) => {
       await page.goto("/");
 
-      await page.getByTestId("current-user-avatar-button").click();
-      await page.getByRole("menuitem", { name: "Sign out" }).click();
+      await page.getByTestId("account-menu-trigger").click();
+      await page.getByRole("menuitem", { name: "Logout" }).click();
 
-      await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Log in anonymous" })).toBeVisible();
     });
 
     test("redirect to homepage if user is already logged in", async ({ page }) => {
@@ -71,7 +77,7 @@ test.describe("/signin", () => {
       await expect(page.getByText("Welcome to Infrahub!")).toBeVisible();
     });
 
-    test.fixme("should refresh access token and retry failed request", async ({ page }) => {
+    test("should refresh access token and retry failed request", async ({ page }) => {
       let blockRequest = true; // force 401 on first call
 
       await page.route("**/graphql/main**", async (route) => {
@@ -99,14 +105,7 @@ test.describe("/signin", () => {
         }
       });
 
-      const waitForResponse = page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "BuiltinTag" && status === 200;
-      });
-
-      await Promise.all([waitForResponse, page.goto("/objects/BuiltinTag")]);
+      await page.goto("/objects/BuiltinTag");
 
       await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
     });

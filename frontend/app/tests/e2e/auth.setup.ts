@@ -13,7 +13,7 @@ setup("authenticate admin", async ({ page }) => {
   await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await expect(page.getByTestId("current-user-avatar-button")).toBeVisible();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
   await page.context().storageState({ path: ACCOUNT_STATE_PATH.ADMIN });
 });
 
@@ -24,7 +24,7 @@ setup("authenticate read-write", async ({ page }) => {
   await page.getByLabel("Password").fill(READ_WRITE_CREDENTIALS.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await expect(page.getByTestId("current-user-avatar-button")).toBeVisible();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
   await page.context().storageState({ path: ACCOUNT_STATE_PATH.READ_WRITE });
 });
 
@@ -35,6 +35,6 @@ setup("authenticate read-only", async ({ page }) => {
   await page.getByLabel("Password").fill(READ_ONLY_CREDENTIALS.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await expect(page.getByTestId("current-user-avatar-button")).toBeVisible();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
   await page.context().storageState({ path: ACCOUNT_STATE_PATH.READ_ONLY });
 });
