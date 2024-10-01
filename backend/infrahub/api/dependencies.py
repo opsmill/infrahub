@@ -85,9 +85,8 @@ async def get_branch_params(
     at: Optional[str] = Query(None, description="Time to use for the query, in absolute or relative format"),
 ) -> BranchParams:
     branch = await registry.get_branch(db=db, branch=branch_name)
-    at = Timestamp(at)
 
-    return BranchParams(branch=branch, at=at)
+    return BranchParams(branch=branch, at=Timestamp(at))
 
 
 async def get_branch_dep(
