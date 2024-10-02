@@ -98,18 +98,12 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         has_merge_permission = False
         if context.account_session:
             for permission_backend in registry.permission_backends:
-                has_merge_permission = await permission_backend.has_permission(
-                    db=context.db,
-                    account_id=context.active_account_session.account_id,
-                    permission=f"global:{GlobalPermissions.SUPER_ADMIN.value}:allow",
-                    branch=branch,
-                ) or await permission_backend.has_permission(
+                if has_merge_permission := await permission_backend.has_permission(
                     db=context.db,
                     account_id=context.active_account_session.account_id,
                     permission=f"global:{GlobalPermissions.MERGE_PROPOSED_CHANGE.value}:allow",
                     branch=branch,
-                )
-                if has_merge_permission:
+                ):
                     break
         else:
             has_merge_permission = True

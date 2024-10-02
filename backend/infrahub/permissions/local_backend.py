@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.account import GlobalPermission, ObjectPermission, fetch_permissions
-from infrahub.core.constants import PermissionDecision
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
 
 from .backend import PermissionBackend
 
@@ -77,8 +77,16 @@ class LocalPermissionBackend(PermissionBackend):
     async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool:
         granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
 
-        return self.resolve_global_permission(
-            permissions=granted_permissions["global_permissions"], permission_to_check=permission
-        ) or self.resolve_object_permission(
-            permissions=granted_permissions["object_permissions"], permission_to_check=permission
+        # Check for a final super admin permission at the end if no permissions have matched before
+        return (
+            self.resolve_global_permission(
+                permissions=granted_permissions["global_permissions"], permission_to_check=permission
+            )
+            or self.resolve_object_permission(
+                permissions=granted_permissions["object_permissions"], permission_to_check=permission
+            )
+            or self.resolve_global_permission(
+                permissions=granted_permissions["global_permissions"],
+                permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:{PermissionDecision.ALLOW.value}",
+            )
         )
