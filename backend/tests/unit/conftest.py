@@ -2610,6 +2610,12 @@ async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, re
 
 
 @pytest.fixture
+async def session_first_account(db: InfrahubDatabase, first_account) -> AccountSession:
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id, role="read-write")
+    return session
+
+
+@pytest.fixture
 async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(db=db, name="Second Account", account_type="Git", password="SecondPassword123")
