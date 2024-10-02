@@ -507,7 +507,7 @@ class DiffAllPathsQuery(DiffQuery):
     def __init__(
         self,
         base_branch: Branch,
-        diff_branch_create_time: Timestamp,
+        diff_branch_from_time: Timestamp,
         branch_support: list[BranchSupportType] | None = None,
         current_node_field_specifiers: list[tuple[str, str]] | None = None,
         new_node_field_specifiers: list[tuple[str, str]] | None = None,
@@ -515,7 +515,7 @@ class DiffAllPathsQuery(DiffQuery):
         **kwargs,
     ):
         self.base_branch = base_branch
-        self.diff_branch_create_time = diff_branch_create_time
+        self.diff_branch_from_time = diff_branch_from_time
         self.branch_support = branch_support or [BranchSupportType.AWARE]
         self.current_node_field_specifiers = current_node_field_specifiers
         self.new_node_field_specifiers = new_node_field_specifiers
@@ -528,7 +528,7 @@ class DiffAllPathsQuery(DiffQuery):
             {
                 "base_branch_name": self.base_branch.name,
                 "branch_name": self.branch.name,
-                "branch_create_time": self.diff_branch_create_time.to_string(),
+                "branch_from_time": self.diff_branch_from_time.to_string(),
                 "from_time": from_str,
                 "to_time": self.diff_to.to_string(),
                 "branch_support": [item.value for item in self.branch_support],
@@ -540,8 +540,8 @@ class DiffAllPathsQuery(DiffQuery):
 WITH CASE
     WHEN $new_node_field_specifiers IS NULL AND $current_node_field_specifiers IS NULL THEN [[NULL, $from_time]]
     WHEN $new_node_field_specifiers IS NULL OR size($new_node_field_specifiers) = 0 THEN [[$current_node_field_specifiers, $from_time]]
-    WHEN $current_node_field_specifiers IS NULL OR size($current_node_field_specifiers) = 0 THEN [[$new_node_field_specifiers, $branch_create_time]]
-    ELSE [[$new_node_field_specifiers, $branch_create_time], [$current_node_field_specifiers, $from_time]]
+    WHEN $current_node_field_specifiers IS NULL OR size($current_node_field_specifiers) = 0 THEN [[$new_node_field_specifiers, $branch_from_time]]
+    ELSE [[$new_node_field_specifiers, $branch_from_time], [$current_node_field_specifiers, $from_time]]
 END AS diff_filter_params_list
 UNWIND diff_filter_params_list AS diff_filter_params
 CALL {
@@ -777,7 +777,7 @@ CALL {
             AND type(base_diff_rel) = type(diff_rel)
             AND all(
                 r in relationships(latest_base_path)
-                WHERE r.branch = $base_branch_name AND r.from <= $branch_create_time
+                WHERE r.branch = $base_branch_name AND r.from <= $branch_from_time
             )
             WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
             ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
