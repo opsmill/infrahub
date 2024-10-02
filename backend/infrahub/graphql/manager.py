@@ -64,7 +64,7 @@ from .types.attribute import TextAttributeType
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 class DeleteInput(graphene.InputObjectType):

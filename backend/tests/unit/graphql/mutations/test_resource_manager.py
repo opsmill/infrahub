@@ -8,7 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 from tests.helpers.schema import TICKET, load_schema

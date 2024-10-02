@@ -24,7 +24,7 @@ from infrahub.core.diff.payload_builder import (
     DiffPayloadBuilder,
     get_display_labels_per_kind,
 )
-from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
+from infrahub.core.schema.constants import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 
 from .validation_models import DiffQueryValidated

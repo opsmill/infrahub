@@ -26,7 +26,8 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
-from infrahub.core.schema_manager import SchemaBranch, SchemaManager
+from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 

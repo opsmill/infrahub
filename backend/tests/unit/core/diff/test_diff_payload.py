@@ -10,7 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 

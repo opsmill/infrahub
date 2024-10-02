@@ -6,7 +6,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, create_ipam_namespace, get_default_ipnamespace
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 

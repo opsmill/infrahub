@@ -15,7 +15,8 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
-from infrahub.core.schema_manager import SchemaBranch, SchemaManager
+from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params

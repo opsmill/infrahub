@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
     from .manager import DatabaseManager
 
