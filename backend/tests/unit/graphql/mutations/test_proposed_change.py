@@ -196,7 +196,7 @@ async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core
     assert "A proposed change in the merged state is not allowed to be updated" in str(update_status.errors[0])
 
 
-async def test_merge_proposed_change(
+async def test_merge_proposed_change_permission_failure(
     db: InfrahubDatabase,
     register_core_models_schema: None,
     session_first_account: AccountSession,

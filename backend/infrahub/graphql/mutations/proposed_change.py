@@ -84,7 +84,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     @retry_db_transaction(name="proposed_change_update")
-    async def mutate_update(  # pylint: disable=too-many-branches
+    async def mutate_update(
         cls,
         info: GraphQLResolveInfo,
         data: InputObjectType,
@@ -125,6 +125,10 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             updated_state = ProposedChangeState(state_update)
             state.validate_state_transition(updated_state)
 
+        # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
+        if updated_state == ProposedChangeState.MERGED and not has_merge_permission:
+            raise ValidationError("You do not have the permission to merge proposed changes")
+
         merger: Optional[BranchMerger] = None
         async with context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_update(
@@ -132,9 +136,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             )
 
             if updated_state == ProposedChangeState.MERGED:
-                if not has_merge_permission:
-                    raise ValidationError("You do not have the permission to merge proposed changes")
-
                 conflict_resolution: dict[str, bool] = {}
                 source_branch = await Branch.get_by_name(db=dbt, name=proposed_change.source_branch.value)
                 validations = await proposed_change.validations.get_peers(db=dbt)
