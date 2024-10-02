@@ -639,7 +639,7 @@ underlines = ["", "", ""]
 title_format = "## [Infrahub - v{version}](https://github.com/opsmill/infrahub/tree/infrahub-v{version}) - {project_date}"
 issue_format = "[#{issue}](https://github.com/opsmill/infrahub/issues/{issue})"
 orphan_prefix = "+"
-template = "changelog/towncrier_template.md"
+template = "changelog/towncrier_template.md.template"
 
 [[tool.towncrier.type]]
 directory = "security"
