@@ -12,6 +12,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
 from infrahub.graphql.metrics import (
     GRAPHQL_DURATION_METRICS,
     GRAPHQL_QUERY_DEPTH_METRICS,
@@ -26,7 +27,10 @@ from infrahub.log import get_logger
 from infrahub.message_bus import messages
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
+    from infrahub.graphql.auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
     from infrahub.services import InfrahubServices
+
 
 log = get_logger()
 router = APIRouter(prefix="/query")
@@ -44,15 +48,26 @@ async def execute_query(
     params: dict[str, str],
     update_group: bool,
     subscribers: list[str],
+    permission_checker: GraphQLQueryPermissionChecker,
+    account_session: AccountSession,
 ) -> dict[str, Any]:
     gql_query = await registry.manager.get_one_by_id_or_default_filter(
         db=db, id=query_id, kind=InfrahubKind.GRAPHQLQUERY, branch=branch_params.branch, at=branch_params.at
     )
 
-    gql_params = prepare_graphql_params(db=db, branch=branch_params.branch, at=branch_params.at)
+    gql_params = prepare_graphql_params(
+        db=db, branch=branch_params.branch, at=branch_params.at, account_session=account_session
+    )
     analyzed_query = InfrahubGraphQLQueryAnalyzer(
         query=gql_query.query.value,  # type: ignore[attr-defined]
         schema=gql_params.schema,
+        branch=branch_params.branch,
+    )
+    await permission_checker.check(
+        db=db,
+        account_session=account_session,
+        analyzed_query=analyzed_query,
+        query_parameters=gql_params,
         branch=branch_params.branch,
     )
 
@@ -120,7 +135,8 @@ async def graphql_query_post(
     ),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
-    _: str = Depends(get_current_user),
+    account_session: AccountSession = Depends(get_current_user),
+    permission_checker: GraphQLQueryPermissionChecker = Depends(build_graphql_query_permission_checker),
 ) -> dict:
     return await execute_query(
         db=db,
@@ -130,6 +146,8 @@ async def graphql_query_post(
         params=payload.variables,
         update_group=update_group,
         subscribers=subscribers,
+        permission_checker=permission_checker,
+        account_session=account_session,
     )
 
 
@@ -146,7 +164,8 @@ async def graphql_query_get(
     ),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
-    _: str = Depends(get_current_user),
+    account_session: AccountSession = Depends(get_current_user),
+    permission_checker: GraphQLQueryPermissionChecker = Depends(build_graphql_query_permission_checker),
 ) -> dict:
     params = {
         key: value
@@ -162,4 +181,6 @@ async def graphql_query_get(
         params=params,
         update_group=update_group,
         subscribers=subscribers,
+        permission_checker=permission_checker,
+        account_session=account_session,
     )
