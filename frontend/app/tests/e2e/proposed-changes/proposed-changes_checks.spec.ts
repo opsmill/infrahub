@@ -18,7 +18,7 @@ test.describe("/proposed-changes checks", () => {
 
     await test.step("create a new proposed change", async () => {
       await page.getByTestId("add-proposed-changes-button").click();
-      await expect(page.getByText("Create Proposed Change")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
       await page.getByLabel("Name *").fill("pc-checks");
       await page.getByLabel("Source Branch *").click();
       await page.getByRole("option", { name: "atl1-delete-upstream" }).click();

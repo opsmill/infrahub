@@ -8,6 +8,8 @@ export const INFRAHUB_API_SERVER_URL = import.meta.env.DEV
 
 export const INFRAHUB_DOC_LOCAL = `${INFRAHUB_API_SERVER_URL}/docs`;
 
+export const INFRAHUB_SWAGGER_DOC_URL = `${INFRAHUB_API_SERVER_URL}/api/docs`;
+
 export const INFRAHUB_WEB_SOCKET_URL = "ws://localhost:8000";
 
 export const CONFIG = {

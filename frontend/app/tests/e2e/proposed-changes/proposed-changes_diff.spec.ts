@@ -24,7 +24,7 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByLabel("Name *").fill("conflict-test");
       await page.getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "Admin" }).click();
-      await page.getByRole("main").click();
+      await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Create proposed change" }).click();
       await expect(page.getByText("Proposed change created")).toBeVisible();
       await page.getByText("Data").click();

@@ -1,4 +1,3 @@
-import { Circle } from "@/components/display/circle";
 import { classNames } from "@/utils/common";
 import { Disclosure } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
@@ -16,18 +15,17 @@ export default function DropDownMenuHeader(props: Props) {
   const { title, items, icon, subItem } = props;
 
   return (
-    <Disclosure defaultOpen={true} as="div" className="flex flex-col">
+    <Disclosure as="div" className="flex flex-col">
       {({ open }) => (
         <>
           <Disclosure.Button
             className={classNames(
-              "flex items-center p-3 text-gray-900 text-left text-sm font-medium group",
-              subItem ? "bg-gray-50 hover:bg-gray-100" : "bg-gray-200 hover:bg-gray-300"
+              "flex items-center p-3 text-gray-900 text-left text-sm font-medium group hover:bg-gray-100 rounded-lg"
             )}>
-            {icon ? (
-              <Icon icon={icon} className="text-custom-blue-500 group-hover:text-gray-500" />
+            {subItem && icon ? (
+              <Icon icon={icon} className="group-hover:text-gray-500" />
             ) : (
-              <Circle className="shrink-0" />
+              <div className="w-3.5 shrink-0" />
             )}
 
             <span className="flex-grow truncate">{title}</span>
