@@ -9,31 +9,40 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
 
-from .mutations import (
+from .mutations.account import (
+    InfrahubAccountSelfUpdate,
+    InfrahubAccountTokenCreate,
+    InfrahubAccountTokenDelete,
+)
+from .mutations.branch import (
     BranchCreate,
     BranchDelete,
     BranchMerge,
     BranchRebase,
     BranchUpdate,
     BranchValidate,
-    DiffUpdateMutation,
-    InfrahubAccountSelfUpdate,
-    InfrahubAccountTokenCreate,
-    InfrahubAccountTokenDelete,
-    IPAddressPoolGetResource,
-    IPPrefixPoolGetResource,
-    ProcessRepository,
-    ProposedChangeRequestRunCheck,
+)
+from .mutations.diff import DiffUpdateMutation
+from .mutations.diff_conflict import ResolveDiffConflict
+from .mutations.proposed_change import ProposedChangeRequestRunCheck
+from .mutations.relationship import (
     RelationshipAdd,
     RelationshipRemove,
-    ResolveDiffConflict,
+)
+from .mutations.repository import (
+    ProcessRepository,
+    ValidateRepositoryConnectivity,
+)
+from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
+from .mutations.schema import (
     SchemaDropdownAdd,
     SchemaDropdownRemove,
     SchemaEnumAdd,
     SchemaEnumRemove,
+)
+from .mutations.task import (
     TaskCreate,
     TaskUpdate,
-    ValidateRepositoryConnectivity,
 )
 from .queries import (
     AccountPermissions,

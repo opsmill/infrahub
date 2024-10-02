@@ -23,15 +23,17 @@ from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
-from .mutations import (
-    InfrahubArtifactDefinitionMutation,
+from .mutations.artifact_definition import InfrahubArtifactDefinitionMutation
+from .mutations.ipam import (
     InfrahubIPAddressMutation,
     InfrahubIPNamespaceMutation,
     InfrahubIPPrefixMutation,
-    InfrahubMutation,
+)
+from .mutations.main import InfrahubMutation
+from .mutations.proposed_change import InfrahubProposedChangeMutation
+from .mutations.repository import InfrahubRepositoryMutation
+from .mutations.resource_manager import (
     InfrahubNumberPoolMutation,
-    InfrahubProposedChangeMutation,
-    InfrahubRepositoryMutation,
 )
 from .queries.diff.diff import (
     DiffSummaryElementAttribute,
