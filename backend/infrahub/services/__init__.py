@@ -13,6 +13,7 @@ from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.types import MessageTTL
 
 from .adapters.cache import InfrahubCache
+from .adapters.event import InfrahubEventService
 from .adapters.http import InfrahubHTTP
 from .adapters.http.httpx import HttpxAdapter
 from .adapters.message_bus import InfrahubMessageBus
@@ -31,6 +32,7 @@ class InfrahubServices:
         message_bus: Optional[InfrahubMessageBus] = None,
         http: InfrahubHTTP | None = None,
         workflow: Optional[InfrahubWorkflow] = None,
+        event: InfrahubEventService | None = None,
         log: Optional[InfrahubLogger] = None,
         component_type: Optional[ComponentType] = None,
     ):
@@ -39,6 +41,7 @@ class InfrahubServices:
         self._database = database
         self.message_bus = message_bus or InfrahubMessageBus()
         self.workflow = workflow or InfrahubWorkflow()
+        self.event = event or InfrahubEventService()
         self.log = log or get_logger()
         self.component_type = component_type or ComponentType.NONE
         self.http = http or HttpxAdapter()
@@ -103,6 +106,7 @@ class InfrahubServices:
         await self.cache.initialize(service=self)
         await self.scheduler.initialize(service=self)
         await self.workflow.initialize(service=self)
+        await self.event.initialize(service=self)
 
     async def shutdown(self) -> None:
         """Initialize the Services"""

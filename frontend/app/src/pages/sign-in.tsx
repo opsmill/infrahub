@@ -3,12 +3,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-verti.svg";
 import Content from "@/screens/layout/content";
 import { Navigate, useLocation } from "react-router-dom";
-import InputField from "@/components/form/fields/input.field";
-import { isRequired } from "@/components/form/utils/validation";
-import PasswordInputField from "@/components/form/fields/password-input.field";
-import { Form, FormSubmit } from "@/components/ui/form";
+import { SignIn } from "@/screens/authentification/sign-in";
 
 function SignInPage() {
+  let location = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    const from = (location.state?.from?.pathname || "/") + (location.state?.from?.search ?? "");
+    return <Navigate to={from} replace />;
+  }
+
   return (
     <Content className="flex justify-center items-center bg-gray-200 p-2 h-screen">
       <Card className="w-full max-w-lg shadow">
@@ -17,43 +22,11 @@ function SignInPage() {
 
           <h2 className="my-8 text-2xl font-semibold text-gray-900">Sign in to your account</h2>
 
-          <SignInForm />
+          <SignIn />
         </div>
       </Card>
     </Content>
   );
 }
-
-const SignInForm = () => {
-  let location = useLocation();
-  const { isAuthenticated, signIn } = useAuth();
-
-  if (isAuthenticated) {
-    const from = (location.state?.from?.pathname || "/") + (location.state?.from?.search ?? "");
-    return <Navigate to={from} replace />;
-  }
-
-  return (
-    <Form
-      className="w-full"
-      onSubmit={async (formData) => {
-        const data = {
-          username: formData.username.value as string,
-          password: formData.password.value as string,
-        };
-        await signIn(data);
-      }}>
-      <InputField name="username" label="Username" rules={{ validate: { required: isRequired } }} />
-
-      <PasswordInputField
-        name="password"
-        label="Password"
-        rules={{ validate: { required: isRequired } }}
-      />
-
-      <FormSubmit className="w-full h-10">Sign in</FormSubmit>
-    </Form>
-  );
-};
 
 export const Component = SignInPage;

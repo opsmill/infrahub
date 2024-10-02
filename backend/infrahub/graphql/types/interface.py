@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, Any
 from graphene import Interface
 from graphene.types.interface import InterfaceOptions
 
-from .mixin import GetListMixin
-
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
@@ -18,7 +16,7 @@ class InfrahubInterfaceOptions(InterfaceOptions):
     schema = None
 
 
-class InfrahubInterface(Interface, GetListMixin):
+class InfrahubInterface(Interface):
     @classmethod
     def resolve_type(cls, instance: dict[str, Any], info: GraphQLResolveInfo) -> InfrahubObject:
         context: GraphqlContext = info.context

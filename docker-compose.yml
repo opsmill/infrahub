@@ -178,7 +178,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.1}"
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.2}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -217,7 +217,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.1}"
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.2}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:
