@@ -56,7 +56,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
 
       await test.step("Verify deletion of relationship", async () => {
         await expect(page.getByRole("alert")).toContainText("Item removed from the group");
-        await expect(page.getByRole("main")).toContainText("Showing 1 to 4 of 4 results");
+        await expect(page.getByText("Showing 1 to 4 of 4 results")).toBeVisible();
         await expect(page.getByLabel("Tabs")).toContainText("Devices4");
       });
     });
@@ -77,7 +77,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
 
       await test.step("Verify new relationship addition", async () => {
         await expect(page.getByRole("alert")).toContainText("Association with InfraDevice added");
-        await expect(page.getByRole("main")).toContainText("Showing 1 to 5 of 5 results");
+        await expect(page.getByText("Showing 1 to 5 of 5 results")).toBeVisible();
         await expect(page.getByLabel("Tabs")).toContainText("Devices5");
         await expect(page.getByRole("cell", { name: "ord1-edge2" })).toBeVisible();
       });

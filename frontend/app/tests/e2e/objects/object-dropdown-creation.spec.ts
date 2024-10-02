@@ -13,20 +13,7 @@ test.describe("object dropdown creation", () => {
   });
 
   test("should open the creation form and open the tag option creation form", async ({ page }) => {
-    // Go to home page
-    await page.goto("/");
-
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "InfraDevice" && status === 200;
-      }),
-
-      // Open all devices
-      page.getByRole("link", { name: "All Device(s)" }).click(),
-    ]);
+    await page.goto("/objects/InfraDevice");
 
     // Open creation form
     await page.getByTestId("create-object-button").click();
