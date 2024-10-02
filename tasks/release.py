@@ -2,7 +2,6 @@
 
 from invoke import Context, task
 
-
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 

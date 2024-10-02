@@ -531,7 +531,7 @@ jobs:
           VALE_VERSION: ${{ env.VALE_VERSION }}
       - name: "Validate documentation style"
         run: ./vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
-  
+
   validate-release-notes-style:
     if: |
       always() && !cancelled() &&
