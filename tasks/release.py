@@ -50,7 +50,27 @@ def draft(context: Context):
 
 @task
 def lint(context: Context):
-    """This will run all linter."""
+    """This will run all linters."""
     markdownlint(context)
     vale(context)
     draft(context)
+
+
+@task
+def build_changelog(context: Context):
+    has_towncrier = check_if_command_available(context=context, command_name="towncrier")
+
+    if not has_towncrier:
+        print("Warning, Towncrier is not installed")
+        return
+
+    exec_cmd = "towncrier build --draft 2> /dev/null"
+    with context.cd(ESCAPED_REPO_PATH):
+        changelog_contents = context.run(exec_cmd, hide="stdout").stdout
+    # print(changelog_contents)
+
+
+@task
+def ship(context: Context):
+    """This will generate the Release Notes and prepare to ship the release."""
+    lint(context)
