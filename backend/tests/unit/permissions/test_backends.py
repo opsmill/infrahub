@@ -11,12 +11,29 @@ async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, cr
     backend = LocalPermissionBackend()
 
     permissions = await backend.load_permissions(db=db, account_id=create_test_admin.id, branch=default_branch)
+
     assert "global_permissions" in permissions
-    assert permissions["global_permissions"][0].action == GlobalPermissions.EDIT_DEFAULT_BRANCH.value
+    assert permissions["global_permissions"][0].action == GlobalPermissions.SUPER_ADMIN.value
+
+    assert "object_permissions" in permissions
+    assert str(permissions["object_permissions"][0]) == str(
+        ObjectPermission(
+            id="",
+            branch="*",
+            namespace="*",
+            name="*",
+            action=PermissionAction.ANY.value,
+            decision=PermissionDecision.ALLOW.value,
+        )
+    )
 
     permissions = await backend.load_permissions(db=db, account_id=first_account.id, branch=default_branch)
+
     assert "global_permissions" in permissions
     assert not permissions["global_permissions"]
+
+    assert "object_permissions" in permissions
+    assert not permissions["object_permissions"]
 
 
 async def test_has_permission_global(

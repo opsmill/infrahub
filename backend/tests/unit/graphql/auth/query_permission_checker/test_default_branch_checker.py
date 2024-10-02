@@ -10,10 +10,11 @@ from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
+from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
-from infrahub.graphql.auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
     from tests.unit.graphql.conftest import PermissionsHelper
 
 
-class TestSuperAdminPermission:
+class TestDefaultBranchPermission:
     async def test_setup(
         self,
         db: InfrahubDatabase,
@@ -38,7 +39,7 @@ class TestSuperAdminPermission:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.SUPER_ADMIN.value, action=GlobalPermissions.SUPER_ADMIN.value
+            db=db, name=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value
         )
         await permission.save(db=db)
 
@@ -63,37 +64,75 @@ class TestSuperAdminPermission:
             AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE),
         ],
     )
-    async def test_supports_super_admin_permission_accounts(
+    async def test_supports_default_branch_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ):
-        checker = SuperAdminPermissionChecker()
+        checker = DefaultBranchPermissionChecker()
         is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
         assert is_supported == user.authenticated
 
-    async def test_account_with_permission(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper):
-        checker = SuperAdminPermissionChecker()
+    @pytest.mark.parametrize(
+        "contains_mutation,branch_name",
+        [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
+    )
+    async def test_account_with_permission(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutation: bool, branch_name: str
+    ):
+        checker = DefaultBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        resolution = await checker.check(
-            db=db,
-            account_session=session,
-            analyzed_query=MagicMock(spec=InfrahubGraphQLQueryAnalyzer),
-            query_parameters=MagicMock(spec=GraphqlParams),
-            branch=permissions_helper.default_branch,
-        )
-        assert resolution == CheckerResolution.TERMINATE
 
-    async def test_account_without_permission(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper):
-        checker = SuperAdminPermissionChecker()
-        session = AccountSession(
-            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
-        )
+        graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
+        graphql_query.branch = MagicMock()
+        graphql_query.branch.name = branch_name
+        graphql_query.contains_mutation = contains_mutation
+        graphql_query.operation_name = "CreateTags"
+
         resolution = await checker.check(
             db=db,
             account_session=session,
-            analyzed_query=MagicMock(spec=InfrahubGraphQLQueryAnalyzer),
+            analyzed_query=graphql_query,
             query_parameters=MagicMock(spec=GraphqlParams),
             branch=permissions_helper.default_branch,
         )
         assert resolution == CheckerResolution.NEXT_CHECKER
+
+    @pytest.mark.parametrize(
+        "contains_mutation,branch_name",
+        [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
+    )
+    async def test_account_without_permission(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutation: bool, branch_name: str
+    ):
+        checker = DefaultBranchPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
+        graphql_query.branch = MagicMock()
+        graphql_query.branch.name = branch_name
+        graphql_query.contains_mutation = contains_mutation
+        graphql_query.operation_name = "CreateTags"
+
+        if not contains_mutation or branch_name != "main":
+            resolution = await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=graphql_query,
+                query_parameters=MagicMock(spec=GraphqlParams),
+                branch=permissions_helper.default_branch,
+            )
+            assert resolution == CheckerResolution.NEXT_CHECKER
+        else:
+            with pytest.raises(
+                PermissionDeniedError, match=r"You are not allowed to change data in the default branch"
+            ):
+                await checker.check(
+                    db=db,
+                    account_session=session,
+                    analyzed_query=graphql_query,
+                    query_parameters=MagicMock(spec=GraphqlParams),
+                    branch=permissions_helper.default_branch,
+                )
