@@ -30,7 +30,6 @@ test.describe("when searching an object", () => {
 
   test("displays link to Device list", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByTestId("sidebar-menu")).toBeVisible(); // Wait for schema to load
 
     await test.step("open search anywhere modal with click", async () => {
       await page.getByTestId("search-anywhere-trigger").click();
