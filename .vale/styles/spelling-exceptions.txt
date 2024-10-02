@@ -98,6 +98,7 @@ subnet
 template_path
 toml
 Towncrier
+towncrier
 uncheck
 uniqueness_constraints
 validator

@@ -1,5 +1,4 @@
-"""Release related Invoke Tasks.
-"""
+"""Release related Invoke Tasks."""
 
 from invoke import Context, task
 
@@ -9,9 +8,7 @@ from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 @task
 def markdownlint(context: Context):
-    has_markdownlint = check_if_command_available(
-        context=context, command_name="markdownlint-cli2"
-    )
+    has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
         print("Warning, markdownlint-cli2 is not installed")
@@ -38,7 +35,23 @@ def vale(context: Context):
 
 
 @task
+def draft(context: Context):
+    """Run `towncrier build --draft` to validate that Towncrier can read the Newsfragments."""
+    has_towncrier = check_if_command_available(context=context, command_name="towncrier")
+
+    if not has_towncrier:
+        print("Warning, Towncrier is not installed")
+        return
+
+    exec_cmd = "towncrier build --draft"
+    print(" - [release] Verify Towncrier render possible")
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task
 def lint(context: Context):
     """This will run all linter."""
     markdownlint(context)
     vale(context)
+    draft(context)
