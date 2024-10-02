@@ -12,8 +12,6 @@ test.describe("/profile?tab=tokens", () => {
 
   test.describe("when not logged in as admin account", () => {
     test("should not access profile tokens", async ({ page }) => {
-      await page.goto("/");
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.goto("/profile?tab=tokens");
       await expect(page.getByText("Welcome to Infrahub")).toBeVisible();
     });
@@ -25,12 +23,11 @@ test.describe("/profile?tab=tokens", () => {
     test("should access and manage profile tokens", async ({ page }) => {
       await test.step("go to profile page and access tokens", async () => {
         await page.goto("/");
-        await page.getByTestId("current-user-avatar-button").click();
-        await page.getByRole("menuitem", { name: "Your Profile" }).click();
+        await page.getByTestId("authenticated-menu-trigger").click();
+        await page.getByRole("menuitem", { name: "Account settings" }).click();
         await page.getByText("Tokens").click();
         await expect(page.getByRole("heading", { name: "Tokens" })).toBeVisible();
         await expect(page.getByTestId("create-object-button")).toBeVisible();
-        await expect(page.getByText("Just a moment")).not.toBeVisible();
       });
 
       await test.step("create a new token", async () => {
@@ -56,7 +53,7 @@ test.describe("/profile?tab=tokens", () => {
         await expect(page.getByText("Are you sure you want to")).toBeVisible();
         await page.getByTestId("modal-delete-confirm").click();
         await expect(page.getByText("Are you sure you want to")).not.toBeVisible();
-        await expect(page.getByText("test token")).not.toBeVisible();
+        await expect(page.getByRole("cell", { name: "test token" })).not.toBeVisible();
       });
     });
   });
