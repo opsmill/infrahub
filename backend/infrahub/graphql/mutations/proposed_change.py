@@ -84,7 +84,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     @retry_db_transaction(name="proposed_change_update")
-    async def mutate_update(
+    async def mutate_update(  # pylint: disable=too-many-branches
         cls,
         info: GraphQLResolveInfo,
         data: InputObjectType,
