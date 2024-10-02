@@ -39,7 +39,11 @@ export const TimeFrameSelector = () => {
       )}>
       <DateTimePicker
         customInput={
-          <Button size="square" variant="ghost" className="h-8 w-8 bg-neutral-50">
+          <Button
+            size="square"
+            variant="ghost"
+            className="h-8 w-8 bg-neutral-50"
+            data-testid="timeframe-selector">
             <Icon icon="mdi:calendar-clock" className="text-xl" />
           </Button>
         }
