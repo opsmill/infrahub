@@ -1,0 +1,78 @@
+---
+title: Release 0.16.2
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>0.16.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>October 1st, 2024</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Beta #5, Patch #2</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v0.16.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v0.16.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 0.16.2
+
+We are thrilled to announce the latest release of Infrahub, version *0.16.2*!
+
+This release focuses largely on bug fixes and is driven by our Beta Test users,
+and as always we greatly appreciate their feedback and time!
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Fixed
+
+- Loading a schema with an invalid order_by field raise a proper error. ([#4323](https://github.com/opsmill/infrahub/issues/4323))
+- Updates internal logic to improve performance when generating a diff.
+
+  BREAKING CHANGE: Diff data, including conflict selections, will be deleted. We recommend merging
+  any outstanding proposed changes before upgrading to this version. ([#4438](https://github.com/opsmill/infrahub/issues/4438))
+- Fix performance issue for GraphQL queries that only count nodes. ([#4454](https://github.com/opsmill/infrahub/issues/4454))
+- Fix ability to construct HFID for upsert mutations where a number attribute is used. ([#4460](https://github.com/opsmill/infrahub/issues/4460))
+
+## Migration guide
+
+To migrate your instance of Infrahub to the latest version, please run the following commands and restart all instances of Infrahub.
+
+<!-- vale off -->
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+<!-- vale on -->
+
+> if you are running in docker these commands need to run from the container where Infrahub is installed
+
+### Migration of the demo instance
+
+If you are using the demo environment, you can migrate to the latest version with the following commands
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+> All data will be lost, please make sure to backup everything you need before running this command.
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
