@@ -20,6 +20,6 @@ class InfrahubWorkflow:
         self,
         workflow: WorkflowDefinition | None = None,
         function: Callable[..., Awaitable[Return]] | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> Return:
         raise NotImplementedError()
