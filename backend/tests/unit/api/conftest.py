@@ -11,6 +11,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 
 @pytest.fixture
@@ -53,6 +54,15 @@ def rpc_bus_simulator(helper, db):
     config.OVERRIDE.message_bus = bus
     yield bus
     config.OVERRIDE.message_bus = original
+
+
+@pytest.fixture()
+def workflow_local():
+    original = config.OVERRIDE.workflow
+    workflow = WorkflowLocalExecution()
+    config.OVERRIDE.workflow = workflow
+    yield workflow
+    config.OVERRIDE.workflow = original
 
 
 @pytest.fixture

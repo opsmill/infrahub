@@ -1,4 +1,5 @@
 import copy
+import json
 import re
 import uuid
 
@@ -1487,6 +1488,25 @@ async def test_schema_branch_validate_count_against_cardinality_invalid(relation
     schema_branch.process_pre_validation()
     with pytest.raises(ValueError):
         schema_branch.validate_count_against_cardinality()
+
+
+async def test_schema_branch_from_dict_schema_object():
+    schema = SchemaRoot(**core_models)
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+
+    exported = schema_branch.to_dict_schema_object()
+
+    exported_json = json.dumps(exported, default=lambda x: x.dict())
+
+    exported_dict = json.loads(exported_json)
+    schema_branch_after = SchemaBranch.from_dict_schema_object(data=exported_dict)
+
+    assert (
+        schema_branch_after.get_node(name=InfrahubKind.TAG).get_hash()
+        == schema_branch.get_node(name=InfrahubKind.TAG).get_hash()
+    )
 
 
 async def test_schema_branch_process_filters(

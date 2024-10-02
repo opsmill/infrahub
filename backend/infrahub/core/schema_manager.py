@@ -4,11 +4,12 @@ import copy
 import hashlib
 from collections import defaultdict
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Union
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationInfo
+from typing_extensions import Self
 
 from infrahub import lock
 from infrahub.core.constants import (
@@ -95,9 +96,9 @@ class SchemaNamespace(BaseModel):
 
 
 class SchemaBranch:
-    def __init__(self, cache: dict, name: Optional[str] = None, data: Optional[dict[str, int]] = None):
+    def __init__(self, cache: dict, name: str | None = None, data: dict[str, dict[str, str]] | None = None):
         self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
-        self.name: Optional[str] = name
+        self.name: str | None = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
@@ -108,6 +109,18 @@ class SchemaBranch:
             self.nodes = data.get("nodes", {})
             self.generics = data.get("generics", {})
             self.profiles = data.get("profiles", {})
+
+    @classmethod
+    def __get_validators__(cls) -> Iterator[Callable[..., Any]]:  # noqa: PLW3201
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v: Any, info: ValidationInfo) -> Self:  # pylint: disable=unused-argument
+        if isinstance(v, cls):
+            return v
+        if isinstance(v, dict):
+            return cls.from_dict_schema_object(data=v)
+        raise ValueError("must be a class or a dict")
 
     @property
     def node_names(self) -> list[str]:
@@ -162,6 +175,27 @@ class SchemaBranch:
             "profiles": {name: self.get(name, duplicate=duplicate) for name in self.profiles},
             "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
         }
+
+    @classmethod
+    def from_dict_schema_object(cls, data: dict) -> Self:
+        type_mapping = {
+            "nodes": NodeSchema,
+            "generics": GenericSchema,
+            "profiles": ProfileSchema,
+        }
+
+        cache: dict[str, MainSchemaTypes] = {}
+        nodes: dict[str, dict[str, str]] = {"nodes": {}, "generics": {}, "profiles": {}}
+
+        for node_type, node_class in type_mapping.items():
+            for node_name, node_data in data[node_type].items():
+                node: MainSchemaTypes = node_class(**node_data)
+                node_hash = node.get_hash()
+                nodes[node_type][node_name] = node_hash
+
+                cache[node_hash] = node
+
+        return cls(cache=cache, data=nodes)
 
     def clear_cache(self) -> None:
         self._graphql_manager = None

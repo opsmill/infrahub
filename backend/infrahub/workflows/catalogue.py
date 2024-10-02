@@ -33,6 +33,27 @@ DUMMY_FLOW = WorkflowDefinition(
     function="dummy_flow",
 )
 
+SCHEMA_APPLY_MIGRATION = WorkflowDefinition(
+    name="schema_apply_migrations",
+    work_pool=WORKER_POOL,
+    module="infrahub.core.migrations.schema.tasks",
+    function="schema_apply_migrations",
+)
+
+SCHEMA_VALIDATE_MIGRATION = WorkflowDefinition(
+    name="schema_validate_migrations",
+    work_pool=WORKER_POOL,
+    module="infrahub.core.validators.tasks",
+    function="schema_validate_migrations",
+)
+
 worker_pools = [WORKER_POOL]
 
-workflows = [WEBHOOK_SEND, TRANSFORM_JINJA2_RENDER, ANONYMOUS_TELEMETRY_SEND, DUMMY_FLOW]
+workflows = [
+    WEBHOOK_SEND,
+    TRANSFORM_JINJA2_RENDER,
+    ANONYMOUS_TELEMETRY_SEND,
+    DUMMY_FLOW,
+    SCHEMA_APPLY_MIGRATION,
+    SCHEMA_VALIDATE_MIGRATION,
+]

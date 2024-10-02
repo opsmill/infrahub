@@ -10,7 +10,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition | None = None,
         function: Callable[..., Awaitable[Return]] | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> Return:
         if workflow:
             fn = workflow.get_function()
