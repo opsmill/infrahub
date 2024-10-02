@@ -207,6 +207,21 @@ class DatabaseSettings(BaseSettings):
         return self.database or self.db_type.value
 
 
+class DevelopmentSettings(BaseSettings):
+    """The development settings are only relevant for local development"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_DEV_")
+
+    frontend_url: Optional[str] = Field(
+        default=None,
+        description="Define the URL of the frontend, useful for OAuth2 development when the frontend and backend use different ports.",
+    )
+    frontend_redirect_sso: bool = Field(
+        default=False,
+        description="Indicates of the frontend should be responsible for the SSO redirection",
+    )
+
+
 class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     enable: bool = True
@@ -490,7 +505,7 @@ class Override:
 
 
 @dataclass
-class ConfiguredSettings:
+class ConfiguredSettings:  # pylint: disable=too-many-public-methods
     settings: Optional[Settings] = None
 
     def initialize(self, config_file: Optional[str] = None) -> None:
@@ -550,6 +565,10 @@ class ConfiguredSettings:
         return self.active_settings.cache
 
     @property
+    def dev(self) -> DevelopmentSettings:
+        return self.active_settings.dev
+
+    @property
     def workflow(self) -> WorkflowSettings:
         return self.active_settings.workflow
 
@@ -592,6 +611,7 @@ class Settings(BaseSettings):
     main: MainSettings = MainSettings()
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
+    dev: DevelopmentSettings = DevelopmentSettings()
     http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()

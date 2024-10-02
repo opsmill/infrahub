@@ -241,6 +241,13 @@ class QueryValidationError(Error):
         self.message = message
 
 
+class GatewayError(Error):
+    HTTP_CODE = 502
+
+    def __init__(self, message: str):
+        self.message = message
+
+
 class MigrationError(Error):
     HTTP_CODE = 502
 
