@@ -33,9 +33,9 @@ test.describe("Role management - READ", () => {
 
     await test.step("check global permissions view", async () => {
       await page.getByRole("link", { name: "Global Permissions" }).click();
-      await expect(page.getByRole("cell", { name: "Edit Default Branch" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "Super Admin" })).toBeVisible();
       await expect(page.getByRole("cell", { name: "1" })).toBeVisible();
-      await expect(page.getByText("global:edit_default_branch:")).toBeVisible();
+      await expect(page.getByText("global:super_admin:allow")).toBeVisible();
     });
   });
 });
