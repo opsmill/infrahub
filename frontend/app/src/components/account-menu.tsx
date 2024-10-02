@@ -77,7 +77,10 @@ const UnauthenticatedAccountMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-auto gap-2 rounded-lg p-2 hover:bg-indigo-50">
+        <Button
+          variant="ghost"
+          className="h-auto gap-2 rounded-lg p-2 hover:bg-indigo-50"
+          data-testid="unauthenticated-menu-trigger">
           <Icon icon="mdi:user" className="text-2xl bg-indigo-50 rounded-full p-2" />
           <div className="flex flex-col items-start flex-grow">
             <span className="font-semibold text-sm">Log in</span>
@@ -133,8 +136,8 @@ const AuthenticatedAccountMenu = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          data-testid="account-menu-trigger"
-          className="h-auto gap-2 hover:bg-indigo-50 rounded-lg p-2">
+          className="h-auto gap-2 hover:bg-indigo-50 rounded-lg p-2"
+          data-testid="authenticated-menu-trigger">
           <Avatar name={profile?.name?.value} className="h-10 w-10" />
           <div className="flex flex-col items-start">
             <span className="font-semibold text-sm">{profile?.label?.value}</span>

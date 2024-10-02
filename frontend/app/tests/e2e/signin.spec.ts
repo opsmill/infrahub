@@ -22,7 +22,7 @@ test.describe("/signin", () => {
       await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
       await page.getByRole("button", { name: "Sign in" }).click();
 
-      await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
+      await expect(page.getByTestId("authenticated-menu-trigger")).toBeVisible();
     });
 
     test("should display an error message when authentication fails", async ({ page }) => {
@@ -54,7 +54,7 @@ test.describe("/signin", () => {
       await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
       await page.getByRole("button", { name: "Sign in" }).click();
 
-      await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
+      await expect(page.getByTestId("authenticated-menu-trigger")).toBeVisible();
       await expect(page.url()).toContain(initialPage);
     });
   });
@@ -65,7 +65,7 @@ test.describe("/signin", () => {
     test("should log out the user", async ({ page }) => {
       await page.goto("/");
 
-      await page.getByTestId("account-menu-trigger").click();
+      await page.getByTestId("authenticated-menu-trigger").click();
       await page.getByRole("menuitem", { name: "Logout" }).click();
 
       await expect(page.getByRole("button", { name: "Log in anonymous" })).toBeVisible();
