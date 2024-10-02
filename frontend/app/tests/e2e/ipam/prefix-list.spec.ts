@@ -10,8 +10,8 @@ test.describe("/ipam/prefixes - Prefix list", () => {
       .getByRole("row", { name: "203.111.0.0/16 - prefix" }) // prefix need pagination to be visible
       .getByRole("link", { name: "203.111.0.0/16" }) // prefix need pagination to be visible
       .click();
-    expect(page.url()).toContain("/ipam/prefixes/");
     await expect(page.getByText("Ipam IP Prefix summary")).toBeVisible();
+    expect(page.url()).toContain("/ipam/prefixes/");
     await expect(page.getByText("Prefix203.111.0.0/16")).toBeVisible();
     await expect(page.getByText("Utilization0%")).toBeVisible();
     await expect(page.getByRole("progressbar")).toBeVisible();

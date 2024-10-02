@@ -20,11 +20,11 @@ export const DropDownMenuItem = ({ path, icon, title }: DropDownMenuItemProps) =
       onClick={onClickMenuItem}
       className={({ isActive }) =>
         classNames(
-          "p-2 group flex items-center rounded text-sm font-medium text-gray-600",
-          isActive ? "bg-gray-300" : "hover:bg-gray-100 hover:text-gray-900"
+          "ml-4 p-2 group flex items-center rounded text-sm font-medium text-gray-600",
+          isActive ? "bg-neutral-200" : "hover:bg-gray-100 hover:text-gray-900"
         )
       }>
-      {icon && <Icon icon={icon} className="mr-1 text-custom-blue-500 group-hover:text-gray-500" />}
+      {icon ? <Icon icon={icon} className="mr-1" /> : <div className="w-3.5 shrink-0 mr-1" />}
 
       <span className="truncate">{title}</span>
     </NavLink>

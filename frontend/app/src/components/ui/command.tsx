@@ -9,7 +9,7 @@ export const Command = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive
     ref={ref}
-    className={classNames("flex h-full w-full flex-col overflow-hidden", className)}
+    className={classNames("flex h-full w-full flex-col outline-none", className)}
     {...props}
   />
 ));
@@ -18,14 +18,15 @@ export const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b outline-none text-neutral-800">
+  <div
+    className={classNames(
+      "h-10 flex items-center border-b outline-none text-neutral-800",
+      className
+    )}>
     <Icon icon="mdi:search" className="mx-2.5 shrink-0 text-lg" />
     <CommandPrimitive.Input
       ref={ref}
-      className={classNames(
-        "bg-transparent flex pl-0 h-10 w-full rounded-md text-sm outline-none border-none focus:[box-shadow:none] placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
+      className="bg-transparent flex-grow pl-0 text-sm outline-none border-none focus:[box-shadow:none] placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
       {...props}
     />
   </div>

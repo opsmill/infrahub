@@ -2,14 +2,12 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { classNames } from "@/utils/common";
 import { cva, type VariantProps } from "class-variance-authority";
 
-export const initials = (name?: string) =>
+export const initials = (name: string) =>
   name
-    ? name
-        .split(" ")
-        .map((word) => word[0])
-        .join("")
-        .toUpperCase()
-    : "-";
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
 
 const avatarVariants = cva("rounded-full flex justify-center items-center", {
   variants: {
@@ -20,6 +18,7 @@ const avatarVariants = cva("rounded-full flex justify-center items-center", {
     size: {
       default: "h-12 w-12",
       sm: "h-6 w-6 text-xs",
+      md: "h-8 w-8 text-xs",
     },
   },
   defaultVariants: {
@@ -30,12 +29,13 @@ const avatarVariants = cva("rounded-full flex justify-center items-center", {
 
 interface tAvatar extends VariantProps<typeof avatarVariants> {
   name?: string;
+  text?: string;
   className?: string;
   isLoading?: boolean;
 }
 
 export const Avatar = (props: tAvatar) => {
-  const { name, variant, size, className, isLoading, ...otherProps } = props;
+  const { name, text, variant, size, className, isLoading, ...otherProps } = props;
 
   if (isLoading) {
     return (
@@ -47,7 +47,9 @@ export const Avatar = (props: tAvatar) => {
 
   return (
     <div className={classNames(avatarVariants({ variant, size, className }))} {...otherProps}>
-      {initials(name)}
+      {name && initials(name)}
+      {text}
+      {!name && !text && "-"}
     </div>
   );
 };

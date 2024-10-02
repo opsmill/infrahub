@@ -198,23 +198,8 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
         title="Admin",
         children=[
             InterfaceMenu(
-                title="Accounts",
-                path=f"/objects/{InfrahubKind.GENERICACCOUNT}",
-                icon=_extract_node_icon(full_schema[InfrahubKind.GENERICACCOUNT]),
-            ),
-            InterfaceMenu(
-                title="Account Groups",
-                path=f"/objects/{InfrahubKind.ACCOUNTGROUP}",
-                icon=_extract_node_icon(full_schema[InfrahubKind.ACCOUNTGROUP]),
-            ),
-            InterfaceMenu(
-                title="Account Roles",
-                path=f"/objects/{InfrahubKind.ACCOUNTROLE}",
-                icon=_extract_node_icon(full_schema[InfrahubKind.ACCOUNTROLE]),
-            ),
-            InterfaceMenu(
-                title="Permissions",
-                path=f"/objects/{InfrahubKind.BASEPERMISSION}",
+                title="Role Management",
+                path="/role-management",
                 icon=_extract_node_icon(full_schema[InfrahubKind.BASEPERMISSION]),
             ),
             InterfaceMenu(

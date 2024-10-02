@@ -14,8 +14,8 @@ test.describe("/profile", () => {
     test("should see 'Sign in' and no user avatar on header", async ({ page }) => {
       await page.goto("/");
 
-      await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
-      await expect(page.getByTestId("current-user-avatar-button")).toBeHidden();
+      await expect(page.getByTestId("unauthenticated-menu-trigger")).toBeVisible();
+      await expect(page.getByTestId("authenticated-menu-trigger")).toBeHidden();
     });
   });
 
@@ -25,8 +25,8 @@ test.describe("/profile", () => {
     test("should access the profile page", async ({ page }) => {
       await test.step("go to profile page", async () => {
         await page.goto("/");
-        await page.getByTestId("current-user-avatar-button").click();
-        await page.getByRole("menuitem", { name: "Your Profile" }).click();
+        await page.getByTestId("authenticated-menu-trigger").click();
+        await page.getByRole("menuitem", { name: "Account settings" }).click();
       });
 
       await test.step("display account details", async () => {
@@ -44,8 +44,8 @@ test.describe("/profile", () => {
     test("should access the profile page", async ({ page }) => {
       await test.step("go to profile page", async () => {
         await page.goto("/");
-        await page.getByTestId("current-user-avatar-button").click();
-        await page.getByRole("menuitem", { name: "Your Profile" }).click();
+        await page.getByTestId("authenticated-menu-trigger").click();
+        await page.getByRole("menuitem", { name: "Account settings" }).click();
       });
 
       await test.step("display account details", async () => {
@@ -64,8 +64,8 @@ test.describe("/profile", () => {
     test("should access the profile page", async ({ page }) => {
       await test.step("go to profile page", async () => {
         await page.goto("/");
-        await page.getByTestId("current-user-avatar-button").click();
-        await page.getByRole("menuitem", { name: "Your Profile" }).click();
+        await page.getByTestId("authenticated-menu-trigger").click();
+        await page.getByRole("menuitem", { name: "Account settings" }).click();
       });
 
       await test.step("display account details", async () => {

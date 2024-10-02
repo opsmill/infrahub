@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai/index";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
@@ -75,7 +75,7 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
       name: "reviewers",
       label: "Reviewers",
       type: "relationship",
-      relationship: { cardinality: "many", peer: ACCOUNT_OBJECT } as any,
+      relationship: { cardinality: "many", peer: ACCOUNT_GENERIC_OBJECT } as any,
       schema: {} as any,
       defaultValue: {
         source: { type: "user" },

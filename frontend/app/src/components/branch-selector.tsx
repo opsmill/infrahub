@@ -1,132 +1,182 @@
-import { DateDisplay } from "@/components/display/date-display";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { QSP } from "@/config/qsp";
 import { Branch } from "@/generated/graphql";
 import { usePermission } from "@/hooks/usePermission";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
-import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import { ButtonWithTooltip } from "./buttons/button-primitive";
-import { SelectButton } from "./buttons/select-button";
+import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
 import BranchCreateForm from "./form/branch-create-form";
-import { SelectOption } from "./inputs/select";
-
-const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
-  branch && (
-    <>
-      {branch.has_schema_changes && (
-        <Icon
-          icon={"mdi:file-alert"}
-          className={classNames(active ? "text-custom-white" : "text-gray-500")}
-        />
-      )}
-
-      {branch.is_default && (
-        <Icon
-          icon={"mdi:shield-star"}
-          className={classNames(active ? "text-custom-white" : "text-gray-500")}
-        />
-      )}
-
-      {branch.sync_with_git && (
-        <Icon
-          icon={"mdi:git"}
-          className={classNames(active ? "text-custom-white" : "text-red-400")}
-        />
-      )}
-    </>
-  );
+import { ComboboxItem } from "@/components/ui/combobox";
+import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command";
+import { useSetAtom } from "jotai";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { constructPath } from "@/utils/fetch";
 
 export default function BranchSelector() {
-  const branches = useAtomValue(branchesState);
-  const branch = useAtomValue(currentBranchAtom);
-  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const currentBranch = useAtomValue(currentBranchAtom);
+  const [isOpen, setIsOpen] = useState(false);
+  const [displayForm, setDisplayForm] = useState(false);
 
-  const valueLabel = (
-    <div className="flex items-center fill-custom-white">
-      {getBranchIcon(branch, true)}
-
-      <p className="ml-2.5 text-sm font-medium truncate">{branch?.name}</p>
-    </div>
-  );
-
-  const branchesOptions: SelectOption[] = branchesToSelectOptions(branches);
-
-  const onBranchChange = (branch: Branch) => {
-    if (branch?.is_default) {
-      // undefined is needed to remove a parameter from the QSP
-      setBranchInQueryString(undefined);
-    } else {
-      setBranchInQueryString(branch.name);
-    }
-  };
-
-  const renderOption = ({ option, active, selected }: any) => (
-    <div className="flex relative flex-col">
-      <div className="flex absolute bottom-0 right-0">{getBranchIcon(option, active)}</div>
-
-      <div className="flex justify-between">
-        <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
-        {selected ? (
-          <span className={active ? "text-custom-white" : "text-gray-500"}>
-            <Icon icon={"mdi:check"} />
-          </span>
-        ) : null}
-      </div>
-
-      {option?.created_at && <DateDisplay date={option?.created_at} />}
-    </div>
-  );
-
-  /**
-   * There's always a main branch present at least.
-   */
-  if (!branches.length) {
-    return null;
-  }
+  useEffect(() => {
+    if (isOpen) graphqlClient.refetchQueries({ include: ["GetBranches"] });
+  }, [isOpen]);
 
   return (
-    <div className="flex h-12 w-full" data-cy="branch-select-menu" data-testid="branch-select-menu">
-      <SelectButton
-        value={branch}
-        valueLabel={valueLabel}
-        onChange={onBranchChange}
-        options={branchesOptions}
-        renderOption={renderOption}
-      />
+    <Popover
+      open={isOpen}
+      onOpenChange={(open) => {
+        setDisplayForm(false);
+        setIsOpen(open);
+      }}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-8 w-[205px] border-neutral-200 rounded-lg p-0 shadow-none"
+          data-testid="branch-selector-trigger">
+          <div className="inline-flex items-center gap-1.5 px-3 flex-grow border-r h-full truncate">
+            <Icon icon="mdi:source-branch" />
+            <span className="truncate">{currentBranch?.name}</span>
+          </div>
 
-      <BranchFormTrigger />
-    </div>
+          <Icon icon="mdi:chevron-down" className="text-2xl px-3" />
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent align="start">
+        {displayForm ? (
+          <BranchCreateForm
+            onCancel={() => {
+              setDisplayForm(false);
+            }}
+            onSuccess={() => {
+              setDisplayForm(false);
+              setIsOpen(false);
+            }}
+            data-testid="branch-create-form"
+          />
+        ) : (
+          <BranchSelect setPopoverOpen={setIsOpen} setFormOpen={setDisplayForm} />
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 
-export const BranchFormTrigger = () => {
-  const permission = usePermission();
-  const [open, setOpen] = React.useState(false);
+function BranchSelect({
+  setPopoverOpen,
+  setFormOpen,
+}: {
+  setPopoverOpen: (open: boolean) => void;
+  setFormOpen: (open: boolean) => void;
+}) {
+  const branches = useAtomValue(branchesState);
+  const setCurrentBranch = useSetAtom(currentBranchAtom);
+  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+
+  const handleBranchChange = (branch: Branch) => {
+    if (branch.is_default) {
+      setBranchInQueryString(undefined); // undefined is needed to remove a parameter from the QSP
+    } else {
+      setBranchInQueryString(branch.name);
+    }
+    setCurrentBranch(branch);
+    setPopoverOpen(false);
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <ButtonWithTooltip
-          disabled={!permission.write.allow}
-          tooltipEnabled={!permission.write.allow}
-          tooltipContent={permission.write.message ?? undefined}
-          className="h-full shadow-none rounded-none rounded-r-md px-2.5"
-          data-testid="create-branch-button">
-          <Icon icon="mdi:plus" />
-        </ButtonWithTooltip>
-      </PopoverTrigger>
+    <>
+      <Command
+        style={{
+          minWidth: "var(--radix-popover-trigger-width)",
+          maxHeight: "min(var(--radix-popover-content-available-height), 500px)",
+        }}>
+        <div className="flex gap-2 mb-2">
+          <CommandInput
+            autoFocus
+            className="bg-neutral-100 text-neutral-800 rounded-lg border-none h-8 flex-grow"
+            placeholder="Search"
+            data-testid="branch-search-input"
+          />
 
-      <PopoverContent>
-        <header className="font-semibold text-base text-center pb-2">Create a branch</header>
-        <div className="border-b flex" />
-        <BranchCreateForm onCancel={() => setOpen(false)} onSuccess={() => setOpen(false)} />
-      </PopoverContent>
-    </Popover>
+          <BranchFormTriggerButton setOpen={setFormOpen} />
+        </div>
+
+        <CommandList className="p-0" data-testid="branch-list">
+          <CommandEmpty>No branch found</CommandEmpty>
+          {branchesToSelectOptions(branches).map((branch) => (
+            <BranchOption
+              key={branch.name}
+              branch={branch}
+              onChange={() => handleBranchChange(branch)}
+            />
+          ))}
+        </CommandList>
+      </Command>
+      <div className="p-2 pb-0 border-t border-neutral-200 -mx-2 mt-2">
+        <LinkButton
+          to={constructPath("/branches")}
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs justify-start"
+          onClick={() => setPopoverOpen(false)}>
+          View all branches
+        </LinkButton>
+      </div>
+    </>
+  );
+}
+
+function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => void }) {
+  const currentBranch = useAtomValue(currentBranchAtom);
+
+  return (
+    <ComboboxItem
+      className="p-2"
+      selectedValue={currentBranch?.name}
+      onSelect={onChange}
+      value={branch.name}>
+      <div className="truncate flex items-center w-full">
+        <span className="truncate">{branch.name}</span>
+
+        <div className="ml-auto inline-flex items-center gap-1">
+          {branch.is_default && (
+            <span className="rounded border text-gray-400 px-1.5 text-xs">default</span>
+          )}
+          {branch.sync_with_git && (
+            <Icon icon="mdi:source-branch-sync" className="text-sm text-gray-400" />
+          )}
+        </div>
+      </div>
+    </ComboboxItem>
+  );
+}
+
+export const BranchFormTriggerButton = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
+  const permission = usePermission();
+
+  return (
+    <ButtonWithTooltip
+      disabled={!permission.write.allow}
+      tooltipEnabled={!permission.write.allow}
+      tooltipContent={permission.write.message ?? undefined}
+      className="h-8 w-8 shadow-none"
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.stopPropagation();
+          setOpen(true);
+        }
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        setOpen(true);
+      }}
+      data-testid="create-branch-button">
+      <Icon icon="mdi:plus" />
+    </ButtonWithTooltip>
   );
 };

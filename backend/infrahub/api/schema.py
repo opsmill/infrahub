@@ -17,11 +17,11 @@ from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.migrations.schema.runner import schema_migrations_runner
+from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import SchemaBranchHash, SchemaDiff  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
 from infrahub.core.schema_manager import SchemaBranch, SchemaNamespace, SchemaUpdateValidationResult  # noqa: TCH001
-from infrahub.core.validators.checker import schema_validators_checker
+from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import MigrationError
 from infrahub.log import get_logger
@@ -29,6 +29,7 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -258,11 +259,16 @@ async def load_schema(
         # ----------------------------------------------------------
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
-        error_messages, _ = await schema_validators_checker(
-            branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
+        validate_migration_data = SchemaValidateMigrationData(
+            branch=branch,
+            schema_branch=candidate_schema,
+            constraints=result.constraints,
         )
-        if error_messages:
-            raise SchemaNotValidError(message=",\n".join(error_messages))
+        error_messages = await service.workflow.execute(  # type: ignore[var-annotated]
+            workflow=SCHEMA_VALIDATE_MIGRATION, message=validate_migration_data
+        )
+        if error_messages:  # type: ignore[has-type]
+            raise SchemaNotValidError(message=",\n".join(error_messages))  # type: ignore[has-type]
 
         # ----------------------------------------------------------
         # Update the schema
@@ -293,15 +299,18 @@ async def load_schema(
         # ----------------------------------------------------------
         # Run the migrations
         # ----------------------------------------------------------
-        error_messages = await schema_migrations_runner(
+        apply_migration_data = SchemaApplyMigrationData(
             branch=branch,
             new_schema=candidate_schema,
             previous_schema=origin_schema,
             migrations=result.migrations,
-            service=service,
         )
-        if error_messages:
-            raise MigrationError(message=",\n".join(error_messages))
+        migration_error_msgs = await service.workflow.execute(  # type: ignore[var-annotated]
+            workflow=SCHEMA_APPLY_MIGRATION, message=apply_migration_data
+        )
+
+        if migration_error_msgs:
+            raise MigrationError(message=",\n".join(migration_error_msgs))
 
         if config.SETTINGS.broker.enable:
             message = messages.EventSchemaUpdate(
@@ -339,8 +348,13 @@ async def check_schema(
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
     # ----------------------------------------------------------
-    error_messages, _ = await schema_validators_checker(
-        branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
+    validate_migration_data = SchemaValidateMigrationData(
+        branch=branch,
+        schema_branch=candidate_schema,
+        constraints=result.constraints,
+    )
+    error_messages = await service.workflow.execute(  # type: ignore[var-annotated]
+        workflow=SCHEMA_VALIDATE_MIGRATION, message=validate_migration_data
     )
     if error_messages:
         raise SchemaNotValidError(message=",\n".join(error_messages))

@@ -1,9 +1,4 @@
-import { Branch } from "@/generated/graphql";
 import { gql } from "@apollo/client";
-
-export interface iBranchData {
-  branch: Array<Branch>;
-}
 
 const GET_BRANCHES = gql`
   query GetBranches {

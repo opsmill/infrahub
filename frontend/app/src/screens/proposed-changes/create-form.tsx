@@ -24,7 +24,8 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { Spinner } from "@/components/ui/spinner";
 
 export const ProposedChangeCreateForm = () => {
   const { user } = useAuth();
@@ -36,6 +37,8 @@ export const ProposedChangeCreateForm = () => {
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
+
+  if (branches.length === 0) return <Spinner className="flex justify-center" />;
 
   return (
     <Form
@@ -150,7 +153,7 @@ export const ProposedChangeCreateForm = () => {
               <Select
                 multiple
                 options={
-                  getAllAccountsData?.[ACCOUNT_OBJECT]?.edges.map((edge: any) => ({
+                  getAllAccountsData?.[ACCOUNT_GENERIC_OBJECT]?.edges.map((edge: any) => ({
                     id: edge?.node.id,
                     name: edge?.node?.display_label,
                   })) ?? []

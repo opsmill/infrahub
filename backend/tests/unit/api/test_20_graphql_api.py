@@ -221,7 +221,14 @@ async def test_download_schema(db: InfrahubDatabase, client, client_headers):
 
 
 async def test_query_at_previous_schema(
-    db: InfrahubDatabase, client, admin_headers, default_branch: Branch, authentication_base, car_person_data
+    db: InfrahubDatabase,
+    client,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
+    prefect_test_fixture,
+    workflow_local,
+    car_person_data,
 ):
     # Load the schema in the database
     schema = registry.schema.get_schema_branch(name=default_branch.name)

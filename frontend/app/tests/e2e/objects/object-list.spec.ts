@@ -55,7 +55,7 @@ test.describe("/objects/:objectKind", () => {
 
       // then
       const newTab = await newTabPromise;
-      await newTab.waitForURL(linkHref);
+      await newTab.waitForURL(linkHref!);
       expect(newTab.url()).toContain(linkHref);
     });
   });

@@ -15,6 +15,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
 
   test("1. Visualize the active schema", async ({ page }) => {
     await page.goto("/");
+    await page.getByTestId("sidebar-menu").getByRole("button", { name: "Unified Storage" }).click();
     await page.getByTestId("sidebar-menu").getByRole("link", { name: "Schema" }).click();
     await expect(page.getByText("Artifact Check")).toBeVisible();
     await saveScreenshotForDocs(page, "tutorial_3_schema");

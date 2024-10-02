@@ -11,6 +11,18 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [0.16.2](https://github.com/opsmill/infrahub/tree/v0.16.2) - 2024-10-01
+
+### Fixed
+
+- Loading a schema with an invalid order_by field raise a proper error. ([#4323](https://github.com/opsmill/infrahub/issues/4323))
+- Updates internal logic to improve performance when generating a diff.
+
+  BREAKING CHANGE: Diff data, including conflict selections, will be deleted. We recommend merging
+  any outstanding proposed changes before upgrading to this version. ([#4438](https://github.com/opsmill/infrahub/issues/4438))
+- Fix performance issue for GraphQL queries that only count nodes. ([#4454](https://github.com/opsmill/infrahub/issues/4454))
+- Fix ability to construct HFID for upsert mutations where a number attribute is used. ([#4460](https://github.com/opsmill/infrahub/issues/4460))
+
 ## [0.16.1](https://github.com/opsmill/infrahub/tree/v0.16.1) - 2024-09-24
 
 The largest change in this version is the movement of the Infrahub SDK into a

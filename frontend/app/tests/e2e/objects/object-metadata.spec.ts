@@ -13,10 +13,7 @@ test.describe("Object metadata", () => {
   });
 
   test("should contain initial values and update them", async ({ page }) => {
-    await page.goto("/");
-
-    // Access all devices
-    await page.getByRole("link", { name: "All Device(s)" }).click();
+    await page.goto("/objects/InfraDevice");
 
     // Access device details
     await page.getByRole("link", { name: "atl1-core2" }).click();
@@ -51,11 +48,8 @@ test.describe("Object metadata", () => {
     // Verify the alert
     await expect(page.getByText("Metadata updated")).toBeVisible();
 
-    // Verify metadata updates
-    await page.goto("/");
-
     // Access all devices
-    await page.getByRole("link", { name: "All Device(s)" }).click();
+    await page.goto("/objects/InfraDevice");
 
     // Access device details
     await page.getByRole("link", { name: "atl1-core2" }).click();

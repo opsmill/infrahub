@@ -5,6 +5,7 @@ import pytest
 import yaml
 from infrahub_sdk import Config, InfrahubClient, NodeNotFoundError
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization
@@ -14,6 +15,7 @@ from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.server import app, app_initialization
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
 from tests.adapters.log import FakeTaskReportLogger
 from tests.helpers.file_repo import FileRepo
@@ -43,6 +45,14 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
+    def workflow_local(prefect_test_fixture):
+        original = config.OVERRIDE.workflow
+        workflow = WorkflowLocalExecution()
+        config.OVERRIDE.workflow = workflow
+        yield workflow
+        config.OVERRIDE.workflow = original
+
+    @pytest.fixture(scope="class")
     async def base_dataset(self, db: InfrahubDatabase):
         await delete_all_nodes(db=db)
         await first_time_initialization(db=db)
@@ -53,6 +63,7 @@ class TestInfrahubClient:
     async def test_client(
         self,
         base_dataset,
+        workflow_local,
     ) -> InfrahubTestClient:
         await app_initialization(app)
         return InfrahubTestClient(app=app)

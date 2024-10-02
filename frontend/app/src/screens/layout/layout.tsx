@@ -1,18 +1,18 @@
 import { QSP } from "@/config/qsp";
 import { SchemaContext, withSchemaContext } from "@/decorators/withSchemaContext";
 import { Branch } from "@/generated/graphql";
-import graphqlClient from "@/graphql/graphqlClientApollo";
 import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
 import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
-import { Sidebar } from "./sidebar";
+import Sidebar from "@/screens/layout/sidebar";
 import { Outlet } from "react-router-dom";
+import { NetworkStatus, useQuery } from "@apollo/client";
 
 function Layout() {
   const branches = useAtomValue(branchesState);
@@ -20,17 +20,16 @@ function Layout() {
   const { checkSchemaUpdate } = useContext(SchemaContext);
   const setBranches = useSetAtom(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
-  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
+  const { networkStatus } = useQuery(GET_BRANCHES, {
+    notifyOnNetworkStatusChange: true,
+    onCompleted: (data) => {
+      const branches: Branch[] = data.Branch ?? [];
+      const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
-  const fetchBranches = async () => {
-    try {
-      const { data }: any = await graphqlClient.query({
-        query: GET_BRANCHES,
-        context: { branch: branchInQueryString },
-      });
-
-      return data.Branch ?? [];
-    } catch (err: any) {
+      setBranches(branches);
+      setCurrentBranch(selectedBranch);
+    },
+    onError: (err) => {
       console.error("err.message: ", err.message);
 
       if (err?.message?.includes("Received status code 401")) {
@@ -38,34 +37,15 @@ function Layout() {
       }
 
       console.error("Error while fetching branches: ", err);
-
-      return [];
-    }
-  };
-
-  /**
-   * Set branches in state atom
-   */
-  const setBranchesInState = async () => {
-    const branches: Branch[] = await fetchBranches();
-
-    const selectedBranch = findSelectedBranch(branches, branchInQueryString);
-
-    setBranches(branches);
-    setCurrentBranch(selectedBranch);
-    setIsLoadingBranches(false);
-  };
-
-  useEffect(() => {
-    setBranchesInState();
-  }, []);
+    },
+  });
 
   useEffect(() => {
     if (branches.length === 0) return;
     checkSchemaUpdate();
   }, [branches.length, branchInQueryString]);
 
-  if (isLoadingBranches) {
+  if (networkStatus === NetworkStatus.loading) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
         <LoadingScreen message="Loading branches..." />
@@ -74,13 +54,15 @@ function Layout() {
   }
 
   return (
-    <div className="h-screen flex">
-      <Sidebar />
+    <div className="h-screen w-screen overflow-hidden bg-stone-100">
+      <Header />
 
-      <div className="flex flex-1 flex-col bg-gray-100 overflow-hidden">
-        <Header />
+      <div className="flex items-stretch h-[calc(100vh-57px)]">
+        <Sidebar />
 
-        <Outlet />
+        <main className="flex-grow overflow-auto">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

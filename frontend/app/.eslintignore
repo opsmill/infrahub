@@ -1,3 +1,6 @@
+tsconfig.json
 dist
 node_modules
 playwright-report
+src/generated
+test-results

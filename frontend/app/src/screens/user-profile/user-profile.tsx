@@ -1,15 +1,14 @@
 import { Avatar } from "@/components/display/avatar";
 import { Tabs } from "@/components/tabs";
-import { ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
-import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { genericsState } from "@/state/atoms/schema.atom";
-import { gql } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 import TabPreferences from "./tab-preferences";
@@ -54,7 +53,7 @@ export function UserProfilePage() {
   const schemaList = useAtomValue(genericsState);
   useTitle("Profile");
 
-  const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
+  const schema = schemaList.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
   const queryString = schema
     ? getProfileDetails({

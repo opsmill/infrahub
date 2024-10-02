@@ -50,7 +50,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
             response: FlowRun = await run_deployment(name=workflow.full_name, parameters=kwargs or {})  # type: ignore[return-value, misc]
             if not response.state:
                 raise RuntimeError("Unable to read state from the response")
-            return await response.state.result(fetch=True, raise_on_failure=True)  # type: ignore[call-overload]
+            return response.state.result(raise_on_failure=True)
 
         if function:
             return await function(**kwargs)

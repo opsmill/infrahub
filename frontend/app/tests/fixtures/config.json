@@ -6,9 +6,7 @@
     "telemetry_optout": false,
     "telemetry_endpoint": "https://telemetry.opsmill.cloud/infrahub",
     "telemetry_interval": 86400,
-    "permission_backends": [
-      "infrahub.permissions.LocalPermissionBackend"
-    ]
+    "permission_backends": ["infrahub.permissions.LocalPermissionBackend"]
   },
   "logging": {
     "remote": {
