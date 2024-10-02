@@ -15,7 +15,7 @@ export type tRow = {
   values: any;
 };
 
-type tTableProps = {
+type TableProps = {
   columns: tColumn[];
   rows: tRow[];
   constructLink?: Function;
@@ -24,9 +24,7 @@ type tTableProps = {
   className?: string;
 };
 
-export const Table = (props: tTableProps) => {
-  const { columns, rows, onDelete, onUpdate, className } = props;
-
+export const Table = ({ columns, rows, onDelete, onUpdate, className }: TableProps) => {
   const auth = useAuth();
 
   return (
@@ -94,7 +92,7 @@ export const Table = (props: tTableProps) => {
                       disabled={!auth?.permissions?.write}
                       onClick={() => onDelete(row)}
                       data-testid="delete-row-button">
-                      <Icon icon="mdi:trash" className="text-red-500" />
+                      <Icon icon="mdi:trash-outline" className="text-red-500" />
                     </Button>
                   )}
                 </td>

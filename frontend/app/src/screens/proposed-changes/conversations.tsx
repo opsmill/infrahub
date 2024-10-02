@@ -1,7 +1,7 @@
 import { AddComment } from "@/components/conversations/add-comment";
 import { Thread } from "@/components/conversations/thread";
 import {
-  ACCOUNT_OBJECT,
+  ACCOUNT_GENERIC_OBJECT,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
@@ -36,7 +36,7 @@ export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivEle
   const queryString = getProposedChangesThreads({
     id: proposedChangeId,
     kind: PROPOSED_CHANGES_THREAD_OBJECT,
-    accountKind: ACCOUNT_OBJECT,
+    accountKind: ACCOUNT_GENERIC_OBJECT,
   });
 
   const query = gql`

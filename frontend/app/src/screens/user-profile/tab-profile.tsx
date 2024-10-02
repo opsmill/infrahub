@@ -1,4 +1,4 @@
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCESS_TOKEN_KEY, ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
 import { parseJwt } from "@/utils/common";
 import { useAtomValue } from "jotai";
@@ -13,7 +13,7 @@ import Content from "../layout/content";
 
 export default function TabProfile() {
   const nodes = useAtomValue(genericsState);
-  const schema = nodes.find(({ kind }) => kind === ACCOUNT_OBJECT);
+  const schema = nodes.find(({ kind }) => kind === ACCOUNT_GENERIC_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
   const tokenData = parseJwt(localToken);

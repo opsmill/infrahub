@@ -1,6 +1,6 @@
 import { Avatar } from "@/components/display/avatar";
 import { Tabs } from "@/components/tabs";
-import { ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
 import useQuery from "@/hooks/useQuery";
@@ -54,7 +54,7 @@ export function UserProfilePage() {
   const schemaList = useAtomValue(genericsState);
   useTitle("Profile");
 
-  const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
+  const schema = schemaList.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
   const queryString = schema
     ? getProfileDetails({

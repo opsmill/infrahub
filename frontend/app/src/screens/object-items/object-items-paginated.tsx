@@ -51,6 +51,10 @@ export default function ObjectItems({
     return <Navigate to="/" />;
   }
 
+  if (!schema.kind) {
+    return <ErrorScreen message="No schema available for this object." />;
+  }
+
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns({ schema: schema, forListView: true });
 

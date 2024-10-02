@@ -1,12 +1,14 @@
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { classNames } from "@/utils/common";
-import { ReactElement } from "react";
+import { Icon } from "@iconify-icon/react";
+import { ReactNode } from "react";
 
 type tPill = {
   type?: PILL_TYPES;
   className?: string;
-  children?: ReactElement | string | ReactElement[] | string[];
+  children?: ReactNode;
   isLoading?: boolean;
+  error?: boolean;
 };
 
 export enum PILL_TYPES {
@@ -40,13 +42,14 @@ const getClassName = (type?: PILL_TYPES) => {
 };
 
 export const Pill = (props: tPill) => {
-  const { type, className = "", children, isLoading } = props;
+  const { type, className = "", children, isLoading, error } = props;
 
   const customClassName = getClassName(type);
 
   return (
     <span className={classNames(DEFAULT_CLASS(className), customClassName, className)}>
       {isLoading && <LoadingScreen size={8} hideText />}
+      {error && <Icon icon={"mdi:warning-outline"} />}
       {!isLoading && children}
     </span>
   );

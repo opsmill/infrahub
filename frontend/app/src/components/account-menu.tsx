@@ -10,7 +10,7 @@ import { Menu, Transition } from "@headlessui/react";
 import { Fragment, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtomValue } from "jotai/index";
-import { ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 
@@ -21,7 +21,7 @@ export const AccountMenu = () => {
 
   const location = useLocation();
   const generics = useAtomValue(genericsState);
-  const schema = generics.find((s) => s.kind === ACCOUNT_OBJECT);
+  const schema = generics.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
   if (!isAuthenticated) {
     return (
