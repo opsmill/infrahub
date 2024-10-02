@@ -44,7 +44,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
   const setGenerics = useSetAtom(genericsState);
   const setNamespaces = useSetAtom(namespacesState);
   const setProfiles = useSetAtom(profilesAtom);
-  const setState = useSetAtom(stateAtom);
+  const [state, setState] = useAtom(stateAtom);
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 

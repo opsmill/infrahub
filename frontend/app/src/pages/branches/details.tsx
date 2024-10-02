@@ -9,17 +9,12 @@ import Content from "@/screens/layout/content";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { BranchDetails } from "@/screens/branches/branch-details";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useMatches, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { useTitle } from "@/hooks/useTitle";
 import { Button } from "@/components/buttons/button-primitive";
 import React from "react";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-} from "@/components/breadcrumb/breadcrumb";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +31,8 @@ export const BRANCH_TABS = {
 
 export function BranchDetailsPage() {
   const { "*": branchName } = useParams();
+  const matches = useMatches();
+  console.log(matches);
   useTitle(`${branchName} details`);
 
   if (!branchName) {
@@ -44,19 +41,7 @@ export function BranchDetailsPage() {
 
   return (
     <Content>
-      <Content.Title
-        title={
-          <Breadcrumb className="text-base">
-            <BreadcrumbLink to={constructPath("/branches")}>Branches</BreadcrumbLink>
-
-            <BreadcrumbSeparator />
-
-            <BreadcrumbItem>
-              <BranchSelectorBreadcrumb branchName={branchName} />
-            </BreadcrumbItem>
-          </Breadcrumb>
-        }
-      />
+      <Content.Title title={<div>Branch - {branchName}</div>} />
 
       <BranchTab />
 

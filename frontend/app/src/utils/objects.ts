@@ -6,9 +6,10 @@ import {
   IPAM_ROUTE,
 } from "@/screens/ipam/constants";
 import { store } from "@/state";
-import { profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath, overrideQueryParams } from "./fetch";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { isGeneric } from "@/utils/common";
 
 const regex = /^Related/; // starts with Related
 
@@ -24,9 +25,15 @@ export const getObjectDetailsUrl2 = (
   overrideParams?: overrideQueryParams[]
 ) => {
   const nodes = store.get(schemaState);
+  const generics = store.get(genericsState);
   const profiles = store.get(profilesAtom);
-  const schema = [...nodes, ...profiles].find(({ kind }) => kind === objectKind);
-  if (!schema) return constructPath("/", overrideParams);
+  const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
+  if (!schema) return "#";
+
+  if (isGeneric(schema)) {
+    const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
+    return constructPath(path, overrideParams);
+  }
 
   const inheritFrom = schema.inherit_from;
 

@@ -45,13 +45,15 @@ export const ComboboxContent = React.forwardRef<
 
 export const ComboboxList = React.forwardRef<
   React.ElementRef<typeof CommandList>,
-  React.ComponentPropsWithoutRef<typeof CommandList>
->(({ ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof CommandList> & { fitTriggerWidth?: boolean }
+>(({ fitTriggerWidth = true, ...props }, ref) => {
   return (
     <Command
       style={{
-        width: "var(--radix-popover-trigger-width)",
         maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
+        ...(fitTriggerWidth
+          ? { width: "var(--radix-popover-trigger-width)" }
+          : { minWidth: "var(--radix-popover-trigger-width)" }),
       }}>
       <CommandInput placeholder="Filter..." />
       <CommandList ref={ref} {...props} />
@@ -70,7 +72,7 @@ export const ComboboxItem = React.forwardRef<
     <CommandItem ref={ref} {...props}>
       <Icon
         icon="mdi:check"
-        className={classNames("text-green-900", selectedValue !== props.value && "opacity-0")}
+        className={classNames("text-green-900", selectedValue !== props.value && "opacity-0 w-3.5")}
       />
       {children}
     </CommandItem>
