@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 from infrahub.core.branch import Branch
 from infrahub.core.models import SchemaUpdateConstraintInfo
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 class SchemaValidateMigrationData(BaseModel):
