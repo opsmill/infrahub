@@ -13,7 +13,6 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
-from infrahub.core.account import ObjectPermission
 from infrahub.core.attribute import (
     Boolean,
     IntegerOptional,
@@ -50,7 +49,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     core_models,
 )
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
@@ -2538,37 +2537,27 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
     """Create a test admin account, group and role with all global permissions."""
     permissions: list[Node] = []
-    for global_permission in GlobalPermissions:
-        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(
-            db=db,
-            name=format_label(global_permission.value),
-            action=global_permission.value,
-            decision=PermissionDecision.ALLOW.value,
-        )
-        await obj.save(db=db)
-        permissions.append(obj)
-    for object_permission in [
-        ObjectPermission(
-            id="",
-            branch="*",
-            namespace="*",
-            name="*",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOW.value,
-        )
-    ]:
-        obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-        await obj.new(
-            db=db,
-            branch=object_permission.branch,
-            namespace=object_permission.namespace,
-            name=object_permission.name,
-            action=object_permission.action,
-            decision=object_permission.decision,
-        )
-        await obj.save(db=db)
-        permissions.append(obj)
+    global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await global_permission.new(
+        db=db,
+        name=format_label(GlobalPermissions.SUPER_ADMIN.value),
+        action=GlobalPermissions.SUPER_ADMIN.value,
+        decision=PermissionDecision.ALLOW.value,
+    )
+    await global_permission.save(db=db)
+    permissions.append(global_permission)
+
+    object_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await object_permission.new(
+        db=db,
+        branch="*",
+        namespace="*",
+        name="*",
+        action=PermissionAction.ANY.value,
+        decision=PermissionDecision.ALLOW.value,
+    )
+    await object_permission.save(db=db)
+    permissions.append(object_permission)
 
     role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
     await role.new(db=db, name="admin", permissions=permissions)
@@ -2618,6 +2607,12 @@ async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, re
     await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123", role="read-write")
     await obj.save(db=db)
     return obj
+
+
+@pytest.fixture
+async def session_first_account(db: InfrahubDatabase, first_account) -> AccountSession:
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id, role="read-write")
+    return session
 
 
 @pytest.fixture

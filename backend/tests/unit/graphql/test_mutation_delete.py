@@ -3,7 +3,7 @@ from graphql import graphql
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 
 
 async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_schema):

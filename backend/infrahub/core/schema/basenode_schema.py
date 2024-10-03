@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.schema import GenericSchema, NodeSchema
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 # pylint: disable=redefined-builtin
 

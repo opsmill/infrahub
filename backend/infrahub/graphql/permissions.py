@@ -9,7 +9,7 @@ from infrahub.permissions.report import report_schema_permissions
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 async def get_permissions(db: InfrahubDatabase, schema: MainSchemaTypes, context: GraphqlContext) -> dict[str, Any]:

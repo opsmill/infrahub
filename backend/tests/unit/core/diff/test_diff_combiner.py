@@ -19,8 +19,8 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffs,
     EnrichedDiffSingleRelationship,
 )
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_schema import NodeSchema
-from infrahub.core.schema_manager import SchemaManager
 from infrahub.core.timestamp import Timestamp
 
 from .factories import (

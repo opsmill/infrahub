@@ -11,7 +11,7 @@ from infrahub.graphql.types import TaskNodes
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class Tasks(ObjectType):

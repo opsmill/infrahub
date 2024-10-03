@@ -14,7 +14,7 @@ from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):

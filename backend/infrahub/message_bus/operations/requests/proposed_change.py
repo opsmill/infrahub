@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.services import InfrahubServices
 
 

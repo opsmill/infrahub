@@ -47,8 +47,8 @@ from infrahub.auth import AccountSession, authentication_token
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error
-from infrahub.graphql import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.log import get_logger
 
 from .metrics import (

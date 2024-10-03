@@ -3,7 +3,7 @@ import pytest
 from infrahub.core.migrations.graph.m003_relationship_parent_optional import Migration003, Migration003Query01
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, internal_schema
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 

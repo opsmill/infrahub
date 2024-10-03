@@ -68,7 +68,10 @@ export const ComboboxItem = React.forwardRef<
 >(({ children, selectedValue, ...props }, ref) => {
   return (
     <CommandItem ref={ref} {...props}>
-      <Icon icon="mdi:check" className={classNames(selectedValue !== props.value && "opacity-0")} />
+      <Icon
+        icon="mdi:check"
+        className={classNames("text-green-900", selectedValue !== props.value && "opacity-0")}
+      />
       {children}
     </CommandItem>
   );

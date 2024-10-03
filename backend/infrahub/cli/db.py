@@ -1,10 +1,12 @@
 import importlib
 import logging
+import os
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
+from prefect.testing.utilities import prefect_test_harness
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
@@ -18,16 +20,18 @@ from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import first_time_initialization, get_root_node, initialization, initialize_registry
 from infrahub.core.migrations.graph import get_graph_migrations
-from infrahub.core.migrations.schema.runner import schema_migrations_runner
+from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
-from infrahub.core.schema_manager import SchemaManager
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.utils import delete_all_nodes
-from infrahub.core.validators.checker import schema_validators_checker
+from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import DatabaseType
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.local import BusSimulator
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -177,6 +181,9 @@ async def update_core_schema(  # pylint: disable=too-many-statements
     """Check the current format of the internal graph and apply the necessary migrations"""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+    os.environ["PREFECT_SERVER_ANALYTICS_ENABLED"] = "false"
+
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
@@ -185,98 +192,109 @@ async def update_core_schema(  # pylint: disable=too-many-statements
     error_badge = "[bold red]ERROR[/bold red]"
 
     async with dbdriver.start_session() as db:
-        # ----------------------------------------------------------
-        # Initialize Schema and Registry
-        # ----------------------------------------------------------
-        service = InfrahubServices(database=db, message_bus=BusSimulator(database=db))
-        await initialize_registry(db=db)
-
-        default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
-
-        registry.schema = SchemaManager()
-        schema = SchemaRoot(**internal_schema)
-        registry.schema.register_schema(schema=schema)
-
-        # ----------------------------------------------------------
-        # Load Current Schema from the database
-        # ----------------------------------------------------------
-        schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
-        branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
-
-        candidate_schema = branch_schema.duplicate()
-        candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
-        candidate_schema.load_schema(schema=SchemaRoot(**core_models))
-        candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
-        candidate_schema.process()
-
-        result = branch_schema.validate_update(other=candidate_schema, enforce_update_support=False)
-        if result.errors:
-            rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
-            for error in result.errors:
-                rprint(error.to_string())
-            raise typer.Exit(1)
-
-        if not result.diff.all:
-            rprint("Core Schema Up to date, nothing to update")
-            raise typer.Exit(0)
-
-        rprint("Core Schema has diff, will need to be updated")
-        if debug:
-            result.diff.print()
-
-        # ----------------------------------------------------------
-        # Validate if the new schema is valid with the content of the database
-        # ----------------------------------------------------------
-        error_messages, _ = await schema_validators_checker(
-            branch=default_branch, schema=candidate_schema, constraints=result.constraints, service=service
-        )
-        if error_messages:
-            rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
-            for message in error_messages:
-                rprint(message)
-            raise typer.Exit(1)
-
-        # ----------------------------------------------------------
-        # Update the schema
-        # ----------------------------------------------------------
-        origin_schema = branch_schema.duplicate()
-
-        # Update the internal schema
-        schema_default_branch.load_schema(schema=SchemaRoot(**internal_schema))
-        schema_default_branch.process()
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
-
-        async with db.start_transaction() as dbt:
-            await registry.schema.update_schema_branch(
-                schema=candidate_schema,
-                db=dbt,
-                branch=default_branch.name,
-                diff=result.diff,
-                limit=result.diff.all,
-                update_db=True,
+        with prefect_test_harness():
+            # ----------------------------------------------------------
+            # Initialize Schema and Registry
+            # ----------------------------------------------------------
+            service = InfrahubServices(
+                database=db, message_bus=BusSimulator(database=db), workflow=WorkflowLocalExecution()
             )
-            default_branch.update_schema_hash()
-            rprint("The Core Schema has been updated")
-            if debug:
-                rprint(f"New schema hash: {default_branch.active_schema_hash.main}")
-            await default_branch.save(db=dbt)
+            await initialize_registry(db=db)
 
-        # ----------------------------------------------------------
-        # Run the migrations
-        # ----------------------------------------------------------
-        error_messages = await schema_migrations_runner(
-            branch=default_branch,
-            new_schema=candidate_schema,
-            previous_schema=origin_schema,
-            migrations=result.migrations,
-            service=service,
-        )
-        if error_messages:
-            rprint(f"{error_badge} | Some error(s) happened while running the schema migrations")
-            for message in error_messages:
-                rprint(message)
-            raise typer.Exit(1)
+            default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+
+            registry.schema = SchemaManager()
+            schema = SchemaRoot(**internal_schema)
+            registry.schema.register_schema(schema=schema)
+
+            # ----------------------------------------------------------
+            # Load Current Schema from the database
+            # ----------------------------------------------------------
+            schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+            registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+            branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+
+            candidate_schema = branch_schema.duplicate()
+            candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
+            candidate_schema.load_schema(schema=SchemaRoot(**core_models))
+            candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
+            candidate_schema.process()
+
+            result = branch_schema.validate_update(other=candidate_schema, enforce_update_support=False)
+            if result.errors:
+                rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
+                for error in result.errors:
+                    rprint(error.to_string())
+                raise typer.Exit(1)
+
+            if not result.diff.all:
+                rprint("Core Schema Up to date, nothing to update")
+                raise typer.Exit(0)
+
+            rprint("Core Schema has diff, will need to be updated")
+            if debug:
+                result.diff.print()
+
+            # ----------------------------------------------------------
+            # Validate if the new schema is valid with the content of the database
+            # ----------------------------------------------------------
+            validate_migration_data = SchemaValidateMigrationData(
+                branch=default_branch,
+                schema_branch=candidate_schema,
+                constraints=result.constraints,
+            )
+            error_messages = await service.workflow.execute(  # type: ignore[var-annotated]
+                workflow=SCHEMA_VALIDATE_MIGRATION, message=validate_migration_data
+            )
+            if error_messages:
+                rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
+                for message in error_messages:
+                    rprint(message)
+                raise typer.Exit(1)
+
+            # ----------------------------------------------------------
+            # Update the schema
+            # ----------------------------------------------------------
+            origin_schema = branch_schema.duplicate()
+
+            # Update the internal schema
+            schema_default_branch.load_schema(schema=SchemaRoot(**internal_schema))
+            schema_default_branch.process()
+            registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+
+            async with db.start_transaction() as dbt:
+                await registry.schema.update_schema_branch(
+                    schema=candidate_schema,
+                    db=dbt,
+                    branch=default_branch.name,
+                    diff=result.diff,
+                    limit=result.diff.all,
+                    update_db=True,
+                )
+                default_branch.update_schema_hash()
+                rprint("The Core Schema has been updated")
+                if debug:
+                    rprint(f"New schema hash: {default_branch.active_schema_hash.main}")
+                await default_branch.save(db=dbt)
+
+            # ----------------------------------------------------------
+            # Run the migrations
+            # ----------------------------------------------------------
+            apply_migration_data = SchemaApplyMigrationData(
+                branch=default_branch,
+                new_schema=candidate_schema,
+                previous_schema=origin_schema,
+                migrations=result.migrations,
+            )
+            migration_error_msgs = await service.workflow.execute(  # type: ignore[var-annotated]
+                workflow=SCHEMA_APPLY_MIGRATION, message=apply_migration_data
+            )
+
+            if migration_error_msgs:
+                rprint(f"{error_badge} | Some error(s) happened while running the schema migrations")
+                for message in migration_error_msgs:
+                    rprint(message)
+                raise typer.Exit(1)
 
 
 @app.command()

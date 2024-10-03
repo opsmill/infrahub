@@ -5,8 +5,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PermissionDecision
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import GraphqlParams
 from infrahub.utils import extract_camelcase_words
 
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface

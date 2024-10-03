@@ -21,7 +21,7 @@ from infrahub.core.protocols import (
 )
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import TransformError
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
 from infrahub.message_bus.messages import (
     TransformPythonData,

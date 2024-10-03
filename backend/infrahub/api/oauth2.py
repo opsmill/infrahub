@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
+from urllib.parse import urljoin
 from uuid import uuid4
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
@@ -15,20 +15,24 @@ from infrahub.auth import create_db_refresh_token, generate_access_token, genera
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.exceptions import ProcessingError
+from infrahub.exceptions import GatewayError, ProcessingError
+from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
 if TYPE_CHECKING:
+    import httpx
+
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
+log = get_logger()
 router = APIRouter(prefix="/oauth2")
 
 
 def _get_redirect_url(request: Request, provider_name: str) -> str:
     """This function is mostly to support local development when the frontend runs on different ports compared to the API."""
-    default_redirect = f"{request.base_url}api/oauth2/{provider_name}/token"
-    return os.getenv("REDIRECT_URL") or default_redirect
+    base_url = config.SETTINGS.dev.frontend_url or str(request.base_url)
+    return urljoin(base_url, f"auth/oauth2/{provider_name}/callback")
 
 
 @router.get("/{provider_name:str}/authorize")
@@ -55,10 +59,10 @@ async def authorize(
         key=f"security:oauth2:provider:{provider_name}:state:{state}", value=state, expires=KVTTL.TWO_HOURS
     )
 
-    if os.getenv("FRONTEND_REDIRECT") == "false":
-        return RedirectResponse(url=authorization_uri)
+    if config.SETTINGS.dev.frontend_redirect_sso:
+        return JSONResponse(content={"url": authorization_uri})
 
-    return JSONResponse(content={"url": authorization_uri})
+    return RedirectResponse(url=authorization_uri)
 
 
 @router.get("/{provider_name:str}/token")
@@ -89,13 +93,13 @@ async def token(
         "grant_type": "authorization_code",
     }
 
-    token_response = await service.http.post(provider.token_url, json=token_data)
-    token_response.raise_for_status()
+    token_response = await service.http.post(provider.token_url, data=token_data)
+    _validate_response(response=token_response)
     payload = token_response.json()
 
     headers = {"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"}
     userinfo_response = await service.http.post(provider.userinfo_url, headers=headers)
-    userinfo_response.raise_for_status()
+    _validate_response(response=userinfo_response)
     user_info = userinfo_response.json()
 
     account = await NodeManager.get_one_by_default_filter(db=db, id=user_info["name"], kind=InfrahubKind.ACCOUNT)
@@ -123,3 +127,16 @@ async def token(
     )
 
     return user_token
+
+
+def _validate_response(response: httpx.Response) -> None:
+    if 200 <= response.status_code <= 299:
+        return
+
+    log.error(
+        "Invalid response for OAuth authentiation",
+        url=response.url,
+        status_code=response.status_code,
+        body=response.json(),
+    )
+    raise GatewayError(message="Invalid response from Authentication provider")

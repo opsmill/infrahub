@@ -16,7 +16,7 @@ from infrahub.exceptions import QueryValidationError
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)

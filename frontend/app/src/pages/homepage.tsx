@@ -1,12 +1,13 @@
 import Content from "@/screens/layout/content";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
+import { Card } from "@/components/ui/card";
 
 const Homepage = () => {
   return (
-    <Content className="bg-custom-white p-8">
-      <div className="bg-white flex flex-col">
-        <h1 className="text-2xl font-semibold">Welcome to Infrahub!</h1>
+    <Content className="p-8">
+      <div className="flex flex-col">
+        <h1 className="text-3xl font-semibold">Welcome to Infrahub!</h1>
         <h2 className="text-2xl">
           Browse our{" "}
           <Link
@@ -26,7 +27,7 @@ const Homepage = () => {
         </h2>
       </div>
 
-      <div className="bg-custom-white py-4 flex flex-wrap gap-4">
+      <div className="py-4 flex flex-wrap gap-4">
         <HelperCard
           icon="mdi:learn-outline"
           title="Getting Started with Infrahub"
@@ -56,7 +57,7 @@ const Homepage = () => {
         />
       </div>
 
-      <div className="bg-white flex flex-col pt-8">
+      <div className="flex flex-col pt-8">
         <h1 className="text-xl font-semibold">Infrahub Integrations</h1>
         <h2 className="text-l">
           Integrate Infrahub with other tools and solutions. Below is a list of OpsMill-maintained
@@ -64,7 +65,7 @@ const Homepage = () => {
         </h2>
       </div>
 
-      <div className="bg-custom-white py-4 flex flex-wrap gap-4">
+      <div className="py-4 flex flex-wrap gap-4">
         <HelperCard
           icon="mdi:toy-brick-marker-outline"
           title="Nornir"
@@ -112,13 +113,13 @@ const HelperCard = ({
   docLabel,
 }: HelperCardProps) => {
   return (
-    <div className="max-w-xs rounded p-4 border flex flex-col">
-      <h3 className="font-semibold flex items-center gap-1">
+    <Card className="border flex flex-col hover:shadow-md transition-shadow duration-300 h-[180px] w-[320px]">
+      <h3 className="font-semibold flex items-center gap-1 mb-1">
         <Icon icon={icon} /> {title}
       </h3>
       <p className="mb-6 text-gray-500 text-sm flex-grow">{description}</p>
 
-      <div className="flex gap-2">
+      <div className="flex justify-end gap-2">
         {docTo && (
           <Link to={docTo} target="_blank">
             <button className="text-xs font-semibold bg-custom-white border p-2 rounded flex items-center gap-1 border-custom-blue-700 text-custom-blue-700">
@@ -135,7 +136,7 @@ const HelperCard = ({
           </Link>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 

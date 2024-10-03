@@ -10,7 +10,7 @@ from infrahub.core.initialization import create_branch, create_ipam_namespace, g
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:

@@ -4,8 +4,8 @@ from infrahub_sdk.utils import extract_fields
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
 from infrahub.graphql.analyzer import extract_schema_models
+from infrahub.graphql.initialization import generate_graphql_schema
 
 
 async def test_schema_models(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str):
