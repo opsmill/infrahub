@@ -32,15 +32,20 @@ const ObjectSelector = ({
   id: string;
   className?: string;
 }) => {
-  const { data, networkStatus } = useObjectDetails(schema, id);
+  const { data, error, networkStatus } = useObjectDetails(schema, id);
 
   if (networkStatus === NetworkStatus.loading) return <BreadcrumbLoading />;
 
-  const objectData = data[schema.kind!]?.edges[0]?.node;
+  if (error) return null;
+
+  const objectList = data?.[schema.kind!].edges.map((edge: any) => edge.node);
+  const currentObject = objectList.find((node: any) => node.id === id);
+
+  if (!currentObject) return null;
 
   return (
-    <BreadcrumbLink to={getObjectDetailsUrl2(schema.kind!, objectData?.id)} {...props}>
-      {objectData.display_label}
+    <BreadcrumbLink to={getObjectDetailsUrl2(schema.kind!, currentObject?.id)} {...props}>
+      {currentObject.display_label}
     </BreadcrumbLink>
   );
 };
