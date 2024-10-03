@@ -93,7 +93,7 @@ async def token(
         "grant_type": "authorization_code",
     }
 
-    token_response = await service.http.post(provider.token_url, json=token_data)
+    token_response = await service.http.post(provider.token_url, data=token_data)
     _validate_response(response=token_response)
     payload = token_response.json()
 
