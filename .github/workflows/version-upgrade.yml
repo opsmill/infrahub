@@ -26,6 +26,7 @@ env:
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "local"
+  INFRAHUB_SERVER_PORT: 0
 
 jobs:
   migration-tests:
@@ -73,11 +74,10 @@ jobs:
         run: echo INFRAHUB_IMAGE_VER=${{ matrix.source_version }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: Select infrahub port
-        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Set INFRAHUB_URL
-        run: echo "INFRAHUB_URL=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port infrahub-server 8000 | cut -d: -f2)
+          echo "INFRAHUB_URL=http://localhost:${PORT}" >> $GITHUB_ENV
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
