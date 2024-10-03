@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 
 export function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();
+
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);

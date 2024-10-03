@@ -6,7 +6,7 @@ import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { stateAtom } from "@/state/atoms/state.atom";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { Card, CardWithBorder } from "@/components/ui/card";
+import { CardWithBorder } from "@/components/ui/card";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();
@@ -44,7 +44,7 @@ const ObjectPageLayout = () => {
   const treeSchema = getTreeSchema();
 
   return (
-    <Card className="p-0 m-2 overflow-hidden">
+    <>
       <ObjectHeader schema={schema} objectId={objectid} />
 
       <div className="flex-grow flex gap-2 p-2 overflow-auto">
@@ -62,7 +62,7 @@ const ObjectPageLayout = () => {
           <Outlet />
         </div>
       </div>
-    </Card>
+    </>
   );
 };
 

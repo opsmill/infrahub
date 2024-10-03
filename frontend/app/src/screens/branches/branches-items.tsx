@@ -51,7 +51,7 @@ const BranchesItems = () => {
         {branches.map((branch) => (
           <li
             key={branch.name}
-            className="col-span-1 rounded-lg border cursor-pointer hover:bg-neutral-100"
+            className="col-span-1 rounded-lg bg-custom-white border cursor-pointer hover:bg-gray-50"
             onClick={() => navigate(constructPath(`/branches/${branch.name}`))}>
             <div className="flex w-full items-center justify-between space-x-6 p-6">
               <div className="flex flex-1">
