@@ -7,6 +7,7 @@ import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 import { NodeForm, NodeFormSubmitParams } from "@/components/form/node-form";
 import {
   ACCOUNT_GROUP_OBJECT,
+  ACCOUNT_OBJECT,
   NUMBER_POOL_OBJECT,
   OBJECT_PERMISSION_OBJECT,
   READONLY_REPOSITORY_KIND,
@@ -17,6 +18,7 @@ import { lazy, Suspense } from "react";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { ObjectPermissionForm } from "@/screens/role-management/object-permissions-form";
 import { AccountGroupForm } from "@/screens/role-management/account-group-form";
+import { AccountForm } from "@/screens/role-management/account-form";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
@@ -66,6 +68,10 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if (kind === ACCOUNT_GROUP_OBJECT) {
     return <AccountGroupForm {...props} />;
+  }
+
+  if (kind === ACCOUNT_OBJECT) {
+    return <AccountForm {...props} />;
   }
 
   if (isGeneric) {

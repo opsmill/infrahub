@@ -5,12 +5,7 @@ import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultVal
 import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { Form, FormSubmit } from "@/components/ui/form";
-import {
-  ACCOUNT_GROUP_OBJECT,
-  ACCOUNT_OBJECT,
-  ACCOUNT_ROLE_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-} from "@/config/constants";
+import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
@@ -35,7 +30,7 @@ interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   onUpdateComplete?: () => void;
 }
 
-export const AccountGroupForm = ({
+export const AccountForm = ({
   currentObject,
   onSuccess,
   onCancel,
@@ -47,11 +42,11 @@ export const AccountGroupForm = ({
 
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
+    password: getCurrentFieldValue("password", currentObject),
     description: getCurrentFieldValue("description", currentObject),
     label: getCurrentFieldValue("label", currentObject),
-    group_type: getCurrentFieldValue("group_type", currentObject),
-    roles: getCurrentFieldValue("roles", currentObject),
-    accounts: getCurrentFieldValue("accounts", currentObject),
+    account_type: getCurrentFieldValue("account_type", currentObject),
+    groups: getCurrentFieldValue("groups", currentObject),
   };
 
   const form = useForm<FieldValues>({
@@ -68,14 +63,14 @@ export const AccountGroupForm = ({
 
       const mutationString = currentObject
         ? updateObjectWithId({
-            kind: ACCOUNT_GROUP_OBJECT,
+            kind: ACCOUNT_OBJECT,
             data: stringifyWithoutQuotes({
               id: currentObject.id,
               ...newObject,
             }),
           })
         : createObject({
-            kind: ACCOUNT_GROUP_OBJECT,
+            kind: ACCOUNT_OBJECT,
             data: stringifyWithoutQuotes({
               ...newObject,
             }),
@@ -106,35 +101,24 @@ export const AccountGroupForm = ({
 
   const typeOptions: DropdownOption[] =
     schema?.attributes
-      ?.find((attribute) => attribute.name === "group_type")
+      ?.find((attribute) => attribute.name === "account_type")
       ?.enum?.map((data) => ({ value: data as string, label: data as string })) ?? [];
 
   return (
     <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" />
+        <InputField name="password" label="Password" type="password" />
         <InputField name="description" label="Description" />
-        <InputField name="label" label="Label" />
 
-        <DropdownField name="group_type" label="Type" items={typeOptions} />
-
-        <RelationshipField
-          name="roles"
-          label="Roles"
-          relationship={{
-            name: "roles",
-            peer: ACCOUNT_ROLE_OBJECT,
-            cardinality: "many",
-          }}
-          schema={schema}
-        />
+        <DropdownField name="account_type" label="Type" items={typeOptions} />
 
         <RelationshipField
-          name="accounts"
-          label="Accounts"
+          name="groups"
+          label="Groups"
           relationship={{
-            name: "accounts",
-            peer: ACCOUNT_OBJECT,
+            name: "groups",
+            peer: ACCOUNT_GROUP_OBJECT,
             cardinality: "many",
           }}
           schema={schema}

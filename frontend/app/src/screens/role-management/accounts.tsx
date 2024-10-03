@@ -1,4 +1,3 @@
-import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/graphql/queries/role-management/getAccounts";
 import { Table } from "@/components/table/table";
@@ -12,27 +11,16 @@ import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { ColorDisplay } from "@/components/display/color-display";
 import { Button } from "@/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import DynamicForm from "@/components/form/dynamic-form";
-import { isRequired } from "@/components/form/utils/validation";
 import { useSchema } from "@/hooks/useSchema";
-import { DropdownOption } from "@/components/inputs/dropdown";
-import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
-import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
-import { createObject } from "@/graphql/mutations/objects/createObject";
-import { stringifyWithoutQuotes } from "@/utils/string";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
+import ObjectForm from "@/components/form/object-form";
 
 function Accounts() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_GENERIC_OBJECT);
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+
   const [rowToDelete, setRowToDelete] = useState(null);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
@@ -78,83 +66,10 @@ function Accounts() {
 
   if (loading) return <LoadingScreen message="Retrieving accounts..." />;
 
-  const enumOptions: DropdownOption[] =
-    schema?.attributes
-      ?.find((attribute) => attribute.name === "account_type")
-      ?.enum?.map((data) => ({ value: data as string, label: data as string })) ?? [];
-
-  const fields: DynamicFieldProps[] = [
-    {
-      name: "name",
-      label: "Name",
-      type: "Text",
-      rules: { required: true, validate: { required: isRequired } },
-    },
-    {
-      name: "password",
-      label: "Password",
-      type: "Password",
-      rules: { required: true, validate: { required: isRequired } },
-    },
-    {
-      name: "description",
-      label: "Description",
-      type: "Text",
-    },
-    {
-      name: "label",
-      label: "Label",
-      type: "Text",
-    },
-    {
-      name: "account_type",
-      label: "Type",
-      type: "Dropdown",
-      items: enumOptions,
-    },
-  ];
-
-  async function refetchCount() {
-    await graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
-  }
-
-  async function handleSubmit(data: Record<string, FormFieldValue>) {
-    try {
-      const newObject = getCreateMutationFromFormData(fields, data);
-      const isObjectEmpty = Object.keys(newObject).length === 0;
-
-      if (isObjectEmpty) {
-        return;
-      }
-
-      const mutationString = createObject({
-        kind: ACCOUNT_OBJECT,
-        data: stringifyWithoutQuotes(newObject),
-      });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
-        },
-      });
-
-      await refetch();
-      await refetchCount();
-      setShowCreateDrawer(false);
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Account created"} />, {
-        toastId: "alert-success-account-created",
-      });
-    } catch (error: unknown) {
-      console.error("An error occurred while creating the object: ", error);
-    }
-  }
+  const globalRefetch = () => {
+    graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
+    refetch();
+  };
 
   return (
     <>
@@ -167,7 +82,7 @@ function Accounts() {
               variant={"primary"}
               onClick={() => setShowCreateDrawer(true)}
               disabled={!schema}>
-              Create Account
+              Create {schema?.label}
             </Button>
           </div>
         </div>
@@ -188,9 +103,8 @@ function Accounts() {
         open={!!rowToDelete}
         close={() => {
           setRowToDelete(null);
-          refetchCount();
         }}
-        onDelete={refetch}
+        onDelete={globalRefetch}
       />
 
       {schema && (
@@ -199,17 +113,18 @@ function Accounts() {
             <SlideOverTitle
               schema={schema}
               currentObjectLabel="New"
-              title={"Create Account"}
-              subtitle={schema?.description}
+              title={`Create ${schema.label}`}
+              subtitle={schema.description}
             />
           }
           open={showCreateDrawer}
-          setOpen={setShowCreateDrawer}>
-          <DynamicForm
-            fields={fields}
-            onSubmit={handleSubmit}
-            onCancel={() => setShowCreateDrawer(false)}
-            className="p-4"
+          setOpen={(value) => setShowCreateDrawer(value)}>
+          <ObjectForm
+            kind={ACCOUNT_OBJECT}
+            onSuccess={() => {
+              setShowCreateDrawer(false);
+              globalRefetch();
+            }}
           />
         </SlideOver>
       )}
