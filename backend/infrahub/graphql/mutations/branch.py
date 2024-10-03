@@ -29,7 +29,7 @@ from ..types import BranchType
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 
 # pylint: disable=unused-argument

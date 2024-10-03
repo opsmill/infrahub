@@ -19,7 +19,7 @@ from infrahub.worker import WORKER_IDENTITY
 from ..types import DropdownFields
 
 if TYPE_CHECKING:
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 log = get_logger()
 

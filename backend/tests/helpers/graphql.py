@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from graphql import ExecutionResult, graphql
 
 from infrahub.core.branch import Branch
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices, services
 
 if TYPE_CHECKING:

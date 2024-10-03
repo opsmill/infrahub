@@ -8,7 +8,7 @@ from graphene.types.objecttype import ObjectTypeOptions
 from infrahub import config
 
 if TYPE_CHECKING:
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class InfrahubObjectTypeOptions(ObjectTypeOptions):

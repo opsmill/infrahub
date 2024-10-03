@@ -15,7 +15,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 
 
 async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):

@@ -7,13 +7,13 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountRole
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import (
     CheckerResolution,
     GraphQLQueryPermissionCheckerInterface,
 )
+from infrahub.graphql.initialization import GraphqlParams
 
 
 class TestParentAuthChecker:

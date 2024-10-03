@@ -18,8 +18,8 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.enums import ConflictSelection as GraphQLConfictSelection
+from infrahub.graphql.initialization import prepare_graphql_params
 
 ADDED_ACTION = "ADDED"
 UPDATED_ACTION = "UPDATED"

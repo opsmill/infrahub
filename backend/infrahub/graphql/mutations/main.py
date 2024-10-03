@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
     from .node_getter.interface import MutationNodeGetterInterface
 
 # pylint: disable=unused-argument

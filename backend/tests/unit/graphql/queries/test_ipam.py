@@ -7,7 +7,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 
 
 @pytest.fixture

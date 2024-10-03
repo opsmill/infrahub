@@ -13,7 +13,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 log = get_logger(name="infrahub.graphql")
 

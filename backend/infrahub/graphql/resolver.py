@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:

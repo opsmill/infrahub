@@ -31,7 +31,7 @@ if TYPE_CHECKING:
         EnrichedDiffSingleRelationship,
     )
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
 GrapheneCardinalityEnum = GrapheneEnum.from_enum(RelationshipCardinality)

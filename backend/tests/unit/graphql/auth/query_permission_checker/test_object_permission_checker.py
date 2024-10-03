@@ -15,9 +15,9 @@ from infrahub.core.constants import (
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.object_permission_checker import ObjectPermissionChecker
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:

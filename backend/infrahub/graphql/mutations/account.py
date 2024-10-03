@@ -18,7 +18,7 @@ from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 from ..types import InfrahubObjectType
 
 if TYPE_CHECKING:
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 
 # pylint: disable=unused-argument

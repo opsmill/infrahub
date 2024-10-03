@@ -3,8 +3,8 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import GraphqlParams
 
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 

@@ -19,7 +19,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.test_data.dataset04 import load_data
 
 NBR_WARMUP = int(os.getenv("INFRAHUB_BENCHMARK_NBR_WARMUP", 5))

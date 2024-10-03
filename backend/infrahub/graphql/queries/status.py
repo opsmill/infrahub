@@ -10,7 +10,7 @@ from infrahub.services import services
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class StatusSummary(ObjectType):

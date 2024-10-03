@@ -8,7 +8,7 @@ from graphene.types.interface import InterfaceOptions
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
     from infrahub.graphql.types import InfrahubObject
 
 

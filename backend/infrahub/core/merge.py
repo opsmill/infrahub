@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import DiffAction, RelationshipStatus, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
-from infrahub.core.models import SchemaBranchDiff
+from infrahub.core.models import SchemaBranchDiff, SchemaUpdateValidationResult
 from infrahub.core.protocols import CoreRepository
 from infrahub.core.query.branch import (
     AddNodeToBranch,
@@ -12,7 +12,6 @@ from infrahub.core.query.branch import (
 from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema
-from infrahub.core.schema.schema_branch import SchemaUpdateValidationResult
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
