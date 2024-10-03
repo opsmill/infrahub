@@ -185,17 +185,7 @@ export function Component() {
   return (
     <Content>
       <Content.Title
-        title={
-          <div className="flex items-center gap-2">
-            <Link className="no-underline hover:underline" to={constructPath("/proposed-changes")}>
-              Proposed changes
-            </Link>
-
-            <Icon icon="mdi:chevron-right" />
-
-            <span>{proposedChangesData.display_label}</span>
-          </div>
-        }
+        title={<h1>{proposedChangesData.display_label}</h1>}
         description={
           <div className="inline-flex gap-1 text-xs items-center">
             <Link
