@@ -19,8 +19,8 @@ test.describe("Object filters", () => {
     await test.step("start filtering objects", async () => {
       await test.step("select filters", async () => {
         await page.getByTestId("apply-filters").click();
-        await page.getByLabel("Status").click();
-        await page.getByRole("option", { name: "Provisioning In the process" }).click();
+        await page.getByLabel("Role").click();
+        await page.getByRole("option", { name: "Edge Router" }).click();
 
         const tagsMultiSelectOpenButton = page
           .getByTestId("side-panel-container")
@@ -41,7 +41,7 @@ test.describe("Object filters", () => {
       await test.step("verify filter initial value", async () => {
         await page.getByTestId("apply-filters").click();
 
-        await expect(page.getByLabel("Status")).toHaveText("Provisioning");
+        await expect(page.getByLabel("Role")).toHaveText("Edge Router");
       });
 
       await expect(page.locator("form")).toContainText("red");
@@ -52,7 +52,7 @@ test.describe("Object filters", () => {
 
     await test.step("verify new state", async () => {
       await expect(page.getByTestId("object-items")).toContainText("Filters: 2");
-      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 6 of 6 results");
+      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 10 of 10 results");
     });
 
     await test.step("remove filters and verify initial state", async () => {
