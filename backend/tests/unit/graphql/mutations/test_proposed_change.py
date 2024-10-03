@@ -2,12 +2,16 @@ from uuid import uuid4
 
 from graphql import graphql
 
+from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus import messages
+from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
@@ -190,3 +194,40 @@ async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core
 
     assert update_status.errors
     assert "A proposed change in the merged state is not allowed to be updated" in str(update_status.errors[0])
+
+
+async def test_merge_proposed_change_permission_failure(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    session_first_account: AccountSession,
+    session_admin: AccountSession,
+):
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    branch_name = "merge-proposed-change-perm"
+    await create_branch(branch_name=branch_name, db=db)
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
+    )
+    await proposed_change.save(db=db)
+
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        account_session=session_first_account,
+    )
+
+    assert update_status.errors
+    assert "You do not have the permission to merge proposed changes" == update_status.errors[0].message
+
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        account_session=session_admin,
+    )
+
+    assert not update_status.errors
