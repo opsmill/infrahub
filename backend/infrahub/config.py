@@ -366,8 +366,6 @@ class SecurityOAuth2BaseSettings(BaseSettings):
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
     """Common base for Oauth2 providers"""
 
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_CUSTOM_")
-
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
     client_secret: str = Field(..., description="Client secret as defined in auth provider")
     authorization_url: str = Field(...)
@@ -381,8 +379,10 @@ class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
         return " ".join(self.scope)
 
 
-class SecurityOAuth2Custom(SecurityOAuth2BaseSettings):
+class SecurityOAuth2Custom(SecurityOAuth2Settings):
     """Common base for Oauth2 providers"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_CUSTOM_")
 
     display_label: str = Field(default="Custom SSO")
 
@@ -451,7 +451,7 @@ class SecuritySettings(BaseSettings):
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
         mapped_providers: dict[Oauth2Provider, type[SecurityOAuth2BaseSettings]] = {
-            Oauth2Provider.CUSTOM: SecurityOAuth2Settings,
+            Oauth2Provider.CUSTOM: SecurityOAuth2Custom,
             Oauth2Provider.GOOGLE: SecurityOAuth2Google,
         }
         for oauth2_provider in self.oauth2_providers:

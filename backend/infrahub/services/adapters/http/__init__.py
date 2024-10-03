@@ -13,6 +13,11 @@ class InfrahubHTTP:
         """Initialize the HTTP adapter"""
 
     async def post(
-        self, url: str, json: Any | None = None, headers: dict[str, Any] | None = None, verify: bool | None = None
+        self,
+        url: str,
+        data: Any | None = None,
+        json: Any | None = None,
+        headers: dict[str, Any] | None = None,
+        verify: bool | None = None,
     ) -> httpx.Response:
         raise NotImplementedError()

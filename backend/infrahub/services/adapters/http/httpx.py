@@ -35,12 +35,15 @@ class HttpxAdapter(InfrahubHTTP):
         self,
         method: str,
         url: str,
+        data: Any | None = None,
         json: Any | None = None,
         headers: dict[str, Any] | None = None,
         verify: bool | None = None,
     ) -> httpx.Response:
         """Returns an httpx.Response object or raises HTTPServerError or child classes."""
         params: dict[str, Any] = {}
+        if data:
+            params["data"] = data
         if json:
             params["json"] = json
         async with httpx.AsyncClient(verify=self.verify_tls(verify=verify)) as client:
@@ -68,6 +71,11 @@ class HttpxAdapter(InfrahubHTTP):
         return response
 
     async def post(
-        self, url: str, json: Any | None = None, headers: dict[str, Any] | None = None, verify: bool | None = None
+        self,
+        url: str,
+        data: Any | None = None,
+        json: Any | None = None,
+        headers: dict[str, Any] | None = None,
+        verify: bool | None = None,
     ) -> httpx.Response:
-        return await self._request(method="post", url=url, json=json, headers=headers, verify=verify)
+        return await self._request(method="post", url=url, data=data, json=json, headers=headers, verify=verify)
