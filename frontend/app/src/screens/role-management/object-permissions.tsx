@@ -108,8 +108,6 @@ function Permissions() {
     refetch();
   };
 
-  console.log("rowToDelete: ", rowToDelete);
-
   return (
     <>
       <div>
