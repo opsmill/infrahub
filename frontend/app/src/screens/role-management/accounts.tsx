@@ -104,7 +104,7 @@ function Accounts() {
         close={() => {
           setRowToDelete(null);
         }}
-        onDelete={globalRefetch}
+        onDelete={() => globalRefetch()}
       />
 
       {schema && (

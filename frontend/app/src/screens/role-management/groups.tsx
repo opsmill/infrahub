@@ -47,6 +47,7 @@ function Groups() {
     data[ACCOUNT_GROUP_OBJECT]?.edges.map((edge) => ({
       id: edge?.node?.id,
       values: {
+        id: edge?.node?.id,
         display_label: edge?.node?.display_label,
         description: edge?.node?.description?.value,
         group_type: edge?.node?.group_type?.value,
@@ -55,6 +56,7 @@ function Groups() {
             members={edge?.node?.members?.edges?.map((edge) => edge?.node?.display_label) ?? []}
           />
         ),
+        __typename: edge?.node?.__typename,
       },
     }));
 
@@ -98,7 +100,7 @@ function Groups() {
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}
-        onDelete={globalRefetch}
+        onDelete={() => globalRefetch()}
       />
 
       {schema && (

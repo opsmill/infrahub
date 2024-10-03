@@ -46,12 +46,13 @@ function Roles() {
   const rows =
     data &&
     data[ACCOUNT_ROLE_OBJECT]?.edges.map((edge) => ({
-      id: edge?.node?.id,
       values: {
+        id: edge?.node?.id,
         display_label: edge?.node?.display_label,
         description: edge?.node?.description?.value,
         groups: <Pill>{edge?.node?.groups?.count}</Pill>,
         permissions: <Pill>{edge?.node?.permissions?.count}</Pill>,
+        __typename: edge?.node?.__typename,
       },
     }));
 
@@ -95,7 +96,7 @@ function Roles() {
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}
-        onDelete={refetch}
+        onDelete={() => globalRefetch()}
       />
 
       {schema && (

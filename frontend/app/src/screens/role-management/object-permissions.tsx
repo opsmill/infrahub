@@ -80,8 +80,8 @@ function Permissions() {
       const icon = icons[iconKey];
 
       return {
-        id: edge?.node?.id,
         values: {
+          id: edge?.node?.id,
           display_label: (
             <div className="flex items-center gap-2">
               {icon} {edge?.node?.display_label}
@@ -94,6 +94,7 @@ function Permissions() {
           decision: edge?.node?.decision?.value,
           roles: <Pill>{edge?.node?.roles?.count}</Pill>,
           identifier: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          __typename: edge?.node?.__typename,
         },
       };
     });
@@ -106,6 +107,8 @@ function Permissions() {
     graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
     refetch();
   };
+
+  console.log("rowToDelete: ", rowToDelete);
 
   return (
     <>
@@ -138,7 +141,7 @@ function Permissions() {
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}
-        onDelete={refetch}
+        onDelete={() => globalRefetch()}
       />
 
       {schema && (
