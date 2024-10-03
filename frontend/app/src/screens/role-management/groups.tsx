@@ -10,11 +10,18 @@ import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { useState } from "react";
+import { useSchema } from "@/hooks/useSchema";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { Button } from "@/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
+import ObjectForm from "@/components/form/object-form";
 
 function Groups() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_GROUPS);
   const schemaKindName = useAtomValue(schemaKindNameState);
+  const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
   const [rowToDelete, setRowToDelete] = useState(null);
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const columns = [
     {
@@ -55,9 +62,27 @@ function Groups() {
 
   if (loading) return <LoadingScreen message="Retrieving accounts..." />;
 
+  const globalRefetch = () => {
+    graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
+    refetch();
+  };
+
   return (
     <>
       <div>
+        <div className="flex items-center justify-between p-2">
+          <div>SEARCH + FILTERS</div>
+
+          <div>
+            <Button
+              variant={"primary"}
+              onClick={() => setShowCreateDrawer(true)}
+              disabled={!schema}>
+              Create {schema?.label}
+            </Button>
+          </div>
+        </div>
+
         <Table
           columns={columns}
           rows={rows ?? []}
@@ -73,8 +98,30 @@ function Groups() {
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}
-        onDelete={refetch}
+        onDelete={globalRefetch}
       />
+
+      {schema && (
+        <SlideOver
+          title={
+            <SlideOverTitle
+              schema={schema}
+              currentObjectLabel="New"
+              title={`Create ${schema.label}`}
+              subtitle={schema.description}
+            />
+          }
+          open={showCreateDrawer}
+          setOpen={(value) => setShowCreateDrawer(value)}>
+          <ObjectForm
+            kind={ACCOUNT_GROUP_OBJECT}
+            onSuccess={() => {
+              setShowCreateDrawer(false);
+              globalRefetch();
+            }}
+          />
+        </SlideOver>
+      )}
     </>
   );
 }
