@@ -10,10 +10,10 @@ from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
-from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
+from infrahub.graphql.initialization import GraphqlParams
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:

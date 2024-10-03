@@ -2,8 +2,8 @@ from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import AuthorizationError
-from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import GraphqlParams
 
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 

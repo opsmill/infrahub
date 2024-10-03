@@ -3,8 +3,8 @@ from graphql import DocumentNode, GraphQLSchema
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import prepare_graphql_params
 
 
 async def test_analyzer_init_with_schema(

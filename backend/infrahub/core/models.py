@@ -17,7 +17,7 @@ from infrahub.core.path import SchemaPath
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 class NodeKind(BaseModel):

@@ -6,7 +6,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 @pytest.fixture(scope="class")

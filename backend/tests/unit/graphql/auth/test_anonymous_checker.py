@@ -6,9 +6,9 @@ from infrahub.auth import AccountSession, AuthType
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import AuthorizationError
-from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
+from infrahub.graphql.initialization import GraphqlParams
 
 
 class TestAnonymousAuthChecker:

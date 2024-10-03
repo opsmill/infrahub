@@ -18,9 +18,13 @@ from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
-from infrahub.core.models import SchemaBranchHash, SchemaDiff  # noqa: TCH001
+from infrahub.core.models import (  # noqa: TCH001
+    SchemaBranchHash,
+    SchemaDiff,
+    SchemaUpdateValidationResult,
+)
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
-from infrahub.core.schema_manager import SchemaBranch, SchemaNamespace, SchemaUpdateValidationResult  # noqa: TCH001
+from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import MigrationError
@@ -34,6 +38,7 @@ from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE
 if TYPE_CHECKING:
     from typing_extensions import Self
 
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.services import InfrahubServices
 
 

@@ -22,8 +22,8 @@ from .model.path import (
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryResult
+    from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.relationship_schema import RelationshipSchema
-    from infrahub.core.schema_manager import SchemaManager
 
 
 class DiffNoChildPathError(Exception): ...

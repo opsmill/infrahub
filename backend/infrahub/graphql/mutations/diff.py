@@ -9,7 +9,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.message_bus import messages
 
 if TYPE_CHECKING:
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 
 class DiffUpdateInput(InputObjectType):

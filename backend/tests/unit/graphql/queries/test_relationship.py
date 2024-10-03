@@ -2,7 +2,7 @@ from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 
 
 async def test_relationship(

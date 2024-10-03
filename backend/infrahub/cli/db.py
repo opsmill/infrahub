@@ -23,7 +23,7 @@ from infrahub.core.migrations.graph import get_graph_migrations
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
-from infrahub.core.schema_manager import SchemaManager
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import DatabaseType

@@ -8,7 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountRole, GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 
 
 @pytest.mark.parametrize("role", [e.value for e in AccountRole])

@@ -10,7 +10,7 @@ from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.log import get_logger
 

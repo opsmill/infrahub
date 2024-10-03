@@ -25,7 +25,7 @@ from infrahub.worker import WORKER_IDENTITY
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):

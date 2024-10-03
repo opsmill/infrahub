@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNode
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class IPPoolUtilizationResource(ObjectType):

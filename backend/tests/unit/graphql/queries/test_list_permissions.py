@@ -15,7 +15,7 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
