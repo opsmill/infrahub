@@ -14,6 +14,7 @@ from infrahub.core.account import validate_token
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreAccount, CoreAccountGroup
 from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 
@@ -121,6 +122,35 @@ async def create_fresh_access_token(
     )
 
     return models.AccessTokenResponse(access_token=access_token)
+
+
+async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups: list[str]) -> models.UserToken:
+    account = await NodeManager.get_one_by_default_filter(db=db, id=account_name, kind=InfrahubKind.ACCOUNT)
+
+    if not account:
+        account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+        await account.new(db=db, name=account_name, account_type="User", role="admin", password=str(uuid.uuid4()))
+        await account.save(db=db)
+
+    if sso_groups:
+        infrahub_groups = await NodeManager.query(
+            db=db,
+            schema=CoreAccountGroup,
+            filters={"name__values": sso_groups},
+            prefetch_relationships=True,
+        )
+        for group in infrahub_groups:
+            members = await group.members.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
+            if account.id not in members:
+                await group.members.add(db=db, data=account)
+                await group.members.save(db=db)
+
+    now = datetime.now(tz=timezone.utc)
+    refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
+    session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
+    access_token = generate_access_token(account_id=account.id, role=account.role.value.value, session_id=session_id)
+    refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
+    return models.UserToken(access_token=access_token, refresh_token=refresh_token)
 
 
 def generate_access_token(account_id: str, role: str, session_id: uuid.UUID) -> str:

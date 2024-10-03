@@ -76,6 +76,17 @@ class HttpxAdapter(InfrahubHTTP):
 
         return response
 
+    async def get(
+        self,
+        url: str,
+        headers: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        return await self._request(
+            method="get",
+            url=url,
+            headers=headers,
+        )
+
     async def post(
         self,
         url: str,
