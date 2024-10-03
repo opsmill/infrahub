@@ -156,6 +156,7 @@ function Permissions() {
           setOpen={(value) => setShowCreateDrawer(value)}>
           <ObjectForm
             kind={OBJECT_PERMISSION_OBJECT}
+            onCancel={() => setShowCreateDrawer(false)}
             onSuccess={() => {
               setShowCreateDrawer(false);
               globalRefetch();

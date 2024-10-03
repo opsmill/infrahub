@@ -113,6 +113,7 @@ function Roles() {
           setOpen={(value) => setShowCreateDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_ROLE_OBJECT}
+            onCancel={() => setShowCreateDrawer(false)}
             onSuccess={() => {
               setShowCreateDrawer(false);
               globalRefetch();

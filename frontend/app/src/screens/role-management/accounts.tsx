@@ -121,6 +121,7 @@ function Accounts() {
           setOpen={(value) => setShowCreateDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_OBJECT}
+            onCancel={() => setShowCreateDrawer(false)}
             onSuccess={() => {
               setShowCreateDrawer(false);
               globalRefetch();

@@ -117,6 +117,7 @@ function Groups() {
           setOpen={(value) => setShowCreateDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_GROUP_OBJECT}
+            onCancel={() => setShowCreateDrawer(false)}
             onSuccess={() => {
               setShowCreateDrawer(false);
               globalRefetch();
