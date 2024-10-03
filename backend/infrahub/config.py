@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import os.path
+import ssl
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -329,6 +330,45 @@ class HTTPSettings(BaseSettings):
         default=False,
         description="Indicates if Infrahub will validate server certificates or if the validation is ignored.",
     )
+    tls_ca_bundle: str | None = Field(
+        default=None,
+        description="Custom CA bundle in PEM format. The value should either be the CA bundle as a string, alternatively as a file path.",
+    )
+
+    @model_validator(mode="after")
+    def set_tls_context(self) -> Self:
+        try:
+            # Validate that the context can be created, we want to raise this error during application start
+            # instead of running into issues later when we first try to use the tls context.
+            self.get_tls_context()
+        except ssl.SSLError as exc:
+            raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+
+        return self
+
+    def get_tls_context(self) -> ssl.SSLContext:
+        if self.tls_insecure:
+            return ssl._create_unverified_context()
+
+        if not self.tls_ca_bundle:
+            return ssl.create_default_context()
+
+        tls_ca_path = Path(self.tls_ca_bundle)
+
+        try:
+            possibly_file = tls_ca_path.exists()
+        except OSError:
+            # Raised if the filename is too long which can indicate
+            # that the value is a PEM certificate in string form.
+            possibly_file = False
+
+        if possibly_file and tls_ca_path.is_file():
+            context = ssl.create_default_context(cafile=str(tls_ca_path))
+        else:
+            context = ssl.create_default_context()
+            context.load_verify_locations(cadata=self.tls_ca_bundle)
+
+        return context
 
 
 class InitialSettings(BaseSettings):

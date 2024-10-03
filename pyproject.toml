@@ -600,6 +600,10 @@ allow-dunder-method-names = [
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
 ]
 
+"backend/infrahub/config.py" = [
+    "S323",   # Allow users to create an SSL context that doesn't validate certificates
+]
+
 "backend/infrahub/graphql/mutations/**.py" = [
     ##################################################################################################
     # Review and change the below later                                                              #
