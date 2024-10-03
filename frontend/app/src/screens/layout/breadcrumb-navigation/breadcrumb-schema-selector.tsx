@@ -22,7 +22,7 @@ export default function BreadcrumbSchemaSelector({ kind }: { kind: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const models = [...generics, ...nodes, ...profiles]
-    .filter((schema) => !MENU_EXCLUDELIST.includes(schema.kind as string) && schema.include_in_menu)
+    .filter((schema) => !MENU_EXCLUDELIST.includes(schema.kind as string))
     .sort((a, b) => (a.label as string).localeCompare(b.label as string));
   const currentSchema = models.find((schema) => schema.kind === kind);
 

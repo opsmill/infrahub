@@ -17,7 +17,7 @@ export default function BreadcrumbObjectSelector({ kind, id }: { kind: string; i
 }
 
 const ObjectSelector = ({ schema, id }: { schema: IModelSchema; id: string }) => {
-  const { data, loading } = useObjectItems(schema ?? undefined);
+  const { data, loading } = useObjectItems(schema);
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
