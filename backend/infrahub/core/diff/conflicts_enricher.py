@@ -97,10 +97,7 @@ class ConflictsEnricher:
         for property_type in common_property_types:
             base_property = base_property_map[property_type]
             branch_property = branch_property_map[property_type]
-            same_value = base_property.new_value == branch_property.new_value or (
-                base_property.action is DiffAction.UNCHANGED
-                and base_property.previous_value == branch_property.previous_value
-            )
+            same_value = self._have_same_value(base_property=base_property, branch_property=branch_property)
             if not same_value:
                 self._add_property_conflict(
                     base_property=base_property,
@@ -147,10 +144,7 @@ class ConflictsEnricher:
         for property_type in common_property_types:
             base_property = base_properties_by_type[property_type]
             branch_property = branch_properties_by_type[property_type]
-            same_value = base_property.new_value == branch_property.new_value or (
-                base_property.action is DiffAction.UNCHANGED
-                and base_property.previous_value == branch_property.previous_value
-            )
+            same_value = self._have_same_value(base_property=base_property, branch_property=branch_property)
             # special handling for cardinality-one peer ID conflict
             if branch_property.property_type is DatabaseEdgeType.IS_RELATED and is_cardinality_one:
                 if same_value:
@@ -215,3 +209,15 @@ class ConflictsEnricher:
             diff_branch_changed_at=branch_property.changed_at,
             selected_branch=selected_branch,
         )
+
+    def _have_same_value(self, base_property: EnrichedDiffProperty, branch_property: EnrichedDiffProperty) -> bool:
+        if base_property.new_value == branch_property.new_value:
+            return True
+        if {base_property.new_value, branch_property.new_value} <= {"NULL", None}:
+            return True
+        if (
+            base_property.action is DiffAction.UNCHANGED
+            and base_property.previous_value == branch_property.previous_value
+        ):
+            return True
+        return False
