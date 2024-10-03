@@ -36,6 +36,7 @@ class DiffCalculator:
             branch=diff_branch,
             base_branch=base_branch,
             diff_branch_from_time=diff_branch_from_time,
+            include_previous_values=True,
             diff_from=from_time,
             diff_to=to_time,
         )
@@ -52,6 +53,7 @@ class DiffCalculator:
                 branch=base_branch,
                 base_branch=base_branch,
                 diff_branch_from_time=diff_branch_from_time,
+                include_previous_values=False,
                 diff_from=from_time,
                 diff_to=to_time,
                 current_node_field_specifiers=[

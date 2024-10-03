@@ -2062,5 +2062,156 @@ async def test_relationship_updated_then_node_deleted(
         assert prop_diff.new_value in (None, "NULL")
 
 
-# test node and deleted within branch ignored
-# test property update, then relationship delete within branch
+async def test_node_added_and_deleted_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_camry_main,
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    new_car = await Node.init(schema="TestCar", db=db, branch=branch)
+    await new_car.new(db=db, name="newcar", color="blue", owner=person_jane_main)
+    await new_car.save(db=db)
+    retrieved_car = await NodeManager.get_one(db=db, branch=branch, id=new_car.id)
+    await retrieved_car.delete(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+    )
+
+    branch_diff_root = calculated_diffs.diff_branch_diff
+    assert branch_diff_root.nodes == []
+    base_diff_root = calculated_diffs.base_branch_diff
+    assert base_diff_root.nodes == []
+
+
+async def test_property_update_then_relationship_deleted(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_camry_main,
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    await car_branch.owner.update(db=db, data={"id": person_jane_main.id, "_relation__owner": person_alfred_main.id})
+    await car_branch.save(db=db)
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    await car_branch.owner.update(db=db, data={"id": person_john_main.id})
+    await car_branch.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+    )
+
+    branch_diff_root = calculated_diffs.diff_branch_diff
+    nodes_by_id = {n.uuid: n for n in branch_diff_root.nodes}
+    assert set(nodes_by_id.keys()) == {person_jane_main.id, person_john_main.id, car_camry_main.id}
+    car_branch_diff = nodes_by_id[car_camry_main.id]
+    assert car_branch_diff.action is DiffAction.UPDATED
+    assert len(car_branch_diff.attributes) == 0
+    relationships_by_name = {r.name: r for r in car_branch_diff.relationships}
+    assert set(relationships_by_name.keys()) == {"owner"}
+    rel_diff = relationships_by_name["owner"]
+    assert rel_diff.action is DiffAction.UPDATED
+    elements_by_peer_id = {e.peer_id: e for e in rel_diff.relationships}
+    removed_element_diff = elements_by_peer_id[person_jane_main.id]
+    assert removed_element_diff.action is DiffAction.REMOVED
+    properties_by_type = {p.property_type: p for p in removed_element_diff.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, previous_value in (
+        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        prop_diff = properties_by_type[prop_type]
+        assert prop_diff.action is DiffAction.REMOVED
+        assert prop_diff.previous_value == previous_value
+        assert prop_diff.new_value in (None, "NULL")
+    added_element_diff = elements_by_peer_id[person_john_main.id]
+    assert added_element_diff.action is DiffAction.ADDED
+    properties_by_type = {p.property_type: p for p in added_element_diff.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, new_value in (
+        (DatabaseEdgeType.IS_RELATED, person_john_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        prop_diff = properties_by_type[prop_type]
+        assert prop_diff.action is DiffAction.ADDED
+        assert prop_diff.previous_value in (None, "NULL")
+        assert prop_diff.new_value == new_value
+
+    person_removed_branch_diff = nodes_by_id[person_jane_main.id]
+    assert person_removed_branch_diff.action is DiffAction.UPDATED
+    assert len(person_removed_branch_diff.attributes) == 0
+    relationships_by_name = {r.name: r for r in person_removed_branch_diff.relationships}
+    assert set(relationships_by_name.keys()) == {"cars"}
+    rel_diff = relationships_by_name["cars"]
+    assert rel_diff.action is DiffAction.UPDATED
+    assert len(rel_diff.relationships) == 1
+    removed_element_diff = rel_diff.relationships.pop()
+    assert removed_element_diff.peer_id == car_camry_main.id
+    assert removed_element_diff.action is DiffAction.REMOVED
+    properties_by_type = {p.property_type: p for p in removed_element_diff.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, previous_value in (
+        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        prop_diff = properties_by_type[prop_type]
+        assert prop_diff.action is DiffAction.REMOVED
+        assert prop_diff.previous_value == previous_value
+        assert prop_diff.new_value in (None, "NULL")
+
+    person_added_branch_diff = nodes_by_id[person_john_main.id]
+    assert person_added_branch_diff.action is DiffAction.UPDATED
+    assert len(person_added_branch_diff.attributes) == 0
+    relationships_by_name = {r.name: r for r in person_added_branch_diff.relationships}
+    assert set(relationships_by_name.keys()) == {"cars"}
+    rel_diff = relationships_by_name["cars"]
+    assert rel_diff.action is DiffAction.UPDATED
+    assert len(rel_diff.relationships) == 1
+    removed_element_diff = rel_diff.relationships.pop()
+    assert removed_element_diff.peer_id == car_camry_main.id
+    assert removed_element_diff.action is DiffAction.ADDED
+    properties_by_type = {p.property_type: p for p in removed_element_diff.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, new_value in (
+        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        prop_diff = properties_by_type[prop_type]
+        assert prop_diff.action is DiffAction.ADDED
+        assert prop_diff.previous_value in (None, "NULL")
+        assert prop_diff.new_value == new_value
+
+    base_diff_root = calculated_diffs.base_branch_diff
+    assert base_diff_root.nodes == []
