@@ -31,6 +31,17 @@ export const getObjectDetailsUrl2 = (
   if (!schema) return "#";
 
   if (isGeneric(schema)) {
+    if (schema.kind === IP_PREFIX_GENERIC) {
+      return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId}`, overrideParams);
+    }
+
+    if (schema.kind === IP_ADDRESS_GENERIC) {
+      return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId}`, [
+        { name: IPAM_QSP.TAB, value: "ip-details" },
+        ...(overrideParams ?? []),
+      ]);
+    }
+
     const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
     return constructPath(path, overrideParams);
   }

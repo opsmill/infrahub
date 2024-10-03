@@ -5,6 +5,8 @@ import {
   BreadcrumbDynamicElement,
   BreadcrumbDynamicElementProps,
 } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-dynamic-element";
+import { classNames } from "@/utils/common";
+import { breadcrumbActiveStyle } from "@/screens/layout/breadcrumb-navigation/style";
 
 export default function BreadcrumbNavigation() {
   const matches = useMatches() as UIMatch<
@@ -21,7 +23,10 @@ export default function BreadcrumbNavigation() {
       {crumbs.map((crumb, index) => (
         <React.Fragment key={index}>
           <BreadcrumbSeparator />
-          <BreadcrumbDynamicElement {...crumb} isLast={index === crumbs.length - 1} />
+          <BreadcrumbDynamicElement
+            {...crumb}
+            className={classNames(index === crumbs.length - 1 && breadcrumbActiveStyle)}
+          />
         </React.Fragment>
       ))}
     </Breadcrumb>

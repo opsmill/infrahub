@@ -7,8 +7,16 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { CommandEmpty, CommandItem } from "@/components/ui/command";
 import { Link, useNavigate } from "react-router-dom";
 import { constructPath } from "@/utils/fetch";
+import { classNames } from "@/utils/common";
 
-export default function BreadcrumbBranchSelector({ value }: { value: string }) {
+export default function BreadcrumbBranchSelector({
+  value,
+  className,
+  ...props
+}: {
+  value: string;
+  className?: string;
+}) {
   const branches = useAtomValue(branchesState);
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -19,7 +27,9 @@ export default function BreadcrumbBranchSelector({ value }: { value: string }) {
 
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
-      <ComboboxTrigger className={breadcrumbItemStyle}>{value}</ComboboxTrigger>
+      <ComboboxTrigger className={classNames(breadcrumbItemStyle, className)} {...props}>
+        {value}
+      </ComboboxTrigger>
 
       <ComboboxContent align="start">
         <ComboboxList fitTriggerWidth={false}>

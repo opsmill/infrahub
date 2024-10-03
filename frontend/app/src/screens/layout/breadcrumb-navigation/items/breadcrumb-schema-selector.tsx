@@ -1,58 +1,33 @@
-import { useAtomValue } from "jotai/index";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxList,
-  ComboboxTrigger,
-} from "@/components/ui/combobox";
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React from "react";
+import { BreadcrumbLink } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-link";
+import { classNames } from "@/utils/common";
+import { breadcrumbActiveStyle } from "@/screens/layout/breadcrumb-navigation/style";
+import { useSchema } from "@/hooks/useSchema";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
-import { CommandItem } from "@/components/ui/command";
-import { MENU_EXCLUDELIST } from "@/config/constants";
-import { Badge } from "@/components/ui/badge";
+import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-loading";
 
-export default function BreadcrumbSchemaSelector({ kind }: { kind: string }) {
-  const generics = useAtomValue(genericsState);
-  const nodes = useAtomValue(schemaState);
-  const profiles = useAtomValue(profilesAtom);
-  const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
+interface BreadcrumbSchemaSelectorProps {
+  kind: string;
+  isLast?: boolean;
+  className?: string;
+}
+export default function BreadcrumbSchemaSelector({
+  isLast,
+  kind,
+  ...props
+}: BreadcrumbSchemaSelectorProps) {
+  const { schema } = useSchema(kind);
 
-  const models = [...generics, ...nodes, ...profiles]
-    .filter((schema) => !MENU_EXCLUDELIST.includes(schema.kind as string))
-    .sort((a, b) => (a.label as string).localeCompare(b.label as string));
-  const currentSchema = models.find((schema) => schema.kind === kind);
+  if (!schema) {
+    return <BreadcrumbLoading />;
+  }
 
   return (
-    <Combobox open={isOpen} onOpenChange={setIsOpen}>
-      <ComboboxTrigger className="w-auto h-auto border-none hover:bg-gray-100 py-1 px-2">
-        {currentSchema?.label}
-      </ComboboxTrigger>
-
-      <ComboboxContent align="start">
-        <ComboboxList fitTriggerWidth={false}>
-          <ComboboxEmpty>No schema found.</ComboboxEmpty>
-          {models.map((node) => (
-            <CommandItem
-              key={node.name}
-              value={node.kind!}
-              onClick={() => setIsOpen(false)}
-              keywords={[node.label!, node.name]}
-              onSelect={(kind) => {
-                setIsOpen(false);
-                navigate(getObjectDetailsUrl2(kind));
-              }}
-              asChild>
-              <Link to={getObjectDetailsUrl2(node.kind!)}>
-                {node.label} <Badge className="ml-auto">{node.namespace}</Badge>
-              </Link>
-            </CommandItem>
-          ))}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+    <BreadcrumbLink
+      to={getObjectDetailsUrl2(kind)}
+      className={classNames(isLast && breadcrumbActiveStyle)}
+      {...props}>
+      {schema.label}
+    </BreadcrumbLink>
   );
 }
