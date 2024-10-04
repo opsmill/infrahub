@@ -426,10 +426,11 @@ class DiffQueryParser:
         self.schema_manager = schema_manager
         self.from_time = from_time
         self.to_time = to_time or Timestamp()
+        # if this diff is for the base branch, use from_time b/c create_time would be too much
         if diff_branch.name == base_branch.name:
-            self.diff_branch_create_time = from_time
+            self.diff_branched_from_time = from_time
         else:
-            self.diff_branch_create_time = Timestamp(diff_branch.get_created_at())
+            self.diff_branched_from_time = Timestamp(diff_branch.get_branched_from())
         self._diff_root_by_branch: dict[str, DiffRootIntermediate] = {}
         self._final_diff_root_by_branch: dict[str, DiffRoot] = {}
 
@@ -633,19 +634,19 @@ class DiffQueryParser:
                     ordered_diff_values = property_diff.get_ordered_values_asc()
                     if not ordered_diff_values:
                         continue
-                    if ordered_diff_values[-1].changed_at >= self.diff_branch_create_time:
+                    if ordered_diff_values[-1].changed_at >= self.diff_branched_from_time:
                         return
             for relationship_diff in node_diff.relationships_by_name.values():
                 for diff_relationship_property_list in relationship_diff.properties_by_db_id.values():
                     for diff_relationship_property in diff_relationship_property_list:
-                        if diff_relationship_property.changed_at >= self.diff_branch_create_time:
+                        if diff_relationship_property.changed_at >= self.diff_branched_from_time:
                             return
         del self._diff_root_by_branch[self.base_branch_name]
 
     def _finalize(self) -> None:
         for branch, diff_root_intermediate in self._diff_root_by_branch.items():
             if branch == self.base_branch_name:
-                from_time = self.diff_branch_create_time
+                from_time = self.diff_branched_from_time
             else:
                 from_time = self.from_time
             self._final_diff_root_by_branch[branch] = diff_root_intermediate.to_diff_root(
