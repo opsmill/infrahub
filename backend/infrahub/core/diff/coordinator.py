@@ -187,15 +187,21 @@ class DiffCoordinator:
         async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
             log.debug(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
             current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
+            current_base_diff = await self.diff_repo.get_one(
+                diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
+            )
             if current_branch_diff.tracking_id and isinstance(current_branch_diff.tracking_id, BranchTrackingId):
                 to_time = Timestamp()
             else:
                 to_time = current_branch_diff.to_time
-            await self.diff_repo.delete_diff_roots(diff_root_uuids=[current_branch_diff.uuid])
+            await self.diff_repo.delete_diff_roots(diff_root_uuids=[current_branch_diff.uuid, current_base_diff.uuid])
+            from_time = current_branch_diff.from_time
+            branched_from_time = Timestamp(diff_branch.get_branched_from())
+            from_time = max(from_time, branched_from_time)
             enriched_diffs = await self._update_diffs(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
-                from_time=current_branch_diff.from_time,
+                from_time=branched_from_time,
                 to_time=to_time,
                 tracking_id=current_branch_diff.tracking_id,
                 force_branch_refresh=True,
@@ -283,14 +289,14 @@ class DiffCoordinator:
                     node_field_specifiers = self._get_node_field_specifiers(
                         enriched_diff=previous_diffs.diff_branch_diff
                     )
-                diff_request = EnrichedDiffRequest(
+                inner_diff_request = EnrichedDiffRequest(
                     base_branch=diff_request.base_branch,
                     diff_branch=diff_request.diff_branch,
                     from_time=current_time,
                     to_time=end_time,
                     node_field_specifiers=node_field_specifiers,
                 )
-                current_diffs = await self._get_enriched_diff(diff_request=diff_request)
+                current_diffs = await self._get_enriched_diff(diff_request=inner_diff_request)
 
             if previous_diffs:
                 current_diffs = await self.diff_combiner.combine(

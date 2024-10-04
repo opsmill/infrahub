@@ -160,8 +160,14 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
         self.timestamp_status_map[database_path.attribute_changed_at] = database_path.attribute_status
 
     def to_diff_attribute(self, from_time: Timestamp) -> DiffAttribute:
-        properties = [prop.to_diff_property(from_time=from_time) for prop in self.properties_by_type.values()]
+        properties = []
+        for prop in self.properties_by_type.values():
+            diff_prop = prop.to_diff_property(from_time=from_time)
+            if diff_prop.action is not DiffAction.UNCHANGED:
+                properties.append(diff_prop)
         action, changed_at = self.get_action_and_timestamp(from_time=from_time)
+        if not properties:
+            action = DiffAction.UNCHANGED
         return DiffAttribute(
             uuid=self.uuid, name=self.name, changed_at=changed_at, action=action, properties=properties
         )
@@ -262,11 +268,15 @@ class DiffSingleRelationshipIntermediate:
             chronological_properties=peer_id_properties, from_time=from_time
         )
         peer_id = peer_final_property.new_value or peer_final_property.previous_value
-        other_final_properties = [
-            self._get_single_relationship_final_property(chronological_properties=property_list, from_time=from_time)
-            for property_type, property_list in self.ordered_properties_by_type.items()
-            if property_type != DatabaseEdgeType.IS_RELATED
-        ]
+        other_final_properties = []
+        for property_type, property_list in self.ordered_properties_by_type.items():
+            if property_type is DatabaseEdgeType.IS_RELATED:
+                continue
+            final_prop = self._get_single_relationship_final_property(
+                chronological_properties=property_list, from_time=from_time
+            )
+            if final_prop.action is not DiffAction.UNCHANGED:
+                other_final_properties.append(final_prop)
         final_properties = [peer_final_property] + other_final_properties
         last_changed_property = max(final_properties, key=lambda fp: fp.changed_at)
         last_changed_at = last_changed_property.changed_at
@@ -330,8 +340,8 @@ class DiffRelationshipIntermediate:
         single_relationships = [
             sr.get_final_single_relationship(from_time=from_time) for sr in self._single_relationship_list
         ]
-        last_changed_relatonship = max(single_relationships, key=lambda r: r.changed_at)
-        last_changed_at = last_changed_relatonship.changed_at
+        last_changed_relationship = max(single_relationships, key=lambda r: r.changed_at)
+        last_changed_at = last_changed_relationship.changed_at
         action = DiffAction.UPDATED
         if last_changed_at < from_time:
             action = DiffAction.UNCHANGED
@@ -358,9 +368,19 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
     relationships_by_name: dict[str, DiffRelationshipIntermediate] = field(default_factory=dict)
 
     def to_diff_node(self, from_time: Timestamp) -> DiffNode:
-        attributes = [attr.to_diff_attribute(from_time=from_time) for attr in self.attributes_by_name.values()]
-        relationships = [rel.to_diff_relationship(from_time=from_time) for rel in self.relationships_by_name.values()]
+        attributes = []
+        for attr in self.attributes_by_name.values():
+            diff_attr = attr.to_diff_attribute(from_time=from_time)
+            if diff_attr.action is not DiffAction.UNCHANGED:
+                attributes.append(diff_attr)
+        relationships = []
+        for rel in self.relationships_by_name.values():
+            diff_rel = rel.to_diff_relationship(from_time=from_time)
+            if diff_rel.action is not DiffAction.UNCHANGED:
+                relationships.append(diff_rel)
         action, changed_at = self.get_action_and_timestamp(from_time=from_time)
+        if not attributes and not relationships:
+            action = DiffAction.UNCHANGED
         return DiffNode(
             uuid=self.uuid,
             kind=self.kind,
@@ -384,8 +404,11 @@ class DiffRootIntermediate:
     def to_diff_root(self, from_time: Timestamp, to_time: Timestamp) -> DiffRoot:
         nodes = []
         for node in self.nodes_by_id.values():
-            if not node.is_empty:
-                nodes.append(node.to_diff_node(from_time=from_time))
+            if node.is_empty:
+                continue
+            diff_node = node.to_diff_node(from_time=from_time)
+            if diff_node.action is not DiffAction.UNCHANGED:
+                nodes.append(diff_node)
         return DiffRoot(uuid=self.uuid, branch=self.branch, nodes=nodes, from_time=from_time, to_time=to_time)
 
 
@@ -403,10 +426,11 @@ class DiffQueryParser:
         self.schema_manager = schema_manager
         self.from_time = from_time
         self.to_time = to_time or Timestamp()
+        # if this diff is for the base branch, use from_time b/c create_time would be too much
         if diff_branch.name == base_branch.name:
-            self.diff_branch_create_time = from_time
+            self.diff_branched_from_time = from_time
         else:
-            self.diff_branch_create_time = Timestamp(diff_branch.get_created_at())
+            self.diff_branched_from_time = Timestamp(diff_branch.get_branched_from())
         self._diff_root_by_branch: dict[str, DiffRootIntermediate] = {}
         self._final_diff_root_by_branch: dict[str, DiffRoot] = {}
 
@@ -610,19 +634,19 @@ class DiffQueryParser:
                     ordered_diff_values = property_diff.get_ordered_values_asc()
                     if not ordered_diff_values:
                         continue
-                    if ordered_diff_values[-1].changed_at >= self.diff_branch_create_time:
+                    if ordered_diff_values[-1].changed_at >= self.diff_branched_from_time:
                         return
             for relationship_diff in node_diff.relationships_by_name.values():
                 for diff_relationship_property_list in relationship_diff.properties_by_db_id.values():
                     for diff_relationship_property in diff_relationship_property_list:
-                        if diff_relationship_property.changed_at >= self.diff_branch_create_time:
+                        if diff_relationship_property.changed_at >= self.diff_branched_from_time:
                             return
         del self._diff_root_by_branch[self.base_branch_name]
 
     def _finalize(self) -> None:
         for branch, diff_root_intermediate in self._diff_root_by_branch.items():
             if branch == self.base_branch_name:
-                from_time = self.diff_branch_create_time
+                from_time = self.diff_branched_from_time
             else:
                 from_time = self.from_time
             self._final_diff_root_by_branch[branch] = diff_root_intermediate.to_diff_root(
