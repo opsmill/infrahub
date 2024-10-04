@@ -44,7 +44,9 @@ const ObjectSelector = ({
   if (!currentObject) return null;
 
   return (
-    <BreadcrumbLink to={getObjectDetailsUrl2(schema.kind!, currentObject?.id)} {...props}>
+    <BreadcrumbLink
+      to={getObjectDetailsUrl2(currentObject.__typename, currentObject.id)}
+      {...props}>
       {currentObject.display_label}
     </BreadcrumbLink>
   );

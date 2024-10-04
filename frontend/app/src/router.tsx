@@ -1,6 +1,11 @@
 import { createBrowserRouter, Navigate, Outlet, UIMatch } from "react-router-dom";
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC, IPAM_ROUTE } from "@/screens/ipam/constants";
-import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import {
+  ARTIFACT_OBJECT,
+  GRAPHQL_QUERY_OBJECT,
+  NODE_OBJECT,
+  PROPOSED_CHANGES_OBJECT,
+} from "@/config/constants";
 import { Root } from "@/Root";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import queryString from "query-string";
@@ -38,6 +43,10 @@ export const router = createBrowserRouter([
             path: "/",
             lazy: () => import("@/screens/layout/layout"),
             children: [
+              {
+                index: true,
+                lazy: () => import("@/pages/homepage"),
+              },
               {
                 path: "/branches",
                 handle: {
@@ -79,32 +88,37 @@ export const router = createBrowserRouter([
               {
                 path: "/objects",
                 lazy: () => import("@/pages/objects/layout"),
-                handle: {
-                  breadcrumb: (match: UIMatch) => {
-                    return {
-                      type: "select",
-                      value: match.params.objectKind,
-                      kind: "schema",
-                    };
-                  },
-                },
                 children: [
                   {
                     path: ":objectKind",
-                    lazy: () => import("@/pages/objects/object-items"),
-                  },
-                  {
-                    path: ":objectKind/:objectid",
-                    lazy: () => import("@/pages/objects/object-details"),
                     handle: {
                       breadcrumb: (match: UIMatch) => {
                         return {
                           type: "select",
-                          value: match.params.objectid,
-                          kind: match.params.objectKind,
+                          value: match.params.objectKind,
+                          kind: "schema",
                         };
                       },
                     },
+                    children: [
+                      {
+                        index: true,
+                        lazy: () => import("@/pages/objects/object-items"),
+                      },
+                      {
+                        path: ":objectid",
+                        lazy: () => import("@/pages/objects/object-details"),
+                        handle: {
+                          breadcrumb: (match: UIMatch) => {
+                            return {
+                              type: "select",
+                              value: match.params.objectid,
+                              kind: match.params.objectKind,
+                            };
+                          },
+                        },
+                      },
+                    ],
                   },
                 ],
               },
@@ -241,6 +255,15 @@ export const router = createBrowserRouter([
                       {
                         path: "resources/:resourceId",
                         lazy: () => import("@/pages/resource-manager/resource-allocation-details"),
+                        handle: {
+                          breadcrumb: (match: UIMatch) => {
+                            return {
+                              type: "select",
+                              value: match.params.resourceId,
+                              kind: NODE_OBJECT,
+                            };
+                          },
+                        },
                       },
                     ],
                   },
@@ -430,18 +453,10 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: "/",
-                lazy: () => import("@/pages/homepage"),
-              },
-              {
                 path: "*",
                 element: <Navigate to="/" />,
               },
             ],
-          },
-          {
-            path: "/",
-            lazy: () => import("@/pages/homepage"),
           },
           {
             path: "*",
