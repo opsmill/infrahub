@@ -38,7 +38,7 @@ export const ContentTitle = ({
             {reload && <Retry isLoading={isReloadLoading} onClick={reload} />}
           </div>
         )}
-        {description && <p className="text-sm truncate">{description}</p>}
+        {description && <div className="text-sm truncate">{description}</div>}
       </div>
       {children}
     </header>

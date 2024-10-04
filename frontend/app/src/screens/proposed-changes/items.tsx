@@ -244,9 +244,9 @@ export const ProposedChangesPage = () => {
     <>
       <Content.Title
         title={
-          <div className="flex items-center gap-2">
+          <h1 className="flex items-center gap-2">
             Proposed changes <Badge>{proposedChangesData?.count ?? "..."}</Badge>
-          </div>
+          </h1>
         }
         reload={() => refetch()}
         isReloadLoading={loading}>
