@@ -96,7 +96,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
         source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
         component_registry = get_component_registry()
         async with service.database.start_transaction() as dbt:
-            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+            diff_coordinator = component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
             await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
 
