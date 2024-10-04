@@ -132,13 +132,28 @@ export const ObjectPermissionForm = ({
   return (
     <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <DropdownField name="branch" label="Branch" items={branchesOptions} />
+        <DropdownField
+          name="branch"
+          label="Branch"
+          items={branchesOptions}
+          rules={{ required: true, validate: { required: isRequired } }}
+        />
 
         <NodeSelect />
 
-        <DropdownField name="action" label="Action" items={actionOptions} />
+        <DropdownField
+          name="action"
+          label="Action"
+          items={actionOptions}
+          rules={{ required: true, validate: { required: isRequired } }}
+        />
 
-        <DropdownField name="decision" label="Decision" items={decisionOptions} />
+        <DropdownField
+          name="decision"
+          label="Decision"
+          items={decisionOptions}
+          rules={{ required: true, validate: { required: isRequired } }}
+        />
 
         <RelationshipField
           name="roles"
@@ -205,18 +220,18 @@ const NodeSelect = () => {
       <DropdownField
         name={"namespace"}
         label="Namespace"
-        rules={{ validate: { required: isRequired } }}
         defaultValue={DEFAULT_FORM_FIELD_VALUE}
         items={namespaceOptions}
+        rules={{ required: true, validate: { required: isRequired } }}
       />
 
       <DropdownField
         key={nameOptions.length} // Re render optons depending on namespace selected
         name={"name"}
         label="Name"
-        rules={{ validate: { required: isRequired } }}
         defaultValue={DEFAULT_FORM_FIELD_VALUE}
         items={nameOptions}
+        rules={{ required: true, validate: { required: isRequired } }}
       />
     </>
   );
