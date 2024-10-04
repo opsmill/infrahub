@@ -14,6 +14,10 @@ if TYPE_CHECKING:
 
 
 class LocalPermissionBackend(PermissionBackend):
+    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
+        self.db = db
+        self.branch = branch
+
     wildcard_values = ["*"]
     wildcard_actions = ["any"]
 

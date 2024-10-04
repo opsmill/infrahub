@@ -19,6 +19,8 @@ from .builder.diff.enricher.cardinality_one import DiffCardinalityOneEnricherDep
 from .builder.diff.enricher.hierarchy import DiffHierarchyEnricherDependency
 from .builder.diff.repository import DiffRepositoryDependency
 from .builder.node.delete_validator import NodeDeleteValidatorDependency
+from .builder.permission.backend import PermissionLocalBackendDependency
+from .builder.permission.manager import PermissionManagerDependency
 from .component.registry import ComponentDependencyRegistry
 
 
@@ -45,6 +47,8 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(DiffConflictTransfererDependency)
     component_registry.track_dependency(DiffCoordinatorDependency)
     component_registry.track_dependency(DiffDataCheckSynchronizerDependency)
+    component_registry.track_dependency(PermissionLocalBackendDependency)
+    component_registry.track_dependency(PermissionManagerDependency)
     return component_registry
 
 
