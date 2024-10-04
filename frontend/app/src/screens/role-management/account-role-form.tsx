@@ -8,7 +8,7 @@ import { Form, FormSubmit } from "@/components/ui/form";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_PERMISSION_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
 } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
@@ -24,6 +24,7 @@ import { toast } from "react-toastify";
 
 import RelationshipField from "@/components/form/fields/relationship.field";
 import InputField from "@/components/form/fields/input.field";
+import { isRequired } from "@/components/form/utils/validation";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -60,14 +61,14 @@ export const AccountRoleForm = ({
 
       const mutationString = currentObject
         ? updateObjectWithId({
-            kind: OBJECT_PERMISSION_OBJECT,
+            kind: ACCOUNT_ROLE_OBJECT,
             data: stringifyWithoutQuotes({
               id: currentObject.id,
               ...newObject,
             }),
           })
         : createObject({
-            kind: OBJECT_PERMISSION_OBJECT,
+            kind: ACCOUNT_ROLE_OBJECT,
             data: stringifyWithoutQuotes({
               ...newObject,
             }),
@@ -85,11 +86,11 @@ export const AccountRoleForm = ({
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Object permission created"} />, {
-        toastId: "alert-success-object-permission-created",
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Role created"} />, {
+        toastId: "alert-success-role-created",
       });
 
-      if (onSuccess) await onSuccess(result?.data?.[`${OBJECT_PERMISSION_OBJECT}Create`]);
+      if (onSuccess) await onSuccess(result?.data?.[`${ACCOUNT_ROLE_OBJECT}Create`]);
       if (onUpdateComplete) await onUpdateComplete();
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
@@ -99,7 +100,16 @@ export const AccountRoleForm = ({
   return (
     <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <InputField name="name" label="Name" />
+        <InputField
+          name="name"
+          label="Name"
+          rules={{
+            required: true,
+            validate: {
+              required: isRequired,
+            },
+          }}
+        />
 
         <RelationshipField
           name="groups"
