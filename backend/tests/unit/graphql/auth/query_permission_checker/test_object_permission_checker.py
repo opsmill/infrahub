@@ -96,6 +96,7 @@ mutation {
   }
 }
 """
+
 MUTATION_ACCOUNT_GROUP = """
 mutation {
   CoreAccountGroupCreate(data: {
@@ -105,12 +106,23 @@ mutation {
   }
 }
 """
+
 MUTATION_ACCOUNT_ROLE = """
 mutation {
   CoreAccountRoleCreate(data: {
     name: {value: "test"}
   }) {
     ok
+  }
+}
+"""
+
+QUERY_ACCOUNT_PROFILE = """
+query {
+  AccountProfile {
+    name {
+      value
+    }
   }
 }
 """
@@ -338,7 +350,13 @@ class TestAccountManagerPermissions:
 
     @pytest.mark.parametrize(
         "operation,must_raise",
-        [(MUTATION_ACCOUNT, True), (MUTATION_ACCOUNT_GROUP, True), (MUTATION_ACCOUNT_ROLE, True), (QUERY_TAGS, False)],
+        [
+            (MUTATION_ACCOUNT, True),
+            (MUTATION_ACCOUNT_GROUP, True),
+            (MUTATION_ACCOUNT_ROLE, True),
+            (QUERY_TAGS, False),
+            (QUERY_ACCOUNT_PROFILE, False),
+        ],
     )
     async def test_account_without_permission(
         self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool

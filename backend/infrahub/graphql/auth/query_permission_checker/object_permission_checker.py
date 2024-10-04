@@ -78,9 +78,63 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
 
 
 class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
-    """Checker that makes sure a user account perform actions on account related objects.
+    """Checker that makes sure a user account can perform actions on account related objects.
 
     This is similar to object permission checker except that we care for any operations on any account related kinds.
+    """
+
+    permission_required = f"global:{GlobalPermissions.MANAGE_ACCOUNTS.value}:{PermissionDecision.ALLOW.value}"
+
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+        return account_session.authenticated
+
+    async def check(
+        self,
+        db: InfrahubDatabase,
+        account_session: AccountSession,
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        query_parameters: GraphqlParams,
+        branch: Branch,
+    ) -> CheckerResolution:
+        is_account_operation = False
+        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        operation_names = [operation.name for operation in analyzed_query.operations]
+
+        for kind in kinds:
+            schema = get_schema(db=db, branch=branch, node_schema=kind)
+            if is_account_operation := kind in (
+                InfrahubKind.GENERICACCOUNT,
+                InfrahubKind.ACCOUNTGROUP,
+                InfrahubKind.ACCOUNTROLE,
+            ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICACCOUNT in schema.inherit_from):
+                break
+
+        # Ignore non-account related operation or viewing account own profile
+        if not is_account_operation or operation_names == ["AccountProfile"]:
+            return CheckerResolution.NEXT_CHECKER
+
+        has_permission = False
+        for permission_backend in registry.permission_backends:
+            if has_permission := await permission_backend.has_permission(
+                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+            ):
+                break
+
+        if (
+            not has_permission
+            # FIXME: the following conditions is quick fixes to avoid being too restrictive
+            # This will still be able to display things, which should be restricted
+            and analyzed_query.contains_mutation
+        ):
+            raise PermissionDeniedError("You do not have the permission to manage user accounts, groups or roles")
+
+        return CheckerResolution.NEXT_CHECKER
+
+
+class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
+    """Checker that makes sure a user account can perform actions on permission related object.
+
+    This is similar to object permission checker except that we care for any operations on any permission related kinds.
     """
 
     permission_required = f"global:{GlobalPermissions.MANAGE_ACCOUNTS.value}:{PermissionDecision.ALLOW.value}"
@@ -103,19 +157,17 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             ):
                 break
 
-        is_account_operation = False
+        is_permission_operation = False
         kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)
-            if is_account_operation := kind in (
-                InfrahubKind.GENERICACCOUNT,
-                InfrahubKind.ACCOUNTGROUP,
-                InfrahubKind.ACCOUNTROLE,
-            ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICACCOUNT in schema.inherit_from):
+            if is_permission_operation := kind in (InfrahubKind.GLOBALPERMISSION, InfrahubKind.OBJECTPERMISSION) or (
+                isinstance(schema, NodeSchema) and InfrahubKind.BASEPERMISSION in schema.inherit_from
+            ):
                 break
 
-        if not has_permission and is_account_operation:
-            raise PermissionDeniedError("You do not have the permission to manage user accounts, groups or roles")
+        if not has_permission and is_permission_operation:
+            raise PermissionDeniedError("You do not have the permission to manage permissions")
 
         return CheckerResolution.NEXT_CHECKER
