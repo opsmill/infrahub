@@ -195,16 +195,6 @@ class PathType(InfrahubStringEnum):
         return cls("relationship_many")
 
 
-class FilterSchemaKind(InfrahubStringEnum):
-    TEXT = "Text"
-    LIST = "Text"
-    NUMBER = "Number"
-    BOOLEAN = "Boolean"
-    OBJECT = "Object"
-    MULTIOBJECT = "MultiObject"
-    ENUM = "Enum"
-
-
 class ProposedChangeState(InfrahubStringEnum):
     OPEN = "open"
     MERGED = "merged"

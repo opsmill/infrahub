@@ -13,7 +13,6 @@ from .basenode_schema import AttributePathParsingError, BaseNodeSchema, SchemaAt
 from .definitions.core import core_models
 from .definitions.internal import internal
 from .dropdown import DropdownChoice
-from .filter import FilterSchema
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
 from .profile_schema import ProfileSchema
@@ -85,7 +84,6 @@ __all__ = [
     "AttributeSchema",
     "BaseNodeSchema",
     "DropdownChoice",
-    "FilterSchema",
     "GenericSchema",
     "MainSchemaTypes",
     "NodeSchema",
