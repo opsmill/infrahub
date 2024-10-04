@@ -76,6 +76,7 @@ const sidebars: SidebarsConfig = {
         'guides/database-backup',
         'guides/profiles',
         'guides/object-storage',
+        'guides/sso',
         'guides/check',
         'guides/resource-manager',
         'guides/managing-api-tokens',

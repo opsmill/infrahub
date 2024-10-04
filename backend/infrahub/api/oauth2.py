@@ -39,13 +39,13 @@ async def authorize(
     client = AsyncOAuth2Client(
         client_id=provider.client_id,
         client_secret=provider.client_secret,
-        scope=provider.scope,
+        scope=provider.scopes,
     )
 
     redirect_uri = _get_redirect_url(request=request, provider_name=provider_name)
 
     authorization_uri, state = client.create_authorization_url(
-        url=provider.authorization_url, redirect_uri=redirect_uri, scope=provider.scope
+        url=provider.authorization_url, redirect_uri=redirect_uri, scope=provider.scopes
     )
 
     service: InfrahubServices = request.app.state.service

@@ -74,13 +74,13 @@ async def authorize(
     client = AsyncOAuth2Client(
         client_id=provider.client_id,
         client_secret=provider.client_secret,
-        scope=provider.scope,
+        scope=provider.scopes,
     )
 
     redirect_uri = _get_redirect_url(request=request, provider_name=provider_name)
 
     authorization_uri, state = client.create_authorization_url(
-        url=str(oidc_config.authorization_endpoint), redirect_uri=redirect_uri, scope=provider.scope
+        url=str(oidc_config.authorization_endpoint), redirect_uri=redirect_uri, scope=provider.scopes
     )
 
     await service.cache.set(

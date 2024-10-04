@@ -43,11 +43,14 @@ class SSOProtocol(str, Enum):
 
 class Oauth2Provider(str, Enum):
     GOOGLE = "google"
-    CUSTOM = "custom"
+    PROVIDER1 = "provider1"
+    PROVIDER2 = "provider2"
 
 
 class OIDCProvider(str, Enum):
-    CUSTOM = "custom"
+    GOOGLE = "google"
+    PROVIDER1 = "provider1"
+    PROVIDER2 = "provider2"
 
 
 class SSOInfo(BaseModel):
@@ -402,6 +405,10 @@ class InitialSettings(BaseSettings):
         return self
 
 
+def _default_scopes() -> list[str]:
+    return ["openid", "profile", "email"]
+
+
 class SecurityOIDCBaseSettings(BaseSettings):
     """Baseclass for typing"""
 
@@ -413,13 +420,29 @@ class SecurityOIDCSettings(SecurityOIDCBaseSettings):
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
     client_secret: str = Field(..., description="Client secret as defined in auth provider")
     discovery_url: str = Field(..., description="The OIDC discovery URL xyz/.well-known/openid-configuration")
-    scope: list[str] = Field(...)
+    scopes: list[str] = Field(default_factory=_default_scopes)
 
 
-class SecurityOIDCCustom(SecurityOIDCSettings):
+class SecurityOIDCGoogle(SecurityOIDCSettings):
     """Settings for the custom OIDC provider"""
 
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_CUSTOM_")
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_GOOGLE_")
+
+    discovery_url: str = Field(default="https://accounts.google.com/.well-known/openid-configuration")
+    icon: str = Field(default="mdi:google")
+    display_label: str = Field(default="Google")
+
+
+class SecurityOIDCProvider1(SecurityOIDCSettings):
+    """Settings for the custom OIDC provider"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER1_")
+
+
+class SecurityOIDCProvider2(SecurityOIDCSettings):
+    """Settings for the custom OIDC provider"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER2_")
 
 
 class SecurityOAuth2BaseSettings(BaseSettings):
@@ -436,24 +459,20 @@ class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
     authorization_url: str = Field(...)
     token_url: str = Field(...)
     userinfo_url: str = Field(...)
-    scope: list[str] = Field(...)
+    scopes: list[str] = Field(default_factory=_default_scopes)
     display_label: str = Field(default="Single Sign on")
 
-    @property
-    def scope_as_str(self) -> str:
-        return " ".join(self.scope)
 
-
-class SecurityOAuth2Custom(SecurityOAuth2Settings):
+class SecurityOAuth2Provider1(SecurityOAuth2Settings):
     """Common base for Oauth2 providers"""
 
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_CUSTOM_")
-
-    display_label: str = Field(default="Custom SSO")
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER1_")
 
 
-def _google_oauth2_default_scopes() -> list[str]:
-    return ["openid", "profile", "email"]
+class SecurityOAuth2Provider2(SecurityOAuth2Settings):
+    """Common base for Oauth2 providers"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER2_")
 
 
 class SecurityOAuth2Google(SecurityOAuth2Settings):
@@ -462,7 +481,6 @@ class SecurityOAuth2Google(SecurityOAuth2Settings):
     token_url: str = Field(default="https://oauth2.googleapis.com/token")
     userinfo_url: str = Field(default="https://www.googleapis.com/oauth2/v3/userinfo")
     icon: str = Field(default="mdi:google")
-    scope: list[str] = Field(default_factory=_google_oauth2_default_scopes)
     display_label: str = Field(default="Google")
 
 
@@ -518,7 +536,8 @@ class SecuritySettings(BaseSettings):
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
         mapped_providers: dict[Oauth2Provider, type[SecurityOAuth2BaseSettings]] = {
-            Oauth2Provider.CUSTOM: SecurityOAuth2Custom,
+            Oauth2Provider.PROVIDER1: SecurityOAuth2Provider1,
+            Oauth2Provider.PROVIDER2: SecurityOAuth2Provider2,
             Oauth2Provider.GOOGLE: SecurityOAuth2Google,
         }
         for oauth2_provider in self.oauth2_providers:
@@ -531,7 +550,9 @@ class SecuritySettings(BaseSettings):
     @model_validator(mode="after")
     def check_oidc_provider_settings(self) -> Self:
         mapped_providers: dict[OIDCProvider, type[SecurityOIDCBaseSettings]] = {
-            OIDCProvider.CUSTOM: SecurityOIDCCustom,
+            OIDCProvider.GOOGLE: SecurityOIDCGoogle,
+            OIDCProvider.PROVIDER1: SecurityOIDCProvider1,
+            OIDCProvider.PROVIDER2: SecurityOIDCProvider2,
         }
         for oidc_provider in self.oidc_providers:
             provider = mapped_providers[oidc_provider]()
