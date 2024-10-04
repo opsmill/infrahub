@@ -158,7 +158,7 @@ class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def diff_repository(self, db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
         component_registry = get_component_registry()
-        return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        return component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
     @pytest.fixture(scope="class")
     async def add_branch_1_changes(

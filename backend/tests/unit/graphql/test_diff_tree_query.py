@@ -194,14 +194,14 @@ async def diff_branch(db: InfrahubDatabase, default_branch: Branch) -> Branch:
 @pytest.fixture
 async def diff_repository(db: InfrahubDatabase, diff_branch: Branch) -> DiffRepository:
     component_registry = get_component_registry()
-    repository = await component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
+    repository = component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
     return repository
 
 
 @pytest.fixture
 async def diff_coordinator(db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
     component_registry = get_component_registry()
-    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+    coordinator = component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
     coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
     coordinator.data_check_synchronizer.synchronize.return_value = []
     return coordinator
@@ -787,7 +787,7 @@ async def test_diff_summary_filters(
     # Generate Diff in DB
     # ----------------------------
     component_registry = get_component_registry()
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+    diff_coordinator = component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
 
@@ -884,7 +884,7 @@ async def test_diff_get_filters(
     await thing2_branch.delete(db=db)
 
     component_registry = get_component_registry()
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+    diff_coordinator = component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
 

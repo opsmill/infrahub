@@ -42,9 +42,7 @@ class DiffUpdateMutation(Mutation):
             base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
             diff_branch = await registry.get_branch(db=context.db, branch=data.branch)
 
-            diff_coordinator = await component_registry.get_component(
-                DiffCoordinator, db=context.db, branch=diff_branch
-            )
+            diff_coordinator = component_registry.get_component(DiffCoordinator, db=context.db, branch=diff_branch)
             await diff_coordinator.run_update(
                 base_branch=base_branch,
                 diff_branch=diff_branch,

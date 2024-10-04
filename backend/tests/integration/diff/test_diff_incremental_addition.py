@@ -85,7 +85,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def diff_coordinator(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
         component_registry = get_component_registry()
-        return await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+        return component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
 
     @pytest.fixture(scope="class")
     async def data_01_remove_on_main(

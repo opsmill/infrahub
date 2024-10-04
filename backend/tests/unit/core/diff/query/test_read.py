@@ -159,7 +159,7 @@ class TestDiffReadQuery(TestInfrahub):
         await thing1_branch.save(db=db)
 
         component_registry = get_component_registry()
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+        diff_coordinator = component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
         diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
         diff_coordinator.data_check_synchronizer.synchronize.return_value = []
 

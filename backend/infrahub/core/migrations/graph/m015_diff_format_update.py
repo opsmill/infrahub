@@ -29,7 +29,7 @@ class Migration015(ArbitraryMigration):
         default_branch = registry.get_branch_from_registry()
         build_component_registry()
         component_registry = get_component_registry()
-        diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        diff_repo = component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
         diff_roots = await diff_repo.get_empty_roots()
         await diff_repo.delete_diff_roots(diff_root_uuids=[d.uuid for d in diff_roots])

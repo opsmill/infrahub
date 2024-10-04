@@ -163,7 +163,7 @@ class InfrahubMutationMixin:
         at: str,
     ) -> Node:
         component_registry = get_component_registry()
-        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+        node_constraint_runner = component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
         node_class = Node
         if cls._meta.schema.kind in registry.node:
             node_class = registry.node[cls._meta.schema.kind]
@@ -237,7 +237,7 @@ class InfrahubMutationMixin:
     ) -> Node:
         context: GraphqlContext = info.context
         component_registry = get_component_registry()
-        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+        node_constraint_runner = component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
         before_mutate_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
         await obj.from_graphql(db=db, data=data)

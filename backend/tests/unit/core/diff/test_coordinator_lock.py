@@ -34,7 +34,7 @@ class TestDiffCoordinatorLocks:
     async def get_diff_coordinator(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         component_registry = get_component_registry()
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+        diff_coordinator = component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
         mock_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
         diff_coordinator.data_check_synchronizer = mock_synchronizer
         wrapped_repo = AsyncMock(wraps=diff_coordinator.diff_repo)

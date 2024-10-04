@@ -200,7 +200,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def get_branch_diff(db: InfrahubDatabase, branch: Branch) -> EnrichedDiffRoot:
         # Validate if the diff has been updated properly
         component_registry = get_component_registry()
-        diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+        diff_repo = component_registry.get_component(DiffRepository, db=db, branch=branch)
 
         return await diff_repo.get_one(
             tracking_id=BranchTrackingId(name=BRANCH_NAME),

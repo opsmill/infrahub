@@ -383,7 +383,7 @@ class DiffTreeResolver:
         context: GraphqlContext = info.context
         base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=context.db, branch=branch)
-        diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
+        diff_repo = component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
         branch_start_timestamp = Timestamp(diff_branch.get_created_at())
         if from_time:
             from_timestamp = Timestamp(from_time.isoformat())
@@ -453,7 +453,7 @@ class DiffTreeResolver:
         context: GraphqlContext = info.context
         base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=context.db, branch=branch)
-        diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
+        diff_repo = component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
         branch_start_timestamp = Timestamp(diff_branch.get_created_at())
         if from_time:
             from_timestamp = Timestamp(from_time.isoformat())

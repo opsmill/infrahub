@@ -34,7 +34,7 @@ async def path(message: SchemaValidatorPath, service: InfrahubServices) -> None:
         )
 
         component_registry = get_component_registry()
-        aggregated_constraint_checker = await component_registry.get_component(
+        aggregated_constraint_checker = component_registry.get_component(
             AggregatedConstraintChecker, db=db, branch=message.branch
         )
         violations = await aggregated_constraint_checker.run_constraints(constraint_request)
@@ -78,7 +78,7 @@ async def schema_path_validate(message: SchemaValidatorPathData) -> SchemaValida
         )
 
         component_registry = get_component_registry()
-        aggregated_constraint_checker = await component_registry.get_component(
+        aggregated_constraint_checker = component_registry.get_component(
             AggregatedConstraintChecker, db=db, branch=message.branch
         )
         violations = await aggregated_constraint_checker.run_constraints(constraint_request)

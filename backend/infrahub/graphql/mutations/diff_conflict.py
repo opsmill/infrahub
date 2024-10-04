@@ -45,7 +45,7 @@ class ResolveDiffConflict(Mutation):
         context: GraphqlContext = info.context
 
         component_registry = get_component_registry()
-        diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=context.branch)
+        diff_repo = component_registry.get_component(DiffRepository, db=context.db, branch=context.branch)
 
         selection = ConflictSelection(data.selected_branch.value) if data.selected_branch else None
         await diff_repo.update_conflict_by_id(conflict_id=data.conflict_id, selection=selection)

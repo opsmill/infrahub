@@ -28,7 +28,7 @@ class ComponentDependencyRegistry:
             cls.the_instance = cls()
         return cls.the_instance
 
-    async def get_component(self, component_class: type[T], db: InfrahubDatabase, branch: Branch) -> T:
+    def get_component(self, component_class: type[T], db: InfrahubDatabase, branch: Branch) -> T:
         if component_class not in self._available_components:
             raise UntrackedDependencyError(f"'{component_class}' is not a tracked dependency")
         context = DependencyBuilderContext(db=db, branch=branch)
