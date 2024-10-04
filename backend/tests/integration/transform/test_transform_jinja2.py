@@ -75,6 +75,8 @@ class TestCreateRepository(TestInfrahubApp):
     async def test_client(
         self,
         base_dataset,
+        redis: dict[int, int] | None,
+        nats: dict[int, int] | None,
     ) -> InfrahubTestClient:
         await app_initialization(app)
         return InfrahubTestClient(app=app)

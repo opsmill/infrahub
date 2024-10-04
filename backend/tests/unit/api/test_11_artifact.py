@@ -1,5 +1,3 @@
-from fastapi.testclient import TestClient
-
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -9,6 +7,7 @@ from infrahub.message_bus import messages
 
 async def test_artifact_definition_endpoint(
     db: InfrahubDatabase,
+    client,
     admin_headers,
     default_branch,
     rpc_bus,
@@ -17,10 +16,6 @@ async def test_artifact_definition_endpoint(
     car_person_data_generic,
     authentication_base,
 ):
-    from infrahub.server import app
-
-    client = TestClient(app)
-
     g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await g1.save(db=db)
@@ -64,16 +59,13 @@ async def test_artifact_definition_endpoint(
 
 async def test_artifact_endpoint(
     db: InfrahubDatabase,
+    client,
     admin_headers,
     register_core_models_schema,
     register_builtin_models_schema,
     car_person_data_generic,
     authentication_base,
 ):
-    from infrahub.server import app
-
-    client = TestClient(app)
-
     with client:
         response = client.get("/api/artifact/95008984-16ca-4e58-8323-0899bb60035f", headers=admin_headers)
     assert response.status_code == 404

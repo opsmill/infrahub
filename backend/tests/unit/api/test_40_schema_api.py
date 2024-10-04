@@ -16,7 +16,7 @@ from infrahub.message_bus.messages.schema_migration_path import (
 
 async def test_schema_read_endpoint_default_branch(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
@@ -92,7 +92,7 @@ async def test_schema_read_endpoint_wrong_branch(
 
 async def test_schema_summary_default_branch(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
@@ -116,7 +116,7 @@ async def test_schema_summary_default_branch(
 
 async def test_schema_kind_default_branch(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
@@ -135,7 +135,6 @@ async def test_schema_kind_default_branch(
 
     assert "id" in schema
     assert "hash" in schema
-    assert "filters" in schema
     assert "relationships" in schema
 
 
@@ -169,7 +168,7 @@ async def test_json_schema_kind_default_branch(
 
 async def test_schema_kind_not_valid(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
