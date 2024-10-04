@@ -15,7 +15,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 
 @pytest.fixture
-def client():
+def client(nats, redis):
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
     from infrahub.server import app
 

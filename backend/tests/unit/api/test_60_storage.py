@@ -9,15 +9,16 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_file_upload(
-    db: InfrahubDatabase, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
+    db: InfrahubDatabase,
+    client: TestClient,
+    helper,
+    local_storage_dir: str,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
 ):
-    from infrahub.server import app
-
-    client = TestClient(app)
-
     fixture_dir = helper.get_fixtures_dir()
 
-    fixture_dir = helper.get_fixtures_dir()
     files_dir = os.path.join(fixture_dir, "schemas")
     filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
     file_path = Path(os.path.join(files_dir, filenames[0]))
@@ -40,14 +41,14 @@ async def test_file_upload(
 
 
 async def test_content_upload(
-    db: InfrahubDatabase, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
+    db: InfrahubDatabase,
+    client: TestClient,
+    helper,
+    local_storage_dir: str,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
 ):
-    from infrahub.server import app
-
-    client = TestClient(app)
-
-    fixture_dir = helper.get_fixtures_dir()
-
     fixture_dir = helper.get_fixtures_dir()
     files_dir = os.path.join(fixture_dir, "schemas")
     filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]

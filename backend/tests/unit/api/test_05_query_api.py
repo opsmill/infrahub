@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from fastapi.testclient import TestClient
 
 from infrahub.core.initialization import create_branch
 from infrahub.message_bus import messages
 
 if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
@@ -25,12 +26,8 @@ async def base_authentication(
 
 
 async def test_query_endpoint_group_no_params(
-    db: InfrahubDatabase, client_headers, default_branch, car_person_data, patch_services
+    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, car_person_data, patch_services
 ):
-    from infrahub.server import app
-
-    client = TestClient(app)
-
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
@@ -68,11 +65,9 @@ async def test_query_endpoint_group_no_params(
     )
 
 
-async def test_query_endpoint_group_params(db: InfrahubDatabase, client_headers, default_branch, car_person_data):
-    from infrahub.server import app
-
-    client = TestClient(app)
-
+async def test_query_endpoint_group_params(
+    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, car_person_data
+):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
@@ -105,7 +100,7 @@ async def test_query_endpoint_group_params(db: InfrahubDatabase, client_headers,
 
 
 async def test_query_endpoint_get_default_branch(
-    db: InfrahubDatabase, client, client_headers, default_branch, car_person_data
+    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, car_person_data
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -127,7 +122,7 @@ async def test_query_endpoint_get_default_branch(
 
 async def test_query_endpoint_post_no_payload(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     admin_headers,
     default_branch,
     car_person_data,
@@ -153,7 +148,7 @@ async def test_query_endpoint_post_no_payload(
 
 async def test_query_endpoint_post_with_params(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     admin_headers,
     default_branch,
     car_person_data,
@@ -173,7 +168,7 @@ async def test_query_endpoint_post_with_params(
 
 
 async def test_query_endpoint_branch1(
-    db: InfrahubDatabase, client, client_headers, default_branch, car_person_data, authentication_base
+    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, car_person_data, authentication_base
 ):
     await create_branch(branch_name="branch1", db=db)
 
@@ -196,7 +191,12 @@ async def test_query_endpoint_branch1(
 
 
 async def test_query_endpoint_wrong_query(
-    db: InfrahubDatabase, client, client_headers, default_branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers,
+    default_branch,
+    car_person_schema,
+    register_core_models_schema,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -209,7 +209,12 @@ async def test_query_endpoint_wrong_query(
 
 
 async def test_query_endpoint_wrong_branch(
-    db: InfrahubDatabase, client, client_headers, default_branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers,
+    default_branch,
+    car_person_schema,
+    register_core_models_schema,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:

@@ -205,8 +205,8 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optio
 
 
 @pytest.fixture(scope="session")
-def rabbitmq(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver == config.CacheDriver.NATS:
+def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.broker.driver != config.BrokerDriver.RabbitMQ:
         return None
 
     container = (
@@ -229,10 +229,25 @@ def rabbitmq(request: pytest.FixtureRequest, load_settings_before_session) -> Op
     }
 
 
+@pytest.fixture(scope="module")
+def rabbitmq(rabbitmq_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+    if (
+        rabbitmq_container
+        and INFRAHUB_USE_TEST_CONTAINERS
+        and config.SETTINGS.broker.driver == config.BrokerDriver.RabbitMQ
+    ):
+        config.SETTINGS.broker.address = "localhost"
+        config.SETTINGS.broker.port = rabbitmq_container[PORT_CLIENT_RABBITMQ]
+        config.SETTINGS.broker.rabbitmq_http_port = rabbitmq_container[PORT_HTTP_RABBITMQ]
+        return rabbitmq_container
+
+    return None
+
+
 # NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
 @pytest.fixture(scope="session")
-def redis(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver == config.CacheDriver.NATS:
+def redis_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         return None
 
     container = DockerContainer(image="redis:latest").with_exposed_ports(PORT_REDIS)
@@ -245,6 +260,16 @@ def redis(request: pytest.FixtureRequest, load_settings_before_session) -> Optio
     request.addfinalizer(cleanup)
 
     return {PORT_REDIS: get_exposed_port(container, PORT_REDIS)}
+
+
+@pytest.fixture(scope="module")
+def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+    if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+        config.SETTINGS.cache.address = "localhost"
+        config.SETTINGS.cache.port = redis_container[PORT_REDIS]
+        return redis_container
+
+    return None
 
 
 def wait_for_memgraph_ready(host, port, timeout=15):
@@ -294,7 +319,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
 
 
 @pytest.fixture(scope="session")
-def nats(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def nats_container(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
         return None
 
@@ -310,42 +335,30 @@ def nats(request: pytest.FixtureRequest, load_settings_before_session) -> Option
     return {PORT_NATS: get_exposed_port(container, PORT_NATS)}
 
 
+@pytest.fixture(scope="module")
+def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.NATS:
+        config.SETTINGS.cache.address = "localhost"
+        config.SETTINGS.cache.port = nats_container[PORT_NATS]
+
+    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.broker.driver == config.BrokerDriver.NATS:
+        config.SETTINGS.broker.address = "localhost"
+        config.SETTINGS.broker.port = nats_container[PORT_NATS]
+
+        return nats_container
+
+    return None
+
+
 @pytest.fixture(scope="session", autouse=True)
 def load_settings_before_session():
     load_and_exit()
 
 
 @pytest.fixture(scope="module", autouse=True)
-def reload_settings_before_each_module(
-    tmpdir_factory,
-    redis: Optional[dict[int, int]],
-    rabbitmq: Optional[dict[int, int]],
-    nats: Optional[dict[int, int]],
-):
-    # Currently, tests assume cache and broker are always up, thus fixtures are always called even for tests not requiring them.
-    # An improvement would be to have cache and broker fixtures used only for tests which actually need them, as we do with 'db' fixture.
-    # Also note that later call to initialize_lock requires redis fixture.
-
+def reload_settings_before_each_module(tmpdir_factory):
     # Settings need to be reloaded between each test module, as some module might modify settings that might break tests within other modules.
     load_and_exit()
-
-    if INFRAHUB_USE_TEST_CONTAINERS:
-        # Cache settings: either Redis or Nats.
-        config.SETTINGS.cache.address = "localhost"
-        if redis is not None:
-            config.SETTINGS.cache.port = redis[PORT_REDIS]
-        else:
-            assert nats is not None
-            config.SETTINGS.cache.port = nats[PORT_NATS]
-
-        # Broker settings: either RabbitMQ or Nats.
-        config.SETTINGS.broker.address = "localhost"
-        if rabbitmq is not None:
-            config.SETTINGS.broker.port = rabbitmq[PORT_CLIENT_RABBITMQ]
-            config.SETTINGS.broker.rabbitmq_http_port = rabbitmq[PORT_HTTP_RABBITMQ]
-        else:
-            assert nats is not None
-            config.SETTINGS.broker.port = nats[PORT_NATS]
 
     # Other settings
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
@@ -360,7 +373,7 @@ def reload_settings_before_each_module(
     config.SETTINGS.main.internal_address = "http://mock"
     config.OVERRIDE.message_bus = BusRecorder()
 
-    initialize_lock()
+    initialize_lock(local_only=True)
 
 
 @pytest.fixture
