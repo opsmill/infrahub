@@ -28,6 +28,7 @@ import InputField from "@/components/form/fields/input.field";
 import { DropdownOption } from "@/components/inputs/dropdown";
 import { useSchema } from "@/hooks/useSchema";
 import DropdownField from "@/components/form/fields/dropdown.field";
+import { isRequired } from "@/components/form/utils/validation";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -93,8 +94,8 @@ export const AccountGroupForm = ({
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Object permission created"} />, {
-        toastId: "alert-success-object-permission-created",
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Group created"} />, {
+        toastId: "alert-success-group-created",
       });
 
       if (onSuccess) await onSuccess(result?.data?.[`${OBJECT_PERMISSION_OBJECT}Create`]);
@@ -112,8 +113,19 @@ export const AccountGroupForm = ({
   return (
     <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <InputField name="name" label="Name" />
+        <InputField
+          name="name"
+          label="Name"
+          rules={{
+            required: true,
+            validate: {
+              required: isRequired,
+            },
+          }}
+        />
+
         <InputField name="description" label="Description" />
+
         <InputField name="label" label="Label" />
 
         <DropdownField name="group_type" label="Type" items={typeOptions} />
