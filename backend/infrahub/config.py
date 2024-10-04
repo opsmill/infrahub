@@ -563,16 +563,16 @@ class SecuritySettings(BaseSettings):
             )
             for provider in self._oauth2_settings
         ]
-        oidc_profiders = [
+        oidc_providers = [
             SSOProviderInfo(
                 name=provider,
                 display_label=self._oidc_settings[provider].display_label,
                 icon=self._oidc_settings[provider].icon,
                 protocol=SSOProtocol.OIDC,
             )
-            for provider in self._oauth2_settings
+            for provider in self._oidc_settings
         ]
-        return SSOInfo(providers=oauth2_providers + oidc_profiders)
+        return SSOInfo(providers=oauth2_providers + oidc_providers)
 
 
 class TraceSettings(BaseSettings):
