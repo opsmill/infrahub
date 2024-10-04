@@ -1558,10 +1558,9 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     assert len(attribute_diff.properties) == 1
     property_diff = attribute_diff.properties[0]
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
-    # previous value will have been captured by the previous diff
-    assert property_diff.previous_value is None
+    assert property_diff.previous_value == "#444444"
     assert property_diff.new_value == "BLURPLE"
-    assert property_diff.action is DiffAction.ADDED
+    assert property_diff.action is DiffAction.UPDATED
     assert base_before_change < property_diff.changed_at < base_after_change
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name

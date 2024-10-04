@@ -36,7 +36,6 @@ class DiffCalculator:
             branch=diff_branch,
             base_branch=base_branch,
             diff_branch_from_time=diff_branch_from_time,
-            include_previous_values=True,
             diff_from=from_time,
             diff_to=to_time,
         )
@@ -53,7 +52,6 @@ class DiffCalculator:
                 branch=base_branch,
                 base_branch=base_branch,
                 diff_branch_from_time=diff_branch_from_time,
-                include_previous_values=False,
                 diff_from=from_time,
                 diff_to=to_time,
                 current_node_field_specifiers=[
@@ -64,6 +62,8 @@ class DiffCalculator:
             await base_diff_query.execute(db=self.db)
             for query_result in base_diff_query.get_results():
                 diff_parser.read_result(query_result=query_result)
+
+        # breakpoint()
 
         diff_parser.parse()
         return CalculatedDiffs(

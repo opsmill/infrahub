@@ -229,6 +229,7 @@ class TestDiffRebase(TestInfrahubApp):
             assert description_attr.name == "description"
             assert len(description_attr.properties) == 1
             value_prop = description_attr.properties.pop()
+            assert value_prop.action is DiffAction.UPDATED
             assert value_prop.property_type is DatabaseEdgeType.HAS_VALUE
             assert value_prop.previous_value == "Starbuck"
             assert value_prop.new_value == new_desc_value
@@ -416,7 +417,6 @@ class TestDiffRebase(TestInfrahubApp):
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
         koenigsegg_id = initial_dataset["koenigsegg"].id
-        cyberdyne_id = initial_dataset["cyberdyne"].id
         omnicorp_id = initial_dataset["omnicorp"].id
         before_rebase = Timestamp()
         result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": branch_2.name})
@@ -436,14 +436,9 @@ class TestDiffRebase(TestInfrahubApp):
         assert len(description_attr.properties) == 1
         value_prop = description_attr.properties.pop()
         assert value_prop.property_type is DatabaseEdgeType.HAS_VALUE
-        assert value_prop.previous_value == "Starbuck"
+        assert value_prop.previous_value == "branch-1-description"
         assert value_prop.new_value == "branch-2-description"
-        assert value_prop.conflict
-        assert value_prop.conflict.base_branch_action is DiffAction.UPDATED
-        assert value_prop.conflict.base_branch_value == "branch-1-description"
-        assert value_prop.conflict.diff_branch_action is DiffAction.UPDATED
-        assert value_prop.conflict.diff_branch_value == "branch-2-description"
-        assert value_prop.conflict.selected_branch is ConflictSelection.DIFF_BRANCH
+        assert value_prop.conflict is None
         jesko_node = nodes_by_id[jesko_id]
         assert len(jesko_node.relationships) == 1
         manufacturer_rel = jesko_node.relationships.pop()
@@ -452,12 +447,7 @@ class TestDiffRebase(TestInfrahubApp):
         manufacturer_element = manufacturer_rel.relationships.pop()
         assert manufacturer_element.peer_id == omnicorp_id
         assert manufacturer_element.action is DiffAction.UPDATED
-        assert manufacturer_element.conflict
-        assert manufacturer_element.conflict.base_branch_action is DiffAction.UPDATED
-        assert manufacturer_element.conflict.base_branch_value == cyberdyne_id
-        assert manufacturer_element.conflict.diff_branch_action is DiffAction.UPDATED
-        assert manufacturer_element.conflict.diff_branch_value == omnicorp_id
-        assert manufacturer_element.conflict.selected_branch is ConflictSelection.BASE_BRANCH
+        assert manufacturer_element.conflict is None
         assert len(manufacturer_element.properties) == 1
         related_prop = manufacturer_element.properties.pop()
         assert related_prop.property_type is DatabaseEdgeType.IS_RELATED
