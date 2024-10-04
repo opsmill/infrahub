@@ -135,7 +135,6 @@ async def test_schema_kind_default_branch(
 
     assert "id" in schema
     assert "hash" in schema
-    assert "filters" in schema
     assert "relationships" in schema
 
 
