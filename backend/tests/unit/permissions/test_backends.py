@@ -4,13 +4,13 @@ from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionA
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount
 from infrahub.database import InfrahubDatabase
-from infrahub.permissions import LocalPermissionBackend
+from infrahub.permissions.local_backend import LocalPermissionBackend
 
 
 async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, create_test_admin, first_account):
-    backend = LocalPermissionBackend()
+    backend = LocalPermissionBackend(db=db, branch=default_branch)
 
-    permissions = await backend.load_permissions(db=db, account_id=create_test_admin.id, branch=default_branch)
+    permissions = await backend.load_permissions(account_id=create_test_admin.id)
 
     assert "global_permissions" in permissions
     assert permissions["global_permissions"][0].action == GlobalPermissions.SUPER_ADMIN.value
@@ -27,7 +27,7 @@ async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, cr
         )
     )
 
-    permissions = await backend.load_permissions(db=db, account_id=first_account.id, branch=default_branch)
+    permissions = await backend.load_permissions(account_id=first_account.id)
 
     assert "global_permissions" in permissions
     assert not permissions["global_permissions"]
@@ -44,7 +44,7 @@ async def test_has_permission_global(
     first_account: CoreAccount,
     second_account: CoreAccount,
 ):
-    backend = LocalPermissionBackend()
+    backend = LocalPermissionBackend(db=db, branch=default_branch)
 
     allow_default_branch_edition = GlobalPermission(
         id="",
@@ -101,12 +101,8 @@ async def test_has_permission_global(
     await group2.members.add(db=db, data={"id": second_account.id})
     await group2.members.save(db=db)
 
-    assert await backend.has_permission(
-        db=db, account_id=first_account.id, permission=str(allow_default_branch_edition), branch=default_branch
-    )
-    assert not await backend.has_permission(
-        db=db, account_id=second_account.id, permission=str(allow_default_branch_edition), branch=default_branch
-    )
+    assert await backend.has_permission(account_id=first_account.id, permission=str(allow_default_branch_edition))
+    assert not await backend.has_permission(account_id=second_account.id, permission=str(allow_default_branch_edition))
 
 
 async def test_has_permission_object(
@@ -117,7 +113,7 @@ async def test_has_permission_object(
     first_account: CoreAccount,
     second_account: CoreAccount,
 ):
-    backend = LocalPermissionBackend()
+    backend = LocalPermissionBackend(db=db, branch=default_branch)
 
     role1_permissions = []
     for p in [
@@ -197,9 +193,5 @@ async def test_has_permission_object(
         action=PermissionAction.ADD.value,
         decision=PermissionDecision.ALLOW.value,
     )
-    assert not await backend.has_permission(
-        db=db, account_id=first_account.id, permission=str(permission), branch=default_branch
-    )
-    assert await backend.has_permission(
-        db=db, account_id=second_account.id, permission=str(permission), branch=default_branch
-    )
+    assert not await backend.has_permission(account_id=first_account.id, permission=str(permission))
+    assert await backend.has_permission(account_id=second_account.id, permission=str(permission))

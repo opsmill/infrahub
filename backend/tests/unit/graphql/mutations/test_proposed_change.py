@@ -7,11 +7,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus import messages
-from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
@@ -202,8 +200,6 @@ async def test_merge_proposed_change_permission_failure(
     session_first_account: AccountSession,
     session_admin: AccountSession,
 ):
-    registry.permission_backends = [LocalPermissionBackend()]
-
     branch_name = "merge-proposed-change-perm"
     await create_branch(branch_name=branch_name, db=db)
 

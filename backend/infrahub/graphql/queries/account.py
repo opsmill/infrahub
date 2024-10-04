@@ -5,16 +5,16 @@ from typing import TYPE_CHECKING, Any
 from graphene import Field, Int, List, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
-from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import InternalAccountToken
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import PermissionDeniedError
+from infrahub.permissions.manager import PermissionManager
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.graphql.initialization import GraphqlContext
-    from infrahub.permissions.constants import AssignedPermissions
 
 
 class AccountTokenNode(ObjectType):
@@ -119,13 +119,10 @@ async def resolve_account_permissions(
         raise ValueError("An account_session is mandatory to execute this query")
 
     fields = await extract_fields_first_node(info)
-    permissions: AssignedPermissions = {"global_permissions": [], "object_permissions": []}
-    for permission_backend in registry.permission_backends:
-        backend_permissions = await permission_backend.load_permissions(
-            db=context.db, account_id=context.account_session.account_id, branch=context.branch
-        )
-        permissions["global_permissions"].extend(backend_permissions["global_permissions"])
-        permissions["object_permissions"].extend(backend_permissions["object_permissions"])
+
+    component_registry = get_component_registry()
+    permission_manager = component_registry.get_component(PermissionManager, db=context.db, branch=context.branch)
+    permissions = await permission_manager.load_permissions(account_session=context.account_session)
 
     response: dict[str, dict[str, Any]] = {}
     if "global_permissions" in fields:

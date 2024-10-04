@@ -1,14 +1,15 @@
 from infrahub.auth import AccountSession
-from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.manager import get_schema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import GraphqlParams
+from infrahub.permissions.manager import PermissionManager
 from infrahub.utils import extract_camelcase_words
 
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
@@ -65,13 +66,11 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                     )
                 )
 
+        component_registry = get_component_registry()
+        permission_manager = component_registry.get_component(PermissionManager, db=db, branch=branch)
+
         for permission in permissions:
-            has_permission = False
-            for permission_backend in registry.permission_backends:
-                has_permission = await permission_backend.has_permission(
-                    db=db, account_id=account_session.account_id, permission=permission, branch=branch
-                )
-            if not has_permission:
+            if not await permission_manager.has_permission(account_session=account_session, permission=permission):
                 raise PermissionDeniedError(f"You do not have the following permission: {permission}")
 
         return CheckerResolution.NEXT_CHECKER

@@ -9,13 +9,11 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.initialization import GraphqlParams
-from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -34,7 +32,6 @@ class TestDefaultBranchPermission:
         second_account: CoreAccount,
         permissions_helper: PermissionsHelper,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)

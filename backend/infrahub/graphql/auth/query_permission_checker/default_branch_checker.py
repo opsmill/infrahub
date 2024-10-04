@@ -3,9 +3,11 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import GraphqlParams
+from infrahub.permissions.manager import PermissionManager
 
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
@@ -27,14 +29,12 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
-        can_edit_default_branch = False
-        for permission_backend in registry.permission_backends:
-            can_edit_default_branch = await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
-            )
-            if can_edit_default_branch:
-                break
+        component_registry = get_component_registry()
+        permission_manager = component_registry.get_component(PermissionManager, db=db, branch=branch)
 
+        can_edit_default_branch = await permission_manager.has_permission(
+            account_session=account_session, permission=self.permission_required
+        )
         operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in (
             GLOBAL_BRANCH_NAME,
             registry.default_branch,

@@ -1,11 +1,12 @@
 from infrahub.auth import AccountSession
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import GraphqlParams
+from infrahub.permissions.manager import PermissionManager
 
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
@@ -26,16 +27,13 @@ class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
-        if "BranchMerge" in [operation.name for operation in analyzed_query.operations]:
-            can_merge_branch = False
-            for permission_backend in registry.permission_backends:
-                can_merge_branch = await permission_backend.has_permission(
-                    db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
-                )
-                if can_merge_branch:
-                    break
+        component_registry = get_component_registry()
+        permission_manager = component_registry.get_component(PermissionManager, db=db, branch=branch)
 
-            if not can_merge_branch:
+        if "BranchMerge" in [operation.name for operation in analyzed_query.operations]:
+            if not await permission_manager.has_permission(
+                account_session=account_session, permission=self.permission_required
+            ):
                 raise PermissionDeniedError("You are not allowed to merge a branch")
 
             return CheckerResolution.TERMINATE

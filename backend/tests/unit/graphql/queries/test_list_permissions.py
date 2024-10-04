@@ -14,9 +14,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -75,7 +73,6 @@ class TestObjectPermissions:
     ):
         permissions_helper._first = first_account
         permissions_helper._default_branch = default_branch
-        registry.permission_backends = [LocalPermissionBackend()]
 
         permissions = []
         for object_permission in [

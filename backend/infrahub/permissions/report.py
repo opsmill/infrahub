@@ -19,7 +19,7 @@ async def report_schema_permissions(
     db: InfrahubDatabase, schemas: list[MainSchemaTypes], account_session: AccountSession, branch: Branch
 ) -> list[KindPermissions]:
     permissions = await fetch_permissions(account_id=account_session.account_id, db=db, branch=branch)
-    perm_backend = LocalPermissionBackend()
+    perm_backend = LocalPermissionBackend(db=db, branch=branch)
 
     restrict_changes = False
     if branch.name == registry.default_branch:
