@@ -22,7 +22,8 @@ function Accounts() {
   const { schema } = useSchema(ACCOUNT_GENERIC_OBJECT);
 
   const [rowToDelete, setRowToDelete] = useState(null);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [rowToUpdate, setRowToUpdate] = useState(null);
+  const [showCreateDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
@@ -78,10 +79,7 @@ function Accounts() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
               Create {schema?.label}
             </Button>
           </div>
@@ -92,6 +90,10 @@ function Accounts() {
           rows={rows ?? []}
           className="border-0"
           onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(data) => {
+            setRowToUpdate(data.values);
+            setShowDrawer(true);
+          }}
         />
 
         <Pagination count={data && data[ACCOUNT_GENERIC_OBJECT]?.count} />
@@ -118,12 +120,13 @@ function Accounts() {
             />
           }
           open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          setOpen={(value) => setShowDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_OBJECT}
-            onCancel={() => setShowCreateDrawer(false)}
+            currentObject={rowToUpdate}
+            onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
-              setShowCreateDrawer(false);
+              setShowDrawer(false);
               globalRefetch();
             }}
           />
