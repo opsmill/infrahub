@@ -1,4 +1,3 @@
-import importlib
 from typing import Optional
 from uuid import uuid4
 
@@ -29,7 +28,6 @@ from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuItemDefinition
-from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
 from infrahub.utils import format_label
 
@@ -67,18 +65,6 @@ async def get_default_ipnamespace(db: InfrahubDatabase) -> Optional[Node]:
     return nodes[0]
 
 
-def initialize_permission_backends() -> list[PermissionBackend]:
-    permission_backends: list[PermissionBackend] = []
-    for backend_module_path in config.SETTINGS.main.permission_backends:
-        log.info("Loading permission backend", backend=backend_module_path)
-
-        module, class_name = backend_module_path.rsplit(".", maxsplit=1)
-        Backend = getattr(importlib.import_module(module), class_name)
-        permission_backends.append(Backend())
-
-    return permission_backends
-
-
 async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) -> None:
     # ---------------------------------------------------
     # Initialize the database and Load the Root node
@@ -109,11 +95,6 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     registry.node[InfrahubKind.GLOBALPERMISSION] = CoreGlobalPermission
     registry.node[InfrahubKind.OBJECTPERMISSION] = CoreObjectPermission
-
-    # ---------------------------------------------------
-    # Instantiate permission backends
-    # ---------------------------------------------------
-    registry.permission_backends = initialize_permission_backends()
 
 
 async def initialization(db: InfrahubDatabase) -> None:
