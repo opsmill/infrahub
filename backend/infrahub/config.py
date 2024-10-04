@@ -38,6 +38,7 @@ def default_cors_allow_headers() -> list[str]:
 
 class SSOProtocol(str, Enum):
     OAUTH2 = "oauth2"
+    OIDC = "oidc"
 
 
 class Oauth2Provider(str, Enum):
@@ -45,15 +46,19 @@ class Oauth2Provider(str, Enum):
     CUSTOM = "custom"
 
 
+class OIDCProvider(str, Enum):
+    CUSTOM = "custom"
+
+
 class SSOInfo(BaseModel):
-    providers: list[OAuth2ProviderInfo] = Field(default_factory=list)
+    providers: list[SSOProviderInfo] = Field(default_factory=list)
 
     @computed_field
     def enabled(self) -> bool:
         return bool(self.providers)
 
 
-class OAuth2ProviderInfo(BaseModel):
+class SSOProviderInfo(BaseModel):
     name: str
     display_label: str
     icon: str
@@ -61,11 +66,11 @@ class OAuth2ProviderInfo(BaseModel):
 
     @computed_field
     def authorize_path(self) -> str:
-        return f"/api/oauth2/{self.name}/authorize"
+        return f"/api/{self.protocol.value}/{self.name}/authorize"
 
     @computed_field
     def token_path(self) -> str:
-        return f"/api/oauth2/{self.name}/token"
+        return f"/api/{self.protocol.value}/{self.name}/token"
 
 
 class StorageDriver(str, Enum):
@@ -397,6 +402,26 @@ class InitialSettings(BaseSettings):
         return self
 
 
+class SecurityOIDCBaseSettings(BaseSettings):
+    """Baseclass for typing"""
+
+    icon: str = Field(default="mdi:account-key")
+    display_label: str = Field(default="Single Sign on")
+
+
+class SecurityOIDCSettings(SecurityOIDCBaseSettings):
+    client_id: str = Field(..., description="Client ID of the application created in the auth provider")
+    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    discovery_url: str = Field(..., description="The OIDC discovery URL xyz/.well-known/openid-configuration")
+    scope: list[str] = Field(...)
+
+
+class SecurityOIDCCustom(SecurityOIDCSettings):
+    """Settings for the custom OIDC provider"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_CUSTOM_")
+
+
 class SecurityOAuth2BaseSettings(BaseSettings):
     """Baseclass for typing"""
 
@@ -486,7 +511,9 @@ class SecuritySettings(BaseSettings):
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
     )
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
+    oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
+    _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
@@ -501,25 +528,51 @@ class SecuritySettings(BaseSettings):
 
         return self
 
-    def get_provider(self, provider: str) -> SecurityOAuth2Settings:
+    @model_validator(mode="after")
+    def check_oidc_provider_settings(self) -> Self:
+        mapped_providers: dict[OIDCProvider, type[SecurityOIDCBaseSettings]] = {
+            OIDCProvider.CUSTOM: SecurityOIDCCustom,
+        }
+        for oidc_provider in self.oidc_providers:
+            provider = mapped_providers[oidc_provider]()
+            if isinstance(provider, SecurityOIDCSettings):
+                self._oidc_settings[oidc_provider.value] = provider
+
+        return self
+
+    def get_oauth2_provider(self, provider: str) -> SecurityOAuth2Settings:
         if provider in self._oauth2_settings:
             return self._oauth2_settings[provider]
 
         raise ProcessingError(message=f"The provider {provider} has not been initialized")
 
+    def get_oidc_provider(self, provider: str) -> SecurityOIDCSettings:
+        if provider in self._oidc_settings:
+            return self._oidc_settings[provider]
+
+        raise ProcessingError(message=f"The provider {provider} has not been initialized")
+
     @property
     def public_sso_config(self) -> SSOInfo:
-        return SSOInfo(
-            providers=[
-                OAuth2ProviderInfo(
-                    name=provider,
-                    display_label=self._oauth2_settings[provider].display_label,
-                    icon=self._oauth2_settings[provider].icon,
-                    protocol=SSOProtocol.OAUTH2,
-                )
-                for provider in self._oauth2_settings
-            ]
-        )
+        oauth2_providers = [
+            SSOProviderInfo(
+                name=provider,
+                display_label=self._oauth2_settings[provider].display_label,
+                icon=self._oauth2_settings[provider].icon,
+                protocol=SSOProtocol.OAUTH2,
+            )
+            for provider in self._oauth2_settings
+        ]
+        oidc_profiders = [
+            SSOProviderInfo(
+                name=provider,
+                display_label=self._oidc_settings[provider].display_label,
+                icon=self._oidc_settings[provider].icon,
+                protocol=SSOProtocol.OIDC,
+            )
+            for provider in self._oauth2_settings
+        ]
+        return SSOInfo(providers=oauth2_providers + oidc_profiders)
 
 
 class TraceSettings(BaseSettings):

@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel, HttpUrl
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
@@ -21,13 +22,41 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 log = get_logger()
-router = APIRouter(prefix="/oauth2")
+router = APIRouter(prefix="/oidc")
+
+
+class OIDCDiscoveryConfig(BaseModel):
+    issuer: HttpUrl
+    authorization_endpoint: HttpUrl
+    token_endpoint: HttpUrl
+    userinfo_endpoint: HttpUrl
+    jwks_uri: HttpUrl
+    revocation_endpoint: HttpUrl | None = None
+    registration_endpoint: HttpUrl | None = None
+    introspection_endpoint: HttpUrl | None = None
+    end_session_endpoint: HttpUrl | None = None
+    frontchannel_logout_supported: bool | None = None
+    frontchannel_logout_session_supported: bool | None = None
+    grant_types_supported: list[str] | None = None
+    response_types_supported: list[str]
+    subject_types_supported: list[str]
+    id_token_signing_alg_values_supported: list[str]
+    scopes_supported: list[str] | None = None
+    token_endpoint_auth_methods_supported: list[str] | None = None
+    claims_supported: list[str] | None = None
+    acr_values_supported: list[str] | None = None
+    request_parameter_supported: bool | None = None
+    request_uri_parameter_supported: bool | None = None
+    require_request_uri_registration: bool | None = None
+    code_challenge_methods_supported: list[str] | None = None
+    tls_client_certificate_bound_access_tokens: bool | None = None
+    mtls_endpoint_aliases: dict[str, HttpUrl] | None = None
 
 
 def _get_redirect_url(request: Request, provider_name: str) -> str:
     """This function is mostly to support local development when the frontend runs on different ports compared to the API."""
     base_url = config.SETTINGS.dev.frontend_url or str(request.base_url)
-    return urljoin(base_url, f"auth/oauth2/{provider_name}/callback")
+    return urljoin(base_url, f"auth/oidc/{provider_name}/callback")
 
 
 @router.get("/{provider_name:str}/authorize")
@@ -35,7 +64,13 @@ async def authorize(
     request: Request,
     provider_name: str,
 ) -> Response:
-    provider = config.SETTINGS.security.get_oauth2_provider(provider=provider_name)
+    provider = config.SETTINGS.security.get_oidc_provider(provider=provider_name)
+    service: InfrahubServices = request.app.state.service
+
+    response = await service.http.get(url=provider.discovery_url)
+    _validate_response(response=response)
+    oidc_config = OIDCDiscoveryConfig(**response.json())
+
     client = AsyncOAuth2Client(
         client_id=provider.client_id,
         client_secret=provider.client_secret,
@@ -45,13 +80,11 @@ async def authorize(
     redirect_uri = _get_redirect_url(request=request, provider_name=provider_name)
 
     authorization_uri, state = client.create_authorization_url(
-        url=provider.authorization_url, redirect_uri=redirect_uri, scope=provider.scope
+        url=str(oidc_config.authorization_endpoint), redirect_uri=redirect_uri, scope=provider.scope
     )
 
-    service: InfrahubServices = request.app.state.service
-
     await service.cache.set(
-        key=f"security:oauth2:provider:{provider_name}:state:{state}", value=state, expires=KVTTL.TWO_HOURS
+        key=f"security:oidc:provider:{provider_name}:state:{state}", value=state, expires=KVTTL.TWO_HOURS
     )
 
     if config.SETTINGS.dev.frontend_redirect_sso:
@@ -69,11 +102,11 @@ async def token(
     code: str,
     db: InfrahubDatabase = Depends(get_db),
 ) -> models.UserToken:
-    provider = config.SETTINGS.security.get_oauth2_provider(provider=provider_name)
+    provider = config.SETTINGS.security.get_oidc_provider(provider=provider_name)
 
     service: InfrahubServices = request.app.state.service
 
-    cache_key = f"security:oauth2:provider:{provider_name}:state:{state}"
+    cache_key = f"security:oidc:provider:{provider_name}:state:{state}"
     stored_state = await service.cache.get(key=cache_key)
     await service.cache.delete(key=cache_key)
 
@@ -88,14 +121,20 @@ async def token(
         "grant_type": "authorization_code",
     }
 
-    token_response = await service.http.post(provider.token_url, data=token_data)
+    discovery_response = await service.http.get(url=provider.discovery_url)
+    _validate_response(response=discovery_response)
+
+    oidc_config = OIDCDiscoveryConfig(**discovery_response.json())
+
+    token_response = await service.http.post(str(oidc_config.token_endpoint), data=token_data)
     _validate_response(response=token_response)
     payload = token_response.json()
 
     headers = {"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"}
-    userinfo_response = await service.http.post(provider.userinfo_url, headers=headers)
+    userinfo_response = await service.http.post(str(oidc_config.userinfo_endpoint), headers=headers)
     _validate_response(response=userinfo_response)
     user_info = userinfo_response.json()
+
     sso_groups = user_info.get("groups", [])
     user_token = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
 
@@ -117,7 +156,7 @@ def _validate_response(response: httpx.Response) -> None:
         return
 
     log.error(
-        "Invalid response from the OAuth provider",
+        "Invalid response from the OIDC provider",
         url=response.url,
         status_code=response.status_code,
         body=response.json(),

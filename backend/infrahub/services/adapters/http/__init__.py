@@ -12,6 +12,13 @@ class InfrahubHTTP:
     async def initialize(self, service: InfrahubServices) -> None:
         """Initialize the HTTP adapter"""
 
+    async def get(
+        self,
+        url: str,
+        headers: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        raise NotImplementedError()
+
     async def post(
         self,
         url: str,
