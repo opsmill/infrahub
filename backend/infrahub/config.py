@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import os.path
+import ssl
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -37,6 +38,7 @@ def default_cors_allow_headers() -> list[str]:
 
 class SSOProtocol(str, Enum):
     OAUTH2 = "oauth2"
+    OIDC = "oidc"
 
 
 class Oauth2Provider(str, Enum):
@@ -44,15 +46,19 @@ class Oauth2Provider(str, Enum):
     CUSTOM = "custom"
 
 
+class OIDCProvider(str, Enum):
+    CUSTOM = "custom"
+
+
 class SSOInfo(BaseModel):
-    providers: list[OAuth2ProviderInfo] = Field(default_factory=list)
+    providers: list[SSOProviderInfo] = Field(default_factory=list)
 
     @computed_field
     def enabled(self) -> bool:
         return bool(self.providers)
 
 
-class OAuth2ProviderInfo(BaseModel):
+class SSOProviderInfo(BaseModel):
     name: str
     display_label: str
     icon: str
@@ -60,11 +66,11 @@ class OAuth2ProviderInfo(BaseModel):
 
     @computed_field
     def authorize_path(self) -> str:
-        return f"/api/oauth2/{self.name}/authorize"
+        return f"/api/{self.protocol.value}/{self.name}/authorize"
 
     @computed_field
     def token_path(self) -> str:
-        return f"/api/oauth2/{self.name}/token"
+        return f"/api/{self.protocol.value}/{self.name}/token"
 
 
 class StorageDriver(str, Enum):
@@ -329,6 +335,45 @@ class HTTPSettings(BaseSettings):
         default=False,
         description="Indicates if Infrahub will validate server certificates or if the validation is ignored.",
     )
+    tls_ca_bundle: str | None = Field(
+        default=None,
+        description="Custom CA bundle in PEM format. The value should either be the CA bundle as a string, alternatively as a file path.",
+    )
+
+    @model_validator(mode="after")
+    def set_tls_context(self) -> Self:
+        try:
+            # Validate that the context can be created, we want to raise this error during application start
+            # instead of running into issues later when we first try to use the tls context.
+            self.get_tls_context()
+        except ssl.SSLError as exc:
+            raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+
+        return self
+
+    def get_tls_context(self) -> ssl.SSLContext:
+        if self.tls_insecure:
+            return ssl._create_unverified_context()
+
+        if not self.tls_ca_bundle:
+            return ssl.create_default_context()
+
+        tls_ca_path = Path(self.tls_ca_bundle)
+
+        try:
+            possibly_file = tls_ca_path.exists()
+        except OSError:
+            # Raised if the filename is too long which can indicate
+            # that the value is a PEM certificate in string form.
+            possibly_file = False
+
+        if possibly_file and tls_ca_path.is_file():
+            context = ssl.create_default_context(cafile=str(tls_ca_path))
+        else:
+            context = ssl.create_default_context()
+            context.load_verify_locations(cadata=self.tls_ca_bundle)
+
+        return context
 
 
 class InitialSettings(BaseSettings):
@@ -355,6 +400,26 @@ class InitialSettings(BaseSettings):
         if self.admin_token is not None and self.agent_token is not None and self.admin_token == self.agent_token:
             raise ValueError("Initial user tokens can't have the same values")
         return self
+
+
+class SecurityOIDCBaseSettings(BaseSettings):
+    """Baseclass for typing"""
+
+    icon: str = Field(default="mdi:account-key")
+    display_label: str = Field(default="Single Sign on")
+
+
+class SecurityOIDCSettings(SecurityOIDCBaseSettings):
+    client_id: str = Field(..., description="Client ID of the application created in the auth provider")
+    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    discovery_url: str = Field(..., description="The OIDC discovery URL xyz/.well-known/openid-configuration")
+    scope: list[str] = Field(...)
+
+
+class SecurityOIDCCustom(SecurityOIDCSettings):
+    """Settings for the custom OIDC provider"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_CUSTOM_")
 
 
 class SecurityOAuth2BaseSettings(BaseSettings):
@@ -446,7 +511,9 @@ class SecuritySettings(BaseSettings):
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
     )
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
+    oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
+    _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
@@ -461,25 +528,51 @@ class SecuritySettings(BaseSettings):
 
         return self
 
-    def get_provider(self, provider: str) -> SecurityOAuth2Settings:
+    @model_validator(mode="after")
+    def check_oidc_provider_settings(self) -> Self:
+        mapped_providers: dict[OIDCProvider, type[SecurityOIDCBaseSettings]] = {
+            OIDCProvider.CUSTOM: SecurityOIDCCustom,
+        }
+        for oidc_provider in self.oidc_providers:
+            provider = mapped_providers[oidc_provider]()
+            if isinstance(provider, SecurityOIDCSettings):
+                self._oidc_settings[oidc_provider.value] = provider
+
+        return self
+
+    def get_oauth2_provider(self, provider: str) -> SecurityOAuth2Settings:
         if provider in self._oauth2_settings:
             return self._oauth2_settings[provider]
 
         raise ProcessingError(message=f"The provider {provider} has not been initialized")
 
+    def get_oidc_provider(self, provider: str) -> SecurityOIDCSettings:
+        if provider in self._oidc_settings:
+            return self._oidc_settings[provider]
+
+        raise ProcessingError(message=f"The provider {provider} has not been initialized")
+
     @property
     def public_sso_config(self) -> SSOInfo:
-        return SSOInfo(
-            providers=[
-                OAuth2ProviderInfo(
-                    name=provider,
-                    display_label=self._oauth2_settings[provider].display_label,
-                    icon=self._oauth2_settings[provider].icon,
-                    protocol=SSOProtocol.OAUTH2,
-                )
-                for provider in self._oauth2_settings
-            ]
-        )
+        oauth2_providers = [
+            SSOProviderInfo(
+                name=provider,
+                display_label=self._oauth2_settings[provider].display_label,
+                icon=self._oauth2_settings[provider].icon,
+                protocol=SSOProtocol.OAUTH2,
+            )
+            for provider in self._oauth2_settings
+        ]
+        oidc_profiders = [
+            SSOProviderInfo(
+                name=provider,
+                display_label=self._oidc_settings[provider].display_label,
+                icon=self._oidc_settings[provider].icon,
+                protocol=SSOProtocol.OIDC,
+            )
+            for provider in self._oauth2_settings
+        ]
+        return SSOInfo(providers=oauth2_providers + oidc_profiders)
 
 
 class TraceSettings(BaseSettings):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ssl
+from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -22,14 +23,19 @@ class HttpxAdapter(InfrahubHTTP):
         self.service = service
         self.settings = config.SETTINGS.http
 
-    def verify_tls(self, verify: bool | None = None) -> bool:
-        if verify is not None:
-            return verify
+        # Cache the context during init, this is to avoid issue when a CA bundle might be accessible
+        # when Infrahub initializes but then removed before the first external HTTP call is made.
+        _ = self.tls_context
 
-        if self.settings.tls_insecure is True:
+    @cached_property
+    def tls_context(self) -> ssl.SSLContext:
+        return self.settings.get_tls_context()
+
+    def verify_tls(self, verify: bool | None = None) -> bool | ssl.SSLContext:
+        if verify is False:
             return False
 
-        return True
+        return self.tls_context
 
     async def _request(
         self,
@@ -69,6 +75,17 @@ class HttpxAdapter(InfrahubHTTP):
                 raise HTTPServerError(message=f"Unknown http error when connecting to {url}") from exc
 
         return response
+
+    async def get(
+        self,
+        url: str,
+        headers: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        return await self._request(
+            method="get",
+            url=url,
+            headers=headers,
+        )
 
     async def post(
         self,
