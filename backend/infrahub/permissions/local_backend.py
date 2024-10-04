@@ -75,11 +75,11 @@ class LocalPermissionBackend(PermissionBackend):
 
         return grant_permission
 
-    async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions:
-        return await fetch_permissions(db=db, account_id=account_id, branch=branch)
+    async def load_permissions(self, account_id: str) -> AssignedPermissions:
+        return await fetch_permissions(db=self.db, account_id=account_id, branch=self.branch)
 
-    async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool:
-        granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
+    async def has_permission(self, account_id: str, permission: str) -> bool:
+        granted_permissions = await self.load_permissions(account_id=account_id)
 
         # Check for a final super admin permission at the end if no permissions have matched before
         return (
