@@ -63,8 +63,6 @@ class DiffCalculator:
             for query_result in base_diff_query.get_results():
                 diff_parser.read_result(query_result=query_result)
 
-        # breakpoint()
-
         diff_parser.parse()
         return CalculatedDiffs(
             base_branch_name=base_branch.name,

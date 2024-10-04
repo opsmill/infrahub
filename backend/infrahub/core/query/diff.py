@@ -475,8 +475,8 @@ class DiffCountChanges(Query):
         WHERE any(l in labels(p) WHERE l in ["Node", "Attribute", "Relationship"])
         AND diff_rel.branch in $branch_names
         AND (
-            (diff_rel.from >= $from_time AND diff_rel.from <= $to_time)
-            OR (diff_rel.to >= $to_time AND diff_rel.to <= $to_time)
+            (diff_rel.from >= $from_time AND diff_rel.from < $to_time)
+            OR (diff_rel.to >= $to_time AND diff_rel.to < $to_time)
         )
         AND (p.branch_support = "aware" OR q.branch_support = "aware")
         WITH diff_rel.branch AS branch_name, count(*) AS num_changes
@@ -555,8 +555,8 @@ CALL {
         // -------------------------------------
         MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
         WHERE (node_ids_list IS NULL OR p.uuid IN node_ids_list)
-        AND (from_time < diff_rel.from < $to_time)
-        AND (diff_rel.to IS NULL OR (from_time < diff_rel.to < $to_time))
+        AND (from_time <= diff_rel.from < $to_time)
+        AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
         AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
         WITH p, q, diff_rel, from_time
         // -------------------------------------
@@ -565,7 +565,7 @@ CALL {
         CALL {
             WITH p, q, from_time
             OPTIONAL MATCH (q)<-[is_part_of:IS_PART_OF {branch: $branch_name}]-(p)
-            WHERE from_time < is_part_of.from <= $to_time
+            WHERE from_time <= is_part_of.from < $to_time
             WITH DISTINCT is_part_of.status AS rel_status
             WITH collect(rel_status) AS rel_statuses
             RETURN ("active" IN rel_statuses AND "deleted" IN rel_statuses) AS intra_branch_update
@@ -587,7 +587,7 @@ CALL {
             AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
             AND ALL(
                 r in [r_node, r_prop]
-                WHERE r.from <= $to_time AND r.branch = top_diff_rel.branch
+                WHERE r.from < $to_time AND r.branch = top_diff_rel.branch
             )
             AND (top_diff_rel.to IS NULL OR top_diff_rel.to >= r_node.from)
             AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
@@ -601,7 +601,7 @@ CALL {
             CALL {
                 WITH p, rel_type, node, from_time
                 OPTIONAL MATCH (p)-[rel_to_check {branch: $branch_name}]-(node)
-                WHERE from_time < rel_to_check.from <= $to_time
+                WHERE from_time <= rel_to_check.from < $to_time
                 AND type(rel_to_check) = rel_type
                 WITH DISTINCT rel_to_check.status AS rel_status
                 WITH collect(rel_status) AS rel_statuses
@@ -638,8 +638,8 @@ CALL {
             AND r_root.from < from_time
             AND r_root.status = "active"
             // get attributes and relationships added on the branch during the timeframe
-            AND (from_time < diff_rel.from < $to_time)
-            AND (diff_rel.to IS NULL OR (from_time < diff_rel.to < $to_time))
+            AND (from_time <= diff_rel.from < $to_time)
+            AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
             AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
             AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
@@ -668,7 +668,7 @@ CALL {
         CALL {
             WITH root, p, from_time
             OPTIONAL MATCH (root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(p)
-            WHERE from_time <= r_root_deleted.from <= $to_time
+            WHERE from_time <= r_root_deleted.from < $to_time
             WITH r_root_deleted
             ORDER BY r_root_deleted.status DESC
             LIMIT 1
@@ -683,7 +683,7 @@ CALL {
         CALL {
             WITH p, rel_type, q, from_time
             OPTIONAL MATCH (p)-[rel_to_check {branch: $branch_name}]-(q)
-            WHERE from_time <= rel_to_check.from <= $to_time
+            WHERE from_time <= rel_to_check.from < $to_time
             AND type(rel_to_check) = rel_type
             WITH DISTINCT rel_to_check.status AS rel_status
             WITH collect(rel_status) AS rel_statuses
@@ -703,7 +703,7 @@ CALL {
             AND %(id_func)s(mid_diff_rel) =  %(id_func)s(diff_rel)
             AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
             AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
-            AND r_prop.from <= $to_time AND r_prop.branch = mid_diff_rel.branch
+            AND r_prop.from < $to_time AND r_prop.branch = mid_diff_rel.branch
             AND (mid_diff_rel.to IS NULL OR mid_diff_rel.to >= r_prop.from)
             AND [%(id_func)s(p), type(mid_diff_rel)] <> [%(id_func)s(prop), type(r_prop)]
             // exclude paths where an active edge is below a deleted edge
@@ -724,7 +724,7 @@ CALL {
         CALL {
             WITH q, rel_type, prop, from_time
             OPTIONAL MATCH (q)-[rel_to_check {branch: $branch_name}]-(prop)
-            WHERE from_time <= rel_to_check.from <= $to_time
+            WHERE from_time <= rel_to_check.from < $to_time
             AND type(rel_to_check) = rel_type
             WITH DISTINCT rel_to_check.status AS rel_status
             WITH collect(rel_status) AS rel_statuses
@@ -793,7 +793,7 @@ CALL {
             CALL {
                 WITH n, from_time
                 OPTIONAL MATCH (root:Root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(n)
-                WHERE from_time <= r_root_deleted.from <= $to_time
+                WHERE from_time <= r_root_deleted.from < $to_time
                 WITH r_root_deleted
                 ORDER BY r_root_deleted.status DESC
                 LIMIT 1
@@ -803,7 +803,7 @@ CALL {
             CALL {
                 WITH n, p, from_time
                 OPTIONAL MATCH (n)-[r_node_deleted {branch: $branch_name}]-(p)
-                WHERE from_time <= r_node_deleted.from <= $to_time
+                WHERE from_time <= r_node_deleted.from < $to_time
                 AND type(r_node_deleted) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
                 WITH r_node_deleted
                 ORDER BY r_node_deleted.status DESC
@@ -861,7 +861,7 @@ CALL {
     AND %(id_func)s(peer_r_root) = %(id_func)s(r_root)
     AND %(id_func)s(peer_r_node) = %(id_func)s(r_node)
     AND [%(id_func)s(n), type(peer_r_node)] <> [%(id_func)s(peer), type(r_peer)]
-    AND r_peer.from <= $to_time
+    AND r_peer.from < $to_time
     // filter out paths where an earlier from time follows a later from time
     AND peer_r_node.from <= r_peer.from
     // filter out paths where a base branch edge follows a branch edge
