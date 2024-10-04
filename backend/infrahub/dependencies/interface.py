@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
-from infrahub.core.branch import Branch
-from infrahub.database import InfrahubDatabase
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
+    from infrahub.dependencies.component.registry import ComponentDependencyRegistry
 
 T = TypeVar("T")
 
 
 @dataclass
 class DependencyBuilderContext:
+    component_registry: ComponentDependencyRegistry
     db: InfrahubDatabase
     branch: Branch
 

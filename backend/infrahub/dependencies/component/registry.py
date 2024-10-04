@@ -31,7 +31,7 @@ class ComponentDependencyRegistry:
     def get_component(self, component_class: type[T], db: InfrahubDatabase, branch: Branch) -> T:
         if component_class not in self._available_components:
             raise UntrackedDependencyError(f"'{component_class}' is not a tracked dependency")
-        context = DependencyBuilderContext(db=db, branch=branch)
+        context = DependencyBuilderContext(component_registry=self, db=db, branch=branch)
         return self._available_components[component_class].build(context=context)
 
     def track_dependency(self, dependency_class: type[DependencyBuilder]) -> None:
