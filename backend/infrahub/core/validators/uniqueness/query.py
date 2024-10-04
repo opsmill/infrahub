@@ -21,7 +21,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         query_request: NodeUniquenessQueryRequest,
         min_count_required: int = 1,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.query_request = query_request
         self.min_count_required = min_count_required
         super().__init__(**kwargs)

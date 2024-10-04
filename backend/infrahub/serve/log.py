@@ -6,7 +6,7 @@ from infrahub.log import get_logger
 
 
 class GunicornLogger(Logger):
-    def __init__(self, cfg: Any):
+    def __init__(self, cfg: Any) -> None:
         super().__init__(cfg)
         self.logger = get_logger("gunicorn")
 

@@ -26,7 +26,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         check_children: bool = False,
         check_parent: bool = False,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.check_children = check_children
         self.check_parent = check_parent
         super().__init__(**kwargs)
@@ -142,7 +142,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 class NodeHierarchyChecker(ConstraintCheckerInterface):
     query_classes = [NodeHierarchyUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]) -> None:
         self.db = db
         self.branch = branch
 

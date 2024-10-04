@@ -18,7 +18,7 @@ LOG = get_logger(__name__)
 
 
 class ConstraintValidatorDeterminer:
-    def __init__(self, schema_branch: SchemaBranch):
+    def __init__(self, schema_branch: SchemaBranch) -> None:
         self.schema_branch = schema_branch
         self._node_diffs_by_kind: dict[str, NodeDiff] = defaultdict(list)
         self._attribute_element_map: dict[str, dict[str, list[NodeDiff]]] = {}

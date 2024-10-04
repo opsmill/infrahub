@@ -21,7 +21,7 @@ ResponseClass = TypeVar("ResponseClass")
 
 
 class BusSimulator(InfrahubMessageBus):
-    def __init__(self, database: Optional[InfrahubDatabase] = None):
+    def __init__(self, database: Optional[InfrahubDatabase] = None) -> None:
         self.messages: list[InfrahubMessage] = []
         self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)

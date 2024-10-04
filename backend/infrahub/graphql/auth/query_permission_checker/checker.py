@@ -9,7 +9,7 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class GraphQLQueryPermissionChecker:
-    def __init__(self, sub_checkers: list[GraphQLQueryPermissionCheckerInterface]):
+    def __init__(self, sub_checkers: list[GraphQLQueryPermissionCheckerInterface]) -> None:
         self.sub_checkers = sub_checkers
 
     async def check(

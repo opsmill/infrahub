@@ -25,7 +25,7 @@ class DataGeneratorBatch(InfrahubBatch):
         semaphore: Optional[asyncio.Semaphore] = None,
         max_concurrent_execution: int = 5,
         return_exceptions: bool = False,
-    ):
+    ) -> None:
         super().__init__(
             semaphore=semaphore, max_concurrent_execution=max_concurrent_execution, return_exceptions=return_exceptions
         )
@@ -41,7 +41,9 @@ class DataGeneratorBatch(InfrahubBatch):
 
 
 class DataGenerator:
-    def __init__(self, db: InfrahubDatabase, concurrent_execution: int = 2, progress: Optional[Progress] = None):
+    def __init__(
+        self, db: InfrahubDatabase, concurrent_execution: int = 2, progress: Optional[Progress] = None
+    ) -> None:
         self.db = db
         self.concurrent_execution = concurrent_execution
         self.progress = progress

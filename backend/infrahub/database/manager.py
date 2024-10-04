@@ -11,5 +11,5 @@ if TYPE_CHECKING:
 class DatabaseManager(ABC):
     index: IndexManagerBase
 
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db

@@ -35,7 +35,7 @@ class InfrahubServices:
         event: InfrahubEventService | None = None,
         log: Optional[InfrahubLogger] = None,
         component_type: Optional[ComponentType] = None,
-    ):
+    ) -> None:
         self.cache = cache or InfrahubCache()
         self._client = client
         self._database = database
