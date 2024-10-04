@@ -1,9 +1,16 @@
-import { Button } from "@/components/buttons/button-primitive";
+import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { useAuth } from "@/hooks/useAuth";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 export type tColumn = {
   name: string;
@@ -20,7 +27,7 @@ type TableProps = {
   rows: tRow[];
   constructLink?: Function;
   onDelete?: (row: tRow) => void;
-  onUpdate?: Function;
+  onUpdate?: (row: tRow) => void;
   className?: string;
 };
 
@@ -74,27 +81,38 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
 
               {(onUpdate || onDelete) && (
                 <td className="text-right">
-                  {onUpdate && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={!auth?.permissions?.write}
-                      onClick={() => onUpdate(row)}
-                      data-testid="update-row-button">
-                      <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                    </Button>
-                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <ButtonWithTooltip
+                        tooltipContent="Actions"
+                        tooltipEnabled
+                        variant="ghost"
+                        size="square"
+                        className="p-4">
+                        <Icon icon="mdi:dots-vertical" className="" />
+                      </ButtonWithTooltip>
+                    </DropdownMenuTrigger>
 
-                  {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={!auth?.permissions?.write}
-                      onClick={() => onDelete(row)}
-                      data-testid="delete-row-button">
-                      <Icon icon="mdi:trash-outline" className="text-red-500" />
-                    </Button>
-                  )}
+                    <DropdownMenuContent align="end">
+                      {onUpdate && (
+                        <DropdownMenuItem
+                          onClick={() => onUpdate(row)}
+                          disabled={!auth?.permissions?.write}>
+                          <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
+
+                      {onDelete && (
+                        <DropdownMenuItem
+                          onClick={() => onDelete(row)}
+                          disabled={!auth?.permissions?.write}>
+                          <Icon icon="mdi:trash-outline" className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </td>
               )}
             </tr>
