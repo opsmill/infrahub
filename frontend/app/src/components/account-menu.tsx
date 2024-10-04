@@ -76,19 +76,33 @@ const UnauthenticatedAccountMenu = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="h-auto gap-2 rounded-lg p-2 hover:bg-indigo-50"
-          data-testid="unauthenticated-menu-trigger">
-          <Icon icon="mdi:user" className="text-2xl bg-indigo-50 rounded-full p-2" />
-          <div className="flex flex-col items-start flex-grow">
-            <span className="font-semibold text-sm">Log in</span>
-            <span className="text-xs">anonymous</span>
-          </div>
-          <Icon icon="mdi:dots-vertical" className="text-lg ml-auto" />
-        </Button>
-      </DropdownMenuTrigger>
+      <Link
+        className="flex items-center h-14 rounded-lg p-2 gap-2 hover:bg-indigo-50"
+        to="/signin"
+        state={{ from: location }}>
+        <div className="bg-indigo-50 rounded-full h-10 w-10 flex items-center justify-center overflow-hidden border border-white">
+          <Icon icon="mdi:user" className="text-5xl relative top-1 text-neutral-600" />
+        </div>
+
+        <div className="flex flex-col items-start flex-grow">
+          <span className="font-semibold text-sm">Log in</span>
+          <span className="text-xs text-neutral-500">anonymous</span>
+        </div>
+
+        <DropdownMenuTrigger
+          onClick={(event) => {
+            event.preventDefault();
+          }}
+          asChild>
+          <Button
+            variant="ghost"
+            size="square"
+            data-testid="unauthenticated-menu-trigger"
+            className="hover:bg-indigo-100">
+            <Icon icon="mdi:dots-vertical" className="text-lg" />
+          </Button>
+        </DropdownMenuTrigger>
+      </Link>
 
       <DropdownMenuContent align="end" side="right">
         <CommonMenuItems />
@@ -141,9 +155,9 @@ const AuthenticatedAccountMenu = ({
           <Avatar name={profile?.name?.value} className="h-10 w-10" />
           <div className="flex flex-col items-start">
             <span className="font-semibold text-sm">{profile?.label?.value}</span>
-            <span className="text-xs">{profile?.role?.value}</span>
+            <span className="text-xs text-neutral-500">{profile?.role?.value}</span>
           </div>
-          <Icon icon="mdi:dots-vertical" className="text-lg ml-auto" />
+          <Icon icon="mdi:dots-vertical" className="text-lg m-2 ml-auto" />
         </Button>
       </DropdownMenuTrigger>
 

@@ -14,8 +14,7 @@ test.describe("/signin", () => {
     test("should log in the user", async ({ page }) => {
       await page.goto("/");
 
-      await page.getByRole("button", { name: "Log in anonymous" }).click();
-      await page.getByRole("menuitem", { name: "Log in" }).click();
+      await page.getByRole("link", { name: "Log in anonymous" }).click();
 
       await expect(page.getByText("Sign in to your account")).toBeVisible();
       await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
@@ -28,8 +27,7 @@ test.describe("/signin", () => {
     test("should display an error message when authentication fails", async ({ page }) => {
       await page.goto("/");
 
-      await page.getByRole("button", { name: "Log in anonymous" }).click();
-      await page.getByRole("menuitem", { name: "Log in" }).click();
+      await page.getByRole("link", { name: "Log in anonymous" }).click();
 
       await expect(page.getByText("Sign in to your account")).toBeVisible();
       await page.getByLabel("Username").fill("wrong username");
@@ -46,8 +44,7 @@ test.describe("/signin", () => {
       const initialPage = `/objects/BuiltinTag?branch=atl1-delete-upstream&at=${date}`;
       await page.goto(initialPage);
 
-      await page.getByRole("button", { name: "Log in anonymous" }).click();
-      await page.getByRole("menuitem", { name: "Log in" }).click();
+      await page.getByRole("link", { name: "Log in anonymous" }).click();
 
       await expect(page.getByText("Sign in to your account")).toBeVisible();
       await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
@@ -68,7 +65,7 @@ test.describe("/signin", () => {
       await page.getByTestId("authenticated-menu-trigger").click();
       await page.getByRole("menuitem", { name: "Logout" }).click();
 
-      await expect(page.getByRole("button", { name: "Log in anonymous" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Log in anonymous" })).toBeVisible();
     });
 
     test("redirect to homepage if user is already logged in", async ({ page }) => {
