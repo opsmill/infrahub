@@ -100,7 +100,7 @@ jobs:
       - name: Setup Biome
         uses: biomejs/setup-biome@v2
         with:
-          version: latest
+          version: 1.9.3
       - name: Run Biome
         working-directory: ./frontend/app
         run: biome ci .
