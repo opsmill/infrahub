@@ -103,7 +103,7 @@ jobs:
           version: latest
       - name: Run Biome
         working-directory: ./frontend/app
-        run: npm run eslint
+        run: biome ci .
 
   python-lint:
     if: needs.files-changed.outputs.python == 'true'
