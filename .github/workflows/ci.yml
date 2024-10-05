@@ -90,8 +90,6 @@ jobs:
         run: "yamllint -s ."
 
   javascript-lint:
-    if: needs.files-changed.outputs.javascript == 'true'
-    needs: ["files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
