@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .shared import BUILD_NAME, Namespace, build_compose_files_cmd, execute_command, get_compose_cmd, get_env_vars
+from .shared import (
+    BUILD_NAME,
+    SERVICE_WORKER_NAME,
+    Namespace,
+    build_compose_files_cmd,
+    execute_command,
+    get_compose_cmd,
+    get_env_vars,
+)
 from .utils import ESCAPED_REPO_PATH
 
 if TYPE_CHECKING:
@@ -14,7 +22,7 @@ def load_infrastructure_data(context: Context, database: str, namespace: Namespa
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py"
+        command = f"{base_cmd} run {SERVICE_WORKER_NAME} infrahubctl run models/infrastructure_edge.py"
         execute_command(context=context, command=command)
 
 
@@ -25,7 +33,7 @@ def load_infrastructure_schema(
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run infrahub-git infrahubctl schema load {target}"
+        command = f"{base_cmd} run {SERVICE_WORKER_NAME} infrahubctl schema load {target}"
         if add_wait:
             command += " --wait 30"
         execute_command(context=context, command=command)

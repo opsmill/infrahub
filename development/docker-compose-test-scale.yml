@@ -84,7 +84,7 @@ x-infrahub-config: &infrahub_config
   OTEL_RESOURCE_ATTRIBUTES:
 
 services:
-  infrahub-server:
+  server:
     build:
       context: ../
       dockerfile: development/Dockerfile

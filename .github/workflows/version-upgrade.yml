@@ -126,15 +126,15 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
 
       - name: Display git 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
 
       - name: Display git 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
 
       - name: Display database logs
         if: always()

@@ -1,6 +1,7 @@
 ---
 services:
   message-queue:
+    profiles: [demo, dev]
     user: rabbitmq
     image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:latest}"
     environment:
@@ -13,6 +14,7 @@ services:
       retries: 10
       start_period: 3s
   cache:
+    profiles: [demo, dev]
     image: "${CACHE_DOCKER_IMAGE:-redis:latest}"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]

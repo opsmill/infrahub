@@ -76,6 +76,8 @@ RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/i
 
 WORKDIR /source
 
+ENV PREFECT_WORKER_QUERY_SECONDS="2"
+
 # --------------------------------------------
 # Import Frontend Build
 # --------------------------------------------
