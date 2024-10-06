@@ -50,6 +50,7 @@ CALL {
         // only make IS_PART_OF updates if node is ADDED or REMOVED
         // ------------------------------
         WITH node_diff_map, node_rel_status
+        WITH node_diff_map, node_rel_status
         WHERE node_rel_status IS NOT NULL
         MATCH (root:Root)
         MATCH (n:Node {uuid: node_diff_map.uuid})
