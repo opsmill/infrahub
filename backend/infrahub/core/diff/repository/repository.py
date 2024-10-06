@@ -1,23 +1,35 @@
+from typing import Generator
+
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ResourceNotFoundError
 
-from ..model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot, EnrichedDiffs, TimeRange, TrackingId
+from ..model.path import (
+    ConflictSelection,
+    EnrichedDiffConflict,
+    EnrichedDiffRoot,
+    EnrichedDiffs,
+    EnrichedNodeCreateRequest,
+    TimeRange,
+    TrackingId,
+)
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.empty_roots import EnrichedDiffEmptyRootsQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
-from ..query.save_query import EnrichedDiffSaveQuery
+from ..query.save import EnrichedDiffRootsCreateQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
 
 
 class DiffRepository:
+    MAX_SAVE_BATCH_SIZE: int = 100
+
     def __init__(self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer):
         self.db = db
         self.deserializer = deserializer
@@ -130,9 +142,27 @@ class DiffRepository:
             raise ResourceNotFoundError(f"Multiple diffs for {error_str}")
         return enriched_diffs[0]
 
+    def _get_node_create_request_batch(
+        self, enriched_diffs: EnrichedDiffs
+    ) -> Generator[list[EnrichedNodeCreateRequest], None, None]:
+        node_requests = []
+        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+            for node in diff_root.nodes:
+                node_requests.append(EnrichedNodeCreateRequest(node=node, root_uuid=diff_root.uuid))
+                if len(node_requests) == self.MAX_SAVE_BATCH_SIZE:
+                    yield node_requests
+                    node_requests = []
+        if node_requests:
+            yield node_requests
+
     async def save(self, enriched_diffs: EnrichedDiffs) -> None:
-        query = await EnrichedDiffSaveQuery.init(db=self.db, enriched_diffs=enriched_diffs)
-        await query.execute(db=self.db)
+        root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
+        await root_query.execute(db=self.db)
+        for node_create_batch in self._get_node_create_request_batch(enriched_diffs=enriched_diffs):
+            node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
+            await node_query.execute(db=self.db)
+        link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
+        await link_query.execute(db=self.db)
 
     async def summary(
         self,

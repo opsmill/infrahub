@@ -153,6 +153,45 @@ class TestDiffRepositorySaveAndLoad:
         diff_root = retrieved[0]
         assert diff_root == enriched_diff
 
+    async def test_save_and_retrieve_large_diff(self, diff_repository: DiffRepository, reset_database):
+        diff_repository.MAX_SAVE_BATCH_SIZE = 3
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=self._build_nodes(num_nodes=20, num_sub_fields=2),
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=self._build_nodes(num_nodes=18, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+
+        await diff_repository.save(enriched_diffs=enriched_diffs)
+
+        retrieved = await diff_repository.get_pairs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+        )
+        assert len(retrieved) == 1
+        retrieved_pair = retrieved[0]
+        assert retrieved_pair == enriched_diffs
+
     async def test_base_branch_name_filter(self, diff_repository: DiffRepository, reset_database):
         name_uuid_map = {name: str(uuid4()) for name in (self.base_branch_name, "more-main", "most-main")}
         for base_branch_name, root_uuid in name_uuid_map.items():
