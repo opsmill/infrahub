@@ -1,6 +1,7 @@
 from typing import Optional
 
 from infrahub_sdk import UUIDT
+from prefect import flow
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
@@ -9,6 +10,7 @@ from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 
 
+@flow(name="generator-definition-check")
 async def check(message: messages.RequestGeneratorDefinitionCheck, service: InfrahubServices) -> None:
     async with service.task_report(
         title=f"Generator Definition: {message.generator_definition.definition_name}",
@@ -127,6 +129,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             await service.send(message=event)
 
 
+@flow(name="generator-definition-run")
 async def run(message: messages.RequestGeneratorDefinitionRun, service: InfrahubServices) -> None:
     async with service.task_report(
         title="Executing Generator",

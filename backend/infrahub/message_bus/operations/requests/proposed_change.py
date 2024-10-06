@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Union
 
 import pytest
 from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
+from prefect import flow, task
 from pydantic import BaseModel
 
 from infrahub import config, lock
@@ -69,6 +70,7 @@ class DefinitionSelect(IntFlag):
         return "Doesn't require changes due to no relevant modified kinds or file changes in Git"
 
 
+@flow(name="proposed-changed-cancel")
 async def cancel(message: messages.RequestProposedChangeCancel, service: InfrahubServices) -> None:
     """Cancel a proposed change."""
     async with service.task_report(
@@ -81,6 +83,7 @@ async def cancel(message: messages.RequestProposedChangeCancel, service: Infrahu
         await proposed_change.save()
 
 
+@flow(name="proposed-changed-data-integrity")
 async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
     async with service.task_report(
@@ -97,6 +100,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
             await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
 
+@flow(name="proposed-changed-pipeline")
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -219,6 +223,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             await service.send(message=event)
 
 
+@flow(name="proposed-changed-schema-integrity")
 async def schema_integrity(
     message: messages.RequestProposedChangeSchemaIntegrity,
     service: InfrahubServices,  # pylint: disable=unused-argument
@@ -286,6 +291,7 @@ async def schema_integrity(
             )
 
 
+@flow(name="proposed-changed-repository-check")
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -326,6 +332,7 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
             await service.send(message=event)
 
 
+@flow(name="proposed-changed-refresh-artifact")
 async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifacts, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -389,6 +396,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
                 await service.send(message=msg)
 
 
+@flow(name="proposed-changed-run-generator")
 async def run_generators(message: messages.RequestProposedChangeRunGenerators, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -555,6 +563,7 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
 """
 
 
+@flow(name="proposed-changed-run-tests")
 async def run_tests(message: messages.RequestProposedChangeRunTests, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -709,6 +718,7 @@ class Repository(BaseModel):
     internal_status: str
 
 
+@task
 def _parse_proposed_change_repositories(
     message: messages.RequestProposedChangePipeline, source: list[dict], destination: list[dict]
 ) -> list[ProposedChangeRepository]:
@@ -754,6 +764,7 @@ def _parse_proposed_change_repositories(
     return list(pc_repos.values())
 
 
+@task
 def _parse_repositories(repositories: list[dict]) -> list[Repository]:
     """This function assumes that the repos is a list of the edges
 
@@ -776,6 +787,7 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
     return parsed
 
 
+@task
 def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeArtifactDefinition]:
     """This function assumes that definitions is a list of the edges
 
@@ -806,6 +818,7 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
     return parsed
 
 
+@task
 async def _get_proposed_change_repositories(
     message: messages.RequestProposedChangePipeline, service: InfrahubServices
 ) -> list[ProposedChangeRepository]:
@@ -825,6 +838,7 @@ async def _get_proposed_change_repositories(
     return _parse_proposed_change_repositories(message=message, source=source_all, destination=destination_all)
 
 
+@task
 async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
     conflicts = False
     for repo in repositories:
@@ -840,6 +854,7 @@ async def _validate_repository_merge_conflicts(repositories: list[ProposedChange
     return conflicts
 
 
+@task
 async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
     for repo in repositories:
         if repo.has_diff and repo.source_commit and repo.destination_commit:
@@ -862,6 +877,7 @@ async def _gather_repository_repository_diffs(repositories: list[ProposedChangeR
             repo.files_changed = files_changed
 
 
+@task
 async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: InfrahubServices, branch: str) -> None:
     result = await service.client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
@@ -876,6 +892,7 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
             )
 
 
+@task
 async def _get_proposed_change_schema_integrity_constraints(
     message: messages.RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
 ) -> list[SchemaUpdateConstraintInfo]:

@@ -1,3 +1,5 @@
+from prefect import flow
+
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -10,6 +12,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="transform-render-python-legacy")
 async def data(message: messages.TransformPythonData, service: InfrahubServices) -> None:
     log.info(
         "Received request to transform Python data",

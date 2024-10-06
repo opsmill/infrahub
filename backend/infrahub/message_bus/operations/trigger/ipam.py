@@ -1,6 +1,8 @@
 import ipaddress
 from typing import TYPE_CHECKING
 
+from prefect import flow
+
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.log import get_logger
@@ -13,6 +15,7 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+@flow(name="ipam-reconciliation")
 async def reconciliation(message: messages.TriggerIpamReconciliation, service: InfrahubServices) -> None:
     branch = await registry.get_branch(db=service.database, branch=message.branch)
     ipam_reconciler = IpamReconciler(db=service.database, branch=branch)

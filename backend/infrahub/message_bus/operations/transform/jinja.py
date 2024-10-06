@@ -13,6 +13,7 @@ from infrahub.services import InfrahubServices, services
 log = get_logger()
 
 
+@flow(name="transform-render-jinja2-legacy")
 async def template(message: TransformJinjaTemplate, service: InfrahubServices) -> None:
     log.info(f"Received request to render a Jinja template on branch={message.branch}")
 

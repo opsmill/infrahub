@@ -1,5 +1,7 @@
 from typing import Union
 
+from prefect import flow
+
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
@@ -12,6 +14,7 @@ from infrahub.tasks.check import set_check_status
 log = get_logger()
 
 
+@flow(name="git-repository-check-artifact-create")
 async def create(message: messages.CheckArtifactCreate, service: InfrahubServices) -> None:
     log.debug("Creating artifact", message=message)
     validator = await service.client.get(
