@@ -41,6 +41,7 @@ from .queries.diff.diff import (
     DiffSummaryElementRelationshipOne,
 )
 from .resolver import (
+    account_resolver,
     ancestors_resolver,
     default_paginated_list_resolver,
     default_resolver,
@@ -48,7 +49,7 @@ from .resolver import (
     many_relationship_resolver,
     single_relationship_resolver,
 )
-from .schema import InfrahubBaseMutation, InfrahubBaseQuery, account_resolver
+from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 from .subscription import InfrahubBaseSubscription
 from .types import (
     InfrahubInterface,

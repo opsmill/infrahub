@@ -1,13 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from graphene import ObjectType
-from infrahub_sdk.utils import extract_fields
-
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
-from infrahub.exceptions import NodeNotFoundError
 
 from .mutations.account import (
     InfrahubAccountSelfUpdate,
@@ -60,32 +53,6 @@ from .queries import (
     Task,
 )
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
-
-if TYPE_CHECKING:
-    from graphql import GraphQLResolveInfo
-
-    from . import GraphqlContext
-
-
-# pylint: disable=unused-argument
-
-
-async def account_resolver(root, info: GraphQLResolveInfo):
-    fields = await extract_fields(info.field_nodes[0].selection_set)
-    context: GraphqlContext = info.context
-
-    async with context.db.start_session() as db:
-        results = await NodeManager.query(
-            schema=InfrahubKind.GENERICACCOUNT,
-            filters={"ids": [context.account_session.account_id]},
-            fields=fields,
-            db=db,
-        )
-        if results:
-            account_profile = await results[0].to_graphql(db=db, fields=fields)
-            return account_profile
-
-        raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
 
 
 class InfrahubBaseQuery(ObjectType):

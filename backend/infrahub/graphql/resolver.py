@@ -4,9 +4,10 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
+from infrahub.exceptions import NodeNotFoundError
 
 from .parser import extract_selection
 from .permissions import get_permissions
@@ -17,6 +18,27 @@ if TYPE_CHECKING:
 
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.graphql.initialization import GraphqlContext
+
+
+async def account_resolver(
+    root,  # pylint: disable=unused-argument
+    info: GraphQLResolveInfo,
+) -> dict:
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+    context: GraphqlContext = info.context
+
+    async with context.db.start_session() as db:
+        results = await NodeManager.query(
+            schema=InfrahubKind.GENERICACCOUNT,
+            filters={"ids": [context.account_session.account_id]},
+            fields=fields,
+            db=db,
+        )
+        if results:
+            account_profile = await results[0].to_graphql(db=db, fields=fields)
+            return account_profile
+
+        raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
 
 
 async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
