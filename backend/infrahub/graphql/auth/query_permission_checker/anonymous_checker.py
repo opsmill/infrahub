@@ -11,7 +11,7 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class AnonymousGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
-    def __init__(self, anonymous_access_allowed_func: Callable[[], bool]):
+    def __init__(self, anonymous_access_allowed_func: Callable[[], bool]) -> None:
         self.anonymous_access_allowed_func = anonymous_access_allowed_func
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:

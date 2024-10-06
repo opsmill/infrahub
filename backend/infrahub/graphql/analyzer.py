@@ -16,7 +16,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         schema: Optional[GraphQLSchema] = None,
         operation_name: Optional[str] = None,
         branch: Optional[Branch] = None,
-    ):
+    ) -> None:
         self.branch: Optional[Branch] = branch
         self.operation_name: Optional[str] = operation_name
         self.query_variables: dict[str, Any] = query_variables or {}

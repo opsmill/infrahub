@@ -25,7 +25,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         min_count_override: Optional[int] = None,
         max_count_override: Optional[int] = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.min_count_override = min_count_override
         self.max_count_override = max_count_override
         super().__init__(**kwargs)
@@ -146,7 +146,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 class RelationshipCountChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipCountUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]) -> None:
         self.db = db
         self.branch = branch
 

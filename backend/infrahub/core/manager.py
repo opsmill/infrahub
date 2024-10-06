@@ -71,7 +71,7 @@ class ProfileAttributeIndex:
         self,
         profile_attributes_id_map: dict[str, NodeAttributesFromDB],
         profile_ids_by_node_id: dict[str, list[str]],
-    ):
+    ) -> None:
         self._profile_attributes_id_map = profile_attributes_id_map
         self._profile_ids_by_node_id = profile_ids_by_node_id
 

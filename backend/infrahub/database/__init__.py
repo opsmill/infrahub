@@ -71,7 +71,7 @@ def get_branch_name(branch: Optional[Union[Branch, str]] = None) -> str:
 
 
 class DatabaseSchemaManager:
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
     def get(self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True) -> MainSchemaTypes:
@@ -134,7 +134,7 @@ class InfrahubDatabase:
         session: Optional[AsyncSession] = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
-    ):
+    ) -> None:
         self._mode: InfrahubDatabaseMode = mode
         self._driver: AsyncDriver = driver
         self._session: Optional[AsyncSession] = session

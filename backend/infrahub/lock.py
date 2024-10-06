@@ -45,7 +45,7 @@ GLOBAL_GRAPH_LOCK = "global.graph"
 class InfrahubMultiLock:
     """Context manager to allow multiple locks to be reserved together"""
 
-    def __init__(self, _registry: InfrahubLockRegistry, locks: Optional[list[str]] = None):
+    def __init__(self, _registry: InfrahubLockRegistry, locks: Optional[list[str]] = None) -> None:
         self.registry = _registry
         self.locks = locks or []
 
@@ -72,7 +72,7 @@ class InfrahubMultiLock:
 class NATSLock:
     """Context manager to lock using NATS"""
 
-    def __init__(self, service: InfrahubServices, name: str):
+    def __init__(self, service: InfrahubServices, name: str) -> None:
         self.name = name
         self.token = None
         self.service = service
@@ -118,7 +118,7 @@ class InfrahubLock:
         connection: Optional[Union[redis.Redis, InfrahubServices]] = None,
         local: Optional[bool] = None,
         in_multi: bool = False,
-    ):
+    ) -> None:
         self.use_local: bool = local
         self.local: LocalLock = None
         self.remote: GlobalLock = None
@@ -175,7 +175,7 @@ class InfrahubLock:
 class InfrahubLockRegistry:
     def __init__(
         self, token: Optional[str] = None, local_only: bool = False, service: Optional[InfrahubServices] = None
-    ):
+    ) -> None:
         if config.SETTINGS.cache.enable and not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
                 self.connection = redis.Redis(

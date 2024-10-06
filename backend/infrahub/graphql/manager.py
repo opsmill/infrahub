@@ -98,7 +98,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         "DiffSummaryElementRelationshipMany": DiffSummaryElementRelationshipMany,
     }
 
-    def __init__(self, schema: SchemaBranch):
+    def __init__(self, schema: SchemaBranch) -> None:
         self.schema = schema
 
         self._graphql_types: dict[str, GraphQLTypes] = {}
