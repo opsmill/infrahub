@@ -19,4 +19,4 @@ class PermissionManagerDependency(DependencyBuilder[PermissionManager]):
                 )
             )
 
-        return PermissionManager(backends=[backend.build(context=context) for backend in backends])
+        return PermissionManager(backends=backends)

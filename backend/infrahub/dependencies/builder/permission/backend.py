@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
