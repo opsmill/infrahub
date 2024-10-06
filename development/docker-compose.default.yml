@@ -1,5 +1,5 @@
 ---
 services:
-  infrahub-server:
+  server:
     ports:
       - "${INFRAHUB_SERVER_PORT:-8000}:8000"

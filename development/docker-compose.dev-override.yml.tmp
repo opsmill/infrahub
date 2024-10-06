@@ -12,3 +12,6 @@ services:
   cache:
     ports:
       - "6379:6379"
+  task-manager:
+    ports:
+      - "4200:4200"

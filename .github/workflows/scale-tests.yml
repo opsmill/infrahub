@@ -187,7 +187,7 @@ jobs:
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/ebf7ec72-db79-4fb7-9b46-4621ca9c407a/scale-tests?orgId=1&var-run_id=$GITHUB_RUN_ID&var-job=${JOB_NAME// /%20}&var-stage=test&var-node_amount=${{ matrix.node-amount }}&var-attrs_amount=${{ matrix.attrs-amount }}&var-rels_amount=${{ matrix.rels-amount }}&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
       - name: "Destroy scale environment"
         if: always()
         run: "invoke backend.test-scale-env-destroy"

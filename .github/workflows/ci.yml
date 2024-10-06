@@ -635,7 +635,7 @@ jobs:
 
       - name: Set infrahub address
         run: |
-          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port infrahub-server 8000 | cut -d: -f2)
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
@@ -688,15 +688,19 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
 
-      - name: Display git 1 logs
+      - name: Display task worker 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
 
-      - name: Display git 2 logs
+      - name: Display task worker 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+
+      - name: Display task manager logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
 
       - name: Display database logs
         if: always()
