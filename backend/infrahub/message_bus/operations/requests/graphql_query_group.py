@@ -12,7 +12,6 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-@flow(name="graphql-query-add-subscriber")
 async def group_add_subscriber(
     client: InfrahubClient, group: InfrahubNode, subscribers: List[str], branch: str
 ) -> dict:

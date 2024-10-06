@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Union
 
 import pytest
 from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
-from prefect import flow, task
+from prefect import flow
 from pydantic import BaseModel
 
 from infrahub import config, lock
@@ -718,7 +718,6 @@ class Repository(BaseModel):
     internal_status: str
 
 
-@task
 def _parse_proposed_change_repositories(
     message: messages.RequestProposedChangePipeline, source: list[dict], destination: list[dict]
 ) -> list[ProposedChangeRepository]:
@@ -764,7 +763,6 @@ def _parse_proposed_change_repositories(
     return list(pc_repos.values())
 
 
-@task
 def _parse_repositories(repositories: list[dict]) -> list[Repository]:
     """This function assumes that the repos is a list of the edges
 
@@ -787,7 +785,6 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
     return parsed
 
 
-@task
 def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeArtifactDefinition]:
     """This function assumes that definitions is a list of the edges
 
@@ -818,7 +815,6 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
     return parsed
 
 
-@task
 async def _get_proposed_change_repositories(
     message: messages.RequestProposedChangePipeline, service: InfrahubServices
 ) -> list[ProposedChangeRepository]:
@@ -838,7 +834,6 @@ async def _get_proposed_change_repositories(
     return _parse_proposed_change_repositories(message=message, source=source_all, destination=destination_all)
 
 
-@task
 async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
     conflicts = False
     for repo in repositories:
@@ -854,7 +849,6 @@ async def _validate_repository_merge_conflicts(repositories: list[ProposedChange
     return conflicts
 
 
-@task
 async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
     for repo in repositories:
         if repo.has_diff and repo.source_commit and repo.destination_commit:
@@ -877,7 +871,6 @@ async def _gather_repository_repository_diffs(repositories: list[ProposedChangeR
             repo.files_changed = files_changed
 
 
-@task
 async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: InfrahubServices, branch: str) -> None:
     result = await service.client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
@@ -892,7 +885,6 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
             )
 
 
-@task
 async def _get_proposed_change_schema_integrity_constraints(
     message: messages.RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
 ) -> list[SchemaUpdateConstraintInfo]:
