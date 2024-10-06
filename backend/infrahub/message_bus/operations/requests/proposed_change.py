@@ -32,13 +32,13 @@ from infrahub.message_bus.types import (
     ProposedChangeSubscriber,
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
+from infrahub.services import InfrahubServices  # noqa: TCH001
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.services import InfrahubServices
 
 
 log = get_logger()
