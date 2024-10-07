@@ -662,6 +662,12 @@ jobs:
         env:
           INFRAHUB_MISC_RESPONSE_DELAY: 2
 
+      - name: Set infrahub address
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
+
       - name: Run Playwright tests
         run: npm run ci:test:e2e
 
