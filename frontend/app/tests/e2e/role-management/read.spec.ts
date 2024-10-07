@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("Role management - READ", () => {
   test("should read correctly the different views", async ({ page }) => {

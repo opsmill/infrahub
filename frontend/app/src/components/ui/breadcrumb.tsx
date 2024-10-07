@@ -1,6 +1,6 @@
-import React from "react";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
+import React from "react";
 
 export const Breadcrumb = React.forwardRef<HTMLOListElement, React.ComponentPropsWithoutRef<"ol">>(
   ({ className, ...props }, ref) => (
@@ -23,7 +23,8 @@ export const BreadcrumbSeparator = ({
     role="presentation"
     aria-hidden="true"
     className={classNames("inline-flex", className)}
-    {...props}>
+    {...props}
+  >
     {children ?? <Icon icon="mdi:slash-forward" className="text-xl text-gray-400" />}
   </li>
 );

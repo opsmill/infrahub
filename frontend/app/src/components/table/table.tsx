@@ -40,7 +40,8 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
         className={classNames(
           "table-auto border-spacing-0 w-full border border-gray-300 rounded-md",
           className
-        )}>
+        )}
+      >
         <thead className="bg-gray-50 text-left border-b border-gray-300 rounded-md">
           <tr>
             {columns.map((column) => (
@@ -60,14 +61,16 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                 "border-b border-gray-200 h-[36px]",
                 row.link ? "hover:bg-gray-50 cursor-pointer" : ""
               )}
-              data-cy="object-table-row">
+              data-cy="object-table-row"
+            >
               {columns.map((column, index) => {
                 return (
                   <td key={index} className="p-0">
                     {row.link && (
                       <Link
                         className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                        to={row.link}>
+                        to={row.link}
+                      >
                         {renderRowValue(row.values[column.name])}
                       </Link>
                     )}
@@ -90,7 +93,8 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                         tooltipEnabled
                         variant="ghost"
                         size="square"
-                        className="p-4">
+                        className="p-4"
+                      >
                         <Icon icon="mdi:dots-vertical" className="" />
                       </ButtonWithTooltip>
                     </DropdownMenuTrigger>
@@ -99,7 +103,8 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                       {onUpdate && (
                         <DropdownMenuItem
                           onClick={() => onUpdate(row)}
-                          disabled={!auth?.permissions?.write}>
+                          disabled={!auth?.permissions?.write}
+                        >
                           <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                           Edit
                         </DropdownMenuItem>
@@ -108,7 +113,8 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                       {onDelete && (
                         <DropdownMenuItem
                           onClick={() => onDelete(row)}
-                          disabled={!auth?.permissions?.write}>
+                          disabled={!auth?.permissions?.write}
+                        >
                           <Icon icon="mdi:trash-outline" className="text-red-500" />
                           Delete
                         </DropdownMenuItem>

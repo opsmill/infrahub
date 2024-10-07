@@ -1,6 +1,8 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownKeymap, markdownLanguage } from "@codemirror/lang-markdown";
+import { syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
+import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import {
   EditorView,
   ViewUpdate,
@@ -8,11 +10,9 @@ import {
   lineNumbers,
   placeholder as placeholderView,
 } from "@codemirror/view";
+import { graphql } from "cm6-graphql";
 import { basicLight } from "cm6-theme-basic-light";
 import { useEffect, useState } from "react";
-import { syntaxHighlighting } from "@codemirror/language";
-import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
-import { graphql } from "cm6-graphql";
 
 export type UseCodeMirror = {
   editor?: HTMLDivElement | null;

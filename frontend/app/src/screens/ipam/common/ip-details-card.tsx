@@ -48,7 +48,8 @@ export function IpDetailsCard({ schema, data, refetch }: tIpDetailsCard) {
             <Link
               to={constructPath(
                 getObjectDetailsUrl(relationshipData.id, relationshipData.__typename)
-              )}>
+              )}
+            >
               {relationshipData?.display_label}
             </Link>
           ),

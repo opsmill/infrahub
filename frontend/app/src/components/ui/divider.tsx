@@ -1,5 +1,5 @@
-import React from "react";
 import { classNames } from "@/utils/common";
+import React from "react";
 
 export const Divider = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   return (

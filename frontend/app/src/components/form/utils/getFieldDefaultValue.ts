@@ -1,4 +1,3 @@
-import { FieldSchema, AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { ProfileData } from "@/components/form/object-form";
 import {
   AttributeValueFormPool,
@@ -6,8 +5,9 @@ import {
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/components/form/type";
-import * as R from "ramda";
 import { LineageSource } from "@/generated/graphql";
+import { AttributeType, FieldSchema } from "@/utils/getObjectItemDisplayValue";
+import * as R from "ramda";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;

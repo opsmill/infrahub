@@ -1,8 +1,8 @@
 import { SelectOption } from "@/components/inputs/select";
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { components } from "@/infraops";
 import { RegisterOptions } from "react-hook-form";
 import { FormFieldError } from "./form";
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 
 // Interface for every field in a create/edit form
 export interface DynamicFieldData {

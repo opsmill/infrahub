@@ -1,13 +1,13 @@
+import { Spinner } from "@/components/ui/spinner";
 import { focusStyle } from "@/components/ui/style";
 import { Tooltip, TooltipProps } from "@/components/ui/tooltip";
 import { classNames } from "@/utils/common";
-import { cva, type VariantProps } from "class-variance-authority";
+import { type VariantProps, cva } from "class-variance-authority";
 import { ButtonHTMLAttributes, forwardRef } from "react";
 import { Link, LinkProps } from "react-router-dom";
-import { Spinner } from "@/components/ui/spinner";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed",
+  "inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
@@ -25,7 +25,7 @@ const buttonVariants = cva(
         xs: "h-7 px-2 text-xs",
         sm: "h-7 px-2 text-sm",
         icon: "h-7 w-7 rounded-full",
-        square: "h-9 w-9 rounded-md",
+        square: "h-9 w-9",
       },
     },
     defaultVariants: {
@@ -48,7 +48,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
         ref={ref}
-        {...props}>
+        {...props}
+      >
         {isLoading && <Spinner className="mr-2" />}
         {children}
       </button>

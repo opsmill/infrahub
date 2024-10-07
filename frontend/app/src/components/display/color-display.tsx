@@ -18,7 +18,8 @@ export const ColorDisplay = (props: tColorDisplay) => {
           style={{
             backgroundColor: color || "",
             color: color ? getTextColor(color) : "",
-          }}>
+          }}
+        >
           {value}
         </div>
       </Tooltip>
@@ -31,7 +32,8 @@ export const ColorDisplay = (props: tColorDisplay) => {
       style={{
         backgroundColor: color || "",
         color: color ? getTextColor(color) : "",
-      }}>
+      }}
+    >
       {value}
     </div>
   );

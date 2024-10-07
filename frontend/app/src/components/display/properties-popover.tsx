@@ -59,7 +59,8 @@ const PropertiesPopover = ({
                 disabled={!permission.write.allow}
                 tooltipEnabled={!permission.write.allow}
                 tooltipContent={permission.write.message ?? undefined}
-                data-testid="properties-edit-button">
+                data-testid="properties-edit-button"
+              >
                 <Icon icon="mdi:pencil" className="text-custom-blue-500" />
               </ButtonWithTooltip>
             </div>
@@ -77,7 +78,8 @@ const PropertiesPopover = ({
           />
         }
         open={showMetaEditModal}
-        setOpen={setShowMetaEditModal}>
+        setOpen={setShowMetaEditModal}
+      >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={() => refetch && refetch()}

@@ -1,12 +1,12 @@
-import useQuery from "@/hooks/useQuery";
-import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
-import { getObjectAttributes, getObjectRelationships } from "@/utils/getSchemaObjectColumns";
-import { Filter } from "@/hooks/useFilters";
-import { useAtomValue } from "jotai";
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { getTokens } from "@/graphql/queries/accounts/getTokens";
+import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
+import { Filter } from "@/hooks/useFilters";
+import useQuery from "@/hooks/useQuery";
+import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { getObjectAttributes, getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai";
 
 const getQuery = (schema?: IModelSchema, filters?: Array<Filter>) => {
   if (!schema) return "query {ok}";

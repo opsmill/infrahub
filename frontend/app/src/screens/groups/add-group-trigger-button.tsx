@@ -1,12 +1,12 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { usePermission } from "@/hooks/usePermission";
-import { useState } from "react";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import { Icon } from "@iconify-icon/react";
-import AddGroupForm from "@/screens/groups/add-group-form";
-import { iNodeSchema } from "@/state/atoms/schema.atom";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { usePermission } from "@/hooks/usePermission";
+import AddGroupForm from "@/screens/groups/add-group-form";
+import { iNodeSchema } from "@/state/atoms/schema.atom";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
 
 type AddGroupTriggerButtonProps = {
   schema: iNodeSchema;
@@ -34,7 +34,8 @@ export default function AddGroupTriggerButton({
         tooltipContent={permission.write.message ?? "Add groups"}
         tooltipEnabled
         data-testid="open-group-form-button"
-        {...props}>
+        {...props}
+      >
         <Icon icon="mdi:plus" className="text-lg" />
       </ButtonWithTooltip>
 
@@ -49,7 +50,8 @@ export default function AddGroupTriggerButton({
           />
         }
         open={isAddGroupFormOpen}
-        setOpen={setIsAddGroupFormOpen}>
+        setOpen={setIsAddGroupFormOpen}
+      >
         <AddGroupForm
           objectId={objectId}
           schema={schema}

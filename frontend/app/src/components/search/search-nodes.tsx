@@ -1,18 +1,18 @@
 import { Skeleton } from "@/components/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
 import { SEARCH } from "@/graphql/queries/objects/search";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useObjectDetails } from "@/hooks/useObjectDetails";
 import { useLazyQuery } from "@/hooks/useQuery";
+import { useSchema } from "@/hooks/useSchema";
 import { constructPath } from "@/utils/fetch";
+import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 import { ReactElement, useEffect } from "react";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
-import { useSchema } from "@/hooks/useSchema";
-import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
-import { Badge } from "@/components/ui/badge";
 
 type SearchProps = {
   query: string;
@@ -147,7 +147,8 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           return (
             <div
               className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent"
-              style={{ background: `${color}40` }}>
+              style={{ background: `${color}40` }}
+            >
               {value.label}
             </div>
           );

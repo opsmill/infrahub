@@ -5,6 +5,7 @@ import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -13,7 +14,7 @@ import { TaskItemDetails } from "@/screens/tasks/task-item-details";
 import { TaskItems } from "@/screens/tasks/task-items";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
-import { genericsState, IModelSchema, schemaState } from "@/state/atoms/schema.atom";
+import { IModelSchema, genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
@@ -30,11 +31,10 @@ import { useAtomValue } from "jotai/index";
 import { useRef } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ActionButtons } from "./action-buttons";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { ActionButtons } from "./action-buttons";
 
 type ObjectDetailsProps = {
   schema: IModelSchema;
@@ -165,7 +165,8 @@ export default function ObjectItemDetails({
                               variant="ghost"
                               size="icon"
                               data-testid="edit-metadata-button"
-                              data-cy="metadata-edit-button">
+                              data-cy="metadata-edit-button"
+                            >
                               <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                             </ButtonWithTooltip>
                           </div>
@@ -226,7 +227,8 @@ export default function ObjectItemDetails({
                 { name: QSP.TAB, value: TASK_TAB },
                 { name: QSP.TASK_ID, exclude: true },
               ])}
-              className="flex items-center p-2 ">
+              className="flex items-center p-2 "
+            >
               <Icon icon={"mdi:chevron-left"} />
               All tasks
             </Link>
@@ -251,7 +253,8 @@ export default function ObjectItemDetails({
           </div>
         }
         open={showMetaEditModal}
-        setOpen={setShowMetaEditModal}>
+        setOpen={setShowMetaEditModal}
+      >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}

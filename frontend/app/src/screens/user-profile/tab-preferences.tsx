@@ -1,12 +1,12 @@
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { Card } from "@/components/ui/card";
-import { UPDATE_ACCOUNT_PASSWORD } from "@/graphql/mutations/accounts/updateAccountPassword";
-import Content from "@/screens/layout/content";
-import { toast } from "react-toastify";
-import { useMutation } from "@/hooks/useQuery";
-import { Form, FormSubmit } from "@/components/ui/form";
 import PasswordInputField from "@/components/form/fields/password-input.field";
 import { isRequired } from "@/components/form/utils/validation";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Form, FormSubmit } from "@/components/ui/form";
+import { UPDATE_ACCOUNT_PASSWORD } from "@/graphql/mutations/accounts/updateAccountPassword";
+import { useMutation } from "@/hooks/useQuery";
+import Content from "@/screens/layout/content";
+import { toast } from "react-toastify";
 
 type UpdatePasswordFormData = {
   newPassword: string;
@@ -38,7 +38,8 @@ export default function TabPreferences() {
               confirmPassword: formData.confirmPassword.value as string,
             };
             await onSubmit(data);
-          }}>
+          }}
+        >
           <PasswordInputField
             name="newPassword"
             label="New password"

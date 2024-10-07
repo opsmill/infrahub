@@ -1,12 +1,12 @@
-import { useAtomValue } from "jotai/index";
 import {
+  IProfileSchema,
   genericsState,
   iGenericSchema,
   iNodeSchema,
-  IProfileSchema,
   profilesAtom,
   schemaState,
 } from "@/state/atoms/schema.atom";
+import { useAtomValue } from "jotai/index";
 
 type UseSchema = (kind?: string) =>
   | {

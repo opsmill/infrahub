@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/skeleton";
 import { CONFIG } from "@/config/config";
 import { components } from "@/infraops";
 import { fetchUrl } from "@/utils/fetch";
@@ -10,7 +11,9 @@ export const AppVersion = () => {
     fetchUrl(CONFIG.INFO_URL).then((result) => setInfo(result));
   }, []);
 
-  if (!info) return null;
-
-  return <div className="text-right text-xs text-gray-400">Infrahub - v{info.version}</div>;
+  return (
+    <div className="text-xs text-gray-400 inline-flex items-center w-full justify-end">
+      Infrahub - v{info ? info.version : <Skeleton className="h-4 w-14" />}
+    </div>
+  );
 };

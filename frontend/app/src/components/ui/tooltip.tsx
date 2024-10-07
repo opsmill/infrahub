@@ -28,7 +28,8 @@ export function Tooltip({
               !enabled && "hidden",
               className
             )}
-            {...props}>
+            {...props}
+          >
             {content}
           </TooltipPrimitives.Content>
         </TooltipPrimitives.Portal>

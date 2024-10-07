@@ -1,7 +1,7 @@
-import { describe, expect, vi } from "vitest";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
-import { RelationshipManyType, RelationshipOneType } from "@/utils/getObjectItemDisplayValue";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { RelationshipManyType, RelationshipOneType } from "@/utils/getObjectItemDisplayValue";
+import { describe, expect, vi } from "vitest";
 
 const buildRelationshipOneData = (override: Partial<RelationshipOneType>): RelationshipOneType => ({
   node: {

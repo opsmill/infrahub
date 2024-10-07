@@ -2,7 +2,9 @@ from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PermissionDecision
+from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
+from infrahub.core.manager import get_schema
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -13,6 +15,8 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
+    """Checker that makes sure a user account can perform some action on some kind of objects."""
+
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated
 
@@ -69,5 +73,54 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                 )
             if not has_permission:
                 raise PermissionDeniedError(f"You do not have the following permission: {permission}")
+
+        return CheckerResolution.NEXT_CHECKER
+
+
+class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
+    """Checker that makes sure a user account can perform actions on account related objects.
+
+    This is similar to object permission checker except that we care for any operations on any account related kinds.
+    """
+
+    permission_required = f"global:{GlobalPermissions.MANAGE_ACCOUNTS.value}:{PermissionDecision.ALLOW.value}"
+
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+        return account_session.authenticated
+
+    async def check(
+        self,
+        db: InfrahubDatabase,
+        account_session: AccountSession,
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        query_parameters: GraphqlParams,
+        branch: Branch,
+    ) -> CheckerResolution:
+        is_account_operation = False
+        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        operation_names = [operation.name for operation in analyzed_query.operations]
+
+        for kind in kinds:
+            schema = get_schema(db=db, branch=branch, node_schema=kind)
+            if is_account_operation := kind in (
+                InfrahubKind.GENERICACCOUNT,
+                InfrahubKind.ACCOUNTGROUP,
+                InfrahubKind.ACCOUNTROLE,
+            ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICACCOUNT in schema.inherit_from):
+                break
+
+        # Ignore non-account related operation or viewing account own profile
+        if not is_account_operation or operation_names == ["AccountProfile"]:
+            return CheckerResolution.NEXT_CHECKER
+
+        has_permission = False
+        for permission_backend in registry.permission_backends:
+            if has_permission := await permission_backend.has_permission(
+                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+            ):
+                break
+
+        if not has_permission and analyzed_query.contains_mutation:
+            raise PermissionDeniedError("You do not have the permission to manage user accounts, groups or roles")
 
         return CheckerResolution.NEXT_CHECKER

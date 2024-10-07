@@ -1,12 +1,12 @@
-import { useAtomValue } from "jotai";
-import { Outlet, useParams } from "react-router-dom";
+import { CardWithBorder } from "@/components/ui/card";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
 import ObjectHeader from "@/screens/objects/object-header";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
-import NoDataFound from "@/screens/errors/no-data-found";
 import { stateAtom } from "@/state/atoms/state.atom";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { CardWithBorder } from "@/components/ui/card";
+import { useAtomValue } from "jotai";
+import { Outlet, useParams } from "react-router-dom";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();

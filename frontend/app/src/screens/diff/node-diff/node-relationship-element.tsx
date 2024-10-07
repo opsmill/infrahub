@@ -1,9 +1,9 @@
-import { DiffNodeProperty } from "./node-property";
-import { DiffRelationshipElement, DiffStatus } from "@/screens/diff/node-diff/types";
-import { DiffBadge, DiffRow } from "@/screens/diff/node-diff/utils";
 import { BadgeConflict } from "@/screens/diff/diff-badge";
 import { DiffThread } from "@/screens/diff/node-diff/thread";
+import { DiffRelationshipElement, DiffStatus } from "@/screens/diff/node-diff/types";
+import { DiffBadge, DiffRow } from "@/screens/diff/node-diff/utils";
 import { useParams } from "react-router-dom";
+import { DiffNodeProperty } from "./node-property";
 
 type DiffNodeElementProps = {
   element: DiffRelationshipElement;
@@ -28,7 +28,8 @@ export const DiffNodeRelationshipElement = ({ element, status }: DiffNodeElement
         </div>
       }
       right={element.status === "ADDED" && element.peer_label}
-      left={element.status === "REMOVED" && element.peer_label}>
+      left={element.status === "REMOVED" && element.peer_label}
+    >
       <div className="divide-y border-t">
         {element.properties
           .filter((property) => property.status !== "UNCHANGED")

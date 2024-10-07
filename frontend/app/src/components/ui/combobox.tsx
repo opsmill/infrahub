@@ -1,7 +1,3 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { classNames } from "@/utils/common";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
 import {
   Command,
   CommandEmpty,
@@ -9,7 +5,11 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { classNames } from "@/utils/common";
+import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import React from "react";
 
 export const Combobox = Popover;
 
@@ -27,7 +27,8 @@ export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTrigg
           className={classNames(
             "h-10 flex items-center w-full rounded-md border border-gray-300 bg-white p-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-custom-blue-600 focus-visible:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
             className
-          )}>
+          )}
+        >
           {children}
           <Icon icon="mdi:unfold-more-horizontal" className="ml-auto text-gray-600 pl-2" />
         </button>
@@ -54,7 +55,8 @@ export const ComboboxList = React.forwardRef<
         ...(fitTriggerWidth
           ? { width: "var(--radix-popover-trigger-width)" }
           : { minWidth: "var(--radix-popover-trigger-width)" }),
-      }}>
+      }}
+    >
       <CommandInput placeholder="Filter..." />
       <CommandList ref={ref} {...props} />
     </Command>

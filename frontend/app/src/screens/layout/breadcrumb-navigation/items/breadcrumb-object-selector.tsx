@@ -1,11 +1,11 @@
-import { useSchema } from "@/hooks/useSchema";
-import React from "react";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-loading";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { useSchema } from "@/hooks/useSchema";
 import { BreadcrumbLink } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-link";
+import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-loading";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { NetworkStatus } from "@apollo/client";
+import React from "react";
 
 export default function BreadcrumbObjectSelector({
   kind,
@@ -39,6 +39,8 @@ const ObjectSelector = ({
   if (error) return null;
 
   const objectList = data?.[schema.kind!].edges.map((edge: any) => edge.node);
+  if (!objectList || objectList.length === 0) return null;
+
   const currentObject = objectList.find((node: any) => node.id === id);
 
   if (!currentObject) return null;
@@ -46,7 +48,8 @@ const ObjectSelector = ({
   return (
     <BreadcrumbLink
       to={getObjectDetailsUrl2(currentObject.__typename, currentObject.id)}
-      {...props}>
+      {...props}
+    >
       {currentObject.display_label}
     </BreadcrumbLink>
   );

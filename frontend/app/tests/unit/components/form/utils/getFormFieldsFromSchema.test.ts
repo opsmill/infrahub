@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
-import { IModelSchema } from "@/state/atoms/schema.atom";
 import { AuthContextType } from "@/hooks/useAuth";
-import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { components } from "@/infraops";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { describe, expect, it } from "vitest";
 
 export const buildAttributeSchema = (
   override?: Partial<components["schemas"]["AttributeSchema-Output"]>

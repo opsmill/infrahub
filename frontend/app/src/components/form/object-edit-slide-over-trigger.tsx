@@ -32,7 +32,8 @@ const ObjectEditSlideOverTrigger = ({
         tooltipEnabled={!permission.write.allow}
         tooltipContent={permission.write.message ?? undefined}
         data-testid="edit-button"
-        {...props}>
+        {...props}
+      >
         <Icon icon="mdi:pencil" />
       </ButtonWithTooltip>
 
@@ -46,7 +47,8 @@ const ObjectEditSlideOverTrigger = ({
           />
         }
         open={isEditDrawerOpen}
-        setOpen={setIsEditDrawerOpen}>
+        setOpen={setIsEditDrawerOpen}
+      >
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditDrawerOpen(false)}
           onUpdateComplete={onUpdateComplete}

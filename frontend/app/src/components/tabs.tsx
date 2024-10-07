@@ -36,7 +36,8 @@ export const Tabs = (props: TabsProps) => {
       className={classNames(
         "bg-custom-white flex items-center border-b border-gray-200",
         className
-      )}>
+      )}
+    >
       <div className="flex-1">
         <div className="">
           <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
@@ -52,7 +53,8 @@ export const Tabs = (props: TabsProps) => {
                     (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
                       ? "border-custom-blue-500 text-custom-blue-600"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  )}>
+                  )}
+                >
                   {tab.label}
 
                   {tab.count !== undefined && (

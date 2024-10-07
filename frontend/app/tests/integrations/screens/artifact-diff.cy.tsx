@@ -55,7 +55,8 @@ const ArtifactsDiffProvider = ({ loggedIn }: { loggedIn: boolean }) => {
       initialValues={[
         [schemaState, [...artifactThreadSchema, ...accountDetailsMocksSchema]],
         [proposedChangedState, proposedChangesDetails],
-      ]}>
+      ]}
+    >
       {loggedIn ? <AuthArtifactsDiff /> : <SchemaArtifactsDiff />}
     </TestProvider>
   );

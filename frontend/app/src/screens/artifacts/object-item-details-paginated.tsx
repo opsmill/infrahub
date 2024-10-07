@@ -13,6 +13,7 @@ import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
+import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
@@ -37,7 +38,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();
@@ -151,7 +151,8 @@ export default function ArtifactsDetails() {
               schema={schemaData}
               objectId={objectid}
               size="default"
-              variant="outline">
+              variant="outline"
+            >
               Manage groups
               <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
             </GroupsManagerTriggerButton>
@@ -174,7 +175,8 @@ export default function ArtifactsDetails() {
                     href={CONFIG.ARTIFACT_DETAILS_URL(objectDetailsData.id)}
                     target="_blank"
                     rel="noreferrer"
-                    className="cursor-pointer underline">
+                    className="cursor-pointer underline"
+                  >
                     {objectDetailsData.id}
                   </a>
                 </dd>
@@ -199,7 +201,8 @@ export default function ArtifactsDetails() {
                         className={classNames(
                           "text-sm text-gray-900 "
                           // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
-                        )}>
+                        )}
+                      >
                         {attribute.name === "storage_id" &&
                           objectDetailsData[attribute.name]?.value && (
                             <a
@@ -208,7 +211,8 @@ export default function ArtifactsDetails() {
                               )}
                               target="_blank"
                               rel="noreferrer"
-                              className="cursor-pointer underline">
+                              className="cursor-pointer underline"
+                            >
                               {objectDetailsData[attribute.name].value}
                             </a>
                           )}
@@ -240,7 +244,8 @@ export default function ArtifactsDetails() {
                                     });
                                     setShowMetaEditModal(true);
                                   }}
-                                  data-cy="metadata-edit-button">
+                                  data-cy="metadata-edit-button"
+                                >
                                   <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                                 </Button>
                               </div>
@@ -294,7 +299,8 @@ export default function ArtifactsDetails() {
           />
         }
         open={showMetaEditModal}
-        setOpen={setShowMetaEditModal}>
+        setOpen={setShowMetaEditModal}
+      >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={() => refetch()}

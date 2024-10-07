@@ -88,7 +88,8 @@ export const Pagination = (props: tPaginationType) => {
       className={classNames(
         "sticky bottom-0 flex items-center justify-between bg-custom-white p-2",
         className
-      )}>
+      )}
+    >
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
         <div className="flex items-center">
           <div className="text-sm text-gray-700">{paginationText}</div>

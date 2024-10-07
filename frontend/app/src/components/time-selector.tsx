@@ -36,14 +36,16 @@ export const TimeFrameSelector = () => {
       className={classNames(
         "inline-flex items-center h-8 border border-neutral-200 rounded-lg overflow-hidden",
         date && "bg-neutral-800"
-      )}>
+      )}
+    >
       <DateTimePicker
         customInput={
           <Button
             size="square"
             variant="ghost"
             className="h-8 w-8 bg-neutral-50"
-            data-testid="timeframe-selector">
+            data-testid="timeframe-selector"
+          >
             <Icon icon="mdi:calendar-clock" className="text-xl" />
           </Button>
         }
@@ -65,7 +67,8 @@ export const TimeFrameSelector = () => {
         leave="linear duration-300"
         leaveFrom="w-[158px] bg-red-200 h-full w-full opacity-100"
         leaveTo="w-0 opacity-0"
-        className="inline-flex items-center text-white text-xxs">
+        className="inline-flex items-center text-white text-xxs"
+      >
         <Icon icon="mdi:history" className="text-xl m-1.5" />
 
         <div className="flex flex-col items-center truncate">
@@ -79,7 +82,8 @@ export const TimeFrameSelector = () => {
           type="button"
           onClick={reset}
           className="h-8 w-8 hover:bg-neutral-700"
-          data-testid="reset-timeframe-selector">
+          data-testid="reset-timeframe-selector"
+        >
           <Icon icon="mdi:close" />
         </Button>
       </Transition>

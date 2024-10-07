@@ -4,15 +4,22 @@ import { Property, PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
 import { CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
+import { useObjectDetails } from "@/hooks/useObjectDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import ResourcePoolUtilization from "@/screens/resource-manager/common/ResourcePoolUtilization";
+import {
+  RESOURCE_GENERIC_KIND,
+  RESOURCE_POOL_UTILIZATION_KIND,
+} from "@/screens/resource-manager/constants";
 import {
   GET_KIND_FOR_RESOURCE_POOL,
   GET_RESOURCE_POOL_UTILIZATION,
 } from "@/screens/resource-manager/graphql/resource-pool";
+import ResourceSelector, { ResourceProps } from "@/screens/resource-manager/resource-selector";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
@@ -21,13 +28,6 @@ import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";
-import ResourcePoolUtilization from "@/screens/resource-manager/common/ResourcePoolUtilization";
-import {
-  RESOURCE_GENERIC_KIND,
-  RESOURCE_POOL_UTILIZATION_KIND,
-} from "@/screens/resource-manager/constants";
-import ResourceSelector, { ResourceProps } from "@/screens/resource-manager/resource-selector";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
 
 const ResourcePoolDetailsPage = () => {
   const { resourcePoolId } = useParams();
@@ -108,7 +108,8 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
             <Link
               to={constructPath(
                 getObjectDetailsUrl(relationshipData.id, relationshipData.__typename)
-              )}>
+              )}
+            >
               {relationshipData?.display_label}
             </Link>
           ),
@@ -125,7 +126,8 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
             <Icon icon="mdi:chevron-right" />
             <span>{resourcePoolData.node.display_label}</span>
           </div>
-        }>
+        }
+      >
         <ObjectHelpButton
           className="ml-auto"
           documentationUrl={schema.documentation}

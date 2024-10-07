@@ -21,7 +21,8 @@ const MultipleProgressBar = ({ elements, className, ...props }: MultipleProgress
         "h-2 w-full overflow-hidden rounded-full bg-custom-blue-600/10 flex",
         className
       )}
-      {...props}>
+      {...props}
+    >
       {elements.map(({ className, color, style, tooltip, value, ...props }, index) => {
         return (
           <Tooltip key={index} content={tooltip} enabled={!!tooltip} className="max-w-48">

@@ -90,8 +90,6 @@ jobs:
         run: "yamllint -s ."
 
   javascript-lint:
-    if: needs.files-changed.outputs.javascript == 'true'
-    needs: ["files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -99,18 +97,13 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
-      - name: Install NodeJS
-        uses: actions/setup-node@v4
+      - name: Setup Biome
+        uses: biomejs/setup-biome@v2
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
-      - name: Install frontend dependencies
+          version: 1.9.3
+      - name: Run Biome
         working-directory: ./frontend/app
-        run: npm install
-      - name: Run ESLint
-        working-directory: ./frontend/app
-        run: npm run eslint
+        run: biome ci .
 
   python-lint:
     if: needs.files-changed.outputs.python == 'true'
@@ -661,6 +654,12 @@ jobs:
         run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
         env:
           INFRAHUB_MISC_RESPONSE_DELAY: 2
+
+      - name: Set infrahub address
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Run Playwright tests
         run: npm run ci:test:e2e

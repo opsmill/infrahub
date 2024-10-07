@@ -2,7 +2,7 @@ import { Button } from "@/components/buttons/button";
 import { UseCodeMirror } from "@/hooks/useCodeMirror";
 import { Icon } from "@iconify-icon/react";
 import React, { FC } from "react";
-import { boldCommand, EditorCommand, italicCommand, strikethroughCommand } from "./commands";
+import { EditorCommand, boldCommand, italicCommand, strikethroughCommand } from "./commands";
 
 type ToolbarProps = { codeMirror: UseCodeMirror };
 
@@ -23,7 +23,8 @@ const ToolBar: FC<ToolbarProps> = ({ codeMirror }) => {
           className="bg-white border-none p-0 text-xl shadow-none"
           type="button"
           aria-label={label}
-          onMouseDown={handleButtonMouseDown(onClick)}>
+          onMouseDown={handleButtonMouseDown(onClick)}
+        >
           <Icon icon={icon} />
         </Button>
       ))}

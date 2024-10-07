@@ -3,7 +3,7 @@ import { NodeFormProps } from "@/components/form/node-form";
 import { FormFieldValue } from "@/components/form/type";
 import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Form, FormSubmit } from "@/components/ui/form";
 import {
   ACCOUNT_GROUP_OBJECT,
@@ -22,10 +22,10 @@ import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import RelationshipField from "@/components/form/fields/relationship.field";
 import InputField from "@/components/form/fields/input.field";
-import { isRequired } from "@/components/form/utils/validation";
+import RelationshipField from "@/components/form/fields/relationship.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
+import { isRequired } from "@/components/form/utils/validation";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;

@@ -1,6 +1,6 @@
-import { describe, expect } from "vitest";
-import { FormFieldValue } from "@/components/form/type";
 import { getFiltersFromFormData } from "@/components/filters/utils/getFiltersFromFormData";
+import { FormFieldValue } from "@/components/form/type";
+import { describe, expect } from "vitest";
 
 describe("getFiltersFromFormData - test", () => {
   it("returns an attribute value correctly", () => {

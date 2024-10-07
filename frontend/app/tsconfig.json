@@ -1,21 +1,11 @@
 {
   "compilerOptions": {
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     },
     "target": "ESNext",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "types": [
-      "vite/client",
-      "vitest/globals",
-      "cypress"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["vite/client", "vitest/globals", "cypress"],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": false,
@@ -45,5 +35,5 @@
     "tests/unit/utils",
     "tests/unit/data",
     "tests/integrations/tests"
-  ],
+  ]
 }

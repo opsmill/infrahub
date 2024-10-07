@@ -1,8 +1,8 @@
 import { TreeProps } from "@/components/ui/tree";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import {
-  GET_PREFIX_ANCESTORS,
   GET_PREFIXES_ONLY,
+  GET_PREFIX_ANCESTORS,
   GET_TOP_LEVEL_PREFIXES,
 } from "@/graphql/queries/ipam/prefixes";
 import { IP_PREFIX_GENERIC, TREE_ROOT_ID } from "@/screens/ipam/constants";
@@ -13,8 +13,8 @@ import * as R from "ramda";
 import {
   AncestorsData,
   EMPTY_TREE,
-  formatIPPrefixResponseForTreeView,
   PrefixData,
+  formatIPPrefixResponseForTreeView,
   updateTreeData,
 } from "./utils";
 

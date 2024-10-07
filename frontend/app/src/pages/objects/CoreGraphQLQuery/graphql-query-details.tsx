@@ -53,7 +53,8 @@ const GraphqlQueryDetailsPage = () => {
           <div className="flex items-center gap-1">
             <Link
               to={constructPath(`/objects/${graphqlQuerySchema.kind}`)}
-              className="hover:underline">
+              className="hover:underline"
+            >
               {graphqlQuerySchema.label}
             </Link>
 
@@ -69,7 +70,8 @@ const GraphqlQueryDetailsPage = () => {
           </div>
         }
         reload={() => refetch()}
-        isReloadLoading={loading}>
+        isReloadLoading={loading}
+      >
         <ObjectHelpButton
           className="ml-auto"
           documentationUrl={graphqlQuerySchema.documentation}

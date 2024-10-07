@@ -1,16 +1,16 @@
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { Skeleton } from "@/components/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { PROFILE_KIND } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import useFilters from "@/hooks/useFilters";
+import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { useObjectItems } from "@/hooks/useObjectItems";
 import Content from "@/screens/layout/content";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { Badge } from "@/components/ui/badge";
 import { constructPath } from "@/utils/fetch";
-import { PROFILE_KIND } from "@/config/constants";
-import { Link } from "react-router-dom";
-import { useObjectItems } from "@/hooks/useObjectItems";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import useFilters from "@/hooks/useFilters";
 import { Icon } from "@iconify-icon/react";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
-import { Skeleton } from "@/components/skeleton";
+import { Link } from "react-router-dom";
 
 type ObjectHeaderProps = {
   schema: IModelSchema;
@@ -40,7 +40,8 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
         <div className="text-md flex gap-2 items-center">
           <Link
             to={constructPath(`/objects/${isProfile ? PROFILE_KIND : schemaKind}`)}
-            className="flex items-center cursor-pointer">
+            className="flex items-center cursor-pointer"
+          >
             <h1 className="font-semibold text-gray-900 mr-2 hover:underline">
               {breadcrumbModelLabel}
             </h1>
@@ -51,7 +52,8 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
       description={schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
-      data-testid="object-header">
+      data-testid="object-header"
+    >
       <ObjectHelpButton
         kind={schema.kind}
         documentationUrl={schema.documentation}
@@ -78,7 +80,8 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
         <div className="text-md flex gap-2 items-center">
           <Link
             to={constructPath(`/objects/${isProfile ? PROFILE_KIND : schemaKind}`)}
-            className="flex items-center cursor-pointer">
+            className="flex items-center cursor-pointer"
+          >
             <h1 className="font-semibold text-gray-900 hover:underline">{breadcrumbModelLabel}</h1>
           </Link>
 
@@ -98,7 +101,8 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
       description={schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
-      data-testid="object-header">
+      data-testid="object-header"
+    >
       <ObjectHelpButton
         kind={schema.kind}
         documentationUrl={schema.documentation}
