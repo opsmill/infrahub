@@ -22,16 +22,13 @@ function Roles() {
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_ROLE_OBJECT);
   const [rowToDelete, setRowToDelete] = useState(null);
+  const [rowToUpdate, setRowToUpdate] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
-      name: "display_label",
+      name: "name",
       label: "Name",
-    },
-    {
-      name: "description",
-      label: "Description",
     },
     {
       name: "groups",
@@ -48,11 +45,17 @@ function Roles() {
     data[ACCOUNT_ROLE_OBJECT]?.edges.map((edge) => ({
       values: {
         id: edge?.node?.id,
-        display_label: edge?.node?.display_label,
-        description: edge?.node?.description?.value,
-        groups: <Pill>{edge?.node?.groups?.count}</Pill>,
-        permissions: <Pill>{edge?.node?.permissions?.count}</Pill>,
-        __typename: edge?.node?.__typename,
+        name: { value: edge?.node?.name.value },
+        description: { value: edge?.node?.description?.value },
+        groups: {
+          value: { edges: edge?.node?.groups?.edges },
+          display: <Pill>{edge?.node?.groups?.count}</Pill>,
+        },
+        permissions: {
+          value: { edges: edge?.node?.permissions?.edges },
+          display: <Pill>{edge?.node?.permissions?.count}</Pill>,
+        },
+        __typename: { value: edge?.node?.__typename },
       },
     }));
 
@@ -83,6 +86,10 @@ function Roles() {
           rows={rows ?? []}
           className="border-0"
           onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
         />
 
         <Pagination count={data && data[ACCOUNT_ROLE_OBJECT]?.count} />
@@ -110,6 +117,7 @@ function Roles() {
           setOpen={(value) => setShowDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_ROLE_OBJECT}
+            currentObject={rowToUpdate}
             onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
               setShowDrawer(false);
