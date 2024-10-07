@@ -165,7 +165,8 @@ export default function ObjectItemDetails({
                               variant="ghost"
                               size="icon"
                               data-testid="edit-metadata-button"
-                              data-cy="metadata-edit-button">
+                              data-cy="metadata-edit-button"
+                            >
                               <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                             </ButtonWithTooltip>
                           </div>
@@ -226,7 +227,8 @@ export default function ObjectItemDetails({
                 { name: QSP.TAB, value: TASK_TAB },
                 { name: QSP.TASK_ID, exclude: true },
               ])}
-              className="flex items-center p-2 ">
+              className="flex items-center p-2 "
+            >
               <Icon icon={"mdi:chevron-left"} />
               All tasks
             </Link>
@@ -251,7 +253,8 @@ export default function ObjectItemDetails({
           </div>
         }
         open={showMetaEditModal}
-        setOpen={setShowMetaEditModal}>
+        setOpen={setShowMetaEditModal}
+      >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}

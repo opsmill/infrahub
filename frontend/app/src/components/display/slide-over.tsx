@@ -51,7 +51,8 @@ export default function SlideOver(props: Props) {
             enterTo="opacity-100"
             leave="ease-in-out duration-500"
             leaveFrom="opacity-100"
-            leaveTo="opacity-0">
+            leaveTo="opacity-0"
+          >
             <div
               className="fixed inset-0 bg-black bg-opacity-40 transition-opacity"
               data-cy="side-panel-background"
@@ -70,10 +71,12 @@ export default function SlideOver(props: Props) {
                   enterTo={`${offestWidth[offset]}`}
                   leave="transform transition ease-in-out duration-500"
                   leaveFrom={`${offestWidth[offset]}`}
-                  leaveTo="translate-x-full">
+                  leaveTo="translate-x-full"
+                >
                   <Dialog.Panel
                     className={`bg-custom-white pointer-events-auto shadow-xl flex flex-col ${panelWidth} ${offestWidth[offset]}`}
-                    data-testid="side-panel-container">
+                    data-testid="side-panel-container"
+                  >
                     <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b">
                       <div className="w-full">
                         <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>

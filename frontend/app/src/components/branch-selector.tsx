@@ -32,12 +32,14 @@ export default function BranchSelector() {
       onOpenChange={(open) => {
         setDisplayForm(false);
         setIsOpen(open);
-      }}>
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           className="h-8 w-[205px] border-neutral-200 rounded-lg p-0 shadow-none"
-          data-testid="branch-selector-trigger">
+          data-testid="branch-selector-trigger"
+        >
           <div className="inline-flex items-center gap-1.5 px-3 flex-grow border-r h-full truncate">
             <Icon icon="mdi:source-branch" />
             <span className="truncate">{currentBranch?.name}</span>
@@ -94,7 +96,8 @@ function BranchSelect({
         style={{
           minWidth: "var(--radix-popover-trigger-width)",
           maxHeight: "min(var(--radix-popover-content-available-height), 500px)",
-        }}>
+        }}
+      >
         <div className="flex gap-2 mb-2">
           <CommandInput
             autoFocus
@@ -123,7 +126,8 @@ function BranchSelect({
           variant="ghost"
           size="sm"
           className="w-full text-xs justify-start"
-          onClick={() => setPopoverOpen(false)}>
+          onClick={() => setPopoverOpen(false)}
+        >
           View all branches
         </LinkButton>
       </div>
@@ -139,7 +143,8 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
       className="p-2"
       selectedValue={currentBranch?.name}
       onSelect={onChange}
-      value={branch.name}>
+      value={branch.name}
+    >
       <div className="truncate flex items-center w-full">
         <span className="truncate">{branch.name}</span>
 
@@ -175,7 +180,8 @@ export const BranchFormTriggerButton = ({ setOpen }: { setOpen: (open: boolean) 
         e.stopPropagation();
         setOpen(true);
       }}
-      data-testid="create-branch-button">
+      data-testid="create-branch-button"
+    >
       <Icon icon="mdi:plus" />
     </ButtonWithTooltip>
   );

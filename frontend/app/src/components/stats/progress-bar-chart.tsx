@@ -8,7 +8,8 @@ export const ProgressBar = ({ className, value, ...props }: ProgressPrimitive.Pr
       "relative h-2 w-full overflow-hidden rounded-full bg-custom-blue-600/20",
       className
     )}
-    {...props}>
+    {...props}
+  >
     <ProgressPrimitive.Indicator
       className="h-full w-full flex-1 bg-custom-blue-600 transition-all"
       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}

@@ -67,7 +67,8 @@ const ObjectItemsProvider = () => {
       initialValues={[
         [schemaState, schemaMocks],
         [configState, configMocks],
-      ]}>
+      ]}
+    >
       <AuthenticatedObjectItems />
     </TestProvider>
   );

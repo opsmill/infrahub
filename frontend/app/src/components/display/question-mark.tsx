@@ -16,7 +16,8 @@ export const QuestionMark = ({ className, message }: tQuestionMark) => {
         size="icon"
         variant="outline"
         className={classNames("h-4 w-4 p-2 text-[10px]", className)}
-        data-cy="question-mark">
+        data-cy="question-mark"
+      >
         ?
       </Button>
     </Tooltip>

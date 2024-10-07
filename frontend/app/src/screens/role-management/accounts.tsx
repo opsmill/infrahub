@@ -81,7 +81,8 @@ function Accounts() {
             <Button
               variant={"primary"}
               onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+              disabled={!schema}
+            >
               Create {schema?.label}
             </Button>
           </div>
@@ -118,7 +119,8 @@ function Accounts() {
             />
           }
           open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          setOpen={(value) => setShowCreateDrawer(value)}
+        >
           <ObjectForm
             kind={ACCOUNT_OBJECT}
             onCancel={() => setShowCreateDrawer(false)}

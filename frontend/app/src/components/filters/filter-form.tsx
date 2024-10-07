@@ -28,7 +28,8 @@ export const FilterForm = forwardRef<FormRef, FilterFormProps>(
         ref={ref}
         onSubmit={onSubmit}
         className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
-        {...props}>
+        {...props}
+      >
         {isGeneric(schema) && schema.used_by?.length ? (
           <FilterKindSelector genericSchema={schema} />
         ) : null}

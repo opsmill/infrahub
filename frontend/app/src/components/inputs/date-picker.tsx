@@ -67,7 +67,8 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
       <Button
         onClick={handleClickNow}
         className="rounded-none rounded-r-md border-t border-r border-b border-gray-300"
-        disabled={disabled || isProtected || (!currentDate && !text)}>
+        disabled={disabled || isProtected || (!currentDate && !text)}
+      >
         Reset
       </Button>
     </div>

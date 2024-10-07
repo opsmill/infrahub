@@ -71,7 +71,8 @@ export const DiffThread = ({ path }: tDiffThread) => {
               }}
               className="px-2 h-6 rounded-full"
               variant={"dark"}
-              data-testid="data-diff-add-comment">
+              data-testid="data-diff-add-comment"
+            >
               <Icon icon="mdi:chat-outline" className="mr-1" />
               {thread?.comments?.count}
             </Button>
@@ -88,7 +89,8 @@ export const DiffThread = ({ path }: tDiffThread) => {
                 className="p-0 h-6 rounded-full"
                 variant={"outline"}
                 size={"icon"}
-                data-testid="data-diff-add-comment">
+                data-testid="data-diff-add-comment"
+              >
                 <Icon icon={"mdi:plus"} />
               </Button>
             </Tooltip>

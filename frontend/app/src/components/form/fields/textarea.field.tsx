@@ -39,7 +39,8 @@ const TextareaField = ({
               className={classNames(
                 "w-full",
                 error && "border-red-500 focus-within:border-red-500 focus-within:outline-red-500"
-              )}>
+              )}
+            >
               <MarkdownEditor
                 {...field}
                 {...props}

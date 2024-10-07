@@ -131,7 +131,8 @@ export const BadgeCircle = (props: tBadgeCircleProps) => {
         className,
         onDelete ? "cursor-pointer" : ""
       )}
-      onClick={handleClick}>
+      onClick={handleClick}
+    >
       <Circle className={customCircleClassName} />
 
       {children}

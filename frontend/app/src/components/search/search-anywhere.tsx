@@ -20,7 +20,8 @@ const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
         className
       )}
       data-testid="search-anywhere-trigger"
-      {...props}>
+      {...props}
+    >
       <div className="flex items-center gap-2">
         <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
         <span className="text-neutral-700 text-sm">Search</span>
@@ -69,7 +70,8 @@ export function SearchAnywhere({ className = "" }: SearchModalProps) {
             enterTo="opacity-100"
             leave="ease-in duration-200"
             leaveFrom="opacity-100"
-            leaveTo="opacity-0">
+            leaveTo="opacity-0"
+          >
             <div className="fixed inset-0 bg-gray-600/25" />
           </Transition.Child>
 
@@ -82,7 +84,8 @@ export function SearchAnywhere({ className = "" }: SearchModalProps) {
                 enterTo="opacity-100 scale-100"
                 leave="ease-in duration-200"
                 leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95">
+                leaveTo="opacity-0 scale-95"
+              >
                 <SearchAnywhereDialog onSelection={closeDrawer} />
               </Transition.Child>
             </div>
@@ -106,7 +109,8 @@ const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
       <Dialog.Panel
         ref={forwardedRef}
         className="p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl transition-all space-y-2"
-        data-testid="search-anywhere">
+        data-testid="search-anywhere"
+      >
         <Combobox
           onChange={(url: string) => {
             if (url.length === 0) return;
@@ -118,7 +122,8 @@ const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
             }
 
             onSelection(url);
-          }}>
+          }}
+        >
           <div className="relative">
             <Combobox.Button className="absolute top-2.5 pl-2.5">
               <Icon icon="mdi:magnify" className="text-xl text-custom-blue-600" />
@@ -159,7 +164,8 @@ export const SearchGroupTitle = ({ children }: SearchGroupProps) => {
     <Combobox.Option
       value=""
       disabled
-      className="text-xs mb-0.5 pl-1.5 font-semibold text-neutral-600 flex items-center">
+      className="text-xs mb-0.5 pl-1.5 font-semibold text-neutral-600 flex items-center"
+    >
       {children}
     </Combobox.Option>
   );
@@ -177,7 +183,8 @@ export const SearchResultItem = ({ className = "", children, to, ...props }: Lin
           `flex items-center gap-1 text-xs p-2 rounded ${active ? "bg-gray-100" : ""}`,
           className
         )
-      }>
+      }
+    >
       {children}
     </Combobox.Option>
   );

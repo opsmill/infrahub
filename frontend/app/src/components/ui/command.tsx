@@ -22,7 +22,8 @@ export const CommandInput = React.forwardRef<
     className={classNames(
       "h-10 flex items-center border-b outline-none text-neutral-800",
       className
-    )}>
+    )}
+  >
     <Icon icon="mdi:search" className="mx-2.5 shrink-0 text-lg" />
     <CommandPrimitive.Input
       ref={ref}

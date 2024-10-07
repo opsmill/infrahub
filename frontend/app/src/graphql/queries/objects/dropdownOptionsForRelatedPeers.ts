@@ -9,8 +9,7 @@ export interface iPeerDropdownOptions {
   [peer: string]: iPeerDropdownOption[];
 }
 
-export const getDropdownOptionsForRelatedPeersPaginated =
-  Handlebars.compile(`query DropdownFormOptions {
+export const getDropdownOptionsForRelatedPeersPaginated = Handlebars.compile(`query DropdownFormOptions {
   {{#each peers}}
   {{this}} {
     count

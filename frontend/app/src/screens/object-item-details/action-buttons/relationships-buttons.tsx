@@ -93,7 +93,8 @@ export function RelationshipsButtons() {
         tooltipEnabled
         tooltipContent={permission.write.message ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
-        data-testid="open-relationship-form-button">
+        data-testid="open-relationship-form-button"
+      >
         <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
         {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
       </ButtonWithTooltip>
@@ -110,7 +111,8 @@ export function RelationshipsButtons() {
           )
         }
         open={showAddDrawer}
-        setOpen={setShowAddDrawer}>
+        setOpen={setShowAddDrawer}
+      >
         <DynamicForm
           fields={[
             {

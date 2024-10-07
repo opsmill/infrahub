@@ -75,7 +75,8 @@ function Roles() {
             <Button
               variant={"primary"}
               onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+              disabled={!schema}
+            >
               Create {schema?.label}
             </Button>
           </div>
@@ -110,7 +111,8 @@ function Roles() {
             />
           }
           open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          setOpen={(value) => setShowCreateDrawer(value)}
+        >
           <ObjectForm
             kind={ACCOUNT_ROLE_OBJECT}
             onCancel={() => setShowCreateDrawer(false)}

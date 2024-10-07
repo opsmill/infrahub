@@ -38,7 +38,8 @@ export default function ModalDelete({
           enterTo="opacity-100"
           leave="ease-in duration-200"
           leaveFrom="opacity-100"
-          leaveTo="opacity-0">
+          leaveTo="opacity-0"
+        >
           <div className="fixed inset-0 bg-black bg-opacity-40 transition-opacity" />
         </Transition.Child>
 
@@ -51,17 +52,20 @@ export default function ModalDelete({
               enterTo="opacity-100 translate-y-0 scale-100"
               leave="ease-in duration-200"
               leaveFrom="opacity-100 translate-y-0 scale-100"
-              leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95">
+              leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95"
+            >
               <Dialog.Panel
                 className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all my-8 w-full max-w-lg"
                 data-cy="modal-delete"
-                data-testid="modal-delete">
+                data-testid="modal-delete"
+              >
                 <div className="bg-custom-white px-4 pt-5 p-6 pb-4">
                   <div className="">
                     <div className="ml-4 mt-0 text-left">
                       <Dialog.Title
                         as="h3"
-                        className="flex items-center font-semibold leading-6 text-gray-900">
+                        className="flex items-center font-semibold leading-6 text-gray-900"
+                      >
                         <div className="bg-red-100 rounded-full w-8 h-8 flex items-center justify-center mr-2">
                           <Icon
                             icon={"mdi:warning-outline"}
@@ -85,7 +89,8 @@ export default function ModalDelete({
                     className="ml-2"
                     isLoading={isLoading}
                     data-cy="modal-delete-confirm"
-                    data-testid="modal-delete-confirm">
+                    data-testid="modal-delete-confirm"
+                  >
                     {confirmLabel ?? "Delete"}
                   </Button>
                   <Button onClick={onCancel} ref={cancelButtonRef}>

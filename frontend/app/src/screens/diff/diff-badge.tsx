@@ -33,7 +33,8 @@ export const BadgeUnchanged = ({
         hasConflicts && "border-none p-0 pl-1 gap-1",
         className
       )}
-      {...props}>
+      {...props}
+    >
       <Icon icon={icon ?? "mdi:dot-outline"} className="text-xs" />
       {(children || children === 0) && <span className="font-medium text-xs">{children}</span>}
       {hasConflicts && <BadgeConflict />}
@@ -103,7 +104,8 @@ const CloseBadge = ({ className }: CloseBadgeProps) => {
       className={classNames(
         "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 rounded-full",
         className
-      )}>
+      )}
+    >
       <Icon icon="mdi:close" size={1} />
     </div>
   );

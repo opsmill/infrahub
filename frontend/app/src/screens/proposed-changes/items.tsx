@@ -249,7 +249,8 @@ export const ProposedChangesPage = () => {
           </h1>
         }
         reload={() => refetch()}
-        isReloadLoading={loading}>
+        isReloadLoading={loading}
+      >
         <ObjectHelpButton
           className="ml-auto"
           documentationUrl={schema?.documentation}
@@ -276,7 +277,8 @@ export const ProposedChangesPage = () => {
               tooltipEnabled={!permission.write.allow}
               tooltipContent={permission.write.message ?? undefined}
               onClick={() => navigate(constructPath("/proposed-changes/new"))}
-              data-testid="add-proposed-changes-button">
+              data-testid="add-proposed-changes-button"
+            >
               <Icon icon="mdi:plus" className="text-sm" />
               New proposed change
             </ButtonWithTooltip>

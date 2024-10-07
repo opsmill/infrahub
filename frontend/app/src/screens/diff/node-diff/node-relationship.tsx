@@ -51,7 +51,8 @@ export const DiffNodeRelationship = ({ status, relationship }: DiffNodeRelations
             </Badge>
           )}
         </div>
-      }>
+      }
+    >
       <div className="divide-y border-t">
         {relationship.elements.map((element, index: number) => (
           <DiffNodeRelationshipElement key={index} element={element} status={status} />

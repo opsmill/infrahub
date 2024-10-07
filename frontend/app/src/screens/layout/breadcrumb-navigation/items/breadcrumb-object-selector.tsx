@@ -46,7 +46,8 @@ const ObjectSelector = ({
   return (
     <BreadcrumbLink
       to={getObjectDetailsUrl2(currentObject.__typename, currentObject.id)}
-      {...props}>
+      {...props}
+    >
       {currentObject.display_label}
     </BreadcrumbLink>
   );

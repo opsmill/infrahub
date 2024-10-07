@@ -54,7 +54,8 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
               <Button
                 variant="outline"
                 onClick={() => setOverride(true)}
-                className="flex gap-2 justify-start w-full border-gray-300 shadow-none h-10 px-2 font-normal">
+                className="flex gap-2 justify-start w-full border-gray-300 shadow-none h-10 px-2 font-normal"
+              >
                 <Icon icon="mdi:view-grid-outline" />
                 <span>{value.source.label}</span>
               </Button>
@@ -66,7 +67,8 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
               <Button
                 variant="outline"
                 className="h-10 w-10 border-gray-300"
-                data-testid="number-pool-button">
+                data-testid="number-pool-button"
+              >
                 <Icon icon="mdi:view-grid-outline" className="text-gray-500" />
               </Button>
             </PopoverTrigger>

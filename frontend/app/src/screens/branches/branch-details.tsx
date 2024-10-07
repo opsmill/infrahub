@@ -184,7 +184,8 @@ export const BranchDetails = () => {
                       },
                     })
                   }
-                  buttonType={BUTTON_TYPES.VALIDATE}>
+                  buttonType={BUTTON_TYPES.VALIDATE}
+                >
                   Merge
                   <CheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -192,7 +193,8 @@ export const BranchDetails = () => {
                 <Button
                   disabled={!auth?.permissions?.write || branch.is_default}
                   className="mr-0 md:mr-3"
-                  onClick={() => setShowCreateDrawer(true)}>
+                  onClick={() => setShowCreateDrawer(true)}
+                >
                   Propose change
                   <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -209,7 +211,8 @@ export const BranchDetails = () => {
                         name: branch.name,
                       },
                     })
-                  }>
+                  }
+                >
                   Rebase
                   <ArrowPathIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -227,7 +230,8 @@ export const BranchDetails = () => {
                       },
                     })
                   }
-                  buttonType={BUTTON_TYPES.WARNING}>
+                  buttonType={BUTTON_TYPES.WARNING}
+                >
                   Validate
                   <ShieldCheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -236,7 +240,8 @@ export const BranchDetails = () => {
                   disabled={!auth?.permissions?.write || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() => setDisplayModal(true)}
-                  buttonType={BUTTON_TYPES.CANCEL}>
+                  buttonType={BUTTON_TYPES.CANCEL}
+                >
                   Delete
                   <TrashIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -273,7 +278,8 @@ export const BranchDetails = () => {
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
-                aria-hidden="true">
+                aria-hidden="true"
+              >
                 <circle cx={3} cy={3} r={3} />
               </svg>
               {PROPOSED_CHANGES_OBJECT}
@@ -281,7 +287,8 @@ export const BranchDetails = () => {
           </div>
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
+        setOpen={setShowCreateDrawer}
+      >
         <ObjectForm
           kind={PROPOSED_CHANGES_OBJECT}
           onSuccess={() => setShowCreateDrawer(false)}

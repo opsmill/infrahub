@@ -44,7 +44,8 @@ export default function BreadcrumbBranchSelector({
                   setIsOpen(false);
                   navigate(branchUrl);
                 }}
-                asChild>
+                asChild
+              >
                 <Link to={branchUrl}>{branch.name}</Link>
               </CommandItem>
             );

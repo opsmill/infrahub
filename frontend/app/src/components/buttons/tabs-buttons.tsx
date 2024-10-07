@@ -31,7 +31,8 @@ export const TabsButtons = (props: TabsProps) => {
               (qspTab && qspTab === tab.name) || (!qspTab && index === 0) ? "active" : "outline"
             }
             disabled={tab.disabled}
-            className={"border-0 px-4 py-2 rounded-none"}>
+            className={"border-0 px-4 py-2 rounded-none"}
+          >
             {tab.label}
           </Button>
         ))}

@@ -53,7 +53,8 @@ export const EnumDeleteButton = React.forwardRef<HTMLButtonElement, EnumDeleteBu
             e.stopPropagation();
             setShowDeleteModal(true);
           }}
-          {...props}>
+          {...props}
+        >
           <Icon icon="mdi:trash-can-outline" />
         </Button>
 
@@ -92,7 +93,8 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
     <div className="p-2 pt-0">
       <Button
         className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-        onClick={() => setOpen(!open)}>
+        onClick={() => setOpen(!open)}
+      >
         + Add option
       </Button>
 
@@ -107,7 +109,8 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
         }
         open={open}
         setOpen={setOpen}
-        offset={1}>
+        offset={1}
+      >
         <DynamicForm
           fields={[
             {
@@ -188,7 +191,8 @@ export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
                   onChange(item === value ? null : item);
                   setOpen(false);
                 }}
-                {...props}>
+                {...props}
+              >
                 {item}
                 {schema && fieldSchema && (
                   <EnumDeleteButton

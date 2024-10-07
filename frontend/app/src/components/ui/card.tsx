@@ -21,12 +21,14 @@ const CardWithBorderRoot = forwardRef<HTMLDivElement, CardWithBorderProps>(
       <div
         ref={ref}
         className={classNames("bg-custom-white p-3 border rounded-lg overflow-hidden", className)}
-        {...props}>
+        {...props}
+      >
         <div
           className={classNames(
             "h-full w-full border rounded-md overflow-auto flex flex-col",
             contentClassName
-          )}>
+          )}
+        >
           {children}
         </div>
       </div>

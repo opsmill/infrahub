@@ -78,7 +78,8 @@ export const FilterKindSelector = ({ genericSchema }: { genericSchema: iGenericS
                           updateFormFieldValue(newSelectedValue ?? null, DEFAULT_FORM_FIELD_VALUE)
                         );
                         setIsDropdownOpen(false);
-                      }}>
+                      }}
+                    >
                       {schemaOption.label}{" "}
                       <Badge className="ml-auto">{schemaOption?.namespace}</Badge>
                     </ComboboxItem>

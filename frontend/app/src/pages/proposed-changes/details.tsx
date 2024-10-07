@@ -86,7 +86,8 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
                 { name: QSP.PROPOSED_CHANGES_TAB, value: TASK_TAB },
                 { name: QSP.TASK_ID, exclude: true },
               ])}
-              className="flex items-center p-2 ">
+              className="flex items-center p-2 "
+            >
               <Icon icon={"mdi:chevron-left"} />
               All tasks
             </Link>
@@ -159,13 +160,15 @@ export function Component() {
             <div className="flex items-center gap-2">
               <Link
                 className="no-underline hover:underline"
-                to={constructPath("/proposed-changes")}>
+                to={constructPath("/proposed-changes")}
+              >
                 Proposed changes
               </Link>
             </div>
           }
           reload={() => client.reFetchObservableQueries()}
-          isReloadLoading={loading}>
+          isReloadLoading={loading}
+        >
           <ObjectHelpButton
             documentationUrl={schema?.documentation}
             kind={PROPOSED_CHANGES_OBJECT}
@@ -195,7 +198,8 @@ export function Component() {
                   proposedChangesData?.created_by?.node?.__typename
                 )
               )}
-              className="font-semibold text-custom-blue-green">
+              className="font-semibold text-custom-blue-green"
+            >
               {proposedChangesData?.created_by?.node?.display_label}
             </Link>
             wants to merge
@@ -215,7 +219,8 @@ export function Component() {
           </div>
         }
         reload={() => client.reFetchObservableQueries()}
-        isReloadLoading={loading}>
+        isReloadLoading={loading}
+      >
         <ObjectHelpButton
           documentationUrl={schema?.documentation}
           kind={PROPOSED_CHANGES_OBJECT}

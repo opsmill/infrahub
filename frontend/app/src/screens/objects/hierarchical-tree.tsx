@@ -156,7 +156,8 @@ const ObjectTreeItem = ({ element }: TreeItemProps) => {
       to={url}
       tabIndex={-1}
       className="flex items-center gap-2"
-      data-testid="hierarchical-tree-item">
+      data-testid="hierarchical-tree-item"
+    >
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span className="whitespace-nowrap">{element.name}</span>
     </Link>

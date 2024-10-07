@@ -133,7 +133,8 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         <CardWithBorder.Title className="flex justify-between items-center">
           <div
             onClick={() => navigate(path)}
-            className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+            className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
+          >
             Proposed change
           </div>
 

@@ -56,7 +56,8 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
           sync_with_git: !!data.sync_with_git.value,
         };
         await handleSubmit(branchData);
-      }}>
+      }}
+    >
       <InputField
         name="name"
         label="New branch name"

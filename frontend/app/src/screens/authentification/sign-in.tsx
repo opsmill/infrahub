@@ -36,7 +36,8 @@ export const SignInForm = () => {
           password: formData.password.value as string,
         };
         await signIn(data);
-      }}>
+      }}
+    >
       <InputField name="username" label="Username" rules={{ validate: { required: isRequired } }} />
 
       <PasswordInputField

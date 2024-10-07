@@ -24,7 +24,8 @@ export const router = createBrowserRouter([
         options={{
           searchStringToObject: queryString.parse,
           objectToSearchString: queryString.stringify,
-        }}>
+        }}
+      >
         <Root>
           <Outlet />
         </Root>

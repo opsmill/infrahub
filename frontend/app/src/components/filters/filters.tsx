@@ -54,7 +54,8 @@ export const Filters = ({ schema }: FiltersProps) => {
           variant="ghost"
           size="icon"
           data-testid="apply-filters"
-          onClick={() => setShowFilters(true)}>
+          onClick={() => setShowFilters(true)}
+        >
           <Icon icon={"mdi:filter-outline"} className="text-custom-blue-100" />
         </ButtonWithTooltip>
 
@@ -70,7 +71,8 @@ export const Filters = ({ schema }: FiltersProps) => {
       <SlideOver
         title={<SlideOverTitle schema={schema} currentObjectLabel="All" title="Apply filters" />}
         open={showFilters}
-        setOpen={setShowFilters}>
+        setOpen={setShowFilters}
+      >
         <FilterForm
           filters={filters}
           schema={schema}

@@ -114,12 +114,12 @@ const FilterButton = ({ status, count, currentFilter, onFilter, ...props }: Filt
     status === DIFF_STATUS.ADDED
       ? CloseBadgeAdded
       : status === DIFF_STATUS.REMOVED
-      ? CloseBadgeRemoved
-      : status === DIFF_STATUS.UPDATED
-      ? CloseBadgeUpdated
-      : status === DIFF_STATUS.CONFLICT
-      ? CloseBadgeConflict
-      : null;
+        ? CloseBadgeRemoved
+        : status === DIFF_STATUS.UPDATED
+          ? CloseBadgeUpdated
+          : status === DIFF_STATUS.CONFLICT
+            ? CloseBadgeConflict
+            : null;
 
   return (
     <Button
@@ -127,7 +127,8 @@ const FilterButton = ({ status, count, currentFilter, onFilter, ...props }: Filt
       variant="ghost"
       className={classNames("relative rounded-full p-0 h-auto", isMuted && "opacity-60")}
       onClick={() => onFilter(status)}
-      disabled={isDisabled}>
+      disabled={isDisabled}
+    >
       <DiffBadge status={status}>{count}</DiffBadge>
       {currentFilter === status && CloseBadge && <CloseBadge />}
     </Button>

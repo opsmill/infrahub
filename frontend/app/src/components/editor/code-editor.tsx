@@ -35,7 +35,8 @@ export const CodeEditor = (props: any) => {
         <Button
           className="absolute z-10 top-0 right-0"
           buttonType={BUTTON_TYPES.INVISIBLE}
-          onClick={handleCopy}>
+          onClick={handleCopy}
+        >
           {!isCopied && <ClipboardDocumentIcon className="h-4 w-4" />}
 
           {isCopied && <ClipboardDocumentCheckIcon className="h-4 w-4" />}

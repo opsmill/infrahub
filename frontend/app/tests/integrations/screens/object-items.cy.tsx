@@ -111,7 +111,8 @@ describe("List screen", () => {
           initialValues={[
             [schemaState, []],
             [genericsState, schemaMocks],
-          ]}>
+          ]}
+        >
           <ObjectItemsPage />
         </TestProvider>
       );

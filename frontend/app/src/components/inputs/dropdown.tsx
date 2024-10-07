@@ -75,7 +75,8 @@ export const DropdownItem = React.forwardRef<
             onClick={(e) => {
               e.stopPropagation();
               setShowDeleteModal(true);
-            }}>
+            }}
+          >
             <Icon icon="mdi:trash-can-outline" />
           </Button>
 
@@ -93,7 +94,8 @@ export const DropdownItem = React.forwardRef<
                           color: getTextColor(item.color),
                         }
                       : undefined
-                  }>
+                  }
+                >
                   {item.label}
                 </Badge>{" "}
                 ?
@@ -142,7 +144,8 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
     <div className="p-2 pt-0">
       <Button
         className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-        onClick={() => setOpen(!open)}>
+        onClick={() => setOpen(!open)}
+      >
         + Add option
       </Button>
 
@@ -157,7 +160,8 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
         }
         open={open}
         setOpen={setOpen}
-        offset={1}>
+        offset={1}
+      >
         <DynamicForm
           fields={[
             {

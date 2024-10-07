@@ -78,7 +78,8 @@ export const PcCloseButton = ({ proposedChangeId, state, ...props }: PcCloseButt
       onClick={handleClose}
       isLoading={isLoadingClose}
       disabled={!permission.write.allow || state === "merged"}
-      {...props}>
+      {...props}
+    >
       {state === "closed" ? "Re-open" : "Close"}
     </Button>
   );

@@ -36,7 +36,8 @@ const BadgeLink: React.FC<{
       to={constructPath(proposedChangeDetailsPath, [
         tabSearchParam,
         { name: QSP.STATUS, value: status },
-      ])}>
+      ])}
+    >
       <DiffBadge status={status}>{count}</DiffBadge>
     </Link>
   );

@@ -350,7 +350,8 @@ export const FileContentDiff = (props: any) => {
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
           <div
             key={index}
-            className="bg-custom-white p-4 border border-custom-blue-500 rounded-md m-2">
+            className="bg-custom-white p-4 border border-custom-blue-500 rounded-md m-2"
+          >
             {comment.message}
           </div>
         )),
@@ -379,7 +380,8 @@ export const FileContentDiff = (props: any) => {
         {inHoverState && (
           <Button
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
-            onClick={handleClick}>
+            onClick={handleClick}
+          >
             <PencilIcon className="w-3 h-3" />
           </Button>
         )}
@@ -430,7 +432,8 @@ export const FileContentDiff = (props: any) => {
             diffType={fileContent.type}
             renderGutter={renderGutter}
             widgets={getWidgets(fileContent.hunks)}
-            optimizeSelection>
+            optimizeSelection
+          >
             {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
           </Diff>
         </div>

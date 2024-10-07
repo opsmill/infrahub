@@ -216,7 +216,8 @@ const NodeAttributesSelects = () => {
                           );
 
                           setOpen(false);
-                        }}>
+                        }}
+                      >
                         <div className="w-full flex justify-between">
                           {node.label} <Badge>{node.namespace}</Badge>
                         </div>
@@ -271,7 +272,8 @@ const NodeAttributesSelects = () => {
                             attribute.name === selectedNode?.name ? null : attribute.name;
                           field.onChange(updateFormFieldValue(newValue, DEFAULT_FORM_FIELD_VALUE));
                           setOpen(false);
-                        }}>
+                        }}
+                      >
                         {attribute.label}
                       </ComboboxItem>
                     ))}

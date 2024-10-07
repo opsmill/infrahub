@@ -52,7 +52,8 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                       hover:rounded
                         ${isSelected ? "shadow-lg ring-1 ring-custom-blue-600 rounded" : ""}
                     `}
-                    onClick={() => setKind([schema.kind!])}>
+                    onClick={() => setKind([schema.kind!])}
+                  >
                     {schema.icon && (
                       <div className="absolute left-2">
                         <Icon icon={schema.icon} className="text-xl text-custom-blue-700" />

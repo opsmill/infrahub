@@ -147,7 +147,8 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           return (
             <div
               className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent"
-              style={{ background: `${color}40` }}>
+              style={{ background: `${color}40` }}
+            >
               {value.label}
             </div>
           );

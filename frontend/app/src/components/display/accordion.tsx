@@ -30,13 +30,15 @@ export default function Accordion({
       <div className="flex">
         <div
           className="flex flex-1 w-full items-center cursor-pointer relative"
-          onClick={() => setIsOpen(!open)}>
+          onClick={() => setIsOpen(!open)}
+        >
           <span
             className={classNames(
               "flex items-center mx-2 relative",
               hideChevron && "text-transparent",
               iconClassName
-            )}>
+            )}
+          >
             {open ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
           </span>
 

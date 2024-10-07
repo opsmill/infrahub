@@ -3,7 +3,7 @@
   "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["./dist", "./playwright-report", "src/generated", "./cypress"]
+    "ignore": ["./dist", "./playwright-report", "src/generated"]
   },
   "formatter": {
     "enabled": true,
@@ -14,17 +14,9 @@
     "lineEnding": "lf",
     "lineWidth": 100,
     "attributePosition": "auto",
-    "bracketSpacing": true,
-    "ignore": [
-      "**/tsconfig.json",
-      "**/dist",
-      "**/node_modules",
-      "**/playwright-report",
-      "src/generated",
-      "**/test-results"
-    ]
+    "bracketSpacing": true
   },
-  "organizeImports": { "enabled": true },
+  "organizeImports": { "enabled": false },
   "linter": {
     "enabled": true,
     "rules": {

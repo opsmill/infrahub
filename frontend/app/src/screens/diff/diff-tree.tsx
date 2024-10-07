@@ -65,7 +65,8 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
       href={"#" + diffNode?.uuid}
       tabIndex={-1}
       className="flex items-center gap-2 text-gray-800 overflow-hidden"
-      data-testid="hierarchical-tree-item">
+      data-testid="hierarchical-tree-item"
+    >
       <DiffBadge
         status={element.metadata?.status as string}
         hasConflicts={!!element.metadata?.containsConflicts}
@@ -81,109 +82,115 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
 };
 
 export const formatDiffNodesToDiffTree = (nodes: Array<DiffNode>) => {
-  return nodes.reduce((acc, node) => {
-    const newNode = {
-      id: node.uuid,
-      name: node.label,
-      parent: TREE_ROOT_ID as string,
-      children: acc.filter(({ parent }) => parent === node.uuid).map(({ id }) => id),
-      metadata: {
-        kind: node.kind, // for icon on tree item
-        uuid: node.uuid, // for url
-        status: node.status, // for icon color
-        containsConflicts: node.contains_conflict, // for icon conflicts
-      },
-    };
-
-    if (node.parent) {
-      const { uuid: parentUUID, relationship_name: parentRelationshipName } = node.parent;
-
-      const parentNodeId = parentUUID + parentRelationshipName;
-      const newNodeWithParent = {
-        ...newNode,
-        parent: parentNodeId,
+  return nodes.reduce(
+    (acc, node) => {
+      const newNode = {
+        id: node.uuid,
+        name: node.label,
+        parent: TREE_ROOT_ID as string,
+        children: acc.filter(({ parent }) => parent === node.uuid).map(({ id }) => id),
+        metadata: {
+          kind: node.kind, // for icon on tree item
+          uuid: node.uuid, // for url
+          status: node.status, // for icon color
+          containsConflicts: node.contains_conflict, // for icon conflicts
+        },
       };
 
-      const existingParentOfNewNode = acc.find(({ id }) => id === parentNodeId);
-      if (existingParentOfNewNode) {
+      if (node.parent) {
+        const { uuid: parentUUID, relationship_name: parentRelationshipName } = node.parent;
+
+        const parentNodeId = parentUUID + parentRelationshipName;
+        const newNodeWithParent = {
+          ...newNode,
+          parent: parentNodeId,
+        };
+
+        const existingParentOfNewNode = acc.find(({ id }) => id === parentNodeId);
+        if (existingParentOfNewNode) {
+          return acc
+            .map((accNode) => {
+              if (accNode.id === parentNodeId) {
+                return {
+                  ...accNode,
+                  children: [...new Set(accNode.children.concat(newNodeWithParent.id))],
+                };
+              }
+
+              return accNode;
+            })
+            .concat(newNodeWithParent);
+        }
+
+        const newParentNode = {
+          id: parentNodeId,
+          name: parentRelationshipName ?? "",
+          parent: parentUUID,
+          children: [newNode.id],
+          metadata: {
+            kind: node.parent.kind, // for icon on tree item
+          },
+        };
+
         return acc
           .map((accNode) => {
-            if (accNode.id === parentNodeId) {
+            if (accNode.id === parentUUID) {
               return {
                 ...accNode,
-                children: [...new Set(accNode.children.concat(newNodeWithParent.id))],
+                children: [...new Set(accNode.children.concat(newParentNode.id))],
               };
             }
 
             return accNode;
           })
-          .concat(newNodeWithParent);
+          .concat(newParentNode, newNodeWithParent);
       }
 
-      const newParentNode = {
-        id: parentNodeId,
-        name: parentRelationshipName ?? "",
-        parent: parentUUID,
-        children: [newNode.id],
-        metadata: {
-          kind: node.parent.kind, // for icon on tree item
-        },
-      };
-
-      return acc
-        .map((accNode) => {
-          if (accNode.id === parentUUID) {
-            return {
-              ...accNode,
-              children: [...new Set(accNode.children.concat(newParentNode.id))],
-            };
-          }
-
-          return accNode;
-        })
-        .concat(newParentNode, newNodeWithParent);
-    }
-
-    return [...acc, newNode];
-  }, [] as TreeProps["data"]);
+      return [...acc, newNode];
+    },
+    [] as TreeProps["data"]
+  );
 };
 
 export const generateRootCategoryNodeForDiffTree = (
   diffTreeNodes: TreeProps["data"]
 ): TreeProps["data"] => {
-  return diffTreeNodes.reduce((acc, node) => {
-    const nodeKind = node.metadata?.kind as string | undefined;
-    if (node.parent !== TREE_ROOT_ID || !nodeKind) return [...acc, node];
+  return diffTreeNodes.reduce(
+    (acc, node) => {
+      const nodeKind = node.metadata?.kind as string | undefined;
+      if (node.parent !== TREE_ROOT_ID || !nodeKind) return [...acc, node];
 
-    const nodeUpdated = {
-      ...node,
-      parent: nodeKind,
-    };
-
-    const existingRootCategoryNode = acc.find(({ id }) => id === nodeKind);
-
-    if (existingRootCategoryNode) {
-      const rootCategoryNodeUpdated = {
-        ...existingRootCategoryNode,
-        children: [...existingRootCategoryNode.children, node.id],
+      const nodeUpdated = {
+        ...node,
+        parent: nodeKind,
       };
 
-      return acc
-        .map((item) => (item.id === existingRootCategoryNode.id ? rootCategoryNodeUpdated : item))
-        .concat(nodeUpdated);
-    } else {
-      const newRootCategoryNode = {
-        id: nodeKind,
-        name: nodeKind,
-        parent: TREE_ROOT_ID,
-        children: [node.id],
-        isBranch: true,
-        metadata: {
-          kind: nodeKind,
-        },
-      };
+      const existingRootCategoryNode = acc.find(({ id }) => id === nodeKind);
 
-      return [...acc, newRootCategoryNode, nodeUpdated];
-    }
-  }, [] as TreeProps["data"]);
+      if (existingRootCategoryNode) {
+        const rootCategoryNodeUpdated = {
+          ...existingRootCategoryNode,
+          children: [...existingRootCategoryNode.children, node.id],
+        };
+
+        return acc
+          .map((item) => (item.id === existingRootCategoryNode.id ? rootCategoryNodeUpdated : item))
+          .concat(nodeUpdated);
+      } else {
+        const newRootCategoryNode = {
+          id: nodeKind,
+          name: nodeKind,
+          parent: TREE_ROOT_ID,
+          children: [node.id],
+          isBranch: true,
+          metadata: {
+            kind: nodeKind,
+          },
+        };
+
+        return [...acc, newRootCategoryNode, nodeUpdated];
+      }
+    },
+    [] as TreeProps["data"]
+  );
 };

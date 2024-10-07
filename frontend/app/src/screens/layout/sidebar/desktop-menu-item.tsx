@@ -23,7 +23,8 @@ export const DropDownMenuItem = ({ path, icon, title }: DropDownMenuItemProps) =
           "ml-4 p-2 group flex items-center rounded text-sm font-medium text-gray-600",
           isActive ? "bg-neutral-200" : "hover:bg-gray-100 hover:text-gray-900"
         )
-      }>
+      }
+    >
       {icon ? <Icon icon={icon} className="mr-1" /> : <div className="w-3.5 shrink-0 mr-1" />}
 
       <span className="truncate">{title}</span>

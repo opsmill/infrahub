@@ -66,7 +66,8 @@ export const Form = React.forwardRef<FormRef, FormProps>(
             }
           }}
           className={classNames("space-y-4", className)}
-          {...props}>
+          {...props}
+        >
           {children}
         </form>
       </FormProvider>
@@ -134,7 +135,8 @@ export const FormMessage = ({
     <p
       className={classNames("text-sm text-gray-600", error && "text-red-600", className)}
       data-cy={error && "field-error-message"}
-      {...props}>
+      {...props}
+    >
       {message}
     </p>
   );

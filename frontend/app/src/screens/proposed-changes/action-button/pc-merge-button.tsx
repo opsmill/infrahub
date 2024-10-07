@@ -78,7 +78,8 @@ export const PcMergeButton = ({
       onClick={handleMerge}
       isLoading={isLoadingMerge}
       disabled={!permission.write.allow || state === "closed" || state === "merged"}
-      {...props}>
+      {...props}
+    >
       Merge
     </Button>
   );

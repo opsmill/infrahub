@@ -44,7 +44,8 @@ export const ObjectCreateFormTrigger = ({
           data-testid="create-object-button"
           disabled={!isAllowed || isLoading}
           onClick={() => setShowCreateDrawer(true)}
-          {...props}>
+          {...props}
+        >
           <Icon icon="mdi:plus" className="text-sm mr-1.5" />
           Add {schema?.label}
         </Button>
@@ -60,7 +61,8 @@ export const ObjectCreateFormTrigger = ({
           />
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
+        setOpen={setShowCreateDrawer}
+      >
         <ObjectForm
           onSuccess={async (result: any) => {
             setShowCreateDrawer(false);

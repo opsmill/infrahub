@@ -42,7 +42,8 @@ const ConversationsProvider = () => {
       initialValues={[
         [schemaState, [...conversationMocksSchema, ...accountDetailsMocksSchema]],
         [proposedChangedState, proposedChangesDetails],
-      ]}>
+      ]}
+    >
       <Conversations />
     </TestProvider>
   );

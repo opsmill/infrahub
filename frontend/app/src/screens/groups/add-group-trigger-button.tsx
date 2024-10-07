@@ -34,7 +34,8 @@ export default function AddGroupTriggerButton({
         tooltipContent={permission.write.message ?? "Add groups"}
         tooltipEnabled
         data-testid="open-group-form-button"
-        {...props}>
+        {...props}
+      >
         <Icon icon="mdi:plus" className="text-lg" />
       </ButtonWithTooltip>
 
@@ -49,7 +50,8 @@ export default function AddGroupTriggerButton({
           />
         }
         open={isAddGroupFormOpen}
-        setOpen={setIsAddGroupFormOpen}>
+        setOpen={setIsAddGroupFormOpen}
+      >
         <AddGroupForm
           objectId={objectId}
           schema={schema}

@@ -118,7 +118,8 @@ function Permissions() {
             <Button
               variant={"primary"}
               onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+              disabled={!schema}
+            >
               Create {schema?.label}
             </Button>
           </div>
@@ -153,7 +154,8 @@ function Permissions() {
             />
           }
           open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          setOpen={(value) => setShowCreateDrawer(value)}
+        >
           <ObjectForm
             kind={OBJECT_PERMISSION_OBJECT}
             onCancel={() => setShowCreateDrawer(false)}

@@ -177,7 +177,8 @@ export const Thread = (props: tThread) => {
     <Card
       className={classNames("relative", isResolved && "bg-gray-200")}
       data-testid="thread"
-      data-cy="thread">
+      data-cy="thread"
+    >
       {displayContext && getThreadTitle(thread)}
 
       {sortedComments.map((comment: any, index: number) => (

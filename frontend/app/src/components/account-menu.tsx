@@ -151,7 +151,8 @@ const AuthenticatedAccountMenu = ({
         <Button
           variant="ghost"
           className="h-auto gap-2 hover:bg-indigo-50 rounded-lg p-2"
-          data-testid="authenticated-menu-trigger">
+          data-testid="authenticated-menu-trigger"
+        >
           <Avatar name={profile?.name?.value} className="h-10 w-10" />
           <div className="flex flex-col items-start">
             <span className="font-semibold text-sm">{profile?.label?.value}</span>

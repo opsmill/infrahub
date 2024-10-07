@@ -23,7 +23,8 @@ const ToolBar: FC<ToolbarProps> = ({ codeMirror }) => {
           className="bg-white border-none p-0 text-xl shadow-none"
           type="button"
           aria-label={label}
-          onMouseDown={handleButtonMouseDown(onClick)}>
+          onMouseDown={handleButtonMouseDown(onClick)}
+        >
           <Icon icon={icon} />
         </Button>
       ))}

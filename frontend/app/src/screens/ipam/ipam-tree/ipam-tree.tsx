@@ -136,7 +136,8 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
       to={url}
       tabIndex={-1}
       className="flex items-center gap-2 w-full"
-      data-testid="ipam-tree-item">
+      data-testid="ipam-tree-item"
+    >
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span>{element.name}</span>
       {!!element.metadata?.descendantsCount && (

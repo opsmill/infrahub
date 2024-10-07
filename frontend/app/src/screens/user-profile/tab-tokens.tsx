@@ -44,7 +44,8 @@ export default function TabTokens() {
             <br />
             <b>You won&apos;t be able to see it again!</b>
           </>
-        }>
+        }
+      >
         <div className="mt-2">
           <TokenInput value={result?.object?.token?.value} />
         </div>

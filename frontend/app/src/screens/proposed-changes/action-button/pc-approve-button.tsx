@@ -82,7 +82,8 @@ export const PcApproveButton = ({
       onClick={handleApprove}
       isLoading={isLoadingApprove}
       disabled={!auth?.permissions?.write || !approverId || !canApprove}
-      {...props}>
+      {...props}
+    >
       Approve
     </Button>
   );

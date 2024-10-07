@@ -51,7 +51,8 @@ export const RelationshipOneCell = ({ data }: { data: RelationshipOneType }) => 
   return (
     <LinkCell
       to={getObjectDetailsUrl2(data.node.__typename, data.node.id)}
-      className="hover:underline">
+      className="hover:underline"
+    >
       {data.node.display_label}
     </LinkCell>
   );

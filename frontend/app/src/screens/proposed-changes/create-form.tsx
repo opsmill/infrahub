@@ -62,7 +62,8 @@ export const ProposedChangeCreateForm = () => {
 
         const url = constructPath(`/proposed-changes/${data.CoreProposedChangeCreate.object.id}`);
         navigate(url);
-      }}>
+      }}
+    >
       <Card className="flex flex-wrap md:flex-nowrap items-start gap-4 justify-center w-full shadow-sm border-gray-300">
         <FormField
           name="source_branch"

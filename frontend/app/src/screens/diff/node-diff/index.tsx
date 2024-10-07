@@ -225,7 +225,8 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
               size="sm"
               variant="primary"
               onClick={handleRefresh}
-              disabled={!auth?.permissions?.write || isLoadingUpdate}>
+              disabled={!auth?.permissions?.write || isLoadingUpdate}
+            >
               Refresh diff
             </Button>
           </div>
@@ -234,7 +235,8 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
             size="sm"
             variant="primary-outline"
             onClick={handleRebase}
-            disabled={isLoadingUpdate}>
+            disabled={isLoadingUpdate}
+          >
             Rebase
           </Button>
         </div>

@@ -38,7 +38,8 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
     <Card
       ref={diffNodeRef}
       id={node.uuid}
-      className={classNames(isSelectedOnNavigation && "ring-2 ring-custom-blue-500")}>
+      className={classNames(isSelectedOnNavigation && "ring-2 ring-custom-blue-500")}
+    >
       {(!!node.attributes?.length || !!node.relationships?.length) && (
         <Accordion
           defaultOpen={isSelectedOnNavigation}
@@ -51,7 +52,8 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
               {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
             </div>
           }
-          className="bg-gray-100 border rounded-md">
+          className="bg-gray-100 border rounded-md"
+        >
           <div className="bg-custom-white divide-y border-t">
             <div className="grid grid-cols-3 pl-8">
               <Badge variant="green" className="bg-transparent col-start-2 col-end-3">

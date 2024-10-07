@@ -68,7 +68,8 @@ export const Generate = (props: tGenerateProps) => {
       disabled={!auth?.permissions?.write || isLoading}
       onClick={handleGenerate}
       className="mr-4"
-      buttonType={BUTTON_TYPES.VALIDATE}>
+      buttonType={BUTTON_TYPES.VALIDATE}
+    >
       {label ?? "Generate"}
       <ArrowPathIcon
         className={classNames("ml-2 h-4 w-4", isLoading ? "animate-spin" : "")}

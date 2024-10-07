@@ -23,7 +23,8 @@ export const BreadcrumbSeparator = ({
     role="presentation"
     aria-hidden="true"
     className={classNames("inline-flex", className)}
-    {...props}>
+    {...props}
+  >
     {children ?? <Icon icon="mdi:slash-forward" className="text-xl text-gray-400" />}
   </li>
 );

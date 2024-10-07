@@ -40,7 +40,8 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
         <div className="text-md flex gap-2 items-center">
           <Link
             to={constructPath(`/objects/${isProfile ? PROFILE_KIND : schemaKind}`)}
-            className="flex items-center cursor-pointer">
+            className="flex items-center cursor-pointer"
+          >
             <h1 className="font-semibold text-gray-900 mr-2 hover:underline">
               {breadcrumbModelLabel}
             </h1>
@@ -51,7 +52,8 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
       description={schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
-      data-testid="object-header">
+      data-testid="object-header"
+    >
       <ObjectHelpButton
         kind={schema.kind}
         documentationUrl={schema.documentation}
@@ -78,7 +80,8 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
         <div className="text-md flex gap-2 items-center">
           <Link
             to={constructPath(`/objects/${isProfile ? PROFILE_KIND : schemaKind}`)}
-            className="flex items-center cursor-pointer">
+            className="flex items-center cursor-pointer"
+          >
             <h1 className="font-semibold text-gray-900 hover:underline">{breadcrumbModelLabel}</h1>
           </Link>
 
@@ -98,7 +101,8 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
       description={schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
-      data-testid="object-header">
+      data-testid="object-header"
+    >
       <ObjectHelpButton
         kind={schema.kind}
         documentationUrl={schema.documentation}

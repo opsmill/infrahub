@@ -30,7 +30,8 @@ export const GroupsManagerTriggerButton = ({
         variant="outline"
         size="square"
         data-testid="manage-groups"
-        {...props}>
+        {...props}
+      >
         {props.children ?? <Icon icon="mdi:group" aria-hidden="true" />}
       </ButtonWithTooltip>
 
@@ -44,7 +45,8 @@ export const GroupsManagerTriggerButton = ({
             title="Manage groups"
             subtitle="Add and unassign groups"
           />
-        }>
+        }
+      >
         <GroupsManager schema={schema} objectId={objectId} className="p-4 overflow-auto" />
       </SlideOver>
     </>

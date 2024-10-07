@@ -51,7 +51,7 @@ export const TaskItemDetails = forwardRef((props, ref) => {
     return <LoadingScreen hideText />;
   }
 
-  const result = data ? data[TASK_OBJECT] ?? {} : {};
+  const result = data ? (data[TASK_OBJECT] ?? {}) : {};
 
   const { edges = [] } = result;
 

@@ -13,14 +13,16 @@ const Homepage = () => {
           <Link
             to="https://docs.infrahub.app/"
             target="_blank"
-            className="text-custom-blue-700 font-semibold">
+            className="text-custom-blue-700 font-semibold"
+          >
             documentation
           </Link>{" "}
           or{" "}
           <Link
             to="https://docs.infrahub.app/tutorials/getting-started/"
             target="_blank"
-            className="text-custom-blue-700 font-semibold">
+            className="text-custom-blue-700 font-semibold"
+          >
             tutorials
           </Link>{" "}
           to start using <strong className="font-semibold">Infrahub</strong>.

@@ -30,7 +30,8 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
             comment: comment.value as string,
           };
           await onSubmit(commentFormData);
-        }}>
+        }}
+      >
         <TextareaField
           name="comment"
           label="Add a comment"
@@ -60,7 +61,8 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
         size="sm"
         variant="primary"
         to={constructPath("/signin")}
-        state={{ from: location }}>
+        state={{ from: location }}
+      >
         Sign in
       </LinkButton>{" "}
       to be able to add a comment.

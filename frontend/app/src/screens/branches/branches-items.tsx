@@ -47,12 +47,14 @@ const BranchesItems = () => {
       <ul
         className="grid gap-6 grid-cols-1 p-6"
         data-cy="branches-items"
-        data-testid="branches-items">
+        data-testid="branches-items"
+      >
         {branches.map((branch) => (
           <li
             key={branch.name}
             className="col-span-1 rounded-lg bg-custom-white border cursor-pointer hover:bg-gray-50"
-            onClick={() => navigate(constructPath(`/branches/${branch.name}`))}>
+            onClick={() => navigate(constructPath(`/branches/${branch.name}`))}
+          >
             <div className="flex w-full items-center justify-between space-x-6 p-6">
               <div className="flex flex-1">
                 <div className="flex flex-1 flex-col">

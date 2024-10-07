@@ -124,7 +124,8 @@ function IpamRouter() {
       tooltipContent={permission.write.message ?? undefined}
       onClick={() => setShowCreateDrawer(true)}
       className="mr-4"
-      data-testid="create-object-button">
+      data-testid="create-object-button"
+    >
       <Icon icon="mdi:plus" className="text-sm" />
       Add {schemaData?.label}
     </ButtonWithTooltip>
@@ -154,7 +155,8 @@ function IpamRouter() {
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
-                aria-hidden="true">
+                aria-hidden="true"
+              >
                 <circle cx={3} cy={3} r={3} />
               </svg>
               {schemaData?.kind}
@@ -162,7 +164,8 @@ function IpamRouter() {
           </div>
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
+        setOpen={setShowCreateDrawer}
+      >
         <ObjectForm
           kind={objectname}
           onSuccess={() => {

@@ -88,7 +88,8 @@ function ErrorFallback({ error }: ErrorFallbackProps) {
             className="underline"
             href="https://discord.gg/opsmill"
             target="_blank"
-            rel="noreferrer">
+            rel="noreferrer"
+          >
             Discord
           </a>
           {" or "}
@@ -96,7 +97,8 @@ function ErrorFallback({ error }: ErrorFallbackProps) {
             className="underline"
             href="https://github.com/opsmill/infrahub/issues/new/choose"
             target="_blank"
-            rel="noreferrer">
+            rel="noreferrer"
+          >
             GitHub
           </a>
         </p>

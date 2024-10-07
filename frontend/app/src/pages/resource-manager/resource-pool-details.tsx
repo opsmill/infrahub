@@ -108,7 +108,8 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
             <Link
               to={constructPath(
                 getObjectDetailsUrl(relationshipData.id, relationshipData.__typename)
-              )}>
+              )}
+            >
               {relationshipData?.display_label}
             </Link>
           ),
@@ -125,7 +126,8 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
             <Icon icon="mdi:chevron-right" />
             <span>{resourcePoolData.node.display_label}</span>
           </div>
-        }>
+        }
+      >
         <ObjectHelpButton
           className="ml-auto"
           documentationUrl={schema.documentation}

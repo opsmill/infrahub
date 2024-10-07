@@ -50,7 +50,8 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
       <div className="overflow-hidden space-y-1">
         <Link
           to={getObjectDetailsUrl2(group.__typename, group.id)}
-          className="font-semibold hover:underline truncate block">
+          className="font-semibold hover:underline truncate block"
+        >
           {group.display_label}
         </Link>
 
@@ -59,7 +60,8 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
             to={getObjectDetailsUrl2(group.__typename, group.id, [
               { name: QSP.TAB, value: "members" },
             ])}
-            className="text-sm font-light hover:underline">
+            className="text-sm font-light hover:underline"
+          >
             {pluralize(group.members.count, "member")}
           </Link>
 
@@ -93,7 +95,8 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
           size="icon"
           className="flex-shrink-0 hover:bg-gray-200"
           onClick={() => setShowDeleteModal(true)}
-          data-testid="leave-group-button">
+          data-testid="leave-group-button"
+        >
           <Icon icon="mdi:link-variant-remove" className="text-lg text-red-600" />
         </Button>
       </Tooltip>

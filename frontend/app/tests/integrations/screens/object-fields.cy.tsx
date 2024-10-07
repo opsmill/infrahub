@@ -196,7 +196,8 @@ describe("Object list", () => {
     const ObjectItemsProvider = () => {
       return (
         <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema1]]]}>
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema1]]]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -238,7 +239,8 @@ describe("Object list", () => {
         <TestProvider
           initialValues={[
             [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaWithProfile]],
-          ]}>
+          ]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -280,7 +282,8 @@ describe("Object list", () => {
         <TestProvider
           initialValues={[
             [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaOptionnal1]],
-          ]}>
+          ]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -320,7 +323,8 @@ describe("Object list", () => {
     const ObjectItemsProvider = () => {
       return (
         <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema2]]]}>
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema2]]]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -362,7 +366,8 @@ describe("Object list", () => {
         <TestProvider
           initialValues={[
             [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaWithDefaultValue2]],
-          ]}>
+          ]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -404,7 +409,8 @@ describe("Object list", () => {
         <TestProvider
           initialValues={[
             [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaOptional2]],
-          ]}>
+          ]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -444,7 +450,8 @@ describe("Object list", () => {
     const ObjectItemsProvider = () => {
       return (
         <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema3]]]}>
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema3]]]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -484,7 +491,8 @@ describe("Object list", () => {
     const ObjectItemsProvider = () => {
       return (
         <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema3]]]}>
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema3]]]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -529,7 +537,8 @@ describe("Object list", () => {
         <TestProvider
           initialValues={[
             [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaWithDefaultValue3]],
-          ]}>
+          ]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -571,7 +580,8 @@ describe("Object list", () => {
         <TestProvider
           initialValues={[
             [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaOptional3]],
-          ]}>
+          ]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -611,7 +621,8 @@ describe("Object list", () => {
     const ObjectItemsProvider = () => {
       return (
         <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema4]]]}>
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema4]]]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -651,7 +662,8 @@ describe("Object list", () => {
     const ObjectItemsProvider = () => {
       return (
         <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema5]]]}>
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema5]]]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -701,7 +713,8 @@ describe("Object list", () => {
                 ipamIpAddressMocksSchema,
               ],
             ],
-          ]}>
+          ]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );
@@ -737,7 +750,8 @@ describe("Object list", () => {
     const ObjectItemsProvider = () => {
       return (
         <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema7]]]}>
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema7]]]}
+        >
           <AuthenticatedObjectItems />
         </TestProvider>
       );

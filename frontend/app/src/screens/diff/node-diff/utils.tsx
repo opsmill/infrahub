@@ -88,12 +88,14 @@ export const DiffRow = ({
                   status === "REMOVED" && "bg-red-100 text-red-900",
                   status === "UPDATED" && "bg-blue-100 text-blue-900",
                   rightClassName
-                )}>
+                )}
+              >
                 {right}
               </div>
             </div>
           </div>
-        }>
+        }
+      >
         {children}
       </Accordion>
     </div>

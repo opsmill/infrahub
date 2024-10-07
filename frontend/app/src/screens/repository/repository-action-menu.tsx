@@ -29,7 +29,8 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
             tooltipEnabled
             variant="ghost"
             size="square"
-            className="p-4">
+            className="p-4"
+          >
             <Icon icon="mdi:dots-vertical" className="text-custom-blue-900 text-lg p-4" />
           </ButtonWithTooltip>
         </DropdownMenuTrigger>

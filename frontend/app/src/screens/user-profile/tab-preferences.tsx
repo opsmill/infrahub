@@ -38,7 +38,8 @@ export default function TabPreferences() {
               confirmPassword: formData.confirmPassword.value as string,
             };
             await onSubmit(data);
-          }}>
+          }}
+        >
           <PasswordInputField
             name="newPassword"
             label="New password"

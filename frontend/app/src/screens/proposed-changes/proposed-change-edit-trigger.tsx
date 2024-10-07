@@ -30,7 +30,8 @@ export const ProposedChangeEditTrigger = ({
         tooltipEnabled={!permission.write.allow}
         tooltipContent={permission.write.message ?? undefined}
         onClick={() => setShowEditDrawer(true)}
-        data-testid="edit-button">
+        data-testid="edit-button"
+      >
         <Icon icon="mdi:pencil" aria-hidden="true" />
       </ButtonWithTooltip>
 
@@ -57,7 +58,8 @@ export const ProposedChangeEditTrigger = ({
           </div>
         }
         open={showEditDrawer}
-        setOpen={setShowEditDrawer}>
+        setOpen={setShowEditDrawer}
+      >
         <ProposedChangeEditForm
           initialData={proposedChangesDetails}
           onSuccess={async () => {

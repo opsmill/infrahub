@@ -26,7 +26,8 @@ export default function BreadcrumbSchemaSelector({
     <BreadcrumbLink
       to={getObjectDetailsUrl2(kind)}
       className={classNames(isLast && breadcrumbActiveStyle)}
-      {...props}>
+      {...props}
+    >
       {schema.label}
     </BreadcrumbLink>
   );

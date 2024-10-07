@@ -156,7 +156,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           relationshipsData.node?.id,
                           relationshipsData.node?.__typename
                         )
-                      )}>
+                      )}
+                    >
                       {relationshipsData.node?.display_label}
                     </StyledLink>
                   ) : (
@@ -188,7 +189,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 });
                                 setShowMetaEditModal(true);
                               }}
-                              data-cy="metadata-edit-button">
+                              data-cy="metadata-edit-button"
+                            >
                               <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                             </ButtonWithTooltip>
                           </div>
@@ -229,7 +231,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     <tr
                       key={index}
                       className="border-b border-gray-200 hover:bg-gray-50"
-                      data-testid="relationship-row">
+                      data-testid="relationship-row"
+                    >
                       {newColumns?.map((column) => (
                         <td key={node.id + column.name} className="h-9">
                           <ObjectItemsCell row={node} attribute={column} />
@@ -260,7 +263,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           onClick={() => {
                             setRelatedObjectToEdit(node);
                           }}
-                          data-cy="metadata-edit-button">
+                          data-cy="metadata-edit-button"
+                        >
                           <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                         </ButtonWithTooltip>
 
@@ -273,7 +277,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           onClick={() => {
                             setRelatedRowToDelete(node);
                           }}
-                          data-testid="relationship-delete-button">
+                          data-testid="relationship-delete-button"
+                        >
                           <Icon icon="mdi:link-variant-remove" className="text-base text-red-600" />
                         </ButtonWithTooltip>
                       </td>
@@ -360,7 +365,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             )
           }
           open={!!relatedObjectToEdit}
-          setOpen={() => setRelatedObjectToEdit(undefined)}>
+          setOpen={() => setRelatedObjectToEdit(undefined)}
+        >
           <ObjectItemEditComponent
             closeDrawer={() => {
               setRelatedObjectToEdit(undefined);

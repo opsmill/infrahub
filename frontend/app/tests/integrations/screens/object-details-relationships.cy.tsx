@@ -95,7 +95,8 @@ const ObjectDetailsProvider = () => {
       initialValues={[
         [schemaState, deviceDetailsMocksSchema],
         [genericsState, deviceDetailsMocksGenerics],
-      ]}>
+      ]}
+    >
       <ObjectDetailsPage />
     </TestProvider>
   );

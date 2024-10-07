@@ -65,7 +65,8 @@ const RepositoryForm = ({
 
         await graphqlClient.reFetchObservableQueries();
         if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
-      }}>
+      }}
+    >
       <FormGroup>
         {gitUrlFieldProps && (
           <DynamicInput

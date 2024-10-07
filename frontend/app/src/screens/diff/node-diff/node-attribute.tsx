@@ -38,7 +38,8 @@ export const DiffNodeAttribute = ({
         </div>
       }
       left={previousValue}
-      right={newValue}>
+      right={newValue}
+    >
       <div className="divide-y border-t">
         {attribute.conflict && <Conflict conflict={attribute.conflict} />}
 

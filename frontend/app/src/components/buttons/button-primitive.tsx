@@ -48,7 +48,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
         ref={ref}
-        {...props}>
+        {...props}
+      >
         {isLoading && <Spinner className="mr-2" />}
         {children}
       </button>

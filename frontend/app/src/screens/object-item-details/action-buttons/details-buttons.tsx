@@ -40,7 +40,8 @@ export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProp
           tooltipEnabled
           tooltipContent={permission.write.message ?? "Edit object"}
           onClick={() => setShowEditModal(true)}
-          data-testid="edit-button">
+          data-testid="edit-button"
+        >
           <Icon icon="mdi:pencil" className="mr-1.5" aria-hidden="true" /> Edit {schema.label}
         </ButtonWithTooltip>
 
@@ -63,7 +64,8 @@ export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProp
           data-testid="delete-button"
           variant={"danger"}
           size={"square"}
-          onClick={() => setShowDeleteModal(true)}>
+          onClick={() => setShowDeleteModal(true)}
+        >
           <Icon icon="mdi:trash-can-outline" className="" aria-hidden="true" />
         </ButtonWithTooltip>
       </div>
@@ -78,7 +80,8 @@ export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProp
           />
         }
         open={showEditModal}
-        setOpen={setShowEditModal}>
+        setOpen={setShowEditModal}
+      >
         <ObjectItemEditComponent
           closeDrawer={() => setShowEditModal(false)}
           onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
