@@ -39,7 +39,7 @@ export const Form = React.forwardRef<FormRef, FormProps>(
     useImperativeHandle(ref, () => currentForm);
 
     useEffect(() => {
-      currentForm.reset(defaultValues);
+      if (!form) currentForm.reset(defaultValues);
     }, [JSON.stringify(defaultValues)]);
 
     useEffect(() => {

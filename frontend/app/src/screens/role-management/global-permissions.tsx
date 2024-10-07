@@ -61,6 +61,10 @@ function GlobalPermissions() {
   return (
     <>
       <div>
+        <div className="flex items-center justify-between p-2">
+          <div>{/* Search input + filter button */}</div>
+        </div>
+
         <Table columns={columns} rows={rows ?? []} className="border-0" />
 
         <Pagination count={data && data[GLOBAL_PERMISSION_OBJECT]?.count} />

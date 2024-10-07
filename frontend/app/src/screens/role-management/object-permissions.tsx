@@ -12,6 +12,11 @@ import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { useAtomValue } from "jotai";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/graphql/queries/role-management/getObjectPermissions";
+import { Button } from "@/components/buttons/button-primitive";
+import { useSchema } from "@/hooks/useSchema";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import ObjectForm from "@/components/form/object-form";
+import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 
 const icons: Record<string, ReactNode> = {
   allow: (
@@ -29,11 +34,13 @@ const icons: Record<string, ReactNode> = {
 function Permissions() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS);
   const schemaKindName = useAtomValue(schemaKindNameState);
+  const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
   const [rowToDelete, setRowToDelete] = useState(null);
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const columns = [
     {
-      name: "name",
+      name: "display_label",
       label: "Name",
     },
     {
@@ -43,6 +50,10 @@ function Permissions() {
     {
       name: "namespace",
       label: "Namespace",
+    },
+    {
+      name: "name",
+      label: "Node",
     },
     {
       name: "action",
@@ -69,20 +80,21 @@ function Permissions() {
       const icon = icons[iconKey];
 
       return {
-        id: edge?.node?.id,
         values: {
-          display_label: edge?.node?.display_label,
-          name: (
+          id: edge?.node?.id,
+          display_label: (
             <div className="flex items-center gap-2">
               {icon} {edge?.node?.display_label}
             </div>
           ),
           branch: edge?.node?.branch?.value,
           namespace: edge?.node?.namespace?.value,
+          name: edge?.node?.name?.value,
           action: edge?.node?.action?.value,
           decision: edge?.node?.decision?.value,
           roles: <Pill>{edge?.node?.roles?.count}</Pill>,
           identifier: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          __typename: edge?.node?.__typename,
         },
       };
     });
@@ -91,9 +103,27 @@ function Permissions() {
 
   if (loading) return <LoadingScreen message="Retrieving accounts..." />;
 
+  const globalRefetch = () => {
+    graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
+    refetch();
+  };
+
   return (
     <>
       <div>
+        <div className="flex items-center justify-between p-2">
+          <div>{/* Search input + filter button */}</div>
+
+          <div>
+            <Button
+              variant={"primary"}
+              onClick={() => setShowCreateDrawer(true)}
+              disabled={!schema}>
+              Create {schema?.label}
+            </Button>
+          </div>
+        </div>
+
         <Table
           columns={columns}
           rows={rows ?? []}
@@ -109,8 +139,31 @@ function Permissions() {
         rowToDelete={rowToDelete}
         open={!!rowToDelete}
         close={() => setRowToDelete(null)}
-        onDelete={refetch}
+        onDelete={() => globalRefetch()}
       />
+
+      {schema && (
+        <SlideOver
+          title={
+            <SlideOverTitle
+              schema={schema}
+              currentObjectLabel="New"
+              title={`Create ${schema.label}`}
+              subtitle={schema.description}
+            />
+          }
+          open={showCreateDrawer}
+          setOpen={(value) => setShowCreateDrawer(value)}>
+          <ObjectForm
+            kind={OBJECT_PERMISSION_OBJECT}
+            onCancel={() => setShowCreateDrawer(false)}
+            onSuccess={() => {
+              setShowCreateDrawer(false);
+              globalRefetch();
+            }}
+          />
+        </SlideOver>
+      )}
     </>
   );
 }
