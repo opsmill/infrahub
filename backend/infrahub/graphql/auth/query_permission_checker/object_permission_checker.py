@@ -112,14 +112,15 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         if not is_account_operation or operation_names == ["AccountProfile"]:
             return CheckerResolution.NEXT_CHECKER
 
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
-            ):
-                break
+        component_registry = get_component_registry()
+        permission_manager = component_registry.get_component(PermissionManager, db=db, branch=branch)
 
-        if not has_permission and analyzed_query.contains_mutation:
+        if (
+            not await permission_manager.has_permission(
+                account_session=account_session, permission=self.permission_required
+            )
+            and analyzed_query.contains_mutation
+        ):
             raise PermissionDeniedError("You do not have the permission to manage user accounts, groups or roles")
 
         return CheckerResolution.NEXT_CHECKER
