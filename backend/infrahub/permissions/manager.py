@@ -24,7 +24,7 @@ class PermissionManager:
 
     async def has_permission(self, account_session: AccountSession, permission: str) -> bool:
         for permission_backend in self.backends:
-            if permission_backend.has_permission(account_id=account_session.account_id, permission=permission):
+            if await permission_backend.has_permission(account_id=account_session.account_id, permission=permission):
                 return True
 
         return False
