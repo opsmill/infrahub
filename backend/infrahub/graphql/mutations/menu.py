@@ -19,12 +19,13 @@ from .main import InfrahubMutationOptions
 if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
+EXTENDED_RESTRICTED_NAMESPACES = RESTRICTED_NAMESPACES + ["Builtin"]
 
 def validate_namespace(data: InputObjectType) -> None:
     namespace = data.get("namespace")
     if isinstance(namespace, dict) and "value" in namespace:
         namespace_value = str(namespace.get("value"))
-        if namespace_value.title() in RESTRICTED_NAMESPACES:
+        if namespace_value.title() in EXTENDED_RESTRICTED_NAMESPACES:
             raise ValidationError(
                 input_value={"namespace": f"{namespace_value} is not valid, it's a restricted namespace"}
             )
