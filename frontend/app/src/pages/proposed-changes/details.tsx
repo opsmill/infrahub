@@ -8,26 +8,26 @@ import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/screens/diff/checks/checks";
 import { NodeDiff } from "@/screens/diff/node-diff";
 
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { Badge } from "@/components/ui/badge";
+import { CoreProposedChange } from "@/generated/graphql";
+import { useSchema } from "@/hooks/useSchema";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
 import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
+import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-change-details";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
 import { TaskItems } from "@/screens/tasks/task-items";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { constructPath } from "@/utils/fetch";
+import { getObjectDetailsUrl } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
-import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-change-details";
-import { CoreProposedChange } from "@/generated/graphql";
-import { Badge } from "@/components/ui/badge";
-import { getObjectDetailsUrl } from "@/utils/objects";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import { useSchema } from "@/hooks/useSchema";
-import NoDataFound from "@/screens/errors/no-data-found";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",

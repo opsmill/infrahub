@@ -1,8 +1,8 @@
-import NoDataFound from "@/screens/errors/no-data-found";
 import { GenericSelector } from "@/components/form/generic-selector";
-import { useState } from "react";
-import { iGenericSchema } from "@/state/atoms/schema.atom";
 import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
+import NoDataFound from "@/screens/errors/no-data-found";
+import { iGenericSchema } from "@/state/atoms/schema.atom";
+import { useState } from "react";
 
 interface GenericObjectFormProps extends Omit<ObjectFormProps, "kind"> {
   genericSchema: iGenericSchema;

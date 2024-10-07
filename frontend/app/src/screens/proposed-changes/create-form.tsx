@@ -13,6 +13,8 @@ import {
   FormSubmit,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
 import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,8 +26,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { Spinner } from "@/components/ui/spinner";
 
 export const ProposedChangeCreateForm = () => {
   const { user } = useAuth();

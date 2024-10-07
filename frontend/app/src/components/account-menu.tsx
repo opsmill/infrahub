@@ -1,14 +1,7 @@
+import { Button } from "@/components/buttons/button-primitive";
 import { Avatar } from "@/components/display/avatar";
-import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
-import { useAuth } from "@/hooks/useAuth";
-import { genericsState, IModelSchema } from "@/state/atoms/schema.atom";
-import { gql, useQuery } from "@apollo/client";
-import { useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useAtomValue } from "jotai/index";
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { Skeleton } from "@/components/skeleton";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,12 +9,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Icon } from "@iconify-icon/react";
-import { Button } from "@/components/buttons/button-primitive";
-import { Skeleton } from "@/components/skeleton";
-import { constructPath } from "@/utils/fetch";
 import { INFRAHUB_DOC_LOCAL, INFRAHUB_GITHUB_URL, INFRAHUB_SWAGGER_DOC_URL } from "@/config/config";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
+import { useAuth } from "@/hooks/useAuth";
 import { AppVersion } from "@/screens/layout/app-version";
+import { IModelSchema, genericsState } from "@/state/atoms/schema.atom";
+import { constructPath } from "@/utils/fetch";
+import { gql, useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export const AccountMenu = () => {
   const { isAuthenticated, signOut } = useAuth();

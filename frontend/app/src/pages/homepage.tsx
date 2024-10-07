@@ -1,7 +1,7 @@
+import { Card } from "@/components/ui/card";
 import Content from "@/screens/layout/content";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
-import { Card } from "@/components/ui/card";
 
 const Homepage = () => {
   return (

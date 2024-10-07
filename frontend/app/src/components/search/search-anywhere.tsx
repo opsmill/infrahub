@@ -1,3 +1,5 @@
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Kbd from "@/components/ui/kbd";
 import { classNames } from "@/utils/common";
@@ -8,8 +10,6 @@ import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { SearchActions } from "./search-actions";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
-import { Card } from "@/components/ui/card";
-import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 
 const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
   return (

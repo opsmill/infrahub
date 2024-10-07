@@ -1,6 +1,4 @@
-import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
-import { AuthContextType } from "@/hooks/useAuth";
+import { ProfileData } from "@/components/form/object-form";
 import {
   DynamicDropdownFieldProps,
   DynamicEnumFieldProps,
@@ -11,18 +9,20 @@ import {
   FormFieldValue,
   NumberPoolData,
 } from "@/components/form/type";
-import { getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
-import { sortByOrderWeight } from "@/utils/common";
 import { getFieldDefaultValue } from "@/components/form/utils/getFieldDefaultValue";
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { store } from "@/state";
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { ProfileData } from "@/components/form/object-form";
-import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { getRelationshipParent } from "@/components/form/utils/getRelationshipParent";
-import { isRequired } from "@/components/form/utils/validation";
 import { getRelationshipsForForm } from "@/components/form/utils/getRelationshipsForForm";
+import { isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
+import { isRequired } from "@/components/form/utils/validation";
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { AuthContextType } from "@/hooks/useAuth";
+import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
+import { store } from "@/state";
+import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import { sortByOrderWeight } from "@/utils/common";
+import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
+import { getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema | iGenericSchema;

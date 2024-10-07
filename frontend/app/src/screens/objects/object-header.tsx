@@ -1,16 +1,16 @@
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { Skeleton } from "@/components/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { PROFILE_KIND } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import useFilters from "@/hooks/useFilters";
+import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { useObjectItems } from "@/hooks/useObjectItems";
 import Content from "@/screens/layout/content";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { Badge } from "@/components/ui/badge";
 import { constructPath } from "@/utils/fetch";
-import { PROFILE_KIND } from "@/config/constants";
-import { Link } from "react-router-dom";
-import { useObjectItems } from "@/hooks/useObjectItems";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import useFilters from "@/hooks/useFilters";
 import { Icon } from "@iconify-icon/react";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
-import { Skeleton } from "@/components/skeleton";
+import { Link } from "react-router-dom";
 
 type ObjectHeaderProps = {
   schema: IModelSchema;

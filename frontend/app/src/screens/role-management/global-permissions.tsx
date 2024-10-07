@@ -1,13 +1,13 @@
-import { useQuery } from "@apollo/client";
-import { Table } from "@/components/table/table";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
-import ErrorScreen from "../errors/error-screen";
-import { Pagination } from "@/components/ui/pagination";
 import { Pill } from "@/components/display/pill";
-import { Icon } from "@iconify-icon/react";
+import { Table } from "@/components/table/table";
 import { BadgeCopy } from "@/components/ui/badge-copy";
+import { Pagination } from "@/components/ui/pagination";
+import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/graphql/queries/role-management/getGlobalPermissions";
+import { useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import ErrorScreen from "../errors/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
 
 function GlobalPermissions() {
   const { loading, data, error } = useQuery(GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS);

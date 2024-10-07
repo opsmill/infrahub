@@ -1,7 +1,7 @@
-import { iNodeSchema, IProfileSchema } from "@/state/atoms/schema.atom";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
-import { addAttributesToRequest, addRelationshipsToRequest } from "@/graphql/utils";
 import { getRelationshipsForForm } from "@/components/form/utils/getRelationshipsForForm";
+import { addAttributesToRequest, addRelationshipsToRequest } from "@/graphql/utils";
+import { IProfileSchema, iNodeSchema } from "@/state/atoms/schema.atom";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 export const generateObjectEditFormQuery = ({
   schema,

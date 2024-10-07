@@ -1,12 +1,12 @@
-import { useAuth } from "@/hooks/useAuth";
-import { Form, FormSubmit } from "@/components/ui/form";
 import InputField from "@/components/form/fields/input.field";
-import { isRequired } from "@/components/form/utils/validation";
 import PasswordInputField from "@/components/form/fields/password-input.field";
-import { useAtomValue } from "jotai/index";
-import { configState } from "@/state/atoms/config.atom";
-import { SignInWithSSOButtons } from "@/screens/authentification/sign-in-sso-buttons";
+import { isRequired } from "@/components/form/utils/validation";
 import { Divider } from "@/components/ui/divider";
+import { Form, FormSubmit } from "@/components/ui/form";
+import { useAuth } from "@/hooks/useAuth";
+import { SignInWithSSOButtons } from "@/screens/authentification/sign-in-sso-buttons";
+import { configState } from "@/state/atoms/config.atom";
+import { useAtomValue } from "jotai/index";
 
 export const SignIn = () => {
   const config = useAtomValue(configState);

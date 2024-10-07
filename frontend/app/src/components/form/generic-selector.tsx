@@ -1,9 +1,9 @@
 import { Combobox, tComboboxItem } from "@/components/ui/combobox-legacy";
-import { useId } from "react";
 import Label from "@/components/ui/label";
-import { useAtomValue } from "jotai/index";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { PROFILE_KIND } from "@/config/constants";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { useAtomValue } from "jotai/index";
+import { useId } from "react";
 
 type GenericSelectorProps = {
   currentKind: string;

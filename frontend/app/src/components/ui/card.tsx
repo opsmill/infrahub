@@ -1,5 +1,5 @@
 import { classNames } from "@/utils/common";
-import { forwardRef, HTMLAttributes } from "react";
+import { HTMLAttributes, forwardRef } from "react";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {}
 

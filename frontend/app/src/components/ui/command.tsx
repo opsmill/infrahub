@@ -1,7 +1,7 @@
-import * as React from "react";
-import { Command as CommandPrimitive } from "cmdk";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { Command as CommandPrimitive } from "cmdk";
+import * as React from "react";
 
 export const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,

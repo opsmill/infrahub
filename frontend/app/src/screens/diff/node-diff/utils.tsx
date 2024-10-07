@@ -1,3 +1,8 @@
+import Accordion from "@/components/display/accordion";
+import { DiffProperty, DiffStatus } from "@/screens/diff/node-diff/types";
+import { classNames, warnUnexpectedType } from "@/utils/common";
+import { capitalizeFirstLetter } from "@/utils/string";
+import { ReactNode } from "react";
 import {
   BadgeAdded,
   BadgeConflict,
@@ -7,11 +12,6 @@ import {
   BadgeUpdated,
   DiffBadgeProps,
 } from "../diff-badge";
-import { ReactNode } from "react";
-import { DiffProperty, DiffStatus } from "@/screens/diff/node-diff/types";
-import { classNames, warnUnexpectedType } from "@/utils/common";
-import Accordion from "@/components/display/accordion";
-import { capitalizeFirstLetter } from "@/utils/string";
 
 export const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdded,

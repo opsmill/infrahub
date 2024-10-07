@@ -2,20 +2,20 @@ import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-change
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "../errors/error-screen";
 
-import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "@/config/qsp";
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { classNames } from "@/utils/common";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import { DIFF_STATUS } from "@/screens/diff/node-diff/types";
-import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { QSP } from "@/config/qsp";
 import {
   CloseBadgeAdded,
   CloseBadgeConflict,
   CloseBadgeRemoved,
   CloseBadgeUpdated,
 } from "@/screens/diff/diff-badge";
+import { DIFF_STATUS } from "@/screens/diff/node-diff/types";
+import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import { classNames } from "@/utils/common";
+import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 
 export type DiffFilter = {
   namespace?: {

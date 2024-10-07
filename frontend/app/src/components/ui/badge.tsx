@@ -1,5 +1,5 @@
 import { classNames } from "@/utils/common";
-import { cva, VariantProps } from "class-variance-authority";
+import { VariantProps, cva } from "class-variance-authority";
 import React from "react";
 
 const badgeVariants = cva(

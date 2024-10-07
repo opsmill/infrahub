@@ -1,16 +1,33 @@
 import { Button } from "@/components/buttons/button-primitive";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
+import { LabelFormField } from "@/components/form/fields/common";
 import InputField from "@/components/form/fields/input.field";
 import NumberField from "@/components/form/fields/number.field";
 import { NodeFormProps } from "@/components/form/node-form";
 import { FormAttributeValue, FormFieldValue } from "@/components/form/type";
 import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import { isRequired } from "@/components/form/utils/validation";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/components/ui/combobox";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/components/ui/form";
 import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import {
+  NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
+  NUMBER_POOL_NODE_FIELD,
+} from "@/screens/resource-manager/constants";
+import { AttributeSchema } from "@/screens/schema/types";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -21,23 +38,6 @@ import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
-import { LabelFormField } from "@/components/form/fields/common";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-} from "@/components/ui/combobox";
-import { Badge } from "@/components/ui/badge";
-import {
-  NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
-  NUMBER_POOL_NODE_FIELD,
-} from "@/screens/resource-manager/constants";
-import { AttributeSchema } from "@/screens/schema/types";
-import { isRequired } from "@/components/form/utils/validation";
-import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
-import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;

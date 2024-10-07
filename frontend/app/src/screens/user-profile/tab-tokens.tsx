@@ -1,14 +1,14 @@
 import { Card } from "@/components/ui/card";
-import Content from "@/screens/layout/content";
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import { useAtomValue } from "jotai";
+import Content from "@/screens/layout/content";
 import { schemaState } from "@/state/atoms/schema.atom";
-import ObjectItems from "../object-items/object-items-paginated";
-import LoadingScreen from "../loading-screen/loading-screen";
+import { useAtomValue } from "jotai";
 import { useState } from "react";
+import LoadingScreen from "../loading-screen/loading-screen";
+import ObjectItems from "../object-items/object-items-paginated";
 
-import ModalSuccess from "@/components/modals/modal-success";
 import { TokenInput } from "@/components/display/token-input";
+import ModalSuccess from "@/components/modals/modal-success";
 
 export default function TabTokens() {
   const [open, setOpen] = useState(false);

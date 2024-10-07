@@ -1,5 +1,6 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
+import ObjectForm from "@/components/form/object-form";
 import ModalDelete from "@/components/modals/modal-delete";
 import {
   SCHEMA_DROPDOWN_ADD,
@@ -13,7 +14,6 @@ import { basicMutation } from "@/graphql/mutations/objects/basicMutation";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { FormFieldError } from "@/screens/edit-form-hook/form";
-import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { namespacesState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
@@ -28,15 +28,15 @@ import { forwardRef, useContext, useEffect, useState } from "react";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
+import DynamicForm from "@/components/form/dynamic-form";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getObjectDisplayLabel } from "@/graphql/queries/objects/getObjectDisplayLabel";
+import usePrevious from "@/hooks/usePrevious";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
-import DynamicForm from "@/components/form/dynamic-form";
 import { Badge } from "../ui/badge";
-import usePrevious from "@/hooks/usePrevious";
 
 export type Parent = {
   name?: string;

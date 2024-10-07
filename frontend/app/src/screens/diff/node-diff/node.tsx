@@ -1,18 +1,18 @@
 import Accordion from "@/components/display/accordion";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DiffNodeRelationship } from "./node-relationship";
-import { DiffNodeAttribute } from "./node-attribute";
-import { DiffThread } from "./thread";
-import { useLocation, useParams } from "react-router-dom";
-import { DiffBadge } from "@/screens/diff/node-diff/utils";
-import { useAtomValue } from "jotai";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { Card } from "@/components/ui/card";
 import type { DiffNode as DiffNodeType, PropertyType } from "@/screens/diff/node-diff/types";
+import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { classNames } from "@/utils/common";
-import { useEffect, useRef } from "react";
 import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useEffect, useRef } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { DiffNodeAttribute } from "./node-attribute";
 import { getNewValue, getPreviousValue } from "./node-property";
+import { DiffNodeRelationship } from "./node-relationship";
+import { DiffThread } from "./thread";
 
 type DiffNodeProps = {
   node: DiffNodeType;

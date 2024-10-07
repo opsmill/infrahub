@@ -1,10 +1,10 @@
-import React from "react";
-import { BreadcrumbLink } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-link";
-import { classNames } from "@/utils/common";
-import { breadcrumbActiveStyle } from "@/screens/layout/breadcrumb-navigation/style";
 import { useSchema } from "@/hooks/useSchema";
-import { getObjectDetailsUrl2 } from "@/utils/objects";
+import { BreadcrumbLink } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-loading";
+import { breadcrumbActiveStyle } from "@/screens/layout/breadcrumb-navigation/style";
+import { classNames } from "@/utils/common";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
+import React from "react";
 
 interface BreadcrumbSchemaSelectorProps {
   kind: string;

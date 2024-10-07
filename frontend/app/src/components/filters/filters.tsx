@@ -1,14 +1,14 @@
+import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import { SEARCH_FILTERS } from "@/config/constants";
-import useFilters from "@/hooks/useFilters";
-import { Icon } from "@iconify-icon/react";
-import React, { useState } from "react";
-import usePagination from "@/hooks/usePagination";
-import { IModelSchema } from "@/state/atoms/schema.atom";
+import { FilterForm } from "@/components/filters/filter-form";
 import { getFiltersFromFormData } from "@/components/filters/utils/getFiltersFromFormData";
 import { FormFieldValue } from "@/components/form/type";
-import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { FilterForm } from "@/components/filters/filter-form";
+import { SEARCH_FILTERS } from "@/config/constants";
+import useFilters from "@/hooks/useFilters";
+import usePagination from "@/hooks/usePagination";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { Icon } from "@iconify-icon/react";
+import React, { useState } from "react";
 
 type FiltersProps = {
   schema: IModelSchema;

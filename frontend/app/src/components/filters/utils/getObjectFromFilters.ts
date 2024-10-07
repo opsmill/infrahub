@@ -1,11 +1,11 @@
 import { Filter } from "@/hooks/useFilters";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import {
   AttributeType,
   RelationshipManyType,
   RelationshipOneType,
   RelationshipType,
 } from "@/utils/getObjectItemDisplayValue";
-import { IModelSchema } from "@/state/atoms/schema.atom";
 
 export const getObjectFromFilters = (
   schema: IModelSchema,

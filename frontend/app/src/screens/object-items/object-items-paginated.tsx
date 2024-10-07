@@ -1,5 +1,7 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Filters } from "@/components/filters/filters";
+import { ObjectCreateFormTrigger } from "@/components/form/object-create-form-trigger";
+import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import {
@@ -9,22 +11,20 @@ import {
   SEARCH_PARTIAL_MATCH,
 } from "@/config/constants";
 import useFilters, { Filter } from "@/hooks/useFilters";
+import { useObjectItems } from "@/hooks/useObjectItems";
 import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { classNames, debounce } from "@/utils/common";
+import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useObjectItems } from "@/hooks/useObjectItems";
-import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
-import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
-import { ObjectCreateFormTrigger } from "@/components/form/object-create-form-trigger";
-import ModalDeleteObject from "@/components/modals/modal-delete-object";
 
 type ObjectItemsProps = {
   schema: IModelSchema;

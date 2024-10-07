@@ -2,6 +2,7 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
+import { AccountMenu } from "../../../src/components/account-menu";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { AuthProvider } from "../../../src/hooks/useAuth";
 import { genericsState } from "../../../src/state/atoms/schema.atom";
@@ -13,7 +14,6 @@ import {
   profileId,
 } from "../../mocks/data/account-profile";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AccountMenu } from "../../../src/components/account-menu";
 
 // Mock the apollo query and data
 const mocks = [

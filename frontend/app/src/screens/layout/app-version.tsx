@@ -1,8 +1,8 @@
+import { Skeleton } from "@/components/skeleton";
 import { CONFIG } from "@/config/config";
 import { components } from "@/infraops";
 import { fetchUrl } from "@/utils/fetch";
 import { useEffect, useState } from "react";
-import { Skeleton } from "@/components/skeleton";
 
 export const AppVersion = () => {
   const [info, setInfo] = useState<components["schemas"]["InfoAPI"] | null>(null);

@@ -1,20 +1,9 @@
-import { classNames, getTextColor } from "@/utils/common";
-import { Icon } from "@iconify-icon/react";
-import React, { forwardRef, HTMLAttributes, useState } from "react";
-import { CommandItem } from "@/components/ui/command";
 import { Button } from "@/components/buttons/button-primitive";
-import { useMutation } from "@/hooks/useQuery";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import { AttributeSchema } from "@/screens/schema/types";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import DynamicForm from "@/components/form/dynamic-form";
-import { Badge } from "@/components/ui/badge";
-import {
-  DROPDOWN_ADD_MUTATION,
-  DROPDOWN_REMOVE_MUTATION,
-} from "@/graphql/mutations/schema/dropdown";
 import { isRequired } from "@/components/form/utils/validation";
 import ModalDelete from "@/components/modals/modal-delete";
+import { Badge } from "@/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
@@ -23,6 +12,17 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
+import { CommandItem } from "@/components/ui/command";
+import {
+  DROPDOWN_ADD_MUTATION,
+  DROPDOWN_REMOVE_MUTATION,
+} from "@/graphql/mutations/schema/dropdown";
+import { useMutation } from "@/hooks/useQuery";
+import { AttributeSchema } from "@/screens/schema/types";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { classNames, getTextColor } from "@/utils/common";
+import { Icon } from "@iconify-icon/react";
+import React, { forwardRef, HTMLAttributes, useState } from "react";
 
 export type DropdownOption = {
   value: string;

@@ -1,9 +1,9 @@
-import { ProposedChangeCreateForm } from "@/screens/proposed-changes/create-form";
-import { usePermission } from "@/hooks/usePermission";
-import { Navigate } from "react-router-dom";
-import { constructPath } from "@/utils/fetch";
-import Content from "@/screens/layout/content";
 import { Card } from "@/components/ui/card";
+import { usePermission } from "@/hooks/usePermission";
+import Content from "@/screens/layout/content";
+import { ProposedChangeCreateForm } from "@/screens/proposed-changes/create-form";
+import { constructPath } from "@/utils/fetch";
+import { Navigate } from "react-router-dom";
 
 function ProposedChangeCreatePage() {
   const permission = usePermission();

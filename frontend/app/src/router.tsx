@@ -1,19 +1,19 @@
-import { createBrowserRouter, Navigate, Outlet, UIMatch } from "react-router-dom";
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC, IPAM_ROUTE } from "@/screens/ipam/constants";
+import { Root } from "@/Root";
 import {
   ARTIFACT_OBJECT,
   GRAPHQL_QUERY_OBJECT,
   NODE_OBJECT,
   PROPOSED_CHANGES_OBJECT,
 } from "@/config/constants";
-import { Root } from "@/Root";
-import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
-import queryString from "query-string";
 import { RequireAuth } from "@/hooks/useAuth";
-import { QueryParamProvider } from "use-query-params";
-import { constructPath } from "@/utils/fetch";
-import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
+import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
+import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { constructPath } from "@/utils/fetch";
+import queryString from "query-string";
+import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router-dom";
+import { QueryParamProvider } from "use-query-params";
+import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 
 export const router = createBrowserRouter([
   {

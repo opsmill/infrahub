@@ -1,5 +1,7 @@
 import { AddComment } from "@/components/conversations/add-comment";
 import { Thread } from "@/components/conversations/thread";
+import { Card } from "@/components/ui/card";
+import { FormRef } from "@/components/ui/form";
 import {
   ACCOUNT_GENERIC_OBJECT,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
@@ -16,15 +18,13 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
+import { classNames } from "@/utils/common";
 import { stringifyWithoutQuotes } from "@/utils/string";
-import { gql, NetworkStatus } from "@apollo/client";
+import { NetworkStatus, gql } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import { HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { FormRef } from "@/components/ui/form";
-import { Card } from "@/components/ui/card";
-import { classNames } from "@/utils/common";
 
 export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();

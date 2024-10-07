@@ -1,8 +1,8 @@
+import { LabelFormField } from "@/components/form/fields/common";
+import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Input, InputProps } from "@/components/ui/input";
-import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
-import { LabelFormField } from "@/components/form/fields/common";
-import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 export interface InputFieldProps
   extends FormFieldProps,

@@ -1,9 +1,9 @@
 /// <reference types="cypress" />
 
 import { MockedProvider } from "@apollo/client/testing";
+import { mount } from "cypress/react18";
 import React from "react";
 import { App } from "../../../src/App";
-import { mount } from "cypress/react18";
 
 describe("Config fetch", () => {
   beforeEach(function () {

@@ -4,9 +4,9 @@ import { Combobox as ComboboxPrimitive } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { forwardRef, useState } from "react";
+import { Badge } from "./badge";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { SearchInput } from "./search-input";
-import { Badge } from "./badge";
 
 export interface MultiComboboxProps extends Omit<ButtonProps, "onChange"> {
   children?: React.ReactNode;

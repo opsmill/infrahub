@@ -1,22 +1,22 @@
-import { useQuery } from "@apollo/client";
-import { Table } from "@/components/table/table";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
-import ErrorScreen from "../errors/error-screen";
-import { Pagination } from "@/components/ui/pagination";
-import { Pill } from "@/components/display/pill";
-import { ReactNode, useState } from "react";
-import { Icon } from "@iconify-icon/react";
-import { BadgeCopy } from "@/components/ui/badge-copy";
-import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { useAtomValue } from "jotai";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/graphql/queries/role-management/getObjectPermissions";
 import { Button } from "@/components/buttons/button-primitive";
-import { useSchema } from "@/hooks/useSchema";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import ObjectForm from "@/components/form/object-form";
+import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
+import ObjectForm from "@/components/form/object-form";
+import ModalDeleteObject from "@/components/modals/modal-delete-object";
+import { Table } from "@/components/table/table";
+import { BadgeCopy } from "@/components/ui/badge-copy";
+import { Pagination } from "@/components/ui/pagination";
+import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/graphql/queries/role-management/getObjectPermissions";
+import { useSchema } from "@/hooks/useSchema";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { ReactNode, useState } from "react";
+import ErrorScreen from "../errors/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
 
 const icons: Record<string, ReactNode> = {
   allow: (

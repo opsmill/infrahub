@@ -1,20 +1,20 @@
+import { Button } from "@/components/buttons/button-primitive";
 import ItemGroup from "@/components/layouts/item-group";
+import ModalDelete from "@/components/modals/modal-delete";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Button } from "@/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
-import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { QSP } from "@/config/qsp";
-import ModalDelete from "@/components/modals/modal-delete";
-import { useState } from "react";
-import { useMutation } from "@/hooks/useQuery";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { pluralize } from "@/utils/string";
-import { useAtomValue } from "jotai";
-import { schemaState } from "@/state/atoms/schema.atom";
 import { REMOVE_RELATIONSHIP } from "@/graphql/mutations/relationships/removeRelationship";
+import { useMutation } from "@/hooks/useQuery";
 import { GroupDataFromAPI } from "@/screens/groups/types";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
+import { pluralize } from "@/utils/string";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 type ObjectGroupsListProps = {
   className?: string;

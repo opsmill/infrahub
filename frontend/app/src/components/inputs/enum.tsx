@@ -1,13 +1,8 @@
-import React, { forwardRef, useState } from "react";
-import { Icon } from "@iconify-icon/react";
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { useMutation } from "@/hooks/useQuery";
-import ModalDelete from "@/components/modals/modal-delete";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import DynamicForm from "@/components/form/dynamic-form";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/graphql/mutations/schema/enum";
 import { isRequired } from "@/components/form/utils/validation";
+import ModalDelete from "@/components/modals/modal-delete";
 import {
   Combobox,
   ComboboxContent,
@@ -16,7 +11,12 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
+import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/graphql/mutations/schema/enum";
+import { useMutation } from "@/hooks/useQuery";
 import { AttributeSchema } from "@/screens/schema/types";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { Icon } from "@iconify-icon/react";
+import React, { forwardRef, useState } from "react";
 
 export interface EnumDeleteButtonProps extends ButtonProps {
   fieldSchema: AttributeSchema;

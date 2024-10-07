@@ -1,5 +1,5 @@
-import { components } from "@/infraops";
 import { relationshipKindForForm } from "@/config/constants";
+import { components } from "@/infraops";
 import { RelationshipKind } from "@/screens/objects/types";
 
 export const getRelationshipsForForm = (

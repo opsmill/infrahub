@@ -1,18 +1,18 @@
-import { SearchInput } from "@/components/ui/search-input";
-import { useState } from "react";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import useQuery from "@/hooks/useQuery";
-import { gql } from "@apollo/client";
-import { getGroupsQuery } from "@/graphql/queries/groups/getGroups";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import NoDataFound from "@/screens/errors/no-data-found";
-import ErrorScreen from "@/screens/errors/error-screen";
-import ObjectGroupsList from "@/screens/groups/object-groups-list";
-import AddGroupTriggerButton from "@/screens/groups/add-group-trigger-button";
-import { classNames } from "@/utils/common";
-import { GroupDataFromAPI } from "@/screens/groups/types";
 import { Button } from "@/components/buttons/button-primitive";
+import { SearchInput } from "@/components/ui/search-input";
+import { getGroupsQuery } from "@/graphql/queries/groups/getGroups";
+import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import AddGroupTriggerButton from "@/screens/groups/add-group-trigger-button";
+import ObjectGroupsList from "@/screens/groups/object-groups-list";
+import { GroupDataFromAPI } from "@/screens/groups/types";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { classNames } from "@/utils/common";
+import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
 
 export type GroupsManagerProps = {
   className?: string;

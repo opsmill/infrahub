@@ -1,9 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-verti.svg";
+import { SignIn } from "@/screens/authentification/sign-in";
 import Content from "@/screens/layout/content";
 import { Navigate, useLocation } from "react-router-dom";
-import { SignIn } from "@/screens/authentification/sign-in";
 
 function SignInPage() {
   let location = useLocation();

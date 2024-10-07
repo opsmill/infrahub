@@ -2,6 +2,7 @@ import { Button } from "@/components/buttons/button";
 import { Checkbox } from "@/components/inputs/checkbox";
 import ModalConfirm from "@/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -21,7 +22,6 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
-import { Card } from "@/components/ui/card";
 
 type tThread = {
   thread: any;

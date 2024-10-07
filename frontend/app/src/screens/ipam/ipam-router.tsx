@@ -1,10 +1,10 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
 import SlideOver from "@/components/display/slide-over";
+import ObjectForm from "@/components/form/object-form";
 import { Tabs } from "@/components/tabs";
 import { Card } from "@/components/ui/card";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { usePermission } from "@/hooks/usePermission";
-import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";

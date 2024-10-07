@@ -1,16 +1,16 @@
-import { useParams } from "react-router-dom";
-import Content from "@/screens/layout/content";
-import { useAtomValue } from "jotai";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import ObjectItems from "@/screens/object-items/object-items-paginated";
-import ErrorScreen from "@/screens/errors/error-screen";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
-import NoDataFound from "@/screens/errors/no-data-found";
-import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
-import { NetworkStatus } from "@apollo/client";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { TASK_OBJECT } from "@/config/constants";
 import { Card } from "@/components/ui/card";
+import { TASK_OBJECT } from "@/config/constants";
+import { useObjectDetails } from "@/hooks/useObjectDetails";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
+import ObjectItems from "@/screens/object-items/object-items-paginated";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { NetworkStatus } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useParams } from "react-router-dom";
 
 export function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();

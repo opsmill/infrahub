@@ -12,8 +12,8 @@ import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@/components/buttons/button-primitive";
+import { Icon } from "@iconify-icon/react";
 import { DiffContext } from ".";
 import { DiffComments } from "./comments";
 

@@ -1,11 +1,11 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { fetchUrl } from "@/utils/fetch";
 import { useSetAtom } from "jotai";
 import { ReactNode, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Config, configState } from "./state/atoms/config.atom";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { fetchUrl } from "@/utils/fetch";
 
 export const Root = ({ children }: { children?: ReactNode }) => {
   const setConfig = useSetAtom(configState);

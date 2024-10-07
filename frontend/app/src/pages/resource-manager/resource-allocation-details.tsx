@@ -6,12 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import { QSP } from "@/config/qsp";
 import useQuery from "@/hooks/useQuery";
+import { RESOURCE_POOL_ALLOCATED_KIND } from "@/screens/resource-manager/constants";
+import { GET_RESOURCE_POOL_ALLOCATED } from "@/screens/resource-manager/graphql/resource-pool";
 import { constructPath } from "@/utils/fetch";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
 import { Link, useParams } from "react-router-dom";
-import { RESOURCE_POOL_ALLOCATED_KIND } from "@/screens/resource-manager/constants";
-import { GET_RESOURCE_POOL_ALLOCATED } from "@/screens/resource-manager/graphql/resource-pool";
 
 const ResourceAllocationDetailsPage = () => {
   const { resourcePoolId, resourceId } = useParams();

@@ -16,7 +16,7 @@
     "attributePosition": "auto",
     "bracketSpacing": true
   },
-  "organizeImports": { "enabled": false },
+  "organizeImports": { "enabled": true },
   "linter": {
     "enabled": true,
     "rules": {

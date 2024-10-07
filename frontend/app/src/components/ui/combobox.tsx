@@ -1,7 +1,3 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { classNames } from "@/utils/common";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
 import {
   Command,
   CommandEmpty,
@@ -9,7 +5,11 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { classNames } from "@/utils/common";
+import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import React from "react";
 
 export const Combobox = Popover;
 

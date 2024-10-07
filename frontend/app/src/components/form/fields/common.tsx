@@ -1,18 +1,18 @@
-import { FormLabel } from "@/components/ui/form";
 import { QuestionMark } from "@/components/display/question-mark";
-import { classNames } from "@/utils/common";
-import { LabelProps } from "@/components/ui/label";
-import { Icon } from "@iconify-icon/react";
-import { Badge } from "@/components/ui/badge";
-import React from "react";
 import {
   AttributeValueFromProfile,
   FormFieldValue,
   RelationshipValueFormPool,
 } from "@/components/form/type";
+import { Badge } from "@/components/ui/badge";
+import { FormLabel } from "@/components/ui/form";
+import { LabelProps } from "@/components/ui/label";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Link } from "react-router-dom";
+import { classNames } from "@/utils/common";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+import { Link } from "react-router-dom";
 
 export const InputUniqueTips = ({ className }: { className: string }) => (
   <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>

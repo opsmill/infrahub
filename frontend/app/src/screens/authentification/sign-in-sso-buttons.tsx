@@ -1,6 +1,6 @@
+import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { Provider } from "@/state/atoms/config.atom";
 import { Icon } from "@iconify-icon/react";
-import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 
 export const SignInWithSSOButtons = ({ providers }: { providers: Array<Provider> }) => {
   return (

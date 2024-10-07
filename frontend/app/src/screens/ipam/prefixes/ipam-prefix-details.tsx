@@ -1,3 +1,4 @@
+import { ColorDisplay } from "@/components/display/color-display";
 import SlideOver from "@/components/display/slide-over";
 import ModalDelete from "@/components/modals/modal-delete";
 import ProgressBarChart from "@/components/stats/progress-bar-chart";
@@ -27,7 +28,6 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ColorDisplay } from "@/components/display/color-display";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();

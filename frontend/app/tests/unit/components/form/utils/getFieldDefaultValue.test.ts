@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { ProfileData } from "@/components/form/object-form";
 import {
   GetFieldDefaultValue,
   getFieldDefaultValue,
 } from "@/components/form/utils/getFieldDefaultValue";
-import { ProfileData } from "@/components/form/object-form";
-import { buildAttributeSchema, buildRelationshipSchema } from "./getFormFieldsFromSchema.test";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { describe, expect, it } from "vitest";
+import { buildAttributeSchema, buildRelationshipSchema } from "./getFormFieldsFromSchema.test";
 
 describe("getFieldDefaultValue", () => {
   describe("when source is the user", () => {

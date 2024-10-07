@@ -1,4 +1,5 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
+import { Table, tRow } from "@/components/table/table";
 import { Badge } from "@/components/ui/badge";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery, { useMutation } from "@/hooks/useQuery";
@@ -6,33 +7,32 @@ import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import { Icon } from "@iconify-icon/react";
-import { Table, tRow } from "@/components/table/table";
 
+import { TabsButtons } from "@/components/buttons/tabs-buttons";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import ModalDelete from "@/components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CardWithBorder } from "@/components/ui/card";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
-import { classNames, debounce } from "@/utils/common";
-import { TabsButtons } from "@/components/buttons/tabs-buttons";
-import { Link, LinkProps, useNavigate } from "react-router-dom";
-import { constructPath } from "@/utils/fetch";
+import { ARTIFACT_OBJECT, PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { useState } from "react";
-import ModalDelete from "@/components/modals/modal-delete";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { DELETE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/deleteProposedChange";
 import { GET_PROPOSED_CHANGES } from "@/graphql/queries/proposed-changes/getProposedChanges";
-import { ARTIFACT_OBJECT, PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
-import { ProposedChangesInfo } from "@/screens/proposed-changes/item-info";
-import { ProposedChangesCounter } from "@/screens/proposed-changes/counter";
-import { getProposedChangesTasks } from "@/graphql/queries/proposed-changes/getProposedChangesTasks";
 import { getProposedChangesArtifacts } from "@/graphql/queries/proposed-changes/getProposedChangesArtifacts";
-import { ProposedChangesReviewers } from "@/screens/proposed-changes/reviewers";
-import { NetworkStatus } from "@apollo/client";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { StringParam, useQueryParam } from "use-query-params";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { getProposedChangesTasks } from "@/graphql/queries/proposed-changes/getProposedChangesTasks";
 import { useSchema } from "@/hooks/useSchema";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { ProposedChangesCounter } from "@/screens/proposed-changes/counter";
 import { ProposedChangeDiffSummary } from "@/screens/proposed-changes/diff-summary";
+import { ProposedChangesInfo } from "@/screens/proposed-changes/item-info";
+import { ProposedChangesReviewers } from "@/screens/proposed-changes/reviewers";
+import { classNames, debounce } from "@/utils/common";
+import { constructPath } from "@/utils/fetch";
+import { NetworkStatus } from "@apollo/client";
+import { useState } from "react";
+import { Link, LinkProps, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 
 const STATES = {
   open: ["open"],

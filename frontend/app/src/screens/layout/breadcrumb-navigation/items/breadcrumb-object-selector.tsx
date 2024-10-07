@@ -1,11 +1,11 @@
-import { useSchema } from "@/hooks/useSchema";
-import React from "react";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-loading";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { useSchema } from "@/hooks/useSchema";
 import { BreadcrumbLink } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-link";
+import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-loading";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { NetworkStatus } from "@apollo/client";
+import React from "react";
 
 export default function BreadcrumbObjectSelector({
   kind,

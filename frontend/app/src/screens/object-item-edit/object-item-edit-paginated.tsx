@@ -1,22 +1,22 @@
+import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
+import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import useQuery from "@/hooks/useQuery";
+import { useSchema } from "@/hooks/useSchema";
 import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { generateObjectEditFormQuery } from "@/screens/object-item-edit/generateObjectEditFormQuery";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
+import { areObjectArraysEqualById } from "@/utils/array";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
-import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
-import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
-import { areObjectArraysEqualById } from "@/utils/array";
-import { generateObjectEditFormQuery } from "@/screens/object-item-edit/generateObjectEditFormQuery";
-import { useSchema } from "@/hooks/useSchema";
 
 interface Props {
   objectname: string;

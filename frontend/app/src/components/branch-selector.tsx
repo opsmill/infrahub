@@ -9,13 +9,13 @@ import { useAtomValue } from "jotai/index";
 import React, { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
-import BranchCreateForm from "./form/branch-create-form";
 import { ComboboxItem } from "@/components/ui/combobox";
 import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command";
-import { useSetAtom } from "jotai";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { constructPath } from "@/utils/fetch";
+import { useSetAtom } from "jotai";
+import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
+import BranchCreateForm from "./form/branch-create-form";
 
 export default function BranchSelector() {
   const currentBranch = useAtomValue(currentBranchAtom);

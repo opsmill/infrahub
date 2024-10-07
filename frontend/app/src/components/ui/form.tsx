@@ -1,4 +1,6 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
+import Label, { LabelProps } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { classNames } from "@/utils/common";
 import { Slot } from "@radix-ui/react-slot";
 import React, {
@@ -14,12 +16,10 @@ import {
   Controller,
   ControllerProps,
   FormProvider,
+  UseFormReturn,
   useForm,
   useFormContext,
-  UseFormReturn,
 } from "react-hook-form";
-import { Spinner } from "@/components/ui/spinner";
-import Label, { LabelProps } from "@/components/ui/label";
 import { SlideOverContext } from "../display/slide-over";
 
 export type FormRef = ReturnType<typeof useForm>;

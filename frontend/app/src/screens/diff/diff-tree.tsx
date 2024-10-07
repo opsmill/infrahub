@@ -1,13 +1,13 @@
-import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
-import { useEffect, useState } from "react";
-import { addItemsToTree, EMPTY_TREE } from "@/screens/ipam/ipam-tree/utils";
-import { DiffBadge } from "@/screens/diff/node-diff/utils";
-import { DiffNode } from "@/screens/diff/node-diff/types";
-import { useLocation, useNavigate } from "react-router-dom";
-import { TREE_ROOT_ID } from "@/screens/ipam/constants";
-import { useSchema } from "@/hooks/useSchema";
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
+import { useSchema } from "@/hooks/useSchema";
+import { DiffNode } from "@/screens/diff/node-diff/types";
+import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import { TREE_ROOT_ID } from "@/screens/ipam/constants";
+import { EMPTY_TREE, addItemsToTree } from "@/screens/ipam/ipam-tree/utils";
+import { Icon } from "@iconify-icon/react";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface DiffTreeProps extends Omit<TreeProps, "data"> {
   nodes: Array<DiffNode>;

@@ -1,11 +1,11 @@
-import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Icon } from "@iconify-icon/react";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import { useAtomValue } from "jotai/index";
+import { Badge } from "@/components/ui/badge";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { Dialog, Transition } from "@headlessui/react";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import React, { Fragment, useRef, useState } from "react";
 import ModalDelete from "../modals/modal-delete";
 
 interface Props {

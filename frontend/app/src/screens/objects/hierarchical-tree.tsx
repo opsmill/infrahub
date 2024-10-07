@@ -1,23 +1,23 @@
-import { useAtomValue } from "jotai";
 import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
-import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
-import { genericsState, IModelSchema, schemaState } from "@/state/atoms/schema.atom";
-import { useEffect, useState } from "react";
-import { useLazyQuery } from "@/hooks/useQuery";
-import { gql } from "@apollo/client";
-import { TREE_ROOT_ID } from "@/screens/ipam/constants";
-import { Link, useNavigate } from "react-router-dom";
-import { Icon } from "@iconify-icon/react";
-import { constructPath } from "@/utils/fetch";
-import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
-import { getObjectDetailsUrl } from "@/utils/objects";
 import {
   objectAncestorsQuery,
   objectChildrenQuery,
   objectTopLevelTreeQuery,
 } from "@/graphql/queries/objects/objectTreeQuery";
+import { useLazyQuery } from "@/hooks/useQuery";
+import { TREE_ROOT_ID } from "@/screens/ipam/constants";
+import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { IModelSchema, genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
+import { constructPath } from "@/utils/fetch";
+import { getObjectDetailsUrl } from "@/utils/objects";
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
+import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
+import { Link, useNavigate } from "react-router-dom";
 
 export type HierarchicalTreeProps = {
   schema: IModelSchema;

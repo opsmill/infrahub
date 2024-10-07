@@ -1,5 +1,5 @@
-import { components } from "@/infraops";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { components } from "@/infraops";
 
 export const addAttributesToRequest = (
   attributes: components["schemas"]["AttributeSchema-Output"][]

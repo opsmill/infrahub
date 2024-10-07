@@ -1,13 +1,13 @@
-import { usePermission } from "@/hooks/usePermission";
-import { useSchema } from "@/hooks/useSchema";
-import { PROPOSED_CHANGES_EDITABLE_STATE, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import React, { useState } from "react";
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
 import SlideOver from "@/components/display/slide-over";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import { ProposedChangeEditForm } from "@/screens/proposed-changes/form/proposed-change-edit-form";
+import { PROPOSED_CHANGES_EDITABLE_STATE, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { usePermission } from "@/hooks/usePermission";
+import { useSchema } from "@/hooks/useSchema";
+import { ProposedChangeEditForm } from "@/screens/proposed-changes/form/proposed-change-edit-form";
+import { Icon } from "@iconify-icon/react";
+import React, { useState } from "react";
 
 export const ProposedChangeEditTrigger = ({
   proposedChangesDetails,

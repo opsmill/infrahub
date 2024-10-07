@@ -13,6 +13,7 @@ import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
+import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
@@ -37,7 +38,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();

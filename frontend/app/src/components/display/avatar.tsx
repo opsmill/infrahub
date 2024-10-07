@@ -1,6 +1,6 @@
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { classNames } from "@/utils/common";
-import { cva, type VariantProps } from "class-variance-authority";
+import { type VariantProps, cva } from "class-variance-authority";
 
 export const initials = (name: string) =>
   name

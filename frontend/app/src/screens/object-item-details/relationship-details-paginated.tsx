@@ -9,6 +9,7 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { usePermission } from "@/hooks/usePermission";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
@@ -26,7 +27,6 @@ import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ObjectAttributeRow } from "./object-attribute-row";
-import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 
 type iRelationDetailsProps = {
   parentNode: any;

@@ -1,14 +1,14 @@
-import { getObjectDetailsUrl2 } from "@/utils/objects";
-import { Link, LinkProps } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
+import { classNames } from "@/utils/common";
 import {
-  getDisplayValue,
   RelationshipManyType,
   RelationshipOneType,
+  getDisplayValue,
 } from "@/utils/getObjectItemDisplayValue";
-import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
-import { Badge } from "@/components/ui/badge";
-import { classNames } from "@/utils/common";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { HTMLAttributes } from "react";
+import { Link, LinkProps } from "react-router-dom";
 
 type ObjectItemsCellProps = {
   row: any;
