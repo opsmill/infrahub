@@ -324,10 +324,6 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
 
     role_name = "Super Administrator"
-
-
-async def create_administrator_role(db: InfrahubDatabase, global_permissions: Optional[list[Node]] = None) -> Node:
-    role_name = "Administrator"
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
     await obj.new(db=db, name=role_name, permissions=[permission])
     await obj.save(db=db)
