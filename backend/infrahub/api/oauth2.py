@@ -31,11 +31,7 @@ def _get_redirect_url(request: Request, provider_name: str) -> str:
 
 
 @router.get("/{provider_name:str}/authorize")
-async def authorize(
-    request: Request,
-    provider_name: str,
-    final_url: str | None = None
-) -> Response:
+async def authorize(request: Request, provider_name: str, final_url: str | None = None) -> Response:
     provider = config.SETTINGS.security.get_oauth2_provider(provider=provider_name)
     client = AsyncOAuth2Client(
         client_id=provider.client_id,
@@ -111,7 +107,9 @@ async def token(
         max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
 
-    return models.UserTokenWithUrl(access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=stored_final_url)
+    return models.UserTokenWithUrl(
+        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=stored_final_url
+    )
 
 
 def _validate_response(response: httpx.Response) -> None:
