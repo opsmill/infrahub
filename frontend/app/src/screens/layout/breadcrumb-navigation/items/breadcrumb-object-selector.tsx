@@ -39,6 +39,8 @@ const ObjectSelector = ({
   if (error) return null;
 
   const objectList = data?.[schema.kind!].edges.map((edge: any) => edge.node);
+  if (!objectList || objectList.length === 0) return null;
+
   const currentObject = objectList.find((node: any) => node.id === id);
 
   if (!currentObject) return null;
