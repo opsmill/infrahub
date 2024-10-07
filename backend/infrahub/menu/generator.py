@@ -8,7 +8,7 @@ from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
 
 from .constants import FULL_DEFAULT_MENU
-from .models import Menu, NewInterfaceMenu
+from .models import MenuDict, MenuItemDict
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
@@ -24,11 +24,11 @@ def get_full_name(obj: CoreMenuItem) -> str:
 # pylint: disable=too-many-branches
 async def generate_menu(
     db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem], account: AccountSession | None = None
-) -> Menu:
+) -> MenuDict:
     # FIXME temp hack to avoid pylint to complain
     account = account  # noqa: PLW0127
 
-    structure = Menu()
+    structure = MenuDict()
     full_schema = registry.schema.get_full(branch=branch, duplicate=False)
 
     already_processed = []
@@ -41,7 +41,7 @@ async def generate_menu(
         if parent:
             havent_been_processed.append(full_name)
             continue
-        structure.data[full_name] = NewInterfaceMenu.from_node(obj=item)
+        structure.data[full_name] = MenuItemDict.from_node(obj=item)
         already_processed.append(full_name)
 
     # Process the children
@@ -59,7 +59,8 @@ async def generate_menu(
         parent_full_name = get_full_name(parent)
         menu_item = structure.find_item(name=parent_full_name)
         if menu_item:
-            menu_item.children[full_name] = NewInterfaceMenu.from_node(obj=item)
+            child_item = MenuItemDict.from_node(obj=item)
+            menu_item.children[child_item.identifier] = child_item
         else:
             log.warning(
                 "new_menu_request: unable to find the parent menu item",
@@ -76,17 +77,16 @@ async def generate_menu(
         if schema.include_in_menu is False:
             continue
 
-        schema_item_full_name = f"{schema.namespace}:{schema.name}"
-        already_in_schema = bool(structure.find_item(name=schema_item_full_name))
+        menu_item = MenuItemDict.from_schema(model=schema)
+        already_in_schema = bool(structure.find_item(name=menu_item.identifier))
         if already_in_schema:
             continue
 
-        menu_item = NewInterfaceMenu.from_schema(model=schema)
         if schema.menu_placement:
             menu_placement = structure.find_item(name=schema.menu_placement)
 
             if menu_placement:
-                menu_placement.children[schema_item_full_name] = menu_item
+                menu_placement.children[menu_item.identifier] = menu_item
                 continue
 
             log.warning(
@@ -96,6 +96,6 @@ async def generate_menu(
                 menu_placement=schema.menu_placement,
             )
 
-        default_menu.children[schema.kind] = menu_item
+        default_menu.children[menu_item.identifier] = menu_item
 
     return structure

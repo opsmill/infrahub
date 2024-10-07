@@ -6,7 +6,7 @@ from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.core.schema import SchemaRoot, core_models
 
 from .constants import DEFAULT_MENU, MenuSection
-from .models import MenuItem
+from .models import MenuItemDefinition
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
@@ -22,14 +22,14 @@ def _extract_node_icon(model: MainSchemaTypes) -> str:
 
 
 default_menu = [
-    MenuItem(
+    MenuItemDefinition(
         namespace="Builtin",
         name=DEFAULT_MENU,
         label=DEFAULT_MENU.title(),
         protected=True,
         section=MenuSection.OBJECT,
     ),
-    MenuItem(
+    MenuItemDefinition(
         namespace="Builtin",
         name="ObjectManagement",
         label="Object Management",
@@ -37,7 +37,7 @@ default_menu = [
         section=MenuSection.INTERNAL,
         order_weight=1000,
         children=[
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="Groups",
                 label="Groups",
@@ -47,7 +47,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=1000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="Profiles",
                 label="Profiles",
@@ -57,7 +57,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=2000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="ResourceManager",
                 label="Resource Manager",
@@ -69,7 +69,7 @@ default_menu = [
             ),
         ],
     ),
-    MenuItem(
+    MenuItemDefinition(
         namespace="Builtin",
         name="ChangeControl",
         label="Change Control",
@@ -77,7 +77,7 @@ default_menu = [
         section=MenuSection.INTERNAL,
         order_weight=2000,
         children=[
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="Branches",
                 label="Branches",
@@ -87,7 +87,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=1000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="ProposedChanges",
                 label="Proposed Changes",
@@ -97,7 +97,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=2000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="CheckDefinition",
                 label="Check Definition",
@@ -107,7 +107,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=3000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="Tasks",
                 label="Tasks",
@@ -119,7 +119,7 @@ default_menu = [
             ),
         ],
     ),
-    MenuItem(
+    MenuItemDefinition(
         namespace="Builtin",
         name="UnifiedStorage",
         label="Unified Storage",
@@ -127,7 +127,7 @@ default_menu = [
         section=MenuSection.INTERNAL,
         order_weight=3000,
         children=[
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="Schema",
                 label="Schema",
@@ -137,7 +137,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=1000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="Repository",
                 label="Repository",
@@ -147,7 +147,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=2000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="GraphqlQuery",
                 label="GraphQL Query",
@@ -159,7 +159,7 @@ default_menu = [
             ),
         ],
     ),
-    MenuItem(
+    MenuItemDefinition(
         namespace="Builtin",
         name="Admin",
         label="Admin",
@@ -167,7 +167,7 @@ default_menu = [
         section=MenuSection.INTERNAL,
         order_weight=3000,
         children=[
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="RoleManagement",
                 label="Role Management",
@@ -177,7 +177,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=1000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="Credentials",
                 label="Credentials",
@@ -187,7 +187,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=2000,
             ),
-            MenuItem(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="Webhooks",
                 label="Webhooks",
@@ -196,7 +196,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=3000,
                 children=[
-                    MenuItem(
+                    MenuItemDefinition(
                         namespace="Builtin",
                         name="WebhookStandard",
                         label="Webhook",
@@ -206,7 +206,7 @@ default_menu = [
                         section=MenuSection.INTERNAL,
                         order_weight=1000,
                     ),
-                    MenuItem(
+                    MenuItemDefinition(
                         namespace="Builtin",
                         name="WebhookCustom",
                         label="Custom Webhook",

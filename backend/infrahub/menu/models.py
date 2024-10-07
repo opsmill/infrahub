@@ -7,23 +7,37 @@ from pydantic import BaseModel, Field
 
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreMenuItem
+from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema
 
 from .constants import MenuSection
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
 
-@dataclass
-class Menu:
-    data: dict[str, NewInterfaceMenu] = field(default_factory=dict)
+def get_full_name(obj: CoreMenuItem | NodeSchema | GenericSchema | ProfileSchema) -> str:
+    if isinstance(obj, (NodeSchema, GenericSchema, ProfileSchema)):
+        return _get_full_name_schema(obj)
+    return _get_full_name_node(obj)
 
-    def find_item(self, name: str) -> NewInterfaceMenu | None:
+
+def _get_full_name_node(obj: CoreMenuItem) -> str:
+    return f"{obj.namespace.value}:{obj.name.value}"
+
+
+def _get_full_name_schema(node: MainSchemaTypes) -> str:
+    return f"{node.namespace}:{node.name}"
+
+
+@dataclass
+class MenuDict:
+    data: dict[str, MenuItemDict] = field(default_factory=dict)
+
+    def find_item(self, name: str) -> MenuItemDict | None:
         return self._find_child_item(name=name, children=self.data)
 
     @classmethod
-    def _find_child_item(cls, name: str, children: dict[str, NewInterfaceMenu]) -> NewInterfaceMenu | None:
+    def _find_child_item(cls, name: str, children: dict[str, MenuItemDict]) -> MenuItemDict | None:
         if name in children.keys():
             return children[name]
 
@@ -36,31 +50,38 @@ class Menu:
         return None
 
     def to_rest(self) -> Menu:
-        return Menu(data=self._sort_menu_items(self.data))
+        data: dict[str, list[MenuItemList]] = {}
 
-    @staticmethod
-    def _sort_menu_items(items: dict[str, NewInterfaceMenu]) -> dict[str, NewInterfaceMenu]:
-        sorted_dict = dict(sorted(items.items(), key=lambda x: (x[1].order_weight, x[0]), reverse=False))
-        return sorted_dict
+        for section in [MenuSection.INTERNAL, MenuSection.OBJECT]:
+            item_per_section = [value.to_list() for key, value in self.data.items() if value.section == section]
+            data[section.value] = sorted(item_per_section, key=lambda d: d.order_weight)
+
+        return Menu(sections=data)
+
+    # @staticmethod
+    # def _sort_menu_items(items: dict[str, MenuItem]) -> dict[str, MenuItem]:
+    #     sorted_dict = dict(sorted(items.items(), key=lambda x: (x[1].order_weight, x[0]), reverse=False))
+    #     return sorted_dict
 
 
-class NewInterfaceMenu(BaseModel):
+@dataclass
+class Menu:
+    sections: dict[str, list[MenuItemList]] = field(default_factory=dict)
+
+
+class MenuItem(BaseModel):
+    identifier: str = Field(..., description="Unique identifier for this menu item")
     title: str = Field(..., description="Title of the menu item")
     path: str = Field(default="", description="URL endpoint if applicable")
     icon: str = Field(default="", description="The icon to show for the current view")
-    children: dict[str, NewInterfaceMenu] = Field(default_factory=dict, description="Child objects")
-    kind: str = Field(default="")
+    kind: str = Field(default="", description="Kind of the model associated with this menuitem if applicable")
     order_weight: int = 5000
     section: MenuSection = MenuSection.OBJECT
-
-    def __lt__(self, other: object) -> bool:
-        if not isinstance(other, NewInterfaceMenu):
-            raise NotImplementedError
-        return self.title < other.title
 
     @classmethod
     def from_node(cls, obj: CoreMenuItem) -> Self:
         return cls(
+            identifier=get_full_name(obj),
             title=obj.label.value or "",
             icon=obj.icon.value or "",
             order_weight=obj.order_weight.value,
@@ -70,13 +91,31 @@ class NewInterfaceMenu(BaseModel):
         )
 
     @classmethod
-    def from_schema(cls, model: MainSchemaTypes) -> Self:
+    def from_schema(cls, model: NodeSchema | GenericSchema | ProfileSchema) -> Self:
         return cls(
-            title=model.label or model.kind, path=f"/objects/{model.kind}", icon=model.icon or "", kind=model.kind
+            identifier=get_full_name(model),
+            title=model.label or model.kind,
+            path=f"/objects/{model.kind}",
+            icon=model.icon or "",
+            kind=model.kind,
         )
 
 
-class MenuItem(BaseModel):
+class MenuItemDict(MenuItem):
+    children: dict[str, MenuItemDict] = Field(default_factory=dict, description="Child objects")
+
+    def to_list(self) -> MenuItemList:
+        data = self.model_dump(exclude={"children"})
+        unsorted_children = [child.to_list() for child in self.children.values()]
+        data["children"] = sorted(unsorted_children, key=lambda d: d.order_weight)
+        return MenuItemList(**data)
+
+
+class MenuItemList(MenuItem):
+    children: list[MenuItemList] = Field(default_factory=list, description="Child objects")
+
+
+class MenuItemDefinition(BaseModel):
     namespace: str
     name: str
     label: str
@@ -87,7 +126,7 @@ class MenuItem(BaseModel):
     kind: str = ""
     section: MenuSection = MenuSection.OBJECT
     order_weight: int = 2000
-    children: list[MenuItem] = Field(default_factory=list)
+    children: list[MenuItemDefinition] = Field(default_factory=list)
 
     async def to_node(self, db: InfrahubDatabase, parent: CoreMenuItem | None = None) -> CoreMenuItem:
         obj = await Node.init(db=db, schema=CoreMenuItem)

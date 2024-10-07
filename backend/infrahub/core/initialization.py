@@ -28,7 +28,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.menu.menu import default_menu
-from infrahub.menu.models import MenuItem
+from infrahub.menu.models import MenuItemDefinition
 from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
 from infrahub.utils import format_label
@@ -307,7 +307,7 @@ async def create_initial_permission(db: InfrahubDatabase) -> Node:
     return permission
 
 
-async def create_menu_children(db: InfrahubDatabase, parent: CoreMenuItem, children: list[MenuItem]) -> None:
+async def create_menu_children(db: InfrahubDatabase, parent: CoreMenuItem, children: list[MenuItemDefinition]) -> None:
     for child in children:
         obj = await child.to_node(db=db, parent=parent)
         await obj.save(db=db)
