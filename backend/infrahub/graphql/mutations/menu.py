@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 EXTENDED_RESTRICTED_NAMESPACES = RESTRICTED_NAMESPACES + ["Builtin"]
 
+
 def validate_namespace(data: InputObjectType) -> None:
     namespace = data.get("namespace")
     if isinstance(namespace, dict) and "value" in namespace:
