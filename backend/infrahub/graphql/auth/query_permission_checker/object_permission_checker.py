@@ -120,12 +120,7 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             ):
                 break
 
-        if (
-            not has_permission
-            # FIXME: the following conditions is quick fixes to avoid being too restrictive
-            # This will still be able to display things, which should be restricted
-            and analyzed_query.contains_mutation
-        ):
+        if not has_permission and analyzed_query.contains_mutation:
             raise PermissionDeniedError("You do not have the permission to manage user accounts, groups or roles")
 
         return CheckerResolution.NEXT_CHECKER
