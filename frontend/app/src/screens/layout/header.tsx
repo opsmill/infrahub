@@ -1,9 +1,9 @@
-import { Link } from "react-router-dom";
-import { TimeFrameSelector } from "@/components/time-selector";
 import BranchSelector from "@/components/branch-selector";
+import { TimeFrameSelector } from "@/components/time-selector";
 import InfrahubLogo from "@/images/infrahub-logo.svg";
-import { constructPath } from "@/utils/fetch";
 import BreadcrumbNavigation from "@/screens/layout/breadcrumb-navigation/breadcrumb-navigation";
+import { constructPath } from "@/utils/fetch";
+import { Link } from "react-router-dom";
 
 export default function Header() {
   return (

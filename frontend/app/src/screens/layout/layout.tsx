@@ -2,17 +2,17 @@ import { QSP } from "@/config/qsp";
 import { SchemaContext, withSchemaContext } from "@/decorators/withSchemaContext";
 import { Branch } from "@/generated/graphql";
 import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
+import Sidebar from "@/screens/layout/sidebar";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
+import { NetworkStatus, useQuery } from "@apollo/client";
 import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext, useEffect } from "react";
+import { Outlet } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
-import Sidebar from "@/screens/layout/sidebar";
-import { Outlet } from "react-router-dom";
-import { NetworkStatus, useQuery } from "@apollo/client";
 
 function Layout() {
   const branches = useAtomValue(branchesState);

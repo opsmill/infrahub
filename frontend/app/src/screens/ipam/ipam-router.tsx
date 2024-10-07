@@ -1,10 +1,10 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
 import SlideOver from "@/components/display/slide-over";
+import ObjectForm from "@/components/form/object-form";
 import { Tabs } from "@/components/tabs";
 import { Card } from "@/components/ui/card";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { usePermission } from "@/hooks/usePermission";
-import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
@@ -124,7 +124,8 @@ function IpamRouter() {
       tooltipContent={permission.write.message ?? undefined}
       onClick={() => setShowCreateDrawer(true)}
       className="mr-4"
-      data-testid="create-object-button">
+      data-testid="create-object-button"
+    >
       <Icon icon="mdi:plus" className="text-sm" />
       Add {schemaData?.label}
     </ButtonWithTooltip>
@@ -154,7 +155,8 @@ function IpamRouter() {
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
-                aria-hidden="true">
+                aria-hidden="true"
+              >
                 <circle cx={3} cy={3} r={3} />
               </svg>
               {schemaData?.kind}
@@ -162,7 +164,8 @@ function IpamRouter() {
           </div>
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
+        setOpen={setShowCreateDrawer}
+      >
         <ObjectForm
           kind={objectname}
           onSuccess={() => {

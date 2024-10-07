@@ -1,13 +1,13 @@
 import { Combobox, ComboboxContent, ComboboxList, ComboboxTrigger } from "@/components/ui/combobox";
-import { breadcrumbItemStyle } from "@/screens/layout/breadcrumb-navigation/style";
-import React, { useEffect, useState } from "react";
-import { useAtomValue } from "jotai";
-import { branchesState } from "@/state/atoms/branches.atom";
-import graphqlClient from "@/graphql/graphqlClientApollo";
 import { CommandEmpty, CommandItem } from "@/components/ui/command";
-import { Link, useNavigate } from "react-router-dom";
-import { constructPath } from "@/utils/fetch";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { breadcrumbItemStyle } from "@/screens/layout/breadcrumb-navigation/style";
+import { branchesState } from "@/state/atoms/branches.atom";
 import { classNames } from "@/utils/common";
+import { constructPath } from "@/utils/fetch";
+import { useAtomValue } from "jotai";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function BreadcrumbBranchSelector({
   value,
@@ -44,7 +44,8 @@ export default function BreadcrumbBranchSelector({
                   setIsOpen(false);
                   navigate(branchUrl);
                 }}
-                asChild>
+                asChild
+              >
                 <Link to={branchUrl}>{branch.name}</Link>
               </CommandItem>
             );

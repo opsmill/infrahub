@@ -1,8 +1,8 @@
 import { FormRelationshipValue } from "@/components/form/type";
-import { RelationshipType } from "@/utils/getObjectItemDisplayValue";
+import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
 import { store } from "@/state";
 import { schemaState } from "@/state/atoms/schema.atom";
-import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { RelationshipType } from "@/utils/getObjectItemDisplayValue";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;

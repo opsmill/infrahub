@@ -16,7 +16,8 @@ const getCheckBar = (type: string, amount: number, total: number, index: number)
         <div
           key={index}
           className="text-xs text-center text-custom-white flex-initial bg-green-500"
-          style={{ width: `${precentage}%` }}>
+          style={{ width: `${precentage}%` }}
+        >
           {amount}
         </div>
       );
@@ -26,7 +27,8 @@ const getCheckBar = (type: string, amount: number, total: number, index: number)
         <div
           key={index}
           className="text-xs text-center text-custom-white flex-initial bg-yellow-500"
-          style={{ width: `${precentage}%` }}>
+          style={{ width: `${precentage}%` }}
+        >
           {amount}
         </div>
       );
@@ -36,7 +38,8 @@ const getCheckBar = (type: string, amount: number, total: number, index: number)
         <div
           key={index}
           className="text-xs text-center text-custom-white flex-initial bg-orange-500"
-          style={{ width: `${precentage}%` }}>
+          style={{ width: `${precentage}%` }}
+        >
           {amount}
         </div>
       );
@@ -46,7 +49,8 @@ const getCheckBar = (type: string, amount: number, total: number, index: number)
         <div
           key={index}
           className="text-xs text-center text-custom-white flex-initial bg-red-300"
-          style={{ width: `${precentage}%` }}>
+          style={{ width: `${precentage}%` }}
+        >
           {amount}
         </div>
       );
@@ -56,7 +60,8 @@ const getCheckBar = (type: string, amount: number, total: number, index: number)
         <div
           key={index}
           className="text-xs text-center text-custom-white flex-initial bg-red-500"
-          style={{ width: `${precentage}%` }}>
+          style={{ width: `${precentage}%` }}
+        >
           {amount}
         </div>
       );
@@ -66,7 +71,8 @@ const getCheckBar = (type: string, amount: number, total: number, index: number)
         <div
           key={index}
           className="text-xs text-center text-custom-white flex-initial bg-gray-200"
-          style={{ width: `${precentage}%` }}>
+          style={{ width: `${precentage}%` }}
+        >
           {amount}
         </div>
       );

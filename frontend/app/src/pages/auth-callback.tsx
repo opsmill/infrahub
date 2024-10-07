@@ -1,10 +1,10 @@
-import { Navigate, useParams, useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
+import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { useAuth } from "@/hooks/useAuth";
-import { useAtomValue } from "jotai";
 import { configState } from "@/state/atoms/config.atom";
 import { fetchUrl } from "@/utils/fetch";
-import { INFRAHUB_API_SERVER_URL } from "@/config/config";
+import { useAtomValue } from "jotai";
+import { useEffect } from "react";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 
 function AuthCallback() {
   const { protocol, provider } = useParams();

@@ -13,7 +13,8 @@ export const AttributeDisplay = ({
     description={attribute.description}
     isOptional={attribute.optional}
     isUnique={attribute.unique}
-    isReadOnly={attribute.read_only}>
+    isReadOnly={attribute.read_only}
+  >
     <div>
       <PropertyRow title="ID" value={attribute.id} />
       <PropertyRow title="Kind" value={attribute.kind} />
@@ -65,7 +66,8 @@ const ChoicesRow = ({
               </div>
             }
             className="px-1.5 py-0.5 rounded-md flex-grow divide-y divide-gray-600"
-            style={{ backgroundColor: color ?? undefined }}>
+            style={{ backgroundColor: color ?? undefined }}
+          >
             <PropertyRow title="Name" value={choice.name} />
             <PropertyRow title="Label" value={choice.label} />
             <PropertyRow title="Color" value={choice.color} />

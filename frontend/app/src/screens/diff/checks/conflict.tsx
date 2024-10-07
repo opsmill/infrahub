@@ -149,7 +149,8 @@ export const Conflict = (props: any) => {
             return (
               <div key={index} className="flex items-center mb-2 last:mb-0">
                 <div
-                  className={classNames("flex-1 grid grid-cols-2 gap-2 p-2 rounded-md", className)}>
+                  className={classNames("flex-1 grid grid-cols-2 gap-2 p-2 rounded-md", className)}
+                >
                   <div className="flex items-center">
                     <Badge className="mr-2">{branch}</Badge>
 

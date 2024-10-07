@@ -6,23 +6,23 @@ import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { Badge } from "@/components/ui/badge";
+import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { GET_PREFIXES_ONLY } from "@/graphql/queries/ipam/prefixes";
 import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { debounce } from "@/utils/common";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
 import {
+  EMPTY_TREE,
   PrefixData,
   formatIPPrefixResponseForTreeView,
   getTreeItemAncestors,
   updateTreeData,
-  EMPTY_TREE,
 } from "./utils";
-import { Badge } from "@/components/ui/badge";
-import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
-import { debounce } from "@/utils/common";
 
 export default function IpamTree({ className }: { className?: string }) {
   const { prefix } = useParams();
@@ -136,7 +136,8 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
       to={url}
       tabIndex={-1}
       className="flex items-center gap-2 w-full"
-      data-testid="ipam-tree-item">
+      data-testid="ipam-tree-item"
+    >
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span>{element.name}</span>
       {!!element.metadata?.descendantsCount && (

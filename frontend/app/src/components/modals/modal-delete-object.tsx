@@ -1,16 +1,16 @@
-import React, { Fragment, useState } from "react";
-import ModalDelete from "./modal-delete";
-import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "../ui/alert";
-import graphqlClient from "@/graphql/graphqlClientApollo";
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
+import React, { Fragment, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../ui/alert";
+import ModalDelete from "./modal-delete";
 
 interface iProps {
   label?: string | null;

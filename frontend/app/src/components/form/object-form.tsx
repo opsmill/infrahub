@@ -1,10 +1,7 @@
-import NoDataFound from "@/screens/errors/no-data-found";
 import { DynamicFormProps } from "@/components/form/dynamic-form";
-import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
-import { useSchema } from "@/hooks/useSchema";
 import { GenericObjectForm } from "@/components/form/generic-object-form";
-import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 import { NodeForm, NodeFormSubmitParams } from "@/components/form/node-form";
+import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
@@ -13,12 +10,15 @@ import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
 } from "@/config/constants";
-import { NumberPoolForm } from "@/screens/resource-manager/number-pool-form";
-import { lazy, Suspense } from "react";
+import { useSchema } from "@/hooks/useSchema";
+import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { ObjectPermissionForm } from "@/screens/role-management/object-permissions-form";
-import { AccountGroupForm } from "@/screens/role-management/account-group-form";
+import { NumberPoolForm } from "@/screens/resource-manager/number-pool-form";
 import { AccountForm } from "@/screens/role-management/account-form";
+import { AccountGroupForm } from "@/screens/role-management/account-group-form";
+import { ObjectPermissionForm } from "@/screens/role-management/object-permissions-form";
+import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
+import { Suspense, lazy } from "react";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;

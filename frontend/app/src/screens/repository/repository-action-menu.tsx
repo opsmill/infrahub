@@ -1,21 +1,21 @@
 import { Icon } from "@iconify-icon/react";
 
 import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMutation } from "@/hooks/useQuery";
 import {
   CHECK_REPOSITORY_CONNECTIVITY,
   REIMPORT_LAST_COMMIT,
 } from "@/graphql/mutations/repository/actions";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import { useState } from "react";
+import { useMutation } from "@/hooks/useQuery";
 import { Dialog } from "@headlessui/react";
+import { useState } from "react";
+import { toast } from "react-toastify";
 
 const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,7 +29,8 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
             tooltipEnabled
             variant="ghost"
             size="square"
-            className="p-4">
+            className="p-4"
+          >
             <Icon icon="mdi:dots-vertical" className="text-custom-blue-900 text-lg p-4" />
           </ButtonWithTooltip>
         </DropdownMenuTrigger>

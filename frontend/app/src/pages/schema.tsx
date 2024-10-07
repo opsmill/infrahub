@@ -1,10 +1,10 @@
-import { useAtomValue } from "jotai";
 import { Badge } from "@/components/ui/badge";
 import { useTitle } from "@/hooks/useTitle";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import Content from "@/screens/layout/content";
 import { SchemaSelector } from "@/screens/schema/schema-selector";
 import { SchemaViewerStack } from "@/screens/schema/schema-viewer";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { useAtomValue } from "jotai";
 
 function SchemaPage() {
   useTitle("Schema");

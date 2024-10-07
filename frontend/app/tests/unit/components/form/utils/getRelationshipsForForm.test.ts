@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { getRelationshipsForForm } from "@/components/form/utils/getRelationshipsForForm";
+import { describe, expect, it } from "vitest";
 import { buildRelationshipSchema } from "./getFormFieldsFromSchema.test";
 
 describe("getRelationshipsForForm", () => {

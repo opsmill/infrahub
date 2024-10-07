@@ -1,11 +1,11 @@
 import { Button, LinkButton } from "@/components/buttons/button-primitive";
+import TextareaField from "@/components/form/fields/textarea.field";
+import { isRequired } from "@/components/form/utils/validation";
+import { Form, FormRef, FormSubmit } from "@/components/ui/form";
 import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
 import React, { forwardRef, ReactElement } from "react";
 import { useLocation } from "react-router-dom";
-import { Form, FormRef, FormSubmit } from "@/components/ui/form";
-import TextareaField from "@/components/form/fields/textarea.field";
-import { isRequired } from "@/components/form/utils/validation";
 
 type CommentFormData = {
   comment: string;
@@ -30,7 +30,8 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
             comment: comment.value as string,
           };
           await onSubmit(commentFormData);
-        }}>
+        }}
+      >
         <TextareaField
           name="comment"
           label="Add a comment"
@@ -60,7 +61,8 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
         size="sm"
         variant="primary"
         to={constructPath("/signin")}
-        state={{ from: location }}>
+        state={{ from: location }}
+      >
         Sign in
       </LinkButton>{" "}
       to be able to add a comment.

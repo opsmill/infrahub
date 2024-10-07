@@ -1,16 +1,16 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import React, { useState } from "react";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { stringifyWithoutQuotes } from "@/utils/string";
-import { gql } from "@apollo/client";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import { useAtomValue } from "jotai/index";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { usePermission } from "@/hooks/usePermission";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { usePermission } from "@/hooks/usePermission";
+import { stringifyWithoutQuotes } from "@/utils/string";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai/index";
+import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 interface PcCloseButtonProps extends ButtonProps {
   proposedChangeId: string;
@@ -78,7 +78,8 @@ export const PcCloseButton = ({ proposedChangeId, state, ...props }: PcCloseButt
       onClick={handleClose}
       isLoading={isLoadingClose}
       disabled={!permission.write.allow || state === "merged"}
-      {...props}>
+      {...props}
+    >
       {state === "closed" ? "Re-open" : "Close"}
     </Button>
   );

@@ -1,11 +1,11 @@
+import React from "react";
 import {
+  Tooltip as ChartTooltip,
   Legend,
   Pie,
   PieChart as PieChartPrimitive,
   ResponsiveContainer,
-  Tooltip as ChartTooltip,
 } from "recharts";
-import React from "react";
 
 type PieChartProps = {
   data: Array<{ name: string; value: number }>;

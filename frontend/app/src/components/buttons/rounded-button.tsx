@@ -66,7 +66,8 @@ export const RoundedButton = forwardRef<HTMLButtonElement, ButtonProps>((props: 
       type="button"
       className={classNames(DEFAULT_CLASS(className), customClassName, className)}
       onClick={onClick}
-      {...propsToPass}>
+      {...propsToPass}
+    >
       {props.children}
     </button>
   );

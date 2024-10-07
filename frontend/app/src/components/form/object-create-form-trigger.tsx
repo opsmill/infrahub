@@ -1,14 +1,14 @@
-import { Icon } from "@iconify-icon/react";
-import { Button, ButtonProps } from "../buttons/button-primitive";
-import { Tooltip } from "../ui/tooltip";
-import { usePermission } from "@/hooks/usePermission";
-import { useState } from "react";
-import { ACCOUNT_GENERIC_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import { isGeneric } from "@/utils/common";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
+import { ACCOUNT_GENERIC_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { usePermission } from "@/hooks/usePermission";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { isGeneric } from "@/utils/common";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+import { Button, ButtonProps } from "../buttons/button-primitive";
+import { Tooltip } from "../ui/tooltip";
 
 interface ObjectCreateFormTriggerProps extends ButtonProps {
   schema: IModelSchema;
@@ -44,7 +44,8 @@ export const ObjectCreateFormTrigger = ({
           data-testid="create-object-button"
           disabled={!isAllowed || isLoading}
           onClick={() => setShowCreateDrawer(true)}
-          {...props}>
+          {...props}
+        >
           <Icon icon="mdi:plus" className="text-sm mr-1.5" />
           Add {schema?.label}
         </Button>
@@ -60,7 +61,8 @@ export const ObjectCreateFormTrigger = ({
           />
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
+        setOpen={setShowCreateDrawer}
+      >
         <ObjectForm
           onSuccess={async (result: any) => {
             setShowCreateDrawer(false);

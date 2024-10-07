@@ -1,15 +1,15 @@
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import {
-  IP_ADDRESS_GENERIC,
-  IP_PREFIX_GENERIC,
   IPAM_QSP,
   IPAM_ROUTE,
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
 } from "@/screens/ipam/constants";
+import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
 import { store } from "@/state";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { constructPath, overrideQueryParams } from "./fetch";
-import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
 import { isGeneric } from "@/utils/common";
+import { constructPath, overrideQueryParams } from "./fetch";
 
 const regex = /^Related/; // starts with Related
 

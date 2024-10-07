@@ -1,12 +1,12 @@
+import DatetimeField from "@/components/form/fields/datetime.field";
 import { Tabs } from "@/components/tabs";
+import { Form, FormSubmit } from "@/components/ui/form";
+import { DIFF_TABS } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { DateTimeParam, StringParam, useQueryParam } from "use-query-params";
 import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
-import { NodeDiff } from "../diff/node-diff";
 import { FilesDiff } from "../diff/file-diff/files-diff";
-import { Form, FormSubmit } from "@/components/ui/form";
-import DatetimeField from "@/components/form/fields/datetime.field";
-import { DIFF_TABS } from "@/config/constants";
+import { NodeDiff } from "../diff/node-diff";
 
 const tabs = [
   {

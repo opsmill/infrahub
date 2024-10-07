@@ -1,5 +1,5 @@
-import Handlebars from "handlebars";
 import { gql } from "@apollo/client";
+import Handlebars from "handlebars";
 
 export const getProposedChanges = Handlebars.compile(`
 query GET_PROPOSED_CHANGES($id: ID, $nodeId: String, $state: String) {

@@ -60,7 +60,8 @@ Cypress.Commands.add("mount", (component, options = {}) => {
           options={{
             searchStringToObject: queryString.parse,
             objectToSearchString: queryString.stringify,
-          }}>
+          }}
+        >
           {component}
         </QueryParamProvider>
       </MemoryRouter>

@@ -1,20 +1,20 @@
-import { useQuery } from "@apollo/client";
-import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/graphql/queries/role-management/getAccounts";
-import { Table } from "@/components/table/table";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
-import ErrorScreen from "../errors/error-screen";
-import { Pagination } from "@/components/ui/pagination";
-import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { useState } from "react";
-import { useAtomValue } from "jotai";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { ColorDisplay } from "@/components/display/color-display";
 import { Button } from "@/components/buttons/button-primitive";
-import { useSchema } from "@/hooks/useSchema";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import { ColorDisplay } from "@/components/display/color-display";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
+import ModalDeleteObject from "@/components/modals/modal-delete-object";
+import { Table } from "@/components/table/table";
+import { Pagination } from "@/components/ui/pagination";
+import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/graphql/queries/role-management/getAccounts";
+import { useSchema } from "@/hooks/useSchema";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { useQuery } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import ErrorScreen from "../errors/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
 
 function Accounts() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS);
@@ -81,7 +81,8 @@ function Accounts() {
             <Button
               variant={"primary"}
               onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+              disabled={!schema}
+            >
               Create {schema?.label}
             </Button>
           </div>
@@ -118,7 +119,8 @@ function Accounts() {
             />
           }
           open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          setOpen={(value) => setShowCreateDrawer(value)}
+        >
           <ObjectForm
             kind={ACCOUNT_OBJECT}
             onCancel={() => setShowCreateDrawer(false)}

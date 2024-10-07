@@ -1,10 +1,10 @@
-import { useParams } from "react-router-dom";
-import { DiffRow } from "@/screens/diff/node-diff/utils";
-import { DiffAttribute, DiffStatus } from "@/screens/diff/node-diff/types";
-import { DiffThread } from "@/screens/diff/node-diff/thread";
 import { DiffNodeProperty } from "@/screens/diff/node-diff/node-property";
-import { Conflict } from "./conflict";
+import { DiffThread } from "@/screens/diff/node-diff/thread";
+import { DiffAttribute, DiffStatus } from "@/screens/diff/node-diff/types";
+import { DiffRow } from "@/screens/diff/node-diff/utils";
+import { useParams } from "react-router-dom";
 import { BadgeConflict } from "../diff-badge";
+import { Conflict } from "./conflict";
 
 type DiffNodeAttributeProps = {
   attribute: DiffAttribute;
@@ -38,7 +38,8 @@ export const DiffNodeAttribute = ({
         </div>
       }
       left={previousValue}
-      right={newValue}>
+      right={newValue}
+    >
       <div className="divide-y border-t">
         {attribute.conflict && <Conflict conflict={attribute.conflict} />}
 

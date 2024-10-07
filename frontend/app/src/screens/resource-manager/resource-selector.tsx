@@ -35,7 +35,8 @@ const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelect
           name: (
             <Link
               to={getObjectDetailsUrl2(resource.kind, resource.id)}
-              className="font-semibold underline">
+              className="font-semibold underline"
+            >
               {resource.display_label}
             </Link>
           ),
@@ -49,7 +50,8 @@ const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelect
 
               <Link
                 to={constructPath(`resources/${resource.id}`)}
-                className="flex items-center gap-1 text-nowrap hover:underline">
+                className="flex items-center gap-1 text-nowrap hover:underline"
+              >
                 View <Icon icon="mdi:eye-outline" />
               </Link>
             </div>

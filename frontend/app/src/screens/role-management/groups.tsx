@@ -1,20 +1,20 @@
-import { useQuery } from "@apollo/client";
-import { GET_ROLE_MANAGEMENT_GROUPS } from "@/graphql/queries/role-management/getGroups";
-import { Table } from "@/components/table/table";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
-import ErrorScreen from "../errors/error-screen";
-import { Pagination } from "@/components/ui/pagination";
-import { GroupMembers } from "./group-member";
-import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { useAtomValue } from "jotai";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { useState } from "react";
-import { useSchema } from "@/hooks/useSchema";
-import graphqlClient from "@/graphql/graphqlClientApollo";
 import { Button } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
+import ModalDeleteObject from "@/components/modals/modal-delete-object";
+import { Table } from "@/components/table/table";
+import { Pagination } from "@/components/ui/pagination";
+import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { GET_ROLE_MANAGEMENT_GROUPS } from "@/graphql/queries/role-management/getGroups";
+import { useSchema } from "@/hooks/useSchema";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { useQuery } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import ErrorScreen from "../errors/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
+import { GroupMembers } from "./group-member";
 
 function Groups() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_GROUPS);
@@ -79,7 +79,8 @@ function Groups() {
             <Button
               variant={"primary"}
               onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+              disabled={!schema}
+            >
               Create {schema?.label}
             </Button>
           </div>
@@ -114,7 +115,8 @@ function Groups() {
             />
           }
           open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          setOpen={(value) => setShowCreateDrawer(value)}
+        >
           <ObjectForm
             kind={ACCOUNT_GROUP_OBJECT}
             onCancel={() => setShowCreateDrawer(false)}

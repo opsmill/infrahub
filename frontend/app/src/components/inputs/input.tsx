@@ -36,7 +36,8 @@ export const Input = forwardRef((props: any, ref: any) => {
     <Button
       disabled={propsToPass?.disabled}
       buttonType={BUTTON_TYPES.INVISIBLE}
-      onClick={(event) => onChange(type === "number" ? 0 : "", event)}>
+      onClick={(event) => onChange(type === "number" ? 0 : "", event)}
+    >
       <Icon icon="mdi:close" className="text-gray-400" />
     </Button>
   );
@@ -64,7 +65,8 @@ export const Input = forwardRef((props: any, ref: any) => {
           className={classNames(
             "absolute top-0 bottom-0 flex items-center",
             type === "number" ? "right-4" : "right-1"
-          )}>
+          )}
+        >
           {removeButton}
         </div>
       )}
@@ -72,7 +74,8 @@ export const Input = forwardRef((props: any, ref: any) => {
       {error?.message && (
         <div
           className="absolute text-sm text-red-500 bg-custom-white -bottom-2 ml-2 px-2"
-          data-cy="field-error-message">
+          data-cy="field-error-message"
+        >
           {error?.message}
         </div>
       )}

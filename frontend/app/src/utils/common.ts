@@ -1,5 +1,5 @@
-import { iGenericSchema, IModelSchema } from "@/state/atoms/schema.atom";
-import { clsx, type ClassValue } from "clsx";
+import { IModelSchema, iGenericSchema } from "@/state/atoms/schema.atom";
+import { type ClassValue, clsx } from "clsx";
 import * as R from "ramda";
 import { twMerge } from "tailwind-merge";
 

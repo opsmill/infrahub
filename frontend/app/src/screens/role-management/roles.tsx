@@ -1,21 +1,21 @@
-import { useQuery } from "@apollo/client";
-import { Table } from "@/components/table/table";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
-import ErrorScreen from "../errors/error-screen";
-import { Pagination } from "@/components/ui/pagination";
-import { GET_ROLE_MANAGEMENT_ROLES } from "@/graphql/queries/role-management/getRoles";
 import { Pill } from "@/components/display/pill";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { useAtomValue } from "jotai";
+import { Table } from "@/components/table/table";
+import { Pagination } from "@/components/ui/pagination";
+import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
+import { GET_ROLE_MANAGEMENT_ROLES } from "@/graphql/queries/role-management/getRoles";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { useQuery } from "@apollo/client";
+import { useAtomValue } from "jotai";
 import { useState } from "react";
+import ErrorScreen from "../errors/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
 
 import { Button } from "@/components/buttons/button-primitive";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { useSchema } from "@/hooks/useSchema";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { useSchema } from "@/hooks/useSchema";
 
 function Roles() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ROLES);
@@ -75,7 +75,8 @@ function Roles() {
             <Button
               variant={"primary"}
               onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+              disabled={!schema}
+            >
               Create {schema?.label}
             </Button>
           </div>
@@ -110,7 +111,8 @@ function Roles() {
             />
           }
           open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          setOpen={(value) => setShowCreateDrawer(value)}
+        >
           <ObjectForm
             kind={ACCOUNT_ROLE_OBJECT}
             onCancel={() => setShowCreateDrawer(false)}

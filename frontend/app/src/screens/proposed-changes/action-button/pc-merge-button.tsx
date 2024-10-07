@@ -1,16 +1,16 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { stringifyWithoutQuotes } from "@/utils/string";
-import { gql } from "@apollo/client";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import React, { useState } from "react";
-import { useAtomValue } from "jotai/index";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { usePermission } from "@/hooks/usePermission";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { usePermission } from "@/hooks/usePermission";
+import { stringifyWithoutQuotes } from "@/utils/string";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai/index";
+import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 interface PcMergeButtonProps extends ButtonProps {
   proposedChangeId: string;
@@ -78,7 +78,8 @@ export const PcMergeButton = ({
       onClick={handleMerge}
       isLoading={isLoadingMerge}
       disabled={!permission.write.allow || state === "closed" || state === "merged"}
-      {...props}>
+      {...props}
+    >
       Merge
     </Button>
   );

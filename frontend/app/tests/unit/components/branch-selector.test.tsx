@@ -18,7 +18,8 @@ describe("Branch selector", () => {
           options={{
             searchStringToObject: queryString.parse,
             objectToSearchString: queryString.stringify,
-          }}>
+          }}
+        >
           <BranchSelector />
         </QueryParamProvider>
       </BrowserRouter>

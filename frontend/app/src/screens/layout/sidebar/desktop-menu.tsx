@@ -59,7 +59,8 @@ export function DesktopMenu({ className = "" }: MenuProps) {
           className="flex-grow min-h-0 overflow-y-auto overflow-x-hidden"
           aria-label="Sidebar"
           data-cy="sidebar-menu"
-          data-testid="sidebar-menu">
+          data-testid="sidebar-menu"
+        >
           {menu.map((item, index: number) => (
             <DropDownMenuHeader
               key={index}

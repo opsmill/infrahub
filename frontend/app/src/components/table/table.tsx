@@ -33,7 +33,8 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
         className={classNames(
           "table-auto border-spacing-0 w-full border border-gray-300 rounded-md",
           className
-        )}>
+        )}
+      >
         <thead className="bg-gray-50 text-left border-b border-gray-300 rounded-md">
           <tr>
             {columns.map((column) => (
@@ -53,13 +54,15 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                 "border-b border-gray-200 h-[36px]",
                 row.link ? "hover:bg-gray-50 cursor-pointer" : ""
               )}
-              data-cy="object-table-row">
+              data-cy="object-table-row"
+            >
               {columns.map((column, index) => (
                 <td key={index} className="p-0">
                   {row.link && (
                     <Link
                       className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                      to={row.link}>
+                      to={row.link}
+                    >
                       {row.values[column.name] ?? "-"}
                     </Link>
                   )}
@@ -80,7 +83,8 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                       size="icon"
                       disabled={!auth?.permissions?.write}
                       onClick={() => onUpdate(row)}
-                      data-testid="update-row-button">
+                      data-testid="update-row-button"
+                    >
                       <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                     </Button>
                   )}
@@ -91,7 +95,8 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                       size="icon"
                       disabled={!auth?.permissions?.write}
                       onClick={() => onDelete(row)}
-                      data-testid="delete-row-button">
+                      data-testid="delete-row-button"
+                    >
                       <Icon icon="mdi:trash-outline" className="text-red-500" />
                     </Button>
                   )}

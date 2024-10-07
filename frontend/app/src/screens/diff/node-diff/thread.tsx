@@ -12,8 +12,8 @@ import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@/components/buttons/button-primitive";
+import { Icon } from "@iconify-icon/react";
 import { DiffContext } from ".";
 import { DiffComments } from "./comments";
 
@@ -71,7 +71,8 @@ export const DiffThread = ({ path }: tDiffThread) => {
               }}
               className="px-2 h-6 rounded-full"
               variant={"dark"}
-              data-testid="data-diff-add-comment">
+              data-testid="data-diff-add-comment"
+            >
               <Icon icon="mdi:chat-outline" className="mr-1" />
               {thread?.comments?.count}
             </Button>
@@ -88,7 +89,8 @@ export const DiffThread = ({ path }: tDiffThread) => {
                 className="p-0 h-6 rounded-full"
                 variant={"outline"}
                 size={"icon"}
-                data-testid="data-diff-add-comment">
+                data-testid="data-diff-add-comment"
+              >
                 <Icon icon={"mdi:plus"} />
               </Button>
             </Tooltip>

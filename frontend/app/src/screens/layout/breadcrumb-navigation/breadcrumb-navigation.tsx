@@ -1,12 +1,12 @@
 import { Breadcrumb, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import React from "react";
-import { UIMatch, useMatches } from "react-router-dom";
 import {
   BreadcrumbDynamicElement,
   BreadcrumbDynamicElementProps,
 } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-dynamic-element";
-import { classNames } from "@/utils/common";
 import { breadcrumbActiveStyle } from "@/screens/layout/breadcrumb-navigation/style";
+import { classNames } from "@/utils/common";
+import React from "react";
+import { UIMatch, useMatches } from "react-router-dom";
 
 export default function BreadcrumbNavigation() {
   const matches = useMatches() as UIMatch<

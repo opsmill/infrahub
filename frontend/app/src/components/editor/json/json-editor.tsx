@@ -1,7 +1,7 @@
-import { ElementRef, forwardRef } from "react";
-import Prism from "prismjs";
-import Editor from "react-simple-code-editor";
 import { classNames } from "@/utils/common";
+import Prism from "prismjs";
+import { ElementRef, forwardRef } from "react";
+import Editor from "react-simple-code-editor";
 
 type JsonEditorProps = {
   onChange: (value: string) => void;

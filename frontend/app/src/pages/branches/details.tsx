@@ -4,14 +4,14 @@ import { QSP } from "@/config/qsp";
 import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { NodeDiff } from "@/screens/diff/node-diff";
 
+import { useTitle } from "@/hooks/useTitle";
+import { BranchDetails } from "@/screens/branches/branch-details";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import Content from "@/screens/layout/content";
 import { constructPath } from "@/utils/fetch";
-import { BranchDetails } from "@/screens/branches/branch-details";
+import React from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { useTitle } from "@/hooks/useTitle";
-import React from "react";
 
 export const BRANCH_TABS = {
   DETAILS: "details",

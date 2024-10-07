@@ -1,5 +1,7 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Filters } from "@/components/filters/filters";
+import { ObjectCreateFormTrigger } from "@/components/form/object-create-form-trigger";
+import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import {
@@ -9,22 +11,20 @@ import {
   SEARCH_PARTIAL_MATCH,
 } from "@/config/constants";
 import useFilters, { Filter } from "@/hooks/useFilters";
+import { useObjectItems } from "@/hooks/useObjectItems";
 import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { classNames, debounce } from "@/utils/common";
+import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useObjectItems } from "@/hooks/useObjectItems";
-import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
-import { getDisplayValue } from "@/utils/getObjectItemDisplayValue";
-import { ObjectCreateFormTrigger } from "@/components/form/object-create-form-trigger";
-import ModalDeleteObject from "@/components/modals/modal-delete-object";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
@@ -60,7 +60,7 @@ export default function ObjectItems({
 
   const { loading, error, data = {}, refetch } = useObjectItems(schema, filters);
 
-  const result = data && schema?.kind ? data[kindFilter?.value || schema?.kind] ?? {} : {};
+  const result = data && schema?.kind ? (data[kindFilter?.value || schema?.kind] ?? {}) : {};
 
   const { count = "...", edges } = result;
 
@@ -103,7 +103,8 @@ export default function ObjectItems({
     <>
       <div
         className="rounded-md border overflow-hidden bg-custom-white shadow-sm"
-        data-testid="object-items">
+        data-testid="object-items"
+      >
         <div className="flex items-center p-2">
           <SearchInput
             loading={loading}
@@ -143,7 +144,8 @@ export default function ObjectItems({
                       "border-b border-gray-200",
                       !preventLinks && "hover:bg-gray-50"
                     )}
-                    data-cy="object-table-row">
+                    data-cy="object-table-row"
+                  >
                     {columns?.map((attribute, index) => {
                       return (
                         <td key={index} className="h-9">
@@ -167,7 +169,8 @@ export default function ObjectItems({
                         onClick={() => {
                           setRowToDelete(row);
                           setDeleteModal(true);
-                        }}>
+                        }}
+                      >
                         <Icon icon="mdi:trash" className="text-red-500" />
                       </ButtonWithTooltip>
                     </td>

@@ -1,23 +1,23 @@
 import { Avatar } from "@/components/display/avatar";
 import { DateDisplay } from "@/components/display/date-display";
+import { MarkdownViewer } from "@/components/editor/markdown-viewer";
+import { Property, PropertyList } from "@/components/table/property-list";
+import { Badge } from "@/components/ui/badge";
+import { CardWithBorder } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
+import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
+import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";
+import { PcMergeButton } from "@/screens/proposed-changes/action-button/pc-merge-button";
+import { Conversations } from "@/screens/proposed-changes/conversations";
+import { ProposedChangeEditTrigger } from "@/screens/proposed-changes/proposed-change-edit-trigger";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
+import { classNames } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import React, { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CardWithBorder } from "@/components/ui/card";
-import { Property, PropertyList } from "@/components/table/property-list";
-import { Badge } from "@/components/ui/badge";
-import { ProposedChangeEditTrigger } from "@/screens/proposed-changes/proposed-change-edit-trigger";
-import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";
-import { PcMergeButton } from "@/screens/proposed-changes/action-button/pc-merge-button";
-import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
-import { Conversations } from "@/screens/proposed-changes/conversations";
-import { classNames } from "@/utils/common";
-import { MarkdownViewer } from "@/components/editor/markdown-viewer";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
@@ -133,7 +133,8 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         <CardWithBorder.Title className="flex justify-between items-center">
           <div
             onClick={() => navigate(path)}
-            className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+            className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
+          >
             Proposed change
           </div>
 

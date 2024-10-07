@@ -1,9 +1,9 @@
-import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { FormFieldProps, FormAttributeValue } from "@/components/form/type";
-import { InputProps } from "@/components/ui/input";
-import { ColorPicker } from "@/components/inputs/color-picker";
 import { LabelFormField } from "@/components/form/fields/common";
+import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import { ColorPicker } from "@/components/inputs/color-picker";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
+import { InputProps } from "@/components/ui/input";
 
 export interface InputFieldProps
   extends FormFieldProps,

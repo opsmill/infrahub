@@ -1,3 +1,4 @@
+import { SelectOption } from "@/components/inputs/select";
 import {
   attributesKindForDetailsViewExclude,
   attributesKindForListView,
@@ -9,7 +10,6 @@ import { store } from "@/state";
 import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
 import * as R from "ramda";
 import { isGeneric, sortByOrderWeight } from "./common";
-import { SelectOption } from "@/components/inputs/select";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;

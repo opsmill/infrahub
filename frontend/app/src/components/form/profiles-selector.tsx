@@ -1,14 +1,14 @@
-import { genericsState, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
-import { useId } from "react";
-import { useAtomValue } from "jotai/index";
-import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
-import ErrorScreen from "@/screens/errors/error-screen";
-import { getProfiles } from "@/graphql/queries/objects/getProfiles";
-import { gql } from "@apollo/client";
-import useQuery from "@/hooks/useQuery";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import Label from "@/components/ui/label";
 import { MultiCombobox } from "@/components/ui/combobox-legacy";
+import Label from "@/components/ui/label";
+import { getProfiles } from "@/graphql/queries/objects/getProfiles";
+import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { genericsState, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
+import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai/index";
+import { useId } from "react";
 
 type ProfilesSelectorProps = {
   schema: iNodeSchema;

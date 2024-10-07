@@ -21,7 +21,8 @@ export const SelectButton = (props: any) => {
                 as={Button}
                 buttonType={BUTTON_TYPES.MAIN}
                 data-cy="branch-list-display-button"
-                data-testid="branch-list-display-button">
+                data-testid="branch-list-display-button"
+              >
                 <div className="flex flex-1 items-center py-2 pr-1 text-custom-white truncate">
                   {valueLabel}
                 </div>
@@ -35,11 +36,13 @@ export const SelectButton = (props: any) => {
               as={Fragment}
               leave="transition ease-in duration-100"
               leaveFrom="opacity-100"
-              leaveTo="opacity-0">
+              leaveTo="opacity-0"
+            >
               <Listbox.Options
                 className="absolute z-10 w-72 divide-y divide-gray-200 bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md max-h-[300px] overflow-auto"
                 data-cy="branch-list-dropdown"
-                data-testid="branch-list-dropdown">
+                data-testid="branch-list-dropdown"
+              >
                 {options.map((option: any) => (
                   <Listbox.Option
                     key={option.name}
@@ -49,7 +52,8 @@ export const SelectButton = (props: any) => {
                         "cursor-pointer select-none p-4 text-sm"
                       )
                     }
-                    value={option}>
+                    value={option}
+                  >
                     {(attributes) =>
                       renderOption({
                         option,

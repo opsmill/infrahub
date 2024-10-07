@@ -1,8 +1,8 @@
+import { LabelFormField } from "@/components/form/fields/common";
+import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
+import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
-import { FormFieldProps, FormAttributeValue } from "@/components/form/type";
-import { LabelFormField } from "@/components/form/fields/common";
-import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
 
 const PasswordInputField = ({
   defaultValue = { source: null, value: null },

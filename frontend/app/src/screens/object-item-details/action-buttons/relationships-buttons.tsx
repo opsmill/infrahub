@@ -2,7 +2,7 @@ import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import DynamicForm from "@/components/form/dynamic-form";
 import { SelectOption } from "@/components/inputs/select";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
@@ -93,7 +93,8 @@ export function RelationshipsButtons() {
         tooltipEnabled
         tooltipContent={permission.write.message ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
-        data-testid="open-relationship-form-button">
+        data-testid="open-relationship-form-button"
+      >
         <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
         {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
       </ButtonWithTooltip>
@@ -110,7 +111,8 @@ export function RelationshipsButtons() {
           )
         }
         open={showAddDrawer}
-        setOpen={setShowAddDrawer}>
+        setOpen={setShowAddDrawer}
+      >
         <DynamicForm
           fields={[
             {

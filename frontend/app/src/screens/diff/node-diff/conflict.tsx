@@ -74,7 +74,8 @@ export const Conflict = ({ conflict }: any) => {
             htmlFor={"base"}
             className={
               conflict.selected_branch === "BASE_BRANCH" ? "cursor-default" : "cursor-pointer"
-            }>
+            }
+          >
             <Badge variant="green">
               <Icon icon="mdi:layers-triple" className="mr-1" />
               {proposedChangesDetails.destination_branch?.value}
@@ -93,7 +94,8 @@ export const Conflict = ({ conflict }: any) => {
             htmlFor={"diff"}
             className={
               conflict.selected_branch === "DIFF_BRANCH" ? "cursor-default" : "cursor-pointer"
-            }>
+            }
+          >
             <Badge variant="blue">
               <Icon icon="mdi:layers-triple" className="mr-1" />
               {proposedChangesDetails.source_branch?.value}

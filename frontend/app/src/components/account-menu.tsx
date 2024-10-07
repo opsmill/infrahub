@@ -1,14 +1,7 @@
+import { Button } from "@/components/buttons/button-primitive";
 import { Avatar } from "@/components/display/avatar";
-import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
-import { useAuth } from "@/hooks/useAuth";
-import { genericsState, IModelSchema } from "@/state/atoms/schema.atom";
-import { gql, useQuery } from "@apollo/client";
-import { useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useAtomValue } from "jotai/index";
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { Skeleton } from "@/components/skeleton";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,12 +9,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Icon } from "@iconify-icon/react";
-import { Button } from "@/components/buttons/button-primitive";
-import { Skeleton } from "@/components/skeleton";
-import { constructPath } from "@/utils/fetch";
 import { INFRAHUB_DOC_LOCAL, INFRAHUB_GITHUB_URL, INFRAHUB_SWAGGER_DOC_URL } from "@/config/config";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
+import { useAuth } from "@/hooks/useAuth";
 import { AppVersion } from "@/screens/layout/app-version";
+import { IModelSchema, genericsState } from "@/state/atoms/schema.atom";
+import { constructPath } from "@/utils/fetch";
+import { gql, useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export const AccountMenu = () => {
   const { isAuthenticated, signOut } = useAuth();
@@ -79,7 +79,8 @@ const UnauthenticatedAccountMenu = () => {
       <Link
         className="flex items-center h-14 rounded-lg p-2 gap-2 hover:bg-indigo-50"
         to="/signin"
-        state={{ from: location }}>
+        state={{ from: location }}
+      >
         <div className="bg-indigo-50 rounded-full h-10 w-10 flex items-center justify-center overflow-hidden border border-white">
           <Icon icon="mdi:user" className="text-5xl relative top-1 text-neutral-600" />
         </div>
@@ -93,12 +94,14 @@ const UnauthenticatedAccountMenu = () => {
           onClick={(event) => {
             event.preventDefault();
           }}
-          asChild>
+          asChild
+        >
           <Button
             variant="ghost"
             size="square"
             data-testid="unauthenticated-menu-trigger"
-            className="hover:bg-indigo-100">
+            className="hover:bg-indigo-100"
+          >
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
         </DropdownMenuTrigger>
@@ -151,7 +154,8 @@ const AuthenticatedAccountMenu = ({
         <Button
           variant="ghost"
           className="h-auto gap-2 hover:bg-indigo-50 rounded-lg p-2"
-          data-testid="authenticated-menu-trigger">
+          data-testid="authenticated-menu-trigger"
+        >
           <Avatar name={profile?.name?.value} className="h-10 w-10" />
           <div className="flex flex-col items-start">
             <span className="font-semibold text-sm">{profile?.label?.value}</span>
