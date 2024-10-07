@@ -3,7 +3,14 @@
   "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["./coverage", "./dist", "./playwright-report", "./src/generated", "./test-results"]
+    "ignore": [
+      "./coverage",
+      "./dist",
+      "./playwright-report",
+      "./src/generated",
+      "./test-results",
+      "./tests/e2e/.auth"
+    ]
   },
   "formatter": {
     "enabled": true,

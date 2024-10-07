@@ -101,7 +101,7 @@ test.describe("/proposed-changes", () => {
           await page.getByRole("button", { name: "Save" }).click();
           await expect(page.getByText("ProposedChange updated")).toBeVisible();
 
-          await expect(page.getByRole("heading", { name: pcNameEdit })).toBeVisible();
+          await expect(page.getByRole("heading", { name: pcNameEdit, exact: true })).toBeVisible();
           await expect(page.getByTestId("pc-description")).toContainText("My description edit");
           await expect(page.getByText("ReviewersAT")).toBeVisible();
         });
