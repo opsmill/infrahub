@@ -46,7 +46,7 @@ export const AccountForm = ({
     description: getCurrentFieldValue("description", currentObject),
     label: getCurrentFieldValue("label", currentObject),
     member_of_groups: getRelationshipDefaultValue({
-      relationshipData: currentObject.member_of_groups?.value,
+      relationshipData: currentObject?.member_of_groups?.value,
     }),
   };
 

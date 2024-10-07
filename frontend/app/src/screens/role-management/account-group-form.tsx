@@ -29,6 +29,7 @@ import { DropdownOption } from "@/components/inputs/dropdown";
 import { useSchema } from "@/hooks/useSchema";
 import DropdownField from "@/components/form/fields/dropdown.field";
 import { isRequired } from "@/components/form/utils/validation";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -51,8 +52,12 @@ export const AccountGroupForm = ({
     description: getCurrentFieldValue("description", currentObject),
     label: getCurrentFieldValue("label", currentObject),
     group_type: getCurrentFieldValue("group_type", currentObject),
-    roles: getCurrentFieldValue("roles", currentObject),
-    accounts: getCurrentFieldValue("accounts", currentObject),
+    roles: getRelationshipDefaultValue({
+      relationshipData: currentObject?.roles?.value,
+    }),
+    accounts: getRelationshipDefaultValue({
+      relationshipData: currentObject?.accounts?.value,
+    }),
   };
 
   const form = useForm<FieldValues>({

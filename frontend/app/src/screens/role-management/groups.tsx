@@ -21,11 +21,12 @@ function Groups() {
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
   const [rowToDelete, setRowToDelete] = useState(null);
+  const [rowToUpdate, setRowToUpdate] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
-      name: "display_label",
+      name: "name",
       label: "Name",
     },
     {
@@ -48,14 +49,17 @@ function Groups() {
       id: edge?.node?.id,
       values: {
         id: edge?.node?.id,
-        display_label: edge?.node?.display_label,
-        description: edge?.node?.description?.value,
-        group_type: edge?.node?.group_type?.value,
-        members: (
-          <GroupMembers
-            members={edge?.node?.members?.edges?.map((edge) => edge?.node?.display_label) ?? []}
-          />
-        ),
+        name: { value: edge?.node?.name?.value },
+        description: { value: edge?.node?.description?.value },
+        group_type: { value: edge?.node?.group_type?.value },
+        members: {
+          value: { edges: edge?.node?.members?.edges },
+          display: (
+            <GroupMembers
+              members={edge?.node?.members?.edges?.map((edge) => edge?.node?.display_label) ?? []}
+            />
+          ),
+        },
         __typename: edge?.node?.__typename,
       },
     }));
@@ -87,6 +91,10 @@ function Groups() {
           rows={rows ?? []}
           className="border-0"
           onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
         />
 
         <Pagination count={data && data[ACCOUNT_GROUP_OBJECT]?.count} />
@@ -110,10 +118,11 @@ function Groups() {
               subtitle={schema.description}
             />
           }
-          open={showDrawer}
+          open={showDrawer && !!rowToUpdate}
           setOpen={(value) => setShowDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_GROUP_OBJECT}
+            currentObject={rowToUpdate}
             onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
               setShowDrawer(false);
