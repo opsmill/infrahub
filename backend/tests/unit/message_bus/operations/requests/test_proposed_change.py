@@ -288,7 +288,7 @@ async def test_schema_integrity(
     branch2_schema.set(name="TestPerson", schema=person_schema)
 
     # Ignore creation of Task Report response
-    httpx_mock.add_response(method="POST", url="http://mock/graphql", json={"data": {}})
+    httpx_mock.add_response(method="POST", url="http://mock/graphql/main", json={"data": {}})
     await proposed_change.schema_integrity(message=schema_integrity_01, service=service_all)
 
     checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
