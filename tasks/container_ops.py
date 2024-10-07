@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Optional
 from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
+    SERVICE_SERVER_NAME,
+    SERVICE_WORKER_NAME,
     Namespace,
     build_compose_files_cmd,
     execute_command,
@@ -64,7 +66,7 @@ def pull_images(context: Context, database: str, namespace: Namespace) -> None:
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         for service in AVAILABLE_SERVICES:
-            if "infrahub" in service:
+            if service in [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME]:
                 continue
             command = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME} pull {service}"
             execute_command(context=context, command=command)
@@ -76,8 +78,8 @@ def restart_services(context: Context, database: str, namespace: Namespace) -> N
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
 
-        execute_command(context=context, command=f"{base_cmd} restart infrahub-server")
-        execute_command(context=context, command=f"{base_cmd} restart infrahub-git")
+        execute_command(context=context, command=f"{base_cmd} restart {SERVICE_SERVER_NAME}")
+        execute_command(context=context, command=f"{base_cmd} restart {SERVICE_WORKER_NAME}")
 
 
 def show_service_status(context: Context, database: str, namespace: Namespace) -> None:
@@ -112,7 +114,7 @@ def migrate_database(context: Context, database: str, namespace: Namespace) -> N
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run infrahub-server infrahub db migrate"
+        command = f"{base_cmd} run {SERVICE_SERVER_NAME} infrahub db migrate"
         execute_command(context=context, command=command)
 
 
@@ -122,7 +124,7 @@ def update_core_schema(context: Context, database: str, namespace: Namespace, de
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run infrahub-server infrahub db update-core-schema"
+        command = f"{base_cmd} run {SERVICE_SERVER_NAME} infrahub db update-core-schema"
         if debug:
             command += " --debug"
         execute_command(context=context, command=command)

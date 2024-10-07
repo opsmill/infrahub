@@ -23,6 +23,7 @@ from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
     PYTHON_VER,
+    SERVICE_WORKER_NAME,
     Namespace,
     build_compose_files_cmd,
     build_dev_compose_files_cmd,
@@ -101,7 +102,7 @@ def infra_git_create(
         base_cmd = f"{get_env_vars(context, namespace=NAMESPACE)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
         execute_command(
             context=context,
-            command=f"{base_cmd} run infrahub-git infrahubctl repository add {name} {location}",
+            command=f"{base_cmd} run {SERVICE_WORKER_NAME} infrahubctl repository add {name} {location}",
         )
 
 
@@ -115,19 +116,19 @@ def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE) -> Non
         base_cmd = f"{get_env_vars(context, namespace=NAMESPACE)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
         execute_command(
             context=context,
-            command=f"{base_cmd} run infrahub-git cp -r backend/tests/fixtures/repos/{REPO_NAME}/initial__main /remote/{REPO_NAME}",
+            command=f"{base_cmd} run {SERVICE_WORKER_NAME} cp -r backend/tests/fixtures/repos/{REPO_NAME}/initial__main /remote/{REPO_NAME}",
         )
         execute_command(
             context=context,
-            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} infrahub-git git init --initial-branch main",
+            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} {SERVICE_WORKER_NAME} git init --initial-branch main",
         )
         execute_command(
             context=context,
-            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} infrahub-git git add .",
+            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} {SERVICE_WORKER_NAME} git add .",
         )
         execute_command(
             context=context,
-            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} infrahub-git git commit -m first",
+            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} {SERVICE_WORKER_NAME} git commit -m first",
         )
 
 

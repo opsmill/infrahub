@@ -8,7 +8,7 @@ import IpamTree from "../../screens/ipam/ipam-tree/ipam-tree";
 function IpamLayout() {
   return (
     <>
-      <Content.Title title="IP Address Manager">
+      <Content.Title title={<h1>IP Address Manager</h1>}>
         <IpNamespaceSelector />
       </Content.Title>
 

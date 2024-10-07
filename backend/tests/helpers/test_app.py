@@ -91,7 +91,9 @@ class TestInfrahubApp(TestInfrahub):
         return schema_branch
 
     @pytest.fixture(scope="class")
-    async def test_client(self, initialize_registry: None) -> InfrahubTestClient:
+    async def test_client(
+        self, initialize_registry: None, redis: dict[int, int] | None, nats: dict[int, int] | None
+    ) -> InfrahubTestClient:
         await app_initialization(app)
         return InfrahubTestClient(app=app)
 

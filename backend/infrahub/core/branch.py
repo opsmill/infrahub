@@ -83,6 +83,11 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
     def set_branched_from(cls, value: str) -> str:
         return Timestamp(value).to_string()
 
+    def get_branched_from(self) -> str:
+        if not self.branched_from:
+            raise RuntimeError(f"branched_from not set for branch {self.name}")
+        return self.branched_from
+
     @field_validator("created_at", mode="before")
     @classmethod
     def set_created_at(cls, value: str) -> str:

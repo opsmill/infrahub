@@ -50,7 +50,11 @@ PWD = os.getcwd()
 NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
 GITHUB_ACTION = os.getenv("GITHUB_ACTION", False)
 
-AVAILABLE_SERVICES = ["infrahub-git", "infrahub-server", "database", "message-queue"]
+
+SERVICE_SERVER_NAME = "server"
+SERVICE_WORKER_NAME = "task-worker"
+AVAILABLE_SERVICES = [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, "database", "message-queue", "task-manager", "cache"]
+
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
 COMPOSE_FILES_DEPS = {False: "development/docker-compose-deps.yml", True: "development/docker-compose-deps-nats.yml"}
@@ -193,6 +197,10 @@ def get_compose_cmd(namespace: Namespace) -> str:
 
     if namespace == Namespace.DEV:
         options.append("--profile dev")
+    elif namespace == Namespace.DEFAULT:
+        options.append("--profile demo")
+    elif namespace == Namespace.TEST:
+        options.append("--profile test")
 
     if dumb_terminal():
         options.append("--ansi never")

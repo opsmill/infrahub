@@ -7,27 +7,11 @@ import { NodeDiff } from "@/screens/diff/node-diff";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import Content from "@/screens/layout/content";
 import { constructPath } from "@/utils/fetch";
-import { Icon } from "@iconify-icon/react";
 import { BranchDetails } from "@/screens/branches/branch-details";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { useTitle } from "@/hooks/useTitle";
-import { Button } from "@/components/buttons/button-primitive";
 import React from "react";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-} from "@/components/breadcrumb/breadcrumb";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAtomValue } from "jotai";
-import { branchesState } from "@/state/atoms/branches.atom";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -44,19 +28,7 @@ export function BranchDetailsPage() {
 
   return (
     <Content>
-      <Content.Title
-        title={
-          <Breadcrumb className="text-base">
-            <BreadcrumbLink to={constructPath("/branches")}>Branches</BreadcrumbLink>
-
-            <BreadcrumbSeparator />
-
-            <BreadcrumbItem>
-              <BranchSelectorBreadcrumb branchName={branchName} />
-            </BreadcrumbItem>
-          </Breadcrumb>
-        }
-      />
+      <Content.Title title={<div>Branch - {branchName}</div>} />
 
       <BranchTab />
 
@@ -64,31 +36,6 @@ export function BranchDetailsPage() {
     </Content>
   );
 }
-
-const BranchSelectorBreadcrumb = ({ branchName }: { branchName: string }) => {
-  const branches = useAtomValue(branchesState);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="inline-flex gap-2 justify-between -ml-2">
-          {branchName}
-          <Icon icon="mdi:unfold-more-horizontal" className="text-gray-300" />
-        </Button>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent>
-        {branches.map((branch) => (
-          <DropdownMenuItem key={branch.name} asChild>
-            <Link to={constructPath(`/branches/${branch.name}`, undefined, [QSP.BRANCH_TAB])}>
-              {branch.name}
-            </Link>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 
 const BranchTab = () => {
   const tabs = [

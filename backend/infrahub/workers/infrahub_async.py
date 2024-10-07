@@ -10,6 +10,7 @@ from infrahub_sdk.exceptions import Error as SdkError
 from prefect.client.schemas.objects import FlowRun
 from prefect.flow_engine import run_flow_async
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
+from prometheus_client import start_http_server
 
 from infrahub import config
 from infrahub.components import ComponentType
@@ -45,7 +46,7 @@ class InfrahubWorkerAsync(BaseWorker):
     job_configuration_variables = InfrahubWorkerAsyncTemplateVariables
     _documentation_url = "https://example.com/docs"
     _logo_url = "https://example.com/logo"
-    _description = "My worker description."
+    _description = "Infrahub worker designed to run the flow in the main async loop."
 
     async def setup(self, **kwargs: dict[str, Any]) -> None:
         await super().setup(**kwargs)
@@ -61,7 +62,12 @@ class InfrahubWorkerAsync(BaseWorker):
         config_file = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
         config.load_and_exit(config_file_name=config_file)
 
-        self._logger.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
+        # Start metric endpoint on port 8000
+        metric_port = int(os.environ.get("INFRAHUB_METRICS_PORT", 8000))
+        self._logger.info(f"Starting metric endpoint on port {metric_port}")
+        start_http_server(metric_port)
+
+        self._logger.info(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
         client = InfrahubClient(
             config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=self._logger)
         )

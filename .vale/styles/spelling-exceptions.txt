@@ -64,6 +64,7 @@ Jotai
 json
 JSONSchema
 kbps
+Keycloak
 Loopbacks
 markdownlint
 max_count
@@ -100,6 +101,7 @@ toml
 Towncrier
 uncheck
 uniqueness_constraints
+userinfo
 validator
 upsert
 Upserting

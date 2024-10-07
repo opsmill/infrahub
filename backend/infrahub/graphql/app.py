@@ -104,7 +104,7 @@ class InfrahubGraphQLApp:
         middleware: Optional[Middleware] = None,
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
         execution_context_class: Optional[type[ExecutionContext]] = None,
-    ):
+    ) -> None:
         self._schema = schema
         self.on_get = on_get
         self.root_value = root_value

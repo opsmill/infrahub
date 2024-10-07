@@ -15,7 +15,7 @@ test.describe("/proposed-changes", () => {
     test("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.locator("header").getByText("Proposed changes")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Proposed changes" })).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeDisabled();
     });
   });
@@ -26,7 +26,7 @@ test.describe("/proposed-changes", () => {
     test("allow to create a proposed change", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.locator("header").getByText("Proposed changes")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Proposed changes" })).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
       await page.getByTestId("add-proposed-changes-button").click();
       await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
@@ -101,7 +101,7 @@ test.describe("/proposed-changes", () => {
           await page.getByRole("button", { name: "Save" }).click();
           await expect(page.getByText("ProposedChange updated")).toBeVisible();
 
-          await expect(page.locator("header").getByText(pcNameEdit)).toBeVisible();
+          await expect(page.getByRole("heading", { name: pcNameEdit })).toBeVisible();
           await expect(page.getByTestId("pc-description")).toContainText("My description edit");
           await expect(page.getByText("ReviewersAT")).toBeVisible();
         });

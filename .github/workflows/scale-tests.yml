@@ -26,6 +26,9 @@ env:
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "local"
+  INFRAHUB_SERVER_PORT: 0
+  INFRAHUB_DB_BACKUP_PORT: 0
+  VMAGENT_PORT: 0
 
 jobs:
   scale-tests:
@@ -160,16 +163,10 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
-      - name: Select infrahub port
-        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Set INFRAHUB_URL
-        run: echo "INFRAHUB_URL=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
-      - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
-      - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
-      - name: Select vmagent port
-        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port infrahub-server 8000 | cut -d: -f2)
+          echo "INFRAHUB_URL=http://localhost:${PORT}" >> $GITHUB_ENV
       - name: Set job name
         run: echo "JOB_NAME=${{ matrix.name }}" >> $GITHUB_ENV
 
@@ -190,7 +187,7 @@ jobs:
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/ebf7ec72-db79-4fb7-9b46-4621ca9c407a/scale-tests?orgId=1&var-run_id=$GITHUB_RUN_ID&var-job=${JOB_NAME// /%20}&var-stage=test&var-node_amount=${{ matrix.node-amount }}&var-attrs_amount=${{ matrix.attrs-amount }}&var-rels_amount=${{ matrix.rels-amount }}&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
       - name: "Destroy scale environment"
         if: always()
         run: "invoke backend.test-scale-env-destroy"

@@ -53,7 +53,7 @@ class TestInfrahubClient:
         config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase):
+    async def base_dataset(self, db: InfrahubDatabase, redis, nats):
         await delete_all_nodes(db=db)
         await first_time_initialization(db=db)
         await load_infrastructure_schema(db=db)

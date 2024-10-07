@@ -9,7 +9,6 @@ from pydantic import Field
 from infrahub.core.constants import BranchSupportType, HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TCH001
-from infrahub.core.schema.filter import FilterSchema  # noqa: TCH001
 from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TCH001
 
 
@@ -100,9 +99,6 @@ class GeneratedBaseNodeSchema(HashableModel):
         default=HashableModelState.PRESENT,
         description="Expected state of the node/generic after loading the schema",
         json_schema_extra={"update": "not_applicable"},
-    )
-    filters: list[FilterSchema] = Field(
-        default_factory=list, description="Node filters", json_schema_extra={"update": "not_applicable"}
     )
     attributes: list[AttributeSchema] = Field(
         default_factory=list, description="Node attributes", json_schema_extra={"update": "not_applicable"}

@@ -1,5 +1,3 @@
-from fastapi.testclient import TestClient
-
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -8,12 +6,8 @@ from infrahub.message_bus.messages.transform_python_data import TransformPythonD
 
 
 async def test_transform_endpoint(
-    db: InfrahubDatabase, client_headers, default_branch, rpc_bus, register_core_models_schema, car_person_data
+    db: InfrahubDatabase, client, client_headers, default_branch, rpc_bus, register_core_models_schema, car_person_data
 ):
-    from infrahub.server import app
-
-    client = TestClient(app)
-
     repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
     queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 

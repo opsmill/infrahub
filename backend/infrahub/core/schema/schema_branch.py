@@ -15,7 +15,6 @@ from infrahub.core.constants import (
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
     BranchSupportType,
-    FilterSchemaKind,
     HashableModelState,
     InfrahubKind,
     RelationshipCardinality,
@@ -31,12 +30,10 @@ from infrahub.core.models import (
     SchemaDiff,
     SchemaUpdateValidationResult,
 )
-from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.schema import (
     AttributePathParsingError,
     AttributeSchema,
     BaseNodeSchema,
-    FilterSchema,
     GenericSchema,
     MainSchemaTypes,
     NodeSchema,
@@ -54,7 +51,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
-from .constants import INTERNAL_SCHEMA_NODE_KINDS, KIND_FILTER_MAP, SchemaNamespace
+from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 
 log = get_logger()
 
@@ -62,10 +59,10 @@ if TYPE_CHECKING:
     from graphql import GraphQLSchema
     from pydantic import ValidationInfo
 
-    from infrahub.core.node import Node
-
 
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
+
+
 class SchemaBranch:
     def __init__(self, cache: dict, name: str | None = None, data: dict[str, dict[str, str]] | None = None):
         self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
@@ -506,7 +503,6 @@ class SchemaBranch:
     def process_post_validation(self) -> None:
         self.add_groups()
         self.add_hierarchy()
-        self.process_filters()
         self.generate_weight()
         self.process_labels()
         self.process_dropdowns()
@@ -1258,22 +1254,6 @@ class SchemaBranch:
 
             self.set(name=name, schema=node)
 
-    def process_filters(self) -> Node:
-        # Generate the filters for all nodes and generics, at the NodeSchema and at the relationships level.
-        for name in self.all_names:
-            node = self.get(name=name)
-            node.filters = self.generate_filters(schema=node, include_relationships=True)
-
-            for rel in node.relationships:
-                try:
-                    peer_schema = self.get(name=rel.peer, duplicate=False)
-                except SchemaNotFoundError:
-                    continue
-
-                rel.filters = self.generate_filters(schema=peer_schema, include_relationships=False)
-
-            self.set(name=name, schema=node)
-
     def process_cardinality_counts(self) -> None:
         """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
         # pylint: disable=too-many-branches
@@ -1606,73 +1586,3 @@ class SchemaBranch:
             profile.attributes.append(attr)
 
         return profile
-
-    def generate_filters(
-        self, schema: Union[NodeSchema, GenericSchema], include_relationships: bool = False
-    ) -> list[FilterSchema]:
-        """Generate the FilterSchema for a given NodeSchema or GenericSchema object."""
-        # pylint: disable=too-many-branches
-        filters = []
-
-        filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
-        if schema.human_friendly_id:
-            filters.append(FilterSchema(name="hfid", kind=FilterSchemaKind.LIST))
-
-        for attr in schema.attributes:
-            filter_kind = KIND_FILTER_MAP.get(attr.kind, None)
-            if not filter_kind:
-                continue
-
-            filter = FilterSchema(name=f"{attr.name}__value", kind=filter_kind)
-
-            if attr.enum:
-                filter.enum = attr.enum
-
-            filters.append(filter)
-            filters.append(FilterSchema(name=f"{attr.name}__values", kind=FilterSchemaKind.LIST))
-
-            for flag_prop in FlagPropertyMixin._flag_properties:
-                filters.append(FilterSchema(name=f"{attr.name}__{flag_prop}", kind=FilterSchemaKind.BOOLEAN))
-            for node_prop in NodePropertyMixin._node_properties:
-                filters.append(FilterSchema(name=f"{attr.name}__{node_prop}__id", kind=FilterSchemaKind.TEXT))
-
-        # Define generic filters, mainly used to query all nodes associated with a given account
-        if include_relationships:
-            filters.append(FilterSchema(name="any__value", kind=FilterSchemaKind.TEXT))
-            for flag_prop in FlagPropertyMixin._flag_properties:
-                filters.append(FilterSchema(name=f"any__{flag_prop}", kind=FilterSchemaKind.BOOLEAN))
-            for node_prop in NodePropertyMixin._node_properties:
-                filters.append(FilterSchema(name=f"any__{node_prop}__id", kind=FilterSchemaKind.TEXT))
-
-        if not include_relationships:
-            return filters
-
-        for rel in schema.relationships:
-            if rel.kind not in ["Attribute", "Parent"]:
-                continue
-            filters.append(FilterSchema(name=f"{rel.name}__ids", kind=FilterSchemaKind.LIST, object_kind=rel.peer))
-            peer_schema = self.get(name=rel.peer, duplicate=False)
-
-            for attr in peer_schema.attributes:
-                filter_kind = KIND_FILTER_MAP.get(attr.kind, None)
-                if not filter_kind:
-                    continue
-
-                filter = FilterSchema(name=f"{rel.name}__{attr.name}__value", kind=filter_kind)
-
-                if attr.enum:
-                    filter.enum = attr.enum
-
-                filters.append(filter)
-                filters.append(FilterSchema(name=f"{rel.name}__{attr.name}__values", kind=FilterSchemaKind.LIST))
-
-                for flag_prop in FlagPropertyMixin._flag_properties:
-                    filters.append(
-                        FilterSchema(name=f"{rel.name}__{attr.name}__{flag_prop}", kind=FilterSchemaKind.BOOLEAN)
-                    )
-                for node_prop in NodePropertyMixin._node_properties:
-                    filters.append(
-                        FilterSchema(name=f"{rel.name}__{attr.name}__{node_prop}__id", kind=FilterSchemaKind.TEXT)
-                    )
-
-        return filters

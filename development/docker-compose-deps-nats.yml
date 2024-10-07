@@ -2,6 +2,7 @@
 # yamllint disable rule:line-length
 services:
   message-queue:
+    profiles: [demo, dev]
     image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-nats:alpine}"  # need alpine since latest is based on scratch (no wget available)
     volumes:
       - ./nats-server.conf:/etc/nats/nats-server.conf
@@ -13,6 +14,7 @@ services:
       start_period: 10s
   # This is actually unused but required to not break all the other compose files requiring this service...
   cache:
+    profiles: [demo, dev]
     image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-nats:alpine}"
     healthcheck:
       test: wget -O /dev/null http://localhost:8222/varz || exit 1
@@ -21,6 +23,7 @@ services:
       retries: 20
       start_period: 10s
   task-manager:
+    profiles: [dev]
     image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0-python3.12}"
     command: prefect server start --host 0.0.0.0 --ui
     environment:
@@ -37,6 +40,7 @@ services:
     depends_on:
       - task-manager-db
   task-manager-db:
+    profiles: [dev]
     image: postgres:16-alpine
     environment:
       - POSTGRES_USER=postgres

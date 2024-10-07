@@ -92,10 +92,13 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_TRACE_EXPORTER_PROTOCOL:
   INFRAHUB_TRACE_EXPORTER_TYPE:
   INFRAHUB_TRACE_INSECURE:
+  INFRAHUB_WORKFLOW_ADDRESS:
+  INFRAHUB_WORKFLOW_PORT:
   OTEL_RESOURCE_ATTRIBUTES:
 
 services:
-  infrahub-server:
+  server:
+    profiles: [demo, dev]
     build:
       context: ../
       dockerfile: development/Dockerfile
@@ -140,6 +143,7 @@ services:
       retries: 20
       start_period: 10s
   infrahub-git:
+    profiles: [demo]
     deploy:
       mode: replicated
       replicas: 2
@@ -152,11 +156,11 @@ services:
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:
-      - infrahub-server
+      - server
     environment:
       <<: *infrahub_config
       INFRAHUB_CONFIG: /source/development/infrahub.toml
-      INFRAHUB_ADDRESS: http://infrahub-server:8000
+      INFRAHUB_ADDRESS: http://server:8000
       INFRAHUB_PRODUCTION: false
       INFRAHUB_LOG_LEVEL: DEBUG
       INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
@@ -171,11 +175,11 @@ services:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
       com.github.job: "${JOB_NAME:-unknown}"
 
-  task-runner-internal:
+  task-worker:
     profiles: [dev]
     deploy:
       mode: replicated
-      replicas: 1
+      replicas: 2
     build:
       context: ../
       dockerfile: development/Dockerfile
@@ -185,23 +189,21 @@ services:
     command: prefect worker start --type infrahubasync --pool infrahub-internal --with-healthcheck
     restart: unless-stopped
     depends_on:
-      - infrahub-server
+      - server
     environment:
       <<: *infrahub_config
       INFRAHUB_CONFIG: /source/development/infrahub.toml
-      INFRAHUB_ADDRESS: http://infrahub-server:8000
-      INFRAHUB_INTERNAL_ADDRESS: "http://infrahub-server:8000"
+      INFRAHUB_ADDRESS: http://server:8000
+      INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
       INFRAHUB_DB_ADDRESS: "database"
       INFRAHUB_PRODUCTION: false
       INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
       INFRAHUB_TIMEOUT: 20
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
-      INFRAHUB_WORKFLOW_ADDRESS: task-manager
-      INFRAHUB_WORKFLOW_PORT: 4200
+      INFRAHUB_WORKFLOW_ADDRESS: "${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}"
+      INFRAHUB_WORKFLOW_PORT: "${INFRAHUB_WORKFLOW_PORT:-4200}"
       PREFECT_API_URL: "http://task-manager:4200/api"
-      PREFECT_WORKER_QUERY_SECONDS: 3
-      PREFECT_AGENT_QUERY_INTERVAL: 3
       PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     volumes:
       - "git_data:/opt/infrahub/git"

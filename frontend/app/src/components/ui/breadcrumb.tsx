@@ -1,8 +1,6 @@
 import React from "react";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { Slot } from "@radix-ui/react-slot";
-import { Link, LinkProps } from "react-router-dom";
 
 export const Breadcrumb = React.forwardRef<HTMLOListElement, React.ComponentPropsWithoutRef<"ol">>(
   ({ className, ...props }, ref) => (
@@ -26,7 +24,7 @@ export const BreadcrumbSeparator = ({
     aria-hidden="true"
     className={classNames("inline-flex", className)}
     {...props}>
-    {children ?? <Icon icon="mdi:slash-forward" className="text-xl text-gray-400 px-2" />}
+    {children ?? <Icon icon="mdi:slash-forward" className="text-xl text-gray-400" />}
   </li>
 );
 
@@ -39,23 +37,3 @@ export const BreadcrumbItem = React.forwardRef<HTMLLIElement, React.ComponentPro
     />
   )
 );
-
-export const BreadcrumbLink = React.forwardRef<
-  HTMLAnchorElement,
-  LinkProps & {
-    asChild?: boolean;
-  }
->(({ asChild, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : Link;
-
-  return (
-    <Comp
-      ref={ref}
-      className={classNames(
-        "transition-colors cursor-pointer hover:underline hover:text-custom-blue-700",
-        className
-      )}
-      {...props}
-    />
-  );
-});

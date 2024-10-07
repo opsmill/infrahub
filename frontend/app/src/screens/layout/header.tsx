@@ -3,6 +3,7 @@ import { TimeFrameSelector } from "@/components/time-selector";
 import BranchSelector from "@/components/branch-selector";
 import InfrahubLogo from "@/images/infrahub-logo.svg";
 import { constructPath } from "@/utils/fetch";
+import BreadcrumbNavigation from "@/screens/layout/breadcrumb-navigation/breadcrumb-navigation";
 
 export default function Header() {
   return (
@@ -14,6 +15,8 @@ export default function Header() {
       <TimeFrameSelector />
 
       <BranchSelector />
+
+      <BreadcrumbNavigation />
     </header>
   );
 }

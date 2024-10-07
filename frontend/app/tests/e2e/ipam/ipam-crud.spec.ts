@@ -22,7 +22,7 @@ test.describe("/ipam - Ipam home page", () => {
   test("should load all ipam home page elements", async ({ page }) => {
     await page.goto("/ipam");
 
-    await expect(page.getByText("IP Address Manager")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "IP Address Manager" })).toBeVisible();
     await expect(page.getByTestId("ipam-tree")).toBeVisible();
     await expect(page.getByTestId("ipam-main-content")).toBeVisible();
   });

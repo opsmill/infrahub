@@ -21,9 +21,9 @@ class DiffCalculator:
         previous_node_specifiers: set[NodeFieldSpecifier] | None = None,
     ) -> CalculatedDiffs:
         if diff_branch.name == registry.default_branch:
-            diff_branch_create_time = from_time
+            diff_branch_from_time = from_time
         else:
-            diff_branch_create_time = Timestamp(diff_branch.get_created_at())
+            diff_branch_from_time = Timestamp(diff_branch.get_branched_from())
         diff_parser = DiffQueryParser(
             base_branch=base_branch,
             diff_branch=diff_branch,
@@ -35,7 +35,7 @@ class DiffCalculator:
             db=self.db,
             branch=diff_branch,
             base_branch=base_branch,
-            diff_branch_create_time=diff_branch_create_time,
+            diff_branch_from_time=diff_branch_from_time,
             diff_from=from_time,
             diff_to=to_time,
         )
@@ -51,7 +51,7 @@ class DiffCalculator:
                 db=self.db,
                 branch=base_branch,
                 base_branch=base_branch,
-                diff_branch_create_time=diff_branch_create_time,
+                diff_branch_from_time=diff_branch_from_time,
                 diff_from=from_time,
                 diff_to=to_time,
                 current_node_field_specifiers=[

@@ -11,7 +11,7 @@ class PrefixPool:
     Class to automatically manage Prefixes and help to carve out sub-prefixes
     """
 
-    def __init__(self, network: str):
+    def __init__(self, network: str) -> None:
         self.network = ipaddress.ip_network(network)
 
         # Define biggest and smallest possible masks

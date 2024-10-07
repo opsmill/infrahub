@@ -6,9 +6,10 @@ import {
   IPAM_ROUTE,
 } from "@/screens/ipam/constants";
 import { store } from "@/state";
-import { profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath, overrideQueryParams } from "./fetch";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { isGeneric } from "@/utils/common";
 
 const regex = /^Related/; // starts with Related
 
@@ -23,26 +24,40 @@ export const getObjectDetailsUrl2 = (
   objectId?: string,
   overrideParams?: overrideQueryParams[]
 ) => {
-  const nodes = store.get(schemaState);
-  const profiles = store.get(profilesAtom);
-  const schema = [...nodes, ...profiles].find(({ kind }) => kind === objectKind);
-  if (!schema) return constructPath("/", overrideParams);
-
-  const inheritFrom = schema.inherit_from;
-
-  if (inheritFrom?.includes(IP_PREFIX_GENERIC)) {
+  if (objectKind === IP_PREFIX_GENERIC) {
     return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId}`, overrideParams);
   }
 
-  if (inheritFrom?.includes(IP_ADDRESS_GENERIC)) {
+  if (objectKind === IP_ADDRESS_GENERIC) {
     return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId}`, [
       { name: IPAM_QSP.TAB, value: "ip-details" },
       ...(overrideParams ?? []),
     ]);
   }
 
-  if (inheritFrom?.includes(RESOURCE_GENERIC_KIND)) {
-    return constructPathForIpam(`/resource-manager/${objectId}`, overrideParams);
+  const nodes = store.get(schemaState);
+  const generics = store.get(genericsState);
+  const profiles = store.get(profilesAtom);
+  const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
+  if (!schema) return "#";
+
+  if (!isGeneric(schema)) {
+    const inheritFrom = schema.inherit_from;
+
+    if (inheritFrom?.includes(IP_PREFIX_GENERIC)) {
+      return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId}`, overrideParams);
+    }
+
+    if (inheritFrom?.includes(IP_ADDRESS_GENERIC)) {
+      return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId}`, [
+        { name: IPAM_QSP.TAB, value: "ip-details" },
+        ...(overrideParams ?? []),
+      ]);
+    }
+
+    if (inheritFrom?.includes(RESOURCE_GENERIC_KIND)) {
+      return constructPathForIpam(`/resource-manager/${objectId}`, overrideParams);
+    }
   }
 
   const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;

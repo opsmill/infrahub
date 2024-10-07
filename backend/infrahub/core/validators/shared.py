@@ -15,7 +15,7 @@ class SchemaValidatorQuery(Query):
         node_schema: Union[NodeSchema, GenericSchema],
         schema_path: SchemaPath,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.node_schema = node_schema
         self.schema_path = schema_path
         super().__init__(**kwargs)

@@ -63,7 +63,7 @@ mutation ProposedChange(
 
 
 @pytest.fixture(scope="module")
-async def test_client(init_db_base) -> AsyncGenerator[InfrahubTestClient, None]:
+async def test_client(init_db_base, redis, nats) -> AsyncGenerator[InfrahubTestClient, None]:
     await app_initialization(app)
     async with InfrahubTestClient(app=app, base_url="http://test") as client:
         yield client

@@ -19,6 +19,9 @@ env:
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "local"
+  INFRAHUB_SERVER_PORT: 0
+  INFRAHUB_DB_BACKUP_PORT: 0
+  VMAGENT_PORT: 0
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_USE_TEST_CONTAINERS: 1
   VALE_VERSION: "3.7.1"
@@ -586,12 +589,6 @@ jobs:
       - name: Install Invoke
         run: pip install toml invoke
 
-      - name: Select infrahub port
-        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
-      - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
-      - name: Select vmagent port
-        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
 
@@ -637,7 +634,9 @@ jobs:
         run: invoke dev.infra-git-import dev.infra-git-create
 
       - name: Set infrahub address
-        run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
         run: npm install
@@ -689,15 +688,19 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
 
-      - name: Display git 1 logs
+      - name: Display task worker 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
 
-      - name: Display git 2 logs
+      - name: Display task worker 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+
+      - name: Display task manager logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
 
       - name: Display database logs
         if: always()
