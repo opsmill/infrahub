@@ -684,3 +684,9 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         if "Node" not in self.property_node.labels:
             return None
         return str(self.property_node.get("kind"))
+
+
+@dataclass
+class EnrichedNodeCreateRequest:
+    node: EnrichedDiffNode
+    root_uuid: str
