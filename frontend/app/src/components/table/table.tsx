@@ -61,23 +61,25 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                 row.link ? "hover:bg-gray-50 cursor-pointer" : ""
               )}
               data-cy="object-table-row">
-              {columns.map((column, index) => (
-                <td key={index} className="p-0">
-                  {row.link && (
-                    <Link
-                      className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                      to={row.link}>
-                      {row.values[column.name] ?? "-"}
-                    </Link>
-                  )}
+              {columns.map((column, index) => {
+                return (
+                  <td key={index} className="p-0">
+                    {row.link && (
+                      <Link
+                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
+                        to={row.link}>
+                        {renderRowValue(row.values[column.name])}
+                      </Link>
+                    )}
 
-                  {!row.link && (
-                    <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
-                      {row.values[column.name] ?? "-"}
-                    </div>
-                  )}
-                </td>
-              ))}
+                    {!row.link && (
+                      <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
+                        {renderRowValue(row.values[column.name])}
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
 
               {(onUpdate || onDelete) && (
                 <td className="text-right">
@@ -120,7 +122,19 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
         </tbody>
       </table>
 
-      {!rows?.length && <NoDataFound message="No items" className="m-auto w-full" />}
+      {!rows?.length && <NoDataFound message="No items" />}
     </>
   );
+};
+
+const renderRowValue = (data) => {
+  if (!data) return "-";
+
+  if (data.display) return data.display;
+
+  if (data.value) return data.value;
+
+  if (!data.display && !data.value && typeof data !== "object") return data;
+
+  return "-";
 };

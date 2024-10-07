@@ -22,6 +22,7 @@ import RelationshipField from "@/components/form/fields/relationship.field";
 import InputField from "@/components/form/fields/input.field";
 import { useSchema } from "@/hooks/useSchema";
 import { isRequired } from "@/components/form/utils/validation";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -44,7 +45,9 @@ export const AccountForm = ({
     password: getCurrentFieldValue("password", currentObject),
     description: getCurrentFieldValue("description", currentObject),
     label: getCurrentFieldValue("label", currentObject),
-    groups: getCurrentFieldValue("groups", currentObject),
+    member_of_groups: getRelationshipDefaultValue({
+      relationshipData: currentObject.member_of_groups?.value,
+    }),
   };
 
   const form = useForm<FieldValues>({
@@ -126,10 +129,10 @@ export const AccountForm = ({
         <InputField name="description" label="Description" />
 
         <RelationshipField
-          name="groups"
+          name="member_of_groups"
           label="Groups"
           relationship={{
-            name: "groups",
+            name: "member_of_groups",
             peer: ACCOUNT_GROUP_OBJECT,
             cardinality: "many",
           }}

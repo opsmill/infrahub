@@ -42,6 +42,7 @@ export const getCurrentFieldValue = (
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
+
   if (!currentField) return null;
 
   if (currentField.is_default || currentField.is_from_profile) {

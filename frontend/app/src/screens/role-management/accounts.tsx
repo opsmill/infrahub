@@ -15,6 +15,7 @@ import { useSchema } from "@/hooks/useSchema";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
+import { Pill } from "@/components/display/pill";
 
 function Accounts() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS);
@@ -27,7 +28,7 @@ function Accounts() {
 
   const columns = [
     {
-      name: "display_label",
+      name: "name",
       label: "Name",
     },
     {
@@ -42,6 +43,10 @@ function Accounts() {
       name: "status",
       label: "Status",
     },
+    {
+      name: "member_of_groups",
+      label: "Groups",
+    },
   ];
 
   const rows =
@@ -49,16 +54,23 @@ function Accounts() {
     data[ACCOUNT_GENERIC_OBJECT]?.edges.map((edge) => ({
       values: {
         id: edge?.node?.id,
-        display_label: edge?.node?.display_label,
-        description: edge?.node?.description?.value,
-        account_type: edge?.node?.account_type?.value,
-        status: (
-          <ColorDisplay
-            color={edge?.node?.status?.color}
-            value={edge?.node?.status?.value}
-            description={edge?.node?.status?.description}
-          />
-        ),
+        name: { value: edge?.node?.name?.value },
+        description: { value: edge?.node?.description?.value },
+        account_type: { value: edge?.node?.account_type?.value },
+        status: {
+          value: edge?.node?.status?.value,
+          display: (
+            <ColorDisplay
+              color={edge?.node?.status?.color}
+              value={edge?.node?.status?.value}
+              description={edge?.node?.status?.description}
+            />
+          ),
+        },
+        member_of_groups: {
+          value: { edges: edge?.node?.member_of_groups?.edges },
+          display: <Pill>{edge?.node?.member_of_groups?.count}</Pill>,
+        },
         __typename: edge?.node?.__typename,
       },
     }));
@@ -89,9 +101,9 @@ function Accounts() {
           columns={columns}
           rows={rows ?? []}
           className="border-0"
-          onDelete={(data) => setRowToDelete(data.values)}
-          onUpdate={(data) => {
-            setRowToUpdate(data.values);
+          onDelete={(row) => setRowToDelete(row.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
             setShowDrawer(true);
           }}
         />
@@ -119,7 +131,7 @@ function Accounts() {
               subtitle={schema.description}
             />
           }
-          open={showCreateDrawer}
+          open={showCreateDrawer && !!rowToUpdate}
           setOpen={(value) => setShowDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_OBJECT}
