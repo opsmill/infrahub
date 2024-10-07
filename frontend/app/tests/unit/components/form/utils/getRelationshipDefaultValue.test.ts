@@ -117,6 +117,8 @@ describe("getRelationshipDefaultValue", () => {
         value: [
           {
             id: "relationship-one-id",
+            display_label: "Relationship One",
+            __typename: "RelationshipOne",
           },
         ],
       });

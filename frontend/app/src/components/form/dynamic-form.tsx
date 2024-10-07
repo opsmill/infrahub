@@ -16,6 +16,7 @@ import { warnUnexpectedType } from "@/utils/common";
 import EnumField from "@/components/form/fields/enum.field";
 import NumberField from "@/components/form/fields/number.field";
 import React, { forwardRef } from "react";
+import RelationshipManyField from "@/components/form/fields/relationship-many.field";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;
@@ -109,6 +110,10 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       return <EnumField {...otherProps} />;
     }
     case "relationship": {
+      if (props.relationship.cardinality === "many") {
+        const { type, ...otherProps } = props;
+        return <RelationshipManyField {...otherProps} />;
+      }
       return <RelationshipField {...props} />;
     }
     default: {
