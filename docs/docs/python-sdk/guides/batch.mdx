@@ -102,14 +102,14 @@ async def will_raise(swallowed: bool):
 
 async def main():
     client = InfrahubClient()
-    batch = await client.create_batch()
+    batch = await client.create_batch(return_exceptions=True)
 
     batch.add(task=client.get, kind="BuiltinTag", name__value="red")
     batch.add(task=will_raise, swallowed=True)
     batch.add(task=client.get, kind="BuiltinTag", name__value="green"
 )
 
-    async for _, result in batch.execute(return_exception=True):
+    async for _, result in batch.execute():
         if isinstance(result, Exception):
             print("this task has failed")
         print(result.name.value)
