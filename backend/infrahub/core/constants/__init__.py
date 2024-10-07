@@ -311,7 +311,7 @@ class AttributeDBNodeType(InfrahubStringEnum):
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
-    # "Builtin",
+    "Builtin",
     "Core",
     "Deprecated",
     "Diff",

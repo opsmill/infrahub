@@ -30,6 +30,7 @@ from .mutations.ipam import (
     InfrahubIPPrefixMutation,
 )
 from .mutations.main import InfrahubMutation
+from .mutations.menu import InfrahubCoreMenuMutation
 from .mutations.proposed_change import InfrahubProposedChangeMutation
 from .mutations.repository import InfrahubRepositoryMutation
 from .mutations.resource_manager import (
@@ -415,6 +416,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 InfrahubKind.GRAPHQLQUERY: InfrahubGraphQLQueryMutation,
                 InfrahubKind.NAMESPACE: InfrahubIPNamespaceMutation,
                 InfrahubKind.NUMBERPOOL: InfrahubNumberPoolMutation,
+                InfrahubKind.MENUITEM: InfrahubCoreMenuMutation,
             }
 
             if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():

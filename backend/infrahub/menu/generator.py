@@ -21,6 +21,7 @@ def get_full_name(obj: CoreMenuItem) -> str:
     return f"{obj.namespace.value}:{obj.name.value}"
 
 
+# pylint: disable=too-many-branches
 async def generate_menu(
     db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem], account: AccountSession | None = None
 ) -> Menu:
