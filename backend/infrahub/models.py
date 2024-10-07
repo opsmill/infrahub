@@ -12,6 +12,9 @@ class UserToken(BaseModel):
     access_token: str = Field(..., description="JWT access_token")
     refresh_token: str = Field(..., description="JWT refresh_token")
 
+class UserTokenWithUrl(UserToken):
+    final_url: str = Field(..., description="The final url after logged in")
+
 
 class AccessTokenResponse(BaseModel):
     access_token: str = Field(..., description="JWT access_token")
