@@ -165,3 +165,45 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
                 raise PermissionDeniedError("You do not have the permission to manage permissions")
 
         return CheckerResolution.NEXT_CHECKER
+
+
+class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
+    """Checker that makes sure a user account can add/edit/delete repository objects.
+
+    This is similar to object permission checker except that we only care about mutations on repositories.
+    """
+
+    permission_required = f"global:{GlobalPermissions.MANAGE_REPOSITORIES.value}:{PermissionDecision.ALLOW.value}"
+
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+        return account_session.authenticated
+
+    async def check(
+        self,
+        db: InfrahubDatabase,
+        account_session: AccountSession,
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        query_parameters: GraphqlParams,
+        branch: Branch,
+    ) -> CheckerResolution:
+        is_repository_operation = False
+        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+
+        for kind in kinds:
+            if is_repository_operation := kind in (InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY):
+                break
+
+        if not is_repository_operation or not analyzed_query.contains_mutation:
+            return CheckerResolution.NEXT_CHECKER
+
+        has_permission = False
+        for permission_backend in registry.permission_backends:
+            if has_permission := await permission_backend.has_permission(
+                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+            ):
+                break
+
+        if not has_permission:
+            raise PermissionDeniedError("You do not have the permission to manage repositories")
+
+        return CheckerResolution.NEXT_CHECKER
