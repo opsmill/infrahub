@@ -1,4 +1,3 @@
-
 from infrahub import lock
 from infrahub.core.registry import registry
 from infrahub.message_bus import messages
