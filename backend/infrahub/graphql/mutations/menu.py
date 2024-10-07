@@ -80,8 +80,8 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         if obj.protected.value:
             raise ValidationError(input_value="This object is protected, it can't be modified.")
 
-        obj, result = await super().mutate_update(info=info, data=data, branch=branch, at=at, node=obj)
-        return obj, result
+        obj, result = await super().mutate_update(info=info, data=data, branch=branch, at=at, node=obj)  # type: ignore[assignment]
+        return obj, result  # type: ignore[return-value]
 
     @classmethod
     async def mutate_delete(
@@ -90,7 +90,7 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ):
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         obj = await NodeManager.find_object(
             db=context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch, at=at
