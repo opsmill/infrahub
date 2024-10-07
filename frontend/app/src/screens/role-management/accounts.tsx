@@ -24,7 +24,7 @@ function Accounts() {
 
   const [rowToDelete, setRowToDelete] = useState(null);
   const [rowToUpdate, setRowToUpdate] = useState(null);
-  const [showCreateDrawer, setShowDrawer] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
@@ -131,7 +131,7 @@ function Accounts() {
               subtitle={schema.description}
             />
           }
-          open={showCreateDrawer && !!rowToUpdate}
+          open={showDrawer && !!rowToUpdate}
           setOpen={(value) => setShowDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_OBJECT}
