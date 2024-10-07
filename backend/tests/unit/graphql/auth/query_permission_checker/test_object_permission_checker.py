@@ -22,6 +22,7 @@ from infrahub.graphql.auth.query_permission_checker.interface import CheckerReso
 from infrahub.graphql.auth.query_permission_checker.object_permission_checker import (
     AccountManagerPermissionChecker,
     ObjectPermissionChecker,
+    PermissionManagerPermissionChecker,
 )
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions.local_backend import LocalPermissionBackend
@@ -122,6 +123,60 @@ query {
   AccountProfile {
     name {
       value
+    }
+  }
+}
+"""
+
+MUTATION_GLOBAL_PERMISSION = """
+mutation {
+  CoreGlobalPermissionCreate(data: {
+    name: {value: "Merge branch"}
+    action: {value: "merge_branch"}
+  }) {
+    ok
+    object {
+      identifier {
+        value
+      }
+    }
+  }
+}
+"""
+
+MUTATION_OBJECT_PERMISSION = """
+mutation {
+  CoreObjectPermissionCreate(data: {
+    branch: {value: "*"}
+    namespace: {value: "*"}
+    name: {value: "*"}
+  }) {
+    ok
+    object {
+      identifier {
+        value
+      }
+    }
+  }
+}
+"""
+
+QUERY_ACCOUNT_PERMISSIONS = """
+query {
+  InfrahubPermissions {
+    global_permissions {
+      edges {
+        node {
+          identifier
+        }
+      }
+    }
+    object_permissions {
+      edges {
+        node {
+          identifier
+        }
+      }
     }
   }
 }
@@ -293,7 +348,7 @@ class TestAccountManagerPermissions:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, action=GlobalPermissions.MANAGE_ACCOUNTS.value
+            db=db, name=GlobalPermissions.MANAGE_ACCOUNTS.value, action=GlobalPermissions.MANAGE_ACCOUNTS.value
         )
         await permission.save(db=db)
 
@@ -384,6 +439,120 @@ class TestAccountManagerPermissions:
             with pytest.raises(
                 PermissionDeniedError, match=r"You do not have the permission to manage user accounts, groups or roles"
             ):
+                await checker.check(
+                    db=db,
+                    account_session=session,
+                    analyzed_query=analyzed_query,
+                    query_parameters=gql_params,
+                    branch=permissions_helper.default_branch,
+                )
+
+
+class TestPermissionManagerPermissions:
+    async def test_setup(
+        self,
+        db: InfrahubDatabase,
+        register_core_models_schema: None,
+        default_branch: Branch,
+        permissions_helper: PermissionsHelper,
+        first_account: CoreAccount,
+        second_account: CoreAccount,
+    ):
+        registry.permission_backends = [LocalPermissionBackend()]
+        permissions_helper._default_branch = default_branch
+
+        permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        await permission.new(
+            db=db, name=GlobalPermissions.MANAGE_PERMISSIONS.value, action=GlobalPermissions.MANAGE_PERMISSIONS.value
+        )
+        await permission.save(db=db)
+
+        role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+        await role.new(db=db, name="admin", permissions=[permission])
+        await role.save(db=db)
+
+        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await group.new(db=db, name="admin", roles=[role])
+        await group.save(db=db)
+
+        await group.members.add(db=db, data={"id": first_account.id})
+        await group.members.save(db=db)
+
+        permissions_helper._first = first_account
+        permissions_helper._second = second_account
+
+    @pytest.mark.parametrize(
+        "user",
+        [
+            AccountSession(account_id="abc", auth_type=AuthType.JWT, role=AccountRole.ADMIN),
+            AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE),
+        ],
+    )
+    async def test_supports_manage_accounts_permission_accounts(
+        self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
+    ):
+        checker = PermissionManagerPermissionChecker()
+        is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
+        assert is_supported == user.authenticated
+
+    @pytest.mark.parametrize(
+        "operation", [MUTATION_GLOBAL_PERMISSION, MUTATION_OBJECT_PERMISSION, QUERY_ACCOUNT_PERMISSIONS]
+    )
+    async def test_account_with_permission(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str
+    ):
+        checker = PermissionManagerPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=operation, schema=gql_params.schema, branch=permissions_helper.default_branch
+        )
+
+        resolution = await checker.check(
+            db=db,
+            account_session=session,
+            analyzed_query=analyzed_query,
+            query_parameters=gql_params,
+            branch=permissions_helper.default_branch,
+        )
+        assert resolution == CheckerResolution.NEXT_CHECKER
+
+    @pytest.mark.parametrize(
+        "operation,must_raise",
+        [
+            (MUTATION_GLOBAL_PERMISSION, True),
+            (MUTATION_OBJECT_PERMISSION, True),
+            (QUERY_TAGS, False),
+            (QUERY_ACCOUNT_PERMISSIONS, False),
+        ],
+    )
+    async def test_account_without_permission(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool
+    ):
+        checker = PermissionManagerPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=operation, schema=gql_params.schema, branch=permissions_helper.default_branch
+        )
+
+        if not must_raise:
+            resolution = await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                query_parameters=gql_params,
+                branch=permissions_helper.default_branch,
+            )
+            assert resolution == CheckerResolution.NEXT_CHECKER
+        else:
+            with pytest.raises(PermissionDeniedError, match=r"You do not have the permission to manage permissions"):
                 await checker.check(
                     db=db,
                     account_session=session,
