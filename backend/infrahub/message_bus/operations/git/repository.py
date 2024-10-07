@@ -104,6 +104,7 @@ async def import_objects(message: messages.GitRepositoryImportObjects, service: 
         await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name, commit=message.commit)
 
 
+@flow(name="git-repository-pull-read-only")
 async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: InfrahubServices) -> None:
     if not message.ref and not message.commit:
         log.warning(
@@ -154,6 +155,7 @@ async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: I
             await repo.sync_from_remote(commit=message.commit)
 
 
+@flow(name="git-repository-merge")
 async def merge(message: messages.GitRepositoryMerge, service: InfrahubServices) -> None:
     log.info(
         "Merging repository branch",

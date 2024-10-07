@@ -1,5 +1,7 @@
 from typing import List
 
+from prefect import flow
+
 from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -11,6 +13,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="event-branch-create")
 async def create(message: messages.EventBranchCreate, service: InfrahubServices) -> None:
     log.info("run_message", branch=message.branch)
 
@@ -23,6 +26,7 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
         await service.send(message=event)
 
 
+@flow(name="event-branch-delete")
 async def delete(message: messages.EventBranchDelete, service: InfrahubServices) -> None:
     log.info("Branch was deleted", branch=message.branch)
 
@@ -36,6 +40,7 @@ async def delete(message: messages.EventBranchDelete, service: InfrahubServices)
         await service.send(message=event)
 
 
+@flow(name="branch-event-merge")
 async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -> None:
     log.info("Branch merged", source_branch=message.source_branch, target_branch=message.target_branch)
 
@@ -64,6 +69,7 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
         await service.send(message=event)
 
 
+@flow(name="event-branch-rebased")
 async def rebased(message: messages.EventBranchRebased, service: InfrahubServices) -> None:
     log.info("Branch rebased", branch=message.branch)
 
