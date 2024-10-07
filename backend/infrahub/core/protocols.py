@@ -134,11 +134,13 @@ class CoreGroup(CoreNode):
 
 
 class CoreMenu(CoreNode):
+    namespace: String
     name: String
     label: StringOptional
+    path: StringOptional
     description: StringOptional
     icon: StringOptional
-    protected: String
+    protected: Boolean
     order_weight: Integer
     section: Enum
     parent: RelationshipManager
