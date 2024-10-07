@@ -18,7 +18,7 @@ def test_message_command_overlap():
 
 @pytest.mark.parametrize(
     "operation",
-    [pytest.param(function, id=key) for key, function in COMMAND_MAP.items()],
+    [pytest.param(function, id=key) for key, function in COMMAND_MAP.items() if not key.startswith("refresh.registry")],
 )
 def test_operations_decorated(operation: Callable):
     if callable(operation) and hasattr(operation, "__name__") and "Flow" not in type(operation).__name__:

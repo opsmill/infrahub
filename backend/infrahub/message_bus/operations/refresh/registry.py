@@ -1,4 +1,3 @@
-from prefect import flow
 
 from infrahub import lock
 from infrahub.core.registry import registry
@@ -8,7 +7,6 @@ from infrahub.tasks.registry import refresh_branches
 from infrahub.worker import WORKER_IDENTITY
 
 
-@flow(name="registry-branch-refresh")
 async def branches(message: messages.RefreshRegistryBranches, service: InfrahubServices) -> None:
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
         service.log.info("Ignoring refresh registry refresh request originating from self", worker=WORKER_IDENTITY)
@@ -20,7 +18,6 @@ async def branches(message: messages.RefreshRegistryBranches, service: InfrahubS
     await service.component.refresh_schema_hash()
 
 
-@flow(name="registry-branch-rebase")
 async def rebased_branch(message: messages.RefreshRegistryRebasedBranch, service: InfrahubServices) -> None:
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
         service.log.info(
