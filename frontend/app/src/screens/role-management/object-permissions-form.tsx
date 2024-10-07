@@ -23,6 +23,7 @@ import { isRequired } from "@/components/form/utils/validation";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import DropdownField from "@/components/form/fields/dropdown.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -44,7 +45,9 @@ export const ObjectPermissionForm = ({
     branch: getCurrentFieldValue("branch", currentObject),
     namespace: getCurrentFieldValue("namespace", currentObject),
     name: getCurrentFieldValue("name", currentObject),
-    roles: getCurrentFieldValue("roles", currentObject),
+    roles: getRelationshipDefaultValue({
+      relationshipData: currentObject?.roles?.value,
+    }),
   };
 
   const form = useForm<FieldValues>({

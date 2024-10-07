@@ -36,6 +36,7 @@ function Permissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
   const [rowToDelete, setRowToDelete] = useState(null);
+  const [rowToUpdate, setRowToUpdate] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
@@ -53,7 +54,7 @@ function Permissions() {
     },
     {
       name: "name",
-      label: "Node",
+      label: "Name",
     },
     {
       name: "action",
@@ -82,18 +83,37 @@ function Permissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: (
-            <div className="flex items-center gap-2">
-              {icon} {edge?.node?.display_label}
-            </div>
-          ),
-          branch: edge?.node?.branch?.value,
-          namespace: edge?.node?.namespace?.value,
-          name: edge?.node?.name?.value,
-          action: edge?.node?.action?.value,
-          decision: edge?.node?.decision?.value,
-          roles: <Pill>{edge?.node?.roles?.count}</Pill>,
-          identifier: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          display_label: {
+            value: edge?.node?.display_value,
+            display: (
+              <div className="flex items-center gap-2">
+                {icon} {edge?.node?.display_value}
+              </div>
+            ),
+          },
+          branch: {
+            value: edge?.node?.branch?.value,
+          },
+          namespace: {
+            value: edge?.node?.namespace?.value,
+          },
+          name: {
+            value: edge?.node?.name?.value,
+          },
+          action: {
+            value: edge?.node?.action?.value,
+          },
+          decision: {
+            value: edge?.node?.decision?.value,
+          },
+          roles: {
+            value: { edges: edge?.node?.roles?.edges },
+            display: <Pill>{edge?.node?.roles?.count}</Pill>,
+          },
+          identifier: {
+            value: edge?.node?.identifier?.value,
+            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          },
           __typename: edge?.node?.__typename,
         },
       };
@@ -126,6 +146,10 @@ function Permissions() {
           rows={rows ?? []}
           className="border-0"
           onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
         />
 
         <Pagination count={data && data[OBJECT_PERMISSION_OBJECT]?.count} />
@@ -153,6 +177,7 @@ function Permissions() {
           setOpen={(value) => setShowDrawer(value)}>
           <ObjectForm
             kind={OBJECT_PERMISSION_OBJECT}
+            currentObject={rowToUpdate}
             onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
               setShowDrawer(false);
