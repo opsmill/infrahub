@@ -36,7 +36,7 @@ function Permissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
   const [rowToDelete, setRowToDelete] = useState(null);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
@@ -115,10 +115,7 @@ function Permissions() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
               Create {schema?.label}
             </Button>
           </div>
@@ -152,13 +149,13 @@ function Permissions() {
               subtitle={schema.description}
             />
           }
-          open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          open={showDrawer}
+          setOpen={(value) => setShowDrawer(value)}>
           <ObjectForm
             kind={OBJECT_PERMISSION_OBJECT}
-            onCancel={() => setShowCreateDrawer(false)}
+            onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
-              setShowCreateDrawer(false);
+              setShowDrawer(false);
               globalRefetch();
             }}
           />

@@ -22,7 +22,7 @@ function Roles() {
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_ROLE_OBJECT);
   const [rowToDelete, setRowToDelete] = useState(null);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
@@ -72,10 +72,7 @@ function Roles() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}>
+            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
               Create {schema?.label}
             </Button>
           </div>
@@ -109,13 +106,13 @@ function Roles() {
               subtitle={schema.description}
             />
           }
-          open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}>
+          open={showDrawer}
+          setOpen={(value) => setShowDrawer(value)}>
           <ObjectForm
             kind={ACCOUNT_ROLE_OBJECT}
-            onCancel={() => setShowCreateDrawer(false)}
+            onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
-              setShowCreateDrawer(false);
+              setShowDrawer(false);
               globalRefetch();
             }}
           />
