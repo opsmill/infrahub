@@ -55,6 +55,7 @@ class GlobalPermissions(InfrahubStringEnum):
     SUPER_ADMIN = "super_admin"
     MERGE_BRANCH = "merge_branch"
     MERGE_PROPOSED_CHANGE = "merge_proposed_change"
+    MANAGE_SCHEMA = "manage_schema"
     MANAGE_ACCOUNTS = "manage_accounts"
     MANAGE_PERMISSIONS = "manage_permissions"
     MANAGE_REPOSITORIES = "manage_repositories"
