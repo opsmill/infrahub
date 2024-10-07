@@ -13,12 +13,13 @@ from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
 from infrahub.menu.generator import generate_menu
+from infrahub.menu.models import Menu  # noqa: TCH001
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
-    from infrahub.menu.models import Menu
+
 
 log = get_logger()
 router = APIRouter(prefix="/menu")

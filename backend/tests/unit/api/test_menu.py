@@ -45,5 +45,3 @@ async def test_get_new_menu(
 
     assert response.status_code == 200
     assert response.json() is not None
-
-    # breakpoint()

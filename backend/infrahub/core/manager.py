@@ -1043,8 +1043,10 @@ class NodeManager:
         node = result[id]
         node_schema = node.get_schema()
 
-        node_schema_validation = get_schema(db=db, branch=branch, node_schema=kind)
-        kind_validation = node_schema_validation.kind
+        kind_validation = None
+        if kind:
+            node_schema_validation = get_schema(db=db, branch=branch, node_schema=kind)
+            kind_validation = node_schema_validation.kind
 
         # Temporary list of exception to the validation of the kind
         kind_validation_exceptions = [
