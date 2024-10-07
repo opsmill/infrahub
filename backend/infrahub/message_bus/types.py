@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import re
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from infrahub_sdk.client import NodeDiff  # noqa: TCH002
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import NodeNotFoundError
+
+if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff
+
 
 SCHEMA_CHANGE = re.compile("^Schema[A-Z]")
 
