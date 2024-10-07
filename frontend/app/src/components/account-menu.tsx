@@ -79,7 +79,8 @@ const UnauthenticatedAccountMenu = () => {
       <Link
         className="flex items-center h-14 rounded-lg p-2 gap-2 hover:bg-indigo-50"
         to="/signin"
-        state={{ from: location }}>
+        state={{ from: location }}
+      >
         <div className="bg-indigo-50 rounded-full h-10 w-10 flex items-center justify-center overflow-hidden border border-white">
           <Icon icon="mdi:user" className="text-5xl relative top-1 text-neutral-600" />
         </div>
@@ -93,12 +94,14 @@ const UnauthenticatedAccountMenu = () => {
           onClick={(event) => {
             event.preventDefault();
           }}
-          asChild>
+          asChild
+        >
           <Button
             variant="ghost"
             size="square"
             data-testid="unauthenticated-menu-trigger"
-            className="hover:bg-indigo-100">
+            className="hover:bg-indigo-100"
+          >
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
         </DropdownMenuTrigger>
