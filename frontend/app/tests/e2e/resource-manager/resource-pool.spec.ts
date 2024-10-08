@@ -56,7 +56,10 @@ test.describe("/resource-manager - Resource Manager", () => {
 
   test("delete a pool", async ({ page }) => {
     await page.goto("/resource-manager");
-
+    await page
+      .getByRole("row", { name: "test prefix pool" })
+      .getByTestId("actions-row-button")
+      .click();
     await page
       .getByRole("row", { name: "test prefix pool" })
       .getByTestId("delete-row-button")

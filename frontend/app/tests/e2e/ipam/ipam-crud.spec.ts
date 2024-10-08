@@ -89,7 +89,10 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("delete a prefix between 2 other prefixes", async () => {
         await page.getByTestId("ipam-tree").getByRole("link", { name: "11.0.0.0/8" }).click();
         await page.getByText("Prefix Details").click();
-
+        await page
+          .getByRole("row", { name: "11.0.0.0/10" })
+          .getByTestId("actions-row-button")
+          .click();
         await page
           .getByRole("row", { name: "11.0.0.0/10" })
           .getByTestId("delete-row-button")
@@ -108,6 +111,10 @@ test.describe("/ipam - Ipam home page", () => {
       });
 
       await test.step("delete a children prefix", async () => {
+        await page
+          .getByRole("row", { name: "11.0.0.0/16" })
+          .getByTestId("actions-row-button")
+          .click();
         await page
           .getByRole("row", { name: "11.0.0.0/16" })
           .getByTestId("delete-row-button")
@@ -134,6 +141,10 @@ test.describe("/ipam - Ipam home page", () => {
           .getByTestId("select-open-option-button")
           .click();
         await page.getByText("50").click();
+        await page
+          .getByRole("row", { name: "11.0.0.0/8" })
+          .getByTestId("actions-row-button")
+          .click();
         await page
           .getByRole("row", { name: "11.0.0.0/8" })
           .getByTestId("delete-row-button")
@@ -198,7 +209,10 @@ test.describe("/ipam - Ipam home page", () => {
 
       await test.step("delete ip address", async () => {
         await page.getByRole("link", { name: "All IP Addresses" }).click();
-
+        await page
+          .getByRole("row", { name: "10.0.0.1/16 from summary" })
+          .getByTestId("actions-row-button")
+          .click();
         await page
           .getByRole("row", { name: "10.0.0.1/16 from summary" })
           .getByTestId("delete-row-button")

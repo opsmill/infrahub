@@ -94,6 +94,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                         variant="ghost"
                         size="square"
                         className="p-4"
+                        data-testid="actions-row-button"
                       >
                         <Icon icon="mdi:dots-vertical" className="" />
                       </ButtonWithTooltip>
@@ -104,6 +105,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                         <DropdownMenuItem
                           onClick={() => onUpdate(row)}
                           disabled={!auth?.permissions?.write}
+                          data-testid="update-row-button"
                         >
                           <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                           Edit
@@ -114,6 +116,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                         <DropdownMenuItem
                           onClick={() => onDelete(row)}
                           disabled={!auth?.permissions?.write}
+                          data-testid="delete-row-button"
                         >
                           <Icon icon="mdi:trash-outline" className="text-red-500" />
                           Delete

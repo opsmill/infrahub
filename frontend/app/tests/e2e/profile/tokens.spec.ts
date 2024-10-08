@@ -48,6 +48,10 @@ test.describe("/profile?tab=tokens", () => {
       await test.step("delete the new token", async () => {
         await page
           .getByRole("row", { name: "test token" })
+          .getByTestId("actions-row-button")
+          .click();
+        await page
+          .getByRole("row", { name: "test token" })
           .getByTestId("delete-row-button")
           .click();
         await expect(page.getByText("Are you sure you want to")).toBeVisible();
