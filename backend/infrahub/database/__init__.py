@@ -417,7 +417,10 @@ def retry_db_transaction(name: str):
             for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
                 try:
                     return await func(*args, **kwargs)
-                except TransientError as exc:
+                except (TransientError, ClientError) as exc:
+                    if isinstance(exc, ClientError):
+                        if exc.code != "Neo.ClientError.Statement.EntityNotFound":
+                            raise exc
                     retry_time: float = random.randrange(100, 500) / 1000
                     log.info(
                         f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
