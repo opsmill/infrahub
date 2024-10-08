@@ -1,0 +1,231 @@
+[
+  {
+    "title": "Objects",
+    "path": "",
+    "icon": "",
+    "children": [
+      {
+        "title": "AutonomousSystem",
+        "path": "/objects/InfraAutonomousSystem",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "BGPPeerGroup",
+        "path": "/objects/InfraBGPPeerGroup",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "BGPSession",
+        "path": "/objects/InfraBGPSession",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Circuit",
+        "path": "/objects/InfraCircuit",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "CircuitEndpoint",
+        "path": "/objects/InfraCircuitEndpoint",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Criticality",
+        "path": "/objects/BuiltinCriticality",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Device",
+        "path": "/objects/InfraDevice",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Endpoint",
+        "path": "/objects/InfraEndpoint",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "IPAddress",
+        "path": "/objects/InfraIPAddress",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Interfaces",
+        "path": "",
+        "icon": "",
+        "children": [
+          {
+            "title": "Interface L2",
+            "path": "/objects/InfraInterfaceL2",
+            "icon": "",
+            "children": []
+          },
+          {
+            "title": "Interface L3",
+            "path": "/objects/InfraInterfaceL3",
+            "icon": "",
+            "children": []
+          },
+          {
+            "title": "Interface",
+            "path": "/objects/InfraInterface",
+            "icon": "",
+            "children": []
+          }
+        ]
+      },
+      {
+        "title": "Location",
+        "path": "/objects/BuiltinLocation",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Organization",
+        "path": "/objects/CoreOrganization",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Platform",
+        "path": "/objects/InfraPlatform",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Role",
+        "path": "/objects/BuiltinRole",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Status",
+        "path": "/objects/BuiltinStatus",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Tag",
+        "path": "/objects/BuiltinTag",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "VLAN",
+        "path": "/objects/InfraVLAN",
+        "icon": "",
+        "children": []
+      }
+    ]
+  },
+  {
+    "title": "Groups",
+    "path": "",
+    "icon": "",
+    "children": [
+      {
+        "title": "StandardGroup",
+        "path": "/objects/CoreStandardGroup",
+        "icon": "",
+        "children": []
+      }
+    ]
+  },
+  {
+    "title": "Unified Storage",
+    "path": "",
+    "icon": "",
+    "children": [
+      {
+        "title": "Schema",
+        "path": "/schema",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Repository",
+        "path": "/objects/CoreCheckDefinition",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "GraphQL Query",
+        "path": "/objects/CoreGraphQLQuery",
+        "icon": "",
+        "children": []
+      }
+    ]
+  },
+  {
+    "title": "Change Control",
+    "path": "",
+    "icon": "",
+    "children": [
+      {
+        "title": "Branches",
+        "path": "/branches",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Proposed Changes",
+        "path": "/proposed-changes",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Check Definition",
+        "path": "/objects/CoreCheckDefinition",
+        "icon": "",
+        "children": []
+      }
+    ]
+  },
+  {
+    "title": "Deployment",
+    "path": "",
+    "icon": "",
+    "children": [
+      {
+        "title": "Artifact",
+        "path": "/objects/CoreArtifact",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Artifact Definition",
+        "path": "/objects/CoreArtifactDefinition",
+        "icon": "",
+        "children": []
+      },
+      {
+        "title": "Transformation",
+        "path": "/objects/CoreTransformation",
+        "icon": "",
+        "children": []
+      }
+    ]
+  },
+  {
+    "title": "Admin",
+    "path": "",
+    "icon": "",
+    "children": [
+      {
+        "title": "Accounts",
+        "path": "objects/CoreGenericAccount",
+        "icon": "",
+        "children": []
+      }
+    ]
+  }
+]

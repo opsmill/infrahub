@@ -1,231 +1,434 @@
-[
-  {
-    "title": "Objects",
-    "path": "",
-    "icon": "",
-    "children": [
+{
+  "sections": {
+    "internal": [
       {
-        "title": "AutonomousSystem",
-        "path": "/objects/InfraAutonomousSystem",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "BGPPeerGroup",
-        "path": "/objects/InfraBGPPeerGroup",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "BGPSession",
-        "path": "/objects/InfraBGPSession",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Circuit",
-        "path": "/objects/InfraCircuit",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "CircuitEndpoint",
-        "path": "/objects/InfraCircuitEndpoint",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Criticality",
-        "path": "/objects/BuiltinCriticality",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Device",
-        "path": "/objects/InfraDevice",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Endpoint",
-        "path": "/objects/InfraEndpoint",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "IPAddress",
-        "path": "/objects/InfraIPAddress",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Interfaces",
+        "identifier": "Builtin:ObjectManagement",
+        "title": "Object Management",
         "path": "",
-        "icon": "",
+        "icon": "mdi:cube-outline",
+        "kind": "CoreMenuItem",
+        "order_weight": 1000,
+        "section": "internal",
         "children": [
           {
-            "title": "Interface L2",
-            "path": "/objects/InfraInterfaceL2",
-            "icon": "",
+            "identifier": "Builtin:Groups",
+            "title": "Groups",
+            "path": "/objects/CoreGroup",
+            "icon": "mdi:group",
+            "kind": "CoreMenuItem",
+            "order_weight": 1000,
+            "section": "internal",
             "children": []
           },
           {
-            "title": "Interface L3",
-            "path": "/objects/InfraInterfaceL3",
-            "icon": "",
+            "identifier": "Builtin:Profiles",
+            "title": "Profiles",
+            "path": "/objects/CoreProfile",
+            "icon": "mdi:shape-plus-outline",
+            "kind": "CoreMenuItem",
+            "order_weight": 2000,
+            "section": "internal",
             "children": []
           },
           {
-            "title": "Interface",
-            "path": "/objects/InfraInterface",
-            "icon": "",
+            "identifier": "Builtin:ResourceManager",
+            "title": "Resource Manager",
+            "path": "/resource-manager",
+            "icon": "mdi:view-grid-outline",
+            "kind": "CoreMenuItem",
+            "order_weight": 3000,
+            "section": "internal",
             "children": []
           }
         ]
       },
       {
-        "title": "Location",
-        "path": "/objects/BuiltinLocation",
-        "icon": "",
-        "children": []
+        "identifier": "Builtin:ChangeControl",
+        "title": "Change Control",
+        "path": "",
+        "icon": "mdi:compare-vertical",
+        "kind": "CoreMenuItem",
+        "order_weight": 2000,
+        "section": "internal",
+        "children": [
+          {
+            "identifier": "Builtin:Branches",
+            "title": "Branches",
+            "path": "/branches",
+            "icon": "mdi:layers-triple",
+            "kind": "CoreMenuItem",
+            "order_weight": 1000,
+            "section": "internal",
+            "children": []
+          },
+          {
+            "identifier": "Builtin:ProposedChanges",
+            "title": "Proposed Changes",
+            "path": "/proposed-changes",
+            "icon": "mdi:file-replace-outline",
+            "kind": "CoreMenuItem",
+            "order_weight": 2000,
+            "section": "internal",
+            "children": []
+          },
+          {
+            "identifier": "Builtin:CheckDefinition",
+            "title": "Check Definition",
+            "path": "/objects/CoreCheckDefinition",
+            "icon": "mdi:check-all",
+            "kind": "CoreMenuItem",
+            "order_weight": 3000,
+            "section": "internal",
+            "children": []
+          },
+          {
+            "identifier": "Builtin:Tasks",
+            "title": "Tasks",
+            "path": "/tasks",
+            "icon": "mdi:shield-check",
+            "kind": "CoreMenuItem",
+            "order_weight": 3000,
+            "section": "internal",
+            "children": []
+          }
+        ]
       },
       {
-        "title": "Organization",
-        "path": "/objects/CoreOrganization",
-        "icon": "",
-        "children": []
+        "identifier": "Builtin:UnifiedStorage",
+        "title": "Unified Storage",
+        "path": "",
+        "icon": "mdi:archive-arrow-down-outline",
+        "kind": "CoreMenuItem",
+        "order_weight": 3000,
+        "section": "internal",
+        "children": [
+          {
+            "identifier": "Builtin:Schema",
+            "title": "Schema",
+            "path": "/schema",
+            "icon": "mdi:file-code",
+            "kind": "CoreMenuItem",
+            "order_weight": 1000,
+            "section": "internal",
+            "children": []
+          },
+          {
+            "identifier": "Builtin:Repository",
+            "title": "Repository",
+            "path": "/objects/CoreGenericRepository",
+            "icon": "mdi:source-repository",
+            "kind": "CoreMenuItem",
+            "order_weight": 2000,
+            "section": "internal",
+            "children": []
+          },
+          {
+            "identifier": "Builtin:GraphqlQuery",
+            "title": "GraphQL Query",
+            "path": "/objects/CoreGraphQLQuery",
+            "icon": "mdi:graphql",
+            "kind": "CoreMenuItem",
+            "order_weight": 3000,
+            "section": "internal",
+            "children": []
+          }
+        ]
       },
       {
-        "title": "Platform",
-        "path": "/objects/InfraPlatform",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Role",
-        "path": "/objects/BuiltinRole",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Status",
-        "path": "/objects/BuiltinStatus",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Tag",
-        "path": "/objects/BuiltinTag",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "VLAN",
-        "path": "/objects/InfraVLAN",
-        "icon": "",
-        "children": []
+        "identifier": "Builtin:Admin",
+        "title": "Admin",
+        "path": "",
+        "icon": "mdi:settings-outline",
+        "kind": "CoreMenuItem",
+        "order_weight": 3000,
+        "section": "internal",
+        "children": [
+          {
+            "identifier": "Builtin:RoleManagement",
+            "title": "Role Management",
+            "path": "/role-management",
+            "icon": "mdi:user-key",
+            "kind": "CoreMenuItem",
+            "order_weight": 1000,
+            "section": "internal",
+            "children": []
+          },
+          {
+            "identifier": "Builtin:Credentials",
+            "title": "Credentials",
+            "path": "/objects/CoreCredential",
+            "icon": "mdi:key-variant",
+            "kind": "CoreMenuItem",
+            "order_weight": 2000,
+            "section": "internal",
+            "children": []
+          },
+          {
+            "identifier": "Builtin:Webhooks",
+            "title": "Webhooks",
+            "path": "",
+            "icon": "mdi:cog-outline",
+            "kind": "CoreMenuItem",
+            "order_weight": 3000,
+            "section": "internal",
+            "children": [
+              {
+                "identifier": "Builtin:WebhookStandard",
+                "title": "Webhook",
+                "path": "/objects/CoreStandardWebhook",
+                "icon": "mdi:webhook",
+                "kind": "CoreMenuItem",
+                "order_weight": 1000,
+                "section": "internal",
+                "children": []
+              },
+              {
+                "identifier": "Builtin:WebhookCustom",
+                "title": "Custom Webhook",
+                "path": "/objects/CoreCustomWebhook",
+                "icon": "mdi:cog-outline",
+                "kind": "CoreMenuItem",
+                "order_weight": 2000,
+                "section": "internal",
+                "children": []
+              }
+            ]
+          }
+        ]
       }
-    ]
-  },
-  {
-    "title": "Groups",
-    "path": "",
-    "icon": "",
-    "children": [
+    ],
+    "object": [
       {
-        "title": "StandardGroup",
-        "path": "/objects/CoreStandardGroup",
+        "identifier": "Builtin:Other",
+        "title": "Other",
+        "path": "",
         "icon": "",
-        "children": []
-      }
-    ]
-  },
-  {
-    "title": "Unified Storage",
-    "path": "",
-    "icon": "",
-    "children": [
-      {
-        "title": "Schema",
-        "path": "/schema",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Repository",
-        "path": "/objects/CoreCheckDefinition",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "GraphQL Query",
-        "path": "/objects/CoreGraphQLQuery",
-        "icon": "",
-        "children": []
-      }
-    ]
-  },
-  {
-    "title": "Change Control",
-    "path": "",
-    "icon": "",
-    "children": [
-      {
-        "title": "Branches",
-        "path": "/branches",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Proposed Changes",
-        "path": "/proposed-changes",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Check Definition",
-        "path": "/objects/CoreCheckDefinition",
-        "icon": "",
-        "children": []
-      }
-    ]
-  },
-  {
-    "title": "Deployment",
-    "path": "",
-    "icon": "",
-    "children": [
-      {
-        "title": "Artifact",
-        "path": "/objects/CoreArtifact",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Artifact Definition",
-        "path": "/objects/CoreArtifactDefinition",
-        "icon": "",
-        "children": []
-      },
-      {
-        "title": "Transformation",
-        "path": "/objects/CoreTransformation",
-        "icon": "",
-        "children": []
-      }
-    ]
-  },
-  {
-    "title": "Admin",
-    "path": "",
-    "icon": "",
-    "children": [
-      {
-        "title": "Accounts",
-        "path": "objects/CoreGenericAccount",
-        "icon": "",
-        "children": []
+        "kind": "CoreMenuItem",
+        "order_weight": 2000,
+        "section": "object",
+        "children": [
+          {
+            "identifier": "Builtin:Tag",
+            "title": "Tag",
+            "path": "/objects/BuiltinTag",
+            "icon": "mdi:tag-multiple",
+            "kind": "BuiltinTag",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:AutonomousSystem",
+            "title": "Autonomous System",
+            "path": "/objects/InfraAutonomousSystem",
+            "icon": "mdi:bank-circle-outline",
+            "kind": "InfraAutonomousSystem",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:BGPPeerGroup",
+            "title": "BGP Peer Group",
+            "path": "/objects/InfraBGPPeerGroup",
+            "icon": "mdi:view-grid-plus-outline",
+            "kind": "InfraBGPPeerGroup",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:BGPSession",
+            "title": "BGP Session",
+            "path": "/objects/InfraBGPSession",
+            "icon": "mdi:router",
+            "kind": "InfraBGPSession",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:BackBoneService",
+            "title": "Backbone Service",
+            "path": "/objects/InfraBackBoneService",
+            "icon": "carbon:container-services",
+            "kind": "InfraBackBoneService",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:Circuit",
+            "title": "Circuit",
+            "path": "/objects/InfraCircuit",
+            "icon": "mdi:cable-data",
+            "kind": "InfraCircuit",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:Device",
+            "title": "Device",
+            "path": "/objects/InfraDevice",
+            "icon": "mdi:server",
+            "kind": "InfraDevice",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:MlagDomain",
+            "title": "MLAG Domain",
+            "path": "/objects/InfraMlagDomain",
+            "icon": "eos-icons:cluster-management",
+            "kind": "InfraMlagDomain",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:Platform",
+            "title": "Platform",
+            "path": "/objects/InfraPlatform",
+            "icon": "mdi:application-cog-outline",
+            "kind": "InfraPlatform",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:VLAN",
+            "title": "VLAN",
+            "path": "/objects/InfraVLAN",
+            "icon": "mdi:lan-pending",
+            "kind": "InfraVLAN",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Location:Continent",
+            "title": "Continent",
+            "path": "/objects/LocationContinent",
+            "icon": "jam:world",
+            "kind": "LocationContinent",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Location:Country",
+            "title": "Country",
+            "path": "/objects/LocationCountry",
+            "icon": "gis:search-country",
+            "kind": "LocationCountry",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Location:Rack",
+            "title": "Rack",
+            "path": "/objects/LocationRack",
+            "icon": "clarity:rack-server-solid",
+            "kind": "LocationRack",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Location:Site",
+            "title": "Site",
+            "path": "/objects/LocationSite",
+            "icon": "ri:building-line",
+            "kind": "LocationSite",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Organization:Manufacturer",
+            "title": "Manufacturer",
+            "path": "/objects/OrganizationManufacturer",
+            "icon": "mdi:domain",
+            "kind": "OrganizationManufacturer",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Organization:Provider",
+            "title": "Provider",
+            "path": "/objects/OrganizationProvider",
+            "icon": "mdi:domain",
+            "kind": "OrganizationProvider",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Organization:Tenant",
+            "title": "Tenant",
+            "path": "/objects/OrganizationTenant",
+            "icon": "mdi:domain",
+            "kind": "OrganizationTenant",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:Interface",
+            "title": "Interface",
+            "path": "/objects/InfraInterface",
+            "icon": "mdi:ethernet",
+            "kind": "InfraInterface",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:MlagInterface",
+            "title": "MLAG Interface",
+            "path": "/objects/InfraMlagInterface",
+            "icon": "mdi:ethernet",
+            "kind": "InfraMlagInterface",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Infra:Service",
+            "title": "Service",
+            "path": "/objects/InfraService",
+            "icon": "",
+            "kind": "InfraService",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Location:Generic",
+            "title": "Location",
+            "path": "/objects/LocationGeneric",
+            "icon": "mingcute:location-line",
+            "kind": "LocationGeneric",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          },
+          {
+            "identifier": "Organization:Generic",
+            "title": "Organization",
+            "path": "/objects/OrganizationGeneric",
+            "icon": "mdi:domain",
+            "kind": "OrganizationGeneric",
+            "order_weight": 5000,
+            "section": "object",
+            "children": []
+          }
+        ]
       }
     ]
   }
-]
+}
