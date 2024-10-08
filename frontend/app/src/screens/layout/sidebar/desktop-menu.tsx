@@ -36,7 +36,7 @@ export function DesktopMenu({ className = "" }: MenuProps) {
 
       const result: MenuItem[] = await fetchUrl(CONFIG.MENU_URL_OLD(branch?.name));
 
-      setMenu(result.find(({ title }) => title === "Objects")?.children ?? result);
+      setMenu(result);
 
       setIsLoading(false);
     } catch (error) {
