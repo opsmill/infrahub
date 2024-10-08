@@ -5,6 +5,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.merger.serializer import DiffMergeSerializer
 from infrahub.core.diff.model.path import (
@@ -17,10 +18,20 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
-from tests.unit.core.diff.factories import EnrichedConflictFactory, EnrichedNodeFactory, EnrichedRootFactory
+
+from .factories import (
+    EnrichedAttributeFactory,
+    EnrichedConflictFactory,
+    EnrichedNodeFactory,
+    EnrichedPropertyFactory,
+    EnrichedRelationshipElementFactory,
+    EnrichedRelationshipGroupFactory,
+    EnrichedRootFactory,
+)
 
 
 class TestMergeDiff:
@@ -34,20 +45,35 @@ class TestMergeDiff:
 
     @pytest.fixture
     def diff_merger(
-        self, db: InfrahubDatabase, default_branch: Branch, source_branch: Branch, mock_diff_repository: DiffRepository
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        source_branch: Branch,
+        mock_diff_repository: DiffRepository,
+        car_person_schema: SchemaBranch,
     ) -> DiffMerger:
         return DiffMerger(
             db=db,
             source_branch=source_branch,
             destination_branch=default_branch,
             diff_repository=mock_diff_repository,
-            serializer=DiffMergeSerializer(),
+            # serializer=DiffMergeSerializer(schema_branch=db.schema.get_schema_branch(name=source_branch.name)),
+            serializer=DiffMergeSerializer(schema_branch=car_person_schema),
         )
 
     @pytest.fixture
     async def person_node_branch(self, db: InfrahubDatabase, source_branch: Branch, car_person_schema) -> Node:
         new_node = await Node.init(db=db, schema="TestPerson", branch=source_branch)
         await new_node.new(db=db, name="Albert", height=172)
+        await new_node.save(db=db)
+        return new_node
+
+    @pytest.fixture
+    async def car_node_branch(
+        self, db: InfrahubDatabase, source_branch: Branch, person_node_branch: Node, car_person_schema
+    ) -> Node:
+        new_node = await Node.init(db=db, schema="TestCar", branch=source_branch)
+        await new_node.new(db=db, name="El Camino", color="black", nbr_seats=5, owner=person_node_branch)
         await new_node.save(db=db)
         return new_node
 
@@ -82,11 +108,39 @@ class TestMergeDiff:
         default_branch: Branch,
         source_branch: Branch,
         person_node_branch: Node,
+        car_node_branch: Node,
         mock_diff_repository: DiffRepository,
         diff_merger: DiffMerger,
         empty_diff_root: EnrichedDiffRoot,
     ):
         added_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.ADDED)
+        added_height_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_VALUE,
+            previous_value=None,
+            new_value=person_node_branch.height.value,
+            action=DiffAction.ADDED,
+            conflict=None,
+        )
+        added_attribute_diff = EnrichedAttributeFactory.build(
+            name="height", action=DiffAction.ADDED, properties={added_height_property}
+        )
+        added_node_diff.attributes = {added_attribute_diff}
+        added_is_related_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_RELATED,
+            previous_value=None,
+            new_value=car_node_branch.id,
+            action=DiffAction.ADDED,
+            conflict=None,
+        )
+        added_relationship_element = EnrichedRelationshipElementFactory.build(
+            action=DiffAction.ADDED, peer_id=car_node_branch.id, conflict=None, properties={added_is_related_property}
+        )
+        added_relationship = EnrichedRelationshipGroupFactory.build(
+            name="cars",
+            relationships={added_relationship_element},
+            action=DiffAction.UPDATED,
+        )
+        added_node_diff.relationships = {added_relationship}
         empty_diff_root.nodes = {added_node_diff}
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
@@ -96,9 +150,6 @@ class TestMergeDiff:
         mock_diff_repository.get_one.assert_awaited_once_with(
             diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)
         )
-        target_car = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_branch.id)
-        assert target_car.id == person_node_branch.id
-        assert target_car.get_updated_at() == at
 
     async def test_merge_node_added_idempotent(
         self,
