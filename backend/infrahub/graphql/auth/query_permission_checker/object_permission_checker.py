@@ -150,9 +150,11 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)
-            if is_permission_operation := kind in (InfrahubKind.GLOBALPERMISSION, InfrahubKind.OBJECTPERMISSION) or (
-                isinstance(schema, NodeSchema) and InfrahubKind.BASEPERMISSION in schema.inherit_from
-            ):
+            if is_permission_operation := kind in (
+                InfrahubKind.BASEPERMISSION,
+                InfrahubKind.GLOBALPERMISSION,
+                InfrahubKind.OBJECTPERMISSION,
+            ) or (isinstance(schema, NodeSchema) and InfrahubKind.BASEPERMISSION in schema.inherit_from):
                 break
 
         if not is_permission_operation:
@@ -190,7 +192,12 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
 
         for kind in kinds:
-            if is_repository_operation := kind in (InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY):
+            schema = get_schema(db=db, branch=branch, node_schema=kind)
+            if is_repository_operation := kind in (
+                InfrahubKind.GENERICREPOSITORY,
+                InfrahubKind.REPOSITORY,
+                InfrahubKind.READONLYREPOSITORY,
+            ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICREPOSITORY in schema.inherit_from):
                 break
 
         if not is_repository_operation or not analyzed_query.contains_mutation:

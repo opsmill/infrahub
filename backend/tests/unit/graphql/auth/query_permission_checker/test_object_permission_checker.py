@@ -205,6 +205,17 @@ mutation {
 }
 """
 
+MUTATION_GENERIC_REPOSITORY = """
+mutation {
+  CoreGenericRepositoryUpdate(data: {
+    name: {value: "Test"}
+    location: {value: "/var/random"}
+  }) {
+    ok
+  }
+}
+"""
+
 
 class TestObjectPermissions:
     async def test_setup(
@@ -632,7 +643,9 @@ class TestRepositoryManagerPermissions:
         is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
         assert is_supported == user.authenticated
 
-    @pytest.mark.parametrize("operation", [MUTATION_REPOSITORY, MUTATION_READONLY_REPOSITORY])
+    @pytest.mark.parametrize(
+        "operation", [MUTATION_REPOSITORY, MUTATION_READONLY_REPOSITORY, MUTATION_GENERIC_REPOSITORY]
+    )
     async def test_account_with_permission(
         self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str
     ):
@@ -657,7 +670,12 @@ class TestRepositoryManagerPermissions:
 
     @pytest.mark.parametrize(
         "operation,must_raise",
-        [(MUTATION_REPOSITORY, True), (MUTATION_READONLY_REPOSITORY, True), (QUERY_TAGS, False)],
+        [
+            (MUTATION_REPOSITORY, True),
+            (MUTATION_READONLY_REPOSITORY, True),
+            (MUTATION_GENERIC_REPOSITORY, True),
+            (QUERY_TAGS, False),
+        ],
     )
     async def test_account_without_permission(
         self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool
