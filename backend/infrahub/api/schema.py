@@ -245,16 +245,13 @@ async def load_schema(
     account_session: AccountSession = Depends(get_current_user),
 ) -> SchemaUpdate:
     for permission_backend in registry.permission_backends:
-        if can_manage_schema := await permission_backend.has_permission(
+        if not await permission_backend.has_permission(
             db=db,
             account_id=account_session.account_id,
             permission=f"global:{GlobalPermissions.MANAGE_SCHEMA.value}:{PermissionDecision.ALLOW.value}",
             branch=branch,
         ):
-            break
-
-    if not can_manage_schema:
-        raise PermissionDeniedError("You are not allowed to manage the schema")
+            raise PermissionDeniedError("You are not allowed to manage the schema")
 
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
