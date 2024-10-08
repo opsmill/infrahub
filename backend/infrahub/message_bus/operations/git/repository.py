@@ -1,3 +1,5 @@
+from prefect import flow
+
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
@@ -13,6 +15,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="git-repository-add-read-write")
 async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> None:
     log.info(
         "Cloning and importing repository",
@@ -43,6 +46,7 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
                 await repo.sync()
 
 
+@flow(name="git-repository-add-read-only")
 async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: InfrahubServices) -> None:
     log.info(
         "Cloning and importing read-only repository", repository=message.repository_name, location=message.location
@@ -67,6 +71,7 @@ async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: Inf
                 await repo.sync_from_remote()
 
 
+@flow(name="git-repository-check-connectivity")
 async def connectivity(message: messages.GitRepositoryConnectivity, service: InfrahubServices) -> None:
     response_data = GitRepositoryConnectivityResponseData(message="Successfully accessed repository", success=True)
 
@@ -83,6 +88,7 @@ async def connectivity(message: messages.GitRepositoryConnectivity, service: Inf
         await service.reply(message=response, initiator=message)
 
 
+@flow(name="git-repository-import-object")
 async def import_objects(message: messages.GitRepositoryImportObjects, service: InfrahubServices) -> None:
     async with service.git_report(
         related_node=message.repository_id,
@@ -98,6 +104,7 @@ async def import_objects(message: messages.GitRepositoryImportObjects, service: 
         await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name, commit=message.commit)
 
 
+@flow(name="git-repository-pull-read-only")
 async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: InfrahubServices) -> None:
     if not message.ref and not message.commit:
         log.warning(
@@ -148,6 +155,7 @@ async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: I
             await repo.sync_from_remote(commit=message.commit)
 
 
+@flow(name="git-repository-merge")
 async def merge(message: messages.GitRepositoryMerge, service: InfrahubServices) -> None:
     log.info(
         "Merging repository branch",

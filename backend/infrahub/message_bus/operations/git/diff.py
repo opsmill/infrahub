@@ -1,3 +1,5 @@
+from prefect import flow
+
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -7,6 +9,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="git-repository-diff-files-names-only")
 async def names_only(message: messages.GitDiffNamesOnly, service: InfrahubServices) -> None:
     log.info(
         "Collecting modifications between commits",

@@ -1,6 +1,7 @@
 from typing import List
 
 from infrahub_sdk import UUIDT
+from prefect import flow
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
@@ -12,6 +13,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="repository-check")
 async def checks(message: messages.RequestRepositoryChecks, service: InfrahubServices) -> None:
     """Request to start validation checks on a specific repository."""
     log.info("Running repository checks", repository_id=message.repository, proposed_change_id=message.proposed_change)
@@ -94,6 +96,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
         await service.send(message=event)
 
 
+@flow(name="repository-users-check")
 async def user_checks(message: messages.RequestRepositoryUserChecks, service: InfrahubServices) -> None:
     """Request to start validation checks on a specific repository for User-defined checks."""
     async with service.task_report(

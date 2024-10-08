@@ -1,6 +1,7 @@
 from typing import Optional
 
 import ujson
+from prefect import Flow
 
 from infrahub.message_bus import RPCErrorResponse, messages
 from infrahub.message_bus.operations import (
@@ -81,12 +82,17 @@ COMMAND_MAP = {
 }
 
 
-async def execute_message(routing_key: str, message_body: bytes, service: InfrahubServices) -> Optional[MessageTTL]:
+async def execute_message(
+    routing_key: str, message_body: bytes, service: InfrahubServices, skip_flow: bool = False
+) -> Optional[MessageTTL]:
     message_data = ujson.loads(message_body)
     message = messages.MESSAGE_MAP[routing_key](**message_data)
     message.set_log_data(routing_key=routing_key)
     try:
-        await COMMAND_MAP[routing_key](message=message, service=service)
+        func = COMMAND_MAP[routing_key]
+        if skip_flow and isinstance(func, Flow):
+            func = func.fn
+        await func(message=message, service=service)
     except Exception as exc:  # pylint: disable=broad-except
         if message.reply_requested:
             response = RPCErrorResponse(errors=[str(exc)], initial_message=message.model_dump())

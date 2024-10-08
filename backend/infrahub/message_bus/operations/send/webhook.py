@@ -11,6 +11,7 @@ from infrahub.services import InfrahubServices, services
 from infrahub.webhook import CustomWebhook, StandardWebhook, TransformWebhook, Webhook
 
 
+@flow(name="event-send-webhook")
 async def event(message: messages.SendWebhookEvent, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.webhook_id,

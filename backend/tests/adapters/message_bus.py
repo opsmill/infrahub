@@ -50,7 +50,7 @@ class BusSimulator(InfrahubMessageBus):
         if routing_key not in self.messages_per_routing_key:
             self.messages_per_routing_key[routing_key] = []
         self.messages_per_routing_key[routing_key].append(message)
-        await execute_message(routing_key=routing_key, message_body=message.body, service=self.service)
+        await execute_message(routing_key=routing_key, message_body=message.body, service=self.service, skip_flow=True)
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         correlation_id = message.meta.correlation_id or "default"

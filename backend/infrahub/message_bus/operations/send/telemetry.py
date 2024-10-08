@@ -96,6 +96,7 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     return data
 
 
+@flow(name="telemetry-push-legacy")
 async def push(
     message: messages.SendTelemetryPush,  # pylint: disable=unused-argument
     service: InfrahubServices,

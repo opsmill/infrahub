@@ -1,6 +1,7 @@
 from typing import Optional
 
 from infrahub_sdk import UUIDT
+from prefect import flow
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
@@ -12,6 +13,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="artifact-definition-check")
 async def check(message: messages.RequestArtifactDefinitionCheck, service: InfrahubServices) -> None:
     async with service.task_report(
         title=f"Artifact Definition: {message.artifact_definition.definition_name}",
@@ -134,6 +136,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
             await service.send(message=event)
 
 
+@flow(name="artifact-definition-generate")
 async def generate(message: messages.RequestArtifactDefinitionGenerate, service: InfrahubServices) -> None:
     log.info(
         "Received request to generate artifacts for an artifact_definition",

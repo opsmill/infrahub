@@ -1,3 +1,5 @@
+from prefect import flow
+
 from infrahub.core import registry
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.dependencies.registry import get_component_registry
@@ -8,6 +10,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="diff-update")
 async def update(message: messages.RequestDiffUpdate, service: InfrahubServices) -> None:
     component_registry = get_component_registry()
     base_branch = await registry.get_branch(db=service.database, branch=registry.default_branch)
@@ -24,6 +27,7 @@ async def update(message: messages.RequestDiffUpdate, service: InfrahubServices)
     )
 
 
+@flow(name="diff-refresh")
 async def refresh(message: messages.RequestDiffRefresh, service: InfrahubServices) -> None:
     component_registry = get_component_registry()
     base_branch = await registry.get_branch(db=service.database, branch=registry.default_branch)

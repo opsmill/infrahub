@@ -1,10 +1,12 @@
 import ujson
+from prefect import flow
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 
+@flow(name="registry-webhook-config-refresh")
 async def configuration(
     message: messages.RefreshWebhookConfiguration,  # pylint: disable=unused-argument
     service: InfrahubServices,
