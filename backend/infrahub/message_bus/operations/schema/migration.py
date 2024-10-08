@@ -1,4 +1,4 @@
-from prefect import task
+from prefect import flow, task
 from prefect.logging import get_run_logger
 from prefect.runtime import task_run
 
@@ -15,6 +15,7 @@ from infrahub.services import InfrahubServices, services
 log = get_logger()
 
 
+@flow(name="schema-migration-path")
 async def path(message: SchemaMigrationPath, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         node_kind = None

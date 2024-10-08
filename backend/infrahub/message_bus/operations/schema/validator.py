@@ -1,4 +1,4 @@
-from prefect import task
+from prefect import flow, task
 from prefect.runtime import task_run
 
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
@@ -16,6 +16,7 @@ from infrahub.services import InfrahubServices, services
 log = get_logger()
 
 
+@flow(name="schema-validator-path")
 async def path(message: SchemaValidatorPath, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         log.info(

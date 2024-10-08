@@ -1,3 +1,5 @@
+from prefect import flow
+
 from infrahub.core.constants import InfrahubKind, ProposedChangeState
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -6,6 +8,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="proposed-change-cancel")
 async def cancel(message: messages.TriggerProposedChangeCancel, service: InfrahubServices) -> None:
     proposed_changed_opened = await service.client.filters(
         kind=InfrahubKind.PROPOSEDCHANGE, include=["id", "source_branch"], state__value=ProposedChangeState.OPEN.value

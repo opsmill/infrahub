@@ -1,6 +1,7 @@
 from typing import List
 
 from infrahub_sdk import UUIDT
+from prefect import flow
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind
@@ -16,6 +17,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="git-repository-check-definition")
 async def check_definition(message: messages.CheckRepositoryCheckDefinition, service: InfrahubServices) -> None:
     definition = await service.client.get(
         kind=InfrahubKind.CHECKDEFINITION, id=message.check_definition_id, branch=message.branch_name
@@ -141,6 +143,7 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
             await service.send(message=event)
 
 
+@flow(name="git-repository-check-merge-conflict")
 async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, service: InfrahubServices) -> None:
     """Runs a check to see if there are merge conflicts between two branches."""
     log.info(
@@ -222,6 +225,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     )
 
 
+@flow(name="git-repository-user-check")
 async def user_check(message: messages.CheckRepositoryUserCheck, service: InfrahubServices) -> None:
     validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()

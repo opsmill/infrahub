@@ -1,9 +1,12 @@
 from typing import List
 
+from prefect import flow
+
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
 
 
+@flow(name="webhook-trigger-actions")
 async def actions(message: messages.TriggerWebhookActions, service: InfrahubServices) -> None:
     webhooks = await service.cache.list_keys(filter_pattern="webhook:active:*")
     events: List[InfrahubMessage] = []

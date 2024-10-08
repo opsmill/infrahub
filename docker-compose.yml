@@ -146,7 +146,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0-python3.12}"
+    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.3-python3.12}"
     command: prefect server start --host 0.0.0.0 --ui
     restart: unless-stopped
     environment:
@@ -178,7 +178,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-0.16.2}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -217,7 +217,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-0.16.2}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:

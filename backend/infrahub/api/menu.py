@@ -5,15 +5,21 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from infrahub.api.dependencies import get_branch_dep
+from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
+from infrahub.menu.generator import generate_menu
+from infrahub.menu.models import Menu  # noqa: TCH001
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
     from infrahub.core.schema import MainSchemaTypes
+    from infrahub.database import InfrahubDatabase
+
 
 log = get_logger()
 router = APIRouter(prefix="/menu")
@@ -231,3 +237,17 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
     menu_items.extend([groups, unified_storage, change_control, deployment, admin])
 
     return menu_items
+
+
+@router.get("/new")
+async def get_new_menu(
+    db: InfrahubDatabase = Depends(get_db),
+    branch: Branch = Depends(get_branch_dep),
+    account_session: AccountSession = Depends(get_current_user),
+) -> Menu:
+    log.info("new_menu_request", branch=branch.name)
+
+    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=branch, prefetch_relationships=True)
+    menu = await generate_menu(db=db, branch=branch, account=account_session, menu_items=menu_items)
+
+    return menu.to_rest()

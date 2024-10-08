@@ -60,10 +60,7 @@ def _get_redirect_url(request: Request, provider_name: str) -> str:
 
 
 @router.get("/{provider_name:str}/authorize")
-async def authorize(
-    request: Request,
-    provider_name: str,
-) -> Response:
+async def authorize(request: Request, provider_name: str, final_url: str | None = None) -> Response:
     provider = config.SETTINGS.security.get_oidc_provider(provider=provider_name)
     service: InfrahubServices = request.app.state.service
 
@@ -78,13 +75,14 @@ async def authorize(
     )
 
     redirect_uri = _get_redirect_url(request=request, provider_name=provider_name)
+    final_url = final_url or config.SETTINGS.dev.frontend_url or str(request.base_url)
 
     authorization_uri, state = client.create_authorization_url(
         url=str(oidc_config.authorization_endpoint), redirect_uri=redirect_uri, scope=provider.scopes
     )
 
     await service.cache.set(
-        key=f"security:oidc:provider:{provider_name}:state:{state}", value=state, expires=KVTTL.TWO_HOURS
+        key=f"security:oidc:provider:{provider_name}:state:{state}", value=final_url, expires=KVTTL.TWO_HOURS
     )
 
     if config.SETTINGS.dev.frontend_redirect_sso:
@@ -101,16 +99,16 @@ async def token(
     state: str,
     code: str,
     db: InfrahubDatabase = Depends(get_db),
-) -> models.UserToken:
+) -> models.UserTokenWithUrl:
     provider = config.SETTINGS.security.get_oidc_provider(provider=provider_name)
 
     service: InfrahubServices = request.app.state.service
 
     cache_key = f"security:oidc:provider:{provider_name}:state:{state}"
-    stored_state = await service.cache.get(key=cache_key)
+    stored_final_url = await service.cache.get(key=cache_key)
     await service.cache.delete(key=cache_key)
 
-    if state != stored_state:
+    if not stored_final_url:
         raise ProcessingError(message="Invalid 'state' parameter")
 
     token_data = {
@@ -148,7 +146,9 @@ async def token(
         max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
 
-    return user_token
+    return models.UserTokenWithUrl(
+        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=stored_final_url
+    )
 
 
 def _validate_response(response: httpx.Response) -> None:

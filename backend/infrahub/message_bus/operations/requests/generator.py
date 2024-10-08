@@ -4,6 +4,7 @@ from infrahub_sdk import InfrahubNode
 from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
+from prefect import flow
 
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus
@@ -13,6 +14,7 @@ from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 
+@flow(name="generator-run")
 async def run(message: messages.RequestGeneratorRun, service: InfrahubServices) -> None:
     repository = await get_initialized_repo(
         repository_id=message.repository_id,

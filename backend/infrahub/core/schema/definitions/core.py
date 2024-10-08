@@ -3,6 +3,7 @@ from typing import Any
 from infrahub.core.constants import (
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
+    NAMESPACE_REGEX,
     AccountRole,
     AccountStatus,
     AccountType,
@@ -56,6 +57,44 @@ core_profile_schema_definition: dict[str, Any] = {
     ],
 }
 
+# -----------------------------------------------
+# Menu Items
+# -----------------------------------------------
+generic_menu_item: dict[str, Any] = {
+    "name": "Menu",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "description": "Base node for the menu",
+    "label": "Menu Item",
+    "hierarchical": True,
+    "uniqueness_constraints": [["namespace__value", "name__value"]],
+    "attributes": [
+        {"name": "namespace", "kind": "Text", "regex": NAMESPACE_REGEX, "order_weight": 1000},
+        {"name": "name", "kind": "Text", "order_weight": 1000},
+        {"name": "label", "kind": "Text", "optional": True, "order_weight": 2000},
+        {"name": "path", "kind": "Text", "optional": True, "order_weight": 2500},
+        {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
+        {"name": "icon", "kind": "Text", "optional": True, "order_weight": 4000},
+        {"name": "protected", "kind": "Boolean", "default_value": False, "read_only": True, "order_weight": 5000},
+        {"name": "order_weight", "kind": "Number", "default_value": 2000, "order_weight": 6000},
+        {
+            "name": "section",
+            "kind": "Text",
+            "enum": ["object", "internal"],
+            "default_value": "object",
+            "order_weight": 7000,
+        },
+    ],
+}
+
+menu_item: dict[str, Any] = {
+    "name": "MenuItem",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "description": "Menu Item",
+    "label": "Menu Item",
+    "inherit_from": ["CoreMenu"],
+}
 
 core_models: dict[str, Any] = {
     "generics": [
@@ -938,8 +977,10 @@ core_models: dict[str, Any] = {
                 {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
             ],
         },
+        generic_menu_item,
     ],
     "nodes": [
+        menu_item,
         {
             "name": "StandardGroup",
             "namespace": "Core",

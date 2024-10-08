@@ -269,8 +269,8 @@ class CacheSettings(BaseSettings):
     )
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
     driver: CacheDriver = CacheDriver.Redis
-    username: str = "infrahub"
-    password: str = "infrahub"
+    username: str = ""
+    password: str = ""
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -290,6 +290,9 @@ class WorkflowSettings(BaseSettings):
     port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     driver: WorkflowDriver = WorkflowDriver.WORKER
+    worker_polling_interval: int = Field(
+        default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
+    )
 
     @property
     def api_endpoint(self) -> str:

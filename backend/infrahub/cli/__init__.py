@@ -8,6 +8,7 @@ from infrahub.cli.db import app as db_app
 from infrahub.cli.events import app as events_app
 from infrahub.cli.git_agent import app as git_app
 from infrahub.cli.server import app as server_app
+from infrahub.cli.tasks import app as tasks_app
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
 
@@ -26,6 +27,7 @@ app.add_typer(server_app, name="server")
 app.add_typer(git_app, name="git-agent")
 app.add_typer(db_app, name="db")
 app.add_typer(events_app, name="events", help="Interact with the events system.")
+app.add_typer(tasks_app, name="tasks", hidden=True)
 
 
 async def _init_shell(config_file: str) -> None:

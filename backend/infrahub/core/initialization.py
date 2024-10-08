@@ -20,13 +20,15 @@ from infrahub.core.node.permissions import CoreGlobalPermission, CoreObjectPermi
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.protocols import CoreAccount
+from infrahub.core.protocols import CoreAccount, CoreMenuItem
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
+from infrahub.menu.menu import default_menu
+from infrahub.menu.models import MenuItemDefinition
 from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
 from infrahub.utils import format_label
@@ -305,6 +307,22 @@ async def create_initial_permission(db: InfrahubDatabase) -> Node:
     return permission
 
 
+async def create_menu_children(db: InfrahubDatabase, parent: CoreMenuItem, children: list[MenuItemDefinition]) -> None:
+    for child in children:
+        obj = await child.to_node(db=db, parent=parent)
+        await obj.save(db=db)
+        if child.children:
+            await create_menu_children(db=db, parent=obj, children=child.children)
+
+
+async def create_default_menu(db: InfrahubDatabase) -> None:
+    for item in default_menu:
+        obj = await item.to_node(db=db)
+        await obj.save(db=db)
+        if item.children:
+            await create_menu_children(db=db, parent=obj, children=item.children)
+
+
 async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await permission.new(
@@ -363,6 +381,11 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
     log.info("Created the Schema in the database", hash=default_branch.active_schema_hash.main)
+
+    # --------------------------------------------------
+    # Create Default Menu
+    # --------------------------------------------------
+    await create_default_menu(db=db)
 
     # --------------------------------------------------
     # Create Default Users and Groups

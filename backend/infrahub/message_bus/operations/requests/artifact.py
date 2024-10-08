@@ -1,3 +1,5 @@
+from prefect import flow
+
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -7,6 +9,7 @@ from infrahub.tasks.artifact import define_artifact
 log = get_logger()
 
 
+@flow(name="artifact-generate")
 async def generate(message: messages.RequestArtifactGenerate, service: InfrahubServices) -> None:
     log.debug("Generating artifact", message=message)
 

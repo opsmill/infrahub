@@ -1,5 +1,7 @@
 from typing import List
 
+from prefect import flow
+
 from infrahub.core.constants import InfrahubKind
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.log import get_logger
@@ -9,6 +11,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="git-repository-branch-create")
 async def create_branch(message: messages.RequestGitCreateBranch, service: InfrahubServices) -> None:
     """Request to the creation of git branches in available repositories."""
     log.info("Querying repositories for branch creation")
@@ -28,6 +31,7 @@ async def create_branch(message: messages.RequestGitCreateBranch, service: Infra
         await service.send(message=event)
 
 
+@flow(name="git-repository-sync")
 async def sync(
     message: messages.RequestGitSync,  # pylint: disable=unused-argument
     service: InfrahubServices,
