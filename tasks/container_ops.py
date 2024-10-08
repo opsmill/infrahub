@@ -95,8 +95,7 @@ def start_services(context: Context, database: str, namespace: Namespace, wait: 
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         should_wait = " --wait" if wait else ""
-        profile = "--profile dev " if namespace == Namespace.DEV else ""
-        command = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {profile}{compose_files_cmd} -p {BUILD_NAME} up -d{should_wait}"
+        command = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME} up -d{should_wait}"
         execute_command(context=context, command=command)
 
 
