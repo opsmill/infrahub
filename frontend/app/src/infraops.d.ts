@@ -5,114 +5,521 @@
 
 export interface paths {
   "/api/artifact/{artifact_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Artifact */
     get: operations["get_artifact_api_artifact__artifact_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/artifact/generate/{artifact_definition_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
     /** Generate Artifact */
     post: operations["generate_artifact_api_artifact_generate__artifact_definition_id__post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/auth/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
     /** Login User */
     post: operations["login_user_api_auth_login_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/auth/refresh": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
     /** Refresh Jwt Token */
     post: operations["refresh_jwt_token_api_auth_refresh_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
     /** Logout */
     post: operations["logout_api_auth_logout_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/diff/data": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Diff Data */
     get: operations["get_diff_data_api_diff_data_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/diff/schema": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Diff Schema */
     get: operations["get_diff_schema_api_diff_schema_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/diff/files": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Diff Files */
     get: operations["get_diff_files_api_diff_files_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/diff/artifacts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Diff Artifacts */
     get: operations["get_diff_artifacts_api_diff_artifacts_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/file/{repository_id}/{file_path}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /**
      * Get File
      * @description Retrieve a file from a git repository.
      */
     get: operations["get_file_api_file__repository_id___file_path__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Config */
     get: operations["get_config_api_config_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/info": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Info */
     get: operations["get_info_api_info_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/menu": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Menu */
     get: operations["get_menu_api_menu_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/menu/new": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get New Menu */
+    get: operations["get_new_menu_api_menu_new_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oauth2/{provider_name}/authorize": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Authorize */
+    get: operations["authorize_api_oauth2__provider_name__authorize_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oauth2/{provider_name}/token": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Token */
+    get: operations["token_api_oauth2__provider_name__token_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oidc/{provider_name}/authorize": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Authorize */
+    get: operations["authorize_api_oidc__provider_name__authorize_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oidc/{provider_name}/token": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Token */
+    get: operations["token_api_oidc__provider_name__token_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/query/{query_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Graphql Query Get */
     get: operations["graphql_query_get_api_query__query_id__get"];
+    put?: never;
     /** Graphql Query Post */
     post: operations["graphql_query_post_api_query__query_id__post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/schema": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Schema */
     get: operations["get_schema_api_schema_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/schema/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Schema Summary */
     get: operations["get_schema_summary_api_schema_summary_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/schema/{schema_kind}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Schema By Kind */
     get: operations["get_schema_by_kind_api_schema__schema_kind__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/schema/json_schema/{schema_kind}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get Json Schema By Kind */
     get: operations["get_json_schema_by_kind_api_schema_json_schema__schema_kind__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/schema/load": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
     /** Load Schema */
     post: operations["load_schema_api_schema_load_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/schema/check": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
     /** Check Schema */
     post: operations["check_schema_api_schema_check_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/storage/object/{identifier}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Get File */
     get: operations["get_file_api_storage_object__identifier__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/storage/upload/content": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
     /** Upload Content */
     post: operations["upload_content_api_storage_upload_content_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/storage/upload/file": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
     /** Upload File */
     post: operations["upload_file_api_storage_upload_file_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/transform/python/{transform_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Transform Python */
     get: operations["transform_python_api_transform_python__transform_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   "/api/transform/jinja2/{transform_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     /** Transform Jinja2 */
     get: operations["transform_jinja2_api_transform_jinja2__transform_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
 }
-
 export type webhooks = Record<string, never>;
-
 export interface components {
   schemas: {
     /** APIGenericSchema */
@@ -126,7 +533,7 @@ export interface components {
        * @description Expected state of the node/generic after loading the schema
        * @default present
        */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /**
        * Name
        * @description Node name, must be unique within a namespace and must start with an uppercase letter.
@@ -151,7 +558,7 @@ export interface components {
        * @description Type of branch support for the model.
        * @default aware
        */
-      branch?: components["schemas"]["BranchSupportType"];
+      branch: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
        * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -198,11 +605,6 @@ export interface components {
        */
       documentation?: string | null;
       /**
-       * Filters
-       * @description Node filters
-       */
-      filters?: components["schemas"]["FilterSchema"][];
-      /**
        * Attributes
        * @description Node attributes
        */
@@ -211,19 +613,19 @@ export interface components {
        * Relationships
        * @description Node Relationships
        */
-      relationships?: components["schemas"]["RelationshipSchema-Output"][];
+      relationships?: components["schemas"]["RelationshipSchema"][];
       /**
        * Hierarchical
        * @description Defines if the Generic support the hierarchical mode.
        * @default false
        */
-      hierarchical?: boolean;
+      hierarchical: boolean;
       /**
        * Generate Profile
        * @description Indicate if a profile schema should be generated for this schema
        * @default true
        */
-      generate_profile?: boolean;
+      generate_profile: boolean;
       /**
        * Used By
        * @description List of Nodes that are referencing this Generic
@@ -245,7 +647,7 @@ export interface components {
        * @description Expected state of the node/generic after loading the schema
        * @default present
        */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /**
        * Name
        * @description Node name, must be unique within a namespace and must start with an uppercase letter.
@@ -270,7 +672,7 @@ export interface components {
        * @description Type of branch support for the model.
        * @default aware
        */
-      branch?: components["schemas"]["BranchSupportType"];
+      branch: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
        * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -317,11 +719,6 @@ export interface components {
        */
       documentation?: string | null;
       /**
-       * Filters
-       * @description Node filters
-       */
-      filters?: components["schemas"]["FilterSchema"][];
-      /**
        * Attributes
        * @description Node attributes
        */
@@ -330,7 +727,7 @@ export interface components {
        * Relationships
        * @description Node Relationships
        */
-      relationships?: components["schemas"]["RelationshipSchema-Output"][];
+      relationships?: components["schemas"]["RelationshipSchema"][];
       /**
        * Inherit From
        * @description List of Generic Kind that this node is inheriting from
@@ -341,7 +738,7 @@ export interface components {
        * @description Indicate if a profile schema should be generated for this schema
        * @default true
        */
-      generate_profile?: boolean;
+      generate_profile: boolean;
       /**
        * Hierarchy
        * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
@@ -373,7 +770,7 @@ export interface components {
        * @description Expected state of the node/generic after loading the schema
        * @default present
        */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /**
        * Name
        * @description Node name, must be unique within a namespace and must start with an uppercase letter.
@@ -398,7 +795,7 @@ export interface components {
        * @description Type of branch support for the model.
        * @default aware
        */
-      branch?: components["schemas"]["BranchSupportType"];
+      branch: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
        * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -445,11 +842,6 @@ export interface components {
        */
       documentation?: string | null;
       /**
-       * Filters
-       * @description Node filters
-       */
-      filters?: components["schemas"]["FilterSchema"][];
-      /**
        * Attributes
        * @description Node attributes
        */
@@ -458,7 +850,7 @@ export interface components {
        * Relationships
        * @description Node Relationships
        */
-      relationships?: components["schemas"]["RelationshipSchema-Output"][];
+      relationships?: components["schemas"]["RelationshipSchema"][];
       /**
        * Inherit From
        * @description List of Generic Kind that this profile is inheriting from
@@ -488,7 +880,7 @@ export interface components {
        * Enable
        * @default true
        */
-      enable?: boolean;
+      enable: boolean;
       /** Address */
       address?: string | null;
       /** Api Key */
@@ -519,7 +911,7 @@ export interface components {
        * @description Expected state of the attribute after loading the schema
        * @default present
        */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /**
        * Name
        * @description Attribute name, must be unique within a model and must be all lowercase.
@@ -570,19 +962,19 @@ export interface components {
        * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
        * @default false
        */
-      read_only?: boolean;
+      read_only: boolean;
       /**
        * Unique
        * @description Indicate if the value of this attribute must be unique in the database for a given model.
        * @default false
        */
-      unique?: boolean;
+      unique: boolean;
       /**
        * Optional
        * @description Indicate if this attribute is mandatory or optional.
        * @default false
        */
-      optional?: boolean;
+      optional: boolean;
       /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
       branch?: components["schemas"]["BranchSupportType"] | null;
       /**
@@ -594,18 +986,18 @@ export interface components {
        * Default Value
        * @description Default value of the attribute.
        */
-      default_value?: unknown;
+      default_value?: unknown | null;
       /**
        * Inherited
        * @description Internal value to indicate if the attribute was inherited from a Generic node.
        * @default false
        */
-      inherited?: boolean;
+      inherited: boolean;
       /**
        * @description Type of allowed override for the attribute.
        * @default any
        */
-      allow_override?: components["schemas"]["AllowOverrideType"];
+      allow_override: components["schemas"]["AllowOverrideType"];
     };
     /** AttributeSchema */
     "AttributeSchema-Output": {
@@ -618,7 +1010,7 @@ export interface components {
        * @description Expected state of the attribute after loading the schema
        * @default present
        */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /**
        * Name
        * @description Attribute name, must be unique within a model and must be all lowercase.
@@ -669,19 +1061,19 @@ export interface components {
        * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
        * @default false
        */
-      read_only?: boolean;
+      read_only: boolean;
       /**
        * Unique
        * @description Indicate if the value of this attribute must be unique in the database for a given model.
        * @default false
        */
-      unique?: boolean;
+      unique: boolean;
       /**
        * Optional
        * @description Indicate if this attribute is mandatory or optional.
        * @default false
        */
-      optional?: boolean;
+      optional: boolean;
       /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
       branch?: components["schemas"]["BranchSupportType"] | null;
       /**
@@ -693,18 +1085,18 @@ export interface components {
        * Default Value
        * @description Default value of the attribute.
        */
-      default_value?: unknown;
+      default_value?: unknown | null;
       /**
        * Inherited
        * @description Internal value to indicate if the attribute was inherited from a Generic node.
        * @default false
        */
-      inherited?: boolean;
+      inherited: boolean;
       /**
        * @description Type of allowed override for the attribute.
        * @default any
        */
-      allow_override?: components["schemas"]["AllowOverrideType"];
+      allow_override: components["schemas"]["AllowOverrideType"];
     };
     /** Body_upload_file_api_storage_upload_file_post */
     Body_upload_file_api_storage_upload_file_post: {
@@ -755,38 +1147,38 @@ export interface components {
     /** BranchDiffElementAttribute */
     BranchDiffElementAttribute: {
       /** @default Attribute */
-      type?: components["schemas"]["DiffElementType"];
+      type: components["schemas"]["DiffElementType"];
       /** Branches */
       branches?: string[];
       /**
        * Id
        * @default
        */
-      id?: string;
+      id: string;
       summary?: components["schemas"]["DiffSummary"];
       /** @default unchanged */
-      action?: components["schemas"]["DiffAction"];
+      action: components["schemas"]["DiffAction"];
       value?: components["schemas"]["BranchDiffPropertyCollection"] | null;
       /** Properties */
       properties?: {
-        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"] | undefined;
       };
     };
     /** BranchDiffElementRelationshipMany */
     BranchDiffElementRelationshipMany: {
       /** @default RelationshipMany */
-      type?: components["schemas"]["DiffElementType"];
+      type: components["schemas"]["DiffElementType"];
       /**
        * Identifier
        * @default
        */
-      identifier?: string;
+      identifier: string;
       /** Branches */
       branches?: string[];
       summary?: components["schemas"]["DiffSummary"];
       /** Peers */
       peers?: {
-        [key: string]: components["schemas"]["BranchDiffElementRelationshipManyPeer"];
+        [key: string]: components["schemas"]["BranchDiffElementRelationshipManyPeer"] | undefined;
       };
     };
     /** BranchDiffElementRelationshipManyPeer */
@@ -798,42 +1190,42 @@ export interface components {
       path: string;
       /** Properties */
       properties?: {
-        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"] | undefined;
       };
       /** Changed At */
       changed_at?: string | null;
       /** Action */
       action?: {
-        [key: string]: components["schemas"]["DiffAction"];
+        [key: string]: components["schemas"]["DiffAction"] | undefined;
       };
     };
     /** BranchDiffElementRelationshipOne */
     BranchDiffElementRelationshipOne: {
       /** @default RelationshipOne */
-      type?: components["schemas"]["DiffElementType"];
+      type: components["schemas"]["DiffElementType"];
       /**
        * Id
        * @default
        */
-      id?: string;
+      id: string;
       /**
        * Identifier
        * @default
        */
-      identifier?: string;
+      identifier: string;
       /** Branches */
       branches?: string[];
       summary?: components["schemas"]["DiffSummary"];
       peer?: components["schemas"]["BranchDiffRelationshipOnePeerCollection"] | null;
       /** Properties */
       properties?: {
-        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"] | undefined;
       };
       /** Changed At */
       changed_at?: string | null;
       /** Action */
       action?: {
-        [key: string]: components["schemas"]["DiffAction"];
+        [key: string]: components["schemas"]["DiffAction"] | undefined;
       };
     };
     /** BranchDiffEntry */
@@ -846,16 +1238,16 @@ export interface components {
       path: string;
       /** Elements */
       elements?: {
-        [key: string]: components["schemas"]["BranchDiffElement"];
+        [key: string]: components["schemas"]["BranchDiffElement"] | undefined;
       };
       summary?: components["schemas"]["DiffSummary"];
       /** Action */
       action?: {
-        [key: string]: components["schemas"]["DiffAction"];
+        [key: string]: components["schemas"]["DiffAction"] | undefined;
       };
       /** Display Label */
       display_label?: {
-        [key: string]: string;
+        [key: string]: string | undefined;
       };
     };
     /** BranchDiffFile */
@@ -940,6 +1332,7 @@ export interface components {
       logging: components["schemas"]["LoggingSettings"];
       analytics: components["schemas"]["AnalyticsSettings"];
       experimental_features: components["schemas"]["ExperimentalFeaturesSettings"];
+      sso: components["schemas"]["SSOInfo"];
     };
     /**
      * DiffAction
@@ -957,24 +1350,24 @@ export interface components {
        * Added
        * @default 0
        */
-      added?: number;
+      added: number;
       /**
        * Removed
        * @default 0
        */
-      removed?: number;
+      removed: number;
       /**
        * Updated
        * @default 0
        */
-      updated?: number;
+      updated: number;
     };
     /** DropdownChoice */
     DropdownChoice: {
       /** Id */
       id?: string | null;
       /** @default present */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /** Name */
       name: string;
       /** Description */
@@ -990,34 +1383,13 @@ export interface components {
        * Pull Request
        * @default false
        */
-      pull_request?: boolean;
+      pull_request: boolean;
       /**
        * Graphql Enums
        * @default false
        */
-      graphql_enums?: boolean;
+      graphql_enums: boolean;
     };
-    /** FilterSchema */
-    FilterSchema: {
-      /** Id */
-      id?: string | null;
-      /** @default present */
-      state?: components["schemas"]["HashableModelState"];
-      /** Name */
-      name: string;
-      kind: components["schemas"]["FilterSchemaKind"];
-      /** Enum */
-      enum?: unknown[] | null;
-      /** Object Kind */
-      object_kind?: string | null;
-      /** Description */
-      description?: string | null;
-    };
-    /**
-     * FilterSchemaKind
-     * @enum {string}
-     */
-    FilterSchemaKind: "Text" | "Number" | "Boolean" | "Object" | "MultiObject" | "Enum";
     /**
      * GenericSchema
      * @description A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined.
@@ -1032,7 +1404,7 @@ export interface components {
        * @description Expected state of the node/generic after loading the schema
        * @default present
        */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /**
        * Name
        * @description Node name, must be unique within a namespace and must start with an uppercase letter.
@@ -1057,7 +1429,7 @@ export interface components {
        * @description Type of branch support for the model.
        * @default aware
        */
-      branch?: components["schemas"]["BranchSupportType"];
+      branch: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
        * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -1104,11 +1476,6 @@ export interface components {
        */
       documentation?: string | null;
       /**
-       * Filters
-       * @description Node filters
-       */
-      filters?: components["schemas"]["FilterSchema"][];
-      /**
        * Attributes
        * @description Node attributes
        */
@@ -1117,19 +1484,19 @@ export interface components {
        * Relationships
        * @description Node Relationships
        */
-      relationships?: components["schemas"]["RelationshipSchema-Input"][];
+      relationships?: components["schemas"]["RelationshipSchema"][];
       /**
        * Hierarchical
        * @description Defines if the Generic support the hierarchical mode.
        * @default false
        */
-      hierarchical?: boolean;
+      hierarchical: boolean;
       /**
        * Generate Profile
        * @description Indicate if a profile schema should be generated for this schema
        * @default true
        */
-      generate_profile?: boolean;
+      generate_profile: boolean;
       /**
        * Used By
        * @description List of Nodes that are referencing this Generic
@@ -1145,15 +1512,15 @@ export interface components {
     HashableModelDiff: {
       /** Added */
       added?: {
-        [key: string]: components["schemas"]["HashableModelDiff"] | null;
+        [key: string]: (components["schemas"]["HashableModelDiff"] | null) | undefined;
       };
       /** Changed */
       changed?: {
-        [key: string]: components["schemas"]["HashableModelDiff"] | null;
+        [key: string]: (components["schemas"]["HashableModelDiff"] | null) | undefined;
       };
       /** Removed */
       removed?: {
-        [key: string]: components["schemas"]["HashableModelDiff"] | null;
+        [key: string]: (components["schemas"]["HashableModelDiff"] | null) | undefined;
       };
     };
     /**
@@ -1180,13 +1547,13 @@ export interface components {
        * @description URL endpoint if applicable
        * @default
        */
-      path?: string;
+      path: string;
       /**
        * Icon
        * @description The icon to show for the current view
        * @default
        */
-      icon?: string;
+      icon: string;
       /**
        * Children
        * @description Child objects
@@ -1196,7 +1563,7 @@ export interface components {
        * Kind
        * @default
        */
-      kind?: string;
+      kind: string;
     };
     /** JSONSchema */
     JSONSchema: {
@@ -1243,12 +1610,10 @@ export interface components {
     };
     /** LoggingSettings */
     LoggingSettings: {
-      /**
-       * @default {
-       *   "enable": false
-       * }
-       */
-      remote?: components["schemas"]["RemoteLoggingSettings"];
+      /** @default {
+       *       "enable": false
+       *     } */
+      remote: components["schemas"]["RemoteLoggingSettings"];
     };
     /** MainSettings */
     MainSettings: {
@@ -1257,48 +1622,108 @@ export interface components {
        * @description Full path of saved json containing pre-indexed documentation
        * @default /opt/infrahub/docs/build/search-index.json
        */
-      docs_index_path?: string;
-      /**
-       * Internal Address
-       * @default http://localhost:8000
-       */
-      internal_address?: string;
+      docs_index_path: string;
+      /** Internal Address */
+      internal_address?: string | null;
       /**
        * Allow Anonymous Access
        * @description Indicates if the system allows anonymous read access
        * @default true
        */
-      allow_anonymous_access?: boolean;
+      allow_anonymous_access: boolean;
       /**
        * Telemetry Optout
        * @description Disable anonymous usage reporting
        * @default false
        */
-      telemetry_optout?: boolean;
+      telemetry_optout: boolean;
       /**
        * Telemetry Endpoint
        * @default https://telemetry.opsmill.cloud/infrahub
        */
-      telemetry_endpoint?: string;
+      telemetry_endpoint: string;
       /**
        * Telemetry Interval
        * @description Time (in seconds) between telemetry usage push
        * @default 86400
        */
-      telemetry_interval?: number;
+      telemetry_interval: number;
+      /**
+       * Permission Backends
+       * @description List of modules to handle permissions, they will be run in the given order
+       * @default [
+       *       "infrahub.permissions.LocalPermissionBackend"
+       *     ]
+       */
+      permission_backends: string[];
     };
+    /** Menu */
+    Menu: {
+      /** Sections */
+      sections?: {
+        [key: string]: components["schemas"]["MenuItemList"][] | undefined;
+      };
+    };
+    /** MenuItemList */
+    MenuItemList: {
+      /**
+       * Identifier
+       * @description Unique identifier for this menu item
+       */
+      identifier: string;
+      /**
+       * Title
+       * @description Title of the menu item
+       */
+      title: string;
+      /**
+       * Path
+       * @description URL endpoint if applicable
+       * @default
+       */
+      path: string;
+      /**
+       * Icon
+       * @description The icon to show for the current view
+       * @default
+       */
+      icon: string;
+      /**
+       * Kind
+       * @description Kind of the model associated with this menuitem if applicable
+       * @default
+       */
+      kind: string;
+      /**
+       * Order Weight
+       * @default 5000
+       */
+      order_weight: number;
+      /** @default object */
+      section: components["schemas"]["MenuSection"];
+      /**
+       * Children
+       * @description Child objects
+       */
+      children?: components["schemas"]["MenuItemList"][];
+    };
+    /**
+     * MenuSection
+     * @enum {string}
+     */
+    MenuSection: "object" | "internal";
     /** NodeExtensionSchema */
     NodeExtensionSchema: {
       /** Id */
       id?: string | null;
       /** @default present */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /** Kind */
       kind: string;
       /** Attributes */
       attributes?: components["schemas"]["AttributeSchema-Input"][];
       /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema-Input"][];
+      relationships?: components["schemas"]["RelationshipSchema"][];
     };
     /** NodeSchema */
     NodeSchema: {
@@ -1311,7 +1736,7 @@ export interface components {
        * @description Expected state of the node/generic after loading the schema
        * @default present
        */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /**
        * Name
        * @description Node name, must be unique within a namespace and must start with an uppercase letter.
@@ -1336,7 +1761,7 @@ export interface components {
        * @description Type of branch support for the model.
        * @default aware
        */
-      branch?: components["schemas"]["BranchSupportType"];
+      branch: components["schemas"]["BranchSupportType"];
       /**
        * Default Filter
        * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -1383,11 +1808,6 @@ export interface components {
        */
       documentation?: string | null;
       /**
-       * Filters
-       * @description Node filters
-       */
-      filters?: components["schemas"]["FilterSchema"][];
-      /**
        * Attributes
        * @description Node attributes
        */
@@ -1396,7 +1816,7 @@ export interface components {
        * Relationships
        * @description Node Relationships
        */
-      relationships?: components["schemas"]["RelationshipSchema-Input"][];
+      relationships?: components["schemas"]["RelationshipSchema"][];
       /**
        * Inherit From
        * @description List of Generic Kind that this node is inheriting from
@@ -1407,7 +1827,7 @@ export interface components {
        * @description Indicate if a profile schema should be generated for this schema
        * @default true
        */
-      generate_profile?: boolean;
+      generate_profile: boolean;
       /**
        * Hierarchy
        * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
@@ -1441,7 +1861,7 @@ export interface components {
     QueryPayload: {
       /** Variables */
       variables?: {
-        [key: string]: string;
+        [key: string]: string | undefined;
       };
     };
     /**
@@ -1472,7 +1892,7 @@ export interface components {
       | "Hierarchy"
       | "Profile";
     /** RelationshipSchema */
-    "RelationshipSchema-Input": {
+    RelationshipSchema: {
       /**
        * Id
        * @description The ID of the relationship schema
@@ -1482,7 +1902,7 @@ export interface components {
        * @description Expected state of the relationship after loading the schema
        * @default present
        */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /**
        * Name
        * @description Relationship name, must be unique within a model and must be all lowercase.
@@ -1497,7 +1917,7 @@ export interface components {
        * @description Defines the type of the relationship.
        * @default Generic
        */
-      kind?: components["schemas"]["RelationshipKind"];
+      kind: components["schemas"]["RelationshipKind"];
       /**
        * Label
        * @description Human friendly representation of the name. Will be autogenerated if not provided
@@ -1517,19 +1937,19 @@ export interface components {
        * @description Defines how many objects are expected on the other side of the relationship.
        * @default many
        */
-      cardinality?: components["schemas"]["RelationshipCardinality"];
+      cardinality: components["schemas"]["RelationshipCardinality"];
       /**
        * Min Count
        * @description Defines the minimum objects allowed on the other side of the relationship.
        * @default 0
        */
-      min_count?: number;
+      min_count: number;
       /**
        * Max Count
        * @description Defines the maximum objects allowed on the other side of the relationship.
        * @default 0
        */
-      max_count?: number;
+      max_count: number;
       /**
        * Order Weight
        * @description Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.
@@ -1540,7 +1960,7 @@ export interface components {
        * @description Indicate if this relationship is mandatory or optional.
        * @default true
        */
-      optional?: boolean;
+      optional: boolean;
       /** @description Type of branch support for the relatioinship, if not defined it will be determine based both peers. */
       branch?: components["schemas"]["BranchSupportType"] | null;
       /**
@@ -1548,142 +1968,30 @@ export interface components {
        * @description Internal value to indicate if the relationship was inherited from a Generic node.
        * @default false
        */
-      inherited?: boolean;
+      inherited: boolean;
       /**
        * @description Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.
        * @default bidirectional
        */
-      direction?: components["schemas"]["RelationshipDirection"];
+      direction: components["schemas"]["RelationshipDirection"];
       /**
        * Hierarchical
        * @description Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind
        */
       hierarchical?: string | null;
-      /**
-       * Filters
-       * @description Relationship filters
-       */
-      filters?: components["schemas"]["FilterSchema"][];
       /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
       on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
       /**
        * @description Type of allowed override for the relationship.
        * @default any
        */
-      allow_override?: components["schemas"]["AllowOverrideType"];
+      allow_override: components["schemas"]["AllowOverrideType"];
       /**
        * Read Only
        * @description Set the relationship as read-only, users won't be able to change its value.
        * @default false
        */
-      read_only?: boolean;
-    };
-    /** RelationshipSchema */
-    "RelationshipSchema-Output": {
-      /**
-       * Id
-       * @description The ID of the relationship schema
-       */
-      id?: string | null;
-      /**
-       * @description Expected state of the relationship after loading the schema
-       * @default present
-       */
-      state?: components["schemas"]["HashableModelState"];
-      /**
-       * Name
-       * @description Relationship name, must be unique within a model and must be all lowercase.
-       */
-      name: string;
-      /**
-       * Peer
-       * @description Type (kind) of objects supported on the other end of the relationship.
-       */
-      peer: string;
-      /**
-       * @description Defines the type of the relationship.
-       * @default Generic
-       */
-      kind?: components["schemas"]["RelationshipKind"];
-      /**
-       * Label
-       * @description Human friendly representation of the name. Will be autogenerated if not provided
-       */
-      label?: string | null;
-      /**
-       * Description
-       * @description Short description of the relationship.
-       */
-      description?: string | null;
-      /**
-       * Identifier
-       * @description Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction.
-       */
-      identifier?: string | null;
-      /**
-       * @description Defines how many objects are expected on the other side of the relationship.
-       * @default many
-       */
-      cardinality?: components["schemas"]["RelationshipCardinality"];
-      /**
-       * Min Count
-       * @description Defines the minimum objects allowed on the other side of the relationship.
-       * @default 0
-       */
-      min_count?: number;
-      /**
-       * Max Count
-       * @description Defines the maximum objects allowed on the other side of the relationship.
-       * @default 0
-       */
-      max_count?: number;
-      /**
-       * Order Weight
-       * @description Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.
-       */
-      order_weight?: number | null;
-      /**
-       * Optional
-       * @description Indicate if this relationship is mandatory or optional.
-       * @default true
-       */
-      optional?: boolean;
-      /** @description Type of branch support for the relatioinship, if not defined it will be determine based both peers. */
-      branch?: components["schemas"]["BranchSupportType"] | null;
-      /**
-       * Inherited
-       * @description Internal value to indicate if the relationship was inherited from a Generic node.
-       * @default false
-       */
-      inherited?: boolean;
-      /**
-       * @description Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.
-       * @default bidirectional
-       */
-      direction?: components["schemas"]["RelationshipDirection"];
-      /**
-       * Hierarchical
-       * @description Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind
-       */
-      hierarchical?: string | null;
-      /**
-       * Filters
-       * @description Relationship filters
-       */
-      filters?: components["schemas"]["FilterSchema"][];
-      /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
-      on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
-      /**
-       * @description Type of allowed override for the relationship.
-       * @default any
-       */
-      allow_override?: components["schemas"]["AllowOverrideType"];
-      /**
-       * Read Only
-       * @description Set the relationship as read-only, users won't be able to change its value.
-       * @default false
-       */
-      read_only?: boolean;
+      read_only: boolean;
     };
     /** RemoteLoggingSettings */
     RemoteLoggingSettings: {
@@ -1691,7 +1999,7 @@ export interface components {
        * Enable
        * @default false
        */
-      enable?: boolean;
+      enable: boolean;
       /** Frontend Dsn */
       frontend_dsn?: string | null;
       /** Api Server Dsn */
@@ -1699,32 +2007,58 @@ export interface components {
       /** Git Agent Dsn */
       git_agent_dsn?: string | null;
     };
+    /** SSOInfo */
+    SSOInfo: {
+      /** Providers */
+      providers?: components["schemas"]["SSOProviderInfo"][];
+      /** Enabled */
+      readonly enabled: boolean;
+    };
+    /**
+     * SSOProtocol
+     * @enum {string}
+     */
+    SSOProtocol: "oauth2" | "oidc";
+    /** SSOProviderInfo */
+    SSOProviderInfo: {
+      /** Name */
+      name: string;
+      /** Display Label */
+      display_label: string;
+      /** Icon */
+      icon: string;
+      protocol: components["schemas"]["SSOProtocol"];
+      /** Authorize Path */
+      readonly authorize_path: string;
+      /** Token Path */
+      readonly token_path: string;
+    };
     /** SchemaBranchHash */
     SchemaBranchHash: {
       /** Main */
       main: string;
       /** Nodes */
       nodes?: {
-        [key: string]: string;
+        [key: string]: string | undefined;
       };
       /** Generics */
       generics?: {
-        [key: string]: string;
+        [key: string]: string | undefined;
       };
     };
     /** SchemaDiff */
     SchemaDiff: {
       /** Added */
       added?: {
-        [key: string]: components["schemas"]["HashableModelDiff"];
+        [key: string]: components["schemas"]["HashableModelDiff"] | undefined;
       };
       /** Changed */
       changed?: {
-        [key: string]: components["schemas"]["HashableModelDiff"];
+        [key: string]: components["schemas"]["HashableModelDiff"] | undefined;
       };
       /** Removed */
       removed?: {
-        [key: string]: components["schemas"]["HashableModelDiff"];
+        [key: string]: components["schemas"]["HashableModelDiff"] | undefined;
       };
     };
     /** SchemaExtension */
@@ -1732,7 +2066,7 @@ export interface components {
       /** Id */
       id?: string | null;
       /** @default present */
-      state?: components["schemas"]["HashableModelState"];
+      state: components["schemas"]["HashableModelState"];
       /** Nodes */
       nodes?: components["schemas"]["NodeExtensionSchema"][];
     };
@@ -1744,13 +2078,11 @@ export interface components {
       generics?: components["schemas"]["GenericSchema"][];
       /** Nodes */
       nodes?: components["schemas"]["NodeSchema"][];
-      /**
-       * @default {
-       *   "state": "present",
-       *   "nodes": []
-       * }
-       */
-      extensions?: components["schemas"]["SchemaExtension"];
+      /** @default {
+       *       "state": "present",
+       *       "nodes": []
+       *     } */
+      extensions: components["schemas"]["SchemaExtension"];
     };
     /** SchemaNamespace */
     SchemaNamespace: {
@@ -1793,23 +2125,10 @@ export interface components {
        * Schema Updated
        * @description Indicates if the loading of the schema changed the existing schema
        */
-      schema_updated: boolean;
+      readonly schema_updated: boolean;
     };
     /** SchemasLoadAPI */
     SchemasLoadAPI: {
-      /** Version */
-      version?: string | null;
-      /** Generics */
-      generics?: components["schemas"]["GenericSchema"][];
-      /** Nodes */
-      nodes?: components["schemas"]["NodeSchema"][];
-      /**
-       * @default {
-       *   "state": "present",
-       *   "nodes": []
-       * }
-       */
-      extensions?: components["schemas"]["SchemaExtension"];
       /** Schemas */
       schemas: components["schemas"]["SchemaLoadAPI"][];
     };
@@ -1838,6 +2157,24 @@ export interface components {
        */
       refresh_token: string;
     };
+    /** UserTokenWithUrl */
+    UserTokenWithUrl: {
+      /**
+       * Access Token
+       * @description JWT access_token
+       */
+      access_token: string;
+      /**
+       * Refresh Token
+       * @description JWT refresh_token
+       */
+      refresh_token: string;
+      /**
+       * Final Url
+       * @description The final url after logged in
+       */
+      final_url: string;
+    };
     /** ValidationError */
     ValidationError: {
       /** Location */
@@ -1854,13 +2191,8 @@ export interface components {
   headers: never;
   pathItems: never;
 }
-
 export type $defs = Record<string, never>;
-
-export type external = Record<string, never>;
-
 export interface operations {
-  /** Get Artifact */
   get_artifact_api_artifact__artifact_id__get: {
     parameters: {
       query?: {
@@ -1869,26 +2201,34 @@ export interface operations {
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
       };
+      header?: never;
       path: {
         artifact_id: string;
       };
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": unknown;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Generate Artifact */
   generate_artifact_api_artifact_generate__artifact_definition_id__post: {
     parameters: {
       query?: {
@@ -1897,9 +2237,11 @@ export interface operations {
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
       };
+      header?: never;
       path: {
         artifact_definition_id: string;
       };
+      cookie?: never;
     };
     requestBody?: {
       content: {
@@ -1909,20 +2251,31 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": null;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Login User */
   login_user_api_auth_login_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     requestBody: {
       content: {
         "application/json": components["schemas"]["PasswordCredential"];
@@ -1931,41 +2284,64 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["UserToken"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Refresh Jwt Token */
   refresh_jwt_token_api_auth_refresh_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["AccessTokenResponse"];
         };
       };
     };
   };
-  /** Logout */
   logout_api_auth_logout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": unknown;
         };
       };
     };
   };
-  /** Get Diff Data */
   get_diff_data_api_diff_data_get: {
     parameters: {
       query?: {
@@ -1975,23 +2351,32 @@ export interface operations {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["BranchDiff"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Diff Schema */
   get_diff_schema_api_diff_schema_get: {
     parameters: {
       query?: {
@@ -2001,23 +2386,32 @@ export interface operations {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["BranchDiff"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Diff Files */
   get_diff_files_api_diff_files_get: {
     parameters: {
       query?: {
@@ -2027,27 +2421,38 @@ export interface operations {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": {
-            [key: string]: {
-              [key: string]: components["schemas"]["BranchDiffRepository"];
-            };
+            [key: string]:
+              | {
+                  [key: string]: components["schemas"]["BranchDiffRepository"] | undefined;
+                }
+              | undefined;
           };
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Diff Artifacts */
   get_diff_artifacts_api_diff_artifacts_get: {
     parameters: {
       query?: {
@@ -2057,28 +2462,34 @@ export interface operations {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": {
-            [key: string]: components["schemas"]["BranchDiffArtifact"];
+            [key: string]: components["schemas"]["BranchDiffArtifact"] | undefined;
           };
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /**
-   * Get File
-   * @description Retrieve a file from a git repository.
-   */
   get_file_api_file__repository_id___file_path__get: {
     parameters: {
       query?: {
@@ -2088,72 +2499,273 @@ export interface operations {
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
       };
+      header?: never;
       path: {
         repository_id: string;
         file_path: string;
       };
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "text/plain": string;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Config */
   get_config_api_config_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["ConfigAPI"];
         };
       };
     };
   };
-  /** Get Info */
   get_info_api_info_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["InfoAPI"];
         };
       };
     };
   };
-  /** Get Menu */
   get_menu_api_menu_get: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["InterfaceMenu"][];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Graphql Query Get */
+  get_new_menu_api_menu_new_get: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Menu"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  authorize_api_oauth2__provider_name__authorize_get: {
+    parameters: {
+      query?: {
+        final_url?: string | null;
+      };
+      header?: never;
+      path: {
+        provider_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  token_api_oauth2__provider_name__token_get: {
+    parameters: {
+      query: {
+        state: string;
+        code: string;
+      };
+      header?: never;
+      path: {
+        provider_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserTokenWithUrl"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  authorize_api_oidc__provider_name__authorize_get: {
+    parameters: {
+      query?: {
+        final_url?: string | null;
+      };
+      header?: never;
+      path: {
+        provider_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  token_api_oidc__provider_name__token_get: {
+    parameters: {
+      query: {
+        state: string;
+        code: string;
+      };
+      header?: never;
+      path: {
+        provider_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserTokenWithUrl"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   graphql_query_get_api_query__query_id__get: {
     parameters: {
       query?: {
@@ -2166,27 +2778,35 @@ export interface operations {
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
       };
+      header?: never;
       path: {
         /** @description ID or Name of the GraphQL query to execute */
         query_id: string;
       };
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": Record<string, never>;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Graphql Query Post */
   graphql_query_post_api_query__query_id__post: {
     parameters: {
       query?: {
@@ -2199,10 +2819,12 @@ export interface operations {
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
       };
+      header?: never;
       path: {
         /** @description ID or Name of the GraphQL query to execute */
         query_id: string;
       };
+      cookie?: never;
     };
     requestBody?: {
       content: {
@@ -2212,19 +2834,24 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": Record<string, never>;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Schema */
   get_schema_api_schema_get: {
     parameters: {
       query?: {
@@ -2232,59 +2859,83 @@ export interface operations {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["SchemaReadAPI"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Schema Summary */
   get_schema_summary_api_schema_summary_get: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["SchemaBranchHash"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Schema By Kind */
   get_schema_by_kind_api_schema__schema_kind__get: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
       path: {
         schema_kind: string;
       };
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json":
             | components["schemas"]["APIProfileSchema"]
@@ -2294,45 +2945,58 @@ export interface operations {
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Json Schema By Kind */
   get_json_schema_by_kind_api_schema_json_schema__schema_kind__get: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
       path: {
         schema_kind: string;
       };
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["JSONSchema"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Load Schema */
   load_schema_api_schema_load_post: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     requestBody: {
       content: {
@@ -2342,25 +3006,33 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["SchemaUpdate"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Check Schema */
   check_schema_api_schema_check_post: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
         branch?: string | null;
       };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     requestBody: {
       content: {
@@ -2370,42 +3042,62 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": unknown;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get File */
   get_file_api_storage_object__identifier__get: {
     parameters: {
+      query?: never;
+      header?: never;
       path: {
         identifier: string;
       };
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": unknown;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Upload Content */
   upload_content_api_storage_upload_content_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     requestBody: {
       content: {
         "application/json": components["schemas"]["UploadContentPayload"];
@@ -2414,20 +3106,31 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["UploadResponse"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Upload File */
   upload_file_api_storage_upload_file_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
     requestBody: {
       content: {
         "multipart/form-data": components["schemas"]["Body_upload_file_api_storage_upload_file_post"];
@@ -2436,19 +3139,24 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["UploadResponse"];
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Transform Python */
   transform_python_api_transform_python__transform_id__get: {
     parameters: {
       query?: {
@@ -2457,26 +3165,34 @@ export interface operations {
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
       };
+      header?: never;
       path: {
         transform_id: string;
       };
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": unknown;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Transform Jinja2 */
   transform_jinja2_api_transform_jinja2__transform_id__get: {
     parameters: {
       query?: {
@@ -2485,20 +3201,29 @@ export interface operations {
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
       };
+      header?: never;
       path: {
         /** @description ID or Name of the Jinja2 Transform to render */
         transform_id: string;
       };
+      cookie?: never;
     };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "text/plain": string;
         };
       };
       /** @description Validation Error */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
