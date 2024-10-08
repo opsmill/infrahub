@@ -57,6 +57,7 @@ class GlobalPermissions(InfrahubStringEnum):
     MERGE_PROPOSED_CHANGE = "merge_proposed_change"
     MANAGE_ACCOUNTS = "manage_accounts"
     MANAGE_PERMISSIONS = "manage_permissions"
+    MANAGE_REPOSITORIES = "manage_repositories"
 
 
 class PermissionAction(InfrahubStringEnum):

@@ -150,9 +150,11 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)
-            if is_permission_operation := kind in (InfrahubKind.GLOBALPERMISSION, InfrahubKind.OBJECTPERMISSION) or (
-                isinstance(schema, NodeSchema) and InfrahubKind.BASEPERMISSION in schema.inherit_from
-            ):
+            if is_permission_operation := kind in (
+                InfrahubKind.BASEPERMISSION,
+                InfrahubKind.GLOBALPERMISSION,
+                InfrahubKind.OBJECTPERMISSION,
+            ) or (isinstance(schema, NodeSchema) and InfrahubKind.BASEPERMISSION in schema.inherit_from):
                 break
 
         if not is_permission_operation:
@@ -163,5 +165,48 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
                 db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
             ):
                 raise PermissionDeniedError("You do not have the permission to manage permissions")
+
+        return CheckerResolution.NEXT_CHECKER
+
+
+class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
+    """Checker that makes sure a user account can add/edit/delete repository objects.
+
+    This is similar to object permission checker except that we only care about mutations on repositories.
+    """
+
+    permission_required = f"global:{GlobalPermissions.MANAGE_REPOSITORIES.value}:{PermissionDecision.ALLOW.value}"
+
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+        return account_session.authenticated
+
+    async def check(
+        self,
+        db: InfrahubDatabase,
+        account_session: AccountSession,
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        query_parameters: GraphqlParams,
+        branch: Branch,
+    ) -> CheckerResolution:
+        is_repository_operation = False
+        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+
+        for kind in kinds:
+            schema = get_schema(db=db, branch=branch, node_schema=kind)
+            if is_repository_operation := kind in (
+                InfrahubKind.GENERICREPOSITORY,
+                InfrahubKind.REPOSITORY,
+                InfrahubKind.READONLYREPOSITORY,
+            ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICREPOSITORY in schema.inherit_from):
+                break
+
+        if not is_repository_operation or not analyzed_query.contains_mutation:
+            return CheckerResolution.NEXT_CHECKER
+
+        for permission_backend in registry.permission_backends:
+            if not await permission_backend.has_permission(
+                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+            ):
+                raise PermissionDeniedError("You do not have the permission to manage repositories")
 
         return CheckerResolution.NEXT_CHECKER
