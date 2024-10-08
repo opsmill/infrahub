@@ -26,3 +26,4 @@ frontend/**/playwright-report
 # Generated files
 generated/
 query_performance_results/
+**/infrahub.toml

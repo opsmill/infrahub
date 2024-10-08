@@ -119,7 +119,8 @@ services:
         required: false
     environment:
       <<: *infrahub_config
-      INFRAHUB_CONFIG: /source/development/infrahub.toml
+      INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
       INFRAHUB_PRODUCTION: false
       INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
@@ -128,6 +129,12 @@ services:
       INFRAHUB_WORKFLOW_ADDRESS: task-manager
       INFRAHUB_WORKFLOW_PORT: 4200
       PREFECT_API_URL: "http://task-manager:4200/api"
+      INFRAHUB_DB_ADDRESS: database
+      INFRAHUB_DB_USERNAME: neo4j
+      INFRAHUB_DB_PASSWORD: admin
+      INFRAHUB_DB_PORT: 7687
+      INFRAHUB_DB_PROTOCOL: bolt
+      INFRAHUB_STORAGE_DRIVER: local
     volumes:
       - "storage_data:/opt/infrahub/storage"
       - "workflow_data:/opt/infrahub/workflow"
@@ -158,14 +165,21 @@ services:
       - server
     environment:
       <<: *infrahub_config
-      INFRAHUB_CONFIG: /source/development/infrahub.toml
       INFRAHUB_ADDRESS: http://server:8000
+      INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
       INFRAHUB_PRODUCTION: false
       INFRAHUB_LOG_LEVEL: DEBUG
       INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
       INFRAHUB_TIMEOUT: 20
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      INFRAHUB_DB_ADDRESS: database
+      INFRAHUB_DB_USERNAME: neo4j
+      INFRAHUB_DB_PASSWORD: admin
+      INFRAHUB_DB_PORT: 7687
+      INFRAHUB_DB_PROTOCOL: bolt
+      INFRAHUB_STORAGE_DRIVER: local
     volumes:
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
@@ -191,9 +205,9 @@ services:
       - server
     environment:
       <<: *infrahub_config
-      INFRAHUB_CONFIG: /source/development/infrahub.toml
       INFRAHUB_ADDRESS: http://server:8000
       INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
       INFRAHUB_DB_ADDRESS: "database"
       INFRAHUB_PRODUCTION: false
       INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
@@ -203,6 +217,11 @@ services:
       INFRAHUB_WORKFLOW_ADDRESS: "${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}"
       INFRAHUB_WORKFLOW_PORT: "${INFRAHUB_WORKFLOW_PORT:-4200}"
       PREFECT_API_URL: "http://task-manager:4200/api"
+      INFRAHUB_DB_USERNAME: neo4j
+      INFRAHUB_DB_PASSWORD: admin
+      INFRAHUB_DB_PORT: 7687
+      INFRAHUB_DB_PROTOCOL: bolt
+      INFRAHUB_STORAGE_DRIVER: local
     volumes:
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
