@@ -151,6 +151,7 @@ disable = """,
     too-many-return-statements,
     unnecessary-comprehension,
     multiple-statements,
+    self-assigning-variable,
     """
 
 [tool.pylint.miscellaneous]

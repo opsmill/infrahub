@@ -317,7 +317,7 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ):
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 
         obj = await NodeManager.find_object(
