@@ -160,11 +160,13 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_permission_operation:
             return CheckerResolution.NEXT_CHECKER
 
-        for permission_backend in registry.permission_backends:
-            if not await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
-            ):
-                raise PermissionDeniedError("You do not have the permission to manage permissions")
+        component_registry = get_component_registry()
+        permission_manager = component_registry.get_component(PermissionManager, db=db, branch=branch)
+
+        if not await permission_manager.has_permission(
+            account_session=account_session, permission=self.permission_required
+        ):
+            raise PermissionDeniedError("You do not have the permission to manage permissions")
 
         return CheckerResolution.NEXT_CHECKER
 
@@ -203,10 +205,12 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_repository_operation or not analyzed_query.contains_mutation:
             return CheckerResolution.NEXT_CHECKER
 
-        for permission_backend in registry.permission_backends:
-            if not await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
-            ):
-                raise PermissionDeniedError("You do not have the permission to manage repositories")
+        component_registry = get_component_registry()
+        permission_manager = component_registry.get_component(PermissionManager, db=db, branch=branch)
+
+        if not await permission_manager.has_permission(
+            account_session=account_session, permission=self.permission_required
+        ):
+            raise PermissionDeniedError("You do not have the permission to manage repositories")
 
         return CheckerResolution.NEXT_CHECKER

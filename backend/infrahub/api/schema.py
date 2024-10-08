@@ -28,9 +28,11 @@ from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, Pro
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MigrationError, PermissionDeniedError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
+from infrahub.permissions.manager import PermissionManager
 from infrahub.services import services
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
@@ -244,14 +246,14 @@ async def load_schema(
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
 ) -> SchemaUpdate:
-    for permission_backend in registry.permission_backends:
-        if not await permission_backend.has_permission(
-            db=db,
-            account_id=account_session.account_id,
-            permission=f"global:{GlobalPermissions.MANAGE_SCHEMA.value}:{PermissionDecision.ALLOW.value}",
-            branch=branch,
-        ):
-            raise PermissionDeniedError("You are not allowed to manage the schema")
+    component_registry = get_component_registry()
+    permission_manager = component_registry.get_component(PermissionManager, db=db, branch=branch)
+
+    if not await permission_manager.has_permission(
+        account_session=account_session,
+        permission=f"global:{GlobalPermissions.MANAGE_SCHEMA.value}:{PermissionDecision.ALLOW.value}",
+    ):
+        raise PermissionDeniedError("You are not allowed to manage the schema")
 
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)

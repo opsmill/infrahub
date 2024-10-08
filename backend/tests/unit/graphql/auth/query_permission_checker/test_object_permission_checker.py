@@ -488,7 +488,6 @@ class TestPermissionManagerPermissions:
         first_account: CoreAccount,
         second_account: CoreAccount,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -602,7 +601,6 @@ class TestRepositoryManagerPermissions:
         first_account: CoreAccount,
         second_account: CoreAccount,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
