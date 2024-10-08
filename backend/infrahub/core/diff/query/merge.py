@@ -138,6 +138,7 @@ CALL {
             }
             RETURN a
         }
+        RETURN a
     }
     WITH n, node_diff_map
     CALL {
@@ -214,3 +215,67 @@ CALL {
 RETURN NULL AS done
         """
         self.add_to_query(query=query)
+
+    # // ------------------------------
+    # // handle updates for properties under this attribute
+    # // ------------------------------
+    # CALL {
+    #     WITH a, property_diff_map
+    #     WITH a,
+    #         property_diff_map.property_type AS prop_type,
+    #         CASE
+    #             WHEN property_diff_map.is_peer_id = TRUE THEN property_diff_map.value
+    #             ELSE NULL
+    #         END as prop_peer_id,
+    #         CASE
+    #             WHEN property_diff_map.is_peer_id = FALSE THEN property_diff_map.value
+    #             ELSE NULL
+    #         END as prop_value,
+    #         CASE
+    #             WHEN property_diff_map.action = "ADDED" THEN "active"
+    #             WHEN property_diff_map.action = "REMOVED" THEN "deleted"
+    #             ELSE NULL
+    #         END as prop_rel_status
+    #     // ------------------------------
+    #     // identify the property node for which we need to update edges
+    #     // ------------------------------
+    #     OPTIONAL MATCH (peer:Node {uuid: prop_peer_id})
+    #     OPTIONAL MATCH (attr_val:AttributeValue {value: prop_value})
+    #     WITH a, prop_type, prop_rel_status, COALESCE(peer, attr_val) AS prop_node
+    #     // ------------------------------
+    #     // set property edge.to on source branch and, optionally, target branch
+    #     // ------------------------------
+    #     CALL {
+    #         WITH a, prop_rel_status, prop_type, prop_node
+    #         OPTIONAL MATCH (a)
+    #             -[source_r_prop {branch: $source_branch, status: prop_rel_status}]
+    #             ->(prop_node)
+    #         WHERE type(source_r_prop) = prop_type
+    #         AND source_r_prop.from <= $at AND source_r_prop.to IS NULL
+    #         SET source_r_prop.to = $at
+    #     }
+    #     WITH a, prop_rel_status, prop_type, prop_node
+    #     CALL {
+    #         WITH a, prop_rel_status, prop_type, prop_node
+    #         OPTIONAL MATCH (a)
+    #             -[target_r_prop {branch: $target_branch, status: "active"}]
+    #             ->(prop_node)
+    #         WHERE type(target_r_prop) = prop_type
+    #         AND prop_rel_status = "deleted"
+    #         AND target_r_prop.from <= $at AND target_r_prop.to IS NULL
+    #         SET target_r_prop.to = $at
+    #     }
+    #     // ------------------------------
+    #     // conditionally create new edge to prop_node on target_branch, if necessary
+    #     // ------------------------------
+    #     CALL {
+    #         WITH a, prop_rel_status, prop_type, prop_node
+    #         OPTIONAL MATCH (a)-[r_prop:prop_type {branch: $target_branch}]->(prop_node)
+    #         WHERE r_prop.status = prop_rel_status
+    #         AND r_prop.from <= $at
+    #         AND (r_prop.to >= $at OR r_prop.to IS NULL)
+    #         WITH a, prop_rel_status, prop_type, prop_node, r_prop
+    #         WHERE r_prop IS NULL
+    #         CREATE (a)-[:prop_type { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
+    #     }
+    # }
