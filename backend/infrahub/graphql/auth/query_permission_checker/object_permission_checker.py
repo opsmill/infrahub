@@ -158,14 +158,10 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_permission_operation:
             return CheckerResolution.NEXT_CHECKER
 
-        has_permission = False
         for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
+            if not await permission_backend.has_permission(
                 db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
             ):
-                break
-
-        if not has_permission:
-            raise PermissionDeniedError("You do not have the permission to manage permissions")
+                raise PermissionDeniedError("You do not have the permission to manage permissions")
 
         return CheckerResolution.NEXT_CHECKER
