@@ -129,6 +129,7 @@ services:
       INFRAHUB_WORKFLOW_PORT: 4200
       PREFECT_API_URL: "http://task-manager:4200/api"
     volumes:
+      - "./infrahub.toml:/source/development/infrahub.toml"
       - "storage_data:/opt/infrahub/storage"
       - "workflow_data:/opt/infrahub/workflow"
     tty: true
@@ -160,6 +161,7 @@ services:
       <<: *infrahub_config
       INFRAHUB_CONFIG: /source/development/infrahub.toml
       INFRAHUB_ADDRESS: http://server:8000
+      INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
       INFRAHUB_PRODUCTION: false
       INFRAHUB_LOG_LEVEL: DEBUG
       INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
@@ -167,6 +169,7 @@ services:
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
     volumes:
+      - "./infrahub.toml:/source/development/infrahub.toml"
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
     tty: true
@@ -204,6 +207,7 @@ services:
       INFRAHUB_WORKFLOW_PORT: "${INFRAHUB_WORKFLOW_PORT:-4200}"
       PREFECT_API_URL: "http://task-manager:4200/api"
     volumes:
+      - "./infrahub.toml:/source/development/infrahub.toml"
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
     tty: true
