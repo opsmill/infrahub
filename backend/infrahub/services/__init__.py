@@ -100,10 +100,10 @@ class InfrahubServices:
 
     async def initialize(self) -> None:
         """Initialize the Services"""
-        await self.component.initialize(service=self)
-        await self.http.initialize(service=self)
         await self.message_bus.initialize(service=self)
         await self.cache.initialize(service=self)
+        await self.http.initialize(service=self)
+        await self.component.initialize(service=self)
         await self.scheduler.initialize(service=self)
         await self.workflow.initialize(service=self)
         await self.event.initialize(service=self)
