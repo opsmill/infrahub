@@ -23,6 +23,14 @@ function SignInPage() {
           <h2 className="my-8 text-2xl font-semibold text-gray-900">Sign in to your account</h2>
 
           <SignIn />
+
+          {location?.state?.errors?.map(
+            (error: { extensions: { code: number }; message: string }, index: number) => (
+              <p key={index} className="text-red-500 text-sm mt-2">
+                ({error.extensions.code}) {error.message}
+              </p>
+            )
+          )}
         </div>
       </Card>
     </Content>

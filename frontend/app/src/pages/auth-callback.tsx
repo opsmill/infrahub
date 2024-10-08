@@ -13,10 +13,10 @@ function AuthCallback() {
   const [searchParams] = useSearchParams();
   const { isAuthenticated, setToken } = useAuth();
   const [redirectTo, setRedirectTo] = useState("/");
+  const [errors, setErrors] = useState(null);
 
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const error = searchParams.get("error");
 
   useEffect(() => {
     if (!config || !config.sso.enabled) return;
@@ -27,20 +27,26 @@ function AuthCallback() {
     if (!currentAuthProvider) return;
 
     const { token_path } = currentAuthProvider;
-    fetchUrl(`${INFRAHUB_API_SERVER_URL}${token_path}?code=${code}&state=${state}`).then(
-      (result) => {
+    fetchUrl(`${INFRAHUB_API_SERVER_URL}${token_path}?code=${code}&state=${state}`)
+      .then((result) => {
+        if (result.errors) {
+          throw result;
+        }
+
         setRedirectTo(result.final_url);
         setToken(result);
-      }
-    );
+      })
+      .catch((error) => {
+        setErrors(error.errors);
+      });
   }, [config, protocol, provider]);
 
   if (!config || !config.sso.enabled) {
     return <Navigate to="/signin" replace />;
   }
 
-  if (error) {
-    return <Navigate to="/signin" replace />;
+  if (errors) {
+    return <Navigate to="/signin" state={{ errors }} replace />;
   }
 
   if (isAuthenticated) {
