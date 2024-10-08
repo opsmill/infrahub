@@ -1,4 +1,5 @@
 import { Button } from "@/components/buttons/button-primitive";
+import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
@@ -41,6 +42,10 @@ function Groups() {
       name: "members",
       label: "Members",
     },
+    {
+      name: "roles",
+      label: "Roles",
+    },
   ];
 
   const rows =
@@ -59,6 +64,10 @@ function Groups() {
               members={edge?.node?.members?.edges?.map((edge) => edge?.node?.display_label) ?? []}
             />
           ),
+        },
+        roles: {
+          value: { edges: edge?.node?.roles?.edges },
+          display: <Pill>{edge?.node?.roles?.count}</Pill>,
         },
         __typename: edge?.node?.__typename,
       },

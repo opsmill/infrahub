@@ -131,7 +131,7 @@ function Accounts() {
               subtitle={schema.description}
             />
           }
-          open={showDrawer && !!rowToUpdate}
+          open={showDrawer}
           setOpen={(value) => setShowDrawer(value)}
         >
           <ObjectForm

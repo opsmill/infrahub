@@ -42,14 +42,18 @@ export const AccountRoleForm = ({
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
+  const groups = getRelationshipDefaultValue({
+    relationshipData: currentObject?.groups?.value,
+  });
+
+  const permissions = getRelationshipDefaultValue({
+    relationshipData: currentObject?.permissions?.value,
+  });
+
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
-    groups: getRelationshipDefaultValue({
-      relationshipData: currentObject?.groups?.value,
-    }),
-    permissions: getRelationshipDefaultValue({
-      relationshipData: currentObject?.permissions?.value,
-    }),
+    groups,
+    permissions,
   };
 
   const form = useForm<FieldValues>({
@@ -124,6 +128,7 @@ export const AccountRoleForm = ({
             peer: ACCOUNT_GROUP_OBJECT,
             cardinality: "many",
           }}
+          options={groups.value}
         />
 
         <RelationshipField
@@ -134,6 +139,7 @@ export const AccountRoleForm = ({
             peer: ACCOUNT_PERMISSION_OBJECT,
             cardinality: "many",
           }}
+          options={permissions.value}
         />
 
         <div className="text-right">

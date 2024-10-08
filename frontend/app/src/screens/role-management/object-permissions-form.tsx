@@ -41,13 +41,15 @@ export const ObjectPermissionForm = ({
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
+  const roles = getRelationshipDefaultValue({
+    relationshipData: currentObject?.roles?.value,
+  });
+
   const defaultValues = {
     branch: getCurrentFieldValue("branch", currentObject),
     namespace: getCurrentFieldValue("namespace", currentObject),
     name: getCurrentFieldValue("name", currentObject),
-    roles: getRelationshipDefaultValue({
-      relationshipData: currentObject?.roles?.value,
-    }),
+    roles,
   };
 
   const form = useForm<FieldValues>({
@@ -166,6 +168,7 @@ export const ObjectPermissionForm = ({
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
+          options={roles.value}
         />
 
         <div className="text-right">

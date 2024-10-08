@@ -46,17 +46,21 @@ export const AccountGroupForm = ({
   const date = useAtomValue(datetimeAtom);
   const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
 
+  const roles = getRelationshipDefaultValue({
+    relationshipData: currentObject?.roles?.value,
+  });
+
+  const members = getRelationshipDefaultValue({
+    relationshipData: currentObject?.members?.value,
+  });
+
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
     description: getCurrentFieldValue("description", currentObject),
     label: getCurrentFieldValue("label", currentObject),
     group_type: getCurrentFieldValue("group_type", currentObject),
-    roles: getRelationshipDefaultValue({
-      relationshipData: currentObject?.roles?.value,
-    }),
-    accounts: getRelationshipDefaultValue({
-      relationshipData: currentObject?.accounts?.value,
-    }),
+    roles,
+    members,
   };
 
   const form = useForm<FieldValues>({
@@ -142,18 +146,18 @@ export const AccountGroupForm = ({
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
-          schema={schema}
+          options={roles.value}
         />
 
         <RelationshipField
-          name="accounts"
-          label="Accounts"
+          name="members"
+          label="Members"
           relationship={{
-            name: "accounts",
+            name: "members",
             peer: ACCOUNT_OBJECT,
             cardinality: "many",
           }}
-          schema={schema}
+          options={members.value}
         />
 
         <div className="text-right">

@@ -39,14 +39,16 @@ export const AccountForm = ({
   const date = useAtomValue(datetimeAtom);
   const { schema } = useSchema(ACCOUNT_OBJECT);
 
+  const groups = getRelationshipDefaultValue({
+    relationshipData: currentObject?.member_of_groups?.value,
+  });
+
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
     password: getCurrentFieldValue("password", currentObject),
     description: getCurrentFieldValue("description", currentObject),
     label: getCurrentFieldValue("label", currentObject),
-    member_of_groups: getRelationshipDefaultValue({
-      relationshipData: currentObject?.member_of_groups?.value,
-    }),
+    member_of_groups: groups,
   };
 
   const form = useForm<FieldValues>({
@@ -136,6 +138,7 @@ export const AccountForm = ({
             cardinality: "many",
           }}
           schema={schema}
+          options={groups.value}
         />
 
         <div className="text-right">

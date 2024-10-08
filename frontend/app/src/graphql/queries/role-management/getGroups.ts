@@ -18,6 +18,16 @@ export const GET_ROLE_MANAGEMENT_GROUPS = gql`
           members {
             edges {
               node {
+                id
+                display_label
+              }
+            }
+          }
+          roles {
+            count
+            edges {
+              node {
+                id
                 display_label
               }
             }
