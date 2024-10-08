@@ -57,8 +57,7 @@ class TestMergeDiff:
             source_branch=source_branch,
             destination_branch=default_branch,
             diff_repository=mock_diff_repository,
-            # serializer=DiffMergeSerializer(schema_branch=db.schema.get_schema_branch(name=source_branch.name)),
-            serializer=DiffMergeSerializer(schema_branch=car_person_schema),
+            serializer=DiffMergeSerializer(schema_branch=car_person_schema, max_batch_size=50),
         )
 
     @pytest.fixture
@@ -114,15 +113,24 @@ class TestMergeDiff:
         empty_diff_root: EnrichedDiffRoot,
     ):
         added_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.ADDED)
-        added_height_property = EnrichedPropertyFactory.build(
+        added_height_value_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_VALUE,
             previous_value=None,
             new_value=person_node_branch.height.value,
             action=DiffAction.ADDED,
             conflict=None,
         )
+        added_height_owner_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            previous_value=None,
+            new_value=person_node_branch.id,
+            action=DiffAction.ADDED,
+            conflict=None,
+        )
         added_attribute_diff = EnrichedAttributeFactory.build(
-            name="height", action=DiffAction.ADDED, properties={added_height_property}
+            name="height",
+            action=DiffAction.ADDED,
+            properties={added_height_value_property, added_height_owner_property},
         )
         added_node_diff.attributes = {added_attribute_diff}
         added_is_related_property = EnrichedPropertyFactory.build(
