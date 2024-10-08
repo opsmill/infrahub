@@ -53,8 +53,8 @@ neo4j:
     dbms.security.procedures.unrestricted: apoc.*
   logInitialPassword: false
 
-# ----------- Infrahub GIT -----------
-infrahubGit:
+# ----------- Infrahub Task Worker -----------
+infrahubTaskWorker:
   replicas: 2
   persistence:
     enabled: true
@@ -62,36 +62,7 @@ infrahubGit:
     accessMode: ReadWriteMany
     storageClassName: nfs
   resources: {}
-  infrahubGit:
-    args:
-      - infrahub
-      - git-agent
-      - start
-      - --debug
-    env:
-      INFRAHUB_CACHE_PORT: 6379
-      INFRAHUB_DB_TYPE: neo4j
-      INFRAHUB_LOG_LEVEL: DEBUG
-      INFRAHUB_PRODUCTION: "false"
-      INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      INFRAHUB_TIMEOUT: "20"
-      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
-      PREFECT_API_URL: "http://prefect-server:4200/api"
-      PREFECT_WORKER_QUERY_SECONDS: 3
-      PREFECT_AGENT_QUERY_INTERVAL: 3
-      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
-    imagePullPolicy: Always
-    imageRegistry: registry.opsmill.io
-
-# ----------- Infrahub Task Runner -----------
-infrahubTaskRunner:
-  replicas: 2
-  persistence:
-    enabled: true
-    size: 100Mi
-    accessMode: ReadWriteMany
-    storageClassName: nfs
-  infrahubTaskRunner:
+  infrahubTaskWorker:
     args:
       - prefect
       - worker
@@ -114,7 +85,6 @@ infrahubTaskRunner:
       PREFECT_API_URL: "http://prefect-server:4200/api"
       PREFECT_WORKER_QUERY_SECONDS: 3
       PREFECT_AGENT_QUERY_INTERVAL: 3
-      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     imagePullPolicy: Always
     imageRegistry: registry.opsmill.io
 
@@ -153,14 +123,12 @@ infrahubServer:
       INFRAHUB_WORKFLOW_ADDRESS: prefect-server
       INFRAHUB_WORKFLOW_PORT: 4200
       PREFECT_API_URL: "http://prefect-server:4200/api"
-      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     imagePullPolicy: Always
     imageRegistry: registry.opsmill.io
   ports:
     - name: "interface"
       port: 8000
       targetPort: 8000
-
 
 infrahubServerDbInitJob:
   enabled: false

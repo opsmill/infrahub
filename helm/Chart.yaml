@@ -2,6 +2,7 @@
 apiVersion: v2
 name: infrahub
 description: A Helm chart to deploy Infrahub on Kubernetes
+icon: https://github.com/opsmill/infrahub/raw/develop/frontend/app/public/favicons/logo512.png
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives

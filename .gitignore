@@ -34,3 +34,5 @@ python_sdk/dist/*
 generated/
 query_performance_results/
 sync/dist/
+helm/charts/
+helm/Chart.lock
