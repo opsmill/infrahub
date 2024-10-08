@@ -17,6 +17,7 @@ from .m012_convert_account_generic import Migration012
 from .m013_convert_git_password_credential import Migration013
 from .m014_remove_index_attr_value import Migration014
 from .m015_diff_format_update import Migration015
+from .m016_diff_delete_bug_fix import Migration016
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -39,6 +40,7 @@ MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration, ArbitraryMi
     Migration013,
     Migration014,
     Migration015,
+    Migration016,
 ]
 
 
