@@ -7,6 +7,7 @@ import typer
 from anyio.abc import TaskStatus
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import Error as SdkError
+from prefect import settings as prefect_settings
 from prefect.client.schemas.objects import FlowRun
 from prefect.flow_engine import run_flow_async
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
@@ -26,6 +27,7 @@ from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):
@@ -49,8 +51,6 @@ class InfrahubWorkerAsync(BaseWorker):
     _description = "Infrahub worker designed to run the flow in the main async loop."
 
     async def setup(self, **kwargs: dict[str, Any]) -> None:
-        await super().setup(**kwargs)
-
         logging.getLogger("websockets").setLevel(logging.ERROR)
         logging.getLogger("httpx").setLevel(logging.ERROR)
         logging.getLogger("httpcore").setLevel(logging.ERROR)
@@ -67,7 +67,19 @@ class InfrahubWorkerAsync(BaseWorker):
         self._logger.info(f"Starting metric endpoint on port {metric_port}")
         start_http_server(metric_port)
 
-        self._logger.info(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
+        self._exit_stack.enter_context(
+            prefect_settings.temporary_settings(
+                updates={  # type: ignore[arg-type]
+                    prefect_settings.PREFECT_WORKER_QUERY_SECONDS: config.SETTINGS.workflow.worker_polling_interval,
+                    prefect_settings.PREFECT_RESULTS_PERSIST_BY_DEFAULT: True,
+                    prefect_settings.PREFECT_DEFAULT_RESULT_STORAGE_BLOCK: f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}",
+                }
+            )
+        )
+
+        await super().setup(**kwargs)
+
+        self._logger.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
         client = InfrahubClient(
             config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=self._logger)
         )

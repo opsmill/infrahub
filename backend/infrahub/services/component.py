@@ -42,6 +42,8 @@ class InfrahubComponent:
         """Initialize the Message bus"""
         self._service = service
 
+        await self.refresh_heartbeat()
+
     async def is_primary_api(self) -> bool:
         primary_identity = await self.service.cache.get(PRIMARY_API_SERVER)
         return primary_identity == WORKER_IDENTITY

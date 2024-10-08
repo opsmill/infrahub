@@ -128,7 +128,6 @@ services:
       INFRAHUB_WORKFLOW_ADDRESS: task-manager
       INFRAHUB_WORKFLOW_PORT: 4200
       PREFECT_API_URL: "http://task-manager:4200/api"
-      PREFECT_LOCAL_STORAGE_PATH: "/opt/infrahub/workflow"
     volumes:
       - "storage_data:/opt/infrahub/storage"
       - "workflow_data:/opt/infrahub/workflow"
@@ -186,7 +185,7 @@ services:
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
     pull_policy: always
-    command: prefect worker start --type infrahubasync --pool infrahub-internal --with-healthcheck
+    command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
       - server
@@ -204,11 +203,9 @@ services:
       INFRAHUB_WORKFLOW_ADDRESS: "${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}"
       INFRAHUB_WORKFLOW_PORT: "${INFRAHUB_WORKFLOW_PORT:-4200}"
       PREFECT_API_URL: "http://task-manager:4200/api"
-      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     volumes:
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
-      - "workflow_data:/opt/infrahub/workflow"
     tty: true
     labels:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"

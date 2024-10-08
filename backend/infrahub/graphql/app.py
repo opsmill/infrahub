@@ -38,7 +38,7 @@ from graphql.utilities import (
 )
 from opentelemetry import trace
 from starlette.datastructures import UploadFile
-from starlette.requests import HTTPConnection, Request
+from starlette.requests import ClientDisconnect, HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
@@ -191,6 +191,9 @@ class InfrahubGraphQLApp:
             operations = await _get_operation_from_request(request)
         except ValueError as exc:
             return JSONResponse({"errors": [exc.args[0]]}, status_code=400)
+        except ClientDisconnect as exc:
+            self.logger.error("Exception ClientDisconnect in _handle_http_request")
+            return JSONResponse({"errors": [str(exc)]}, status_code=400)
 
         if isinstance(operations, list):
             return JSONResponse({"errors": ["This server does not support batching"]}, status_code=400)

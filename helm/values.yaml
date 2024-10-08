@@ -99,7 +99,7 @@ infrahubTaskRunner:
       - --type
       - infrahubasync
       - --pool
-      - infrahub-internal
+      - infrahub-worker
       - --with-healthcheck
     env:
       INFRAHUB_CACHE_PORT: 6379

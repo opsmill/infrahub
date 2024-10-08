@@ -3,6 +3,7 @@ import importlib
 import os
 import sys
 import time
+from contextlib import ExitStack
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
@@ -12,6 +13,7 @@ import ujson
 from infrahub_sdk.utils import str_to_bool
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
+from prefect import settings as prefect_settings
 from prefect.logging.loggers import disable_run_logger
 from prefect.testing.utilities import prefect_test_harness
 from testcontainers.core.container import DockerContainer
@@ -51,6 +53,7 @@ PORT_CLIENT_RABBITMQ = 5672
 PORT_HTTP_RABBITMQ = 15672
 PORT_BOLT_NEO4J = 7687
 PORT_MEMGRAPH = 7687
+PORT_PREFECT = 4200
 
 
 def pytest_addoption(parser):
@@ -267,6 +270,9 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
     if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = redis_container[PORT_REDIS]
+        config.SETTINGS.cache.username = ""
+        config.SETTINGS.cache.password = ""
+
         return redis_container
 
     return None
@@ -348,6 +354,46 @@ def nats(nats_container: dict[int, int] | None, reload_settings_before_each_modu
         return nats_container
 
     return None
+
+
+@pytest.fixture(scope="session")
+def prefect_container(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+    if not INFRAHUB_USE_TEST_CONTAINERS:
+        return None
+
+    container = (
+        DockerContainer(image="prefecthq/prefect:3.0.3-python3.12")
+        .with_command("prefect server start --host 0.0.0.0 --ui")
+        .with_exposed_ports(PORT_PREFECT)
+    )
+
+    def cleanup():
+        container.stop()
+
+    container.start()
+    wait_for_logs(container, "Configure Prefect to communicate with the server")
+    request.addfinalizer(cleanup)
+
+    return {PORT_PREFECT: get_exposed_port(container, PORT_PREFECT)}
+
+
+@pytest.fixture(scope="module")
+def prefect(prefect_container: dict[int, int] | None, reload_settings_before_each_module) -> Generator[str, None, None]:
+    if prefect_container:
+        server_port = prefect_container[PORT_PREFECT]
+        server_api_url = f"http://localhost:{server_port}/api"
+    else:
+        server_api_url = f"http://localhost:{PORT_PREFECT}/api"
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            prefect_settings.temporary_settings(
+                updates={
+                    prefect_settings.PREFECT_API_URL: server_api_url,
+                }
+            )
+        )
+        yield server_api_url
 
 
 @pytest.fixture(scope="session", autouse=True)
