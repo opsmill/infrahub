@@ -34,7 +34,7 @@ export function DesktopMenu({ className = "" }: MenuProps) {
     try {
       setIsLoading(true);
 
-      const result: MenuItem[] = await fetchUrl(CONFIG.MENU_URL(branch?.name));
+      const result: MenuItem[] = await fetchUrl(CONFIG.MENU_URL_OLD(branch?.name));
 
       setMenu(result);
 
