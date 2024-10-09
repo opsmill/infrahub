@@ -28,7 +28,7 @@ from infrahub.core.utils import add_relationship, convert_ip_to_binary_str, upda
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 
-from ..types import ATTRIBUTE_TYPES, Password, Text
+from ..types import ATTRIBUTE_TYPES, LARGE_ATTRIBUTE_TYPES
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 
 if TYPE_CHECKING:
@@ -269,7 +269,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if self.value is None:
             data["value"] = NULL_VALUE
         else:
-            data["value"] = self.serialize_value(self.value)
+            serialized_value = self.serialize_value()
+            if isinstance(serialized_value, str) and ATTRIBUTE_TYPES[self.schema.kind] not in LARGE_ATTRIBUTE_TYPES:
+                # Perform validation here to avoid an extra serialization during validation step.
+                # Standard non-str attributes (integer, boolean) do not exceed limit size related to neo4j indexing.
+                validate_string_length(serialized_value)
+            data["value"] = serialized_value
 
         return data
 
@@ -297,13 +302,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return None
         return self.deserialize_value(data=data)
 
-    @classmethod
-    def serialize_value(cls, value: Any) -> Any:
-        """Serialize the value before storing it in the database.
-        This method is a class method because `validate_content` is a class method and relies on it."""
-        if isinstance(value, Enum):
-            return value.value
-        return value
+    def serialize_value(self) -> Any:
+        """Serialize the value before storing it in the database."""
+        if isinstance(self.value, Enum):
+            return self.value.value
+        return self.value
 
     def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value coming from the database."""
@@ -628,12 +631,6 @@ class String(BaseAttribute):
     type = str
     value: str
 
-    @classmethod
-    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        super().validate_content(value, name, schema)
-        if ATTRIBUTE_TYPES[schema.kind] in [Text, Password]:
-            validate_string_length(cls.serialize_value(value))
-
 
 class StringOptional(String):
     value: Optional[str]
@@ -643,10 +640,9 @@ class HashedPassword(BaseAttribute):
     type = str
     value: str
 
-    @classmethod
-    def serialize_value(cls, value: str) -> str:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
-        return hash_password(value)
+        return hash_password(self.value)
 
 
 class HashedPasswordOptional(HashedPassword):
@@ -660,9 +656,7 @@ class Integer(BaseAttribute):
 
 
 class IntegerOptional(Integer):
-    type = int
     value: Optional[int]
-    from_pool: Optional[str] = None
 
 
 class Boolean(BaseAttribute):
@@ -752,11 +746,6 @@ class URL(BaseAttribute):
 
         if not is_valid_url(value):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
-
-    @classmethod
-    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        super().validate_content(value=value, name=name, schema=schema)
-        validate_string_length(cls.serialize_value(value))
 
 
 class URLOptional(URL):
@@ -870,11 +859,10 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    @classmethod
-    def serialize_value(cls, value: str) -> str:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
 
-        return ipaddress.ip_network(value).with_prefixlen
+        return ipaddress.ip_network(self.value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
@@ -891,11 +879,6 @@ class IPNetwork(BaseAttribute):
             # data["num_addresses"] = self.num_addresses
 
         return data
-
-    @classmethod
-    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        super().validate_content(value=value, name=name, schema=schema)
-        validate_string_length(cls.serialize_value(value))
 
 
 class IPNetworkOptional(IPNetwork):
@@ -1002,11 +985,10 @@ class IPHost(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    @classmethod
-    def serialize_value(cls, value: str) -> str:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
 
-        return ipaddress.ip_interface(value).with_prefixlen
+        return ipaddress.ip_interface(self.value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
@@ -1022,11 +1004,6 @@ class IPHost(BaseAttribute):
             data["prefixlen"] = self.prefixlen
 
         return data
-
-    @classmethod
-    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        super().validate_content(value=value, name=name, schema=schema)
-        validate_string_length(cls.serialize_value(value))
 
 
 class IPHostOptional(IPHost):
@@ -1130,10 +1107,9 @@ class MacAddress(BaseAttribute):
         if not netaddr.valid_mac(addr=str(value)):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
-    @classmethod
-    def serialize_value(cls, value: str) -> str:
+    def serialize_value(self) -> str:
         """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
-        return str(netaddr.EUI(addr=value))
+        return str(netaddr.EUI(addr=self.value))
 
 
 class MacAddressOptional(MacAddress):
@@ -1150,10 +1126,9 @@ class ListAttribute(BaseAttribute):
             return ujson.loads(value_as_string)
         return []
 
-    @classmethod
-    def serialize_value(cls, value: list[Any]) -> str:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
-        return ujson.dumps(value)
+        return ujson.dumps(self.value)
 
     def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
@@ -1176,10 +1151,9 @@ class JSONAttribute(BaseAttribute):
             return ujson.loads(value_as_string)
         return {}
 
-    @classmethod
-    def serialize_value(cls, value: Union[dict, list]) -> str:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
-        return ujson.dumps(value)
+        return ujson.dumps(self.value)
 
     def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""

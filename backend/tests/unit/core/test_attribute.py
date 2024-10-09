@@ -691,11 +691,14 @@ async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_
 
     large_string = "a" * 5_000
 
+    await obj.new(db=db, name="obj1", mystring=large_string)
+
     # Text field
     with pytest.raises(
         ValidationError, match=f"Text attribute length should be less than {MAX_STRING_LENGTH} characters."
     ):
-        await obj.new(db=db, name="obj1", mystring=large_string)
+        await obj.save(db=db)
 
     # TextArea field should have no size limitation
-    await obj.new(db=db, name="obj1", mytextarea=large_string)
+    await obj.new(db=db, name="obj2", mytextarea=large_string)
+    await obj.save(db=db)
