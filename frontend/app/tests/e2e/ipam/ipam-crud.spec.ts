@@ -93,10 +93,7 @@ test.describe("/ipam - Ipam home page", () => {
           .getByRole("row", { name: "11.0.0.0/10" })
           .getByTestId("actions-row-button")
           .click();
-        await page
-          .getByRole("row", { name: "11.0.0.0/10" })
-          .getByTestId("delete-row-button")
-          .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toContainText(
           "Are you sure you want to delete the Prefix: 11.0.0.0/10"
         );
@@ -115,10 +112,7 @@ test.describe("/ipam - Ipam home page", () => {
           .getByRole("row", { name: "11.0.0.0/16" })
           .getByTestId("actions-row-button")
           .click();
-        await page
-          .getByRole("row", { name: "11.0.0.0/16" })
-          .getByTestId("delete-row-button")
-          .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toContainText(
           "Are you sure you want to delete the Prefix: 11.0.0.0/16"
         );
@@ -145,10 +139,7 @@ test.describe("/ipam - Ipam home page", () => {
           .getByRole("row", { name: "11.0.0.0/8" })
           .getByTestId("actions-row-button")
           .click();
-        await page
-          .getByRole("row", { name: "11.0.0.0/8" })
-          .getByTestId("delete-row-button")
-          .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toContainText(
           "Are you sure you want to delete the Prefix: 11.0.0.0/8"
         );
@@ -213,10 +204,7 @@ test.describe("/ipam - Ipam home page", () => {
           .getByRole("row", { name: "10.0.0.1/16 from summary" })
           .getByTestId("actions-row-button")
           .click();
-        await page
-          .getByRole("row", { name: "10.0.0.1/16 from summary" })
-          .getByTestId("delete-row-button")
-          .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toContainText(
           "Are you sure you want to delete the IP address: 10.0.0.1/16"
         );

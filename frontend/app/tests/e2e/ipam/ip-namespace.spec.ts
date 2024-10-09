@@ -156,7 +156,7 @@ test.describe("/ipam - IP Namespace", () => {
         .getByRole("row", { name: "11.0.0.0/10" })
         .getByTestId("actions-row-button")
         .click();
-      await page.getByRole("row", { name: "11.0.0.0/10" }).getByTestId("delete-row-button").click();
+      await page.getByTestId("delete-row-button").click();
       await expect(page.getByTestId("modal-delete")).toContainText(
         "Are you sure you want to delete the Prefix: 11.0.0.0/10"
       );
@@ -175,7 +175,7 @@ test.describe("/ipam - IP Namespace", () => {
         .getByRole("row", { name: "11.0.0.0/16" })
         .getByTestId("actions-row-button")
         .click();
-      await page.getByRole("row", { name: "11.0.0.0/16" }).getByTestId("delete-row-button").click();
+      await page.getByTestId("delete-row-button").click();
       await expect(page.getByTestId("modal-delete")).toContainText(
         "Are you sure you want to delete the Prefix: 11.0.0.0/16"
       );
@@ -193,7 +193,7 @@ test.describe("/ipam - IP Namespace", () => {
       await page.getByText("Summary").click();
       await page.getByRole("link", { name: "All Prefixes" }).click();
       await page.getByRole("row", { name: "11.0.0.0/8" }).getByTestId("actions-row-button").click();
-      await page.getByRole("row", { name: "11.0.0.0/8" }).getByTestId("delete-row-button").click();
+      await page.getByTestId("delete-row-button").click();
       await expect(page.getByTestId("modal-delete")).toContainText(
         "Are you sure you want to delete the Prefix: 11.0.0.0/8"
       );
@@ -214,10 +214,7 @@ test.describe("/ipam - IP Namespace", () => {
       .getByRole("row", { name: "test-namespace" })
       .getByTestId("actions-row-button")
       .click();
-    await page
-      .getByRole("row", { name: "test-namespace" })
-      .getByTestId("delete-row-button")
-      .click();
+    await page.getByTestId("delete-row-button").click();
     await page.getByTestId("modal-delete-confirm").click();
 
     await expect(page.getByText("Object test-namespace deleted")).toBeVisible();
