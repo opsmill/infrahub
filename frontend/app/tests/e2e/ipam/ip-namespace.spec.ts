@@ -152,6 +152,10 @@ test.describe("/ipam - IP Namespace", () => {
     await test.step("delete a prefix between 2 other prefixes", async () => {
       await page.getByTestId("ipam-tree").getByRole("link", { name: "11.0.0.0/8" }).click();
       await page.getByText("Prefix Details").click();
+      await page
+        .getByRole("row", { name: "11.0.0.0/10" })
+        .getByTestId("actions-row-button")
+        .click();
       await page.getByRole("row", { name: "11.0.0.0/10" }).getByTestId("delete-row-button").click();
       await expect(page.getByTestId("modal-delete")).toContainText(
         "Are you sure you want to delete the Prefix: 11.0.0.0/10"
@@ -167,6 +171,10 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("delete a children prefix", async () => {
+      await page
+        .getByRole("row", { name: "11.0.0.0/16" })
+        .getByTestId("actions-row-button")
+        .click();
       await page.getByRole("row", { name: "11.0.0.0/16" }).getByTestId("delete-row-button").click();
       await expect(page.getByTestId("modal-delete")).toContainText(
         "Are you sure you want to delete the Prefix: 11.0.0.0/16"
@@ -184,6 +192,7 @@ test.describe("/ipam - IP Namespace", () => {
     await test.step("delete top level prefix", async () => {
       await page.getByText("Summary").click();
       await page.getByRole("link", { name: "All Prefixes" }).click();
+      await page.getByRole("row", { name: "11.0.0.0/8" }).getByTestId("actions-row-button").click();
       await page.getByRole("row", { name: "11.0.0.0/8" }).getByTestId("delete-row-button").click();
       await expect(page.getByTestId("modal-delete")).toContainText(
         "Are you sure you want to delete the Prefix: 11.0.0.0/8"
@@ -201,6 +210,10 @@ test.describe("/ipam - IP Namespace", () => {
 
   test("delete ip namespace", async ({ page }) => {
     await page.goto("/objects/BuiltinIPNamespace");
+    await page
+      .getByRole("row", { name: "test-namespace" })
+      .getByTestId("actions-row-button")
+      .click();
     await page
       .getByRole("row", { name: "test-namespace" })
       .getByTestId("delete-row-button")
