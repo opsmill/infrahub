@@ -12,8 +12,11 @@ from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.protocols import (
     CoreAccount,
     CoreAccountGroup,
+    CoreAccountRole,
+    CoreGlobalPermission,
     CoreIPAddressPool,
     CoreIPPrefixPool,
+    CoreObjectPermission,
     CoreStandardGroup,
     IpamNamespace,
 )
@@ -136,11 +139,38 @@ def translate_str_to_bool(key: str, value: str) -> bool:
 
 
 # pylint: skip-file
+class AccountRole(BaseModel):
+    name: str
+    global_permissions: list[str] | str | None = None
+    object_permissions: list[str] | str | None = None
+
+
+class AccountGroup(BaseModel):
+    name: str
+    roles: list[str] = Field(default_factory=list)
+    members: list[str] = Field(default_factory=list)
+
+
 class Account(BaseModel):
     name: str
+    label: str
     password: str
     account_type: str
     role: str
+
+
+class GlobalPermission(BaseModel):
+    name: str
+    action: str
+    decision: str
+
+
+class ObjectPermission(BaseModel):
+    branch: str
+    namespace: str
+    name: str
+    action: str
+    decision: str
 
 
 class Asn(BaseModel):
@@ -621,17 +651,54 @@ ASNS = (
 
 INTERFACE_OBJS: dict[str, list[InfraInterfaceL3]] = defaultdict(list)
 
-ACCOUNTS = (
-    Account(name="pop-builder", account_type="Script", password="Password123", role="read-write"),
-    Account(name="CRM Synchronization", account_type="Script", password="Password123", role="read-write"),
-    Account(name="Jack Bauer", account_type="User", password="Password123", role="read-only"),
-    Account(name="Chloe O'Brian", account_type="User", password="Password123", role="read-write"),
-    Account(name="David Palmer", account_type="User", password="Password123", role="read-write"),
-    Account(name="Operation Team", account_type="User", password="Password123", role="read-only"),
-    Account(name="Engineering Team", account_type="User", password="Password123", role="read-write"),
-    Account(name="Architecture Team", account_type="User", password="Password123", role="read-only"),
+GLOBAL_PERMISSIONS = (
+    GlobalPermission(name="Edit default branch", action="edit_default_branch", decision="allow"),
+    GlobalPermission(name="Merge branches", action="merge_branch", decision="allow"),
+    GlobalPermission(name="Merge proposed changes", action="merge_proposed_change", decision="allow"),
+    GlobalPermission(name="Manage schema", action="manage_schema", decision="allow"),
+    GlobalPermission(name="Manage accounts", action="manage_accounts", decision="allow"),
+    GlobalPermission(name="Manage permissions", action="manage_permissions", decision="allow"),
+    GlobalPermission(name="Manage repositories", action="manage_repositories", decision="allow"),
 )
 
+OBJECT_PERMISSIONS = {
+    "deny_any": ObjectPermission(branch="*", namespace="*", name="*", action="any", decision="deny"),
+    "allow_any": ObjectPermission(branch="*", namespace="*", name="*", action="any", decision="allow"),
+    "view_any": ObjectPermission(branch="*", namespace="*", name="*", action="view", decision="allow"),
+}
+
+ACCOUNT_ROLES = (
+    AccountRole(name="Administrator", global_permissions="__all__", object_permissions=["allow_any"]),
+    AccountRole(name="Global read-only", object_permissions=["deny_any", "view_any"]),
+    AccountRole(name="Global read-write", object_permissions=["allow_any"]),
+)
+
+ACCOUNTS = (
+    Account(name="pop-builder", label="pop-builder", account_type="Script", password="Password123", role="read-write"),
+    Account(
+        name="crm-sync", label="CRM Synchronization", account_type="Script", password="Password123", role="read-write"
+    ),
+    Account(name="jbauer", label="Jack Bauer", account_type="User", password="Password123", role="read-only"),
+    Account(name="cobrian", label="Chloe O'Brian", account_type="User", password="Password123", role="read-write"),
+    Account(name="dpalmer", label="David Palmer", account_type="User", password="Password123", role="read-write"),
+    Account(name="sudo", label="Sue Dough", password="!givem3@ll", role="admin", account_type="User"),
+    Account(name="elawson", label="Emily Lawson", password="LRVS}Hg^g8", role="read-write", account_type="User"),
+    Account(name="jthompson", label="Jacob Thompson", password="5{r_:}vBT=", role="read-write", account_type="User"),
+    Account(name="shernandez", label="Sofia Hernandez", password="8rgFS%s^9]", role="read-write", account_type="User"),
+    Account(name="rpatel", label="Ryan Patel", password="uhEf7b~F&2", role="read-only", account_type="User"),
+    Account(name="ocarter", label="Olivia Carter", password="@KOM,O&OCu", role="read-only", account_type="User"),
+)
+
+ACCOUNT_GROUPS = {
+    "administrators": AccountGroup(
+        name="Administrators", roles=["Administrator"], members=["sudo", "pop-builder", "crm-sync"]
+    ),
+    "ops-team": AccountGroup(name="Operation Team", members=["jbauer", "elawson", "jthompson"]),
+    "eng-team": AccountGroup(
+        name="Engineering Team", roles=["Global read-write"], members=["cobrian", "shernandez", "rpatel"]
+    ),
+    "arch-team": AccountGroup(name="Architecture Team", roles=["Global read-only"], members=["dpalmer", "ocarter"]),
+}
 
 GROUPS = (
     Group(name="edge_router", label="Edge Router"),
@@ -907,8 +974,8 @@ async def generate_site_vlans(
     client: InfrahubClient, log: logging.Logger, branch: str, site: Site, site_id: int
 ) -> None:
     account_pop = store.get("pop-builder", kind=CoreAccount, raise_when_missing=True)
-    group_eng = store.get("Engineering Team", kind=CoreAccount, raise_when_missing=True)
-    group_ops = store.get("Operation Team", kind=CoreAccount, raise_when_missing=True)
+    group_eng = store.get("eng-team", kind=CoreAccountGroup, raise_when_missing=True)
+    group_ops = store.get("ops-team", kind=CoreAccountGroup, raise_when_missing=True)
 
     for vlan in VLANS:
         vlan_name = f"{site.name}_{vlan.role}"
@@ -986,10 +1053,10 @@ async def generate_site(
     external_pool: CoreNode,
     site_design: SiteDesign,
 ) -> str:
-    group_eng = store.get("Engineering Team", kind=CoreAccount)
-    group_ops = store.get("Operation Team", kind=CoreAccount)
+    group_eng = store.get("eng-team", kind=CoreAccountGroup)
+    group_ops = store.get("ops-team", kind=CoreAccountGroup)
     account_pop = store.get("pop-builder", kind=CoreAccount)
-    account_crm = store.get("CRM Synchronization", kind=CoreAccount)
+    account_crm = store.get("crm-sync", kind=CoreAccount)
     internal_as = store.get(kind=InfraAutonomousSystem, key="Duff")
 
     country = store.get(kind=LocationCountry, key=site.country)
@@ -1757,22 +1824,113 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
     log.info("Created continents and countries")
 
 
+async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+    for p in GLOBAL_PERMISSIONS:
+        obj = await client.create(branch=branch, kind="CoreGlobalPermission", data=p.model_dump())
+        batch.add(task=obj.save, node=obj)
+        store.set(key=p.name, node=obj)
+
+    for name, p in OBJECT_PERMISSIONS.items():
+        obj = await client.create(branch=branch, kind="CoreObjectPermission", data=p.model_dump())
+        batch.add(task=obj.save, node=obj)
+        store.set(key=name, node=obj)
+
+
+async def prepare_account_roles(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+    for role in ACCOUNT_ROLES:
+        obj = await client.create(
+            branch=branch,
+            kind="CoreAccountRole",
+            data=role.model_dump(exclude={"global_permissions", "object_permissions"}),
+        )
+        batch.add(task=obj.save, node=obj)
+        store.set(key=role.name, node=obj)
+
+
 async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
-    groups = await client.filters(branch=branch, kind=CoreAccountGroup, name__value="Super Administrators")
-    store.set(key=groups[0].name, node=groups[0])
-
     for account in ACCOUNTS:
-        data = account.model_dump()
-        data["member_of_groups"] = groups
-
-        obj = await client.create(branch=branch, kind="CoreAccount", data=data)
+        obj = await client.create(branch=branch, kind="CoreAccount", data=account.model_dump(exclude={"groups"}))
         batch.add(task=obj.save, node=obj)
         store.set(key=account.name, node=obj)
 
+    for name, group in ACCOUNT_GROUPS.items():
+        obj = await client.create(
+            branch=branch, kind="CoreAccountGroup", data=group.model_dump(exclude={"roles", "members"})
+        )
+        batch.add(task=obj.save, node=obj)
+        store.set(key=name, node=obj)
+
+
+async def map_permissions_to_roles(
+    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+) -> None:
+    for role in ACCOUNT_ROLES:
+        if not role.global_permissions and not role.object_permissions:
+            continue
+
+        obj = store.get(role.name, kind=CoreAccountRole, raise_when_missing=True)
+        await obj.permissions.fetch()
+
+        permissions: list[CoreGlobalPermission | CoreObjectPermission] = []
+        if role.global_permissions:
+            if isinstance(role.global_permissions, str) and role.global_permissions == "__all__":
+                permissions.extend(
+                    [store.get(p.name, kind=CoreGlobalPermission, raise_when_missing=True) for p in GLOBAL_PERMISSIONS]
+                )
+            else:
+                permissions.extend(
+                    [
+                        store.get(p_name, kind=CoreGlobalPermission, raise_when_missing=True)
+                        for p_name in role.global_permissions
+                    ]
+                )
+        if role.object_permissions:
+            if isinstance(role.object_permissions, str) and role.object_permissions == "__all__":
+                permissions.extend(
+                    [
+                        store.get(p_name, kind=CoreObjectPermission, raise_when_missing=True)
+                        for p_name in GLOBAL_PERMISSIONS
+                    ]
+                )
+            else:
+                permissions.extend(
+                    [
+                        store.get(p_name, kind=CoreObjectPermission, raise_when_missing=True)
+                        for p_name in role.object_permissions
+                    ]
+                )
+
+        obj.permissions.extend(permissions)
+        batch.add(task=obj.save, node=obj)
+
+
+async def map_user_and_roles_to_groups(
+    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+) -> None:
+    for group_name, group in ACCOUNT_GROUPS.items():
+        updated = False
+        obj = store.get(group_name, kind=CoreAccountGroup, raise_when_missing=True)
+
+        if group.roles:
+            await obj.roles.fetch()
+            obj.roles.extend(
+                data=[store.get(role, kind=CoreAccountRole, raise_when_missing=True) for role in group.roles]
+            )
+            updated = True
+        if group.members:
+            await obj.members.fetch()
+            obj.members.extend(
+                data=[store.get(member, kind=CoreAccount, raise_when_missing=True) for member in group.members]
+            )
+            updated = True
+
+        if updated:
+            batch.add(task=obj.save, node=obj)
+
 
 async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
-    account_chloe = store.get("Chloe O'Brian", kind=CoreAccount, raise_when_missing=True)
-    account_crm = store.get("CRM Synchronization", kind=CoreAccount, raise_when_missing=True)
+    account_chloe = store.get("cobrian", kind=CoreAccount, raise_when_missing=True)
+    account_crm = store.get("crm-sync", kind=CoreAccount, raise_when_missing=True)
     organizations_dict = {org.name: org.type for org in ORGANIZATIONS}
     for asn in ASNS:
         organization_type = organizations_dict.get(asn.organization, None)
@@ -1946,10 +2104,29 @@ async def run(
     # ------------------------------------------
     # Create User Accounts, Groups, Organizations & Platforms
     # ------------------------------------------
-    log.info("Creating User Accounts, Groups & Organizations & Platforms")
+    log.info("Creating User Accounts, Groups, Roles, Permissions & Organizations & Platforms")
+
+    batch = await client.create_batch()
+    await prepare_permissions(client=client, log=log, branch=branch, batch=batch)
+    await prepare_account_roles(client=client, log=log, branch=branch, batch=batch)
+    async for node, _ in batch.execute():
+        log.info(f"- Created {node._schema.kind} - {node.name.value}")
 
     batch = await client.create_batch()
     await prepare_accounts(client=client, log=log, branch=branch, batch=batch)
+    async for node, _ in batch.execute():
+        log.info(f"- Created {node._schema.kind} - {node.name.value}")
+
+    batch = await client.create_batch()
+    await map_permissions_to_roles(client=client, log=log, branch=branch, batch=batch)
+    async for node, _ in batch.execute():
+        log.info(f"- Updated {node._schema.kind} - {node.name.value} with permissions")
+
+    batch = await client.create_batch()
+    await map_user_and_roles_to_groups(client=client, log=log, branch=branch, batch=batch)
+    async for node, _ in batch.execute():
+        log.info(f"- Updated {node._schema.kind} - {node.name.value} with roles and members")
+
     await prepare_groups(client=client, log=log, branch=branch, batch=batch)
     await prepare_platforms(client=client, log=log, branch=branch, batch=batch)
     await prepare_organizations(client=client, log=log, branch=branch, batch=batch)
