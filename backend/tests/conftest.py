@@ -53,7 +53,20 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
-from tests.helpers.utils import get_exposed_port
+
+# from tests.helpers.utils import get_exposed_port
+
+
+def get_exposed_port(container: DockerContainer, port: int) -> int:
+    """
+    Use this method instead of DockerContainer.get_exposed_port as it is decorated with wait_container_is_ready
+    which we do not want to use as it does not perform a real healthcheck. DockerContainer.get_exposed_port
+    also introduces extra "Waiting for container" logs as we might call it multiple times for containers exposing
+    multiple ports such as rabbitmq.
+    """
+
+    return int(container.get_docker_client().port(container.get_wrapped_container().id, port))
+
 
 ResponseClass = TypeVar("ResponseClass")
 
