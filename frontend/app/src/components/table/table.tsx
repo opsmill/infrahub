@@ -5,12 +5,18 @@ import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 
+import { ReactNode } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+
+export type tRowValue = {
+  value: unknown;
+  display: ReactNode;
+};
 
 export type tColumn = {
   name: string;
@@ -19,7 +25,7 @@ export type tColumn = {
 
 export type tRow = {
   link?: string;
-  values: any;
+  values: Record<string, string | number | tRowValue>;
 };
 
 type TableProps = {
@@ -136,14 +142,14 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
   );
 };
 
-const renderRowValue = (data) => {
+const renderRowValue = (data: string | number | tRowValue): ReactNode => {
   if (!data) return "-";
 
-  if (data.display) return data.display;
+  if (typeof data === "string" || typeof data === "number") return data;
 
-  if (data.value) return data.value;
+  if ("display" in data) return data.display as ReactNode;
 
-  if (!data.display && !data.value && typeof data !== "object") return data;
+  if ("value" in data) return data.value as ReactNode;
 
   return "-";
 };
