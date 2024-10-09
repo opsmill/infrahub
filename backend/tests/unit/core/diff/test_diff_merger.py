@@ -84,6 +84,15 @@ class TestMergeDiff:
         return new_node
 
     @pytest.fixture
+    async def car_node_main(
+        self, db: InfrahubDatabase, default_branch: Branch, person_node_main: Node, car_person_schema
+    ) -> Node:
+        new_node = await Node.init(db=db, schema="TestCar", branch=default_branch)
+        await new_node.new(db=db, name="El Camino", color="black", nbr_seats=5, owner=person_node_main)
+        await new_node.save(db=db)
+        return new_node
+
+    @pytest.fixture
     def empty_diff_root(self, default_branch: Branch, source_branch: Branch) -> EnrichedDiffRoot:
         return EnrichedRootFactory.build(
             base_branch_name=default_branch.name,
@@ -96,23 +105,101 @@ class TestMergeDiff:
             nodes=set(),
         )
 
-    def _get_empty_node_diff(self, node: Node, action: DiffAction) -> EnrichedDiffNode:
-        return EnrichedNodeFactory.build(
-            uuid=node.get_id(), action=action, kind=node.get_kind(), label="", attributes=set(), relationships=set()
+    @pytest.fixture
+    def deleted_person_node_diff(self, person_node_main, car_node_main) -> EnrichedDiffNode:
+        deleted_node_diff = self._get_empty_node_diff(node=person_node_main, action=DiffAction.REMOVED)
+        # attributes
+        deleted_height_value_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_VALUE,
+            previous_value=str(person_node_main.height.value),
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
         )
+        deleted_height_owner_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            previous_value=person_node_main.id,
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
+        )
+        deleted_height_visible_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_VISIBLE,
+            previous_value="True",
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
+        )
+        deleted_height_protected_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_PROTECTED,
+            previous_value="False",
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
+        )
+        deleted_attribute_diff = EnrichedAttributeFactory.build(
+            name="height",
+            action=DiffAction.REMOVED,
+            properties={
+                deleted_height_value_property,
+                deleted_height_owner_property,
+                deleted_height_visible_property,
+                deleted_height_protected_property,
+            },
+        )
+        deleted_node_diff.attributes = {deleted_attribute_diff}
+        # relationships
+        deleted_rel_is_visible_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_VISIBLE,
+            previous_value="True",
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
+        )
+        deleted_rel_is_protected_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_PROTECTED,
+            previous_value="False",
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
+        )
+        deleted_rel_source_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_SOURCE,
+            previous_value=car_node_main.id,
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
+        )
+        deleted_is_related_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_RELATED,
+            previous_value=car_node_main.id,
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=None,
+        )
+        deleted_relationship_element = EnrichedRelationshipElementFactory.build(
+            action=DiffAction.REMOVED,
+            peer_id=car_node_main.id,
+            conflict=None,
+            properties={
+                deleted_is_related_property,
+                deleted_rel_is_visible_property,
+                deleted_rel_is_protected_property,
+                deleted_rel_source_property,
+            },
+        )
+        deleted_relationship = EnrichedRelationshipGroupFactory.build(
+            name="cars",
+            relationships={deleted_relationship_element},
+            action=DiffAction.UPDATED,
+        )
+        deleted_node_diff.relationships = {deleted_relationship}
+        return deleted_node_diff
 
-    async def test_merge_node_added(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        source_branch: Branch,
-        person_node_branch: Node,
-        car_node_branch: Node,
-        mock_diff_repository: DiffRepository,
-        diff_merger: DiffMerger,
-        empty_diff_root: EnrichedDiffRoot,
-    ):
+    @pytest.fixture
+    def added_person_node_diff(self, person_node_branch, car_node_branch) -> EnrichedDiffNode:
         added_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.ADDED)
+        # attributes
         added_height_value_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_VALUE,
             previous_value=None,
@@ -152,6 +239,28 @@ class TestMergeDiff:
             },
         )
         added_node_diff.attributes = {added_attribute_diff}
+        # relationships
+        added_rel_is_visible_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_VISIBLE,
+            previous_value=None,
+            new_value="True",
+            action=DiffAction.ADDED,
+            conflict=None,
+        )
+        added_rel_is_protected_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_PROTECTED,
+            previous_value=None,
+            new_value="True",
+            action=DiffAction.ADDED,
+            conflict=None,
+        )
+        added_rel_source_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_SOURCE,
+            previous_value=None,
+            new_value=car_node_branch.id,
+            action=DiffAction.ADDED,
+            conflict=None,
+        )
         added_is_related_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_RELATED,
             previous_value=None,
@@ -160,7 +269,15 @@ class TestMergeDiff:
             conflict=None,
         )
         added_relationship_element = EnrichedRelationshipElementFactory.build(
-            action=DiffAction.ADDED, peer_id=car_node_branch.id, conflict=None, properties={added_is_related_property}
+            action=DiffAction.ADDED,
+            peer_id=car_node_branch.id,
+            conflict=None,
+            properties={
+                added_is_related_property,
+                added_rel_is_visible_property,
+                added_rel_is_protected_property,
+                added_rel_source_property,
+            },
         )
         added_relationship = EnrichedRelationshipGroupFactory.build(
             name="cars",
@@ -168,7 +285,26 @@ class TestMergeDiff:
             action=DiffAction.UPDATED,
         )
         added_node_diff.relationships = {added_relationship}
-        empty_diff_root.nodes = {added_node_diff}
+        return added_node_diff
+
+    def _get_empty_node_diff(self, node: Node, action: DiffAction) -> EnrichedDiffNode:
+        return EnrichedNodeFactory.build(
+            uuid=node.get_id(), action=action, kind=node.get_kind(), label="", attributes=set(), relationships=set()
+        )
+
+    async def test_merge_node_added(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        source_branch: Branch,
+        person_node_branch: Node,
+        car_node_branch: Node,
+        mock_diff_repository: DiffRepository,
+        diff_merger: DiffMerger,
+        empty_diff_root: EnrichedDiffRoot,
+        added_person_node_diff: EnrichedDiffNode,
+    ):
+        empty_diff_root.nodes = {added_person_node_diff}
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -178,7 +314,7 @@ class TestMergeDiff:
             diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)
         )
         retrieved_node = await NodeManager.get_one(
-            db=db, id=person_node_branch.id, branch=default_branch, include_owner=True
+            db=db, id=person_node_branch.id, branch=default_branch, include_owner=True, include_source=True
         )
         assert retrieved_node.get_updated_at() == at
         assert retrieved_node.height.value == person_node_branch.height.value
@@ -186,6 +322,11 @@ class TestMergeDiff:
         assert owner_node.id == retrieved_node.id
         assert retrieved_node.height.is_visible is True
         assert retrieved_node.height.is_protected is True
+        car_rel_elements = await retrieved_node.cars.get(db=db)
+        car_elements_by_peer_id = {c.get_peer_id(): c for c in car_rel_elements}
+        assert set(car_elements_by_peer_id.keys()) == {car_node_branch.id}
+        car_element = car_elements_by_peer_id[car_node_branch.id]
+        assert car_element.source_id == car_node_branch.id
 
     async def test_merge_node_added_idempotent(
         self,
@@ -193,12 +334,13 @@ class TestMergeDiff:
         default_branch: Branch,
         source_branch: Branch,
         person_node_branch: Node,
+        car_node_branch: Node,
         mock_diff_repository: DiffRepository,
         diff_merger: DiffMerger,
         empty_diff_root: EnrichedDiffRoot,
+        added_person_node_diff: EnrichedDiffNode,
     ):
-        added_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.ADDED)
-        empty_diff_root.nodes = {added_node_diff}
+        empty_diff_root.nodes = {added_person_node_diff}
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -209,24 +351,36 @@ class TestMergeDiff:
             call(diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)),
             call(diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)),
         ]
-        target_car = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_branch.id)
-        assert target_car.id == person_node_branch.id
-        assert target_car.get_updated_at() == at
+        retrieved_node = await NodeManager.get_one(
+            db=db, id=person_node_branch.id, branch=default_branch, include_owner=True, include_source=True
+        )
+        assert retrieved_node.get_updated_at() == at
+        assert retrieved_node.height.value == person_node_branch.height.value
+        owner_node = await retrieved_node.height.get_owner(db=db)
+        assert owner_node.id == retrieved_node.id
+        assert retrieved_node.height.is_visible is True
+        assert retrieved_node.height.is_protected is True
+        car_rel_elements = await retrieved_node.cars.get(db=db)
+        car_elements_by_peer_id = {c.get_peer_id(): c for c in car_rel_elements}
+        assert set(car_elements_by_peer_id.keys()) == {car_node_branch.id}
+        car_element = car_elements_by_peer_id[car_node_branch.id]
+        assert car_element.source_id == car_node_branch.id
 
     async def test_merge_node_deleted(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         person_node_main: Node,
+        car_node_main: Node,
         source_branch: Branch,
         mock_diff_repository: DiffRepository,
         diff_merger: DiffMerger,
         empty_diff_root: EnrichedDiffRoot,
+        deleted_person_node_diff: EnrichedDiffNode,
     ):
-        person_node_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
-        await person_node_branch.delete(db=db)
-        deleted_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.REMOVED)
-        empty_diff_root.nodes = {deleted_node_diff}
+        person_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
+        await person_branch.delete(db=db)
+        empty_diff_root.nodes = {deleted_person_node_diff}
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -243,15 +397,16 @@ class TestMergeDiff:
         db: InfrahubDatabase,
         default_branch: Branch,
         person_node_main: Node,
+        car_node_main: Node,
         source_branch: Branch,
         mock_diff_repository: DiffRepository,
         diff_merger: DiffMerger,
         empty_diff_root: EnrichedDiffRoot,
+        deleted_person_node_diff: EnrichedDiffNode,
     ):
-        person_node_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
-        await person_node_branch.delete(db=db)
-        deleted_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.REMOVED)
-        empty_diff_root.nodes = {deleted_node_diff}
+        person_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
+        await person_branch.delete(db=db)
+        empty_diff_root.nodes = {deleted_person_node_diff}
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -262,6 +417,7 @@ class TestMergeDiff:
             call(diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)),
             call(diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)),
         ]
+
         with pytest.raises(NodeNotFoundError):
             await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id, raise_on_error=True)
 

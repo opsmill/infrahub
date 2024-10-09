@@ -113,7 +113,9 @@ class DiffMergeSerializer:
                 )
                 for relationship_element_diff in rel_diff.relationships:
                     element_diffs, relationship_property_diffs = self._serialize_relationship_element(
-                        relationship_diff=relationship_element_diff, relationship_identifier=relationship_identifier
+                        relationship_diff=relationship_element_diff,
+                        relationship_identifier=relationship_identifier,
+                        node_uuid=node.uuid,
                     )
                     relationship_diffs.extend(element_diffs)
                     serialized_property_diffs.extend(relationship_property_diffs)
@@ -153,7 +155,7 @@ class DiffMergeSerializer:
             final_value = self._convert_property_value(
                 property_type=property_diff.property_type, raw_value=raw_value, value_type=python_value_type
             )
-            if final_value:
+            if final_value is not None:
                 actions_and_values.append((action, final_value))
         return actions_and_values
 
@@ -186,21 +188,60 @@ class DiffMergeSerializer:
         return attr_dict, attr_prop_dict
 
     def _serialize_relationship_element(
-        self, relationship_diff: EnrichedDiffSingleRelationship, relationship_identifier: str
+        self, relationship_diff: EnrichedDiffSingleRelationship, relationship_identifier: str, node_uuid: str
     ) -> tuple[list[RelationshipMergeDict], list[RelationshipPropertyMergeDict]]:
         relationship_dicts = []
+        added_property_dicts = []
+        removed_property_dicts = []
+        added_peer_id: str | None = None
+        removed_peer_id: str | None = None
         for property_diff in relationship_diff.properties:
-            if property_diff.property_type is not DatabaseEdgeType.IS_RELATED:
-                continue
-            # TODO: next PR will add properties to this method
+            python_value_type: type = str
+            if property_diff.property_type in (DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED):
+                python_value_type = bool
             actions_and_values = self._get_property_actions_and_values(
-                property_diff=property_diff, python_value_type=str
+                property_diff=property_diff, python_value_type=python_value_type
             )
-
-            for action, value in actions_and_values:
-                relationship_dicts.append(
-                    RelationshipMergeDict(
-                        peer_id=str(value), name=relationship_identifier, action=self._to_action_str(action=action)
+            if property_diff.property_type is DatabaseEdgeType.IS_RELATED:
+                for action, value in actions_and_values:
+                    peer_id = str(value)
+                    if action is DiffAction.ADDED:
+                        added_peer_id = peer_id
+                    elif action is DiffAction.REMOVED:
+                        removed_peer_id = peer_id
+                    relationship_dicts.append(
+                        RelationshipMergeDict(
+                            peer_id=peer_id, name=relationship_identifier, action=self._to_action_str(action=action)
+                        )
                     )
+            else:
+                for action, value in actions_and_values:
+                    property_dict = PropertyMergeDict(
+                        property_type=property_diff.property_type.value,
+                        action=self._to_action_str(action=action),
+                        value=value,
+                    )
+                    if action is DiffAction.ADDED:
+                        added_property_dicts.append(property_dict)
+                    elif action is DiffAction.REMOVED:
+                        removed_property_dicts.append(property_dict)
+        relationship_property_dicts = []
+        if added_peer_id and added_property_dicts:
+            relationship_property_dicts.append(
+                RelationshipPropertyMergeDict(
+                    node_uuid=node_uuid,
+                    relationship_id=relationship_identifier,
+                    peer_uuid=added_peer_id,
+                    properties=added_property_dicts,
                 )
-        return relationship_dicts, []
+            )
+        if removed_peer_id and removed_property_dicts:
+            relationship_property_dicts.append(
+                RelationshipPropertyMergeDict(
+                    node_uuid=node_uuid,
+                    relationship_id=relationship_identifier,
+                    peer_uuid=removed_peer_id,
+                    properties=removed_property_dicts,
+                )
+            )
+        return relationship_dicts, relationship_property_dicts

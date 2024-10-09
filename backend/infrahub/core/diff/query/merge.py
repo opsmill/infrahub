@@ -126,6 +126,18 @@ CALL {
                 WHERE source_r_attr.from <= $at AND source_r_attr.to IS NULL
                 SET source_r_attr.to = $at
             }
+            // ------------------------------
+            // set HAS_ATTRIBUTE.to on target branch if necessary
+            // ------------------------------
+            CALL {
+                WITH n, attr_rel_status, a
+                OPTIONAL MATCH (n)
+                    -[target_r_attr:HAS_ATTRIBUTE {branch: $target_branch, status: "active"}]
+                    ->(a)
+                WHERE attr_rel_status = "deleted"
+                AND target_r_attr.from <= $at AND target_r_attr.to IS NULL
+                SET target_r_attr.to = $at
+            }
             WITH n, attr_rel_status, a
             // ------------------------------
             // conditionally create new HAS_ATTRIBUTE relationship on target_branch, if necessary
@@ -289,24 +301,44 @@ class DiffMergePropertiesQuery(Query):
             "source_branch": self.source_branch_name,
         }
         query = """
-UNWIND $property_diff_dicts AS attribute_prop_diff
+UNWIND $property_diff_dicts AS attr_rel_prop_diff
 CALL {
     // ------------------------------
     // find the Attribute node
     // ------------------------------
-    WITH attribute_prop_diff
-    MATCH (n:Node {uuid: attribute_prop_diff.node_uuid})-[:HAS_ATTRIBUTE]->(a:Attribute {name: attribute_prop_diff.attribute_name})
-    UNWIND attribute_prop_diff.properties AS property_diff
+    WITH attr_rel_prop_diff
+    CALL {
+        WITH attr_rel_prop_diff
+        OPTIONAL MATCH (n:Node {uuid: attr_rel_prop_diff.node_uuid})
+            -[:HAS_ATTRIBUTE {branch: $source_branch}]
+            ->(attr:Attribute {name: attr_rel_prop_diff.attribute_name})
+        WHERE attr_rel_prop_diff.attribute_name IS NOT NULL
+        RETURN attr
+    }
+    CALL {
+        WITH attr_rel_prop_diff
+        OPTIONAL MATCH (n:Node {uuid: attr_rel_prop_diff.node_uuid})
+            -[r1:IS_RELATED {branch: $source_branch}]
+            -(rel:Relationship {name: attr_rel_prop_diff.relationship_id})
+            -[r2:IS_RELATED {branch: $source_branch}]
+            -(:Node {uuid: attr_rel_prop_diff.peer_uuid})
+        WHERE attr_rel_prop_diff.relationship_id IS NOT NULL
+        RETURN rel
+        ORDER BY r1.from DESC, r2.from DESC
+        LIMIT 1
+    }
+    WITH attr_rel_prop_diff, COALESCE(attr, rel) AS attr_rel
+    UNWIND attr_rel_prop_diff.properties AS property_diff
     // ------------------------------
-    // handle updates for properties under this attribute
+    // handle updates for properties under this attribute/relationship
     // ------------------------------
     CALL {
-        WITH a, property_diff
+        WITH attr_rel, property_diff
         // ------------------------------
         // identify the correct property node to link
         // ------------------------------
         CALL {
-            WITH a, property_diff
+            WITH attr_rel, property_diff
             OPTIONAL MATCH (peer:Node {uuid: property_diff.value})
             WHERE property_diff.property_type IN ["HAS_SOURCE", "HAS_OWNER"]
             OPTIONAL MATCH (bool:Boolean {value: property_diff.value})
@@ -316,8 +348,8 @@ CALL {
                 // get the latest linked AttributeValue on the source b/c there could be multiple
                 // with different is_default values
                 // ------------------------------
-                WITH a, property_diff
-                OPTIONAL MATCH (a)-[r_attr_val:HAS_VALUE {branch: $source_branch}]->(av:AttributeValue {value: property_diff.value})
+                WITH attr_rel, property_diff
+                OPTIONAL MATCH (attr_rel)-[r_attr_val:HAS_VALUE {branch: $source_branch}]->(av:AttributeValue {value: property_diff.value})
                 WHERE property_diff.property_type = "HAS_VALUE"
                 RETURN av
                 ORDER BY r_attr_val.from DESC
@@ -325,7 +357,7 @@ CALL {
             }
             RETURN COALESCE (peer, bool, av) AS prop_node
         }
-        WITH a, property_diff.property_type AS prop_type, prop_node, CASE
+        WITH attr_rel, property_diff.property_type AS prop_type, prop_node, CASE
             WHEN property_diff.action = "ADDED" THEN "active"
             WHEN property_diff.action = "REMOVED" THEN "deleted"
             ELSE NULL
@@ -334,8 +366,8 @@ CALL {
         // set property edge.to on source branch and, optionally, target branch
         // ------------------------------
         CALL {
-            WITH a, prop_rel_status, prop_type
-            OPTIONAL MATCH (a)
+            WITH attr_rel, prop_rel_status, prop_type
+            OPTIONAL MATCH (attr_rel)
                 -[source_r_prop {branch: $source_branch, status: prop_rel_status}]
                 ->()
             WHERE type(source_r_prop) = prop_type
@@ -343,8 +375,8 @@ CALL {
             SET source_r_prop.to = $at
         }
         CALL {
-            WITH a, prop_rel_status, prop_type
-            OPTIONAL MATCH (a)
+            WITH attr_rel, prop_rel_status, prop_type
+            OPTIONAL MATCH (attr_rel)
                 -[target_r_prop {branch: $target_branch, status: "active"}]
                 ->()
             WHERE type(target_r_prop) = prop_type
@@ -356,49 +388,49 @@ CALL {
         // check for existing edge on target_branch
         // ------------------------------
         CALL {
-            WITH a, prop_rel_status, prop_type, prop_node
-            OPTIONAL MATCH (a)-[r_prop {branch: $target_branch}]->(prop_node)
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
+            OPTIONAL MATCH (attr_rel)-[r_prop {branch: $target_branch}]->(prop_node)
             WHERE type(r_prop) = prop_type
             AND r_prop.status = prop_rel_status
             AND r_prop.from <= $at
             AND (r_prop.to >= $at OR r_prop.to IS NULL)
             RETURN r_prop
         }
-        WITH a, prop_rel_status, prop_type, prop_node, r_prop
+        WITH attr_rel, prop_rel_status, prop_type, prop_node, r_prop
         WHERE r_prop IS NULL
         // ------------------------------
         // create new edge to prop_node on target_branch, if necessary
         // one subquery per possible edge type b/c edge type cannot be a variable
         // ------------------------------
         CALL {
-            WITH a, prop_rel_status, prop_type, prop_node
-            WITH a, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "HAS_VALUE"
-            CREATE (a)-[:HAS_VALUE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
+            CREATE (attr_rel)-[:HAS_VALUE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
         CALL {
-            WITH a, prop_rel_status, prop_type, prop_node
-            WITH a, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "HAS_SOURCE"
-            CREATE (a)-[:HAS_SOURCE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
+            CREATE (attr_rel)-[:HAS_SOURCE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
         CALL {
-            WITH a, prop_rel_status, prop_type, prop_node
-            WITH a, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "HAS_OWNER"
-            CREATE (a)-[:HAS_OWNER { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
+            CREATE (attr_rel)-[:HAS_OWNER { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
         CALL {
-            WITH a, prop_rel_status, prop_type, prop_node
-            WITH a, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "IS_VISIBLE"
-            CREATE (a)-[:IS_VISIBLE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
+            CREATE (attr_rel)-[:IS_VISIBLE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
         CALL {
-            WITH a, prop_rel_status, prop_type, prop_node
-            WITH a, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
+            WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "IS_PROTECTED"
-            CREATE (a)-[:IS_PROTECTED { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
+            CREATE (attr_rel)-[:IS_PROTECTED { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
     }
 }
