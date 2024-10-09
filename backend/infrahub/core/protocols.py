@@ -216,7 +216,7 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
     pass
 
 
-class CoreAccountGroup(CoreGroup):
+class CoreAccountGroup(LineageOwner, LineageSource, CoreGroup):
     roles: RelationshipManager
 
 
