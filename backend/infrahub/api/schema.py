@@ -17,6 +17,7 @@ from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import (  # noqa: TCH001
     SchemaBranchHash,
@@ -27,7 +28,7 @@ from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, Pro
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import MigrationError
+from infrahub.exceptions import MigrationError, PermissionDeniedError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -38,6 +39,7 @@ from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE
 if TYPE_CHECKING:
     from typing_extensions import Self
 
+    from infrahub.auth import AccountSession
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.services import InfrahubServices
 
@@ -240,8 +242,17 @@ async def load_schema(
     background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
-    _: Any = Depends(get_current_user),
+    account_session: AccountSession = Depends(get_current_user),
 ) -> SchemaUpdate:
+    for permission_backend in registry.permission_backends:
+        if not await permission_backend.has_permission(
+            db=db,
+            account_id=account_session.account_id,
+            permission=f"global:{GlobalPermissions.MANAGE_SCHEMA.value}:{PermissionDecision.ALLOW.value}",
+            branch=branch,
+        ):
+            raise PermissionDeniedError("You are not allowed to manage the schema")
+
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
 

@@ -4,6 +4,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
+from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
@@ -219,6 +220,36 @@ async def test_schema_load_endpoint_valid_simple(
     assert attributes["type"] == 3000
     assert relationships["interfaces"] == 450
     assert relationships["tags"] == 7000
+
+
+async def test_schema_load_permission_failure(
+    db: InfrahubDatabase,
+    client: TestClient,
+    first_account,
+    default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
+    authentication_base,
+    helper,
+):
+    token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
+    await token.new(db=db, token="unprivileged", account=first_account)
+    await token.save(db=db)
+
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+
+    # Must execute in a with block to execute the startup/shutdown event
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers={"X-INFRAHUB-KEY": "unprivileged"},
+            json={"schemas": [helper.schema_file("infra_simple_01.json")]},
+        )
+
+    assert response.status_code == 403
+    assert response.json()["errors"][0]["message"] == "You are not allowed to manage the schema"
 
 
 async def test_schema_load_restricted_namespace(
