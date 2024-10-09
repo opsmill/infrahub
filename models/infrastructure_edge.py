@@ -681,19 +681,21 @@ ACCOUNTS = (
     Account(name="jbauer", label="Jack Bauer", account_type="User", password="Password123", role="read-only"),
     Account(name="cobrian", label="Chloe O'Brian", account_type="User", password="Password123", role="read-write"),
     Account(name="dpalmer", label="David Palmer", account_type="User", password="Password123", role="read-write"),
-    Account(name="sudo", label="Sue Dough", password="!givem3@ll", role="admin", account_type="User"),
-    Account(name="elawson", label="Emily Lawson", password="LRVS}Hg^g8", role="read-write", account_type="User"),
-    Account(name="jthompson", label="Jacob Thompson", password="5{r_:}vBT=", role="read-write", account_type="User"),
-    Account(name="shernandez", label="Sofia Hernandez", password="8rgFS%s^9]", role="read-write", account_type="User"),
-    Account(name="rpatel", label="Ryan Patel", password="uhEf7b~F&2", role="read-only", account_type="User"),
-    Account(name="ocarter", label="Olivia Carter", password="@KOM,O&OCu", role="read-only", account_type="User"),
+    Account(name="sudo", label="Sue Dough", password="Password123", role="admin", account_type="User"),
+    Account(name="elawson", label="Emily Lawson", password="Password123", role="read-write", account_type="User"),
+    Account(name="jthompson", label="Jacob Thompson", password="Password123", role="read-write", account_type="User"),
+    Account(name="shernandez", label="Sofia Hernandez", password="Password123", role="read-write", account_type="User"),
+    Account(name="rpatel", label="Ryan Patel", password="Password123", role="read-only", account_type="User"),
+    Account(name="ocarter", label="Olivia Carter", password="Password123", role="read-only", account_type="User"),
 )
 
 ACCOUNT_GROUPS = {
     "administrators": AccountGroup(
         name="Administrators", roles=["Administrator"], members=["sudo", "pop-builder", "crm-sync"]
     ),
-    "ops-team": AccountGroup(name="Operation Team", members=["jbauer", "elawson", "jthompson"]),
+    "ops-team": AccountGroup(
+        name="Operations Team", roles=["Global read-only"], members=["jbauer", "elawson", "jthompson"]
+    ),
     "eng-team": AccountGroup(
         name="Engineering Team", roles=["Global read-write"], members=["cobrian", "shernandez", "rpatel"]
     ),
