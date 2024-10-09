@@ -97,10 +97,6 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     await test.step("Delete the profile", async () => {
       await page
         .getByRole("row", { name: "test-graphql-query" })
-        .getByTestId("actions-row-button")
-        .click();
-      await page
-        .getByRole("row", { name: "test-graphql-query" })
         .getByTestId("delete-row-button")
         .click();
       await page.getByTestId("modal-delete-confirm").click();
