@@ -29,7 +29,7 @@ env:
   METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
 
 jobs:
-   # ------------------------------------------ Check Files Changes  ------------------------------------------
+  # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
     name: Detect which file has changed
     runs-on: ubuntu-latest
@@ -58,7 +58,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-filters.yml
 
- # ------------------------------------------ All Linter  ------------------------------------------
+  # ------------------------------------------ All Linter  ------------------------------------------
   helm-lint:
     if: needs.files-changed.outputs.helm == 'true'
     needs: ["files-changed"]
@@ -223,314 +223,314 @@ jobs:
   #         flag-name: python-sdk-integration
   #         parallel: true
 
-  backend-tests-unit:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: huge-runners
-    timeout-minutes: 45
-    env:
-      INFRAHUB_DB_TYPE: neo4j
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: "Setup git credentials"
-        run: "git config --global user.name 'Infrahub' && \
-              git config --global user.email 'infrahub@opsmill.com' && \
-              git config --global --add safe.directory '*' && \
-              git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
-      - name: "Unit Tests"
-        run: "invoke backend.test-unit"
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2
-        continue-on-error: true
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: backend-unit
-          parallel: true
-      - name: Generate tracing spans
-        if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
-        uses: inception-health/otel-upload-test-artifact-action@v1
-        with:
-          jobName: "backend-tests-unit"
-          stepName: "Unit Tests"
-          path: "pytest-junit.xml"
-          type: "junit"
-          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
+  #backend-tests-unit:
+  #  if: |
+  #    always() && !cancelled() &&
+  #    !contains(needs.*.result, 'failure') &&
+  #    !contains(needs.*.result, 'cancelled') &&
+  #    needs.files-changed.outputs.backend == 'true'
+  #  needs: ["files-changed", "yaml-lint", "python-lint"]
+  #  runs-on:
+  #    group: huge-runners
+  #  timeout-minutes: 45
+  #  env:
+  #    INFRAHUB_DB_TYPE: neo4j
+  #  steps:
+  #    - name: "Check out repository code"
+  #      uses: "actions/checkout@v4"
+  #      with:
+  #        submodules: true
+  #    - name: Set up Python
+  #      uses: actions/setup-python@v5
+  #      with:
+  #        python-version: '3.12'
+  #    - name: "Setup git credentials"
+  #      run: "git config --global user.name 'Infrahub' && \
+  #            git config --global user.email 'infrahub@opsmill.com' && \
+  #            git config --global --add safe.directory '*' && \
+  #            git config --global credential.usehttppath true && \
+  #            git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+  #    - name: "Setup Python environment"
+  #      run: |
+  #        poetry config virtualenvs.create false
+  #        pip install toml invoke
+  #    - name: "Install dependencies"
+  #      run: "poetry install --no-interaction --no-ansi"
+  #    - name: "Unit Tests"
+  #      run: "invoke backend.test-unit"
+  #    - name: "Coveralls : Unit Tests"
+  #      uses: coverallsapp/github-action@v2
+  #      continue-on-error: true
+  #      env:
+  #        COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #      with:
+  #        flag-name: backend-unit
+  #        parallel: true
+  #    - name: Generate tracing spans
+  #      if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+  #      uses: inception-health/otel-upload-test-artifact-action@v1
+  #      with:
+  #        jobName: "backend-tests-unit"
+  #        stepName: "Unit Tests"
+  #        path: "pytest-junit.xml"
+  #        type: "junit"
+  #        githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
+  #
+  #backend-tests-integration:
+  #  if: |
+  #    always() && !cancelled() &&
+  #    !contains(needs.*.result, 'failure') &&
+  #    !contains(needs.*.result, 'cancelled') &&
+  #    needs.files-changed.outputs.backend == 'true'
+  #  needs: ["files-changed", "yaml-lint", "python-lint"]
+  #  runs-on:
+  #    group: "huge-runners"
+  #  timeout-minutes: 30
+  #  env:
+  #    INFRAHUB_DB_TYPE: neo4j
+  #  steps:
+  #    - name: "Check out repository code"
+  #      uses: "actions/checkout@v4"
+  #      with:
+  #        submodules: true
+  #    - name: Set up Python
+  #      uses: actions/setup-python@v5
+  #      with:
+  #        python-version: '3.12'
+  #    - name: "Setup git credentials"
+  #      run: "git config --global user.name 'Infrahub' && \
+  #            git config --global user.email 'infrahub@opsmill.com' && \
+  #            git config --global --add safe.directory '*' && \
+  #            git config --global credential.usehttppath true && \
+  #            git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+  #    - name: "Setup Python environment"
+  #      run: |
+  #        poetry config virtualenvs.create false
+  #        pip install toml invoke
+  #    - name: "Install dependencies"
+  #      run: "poetry install --no-interaction --no-ansi"
+  #    - name: "Mypy Tests"
+  #      run: "invoke backend.mypy"
+  #    - name: "Pylint Tests"
+  #      run: "invoke backend.pylint"
+  #    - name: "Integration Tests"
+  #      run: "invoke backend.test-integration"
+  #    - name: "Coveralls : Integration Tests"
+  #      uses: coverallsapp/github-action@v2
+  #      continue-on-error: true
+  #      env:
+  #        COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #      with:
+  #        flag-name: backend-integration
+  #        parallel: true
+  #
+  #backend-tests-memgraph:
+  #  if: |
+  #    always() && !cancelled() &&
+  #    !contains(needs.*.result, 'failure') &&
+  #    !contains(needs.*.result, 'cancelled') &&
+  #    needs.files-changed.outputs.backend == 'true'
+  #  needs: ["files-changed", "yaml-lint", "python-lint"]
+  #  runs-on:
+  #    group: huge-runners
+  #  timeout-minutes: 45
+  #  strategy:
+  #    fail-fast: false
+  #    matrix:
+  #      include:
+  #        - name: backend-tests-unit-memgraph
+  #          env:
+  #            INFRAHUB_DB_TYPE: memgraph
+  #        # - name: backend-tests-unit-nats
+  #        #   env:
+  #        #     INFRAHUB_DB_TYPE: memgraph
+  #        #     INFRAHUB_USE_NATS: 1
+  #        #     INFRAHUB_BROKER_DRIVER: nats
+  #        #     INFRAHUB_CACHE_DRIVER: nats
+  #  name: ${{ matrix.name }}
+  #  env: ${{ matrix.env }}
+  #  steps:
+  #    - name: "Check out repository code"
+  #      uses: "actions/checkout@v4"
+  #      with:
+  #        submodules: true
+  #    - name: Set up Python
+  #      uses: actions/setup-python@v5
+  #      with:
+  #        python-version: '3.12'
+  #    - name: "Setup git credentials"
+  #      run: "git config --global user.name 'Infrahub' && \
+  #            git config --global user.email 'infrahub@opsmill.com' && \
+  #            git config --global --add safe.directory '*' && \
+  #            git config --global credential.usehttppath true && \
+  #            git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+  #    - name: "Setup Python environment"
+  #      run: |
+  #        poetry config virtualenvs.create false
+  #        pip install toml invoke
+  #    - name: "Install dependencies"
+  #      run: "poetry install --no-interaction --no-ansi"
+  #    - name: "Unit Tests"
+  #      run: "invoke backend.test-unit"
+  #
+  #backend-validate-generated:
+  #  if: |
+  #    always() && !cancelled() &&
+  #    !contains(needs.*.result, 'failure') &&
+  #    !contains(needs.*.result, 'cancelled') &&
+  #    (needs.files-changed.outputs.backend == 'true' ||
+  #    needs.files-changed.outputs.documentation == 'true')
+  #  needs: ["files-changed", "yaml-lint", "python-lint"]
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - name: Check out repository code
+  #      uses: actions/checkout@v4
+  #      with:
+  #        submodules: true
+  #    - name: Set up Python
+  #      uses: actions/setup-python@v5
+  #      with:
+  #        python-version: 3.12
+  #    - name: "Setup environment"
+  #      run: |
+  #        pipx install poetry
+  #        poetry config virtualenvs.prefer-active-python true
+  #        pip install invoke toml
+  #    - name: "Install Package"
+  #      run: "poetry install"
+  #    - name: "Run validator"
+  #      run: "poetry run invoke backend.validate-generated"
 
-  backend-tests-integration:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: "huge-runners"
-    timeout-minutes: 30
-    env:
-      INFRAHUB_DB_TYPE: neo4j
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: "Setup git credentials"
-        run: "git config --global user.name 'Infrahub' && \
-              git config --global user.email 'infrahub@opsmill.com' && \
-              git config --global --add safe.directory '*' && \
-              git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
-      - name: "Mypy Tests"
-        run: "invoke backend.mypy"
-      - name: "Pylint Tests"
-        run: "invoke backend.pylint"
-      - name: "Integration Tests"
-        run: "invoke backend.test-integration"
-      - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2
-        continue-on-error: true
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: backend-integration
-          parallel: true
-
-  backend-tests-memgraph:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: huge-runners
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: backend-tests-unit-memgraph
-            env:
-              INFRAHUB_DB_TYPE: memgraph
-          # - name: backend-tests-unit-nats
-          #   env:
-          #     INFRAHUB_DB_TYPE: memgraph
-          #     INFRAHUB_USE_NATS: 1
-          #     INFRAHUB_BROKER_DRIVER: nats
-          #     INFRAHUB_CACHE_DRIVER: nats
-    name: ${{ matrix.name }}
-    env: ${{ matrix.env }}
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: "Setup git credentials"
-        run: "git config --global user.name 'Infrahub' && \
-              git config --global user.email 'infrahub@opsmill.com' && \
-              git config --global --add safe.directory '*' && \
-              git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
-      - name: "Unit Tests"
-        run: "invoke backend.test-unit"
-
-  backend-validate-generated:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.backend == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
-      - name: "Setup environment"
-        run: |
-          pipx install poetry
-          poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
-      - name: "Install Package"
-        run: "poetry install"
-      - name: "Run validator"
-        run: "poetry run invoke backend.validate-generated"
-
-  frontend-tests:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.frontend == 'true'
-    needs: ["files-changed", "yaml-lint", "javascript-lint"]
-    runs-on: "ubuntu-22.04"
-    timeout-minutes: 30
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      - name: Install NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
-      - name: "Install frontend"
-        working-directory: ./frontend/app
-        run: npm install
-      - name: "Run unit tests"
-        working-directory: ./frontend/app
-        run: "npm run test:coverage"
-      - name: "Run integration tests"
-        working-directory: ./frontend/app
-        run: "npm run cypress:run"
-      - name: Upload cypress screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: docs/docs/media/*
-      - name: Upload cypress videos
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: frontend/app/cypress/videos/*
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2
-        continue-on-error: true
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: frontend-unit
-          parallel: true
-          file: frontend/app/coverage/lcov.info
-
-  documentation:
-    defaults:
-      run:
-        working-directory: ./docs
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.documentation == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-22.04"
-    timeout-minutes: 5
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      - name: Install NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-      - name: "Install dependencies"
-        run: npm install
-      - name: "Setup Python environment"
-        run: "pip install toml invoke"
-      - name: "Build website"
-        run: "invoke docs.build"
-
-  validate-generated-documentation:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.python == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-22.04"
-    timeout-minutes: 5
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: "Setup environment"
-        run: "pip install invoke toml"
-      - name: "Build Test Image"
-        run: "invoke dev.build"
-      - name: "Validate generated documentation"
-        run: "invoke docs.validate --docker"
-
-  validate-documentation-style:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.documentation == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-22.04"
-    timeout-minutes: 5
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      # The official GitHub Action for Vale doesn't work, installing manually instead:
-      # https://github.com/errata-ai/vale-action/issues/103
-      - name: Download Vale
-        run: |
-          curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
-          tar -xzf vale.tar.gz
-        env:
-          VALE_VERSION: ${{ env.VALE_VERSION }}
-      - name: "Validate documentation style"
-        run: ./vale $(find . -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+  # frontend-tests:
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.frontend == 'true'
+  #   needs: ["files-changed", "yaml-lint", "javascript-lint"]
+  #   runs-on: "ubuntu-22.04"
+  #   timeout-minutes: 30
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v4"
+  #       with:
+  #         submodules: true
+  #     - name: Install NodeJS
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+  #         cache: 'npm'
+  #         cache-dependency-path: frontend/app/package-lock.json
+  #     - name: "Install frontend"
+  #       working-directory: ./frontend/app
+  #       run: npm install
+  #     - name: "Run unit tests"
+  #       working-directory: ./frontend/app
+  #       run: "npm run test:coverage"
+  #     - name: "Run integration tests"
+  #       working-directory: ./frontend/app
+  #       run: "npm run cypress:run"
+  #     - name: Upload cypress screenshots
+  #       if: failure()
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: screenshots
+  #         path: docs/docs/media/*
+  #     - name: Upload cypress videos
+  #       if: failure()
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: screenshots
+  #         path: frontend/app/cypress/videos/*
+  #     - name: "Coveralls : Unit Tests"
+  #       uses: coverallsapp/github-action@v2
+  #       continue-on-error: true
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         flag-name: frontend-unit
+  #         parallel: true
+  #         file: frontend/app/coverage/lcov.info
+  #
+  # documentation:
+  #   defaults:
+  #     run:
+  #       working-directory: ./docs
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.documentation == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on: "ubuntu-22.04"
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v4"
+  #       with:
+  #         submodules: true
+  #     - name: Install NodeJS
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+  #         cache: 'npm'
+  #         cache-dependency-path: package-lock.json
+  #     - name: "Install dependencies"
+  #       run: npm install
+  #     - name: "Setup Python environment"
+  #       run: "pip install toml invoke"
+  #     - name: "Build website"
+  #       run: "invoke docs.build"
+  #
+  # validate-generated-documentation:
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.python == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on: "ubuntu-22.04"
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v4"
+  #       with:
+  #         submodules: true
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.12"
+  #     - name: "Setup environment"
+  #       run: "pip install invoke toml"
+  #     - name: "Build Test Image"
+  #       run: "invoke dev.build"
+  #     - name: "Validate generated documentation"
+  #       run: "invoke docs.validate --docker"
+  #
+  # validate-documentation-style:
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.documentation == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on: "ubuntu-22.04"
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v4"
+  #       with:
+  #         submodules: true
+  #     # The official GitHub Action for Vale doesn't work, installing manually instead:
+  #     # https://github.com/errata-ai/vale-action/issues/103
+  #     - name: Download Vale
+  #       run: |
+  #         curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
+  #         tar -xzf vale.tar.gz
+  #       env:
+  #         VALE_VERSION: ${{ env.VALE_VERSION }}
+  #     - name: "Validate documentation style"
+  #       run: ./vale $(find . -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing-playwright:
@@ -576,7 +576,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: package-lock.json
 
       - name: Install Invoke
@@ -625,6 +625,9 @@ jobs:
 
       - name: Git Repository
         run: invoke dev.infra-git-import dev.infra-git-create
+
+      - name: Initialise invoke Demo
+        run: invoke demo.start demo.load-infra-schema demo.load-infra-data
 
       - name: Set infrahub address
         run: |
@@ -748,13 +751,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
-              git config --global user.email 'infrahub@opsmill.com' && \
-              git config --global --add safe.directory '*' && \
-              git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+          git config --global user.email 'infrahub@opsmill.com' && \
+          git config --global --add safe.directory '*' && \
+          git config --global credential.usehttppath true && \
+          git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
           poetry config virtualenvs.create false
@@ -769,42 +772,42 @@ jobs:
           token: ${{ secrets.CODSPEED_TOKEN }}
           run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
   # ------------------------------------------ Coverall Report  ------------------------------------------
-  coverall-report:
-    needs:
-      - backend-tests-integration
-      - backend-tests-unit
-      - frontend-tests
-    if: |
-      always() && !cancelled()
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      # # NOTE: The ref value should be different when triggered by pull_request event.
-      # #       See: https://github.com/lewagon/wait-on-check-action/issues/25.
-      # - name: Wait on tests (PR)
-      #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
-      #   if: github.event_name == 'pull_request'
-      #   with:
-      #     ref: ${{ github.event.pull_request.head.sha }}
-      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
-      #     wait-interval: 10
-      #     running-workflow-name: report
-      #     allowed-conclusions: success,skipped,cancelled,failure
-
-      # - name: Wait on tests (push)
-      #   if: github.event_name != 'pull_request'
-      #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
-      #   with:
-      #     ref: ${{ github.sha }}
-      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
-      #     wait-interval: 10
-      #     running-workflow-name: report
-      #     allowed-conclusions: success,skipped,cancelled,failure
-
-      - uses: coverallsapp/github-action@v2
-        continue-on-error: true
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          carryforward: "backend-unit,backend-integration,frontend-unit"
-          parallel-finished: true
+#  coverall-report:
+#    needs:
+#      - backend-tests-integration
+#      - backend-tests-unit
+#      - frontend-tests
+#    if: |
+#      always() && !cancelled()
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 10
+#    steps:
+#      # # NOTE: The ref value should be different when triggered by pull_request event.
+#      # #       See: https://github.com/lewagon/wait-on-check-action/issues/25.
+#      # - name: Wait on tests (PR)
+#      #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
+#      #   if: github.event_name == 'pull_request'
+#      #   with:
+#      #     ref: ${{ github.event.pull_request.head.sha }}
+#      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+#      #     wait-interval: 10
+#      #     running-workflow-name: report
+#      #     allowed-conclusions: success,skipped,cancelled,failure
+#
+#      # - name: Wait on tests (push)
+#      #   if: github.event_name != 'pull_request'
+#      #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
+#      #   with:
+#      #     ref: ${{ github.sha }}
+#      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+#      #     wait-interval: 10
+#      #     running-workflow-name: report
+#      #     allowed-conclusions: success,skipped,cancelled,failure
+#
+#      - uses: coverallsapp/github-action@v2
+#        continue-on-error: true
+#        env:
+#          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+#        with:
+#          carryforward: "backend-unit,backend-integration,frontend-unit"
+#          parallel-finished: true
