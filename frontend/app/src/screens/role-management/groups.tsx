@@ -3,7 +3,7 @@ import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table } from "@/components/table/table";
+import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -21,8 +21,14 @@ function Groups() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_GROUPS);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
-  const [rowToDelete, setRowToDelete] = useState(null);
-  const [rowToUpdate, setRowToUpdate] = useState(null);
+  const [rowToDelete, setRowToDelete] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [rowToUpdate, setRowToUpdate] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [

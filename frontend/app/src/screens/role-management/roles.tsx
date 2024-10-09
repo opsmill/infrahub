@@ -1,6 +1,6 @@
 import { Pill } from "@/components/display/pill";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table } from "@/components/table/table";
+import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_ROLES } from "@/graphql/queries/role-management/getRoles";
@@ -21,8 +21,14 @@ function Roles() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ROLES);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_ROLE_OBJECT);
-  const [rowToDelete, setRowToDelete] = useState(null);
-  const [rowToUpdate, setRowToUpdate] = useState(null);
+  const [rowToDelete, setRowToDelete] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [rowToUpdate, setRowToUpdate] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [

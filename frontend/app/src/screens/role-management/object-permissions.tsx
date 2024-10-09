@@ -3,7 +3,7 @@ import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table } from "@/components/table/table";
+import { Table, tRowValue } from "@/components/table/table";
 import { BadgeCopy } from "@/components/ui/badge-copy";
 import { Pagination } from "@/components/ui/pagination";
 import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
@@ -35,8 +35,14 @@ function Permissions() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
-  const [rowToDelete, setRowToDelete] = useState(null);
-  const [rowToUpdate, setRowToUpdate] = useState(null);
+  const [rowToDelete, setRowToDelete] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [rowToUpdate, setRowToUpdate] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
