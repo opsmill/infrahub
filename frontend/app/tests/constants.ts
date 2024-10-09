@@ -16,17 +16,17 @@ export const ADMIN_CREDENTIALS = {
 };
 
 export const READ_WRITE_CREDENTIALS = {
-  username: "Chloe O'Brian",
+  username: "cobrian",
   password: "Password123",
 };
 
 export const READ_ONLY_CREDENTIALS = {
-  username: "Jack Bauer",
+  username: "jbauer",
   password: "Password123",
 };
 
 export const ENG_TEAM_ONLY_CREDENTIALS = {
-  username: "Engineering Team",
+  username: "shernandez",
   password: "Password123",
 };
 
