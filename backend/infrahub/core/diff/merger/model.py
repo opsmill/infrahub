@@ -23,7 +23,6 @@ class PropertyMergeDict(TypedDict):
     property_type: str
     action: str
     value: str | bool | int | float | None
-    is_peer_id: bool
 
 
 class AttributePropertyMergeDict(TypedDict):

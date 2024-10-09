@@ -302,11 +302,30 @@ CALL {
     // ------------------------------
     CALL {
         WITH a, property_diff
-        OPTIONAL MATCH (peer:Node {uuid: property_diff.value})
-        WHERE property_diff.is_peer_id = TRUE
-        OPTIONAL MATCH (av:AttributeValue {value: property_diff.value})
-        WHERE property_diff.is_peer_id = FALSE
-        WITH a, property_diff.property_type AS prop_type, COALESCE(peer, av) AS prop_node, CASE
+        // ------------------------------
+        // identify the correct property node to link
+        // ------------------------------
+        CALL {
+            WITH a, property_diff
+            OPTIONAL MATCH (peer:Node {uuid: property_diff.value})
+            WHERE property_diff.property_type IN ["HAS_SOURCE", "HAS_OWNER"]
+            OPTIONAL MATCH (bool:Boolean {value: property_diff.value})
+            WHERE property_diff.property_type IN ["IS_VISIBLE", "IS_PROTECTED"]
+            CALL {
+                // ------------------------------
+                // get the latest linked AttributeValue on the source b/c there could be multiple
+                // with different is_default values
+                // ------------------------------
+                WITH a, property_diff
+                OPTIONAL MATCH (a)-[r_attr_val:HAS_VALUE {branch: $source_branch}]->(av:AttributeValue {value: property_diff.value})
+                WHERE property_diff.property_type = "HAS_VALUE"
+                RETURN av
+                ORDER BY r_attr_val.from DESC
+                LIMIT 1
+            }
+            RETURN COALESCE (peer, bool, av) AS prop_node
+        }
+        WITH a, property_diff.property_type AS prop_type, prop_node, CASE
             WHEN property_diff.action = "ADDED" THEN "active"
             WHEN property_diff.action = "REMOVED" THEN "deleted"
             ELSE NULL
@@ -315,19 +334,19 @@ CALL {
         // set property edge.to on source branch and, optionally, target branch
         // ------------------------------
         CALL {
-            WITH a, prop_rel_status, prop_type, prop_node
+            WITH a, prop_rel_status, prop_type
             OPTIONAL MATCH (a)
                 -[source_r_prop {branch: $source_branch, status: prop_rel_status}]
-                ->(prop_node)
+                ->()
             WHERE type(source_r_prop) = prop_type
             AND source_r_prop.from <= $at AND source_r_prop.to IS NULL
             SET source_r_prop.to = $at
         }
         CALL {
-            WITH a, prop_rel_status, prop_type, prop_node
+            WITH a, prop_rel_status, prop_type
             OPTIONAL MATCH (a)
                 -[target_r_prop {branch: $target_branch, status: "active"}]
-                ->(prop_node)
+                ->()
             WHERE type(target_r_prop) = prop_type
             AND prop_rel_status = "deleted"
             AND target_r_prop.from <= $at AND target_r_prop.to IS NULL
