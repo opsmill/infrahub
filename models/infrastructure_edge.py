@@ -670,7 +670,12 @@ OBJECT_PERMISSIONS = {
 ACCOUNT_ROLES = (
     AccountRole(name="Administrator", global_permissions="__all__", object_permissions=["allow_any"]),
     AccountRole(name="Global read-only", object_permissions=["deny_any", "view_any"]),
-    AccountRole(name="Global read-write", object_permissions=["allow_any"]),
+    AccountRole(
+        name="Global read-write",
+        global_permissions=["Edit default branch", "Merge branches", "Merge proposed changes"],
+        object_permissions=["allow_any"],
+    ),
+    AccountRole(name="Own branches read-write", object_permissions=["allow_any"]),
 )
 
 ACCOUNTS = (
@@ -699,7 +704,9 @@ ACCOUNT_GROUPS = {
     "eng-team": AccountGroup(
         name="Engineering Team", roles=["Global read-write"], members=["cobrian", "shernandez", "rpatel"]
     ),
-    "arch-team": AccountGroup(name="Architecture Team", roles=["Global read-only"], members=["dpalmer", "ocarter"]),
+    "arch-team": AccountGroup(
+        name="Architecture Team", roles=["Own branches read-write"], members=["dpalmer", "ocarter"]
+    ),
 }
 
 GROUPS = (
