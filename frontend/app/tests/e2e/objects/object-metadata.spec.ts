@@ -38,8 +38,8 @@ test.describe("Object metadata", () => {
 
     // Select Architecture team
     await page.getByText("Owner Kind ?").getByLabel("Kind").first().click();
-    await page.getByRole("option", { name: "Account" }).click();
-    await page.getByText("Owner Kind ?").getByLabel("Account").click();
+    await page.getByRole("option", { name: "Account group" }).click();
+    await page.getByText("Owner Kind ?").getByLabel("Account group").click();
     await page.getByRole("option", { name: "Architecture Team" }).click();
 
     // Save
