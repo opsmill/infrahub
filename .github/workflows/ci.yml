@@ -223,7 +223,7 @@ jobs:
   #         flag-name: python-sdk-integration
   #         parallel: true
 
-  #backend-tests-unit:
+  # backend-tests-unit:
   #  if: |
   #    always() && !cancelled() &&
   #    !contains(needs.*.result, 'failure') &&
@@ -276,7 +276,7 @@ jobs:
   #        type: "junit"
   #        githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
   #
-  #backend-tests-integration:
+  # backend-tests-integration:
   #  if: |
   #    always() && !cancelled() &&
   #    !contains(needs.*.result, 'failure') &&
@@ -324,7 +324,7 @@ jobs:
   #        flag-name: backend-integration
   #        parallel: true
   #
-  #backend-tests-memgraph:
+  # backend-tests-memgraph:
   #  if: |
   #    always() && !cancelled() &&
   #    !contains(needs.*.result, 'failure') &&
@@ -373,7 +373,7 @@ jobs:
   #    - name: "Unit Tests"
   #      run: "invoke backend.test-unit"
   #
-  #backend-validate-generated:
+  # backend-validate-generated:
   #  if: |
   #    always() && !cancelled() &&
   #    !contains(needs.*.result, 'failure') &&
