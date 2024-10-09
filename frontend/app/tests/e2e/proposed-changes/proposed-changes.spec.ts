@@ -103,7 +103,7 @@ test.describe("/proposed-changes", () => {
 
           await expect(page.getByRole("heading", { name: pcNameEdit, exact: true })).toBeVisible();
           await expect(page.getByTestId("pc-description")).toContainText("My description edit");
-          await expect(page.getByText("ReviewersAT")).toBeVisible();
+          await expect(page.getByText("ReviewersOC")).toBeVisible();
         });
       });
 
