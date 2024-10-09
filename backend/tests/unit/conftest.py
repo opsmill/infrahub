@@ -1658,6 +1658,7 @@ async def all_attribute_types_schema(
         "attributes": [
             {"name": "name", "kind": "Text", "optional": True},
             {"name": "mystring", "kind": "Text", "optional": True},
+            {"name": "mytextarea", "kind": "TextArea", "optional": True},
             {"name": "mybool", "kind": "Boolean", "optional": True},
             {"name": "myint", "kind": "Number", "optional": True},
             {"name": "mylist", "kind": "List", "optional": True},
