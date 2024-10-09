@@ -14,7 +14,6 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from infrahub import config
 from infrahub.core.constants import PermissionLevel
 from infrahub.core.timestamp import Timestamp
-from infrahub.database.constants import DatabaseType, Neo4jRuntime
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
@@ -23,6 +22,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
 
 RETURN_TYPE = TypeVar("RETURN_TYPE")
 
@@ -518,9 +518,7 @@ class Query(ABC):
 
         return ":params { " + ", ".join(params) + " }"
 
-    async def execute(
-        self, db: InfrahubDatabase, profile: bool = False, runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT
-    ) -> Self:
+    async def execute(self, db: InfrahubDatabase) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -528,12 +526,6 @@ class Query(ABC):
             self.print(include_var=True)
 
         query_str = self.get_query()
-
-        if profile:
-            query_str = "PROFILE\n" + query_str
-
-        if runtime != Neo4jRuntime.DEFAULT and db.db_type == DatabaseType.NEO4J:
-            query_str = f"CYPHER runtime={runtime.value}\n" + query_str
 
         if self.type == QueryType.READ:
             if self.limit or self.offset:
