@@ -71,8 +71,8 @@ test.describe("/proposed-changes", () => {
         await page.getByLabel("Name *").fill(pcName);
         await page.getByTestId("codemirror-editor").getByRole("textbox").fill("My description");
         await page.getByTestId("select-open-option-button").click();
-        await page.getByRole("option", { name: "Architecture Team" }).click();
-        await page.getByRole("option", { name: "Crm Synchronization" }).click();
+        await page.getByRole("option", { name: "Olivia Carter" }).click();
+        await page.getByRole("option", { name: "CRM Synchronization" }).click();
         await page.getByTestId("select-open-option-button").click();
 
         await page.getByRole("button", { name: "Create proposed change" }).click();
