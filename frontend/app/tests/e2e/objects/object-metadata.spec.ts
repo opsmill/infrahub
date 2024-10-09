@@ -61,7 +61,7 @@ test.describe("Object metadata", () => {
     await metadataTooltipUpdated.getByTestId("edit-metadata-button").click();
 
     // Source should be Account + Pop-Builder
-    await expect(page.getByTestId("select-input").nth(0)).toHaveValue("Account");
+    await expect(page.getByTestId("select-input").nth(0)).toHaveValue("Account group");
     await expect(page.getByTestId("select-input").nth(1)).toHaveValue("Architecture Team");
 
     // Is protected should be checked
