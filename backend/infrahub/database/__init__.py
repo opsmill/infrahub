@@ -141,7 +141,7 @@ class InfrahubDatabase:
         session: Optional[AsyncSession] = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
-        queries_names_to_config: Optional[dict[str, QueryConfig]] = None,
+        # queries_names_to_config: Optional[dict[str, QueryConfig]] = None,
     ):
         self._mode: InfrahubDatabaseMode = mode
         self._driver: AsyncDriver = driver
@@ -149,7 +149,7 @@ class InfrahubDatabase:
         self._session_mode: InfrahubDatabaseSessionMode = session_mode
         self._is_session_local: bool = False
         self._transaction: Optional[AsyncTransaction] = transaction
-        self.queries_names_to_config = queries_names_to_config if queries_names_to_config is not None else {}
+        # self.queries_names_to_config = queries_names_to_config if queries_names_to_config is not None else {}
 
         if schemas:
             self._schemas: dict[str, SchemaBranch] = {schema.name: schema for schema in schemas}
@@ -198,7 +198,7 @@ class InfrahubDatabase:
             db_manager=self.manager,
             driver=self._driver,
             session_mode=session_mode,
-            queries_names_to_config=self.queries_names_to_config,
+            # queries_names_to_config=self.queries_names_to_config,
         )
 
     def start_transaction(self, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
@@ -210,7 +210,7 @@ class InfrahubDatabase:
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
-            queries_names_to_config=self.queries_names_to_config,
+            # queries_names_to_config=self.queries_names_to_config,
         )
 
     async def session(self) -> AsyncSession:
@@ -296,16 +296,16 @@ class InfrahubDatabase:
             if name:
                 span.set_attribute("query_name", name)
 
-            try:
-                query_config = self.queries_names_to_config[name]
-                if self.db_type == DatabaseType.NEO4J:
-                    runtime = self.queries_names_to_config[name].neo4j_runtime
-                    if runtime != Neo4jRuntime.DEFAULT:
-                        query = f"CYPHER runtime = {runtime.value}\n" + query
-                if query_config.profile_memory:
-                    query = "PROFILE\n" + query
-            except KeyError:
-                pass  # No specific config for this query
+            # try:
+            #     query_config = self.queries_names_to_config[name]
+            #     if self.db_type == DatabaseType.NEO4J:
+            #         runtime = self.queries_names_to_config[name].neo4j_runtime
+            #         if runtime != Neo4jRuntime.DEFAULT:
+            #             query = f"CYPHER runtime = {runtime.value}\n" + query
+            #     if query_config.profile_memory:
+            #         query = "PROFILE\n" + query
+            # except KeyError:
+            #     pass  # No specific config for this query
 
             with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params, name=name)
