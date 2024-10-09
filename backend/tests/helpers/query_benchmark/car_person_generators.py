@@ -31,7 +31,10 @@ class CarGenerator(DataGenerator):
                 await car_node.new(db=self.db, name=car_name, nbr_seats=4, owner=random_person)
             else:
                 await car_node.new(db=self.db, name=car_name, nbr_seats=4)
-            await self._save_obj(car_node)
+
+            async with self.db.start_session():
+                await car_node.save(db=self.db)
+
             cars[car_name] = car_node
 
         return cars
@@ -60,7 +63,10 @@ class PersonGenerator(DataGenerator):
                 await person_node.new(db=self.db, name=person_name, cars=random_cars)
             else:
                 await person_node.new(db=self.db, name=person_name)
-            await self._save_obj(person_node)
+
+            async with self.db.start_session():
+                await person_node.save(db=self.db)
+
             persons_names_to_nodes[person_name] = person_node
 
         return persons_names_to_nodes

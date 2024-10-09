@@ -78,7 +78,7 @@ def get_branch_name(branch: Optional[Union[Branch, str]] = None) -> str:
 
 
 class DatabaseSchemaManager:
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
     def get(self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True) -> MainSchemaTypes:

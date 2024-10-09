@@ -5,7 +5,6 @@ from typing import Callable
 from rich.console import Console
 from rich.progress import Progress
 
-from infrahub.core.node import Node
 from tests.helpers.query_benchmark.db_query_profiler import InfrahubDatabaseProfiler, ProfilerEnabler, query_analyzer
 
 
@@ -25,11 +24,6 @@ class DataGenerator:
     @abstractmethod
     async def load_data(self, nb_elements: int) -> None:
         raise NotImplementedError("Abstract method")
-
-    async def _save_obj(self, obj: Node) -> None:
-        async with self.db.start_session() as dbs:
-            async with dbs.start_transaction() as dbt:
-                await obj.save(db=dbt)
 
 
 async def load_data_and_profile(
