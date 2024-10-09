@@ -3,7 +3,7 @@ from typing import Generator
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
 
 from ..model.path import (
@@ -155,6 +155,7 @@ class DiffRepository:
         if node_requests:
             yield node_requests
 
+    @retry_db_transaction(name="enriched_diff_save")
     async def save(self, enriched_diffs: EnrichedDiffs) -> None:
         root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await root_query.execute(db=self.db)
