@@ -17,7 +17,7 @@ from tests.helpers.query_benchmark.car_person_generators import (
     PersonGenerator,
 )
 from tests.helpers.query_benchmark.data_generator import load_data_and_profile
-from tests.helpers.utils import start_db_and_create_default_branch
+from tests.query_benchmark.utils import start_db_and_create_default_branch
 
 RESULTS_FOLDER = Path(__file__).resolve().parent / "query_performance_results"
 

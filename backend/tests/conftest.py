@@ -45,6 +45,7 @@ from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
     INFRAHUB_USE_TEST_CONTAINERS,
+    NEO4J_IMAGE,
     PORT_BOLT_NEO4J,
     PORT_CLIENT_RABBITMQ,
     PORT_HTTP_RABBITMQ,
@@ -53,20 +54,7 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
-
-# from tests.helpers.utils import get_exposed_port
-
-
-def get_exposed_port(container: DockerContainer, port: int) -> int:
-    """
-    Use this method instead of DockerContainer.get_exposed_port as it is decorated with wait_container_is_ready
-    which we do not want to use as it does not perform a real healthcheck. DockerContainer.get_exposed_port
-    also introduces extra "Waiting for container" logs as we might call it multiple times for containers exposing
-    multiple ports such as rabbitmq.
-    """
-
-    return int(container.get_docker_client().port(container.get_wrapped_container().id, port))
-
+from tests.helpers.utils import get_exposed_port, start_neo4j_container
 
 ResponseClass = TypeVar("ResponseClass")
 
@@ -192,22 +180,8 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optio
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
-    container = (
-        DockerContainer(image=os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.20.0-enterprise"))
-        .with_env("NEO4J_AUTH", "neo4j/admin")
-        .with_env("NEO4J_ACCEPT_LICENSE_AGREEMENT", "yes")
-        .with_env("NEO4J_dbms_security_procedures_unrestricted", "apoc.*")
-        .with_env("NEO4J_dbms_security_auth__minimum__password__length", "4")
-        .with_exposed_ports(PORT_BOLT_NEO4J)
-    )
-
-    container.start()
-    wait_for_logs(container, "Started.")  # wait_container_is_ready does not seem to be enough
-
-    def cleanup():
-        container.stop()
-
-    request.addfinalizer(cleanup)
+    container = start_neo4j_container(NEO4J_IMAGE)
+    request.addfinalizer(container.stop)
 
     return {PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J)}
 
@@ -226,11 +200,7 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
 
     container.start()
     wait_for_logs(container, "Server startup complete;")  # wait_container_is_ready does not seem to be enough
-
-    def cleanup():
-        container.stop()
-
-    request.addfinalizer(cleanup)
+    request.addfinalizer(container.stop)
 
     return {
         PORT_CLIENT_RABBITMQ: get_exposed_port(container, PORT_CLIENT_RABBITMQ),
@@ -263,11 +233,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
-
-    def cleanup():
-        container.stop()
-
-    request.addfinalizer(cleanup)
+    request.addfinalizer(container.stop)
 
     return {PORT_REDIS: get_exposed_port(container, PORT_REDIS)}
 
@@ -315,10 +281,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
         .with_exposed_ports(PORT_MEMGRAPH)
     )
 
-    def cleanup():
-        container.stop()
-
-    container.start(cleanup)
+    container.start()
 
     # Waiting for logs is not enough to make sure memgraph is available.
     # Here we need to use DockerContainer.get_exposed_port instead of our own get_exposed_port
@@ -340,11 +303,7 @@ def nats_container(request: pytest.FixtureRequest, load_settings_before_session)
 
     container.start()
     wait_for_logs(container, "Server is ready")  # wait_container_is_ready does not seem to be enough
-
-    def cleanup():
-        container.stop()
-
-    request.addfinalizer(cleanup)
+    request.addfinalizer(container.stop)
 
     return {PORT_NATS: get_exposed_port(container, PORT_NATS)}
 
