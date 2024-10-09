@@ -21,15 +21,19 @@ async def report_schema_permissions(
     permissions = await fetch_permissions(account_id=account_session.account_id, db=db, branch=branch)
     perm_backend = LocalPermissionBackend()
 
-    restrict_changes = False
-    if branch.name == registry.default_branch:
+    # Check for super admin permission and handle default branch edition if account is not super admin
+    is_super_admin = perm_backend.resolve_global_permission(
+        permissions=permissions["global_permissions"],
+        permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:allow",
+    )
+    restrict_changes = not is_super_admin
+    if restrict_changes and branch.name == registry.default_branch:
         restrict_changes = not perm_backend.resolve_global_permission(
             permissions=permissions["global_permissions"],
             permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
         )
 
     permission_objects: list[KindPermissions] = []
-
     for node in schemas:
         permission_base = f"object:{branch.name}:{node.namespace}:{node.name}"
 
@@ -49,10 +53,16 @@ async def report_schema_permissions(
         permission_objects.append(
             {
                 "kind": node.kind,
-                "create": PermissionDecision.ALLOW if has_create and not restrict_changes else PermissionDecision.DENY,
-                "delete": PermissionDecision.ALLOW if has_delete and not restrict_changes else PermissionDecision.DENY,
-                "update": PermissionDecision.ALLOW if has_update and not restrict_changes else PermissionDecision.DENY,
-                "view": PermissionDecision.ALLOW if has_view else PermissionDecision.DENY,
+                "create": PermissionDecision.ALLOW
+                if is_super_admin or (has_create and not restrict_changes)
+                else PermissionDecision.DENY,
+                "delete": PermissionDecision.ALLOW
+                if is_super_admin or (has_delete and not restrict_changes)
+                else PermissionDecision.DENY,
+                "update": PermissionDecision.ALLOW
+                if is_super_admin or (has_update and not restrict_changes)
+                else PermissionDecision.DENY,
+                "view": PermissionDecision.ALLOW if is_super_admin or has_view else PermissionDecision.DENY,
             }
         )
 
