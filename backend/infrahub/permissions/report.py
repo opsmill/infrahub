@@ -27,7 +27,7 @@ async def report_schema_permissions(
         permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:allow",
     )
     restrict_changes = False
-    if branch.name == registry.default_branch:
+    if branch.name == registry.default_branch and not is_super_admin:
         restrict_changes = not perm_backend.resolve_global_permission(
             permissions=permissions["global_permissions"],
             permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
