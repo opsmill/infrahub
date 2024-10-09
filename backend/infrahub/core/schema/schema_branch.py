@@ -124,12 +124,12 @@ class SchemaBranch:
 
         Since the object themselves are considered immuable we just need to use the hash from each object to calculate the global hash.
         """
-        md5hash = hashlib.md5(usedforsecurity=False)
+        blake_hash = hashlib.blake2b(usedforsecurity=False)
         for key, value in sorted(tuple(self.nodes.items()) + tuple(self.generics.items())):
-            md5hash.update(str(key).encode())
-            md5hash.update(str(value).encode())
+            blake_hash.update(str(key).encode())
+            blake_hash.update(str(value).encode())
 
-        return md5hash.hexdigest()
+        return blake_hash.hexdigest()
 
     def get_hash_full(self) -> SchemaBranchHash:
         return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics)

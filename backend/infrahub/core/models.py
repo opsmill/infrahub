@@ -328,7 +328,7 @@ class HashableModel(BaseModel):
         """
 
         values = []
-        md5hash = hashlib.md5(usedforsecurity=False)
+        blake_hash = hashlib.blake2b(usedforsecurity=False)
         for field_name in sorted(self.model_fields.keys()):
             if field_name.startswith("_") or field_name in self._exclude_from_hash:
                 continue
@@ -337,14 +337,14 @@ class HashableModel(BaseModel):
             signatures = self._get_signature_field(value)
             for item in signatures:
                 values.append(item)
-                md5hash.update(item)
+                blake_hash.update(item)
 
         if display_values:
             from rich import print as rprint  # pylint: disable=import-outside-toplevel
 
             rprint(tuple(values))
 
-        return md5hash.hexdigest()
+        return blake_hash.hexdigest()
 
     @classmethod
     def _get_hash_value(cls, value: Any) -> bytes:

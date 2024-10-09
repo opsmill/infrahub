@@ -67,16 +67,16 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""
 
-        md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(super().get_hash(display_values=display_values).encode())
+        blake_hash = hashlib.blake2b(usedforsecurity=False)
+        blake_hash.update(super().get_hash(display_values=display_values).encode())
 
         for attr_name in sorted(self.attribute_names):
-            md5hash.update(self.get_attribute(name=attr_name).get_hash(display_values=display_values).encode())
+            blake_hash.update(self.get_attribute(name=attr_name).get_hash(display_values=display_values).encode())
 
         for rel_name in sorted(self.relationship_names):
-            md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
+            blake_hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
 
-        return md5hash.hexdigest()
+        return blake_hash.hexdigest()
 
     def diff(self, other: Self) -> HashableModelDiff:
         """Extend the Diff Calculation to account for attributes and relationships."""

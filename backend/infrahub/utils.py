@@ -59,7 +59,7 @@ class InfrahubNumberEnum(int, BaseEnum):
         return [cls.__members__[member].value for member in list(cls.__members__)]
 
     def get_hash(self) -> str:
-        return hashlib.md5(str(self.value).encode(), usedforsecurity=False).hexdigest()
+        return hashlib.blake2b(str(self.value).encode(), usedforsecurity=False).hexdigest()
 
 
 class InfrahubStringEnum(str, BaseEnum):
@@ -68,7 +68,7 @@ class InfrahubStringEnum(str, BaseEnum):
         return [cls.__members__[member].value for member in list(cls.__members__)]
 
     def get_hash(self) -> str:
-        return hashlib.md5(self.value.encode(), usedforsecurity=False).hexdigest()
+        return hashlib.blake2b(self.value.encode(), usedforsecurity=False).hexdigest()
 
 
 def get_nested_dict(nested_dict: dict[str, Any], keys: list[str]) -> dict[str, Any]:
