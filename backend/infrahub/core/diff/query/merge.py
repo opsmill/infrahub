@@ -97,7 +97,11 @@ CALL {
     WITH n, node_diff_map
     CALL {
         WITH n, node_diff_map
-        UNWIND node_diff_map.attributes AS attribute_diff_map
+        WITH n, CASE
+            WHEN node_diff_map.attributes IS NULL OR node_diff_map.attributes = [] THEN [NULL]
+            ELSE node_diff_map.attributes
+        END AS attribute_maps
+        UNWIND attribute_maps AS attribute_diff_map
         // ------------------------------
         // handle updates for attributes under this node
         // ------------------------------
@@ -110,8 +114,10 @@ CALL {
             END AS attr_rel_status
             CALL {
                 WITH n, attr_name
-                MATCH (n)-[:HAS_ATTRIBUTE]->(a:Attribute {name: attr_name})
+                OPTIONAL MATCH (n)-[has_attr:HAS_ATTRIBUTE]->(a:Attribute {name: attr_name})
+                WHERE has_attr.branch IN [$source_branch, $target_branch]
                 RETURN a
+                ORDER BY has_attr.from DESC
                 LIMIT 1
             }
             WITH n, attr_rel_status, a
@@ -144,6 +150,8 @@ CALL {
             // ------------------------------
             CALL {
                 WITH n, attr_rel_status, a
+                WITH n, attr_rel_status, a
+                WHERE a IS NOT NULL
                 OPTIONAL MATCH (n)-[r_attr:HAS_ATTRIBUTE {branch: $target_branch}]->(a)
                 WHERE r_attr.status = attr_rel_status
                 AND r_attr.from <= $at
@@ -152,9 +160,9 @@ CALL {
                 WHERE r_attr IS NULL
                 CREATE (n)-[:HAS_ATTRIBUTE { branch: $target_branch, branch_level: $branch_level, from: $at, status: attr_rel_status }]->(a)
             }
-            RETURN a
+            RETURN 1 AS done
         }
-        RETURN a
+        RETURN 1 AS done
     }
     WITH n, node_diff_map
     CALL {
@@ -184,7 +192,6 @@ CALL {
                 AND source_r_rel_2.from <= $at AND source_r_rel_2.to IS NULL
                 SET source_r_rel_1.to = $at
                 SET source_r_rel_2.to = $at
-
                 // ------------------------------
                 // determine the directions of each IS_RELATED
                 // ------------------------------
@@ -269,7 +276,7 @@ CALL {
         }
     }
 }
-RETURN NULL AS done
+RETURN 1 AS done
         """
         self.add_to_query(query=query)
 
@@ -310,10 +317,13 @@ CALL {
     CALL {
         WITH attr_rel_prop_diff
         OPTIONAL MATCH (n:Node {uuid: attr_rel_prop_diff.node_uuid})
-            -[:HAS_ATTRIBUTE {branch: $source_branch}]
+            -[has_attr:HAS_ATTRIBUTE]
             ->(attr:Attribute {name: attr_rel_prop_diff.attribute_name})
         WHERE attr_rel_prop_diff.attribute_name IS NOT NULL
+        AND has_attr.branch IN [$source_branch, $target_branch]
         RETURN attr
+        ORDER BY has_attr.from DESC
+        LIMIT 1
     }
     CALL {
         WITH attr_rel_prop_diff
@@ -341,16 +351,30 @@ CALL {
             WITH attr_rel, property_diff
             OPTIONAL MATCH (peer:Node {uuid: property_diff.value})
             WHERE property_diff.property_type IN ["HAS_SOURCE", "HAS_OWNER"]
-            OPTIONAL MATCH (bool:Boolean {value: property_diff.value})
-            WHERE property_diff.property_type IN ["IS_VISIBLE", "IS_PROTECTED"]
+            // ------------------------------
+            // the serialized diff might not include the values for IS_VISIBLE and IS_PROTECTED in
+            // some cases, so we need to figure them out here
+            // ------------------------------
+            CALL {
+                WITH attr_rel, property_diff
+                OPTIONAL MATCH (attr_rel)-[r_vis_pro]->(bool:Boolean)
+                WHERE property_diff.property_type IN ["IS_VISIBLE", "IS_PROTECTED"]
+                AND r_vis_pro.branch IN [$source_branch, $target_branch]
+                AND type(r_vis_pro) = property_diff.property_type
+                AND (property_diff.value IS NULL OR bool.value = property_diff.value)
+                RETURN bool
+                ORDER BY r_vis_pro.from DESC
+                LIMIT 1
+            }
             CALL {
                 // ------------------------------
                 // get the latest linked AttributeValue on the source b/c there could be multiple
                 // with different is_default values
                 // ------------------------------
                 WITH attr_rel, property_diff
-                OPTIONAL MATCH (attr_rel)-[r_attr_val:HAS_VALUE {branch: $source_branch}]->(av:AttributeValue {value: property_diff.value})
+                OPTIONAL MATCH (attr_rel)-[r_attr_val:HAS_VALUE]->(av:AttributeValue {value: property_diff.value})
                 WHERE property_diff.property_type = "HAS_VALUE"
+                AND r_attr_val.branch IN [$source_branch, $target_branch]
                 RETURN av
                 ORDER BY r_attr_val.from DESC
                 LIMIT 1
@@ -371,17 +395,16 @@ CALL {
                 -[source_r_prop {branch: $source_branch, status: prop_rel_status}]
                 ->()
             WHERE type(source_r_prop) = prop_type
-            AND source_r_prop.from <= $at AND source_r_prop.to IS NULL
+            AND source_r_prop.from < $at AND source_r_prop.to IS NULL
             SET source_r_prop.to = $at
         }
         CALL {
             WITH attr_rel, prop_rel_status, prop_type
             OPTIONAL MATCH (attr_rel)
-                -[target_r_prop {branch: $target_branch, status: "active"}]
+                -[target_r_prop {branch: $target_branch}]
                 ->()
             WHERE type(target_r_prop) = prop_type
-            AND prop_rel_status = "deleted"
-            AND target_r_prop.from <= $at AND target_r_prop.to IS NULL
+            AND target_r_prop.from < $at AND target_r_prop.to IS NULL
             SET target_r_prop.to = $at
         }
         // ------------------------------

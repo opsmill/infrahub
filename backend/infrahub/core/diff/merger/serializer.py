@@ -104,7 +104,8 @@ class DiffMergeSerializer:
                 attribute_diff, attribute_property_diff = self._serialize_attribute(
                     attribute_diff=attr_diff, node_uuid=node.uuid, node_kind=node.kind
                 )
-                attribute_diffs.append(attribute_diff)
+                if attribute_diff:
+                    attribute_diffs.append(attribute_diff)
                 serialized_property_diffs.append(attribute_property_diff)
             relationship_diffs = []
             for rel_diff in node.relationships:
@@ -161,7 +162,7 @@ class DiffMergeSerializer:
 
     def _serialize_attribute(
         self, attribute_diff: EnrichedDiffAttribute, node_uuid: str, node_kind: str
-    ) -> tuple[AttributeMergeDict, AttributePropertyMergeDict]:
+    ) -> tuple[AttributeMergeDict | None, AttributePropertyMergeDict]:
         prop_dicts: list[PropertyMergeDict] = []
         python_type = self._get_property_type_for_attribute_value(
             schema_kind=node_kind, attribute_name=attribute_diff.name
@@ -171,6 +172,9 @@ class DiffMergeSerializer:
                 property_diff=property_diff, python_value_type=python_type
             )
             for action, value in actions_and_values:
+                # we only delete attributes when the whole attribute is deleted
+                if action is DiffAction.REMOVED and attribute_diff.action is not DiffAction.REMOVED:
+                    continue
                 prop_dicts.append(
                     PropertyMergeDict(
                         property_type=property_diff.property_type.value,
@@ -178,10 +182,12 @@ class DiffMergeSerializer:
                         value=value,
                     )
                 )
-        attr_dict = AttributeMergeDict(
-            name=attribute_diff.name,
-            action=self._to_action_str(action=attribute_diff.action),
-        )
+        attr_dict = None
+        if attribute_diff.action in (DiffAction.ADDED, DiffAction.REMOVED):
+            attr_dict = AttributeMergeDict(
+                name=attribute_diff.name,
+                action=self._to_action_str(action=attribute_diff.action),
+            )
         attr_prop_dict = AttributePropertyMergeDict(
             node_uuid=node_uuid, attribute_name=attribute_diff.name, properties=prop_dicts
         )
@@ -191,8 +197,31 @@ class DiffMergeSerializer:
         self, relationship_diff: EnrichedDiffSingleRelationship, relationship_identifier: str, node_uuid: str
     ) -> tuple[list[RelationshipMergeDict], list[RelationshipPropertyMergeDict]]:
         relationship_dicts = []
-        added_property_dicts = []
-        removed_property_dicts = []
+        # start with default values for IS_VISIBLE and IS_PROTECTED b/c we always want to update them during a merge
+        added_property_dicts: dict[DatabaseEdgeType, PropertyMergeDict] = {
+            DatabaseEdgeType.IS_VISIBLE: PropertyMergeDict(
+                property_type=DatabaseEdgeType.IS_VISIBLE.value,
+                action=self._to_action_str(DiffAction.ADDED),
+                value=None,
+            ),
+            DatabaseEdgeType.IS_PROTECTED: PropertyMergeDict(
+                property_type=DatabaseEdgeType.IS_PROTECTED.value,
+                action=self._to_action_str(DiffAction.ADDED),
+                value=None,
+            ),
+        }
+        removed_property_dicts: dict[DatabaseEdgeType, PropertyMergeDict] = {
+            DatabaseEdgeType.IS_VISIBLE: PropertyMergeDict(
+                property_type=DatabaseEdgeType.IS_VISIBLE.value,
+                action=self._to_action_str(DiffAction.REMOVED),
+                value=None,
+            ),
+            DatabaseEdgeType.IS_PROTECTED: PropertyMergeDict(
+                property_type=DatabaseEdgeType.IS_PROTECTED.value,
+                action=self._to_action_str(DiffAction.REMOVED),
+                value=None,
+            ),
+        }
         added_peer_id: str | None = None
         removed_peer_id: str | None = None
         for property_diff in relationship_diff.properties:
@@ -222,9 +251,9 @@ class DiffMergeSerializer:
                         value=value,
                     )
                     if action is DiffAction.ADDED:
-                        added_property_dicts.append(property_dict)
+                        added_property_dicts[property_diff.property_type] = property_dict
                     elif action is DiffAction.REMOVED:
-                        removed_property_dicts.append(property_dict)
+                        removed_property_dicts[property_diff.property_type] = property_dict
         relationship_property_dicts = []
         if added_peer_id and added_property_dicts:
             relationship_property_dicts.append(
@@ -232,7 +261,7 @@ class DiffMergeSerializer:
                     node_uuid=node_uuid,
                     relationship_id=relationship_identifier,
                     peer_uuid=added_peer_id,
-                    properties=added_property_dicts,
+                    properties=list(added_property_dicts.values()),
                 )
             )
         if removed_peer_id and removed_property_dicts:
@@ -241,7 +270,7 @@ class DiffMergeSerializer:
                     node_uuid=node_uuid,
                     relationship_id=relationship_identifier,
                     peer_uuid=removed_peer_id,
-                    properties=removed_property_dicts,
+                    properties=list(removed_property_dicts.values()),
                 )
             )
         return relationship_dicts, relationship_property_dicts
