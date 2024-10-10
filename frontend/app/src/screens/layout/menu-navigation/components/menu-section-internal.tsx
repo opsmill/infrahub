@@ -48,7 +48,7 @@ export function MenuSectionInternal({ items }: MenuSectionInternalProps) {
                 if (!child.children || child.children.length === 0) {
                   return (
                     <DropdownMenuItem key={child.identifier} asChild>
-                      <Link to={child.path}>{child.title}</Link>
+                      <Link to={constructPath(child.path)}>{child.title}</Link>
                     </DropdownMenuItem>
                   );
                 }
@@ -61,7 +61,7 @@ export function MenuSectionInternal({ items }: MenuSectionInternalProps) {
                       {child.children.map((grandchild) => {
                         return (
                           <DropdownMenuItem key={grandchild.identifier} asChild>
-                            <Link to={grandchild.path}>{grandchild.title}</Link>
+                            <Link to={constructPath(grandchild.path)}>{grandchild.title}</Link>
                           </DropdownMenuItem>
                         );
                       })}
