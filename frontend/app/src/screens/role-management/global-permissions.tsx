@@ -35,21 +35,22 @@ function GlobalPermissions() {
     data &&
     data[GLOBAL_PERMISSION_OBJECT]?.edges.map((edge) => {
       return {
-        id: edge?.node?.id,
         values: {
-          display_label: edge?.node?.display_label,
-          name: (
-            <div className="flex items-center gap-2">
-              <Pill className="flex items-center justify-center w-6 h-6 bg-custom-blue-500/20">
-                <Icon icon={"mdi:lock-outline"} className="text-custom-blue-900" />
-              </Pill>
+          display_label: { value: edge?.node?.display_label },
+          name: {
+            display: (
+              <div className="flex items-center gap-2">
+                <Pill className="flex items-center justify-center w-6 h-6 bg-custom-blue-500/20">
+                  <Icon icon={"mdi:lock-outline"} className="text-custom-blue-900" />
+                </Pill>
 
-              {edge?.node?.display_label}
-            </div>
-          ),
-          description: edge?.node?.description?.value,
-          roles: <Pill>{edge?.node?.roles?.count}</Pill>,
-          identifier: <BadgeCopy value={edge?.node?.identifier?.value} />,
+                {edge?.node?.display_label}
+              </div>
+            ),
+          },
+          description: { value: edge?.node?.description?.value },
+          roles: { display: <Pill>{edge?.node?.roles?.count}</Pill> },
+          identifier: { display: <BadgeCopy value={edge?.node?.identifier?.value} /> },
         },
       };
     });

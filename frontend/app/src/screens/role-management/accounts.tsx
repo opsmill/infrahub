@@ -1,9 +1,10 @@
 import { Button } from "@/components/buttons/button-primitive";
 import { ColorDisplay } from "@/components/display/color-display";
+import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table } from "@/components/table/table";
+import { Table, tRow, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -21,12 +22,19 @@ function Accounts() {
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_GENERIC_OBJECT);
 
-  const [rowToDelete, setRowToDelete] = useState(null);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [rowToUpdate, setRowToUpdate] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
-      name: "display_label",
+      name: "name",
       label: "Name",
     },
     {
@@ -41,6 +49,10 @@ function Accounts() {
       name: "status",
       label: "Status",
     },
+    {
+      name: "member_of_groups",
+      label: "Groups",
+    },
   ];
 
   const rows =
@@ -48,16 +60,23 @@ function Accounts() {
     data[ACCOUNT_GENERIC_OBJECT]?.edges.map((edge) => ({
       values: {
         id: edge?.node?.id,
-        display_label: edge?.node?.display_label,
-        description: edge?.node?.description?.value,
-        account_type: edge?.node?.account_type?.value,
-        status: (
-          <ColorDisplay
-            color={edge?.node?.status?.color}
-            value={edge?.node?.status?.value}
-            description={edge?.node?.status?.description}
-          />
-        ),
+        name: { value: edge?.node?.name?.value },
+        description: { value: edge?.node?.description?.value },
+        account_type: { value: edge?.node?.account_type?.value },
+        status: {
+          value: edge?.node?.status?.value,
+          display: (
+            <ColorDisplay
+              color={edge?.node?.status?.color}
+              value={edge?.node?.status?.value}
+              description={edge?.node?.status?.description}
+            />
+          ),
+        },
+        member_of_groups: {
+          value: { edges: edge?.node?.member_of_groups?.edges },
+          display: <Pill>{edge?.node?.member_of_groups?.count}</Pill>,
+        },
         __typename: edge?.node?.__typename,
       },
     }));
@@ -78,11 +97,7 @@ function Accounts() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}
-            >
+            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
               Create {schema?.label}
             </Button>
           </div>
@@ -92,7 +107,11 @@ function Accounts() {
           columns={columns}
           rows={rows ?? []}
           className="border-0"
-          onDelete={(data) => setRowToDelete(data.values)}
+          onDelete={(row) => setRowToDelete(row.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
         />
 
         <Pagination count={data && data[ACCOUNT_GENERIC_OBJECT]?.count} />
@@ -118,14 +137,15 @@ function Accounts() {
               subtitle={schema.description}
             />
           }
-          open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}
+          open={showDrawer}
+          setOpen={(value) => setShowDrawer(value)}
         >
           <ObjectForm
             kind={ACCOUNT_OBJECT}
-            onCancel={() => setShowCreateDrawer(false)}
+            currentObject={rowToUpdate}
+            onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
-              setShowCreateDrawer(false);
+              setShowDrawer(false);
               globalRefetch();
             }}
           />

@@ -123,8 +123,9 @@ test.describe("/proposed-changes diff data", () => {
       .getByRole("link", { name: "conflict-test" })
       .first()
       .locator("../..")
-      .getByTestId("delete-row-button")
+      .getByTestId("actions-row-button")
       .click();
+    await page.getByTestId("delete-row-button").click();
     await expect(page.getByTestId("modal-delete")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
     await expect(page.getByText("Proposed changes 'conflict-test' deleted")).toBeVisible();

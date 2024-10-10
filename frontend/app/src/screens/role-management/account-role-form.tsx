@@ -24,6 +24,7 @@ import { toast } from "react-toastify";
 
 import InputField from "@/components/form/fields/input.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
@@ -41,10 +42,18 @@ export const AccountRoleForm = ({
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
+  const groups = getRelationshipDefaultValue({
+    relationshipData: currentObject?.groups?.value,
+  });
+
+  const permissions = getRelationshipDefaultValue({
+    relationshipData: currentObject?.permissions?.value,
+  });
+
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
-    group: getCurrentFieldValue("group", currentObject),
-    permissions: getCurrentFieldValue("permissions", currentObject),
+    groups,
+    permissions,
   };
 
   const form = useForm<FieldValues>({
@@ -119,6 +128,7 @@ export const AccountRoleForm = ({
             peer: ACCOUNT_GROUP_OBJECT,
             cardinality: "many",
           }}
+          options={groups.value}
         />
 
         <RelationshipField
@@ -129,6 +139,7 @@ export const AccountRoleForm = ({
             peer: ACCOUNT_PERMISSION_OBJECT,
             cardinality: "many",
           }}
+          options={permissions.value}
         />
 
         <div className="text-right">

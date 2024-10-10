@@ -5,6 +5,7 @@ import { NodeWithProfileForm } from "@/components/form/node-with-profile-form";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
   NUMBER_POOL_OBJECT,
   OBJECT_PERMISSION_OBJECT,
   READONLY_REPOSITORY_KIND,
@@ -16,6 +17,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { NumberPoolForm } from "@/screens/resource-manager/number-pool-form";
 import { AccountForm } from "@/screens/role-management/account-form";
 import { AccountGroupForm } from "@/screens/role-management/account-group-form";
+import { AccountRoleForm } from "@/screens/role-management/account-role-form";
 import { ObjectPermissionForm } from "@/screens/role-management/object-permissions-form";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
 import { Suspense, lazy } from "react";
@@ -62,16 +64,20 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <NumberPoolForm {...props} />;
   }
 
-  if (kind === OBJECT_PERMISSION_OBJECT) {
-    return <ObjectPermissionForm {...props} />;
+  if (kind === ACCOUNT_OBJECT) {
+    return <AccountForm {...props} />;
   }
 
   if (kind === ACCOUNT_GROUP_OBJECT) {
     return <AccountGroupForm {...props} />;
   }
 
-  if (kind === ACCOUNT_OBJECT) {
-    return <AccountForm {...props} />;
+  if (kind === ACCOUNT_ROLE_OBJECT) {
+    return <AccountRoleForm {...props} />;
+  }
+
+  if (kind === OBJECT_PERMISSION_OBJECT) {
+    return <ObjectPermissionForm {...props} />;
   }
 
   if (isGeneric) {

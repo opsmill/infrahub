@@ -165,52 +165,64 @@ export const ProposedChangesPage = () => {
       values: {
         id: node.id, // Used for delete modal
         display_label: node.display_label, // Used for delete modal
-        name: (
-          <ProposedChangesInfo
-            name={node.display_label}
-            branch={node.source_branch.value}
-            date={node._updated_at}
-            comments={node.comments.count}
-            checks={node.validations.edges.map(({ node }: any) => node)}
-          />
-        ),
-        data: (
-          <PcDetailsLink tab="data">
-            <ProposedChangeDiffSummary
-              proposedChangeId={node.id}
-              branchName={node.source_branch.value}
+        name: {
+          display: (
+            <ProposedChangesInfo
+              name={node.display_label}
+              branch={node.source_branch.value}
+              date={node._updated_at}
+              comments={node.comments.count}
+              checks={node.validations.edges.map(({ node }: any) => node)}
             />
-          </PcDetailsLink>
-        ),
-        checks: (
-          <PcDetailsLink tab="checks">
-            <Badge className="rounded-full px-2">{node.validations.count}</Badge>
-          </PcDetailsLink>
-        ),
-        tasks: (
-          <PcDetailsLink tab="tasks">
-            <ProposedChangesCounter
-              id={node.id}
-              query={getProposedChangesTasks}
-              kind={TASK_OBJECT}
+          ),
+        },
+        data: {
+          display: (
+            <PcDetailsLink tab="data">
+              <ProposedChangeDiffSummary
+                proposedChangeId={node.id}
+                branchName={node.source_branch.value}
+              />
+            </PcDetailsLink>
+          ),
+        },
+        checks: {
+          display: (
+            <PcDetailsLink tab="checks">
+              <Badge className="rounded-full px-2">{node.validations.count}</Badge>
+            </PcDetailsLink>
+          ),
+        },
+        tasks: {
+          display: (
+            <PcDetailsLink tab="tasks">
+              <ProposedChangesCounter
+                id={node.id}
+                query={getProposedChangesTasks}
+                kind={TASK_OBJECT}
+              />
+            </PcDetailsLink>
+          ),
+        },
+        artifacts: {
+          display: (
+            <PcDetailsLink tab="artifacts">
+              <ProposedChangesCounter
+                id={node.id}
+                query={getProposedChangesArtifacts}
+                kind={ARTIFACT_OBJECT}
+              />
+            </PcDetailsLink>
+          ),
+        },
+        reviewers: {
+          display: (
+            <ProposedChangesReviewers
+              reviewers={node.reviewers.edges.map((edge: any) => edge.node)}
+              approved_by={node.approved_by.edges.map((edge: any) => edge.node)}
             />
-          </PcDetailsLink>
-        ),
-        artifacts: (
-          <PcDetailsLink tab="artifacts">
-            <ProposedChangesCounter
-              id={node.id}
-              query={getProposedChangesArtifacts}
-              kind={ARTIFACT_OBJECT}
-            />
-          </PcDetailsLink>
-        ),
-        reviewers: (
-          <ProposedChangesReviewers
-            reviewers={node.reviewers.edges.map((edge: any) => edge.node)}
-            approved_by={node.approved_by.edges.map((edge: any) => edge.node)}
-          />
-        ),
+          ),
+        },
       },
     };
   });

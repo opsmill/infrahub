@@ -22,6 +22,7 @@ import { toast } from "react-toastify";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import DropdownField from "@/components/form/fields/dropdown.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
@@ -40,11 +41,15 @@ export const ObjectPermissionForm = ({
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
+  const roles = getRelationshipDefaultValue({
+    relationshipData: currentObject?.roles?.value,
+  });
+
   const defaultValues = {
     branch: getCurrentFieldValue("branch", currentObject),
     namespace: getCurrentFieldValue("namespace", currentObject),
     name: getCurrentFieldValue("name", currentObject),
-    roles: getCurrentFieldValue("roles", currentObject),
+    roles,
   };
 
   const form = useForm<FieldValues>({
@@ -54,6 +59,10 @@ export const ObjectPermissionForm = ({
   const branchesOptions = branches.map((branch) => ({ value: branch.name, label: branch.name }));
 
   const actionOptions = [
+    {
+      value: "any",
+      label: "*",
+    },
     {
       value: "view",
       label: "View",
@@ -163,6 +172,7 @@ export const ObjectPermissionForm = ({
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
+          options={roles.value}
         />
 
         <div className="text-right">
@@ -191,10 +201,16 @@ const NodeSelect = () => {
       value: "*",
       label: "*",
     },
-    ...namespaces.map((namespace) => ({
-      value: namespace.name,
-      label: namespace.name,
-    })),
+    ...namespaces
+      .filter((namespace) => {
+        return namespace.name !== "Internal" && namespace.name !== "Lineage";
+      })
+      .map((namespace) => {
+        return {
+          value: namespace.name,
+          label: namespace.name,
+        };
+      }),
   ];
 
   const selectedNamespace =
@@ -208,7 +224,11 @@ const NodeSelect = () => {
       label: "*",
     },
     ...nodes
-      .filter((node) => node.namespace === selectedNamespace?.name)
+      .filter((node) => {
+        if (!selectedNamespace || selectedNamespace?.name === "*") return true;
+
+        return node.namespace === selectedNamespace?.name;
+      })
       .map((node) => ({
         value: node.name,
         label: node.label,

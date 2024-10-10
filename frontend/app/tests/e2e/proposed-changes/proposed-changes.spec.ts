@@ -145,8 +145,9 @@ test.describe("/proposed-changes", () => {
         await page
           .getByRole("link", { name: `${pcNameEdit} 0 ${pcBranchName}` })
           .locator("../..")
-          .getByTestId("delete-row-button")
+          .getByTestId("actions-row-button")
           .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toBeVisible();
         await page.getByTestId("modal-delete-confirm").click();
         await expect(page.getByText(`Proposed changes '${pcNameEdit}' deleted`)).toBeVisible();

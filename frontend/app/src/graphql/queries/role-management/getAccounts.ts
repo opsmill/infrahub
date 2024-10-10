@@ -7,10 +7,12 @@ export const GET_ROLE_MANAGEMENT_ACCOUNTS = gql`
       edges {
         node {
           id
+          name {
+            value
+          }
           description {
             value
           }
-          display_label
           account_type {
             value
           }
@@ -18,6 +20,15 @@ export const GET_ROLE_MANAGEMENT_ACCOUNTS = gql`
             value
             color
             description
+          }
+          member_of_groups {
+            count
+            edges {
+              node {
+                id
+                display_label
+              }
+            }
           }
         }
       }

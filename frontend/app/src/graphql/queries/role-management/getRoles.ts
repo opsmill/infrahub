@@ -6,12 +6,24 @@ export const GET_ROLE_MANAGEMENT_ROLES = gql`
       edges {
         node {
           id
-          display_label
+          name {
+            value
+          }
           groups {
             count
+            edges {
+              node {
+                id
+              }
+            }
           }
           permissions {
             count
+            edges {
+              node {
+                id
+              }
+            }
           }
         }
       }
