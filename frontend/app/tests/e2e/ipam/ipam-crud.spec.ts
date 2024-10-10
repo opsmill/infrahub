@@ -177,8 +177,9 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("update ip address from list", async () => {
         await page
           .getByRole("row", { name: "10.0.0.1/16" })
-          .getByTestId("update-row-button")
+          .getByTestId("actions-row-button")
           .click();
+        await page.getByTestId("update-row-button").click();
         await page.getByLabel("Description").fill("test");
         await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText("IPAddress updated")).toBeVisible();
