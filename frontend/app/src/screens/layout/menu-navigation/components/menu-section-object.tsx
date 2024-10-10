@@ -49,7 +49,7 @@ export function MenuSectionObject({ items }: MenuSectionObjectsProps) {
                 if (!child.children || child.children.length === 0) {
                   return (
                     <DropdownMenuItem key={child.identifier} className="px-3" asChild>
-                      <Link to={child.path}>
+                      <Link to={constructPath(child.path)}>
                         <Icon icon={child.icon} className="w-5" />
                         {child.title}
                       </Link>
@@ -65,7 +65,7 @@ export function MenuSectionObject({ items }: MenuSectionObjectsProps) {
 
                     <DropdownMenuAccordionContent>
                       <DropdownMenuItem key={child.identifier} className="pl-10" asChild>
-                        <Link to={child.path}>{child.title}</Link>
+                        <Link to={constructPath(child.path)}>{child.title}</Link>
                       </DropdownMenuItem>
                     </DropdownMenuAccordionContent>
                   </DropdownMenuAccordion>
