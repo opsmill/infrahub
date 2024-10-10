@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import GlobalPermissions, PermissionDecision
+from infrahub.core.constants import GlobalPermissions
 from infrahub.core.registry import registry
+from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
@@ -32,36 +33,52 @@ async def report_schema_permissions(
             permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
         )
 
+    decisions_map: dict[bool, str] = {True: 6, False: 1}
+    decision = (
+        PermissionDecisionFlag.ALLOWED_DEFAULT
+        if branch.name == registry.default_branch
+        else PermissionDecisionFlag.ALLOWED_OTHER
+    )
+
     permission_objects: list[KindPermissions] = []
     for node in schemas:
-        permission_base = f"object:{branch.name}:{node.namespace}:{node.name}"
+        permission_base = f"object:{node.namespace}:{node.name}"
 
-        has_create = perm_backend.resolve_object_permission(
-            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:create:allow"
+        has_create = (
+            is_super_admin
+            or perm_backend.resolve_object_permission(
+                permissions=permissions["object_permissions"],
+                permission_to_check=f"{permission_base}:create:{decision}",
+            )
+            and not restrict_changes
         )
-        has_delete = perm_backend.resolve_object_permission(
-            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:delete:allow"
+        has_delete = (
+            is_super_admin
+            or perm_backend.resolve_object_permission(
+                permissions=permissions["object_permissions"],
+                permission_to_check=f"{permission_base}:delete:{decision}",
+            )
+            and not restrict_changes
         )
-        has_update = perm_backend.resolve_object_permission(
-            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:update:allow"
+        has_update = (
+            is_super_admin
+            or perm_backend.resolve_object_permission(
+                permissions=permissions["object_permissions"],
+                permission_to_check=f"{permission_base}:update:{decision}",
+            )
+            and not restrict_changes
         )
-        has_view = perm_backend.resolve_object_permission(
-            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:view:allow"
+        has_view = is_super_admin or perm_backend.resolve_object_permission(
+            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:view:{decision}"
         )
 
         permission_objects.append(
             {
                 "kind": node.kind,
-                "create": PermissionDecision.ALLOW
-                if is_super_admin or (has_create and not restrict_changes)
-                else PermissionDecision.DENY,
-                "delete": PermissionDecision.ALLOW
-                if is_super_admin or (has_delete and not restrict_changes)
-                else PermissionDecision.DENY,
-                "update": PermissionDecision.ALLOW
-                if is_super_admin or (has_update and not restrict_changes)
-                else PermissionDecision.DENY,
-                "view": PermissionDecision.ALLOW if is_super_admin or has_view else PermissionDecision.DENY,
+                "create": decisions_map[has_create],
+                "delete": decisions_map[has_delete],
+                "update": decisions_map[has_update],
+                "view": decisions_map[has_view],
             }
         )
 

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.account import GlobalPermission, ObjectPermission, fetch_permissions
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
+from infrahub.permissions.constants import PermissionDecisionFlag
 
 from .backend import PermissionBackend
 
@@ -19,13 +20,13 @@ class LocalPermissionBackend(PermissionBackend):
 
     def compute_specificity(self, permission: ObjectPermission) -> int:
         specificity = 0
-        if permission.branch not in self.wildcard_values:
-            specificity += 1
         if permission.namespace not in self.wildcard_values:
             specificity += 1
         if permission.name not in self.wildcard_values:
             specificity += 1
         if permission.action not in self.wildcard_actions:
+            specificity += 1
+        if not permission.decision & PermissionDecisionFlag.ALLOWED_ALL:
             specificity += 1
         return specificity
 
@@ -34,26 +35,26 @@ class LocalPermissionBackend(PermissionBackend):
         if not permission_to_check.startswith("object:"):
             return False
 
-        most_specific_permission: str | None = None
+        _, namespace, name, action, decision = permission_to_check.split(":")
         highest_specificity: int = -1
-        _, branch, namespace, name, action, _ = permission_to_check.split(":")
+        required_decision = PermissionDecisionFlag(value=int(decision))
+        combined_decision = PermissionDecisionFlag.DENY
 
         for permission in permissions:
             if (
-                permission.branch in [branch, *self.wildcard_values]
-                and permission.namespace in [namespace, *self.wildcard_values]
+                permission.namespace in [namespace, *self.wildcard_values]
                 and permission.name in [name, *self.wildcard_values]
                 and permission.action in [action, *self.wildcard_actions]
             ):
                 # Compute the specifity of a permission to keep the decision of the most specific if two or more permissions overlap
                 specificity = self.compute_specificity(permission=permission)
                 if specificity > highest_specificity:
-                    most_specific_permission = permission.decision
+                    combined_decision = permission.decision
                     highest_specificity = specificity
-                elif specificity == highest_specificity and permission.decision == PermissionDecision.DENY.value:
-                    most_specific_permission = permission.decision
+                elif specificity == highest_specificity:
+                    combined_decision |= permission.decision
 
-        return most_specific_permission == PermissionDecision.ALLOW.value
+        return combined_decision & required_decision == required_decision
 
     def resolve_global_permission(self, permissions: list[GlobalPermission], permission_to_check: str) -> bool:
         if not permission_to_check.startswith("global:"):
@@ -65,7 +66,7 @@ class LocalPermissionBackend(PermissionBackend):
         for permission in permissions:
             if permission.action == action:
                 # Early exit on deny as deny preempt allow
-                if permission.decision == PermissionDecision.DENY.value:
+                if permission.decision == PermissionDecisionFlag.DENY:
                     return False
                 grant_permission = True
 
@@ -87,6 +88,6 @@ class LocalPermissionBackend(PermissionBackend):
             )
             or self.resolve_global_permission(
                 permissions=granted_permissions["global_permissions"],
-                permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:{PermissionDecision.ALLOW.value}",
+                permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:{PermissionDecision.ALLOWED_ALL.value}",
             )
         )

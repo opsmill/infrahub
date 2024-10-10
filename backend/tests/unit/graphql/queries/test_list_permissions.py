@@ -7,15 +7,12 @@ from graphql import graphql
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import (
-    InfrahubKind,
-    PermissionAction,
-    PermissionDecision,
-)
+from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
@@ -82,41 +79,36 @@ class TestObjectPermissions:
         for object_permission in [
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOWED_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOWED_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOWED_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Core",
                 name="*",
                 action=PermissionAction.ANY.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOWED_ALL,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
             await obj.new(
                 db=db,
-                branch=object_permission.branch,
                 namespace=object_permission.namespace,
                 name=object_permission.name,
                 action=object_permission.action,
@@ -160,7 +152,7 @@ class TestObjectPermissions:
         assert result.data
         assert result.data["BuiltinTag"]["permissions"]["count"] == 1
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
-            "node": {"kind": "BuiltinTag", "create": "DENY", "update": "DENY", "delete": "DENY", "view": "ALLOW"}
+            "node": {"kind": "BuiltinTag", "create": "DENY", "update": "DENY", "delete": "DENY", "view": "ALLOWED_ALL"}
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -186,7 +178,13 @@ class TestObjectPermissions:
         assert result.data
         assert result.data["BuiltinTag"]["permissions"]["count"] == 1
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
-            "node": {"kind": "BuiltinTag", "create": "ALLOW", "update": "DENY", "delete": "ALLOW", "view": "ALLOW"}
+            "node": {
+                "kind": "BuiltinTag",
+                "create": "ALLOWED_ALL",
+                "update": "DENY",
+                "delete": "ALLOWED_ALL",
+                "view": "ALLOWED_ALL",
+            }
         }
 
     async def test_first_account_list_permissions_for_generics(
@@ -218,7 +216,7 @@ class TestObjectPermissions:
                 "create": "DENY",
                 "update": "DENY",
                 "delete": "DENY",
-                "view": "ALLOW",
+                "view": "ALLOWED_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
@@ -227,7 +225,7 @@ class TestObjectPermissions:
                 "create": "DENY",
                 "update": "DENY",
                 "delete": "DENY",
-                "view": "ALLOW",
+                "view": "ALLOWED_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
@@ -236,7 +234,7 @@ class TestObjectPermissions:
                 "create": "DENY",
                 "update": "DENY",
                 "delete": "DENY",
-                "view": "ALLOW",
+                "view": "ALLOWED_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
 
@@ -277,41 +275,36 @@ class TestAttributePermissions:
         for object_permission in [
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOWED_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOWED_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOWED_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="pr-12345",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.UPDATE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOWED_OTHER,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
             await obj.new(
                 db=db,
-                branch=object_permission.branch,
                 namespace=object_permission.namespace,
                 name=object_permission.name,
                 action=object_permission.action,
@@ -355,7 +348,7 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecision.DENY
+            "update_value": PermissionDecisionFlag.ALLOWED_OTHER
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -377,5 +370,5 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecision.ALLOW
+            "update_value": PermissionDecisionFlag.ALLOWED_OTHER
         }
