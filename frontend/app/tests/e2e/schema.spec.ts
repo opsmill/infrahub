@@ -13,7 +13,7 @@ test.describe("/schema - Schema visualizer", () => {
     await page.goto("/schema");
 
     await test.step("open schema viewer", async () => {
-      await page.getByText("CoreArtifact", { exact: true }).click();
+      await page.getByText("CoreGraphQL Query", { exact: true }).click();
       await expect(page.getByTestId("schema-viewer")).toBeVisible();
     });
 

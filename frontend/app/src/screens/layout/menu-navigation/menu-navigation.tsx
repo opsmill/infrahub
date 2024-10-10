@@ -35,7 +35,7 @@ export default function MenuNavigation({ className }: { className: string }) {
   if (!menu?.sections) return <div className="flex-grow" />;
 
   return (
-    <div className={classNames("flex flex-col", className)}>
+    <div className={classNames("flex flex-col", className)} data-testid="menu-navigation">
       <MenuSectionObject items={menu.sections.object} />
       <Divider />
       <MenuSectionInternal items={menu.sections.internal} />
