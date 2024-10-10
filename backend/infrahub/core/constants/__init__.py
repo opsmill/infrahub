@@ -4,7 +4,8 @@ import enum
 
 from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.exceptions import ValidationError
-from infrahub.utils import InfrahubStringEnum
+from infrahub.permissions.constants import PermissionDecisionFlag
+from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
 from .schema import FlagProperty, NodeProperty, SchemaElementPathType, UpdateSupport, UpdateValidationErrorType
 
@@ -69,9 +70,11 @@ class PermissionAction(InfrahubStringEnum):
     VIEW = "view"
 
 
-class PermissionDecision(InfrahubStringEnum):
-    ALLOW = "allow"
-    DENY = "deny"
+class PermissionDecision(InfrahubNumberEnum):
+    DENY = PermissionDecisionFlag.DENY.value
+    ALLOWED_DEFAULT = PermissionDecisionFlag.ALLOWED_DEFAULT.value
+    ALLOWED_OTHER = PermissionDecisionFlag.ALLOWED_OTHER.value
+    ALLOWED_ALL = (PermissionDecisionFlag.ALLOWED_DEFAULT | PermissionDecisionFlag.ALLOWED_OTHER).value
 
 
 class AccountRole(InfrahubStringEnum):

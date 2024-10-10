@@ -21,7 +21,7 @@ class Permission:
     id: str
     name: str
     action: str
-    decision: str
+    decision: int
 
 
 @dataclass
@@ -32,11 +32,10 @@ class GlobalPermission(Permission):
 
 @dataclass
 class ObjectPermission(Permission):
-    branch: str
     namespace: str
 
     def __str__(self) -> str:
-        return f"object:{self.branch}:{self.namespace}:{self.name}:{self.action}:{self.decision}"
+        return f"object:{self.namespace}:{self.name}:{self.action}:{self.decision}"
 
 
 class AccountGlobalPermissionQuery(Query):
@@ -234,17 +233,6 @@ class AccountObjectPermissionQuery(Query):
             RETURN object_permission
         }
         WITH object_permission
-        CALL {
-            WITH object_permission
-            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "branch"})-[r2:HAS_VALUE]->(object_permission_branch:AttributeValue)
-            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
-            WITH object_permission_branch, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
-            ORDER BY object_permission_branch.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
-            WITH object_permission_branch, head(collect(is_active)) as latest_is_active
-            WHERE latest_is_active = TRUE
-            RETURN object_permission_branch
-        }
-        WITH object_permission, object_permission_branch
 
         CALL {
             WITH object_permission
@@ -254,7 +242,7 @@ class AccountObjectPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH object_permission, object_permission_branch, object_permission_namespace, is_active AS opn_is_active
+        WITH object_permission, object_permission_namespace, is_active AS opn_is_active
         WHERE opn_is_active = TRUE
         CALL {
             WITH object_permission
@@ -264,7 +252,7 @@ class AccountObjectPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH object_permission, object_permission_branch, object_permission_namespace, object_permission_name, is_active AS opn_is_active
+        WITH object_permission, object_permission_namespace, object_permission_name, is_active AS opn_is_active
         WHERE opn_is_active = TRUE
         CALL {
             WITH object_permission
@@ -274,7 +262,7 @@ class AccountObjectPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH object_permission, object_permission_branch, object_permission_namespace, object_permission_name, object_permission_action, is_active AS opa_is_active
+        WITH object_permission, object_permission_namespace, object_permission_name, object_permission_action, is_active AS opa_is_active
         WHERE opa_is_active = TRUE
         CALL {
             WITH object_permission
@@ -284,7 +272,7 @@ class AccountObjectPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH object_permission, object_permission_branch, object_permission_namespace, object_permission_name, object_permission_action, object_permission_decision, is_active AS opd_is_active
+        WITH object_permission, object_permission_namespace, object_permission_name, object_permission_action, object_permission_decision, is_active AS opd_is_active
         WHERE opd_is_active = TRUE
         """ % {
             "branch_filter": branch_filter,
@@ -298,7 +286,6 @@ class AccountObjectPermissionQuery(Query):
 
         self.return_labels = [
             "object_permission",
-            "object_permission_branch",
             "object_permission_namespace",
             "object_permission_name",
             "object_permission_action",
@@ -311,7 +298,6 @@ class AccountObjectPermissionQuery(Query):
             permissions.append(
                 ObjectPermission(
                     id=result.get("object_permission").get("uuid"),
-                    branch=result.get("object_permission_branch").get("value"),
                     namespace=result.get("object_permission_namespace").get("value"),
                     name=result.get("object_permission_name").get("value"),
                     action=result.get("object_permission_action").get("value"),

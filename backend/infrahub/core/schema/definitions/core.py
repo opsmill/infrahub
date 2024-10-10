@@ -933,9 +933,9 @@ core_models: dict[str, Any] = {
             "attributes": [
                 {
                     "name": "decision",
-                    "kind": "Text",
+                    "kind": "Number",
                     "enum": PermissionDecision.available_types(),
-                    "default_value": PermissionDecision.ALLOW.value,
+                    "default_value": PermissionDecision.ALLOWED_ALL.value,
                     "order_weight": 5000,
                 },
                 {
@@ -2186,15 +2186,12 @@ core_models: dict[str, Any] = {
             "description": "A permission that grants rights to perform actions on objects",
             "label": "Object permission",
             "include_in_menu": False,
-            "order_by": ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"],
-            "display_labels": ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"],
-            "uniqueness_constraints": [
-                ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"]
-            ],
+            "order_by": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "display_labels": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "uniqueness_constraints": [["namespace__value", "name__value", "action__value", "decision__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
             "attributes": [
-                {"name": "branch", "kind": "Text", "order_weight": 1000},
                 {"name": "namespace", "kind": "Text", "order_weight": 2000},
                 {"name": "name", "kind": "Text", "order_weight": 3000},
                 {
