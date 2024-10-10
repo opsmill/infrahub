@@ -531,6 +531,42 @@ jobs:
   #         VALE_VERSION: ${{ env.VALE_VERSION }}
   #     - name: "Validate documentation style"
   #       run: ./vale $(find . -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+  # ------------------------------------------ Test invoke demo ------------------------------------------------
+  test-invoke-demo-start:
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Invoke
+        run: |
+          pip install toml invoke
+
+      - name: Run 'invoke demo.start'
+        run: invoke demo.start demo.load-infra-schema
+
+      - name: Check Demo Status
+        run: invoke demo.status
+
+      - name: Load Data
+        run: invoke demo.load-infra-data
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing-playwright:
@@ -625,9 +661,6 @@ jobs:
 
       - name: Git Repository
         run: invoke dev.infra-git-import dev.infra-git-create
-
-      - name: Initialise invoke Demo
-        run: invoke demo.start demo.load-infra-schema demo.load-infra-data
 
       - name: Set infrahub address
         run: |
