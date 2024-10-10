@@ -46,13 +46,14 @@ class LocalPermissionBackend(PermissionBackend):
                 and permission.name in [name, *self.wildcard_values]
                 and permission.action in [action, *self.wildcard_actions]
             ):
+                permission_decision = PermissionDecisionFlag(value=permission.decision)
                 # Compute the specifity of a permission to keep the decision of the most specific if two or more permissions overlap
                 specificity = self.compute_specificity(permission=permission)
                 if specificity > highest_specificity:
-                    combined_decision = permission.decision
+                    combined_decision = permission_decision
                     highest_specificity = specificity
                 elif specificity == highest_specificity:
-                    combined_decision |= permission.decision
+                    combined_decision |= permission_decision
 
         return combined_decision & required_decision == required_decision
 

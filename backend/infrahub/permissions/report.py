@@ -33,7 +33,10 @@ async def report_schema_permissions(
             permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
         )
 
-    decisions_map: dict[bool, str] = {True: 6, False: 1}
+    decisions_map: dict[bool, PermissionDecisionFlag] = {
+        True: PermissionDecisionFlag.ALLOWED_ALL,
+        False: PermissionDecisionFlag.DENY,
+    }
     decision = (
         PermissionDecisionFlag.ALLOWED_DEFAULT
         if branch.name == registry.default_branch
