@@ -266,7 +266,6 @@ class BranchMerger:
         diff_merger = await component_registry.get_component(DiffMerger, db=self.db, branch=self.source_branch)
         await diff_merger.merge_graph(at=at)
 
-
     async def merge_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema=CoreRepository, db=self.db)
