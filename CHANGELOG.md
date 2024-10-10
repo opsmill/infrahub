@@ -13,6 +13,10 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ## [0.16.3](https://github.com/opsmill/infrahub/tree/v0.16.3) - 2024-10-10
 
+### Removed
+
+- Removed `infrahub.toml` configuration file from Docker builds.
+
 ### Fixed
 
 - Save a diff in smaller pieces instead of all at once to prevent out-of-memory error. ([#4511](https://github.com/opsmill/infrahub/issues/4511))
