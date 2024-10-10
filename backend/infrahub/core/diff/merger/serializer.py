@@ -2,7 +2,8 @@ from typing import AsyncGenerator
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema import MainSchemaTypes
+from infrahub.database import InfrahubDatabase
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 
 from ..model.path import (
@@ -26,15 +27,26 @@ Primitives = str | bool | int | float
 
 
 class DiffMergeSerializer:
-    def __init__(self, schema_branch: SchemaBranch, max_batch_size: int) -> None:
-        self.schema_branch = schema_branch
+    def __init__(self, db: InfrahubDatabase, max_batch_size: int) -> None:
+        self.db = db
         self.max_batch_size = max_batch_size
         self._relationship_id_cache: dict[tuple[str, str], str] = {}
         self._attribute_type_cache: dict[tuple[str, str], type] = {}
+        self._branch_name: str | None = None
 
     def _reset_caches(self) -> None:
         self._relationship_id_cache = {}
         self._attribute_type_cache = {}
+
+    @property
+    def branch_name(self) -> str:
+        if self._branch_name is None:
+            raise RuntimeError("branch_name not set")
+        return self._branch_name
+
+    def _get_schema(self, kind: str) -> MainSchemaTypes:
+        schema_branch = self.db.schema.get_schema_branch(name=self.branch_name)
+        return schema_branch.get(name=kind, duplicate=False)
 
     def _get_action(self, action: DiffAction, conflict: EnrichedDiffConflict | None) -> DiffAction:
         if not conflict:
@@ -52,7 +64,7 @@ class DiffMergeSerializer:
         cache_key = (schema_kind, relationship_name)
         if cache_key in self._relationship_id_cache:
             return self._relationship_id_cache[cache_key]
-        node_schema = self.schema_branch.get(name=schema_kind, duplicate=False)
+        node_schema = self._get_schema(kind=schema_kind)
         relationship_schema = node_schema.get_relationship(name=relationship_name)
         relationship_identifier = relationship_schema.get_identifier()
         self._relationship_id_cache[cache_key] = relationship_identifier
@@ -62,7 +74,7 @@ class DiffMergeSerializer:
         cache_key = (schema_kind, attribute_name)
         if cache_key in self._attribute_type_cache:
             return self._attribute_type_cache[cache_key]
-        node_schema = self.schema_branch.get(name=schema_kind, duplicate=False)
+        node_schema = self._get_schema(kind=schema_kind)
         attribute_schema = node_schema.get_attribute(name=attribute_name)
         python_type = ATTRIBUTE_PYTHON_TYPES[attribute_schema.kind]
         final_python_type: type = str
@@ -74,17 +86,17 @@ class DiffMergeSerializer:
     def _convert_property_value(
         self, property_type: DatabaseEdgeType, raw_value: str | None, value_type: type | None = None
     ) -> Primitives | None:
-        if raw_value is None:
-            if property_type is DatabaseEdgeType.HAS_VALUE:
-                return "NULL"
-            return None
         # peer IDs are strings
         if property_type in (DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED):
             return raw_value
         # these are boolean
-        if property_type in (DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED):
+        if (
+            property_type in (DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED) or (value_type is bool)
+        ) and isinstance(raw_value, str):
             return raw_value.lower() == "true"
         # this must be HAS_VALUE
+        if raw_value is None:
+            return "NULL"
         if value_type:
             return value_type(raw_value)
         return raw_value
@@ -95,6 +107,7 @@ class DiffMergeSerializer:
         tuple[list[NodeMergeDict], list[AttributePropertyMergeDict | RelationshipPropertyMergeDict]], None
     ]:
         self._reset_caches()
+        self._branch_name = diff.diff_branch_name
         serialized_node_diffs = []
         serialized_property_diffs: list[AttributePropertyMergeDict | RelationshipPropertyMergeDict] = []
         for node in diff.nodes:

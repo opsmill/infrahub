@@ -52,12 +52,14 @@ class TestMergeDiff:
         mock_diff_repository: DiffRepository,
         car_person_schema: SchemaBranch,
     ) -> DiffMerger:
+        db.add_schema(car_person_schema)
+        db.add_schema(car_person_schema, name=source_branch.name)
         return DiffMerger(
             db=db,
             source_branch=source_branch,
             destination_branch=default_branch,
             diff_repository=mock_diff_repository,
-            serializer=DiffMergeSerializer(schema_branch=car_person_schema, max_batch_size=50),
+            serializer=DiffMergeSerializer(db=db, max_batch_size=50),
         )
 
     @pytest.fixture
