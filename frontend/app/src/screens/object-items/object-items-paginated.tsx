@@ -62,7 +62,8 @@ export default function ObjectItems({
 
   const result = data && schema?.kind ? (data[kindFilter?.value || schema?.kind] ?? {}) : {};
 
-  const { count = "...", edges } = result;
+  const { count = "...", edges, permissions } = result;
+  console.log("permissions: ", permissions);
 
   useTitle(`${schema.label || schema.name} list`);
 
@@ -97,6 +98,12 @@ export default function ObjectItems({
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
+  }
+
+  const currentPermission = permissions?.edges[0]?.node;
+
+  if (currentPermission?.view !== "ALLOW") {
+    // return <UnauthorizedScreen />;
   }
 
   return (
