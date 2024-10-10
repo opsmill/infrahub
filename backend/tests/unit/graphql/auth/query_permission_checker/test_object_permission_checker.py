@@ -351,7 +351,7 @@ class TestObjectPermissions:
             auth_type=AuthType.JWT,
         )
 
-        with pytest.raises(PermissionDeniedError, match=":Repository:view:"):
+        with pytest.raises(PermissionDeniedError, match=r"Repository:view:"):
             await perms.check(
                 db=db,
                 account_session=session,
