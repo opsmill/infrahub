@@ -1,7 +1,6 @@
 import { AccountMenu } from "@/components/account-menu";
 import { SearchAnywhere } from "@/components/search/search-anywhere";
 import MenuNavigation from "@/screens/layout/menu-navigation/menu-navigation";
-import { DesktopMenu } from "@/screens/layout/sidebar/desktop-menu";
 
 export default function Sidebar() {
   return (

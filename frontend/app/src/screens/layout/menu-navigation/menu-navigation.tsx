@@ -2,8 +2,8 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Divider } from "@/components/ui/divider";
 import { CONFIG } from "@/config/config";
 import { MenuSectionInternal } from "@/screens/layout/menu-navigation/components/menu-section-internal";
+import { MenuSectionObject } from "@/screens/layout/menu-navigation/components/menu-section-object";
 import { MenuData } from "@/screens/layout/menu-navigation/types";
-import { DesktopMenu } from "@/screens/layout/sidebar/desktop-menu";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { currentSchemaHashAtom } from "@/state/atoms/schema.atom";
 import { classNames } from "@/utils/common";
@@ -37,7 +37,7 @@ export default function MenuNavigation({ className }: { className: string }) {
 
   return (
     <div className={classNames("flex flex-col", className)}>
-      <DesktopMenu />
+      <MenuSectionObject items={menu.sections.object} />
       <Divider />
       <MenuSectionInternal items={menu.sections.internal} />
     </div>
