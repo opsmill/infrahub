@@ -224,7 +224,11 @@ const NodeSelect = () => {
       label: "*",
     },
     ...nodes
-      .filter((node) => node.namespace === selectedNamespace?.name)
+      .filter((node) => {
+        if (!selectedNamespace || selectedNamespace?.name === "*") return true;
+
+        return node.namespace === selectedNamespace?.name;
+      })
       .map((node) => ({
         value: node.name,
         label: node.label,
