@@ -33,6 +33,7 @@ async def report_schema_permissions(
             permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
         )
 
+    # FIXME: report the actual flag to communicate the level of permission for branches
     decisions_map: dict[bool, PermissionDecisionFlag] = {
         True: PermissionDecisionFlag.ALLOWED_ALL,
         False: PermissionDecisionFlag.DENY,
