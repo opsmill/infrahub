@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { MenuItem } from "@/screens/layout/sidebar/desktop-menu";
+import { MenuItem } from "@/screens/layout/menu-navigation/types";
 import { IModelSchema, genericsState, menuFlatAtom, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";

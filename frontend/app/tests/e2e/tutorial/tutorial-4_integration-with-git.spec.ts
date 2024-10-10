@@ -28,9 +28,9 @@ test.describe("Getting started with Infrahub - Integration with Git", () => {
     });
 
     await test.step("go to interface Ethernet 1 for atl1-edge1", async () => {
-      await page.getByTestId("sidebar-menu").getByRole("button", { name: "Objects" }).click();
-      await page.getByTestId("sidebar-menu").getByRole("button", { name: "Device" }).click();
-      await page.getByRole("link", { name: "All Device(s)" }).click();
+      await page.getByRole("button", { name: "O Other" }).click();
+      await page.getByRole("menuitem", { name: "Device" }).click();
+
       await expect(page.getByText("Generic Device object")).toBeVisible();
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();

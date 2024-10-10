@@ -1,3 +1,9 @@
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
@@ -89,3 +95,34 @@ export const DropdownMenuSubContent = forwardRef<
     {...props}
   />
 ));
+
+export const DropdownMenuAccordion = forwardRef<
+  ElementRef<typeof AccordionItem>,
+  ComponentPropsWithoutRef<typeof AccordionItem>
+>((props, ref) => {
+  return (
+    <Accordion type="single" collapsible>
+      <AccordionItem {...props} ref={ref} />
+    </Accordion>
+  );
+});
+
+export const DropdownMenuAccordionTrigger = forwardRef<
+  ElementRef<typeof DropdownMenuItem>,
+  ComponentPropsWithoutRef<typeof AccordionTrigger>
+>((props, ref) => {
+  return (
+    <DropdownMenuItem
+      ref={ref}
+      onSelect={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      asChild
+    >
+      <AccordionTrigger className="font-normal" {...props} />
+    </DropdownMenuItem>
+  );
+});
+
+export const DropdownMenuAccordionContent = AccordionContent;

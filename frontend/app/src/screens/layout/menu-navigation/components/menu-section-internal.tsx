@@ -7,10 +7,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { menuNavigationItemStyle } from "@/screens/layout/menu-navigation/styles";
 import { MenuItem } from "@/screens/layout/menu-navigation/types";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
-import React from "react";
 import { Link } from "react-router-dom";
 
 export interface MenuSectionInternalProps {
@@ -34,7 +34,7 @@ export function MenuSectionInternal({ items }: MenuSectionInternalProps) {
 
         return (
           <DropdownMenu key={item.identifier}>
-            <DropdownMenuTrigger className="flex items-center outline-none gap-2 px-3 py-2 rounded font-medium text-neutral-900 hover:bg-neutral-100 focus:bg-neutral-100 group data-[state=open]:bg-indigo-50 data-[state=open]:text-indigo-700">
+            <DropdownMenuTrigger className={menuNavigationItemStyle}>
               <Icon icon={item.icon} className="text-lg min-w-4" />
               <span className="text-sm">{item.title}</span>
               <Icon
@@ -48,7 +48,7 @@ export function MenuSectionInternal({ items }: MenuSectionInternalProps) {
                 if (!child.children || child.children.length === 0) {
                   return (
                     <DropdownMenuItem key={child.identifier} asChild>
-                      <Link to={child.path}>{child.title}</Link>
+                      <Link to={constructPath(child.path)}>{child.title}</Link>
                     </DropdownMenuItem>
                   );
                 }
@@ -61,7 +61,7 @@ export function MenuSectionInternal({ items }: MenuSectionInternalProps) {
                       {child.children.map((grandchild) => {
                         return (
                           <DropdownMenuItem key={grandchild.identifier} asChild>
-                            <Link to={grandchild.path}>{grandchild.title}</Link>
+                            <Link to={constructPath(grandchild.path)}>{grandchild.title}</Link>
                           </DropdownMenuItem>
                         );
                       })}

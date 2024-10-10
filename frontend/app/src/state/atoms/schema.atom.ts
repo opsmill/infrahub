@@ -1,5 +1,5 @@
 import { components } from "@/infraops";
-import { MenuItem } from "@/screens/layout/sidebar/desktop-menu";
+import { MenuData, MenuItem } from "@/screens/layout/menu-navigation/types";
 import { atom } from "jotai";
 
 export type iNodeSchema = components["schemas"]["APINodeSchema"];
@@ -21,16 +21,24 @@ export const namespacesState = atom<iNamespace[]>([]);
 
 export const currentSchemaHashAtom = atom<string | null>(null);
 
-export const menuAtom = atom<MenuItem[]>([]);
+export const menuAtom = atom<MenuData>();
 
-const flattenMenuItems = (menuItems: MenuItem[]): MenuItem[] => {
-  return menuItems.reduce<MenuItem[]>((acc, menuItem) => {
-    if (menuItem.children.length === 0) {
-      return [...acc, menuItem];
+export const menuFlatAtom = atom((get) => {
+  const menuData = get(menuAtom);
+  if (!menuData) return [];
+
+  const menuItems: MenuItem[] = [];
+
+  const flattenMenuItems = (menuItem: MenuItem) => {
+    if (menuItem.path !== "") menuItems.push(menuItem);
+
+    if (menuItem.children && menuItem.children.length > 0) {
+      menuItem.children.forEach(flattenMenuItems);
     }
+  };
 
-    return [...acc, ...flattenMenuItems(menuItem.children)];
-  }, []);
-};
+  menuData.sections.object.forEach(flattenMenuItems);
+  menuData.sections.internal.forEach(flattenMenuItems);
 
-export const menuFlatAtom = atom((get) => flattenMenuItems(get(menuAtom)));
+  return menuItems;
+});

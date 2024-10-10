@@ -2,20 +2,19 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Divider } from "@/components/ui/divider";
 import { CONFIG } from "@/config/config";
 import { MenuSectionInternal } from "@/screens/layout/menu-navigation/components/menu-section-internal";
-import { MenuData } from "@/screens/layout/menu-navigation/types";
-import { DesktopMenu } from "@/screens/layout/sidebar/desktop-menu";
+import { MenuSectionObject } from "@/screens/layout/menu-navigation/components/menu-section-object";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { currentSchemaHashAtom } from "@/state/atoms/schema.atom";
+import { currentSchemaHashAtom, menuAtom } from "@/state/atoms/schema.atom";
 import { classNames } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 export default function MenuNavigation({ className }: { className: string }) {
   const currentBranch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
-  const [menu, setMenu] = useState<MenuData>();
+  const [menu, setMenu] = useAtom(menuAtom);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -36,8 +35,8 @@ export default function MenuNavigation({ className }: { className: string }) {
   if (!menu?.sections) return <div className="flex-grow" />;
 
   return (
-    <div className={classNames("flex flex-col", className)}>
-      <DesktopMenu />
+    <div className={classNames("flex flex-col", className)} data-testid="menu-navigation">
+      <MenuSectionObject items={menu.sections.object} />
       <Divider />
       <MenuSectionInternal items={menu.sections.internal} />
     </div>
