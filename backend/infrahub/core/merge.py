@@ -254,13 +254,12 @@ class BranchMerger:
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
         at = Timestamp(at)
-        await self.merge_graph(at=at, conflict_resolution=conflict_resolution)
+        await self.merge_graph(at=at)
         await self.merge_repositories()
 
-    async def merge_graph(  # pylint: disable=too-many-branches,too-many-statements
+    async def merge_graph(
         self,
         at: Timestamp,
-        conflict_resolution: Optional[dict[str, bool]] = None,
     ) -> None:
         component_registry = get_component_registry()
         diff_merger = await component_registry.get_component(DiffMerger, db=self.db, branch=self.source_branch)
