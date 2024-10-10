@@ -136,6 +136,7 @@ async def test_run_pipeline_validate_requested_jobs(
     services.service._client = client
     services.service.log = fake_log
     services.service.message_bus = bus_pre_data_changes
+    services.service._database = db
     services.prepare(service=services.service)
     await pipeline(message=message, service=services.service)
 

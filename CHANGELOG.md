@@ -11,7 +11,18 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
-## [Infrahub - v0.16.2](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.2) - 2024-10-01
+## [0.16.3](https://github.com/opsmill/infrahub/tree/v0.16.3) - 2024-10-10
+
+### Removed
+
+- Removed `infrahub.toml` configuration file from Docker builds.
+
+### Fixed
+
+- Save a diff in smaller pieces instead of all at once to prevent out-of-memory error. ([#4511](https://github.com/opsmill/infrahub/issues/4511))
+- Fixes exception handling section in the Python SDK batch guide.
+
+## [0.16.2](https://github.com/opsmill/infrahub/tree/v0.16.2) - 2024-10-01
 
 ### Fixed
 

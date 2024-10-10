@@ -103,13 +103,20 @@ services:
       - "${INFRAHUB_SERVER_PORT:-8000}:8000"
     environment:
       <<: *infrahub_config
-      INFRAHUB_CONFIG: /source/development/infrahub.toml
       INFRAHUB_PRODUCTION: false
       INFRAHUB_LOG_LEVEL: INFO
       INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      INFRAHUB_INTERNAL_ADDRESS: "http://infrahub-server:8000"
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
+      INFRAHUB_DB_ADDRESS: database
+      INFRAHUB_DB_USERNAME: neo4j
+      INFRAHUB_DB_PASSWORD: admin
+      INFRAHUB_DB_PORT: 7687
+      INFRAHUB_DB_PROTOCOL: bolt
+      INFRAHUB_STORAGE_DRIVER: local
     volumes:
       - ../:/source
       - "storage_data:/opt/infrahub/storage"
