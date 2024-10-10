@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import DiffAction, RepositoryInternalStatus
+from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaBranchDiff, SchemaUpdateValidationResult
@@ -262,6 +263,10 @@ class BranchMerger:
         at: Timestamp,
     ) -> None:
         component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(
+            DiffCoordinator, db=self.db, branch=self.source_branch
+        )
+        await diff_coordinator.update_branch_diff(base_branch=self.destination_branch, diff_branch=self.source_branch)
         diff_merger = await component_registry.get_component(DiffMerger, db=self.db, branch=self.source_branch)
         await diff_merger.merge_graph(at=at)
 
