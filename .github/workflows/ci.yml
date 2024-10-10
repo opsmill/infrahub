@@ -643,6 +643,31 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+
+      - name: Enable tracing
+        if: github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+        run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
+
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
       - name: Build Demo
         run: invoke dev.build
 
