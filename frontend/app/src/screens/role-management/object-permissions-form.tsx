@@ -60,6 +60,10 @@ export const ObjectPermissionForm = ({
 
   const actionOptions = [
     {
+      value: "*",
+      label: "*",
+    },
+    {
       value: "view",
       label: "View",
     },
@@ -197,10 +201,16 @@ const NodeSelect = () => {
       value: "*",
       label: "*",
     },
-    ...namespaces.map((namespace) => ({
-      value: namespace.name,
-      label: namespace.name,
-    })),
+    ...namespaces
+      .filter((namespace) => {
+        return namespace.name !== "Internal" && namespace.name !== "Lineage";
+      })
+      .map((namespace) => {
+        return {
+          value: namespace.name,
+          label: namespace.name,
+        };
+      }),
   ];
 
   const selectedNamespace =
