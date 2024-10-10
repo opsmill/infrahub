@@ -60,7 +60,7 @@ export const ObjectPermissionForm = ({
 
   const actionOptions = [
     {
-      value: "*",
+      value: "any",
       label: "*",
     },
     {
