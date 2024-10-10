@@ -28,6 +28,7 @@ from infrahub.core.utils import add_relationship, convert_ip_to_binary_str, upda
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 
+from ..types import ATTRIBUTE_TYPES, LARGE_ATTRIBUTE_TYPES
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 
 if TYPE_CHECKING:
@@ -37,6 +38,24 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
+
+
+# Use a more user-friendly threshold than Neo4j one (8167 bytes).
+MAX_STRING_LENGTH = 4096
+
+
+def validate_string_length(value: Optional[str]) -> None:
+    """
+    Validates input string length does not exceed a given threshold, as Neo4J cannot index string values larger than 8167 bytes,
+    see https://neo4j.com/developer/kb/index-limitations-and-workaround/.
+    Note `value` parameter is optional as this function could be called from an attribute class
+    with optional value such as StringOptional.
+    """
+    if value is None:
+        return
+
+    if 3 + len(value.encode("utf-8")) >= MAX_STRING_LENGTH:
+        raise ValidationError(f"Text attribute length should be less than {MAX_STRING_LENGTH} characters.")
 
 
 class AttributeCreateData(BaseModel):
@@ -250,7 +269,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if self.value is None:
             data["value"] = NULL_VALUE
         else:
-            data["value"] = self.serialize_value()
+            serialized_value = self.serialize_value()
+            if isinstance(serialized_value, str) and ATTRIBUTE_TYPES[self.schema.kind] not in LARGE_ATTRIBUTE_TYPES:
+                # Perform validation here to avoid an extra serialization during validation step.
+                # Standard non-str attributes (integer, boolean) do not exceed limit size related to neo4j indexing.
+                validate_string_length(serialized_value)
+            data["value"] = serialized_value
 
         return data
 
@@ -618,7 +642,7 @@ class HashedPassword(BaseAttribute):
 
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
-        return hash_password(str(self.value))
+        return hash_password(self.value)
 
 
 class HashedPasswordOptional(HashedPassword):
@@ -838,7 +862,7 @@ class IPNetwork(BaseAttribute):
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
 
-        return ipaddress.ip_network(str(self.value)).with_prefixlen
+        return ipaddress.ip_network(self.value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
@@ -964,7 +988,7 @@ class IPHost(BaseAttribute):
     def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
 
-        return ipaddress.ip_interface(str(self.value)).with_prefixlen
+        return ipaddress.ip_interface(self.value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
@@ -1085,7 +1109,7 @@ class MacAddress(BaseAttribute):
 
     def serialize_value(self) -> str:
         """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
-        return str(netaddr.EUI(addr=str(self.value)))
+        return str(netaddr.EUI(addr=self.value))
 
 
 class MacAddressOptional(MacAddress):

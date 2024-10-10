@@ -365,6 +365,9 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
 
+# Data types supporting large values, which can therefore not be indexed in neo4j.
+LARGE_ATTRIBUTE_TYPES = [TextArea, JSON]
+
 
 def get_attribute_type(kind: str = "Default") -> type[InfrahubDataType]:
     """Return an InfrahubDataType object for a given kind

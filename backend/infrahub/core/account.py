@@ -145,24 +145,93 @@ class AccountObjectPermissionQuery(Query):
         WITH account, r1 as r
         WHERE r.status = "active"
         WITH account
-        MATCH group_path = (account)-[]->(:Relationship {name: "group_member"})
-            <-[]-(:%(account_group_node)s)
-            -[]->(:Relationship {name: "role__accountgroups"})
-            <-[]-(:%(account_role_node)s)
-            -[]->(:Relationship {name: "role__permissions"})
-            <-[]-(object_permission:%(object_permission_node)s)
-            -[:HAS_ATTRIBUTE]->(:Attribute {name: "branch"})
-            -[:HAS_VALUE]->(object_permission_branch:AttributeValue)
+        CALL {
+            WITH account
+            MATCH (account)-[r1:IS_RELATED]->(:Relationship {name: "group_member"})<-[r2:IS_RELATED]-(account_group:%(account_group_node)s)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH account_group, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY account_group.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH account_group, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN account_group
+        }
+        WITH account_group
+
+        CALL {
+            WITH account_group
+            MATCH (account_group)-[r1:IS_RELATED]->(:Relationship {name: "role__accountgroups"})<-[r2:IS_RELATED]-(account_role:%(account_role_node)s)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH account_role, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY account_role.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH account_role, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN account_role
+        }
+        WITH account_role
+
+        CALL {
+            WITH account_role
+            MATCH (account_role)-[r1:IS_RELATED]->(:Relationship {name: "role__permissions"})<-[r2:IS_RELATED]-(object_permission:%(object_permission_node)s)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH object_permission, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY object_permission.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH object_permission, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN object_permission
+        }
+        WITH object_permission
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "branch"})-[r2:HAS_VALUE]->(object_permission_branch:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH object_permission_branch, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY object_permission_branch.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH object_permission_branch, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN object_permission_branch
+        }
         WITH object_permission, object_permission_branch
-        WHERE all(r IN relationships(group_path) WHERE (%(branch_filter)s) AND r.status = "active")
-        MATCH namespace_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(object_permission_namespace:AttributeValue)
-            WHERE all(r IN relationships(namespace_path) WHERE (%(branch_filter)s) AND r.status = "active")
-        MATCH name_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(object_permission_name:AttributeValue)
-            WHERE all(r IN relationships(name_path) WHERE (%(branch_filter)s) AND r.status = "active")
-        MATCH action_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(object_permission_action:AttributeValue)
-            WHERE all(r IN relationships(action_path) WHERE (%(branch_filter)s) AND r.status = "active")
-        MATCH decision_path = (object_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(object_permission_decision:AttributeValue)
-            WHERE all(r IN relationships(decision_path) WHERE (%(branch_filter)s) AND r.status = "active")
+
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[r2:HAS_VALUE]->(object_permission_namespace:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN object_permission_namespace, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH object_permission, object_permission_branch, object_permission_namespace, is_active AS opn_is_active
+        WHERE opn_is_active = TRUE
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r2:HAS_VALUE]->(object_permission_name:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN object_permission_name, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH object_permission, object_permission_branch, object_permission_namespace, object_permission_name, is_active AS opn_is_active
+        WHERE opn_is_active = TRUE
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(object_permission_action:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN object_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH object_permission, object_permission_branch, object_permission_namespace, object_permission_name, object_permission_action, is_active AS opa_is_active
+        WHERE opa_is_active = TRUE
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[r2:HAS_VALUE]->(object_permission_decision:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN object_permission_decision, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH object_permission, object_permission_branch, object_permission_namespace, object_permission_name, object_permission_action, object_permission_decision, is_active AS opd_is_active
+        WHERE opd_is_active = TRUE
         """ % {
             "branch_filter": branch_filter,
             "account_group_node": InfrahubKind.ACCOUNTGROUP,

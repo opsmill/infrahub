@@ -4,7 +4,17 @@ import pytest
 from infrahub_sdk import UUIDT
 
 from infrahub import config
-from infrahub.core.attribute import URL, DateTime, Dropdown, Integer, IPHost, IPNetwork, MacAddress, String
+from infrahub.core.attribute import (
+    MAX_STRING_LENGTH,
+    URL,
+    DateTime,
+    Dropdown,
+    Integer,
+    IPHost,
+    IPNetwork,
+    MacAddress,
+    String,
+)
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -674,3 +684,21 @@ async def test_to_graphql_no_fields(
         "value": "mystring",
     }
     assert await attr2.to_graphql(db=db) == expected_data
+
+
+async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):
+    obj = await Node.init(db=db, schema="TestAllAttributeTypes")
+
+    large_string = "a" * 5_000
+
+    await obj.new(db=db, name="obj1", mystring=large_string)
+
+    # Text field
+    with pytest.raises(
+        ValidationError, match=f"Text attribute length should be less than {MAX_STRING_LENGTH} characters."
+    ):
+        await obj.save(db=db)
+
+    # TextArea field should have no size limitation
+    await obj.new(db=db, name="obj2", mytextarea=large_string)
+    await obj.save(db=db)

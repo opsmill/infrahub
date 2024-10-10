@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Union
 
-from infrahub_sdk.client import NodeDiff
+from infrahub_sdk.diff import NodeDiff
 
 from infrahub.core.constants import RelationshipKind, SchemaPathType
 from infrahub.core.constants.schema import UpdateSupport
