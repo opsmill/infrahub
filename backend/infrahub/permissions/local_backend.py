@@ -18,7 +18,7 @@ class LocalPermissionBackend(PermissionBackend):
     wildcard_values = ["*"]
     wildcard_actions = ["any"]
 
-    def compute_specificity(self, permission: ObjectPermission) -> int:
+    def _compute_specificity(self, permission: ObjectPermission) -> int:
         specificity = 0
         if permission.namespace not in self.wildcard_values:
             specificity += 1
@@ -30,14 +30,11 @@ class LocalPermissionBackend(PermissionBackend):
             specificity += 1
         return specificity
 
-    def resolve_object_permission(self, permissions: list[ObjectPermission], permission_to_check: str) -> bool:
-        """Compute the permissions and check if the one provided is allowed."""
-        if not permission_to_check.startswith("object:"):
-            return False
-
-        _, namespace, name, action, decision = permission_to_check.split(":")
+    def report_object_permission(
+        self, permissions: list[ObjectPermission], namespace: str, name: str, action: str
+    ) -> PermissionDecisionFlag:
+        """Given a set of permissions, return the permission decision for a given kind and action."""
         highest_specificity: int = -1
-        required_decision = PermissionDecisionFlag(value=int(decision))
         combined_decision = PermissionDecisionFlag.DENY
 
         for permission in permissions:
@@ -48,12 +45,26 @@ class LocalPermissionBackend(PermissionBackend):
             ):
                 permission_decision = PermissionDecisionFlag(value=permission.decision)
                 # Compute the specifity of a permission to keep the decision of the most specific if two or more permissions overlap
-                specificity = self.compute_specificity(permission=permission)
+                specificity = self._compute_specificity(permission=permission)
                 if specificity > highest_specificity:
                     combined_decision = permission_decision
                     highest_specificity = specificity
                 elif specificity == highest_specificity:
                     combined_decision |= permission_decision
+
+        return combined_decision
+
+    def resolve_object_permission(self, permissions: list[ObjectPermission], permission_to_check: str) -> bool:
+        """Compute the permissions and check if the one provided is allowed."""
+        if not permission_to_check.startswith("object:"):
+            return False
+
+        _, namespace, name, action, decision = permission_to_check.split(":")
+
+        required_decision = PermissionDecisionFlag(value=int(decision))
+        combined_decision = self.report_object_permission(
+            permissions=permissions, namespace=namespace, name=name, action=action
+        )
 
         return combined_decision & required_decision == required_decision
 

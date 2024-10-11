@@ -67,7 +67,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                             namespace=extracted_words[0],
                             name="".join(extracted_words[1:]),
                             action=action.lower(),
-                            decision=required_decision.value,
+                            decision=required_decision,
                         )
                     )
                 )

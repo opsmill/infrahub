@@ -89,20 +89,27 @@ class TestObjectPermissions:
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
-                decision=PermissionDecisionFlag.ALLOW_ALL,
+                decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
             ObjectPermission(
                 id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
-                decision=PermissionDecisionFlag.ALLOW_ALL,
+                decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
             ObjectPermission(
                 id="",
                 namespace="Core",
                 name="*",
                 action=PermissionAction.ANY.value,
+                decision=PermissionDecisionFlag.ALLOW_OTHER,
+            ),
+            ObjectPermission(
+                id="",
+                namespace="Core",
+                name="*",
+                action=PermissionAction.VIEW.value,
                 decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
         ]:
@@ -128,31 +135,28 @@ class TestObjectPermissions:
         await group.members.add(db=db, data={"id": first_account.id})
         await group.members.save(db=db)
 
-    async def test_first_account_tags_main_branch(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ) -> None:
-        """In the main branch the first account doesn't have the permission to make changes"""
+    async def test_first_account_tags(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
+        """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
         session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         gql_params = prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
 
-        result = await graphql(
-            schema=gql_params.schema,
-            source=QUERY_TAGS,
-            context_value=gql_params.context,
-        )
+        result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
 
         assert not result.errors
         assert result.data
         assert result.data["BuiltinTag"]["permissions"]["count"] == 1
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
-            "node": {"kind": "BuiltinTag", "create": "DENY", "update": "DENY", "delete": "DENY", "view": "ALLOW_ALL"}
+            "node": {
+                "kind": "BuiltinTag",
+                "create": "ALLOW_OTHER",
+                "update": "DENY",
+                "delete": "ALLOW_OTHER",
+                "view": "ALLOW_ALL",
+            }
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -161,28 +165,19 @@ class TestObjectPermissions:
         """In other branches the permissions for the first account is less restrictive"""
         branch2 = await create_branch(branch_name="pr-12345", db=db)
         session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
-
-        result = await graphql(
-            schema=gql_params.schema,
-            source=QUERY_TAGS,
-            context_value=gql_params.context,
-        )
-
+        result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
         assert not result.errors
         assert result.data
         assert result.data["BuiltinTag"]["permissions"]["count"] == 1
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
             "node": {
                 "kind": "BuiltinTag",
-                "create": "ALLOW_ALL",
+                "create": "ALLOW_OTHER",
                 "update": "DENY",
-                "delete": "ALLOW_ALL",
+                "delete": "ALLOW_OTHER",
                 "view": "ALLOW_ALL",
             }
         }
@@ -192,10 +187,7 @@ class TestObjectPermissions:
     ) -> None:
         """In the main branch the first account doesn't have the permission to make changes"""
         session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         gql_params = prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
@@ -213,27 +205,27 @@ class TestObjectPermissions:
         assert {
             "node": {
                 "kind": "CoreGenericRepository",
-                "create": "DENY",
-                "update": "DENY",
-                "delete": "DENY",
+                "create": "ALLOW_OTHER",
+                "update": "ALLOW_OTHER",
+                "delete": "ALLOW_OTHER",
                 "view": "ALLOW_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
             "node": {
                 "kind": "CoreRepository",
-                "create": "DENY",
-                "update": "DENY",
-                "delete": "DENY",
+                "create": "ALLOW_OTHER",
+                "update": "ALLOW_OTHER",
+                "delete": "ALLOW_OTHER",
                 "view": "ALLOW_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
             "node": {
                 "kind": "CoreReadOnlyRepository",
-                "create": "DENY",
-                "update": "DENY",
-                "delete": "DENY",
+                "create": "ALLOW_OTHER",
+                "update": "ALLOW_OTHER",
+                "delete": "ALLOW_OTHER",
                 "view": "ALLOW_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
