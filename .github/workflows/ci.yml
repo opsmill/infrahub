@@ -19,9 +19,9 @@ env:
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "local"
-  INFRAHUB_SERVER_PORT: 0
-  INFRAHUB_DB_BACKUP_PORT: 0
-  VMAGENT_PORT: 0
+  #INFRAHUB_SERVER_PORT: 0
+  #INFRAHUB_DB_BACKUP_PORT: 0
+  #VMAGENT_PORT: 0
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_USE_TEST_CONTAINERS: 1
   VALE_VERSION: "3.7.1"
@@ -579,11 +579,6 @@ jobs:
         run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: Set INFRAHUB_URL
-        run: |
-          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
-          echo "INFRAHUB_URL=http://server:8000" >> $GITHUB_ENV
 
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
