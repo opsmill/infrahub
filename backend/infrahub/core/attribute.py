@@ -487,7 +487,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 continue
 
             if field_name == "permissions":
-                response[field_name] = {"update": "ALLOW_ALL"}
+                response[field_name] = {"update_value": "ALLOW_ALL"}
                 continue
 
             if field_name in ["source", "owner"]:
