@@ -297,14 +297,6 @@ module = "infrahub.git_credential.askpass"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.attribute"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.ipam"
 ignore_errors = true
 
