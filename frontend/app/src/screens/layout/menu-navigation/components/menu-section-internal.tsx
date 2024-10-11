@@ -22,7 +22,7 @@ export interface MenuSectionInternalProps {
 
 export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalProps) {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col mb-auto">
       {items.map((item) => {
         if (!item.children || item.children.length === 0) {
           if (isCollapsed) {
