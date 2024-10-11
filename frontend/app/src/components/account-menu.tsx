@@ -78,7 +78,7 @@ const UnauthenticatedAccountMenu = () => {
     <DropdownMenu>
       <Link
         className="flex items-center h-14 rounded-lg p-2 gap-2 hover:bg-indigo-50"
-        to="/signin"
+        to="/login"
         state={{ from: location }}
       >
         <div className="bg-indigo-50 rounded-full h-10 w-10 flex items-center justify-center overflow-hidden border border-white">
@@ -111,7 +111,7 @@ const UnauthenticatedAccountMenu = () => {
         <CommonMenuItems />
         <DropdownMenuDivider />
         <DropdownMenuItem asChild>
-          <Link to="/signin" state={{ from: location }}>
+          <Link to="/login" state={{ from: location }}>
             <Icon icon="mdi:login" className="text-base" />
             Log in
           </Link>

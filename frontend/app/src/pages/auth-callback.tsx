@@ -42,11 +42,11 @@ function AuthCallback() {
   }, [config, protocol, provider]);
 
   if (!config || !config.sso.enabled) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (errors) {
-    return <Navigate to="/signin" state={{ errors }} replace />;
+    return <Navigate to="/login" state={{ errors }} replace />;
   }
 
   if (isAuthenticated) {

@@ -31,7 +31,7 @@ export const CONFIG = {
   SEARCH_URL: (query: string, limit: number = 3) =>
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,
   INFO_URL: `${INFRAHUB_API_SERVER_URL}/api/info`,
-  AUTH_SIGN_IN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
+  AUTH_LOGIN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
   SCHEMA_SUMMARY_URL: (branch?: string | null) =>
     branch
       ? `${INFRAHUB_API_SERVER_URL}/api/schema/summary?branch=${branch}`

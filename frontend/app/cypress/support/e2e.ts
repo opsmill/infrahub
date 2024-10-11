@@ -25,8 +25,8 @@ Cypress.Commands.add("login", (username: string, password: string) => {
   cy.session(
     [username, password],
     () => {
-      cy.visit("/signin");
-      cy.contains("Sign in to your account").should("be.visible");
+      cy.visit("/login");
+      cy.contains("Log in to your account").should("be.visible");
 
       cy.get(":nth-child(1) > .relative > .block").type(username);
 

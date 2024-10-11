@@ -33,11 +33,11 @@ describe("Config fetch", () => {
       </MockedProvider>
     );
 
-    cy.contains("Sign in to your account");
+    cy.contains("Log in to your account");
     cy.contains("label", "Username").parent().next().clear({ force: true });
     cy.contains("label", "Username").parent().next().type("test");
     cy.contains("label", "Password").parent().next().type("test");
-    cy.contains("button", "Sign in").click();
+    cy.contains("button", "Log in").click();
 
     cy.wait("@login").then(({ response }) => {
       expect(response?.body?.access_token).to.exist;

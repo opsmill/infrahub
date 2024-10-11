@@ -466,8 +466,8 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        path: "/signin",
-        lazy: () => import("@/pages/sign-in"),
+        path: "/login",
+        lazy: () => import("@/pages/login"),
       },
       {
         path: "auth/:protocol/:provider/callback",

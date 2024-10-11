@@ -65,6 +65,7 @@ export default {
   },
   plugins: [
     require("@tailwindcss/forms"),
+    require("tailwindcss-animate"),
     function ({ addUtilities, theme }) {
       const utilities = {
         ".bg-stripes": {
