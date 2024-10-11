@@ -528,6 +528,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         fields: Optional[dict] = None,
         related_node_ids: Optional[set] = None,
         filter_sensitive: bool = False,
+        permissions: Optional[dict] = None,
     ) -> dict:
         """Generate GraphQL Payload for all attributes
 
@@ -579,11 +580,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     fields=fields.get(field_name),
                     related_node_ids=related_node_ids,
                     filter_sensitive=filter_sensitive,
+                    permissions=permissions,
                 )
             else:
                 response[field_name] = await field.to_graphql(
-                    db=db,
-                    filter_sensitive=filter_sensitive,
+                    db=db, filter_sensitive=filter_sensitive, permissions=permissions
                 )
 
         return response

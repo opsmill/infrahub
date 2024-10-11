@@ -460,6 +460,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         fields: Optional[dict] = None,
         related_node_ids: Optional[set] = None,
         filter_sensitive: bool = False,
+        permissions: Optional[dict] = None,
     ) -> dict:
         """Generate GraphQL Payload for this attribute."""
         # pylint: disable=too-many-branches
@@ -486,8 +487,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 response[field_name] = self.get_kind()
                 continue
 
-            if field_name == "permissions":
-                response[field_name] = {"update_value": "ALLOW_ALL"}
+            if field_name == "permissions" and permissions:
+                response[field_name] = {"update_value": permissions["update"]}
                 continue
 
             if field_name in ["source", "owner"]:

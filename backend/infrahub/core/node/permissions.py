@@ -15,9 +15,14 @@ class CoreGlobalPermission(Node):
         fields: Optional[dict] = None,
         related_node_ids: Optional[set] = None,
         filter_sensitive: bool = False,
+        permissions: Optional[dict] = None,
     ) -> dict:
         response = await super().to_graphql(
-            db, fields=fields, related_node_ids=related_node_ids, filter_sensitive=filter_sensitive
+            db,
+            fields=fields,
+            related_node_ids=related_node_ids,
+            filter_sensitive=filter_sensitive,
+            permissions=permissions,
         )
 
         if fields:
@@ -34,9 +39,14 @@ class CoreObjectPermission(Node):
         fields: Optional[dict] = None,
         related_node_ids: Optional[set] = None,
         filter_sensitive: bool = False,
+        permissions: Optional[dict] = None,
     ) -> dict:
         response = await super().to_graphql(
-            db, fields=fields, related_node_ids=related_node_ids, filter_sensitive=filter_sensitive
+            db,
+            fields=fields,
+            related_node_ids=related_node_ids,
+            filter_sensitive=filter_sensitive,
+            permissions=permissions,
         )
 
         if fields:
