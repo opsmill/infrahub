@@ -55,7 +55,7 @@ export function MenuSectionObject({ isCollapsed, items }: MenuSectionObjectsProp
               side="left"
               align="start"
               sideOffset={12}
-              className="h-[calc(100vh-57px)] min-w-[224px] px-4 py-5 bg-white border rounded-r-lg rounded-l-none shadow-none relative -top-px overflow-auto"
+              className="h-[calc(100vh-57px)] mt-[57px] min-w-[224px] px-4 py-5 bg-white border rounded-r-lg rounded-l-none shadow-none relative -top-px overflow-auto data-[side=right]:slide-in-from-left-[100px]"
             >
               <h3 className="text-xl font-medium text-neutral-800 mb-5">{item.title}</h3>
               {item.children.map((child) => {
