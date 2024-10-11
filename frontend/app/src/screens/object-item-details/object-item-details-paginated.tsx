@@ -6,7 +6,6 @@ import { Link } from "@/components/ui/link";
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
@@ -46,6 +45,7 @@ type ObjectDetailsProps = {
 export default function ObjectItemDetails({
   schema,
   objectDetailsData,
+  permission,
   taskData,
   hideHeaders,
 }: ObjectDetailsProps) {
@@ -54,7 +54,6 @@ export default function ObjectItemDetails({
 
   const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
-  const permission = usePermission();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
@@ -117,7 +116,13 @@ export default function ObjectItemDetails({
       {!hideHeaders && (
         <Tabs
           tabs={tabs}
-          rightItems={<ActionButtons schema={schema} objectDetailsData={objectDetailsData} />}
+          rightItems={
+            <ActionButtons
+              schema={schema}
+              objectDetailsData={objectDetailsData}
+              permission={permission}
+            />
+          }
         />
       )}
 
@@ -151,9 +156,9 @@ export default function ObjectItemDetails({
                           <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                             <div className="font-semibold">{attribute.label}</div>
                             <ButtonWithTooltip
-                              disabled={!permission.write.allow}
-                              tooltipEnabled={!permission.write.allow}
-                              tooltipContent={permission.write.message ?? undefined}
+                              disabled={!permission.update.isAllowed}
+                              tooltipEnabled={!permission.update.isAllowed}
+                              tooltipContent={permission.update.message}
                               onClick={() => {
                                 setMetaEditFieldDetails({
                                   type: "attribute",

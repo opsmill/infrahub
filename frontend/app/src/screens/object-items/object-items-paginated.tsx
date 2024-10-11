@@ -12,7 +12,6 @@ import {
 } from "@/config/constants";
 import useFilters, { Filter } from "@/hooks/useFilters";
 import { useObjectItems } from "@/hooks/useObjectItems";
-import { usePermission } from "@/hooks/usePermission";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -25,6 +24,7 @@ import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
 
 type ObjectItemsProps = {
   schema: IModelSchema;
@@ -39,7 +39,6 @@ export default function ObjectItems({
   preventBlock,
   preventLinks,
 }: ObjectItemsProps) {
-  const permission = usePermission();
   const [filters, setFilters] = useFilters();
 
   const [rowToDelete, setRowToDelete] = useState<any>();
@@ -58,7 +57,7 @@ export default function ObjectItems({
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns({ schema: schema, forListView: true });
 
-  const { loading, error, data = {}, refetch } = useObjectItems(schema, filters);
+  const { loading, error, data = {}, refetch, permission } = useObjectItems(schema, filters);
 
   const result = data && schema?.kind ? (data[kindFilter?.value || schema?.kind] ?? {}) : {};
 
@@ -95,14 +94,12 @@ export default function ObjectItems({
 
   const debouncedHandleSearch = debounce(handleSearch, 500);
 
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching list." />;
+  if (!permission.view.isAllowed) {
+    return <UnauthorizedScreen message={permission.view.message} />;
   }
 
-  const currentPermission = permissions?.edges[0]?.node;
-
-  if (currentPermission?.view !== "ALLOW") {
-    // return <UnauthorizedScreen />;
+  if (error) {
+    return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
   return (
@@ -122,13 +119,18 @@ export default function ObjectItems({
 
           <Filters schema={schema} />
 
-          <ObjectCreateFormTrigger schema={schema} onSuccess={onSuccess} isLoading={loading} />
+          <ObjectCreateFormTrigger
+            schema={schema}
+            onSuccess={onSuccess}
+            isLoading={loading}
+            permission={permission}
+          />
         </div>
 
         {loading && !rows && <LoadingScreen />}
 
         {/* TODO: use new Table component for list */}
-        {rows && (
+        {!loading && rows && (
           <div className="overflow-auto">
             <table className="table-auto border-spacing-0 w-full" cellPadding="0">
               <thead className="bg-gray-50 text-left border-y border-gray-300">
@@ -168,9 +170,9 @@ export default function ObjectItems({
                       <ButtonWithTooltip
                         data-cy="delete"
                         data-testid="delete-row-button"
-                        disabled={!permission.write.allow}
-                        tooltipEnabled={!permission.write.allow}
-                        tooltipContent={permission.write.message ?? undefined}
+                        disabled={!permission?.delete.isAllowed}
+                        tooltipEnabled={!permission?.delete.isAllowed}
+                        tooltipContent={permission?.delete.message}
                         variant="ghost"
                         onClick={() => {
                           setRowToDelete(row);
