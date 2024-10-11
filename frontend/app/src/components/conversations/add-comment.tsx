@@ -60,10 +60,10 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
       <LinkButton
         size="sm"
         variant="primary"
-        to={constructPath("/signin")}
+        to={constructPath("/login")}
         state={{ from: location }}
       >
-        Sign in
+        Login
       </LinkButton>{" "}
       to be able to add a comment.
     </div>

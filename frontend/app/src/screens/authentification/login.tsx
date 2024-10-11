@@ -4,20 +4,20 @@ import PasswordInputField from "@/components/form/fields/password-input.field";
 import { isRequired } from "@/components/form/utils/validation";
 import { Form, FormSubmit } from "@/components/ui/form";
 import { useAuth } from "@/hooks/useAuth";
-import { SignInWithSSOButtons } from "@/screens/authentification/sign-in-sso-buttons";
+import { LoginWithSSOButtons } from "@/screens/authentification/login-sso-buttons";
 import { configState } from "@/state/atoms/config.atom";
 import { classNames } from "@/utils/common";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-export const SignIn = () => {
+export const Login = () => {
   const config = useAtomValue(configState);
   const [displaySSO, setDisplaySSO] = useState(true);
 
   if (config && config.sso.enabled && config.sso.providers.length > 0) {
     return displaySSO ? (
       <>
-        <SignInWithSSOButtons providers={config.sso.providers} className="animate-in fade-in" />
+        <LoginWithSSOButtons providers={config.sso.providers} className="animate-in fade-in" />
         <Button
           variant="ghost"
           onClick={() => setDisplaySSO(!displaySSO)}
@@ -28,7 +28,7 @@ export const SignIn = () => {
       </>
     ) : (
       <>
-        <SignInForm className="animate-in fade-in" />
+        <LoginForm className="animate-in fade-in" />
         <Button
           variant="ghost"
           onClick={() => setDisplaySSO(!displaySSO)}
@@ -40,11 +40,11 @@ export const SignIn = () => {
     );
   }
 
-  return <SignInForm />;
+  return <LoginForm />;
 };
 
-export const SignInForm = ({ className }: { className?: string }) => {
-  const { signIn } = useAuth();
+export const LoginForm = ({ className }: { className?: string }) => {
+  const { login } = useAuth();
 
   return (
     <Form
@@ -54,7 +54,7 @@ export const SignInForm = ({ className }: { className?: string }) => {
           username: formData.username.value as string,
           password: formData.password.value as string,
         };
-        await signIn(data);
+        await login(data);
       }}
     >
       <InputField name="username" label="Username" rules={{ validate: { required: isRequired } }} />

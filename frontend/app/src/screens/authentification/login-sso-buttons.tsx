@@ -4,12 +4,12 @@ import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useLocation } from "react-router-dom";
 
-export interface SignInWithSSOButtonsProps {
+export interface LoginWithSSOButtonsProps {
   className?: string;
   providers: Array<Provider>;
 }
 
-export const SignInWithSSOButtons = ({ className, providers }: SignInWithSSOButtonsProps) => {
+export const LoginWithSSOButtons = ({ className, providers }: LoginWithSSOButtonsProps) => {
   const location = useLocation();
   const redirectTo: string =
     (location.state?.from?.pathname || "/") + (location.state?.from?.search ?? "");

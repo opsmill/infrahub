@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
 
-test.describe("/signin", () => {
+test.describe("/login", () => {
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -16,10 +16,10 @@ test.describe("/signin", () => {
 
       await page.getByRole("link", { name: "Log in anonymous" }).click();
 
-      await expect(page.getByText("Sign in to your account")).toBeVisible();
+      await expect(page.getByText("Log in to your account")).toBeVisible();
       await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
       await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
-      await page.getByRole("button", { name: "Sign in" }).click();
+      await page.getByRole("button", { name: "Log in" }).click();
 
       await expect(page.getByTestId("authenticated-menu-trigger")).toBeVisible();
     });
@@ -29,10 +29,10 @@ test.describe("/signin", () => {
 
       await page.getByRole("link", { name: "Log in anonymous" }).click();
 
-      await expect(page.getByText("Sign in to your account")).toBeVisible();
+      await expect(page.getByText("Log in to your account")).toBeVisible();
       await page.getByLabel("Username").fill("wrong username");
       await page.getByLabel("Password").fill("wrong password");
-      await page.getByRole("button", { name: "Sign in" }).click();
+      await page.getByRole("button", { name: "Log in" }).click();
 
       await expect(page.locator("#alert-error-sign-in")).toContainText(
         "Invalid username and password"
@@ -46,10 +46,10 @@ test.describe("/signin", () => {
 
       await page.getByRole("link", { name: "Log in anonymous" }).click();
 
-      await expect(page.getByText("Sign in to your account")).toBeVisible();
+      await expect(page.getByText("Log in to your account")).toBeVisible();
       await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
       await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
-      await page.getByRole("button", { name: "Sign in" }).click();
+      await page.getByRole("button", { name: "Log in" }).click();
 
       await expect(page.getByTestId("authenticated-menu-trigger")).toBeVisible();
       await expect(page.url()).toContain(initialPage);
@@ -69,7 +69,7 @@ test.describe("/signin", () => {
     });
 
     test("redirect to homepage if user is already logged in", async ({ page }) => {
-      await page.goto("/signin");
+      await page.goto("/login");
 
       await expect(page.getByText("Welcome to Infrahub!")).toBeVisible();
     });

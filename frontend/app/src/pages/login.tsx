@@ -1,11 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
 import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-hori.svg";
-import { SignIn } from "@/screens/authentification/sign-in";
+import { Login } from "@/screens/authentification/login";
 import Content from "@/screens/layout/content";
 import { Navigate, useLocation } from "react-router-dom";
 
-function SignInPage() {
-  let location = useLocation();
+function LoginPage() {
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
@@ -20,7 +20,7 @@ function SignInPage() {
 
         <h1 className="text-xl font-semibold text-neutral-900">Log in to your account</h1>
 
-        <SignIn />
+        <Login />
 
         {location?.state?.errors?.map(
           (error: { extensions: { code: number }; message: string }, index: number) => (
@@ -34,4 +34,4 @@ function SignInPage() {
   );
 }
 
-export const Component = SignInPage;
+export const Component = LoginPage;

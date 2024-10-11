@@ -1,6 +1,7 @@
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
 import { AuthContextType } from "@/hooks/useAuth";
 import { components } from "@/infraops";
+import { RelationshipSchema } from "@/screens/schema/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { describe, expect, it } from "vitest";
@@ -31,8 +32,8 @@ export const buildAttributeSchema = (
 });
 
 export const buildRelationshipSchema = (
-  override?: Partial<components["schemas"]["RelationshipSchema-Output"]>
-): components["schemas"]["RelationshipSchema-Output"] => ({
+  override?: Partial<RelationshipSchema>
+): RelationshipSchema => ({
   id: "17e2718c-73ed-3ffe-3402-c515757ff94f",
   state: "present",
   name: "tagone",
@@ -352,8 +353,9 @@ describe("getFormFieldsFromSchema", () => {
       data: {
         sub: "1",
       },
-      signIn: async () => {},
+      login: async () => {},
       signOut: () => {},
+      setToken: () => {},
       user: {
         id: "1",
       },
@@ -410,8 +412,9 @@ describe("getFormFieldsFromSchema", () => {
       data: {
         sub: "1",
       },
-      signIn: async () => {},
+      login: async () => {},
       signOut: () => {},
+      setToken: () => {},
       user: {
         id: "1",
       },
