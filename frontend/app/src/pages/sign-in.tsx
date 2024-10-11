@@ -1,6 +1,5 @@
-import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-verti.svg";
+import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-hori.svg";
 import { SignIn } from "@/screens/authentification/sign-in";
 import Content from "@/screens/layout/content";
 import { Navigate, useLocation } from "react-router-dom";
@@ -15,24 +14,22 @@ function SignInPage() {
   }
 
   return (
-    <Content className="flex justify-center items-center bg-gray-200 p-2 h-screen">
-      <Card className="w-full max-w-lg shadow">
-        <div className="flex flex-col items-center p-8">
-          <InfrahubLogo className="h-28 w-28" alt="Intrahub logo" />
+    <Content className="bg-stone-100 h-screen w-screen pt-[25vh]">
+      <div className="flex flex-col items-center gap-6 w-full max-w-sm m-auto">
+        <InfrahubLogo className="h-12" alt="Intrahub logo" />
 
-          <h2 className="my-8 text-2xl font-semibold text-gray-900">Sign in to your account</h2>
+        <h1 className="text-xl font-semibold text-neutral-900">Log in to your account</h1>
 
-          <SignIn />
+        <SignIn />
 
-          {location?.state?.errors?.map(
-            (error: { extensions: { code: number }; message: string }, index: number) => (
-              <p key={index} className="text-red-500 text-sm mt-2">
-                ({error.extensions.code}) {error.message}
-              </p>
-            )
-          )}
-        </div>
-      </Card>
+        {location?.state?.errors?.map(
+          (error: { extensions: { code: number }; message: string }, index: number) => (
+            <p key={index} className="text-red-500 text-sm mt-2">
+              ({error.extensions.code}) {error.message}
+            </p>
+          )
+        )}
+      </div>
     </Content>
   );
 }
