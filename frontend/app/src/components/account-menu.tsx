@@ -85,7 +85,7 @@ const UnauthenticatedAccountMenu = () => {
           <Icon icon="mdi:user" className="text-5xl relative top-1 text-neutral-600" />
         </div>
 
-        <div className="flex flex-col items-start flex-grow">
+        <div className="flex flex-col items-start flex-grow group-data-[collapsed=true]/sidebar:hidden transition-all">
           <span className="font-semibold text-sm">Log in</span>
           <span className="text-xs text-neutral-500">anonymous</span>
         </div>
@@ -100,7 +100,7 @@ const UnauthenticatedAccountMenu = () => {
             variant="ghost"
             size="square"
             data-testid="unauthenticated-menu-trigger"
-            className="hover:bg-indigo-100"
+            className="hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden transition-all"
           >
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
@@ -157,11 +157,14 @@ const AuthenticatedAccountMenu = ({
           data-testid="authenticated-menu-trigger"
         >
           <Avatar name={profile?.name?.value} className="h-10 w-10" />
-          <div className="flex flex-col items-start">
+          <div className="flex flex-col items-start group-data-[collapsed=true]/sidebar:hidden transition-all">
             <span className="font-semibold text-sm">{profile?.label?.value}</span>
             <span className="text-xs text-neutral-500">{profile?.role?.value}</span>
           </div>
-          <Icon icon="mdi:dots-vertical" className="text-lg m-2 ml-auto" />
+          <Icon
+            icon="mdi:dots-vertical"
+            className="text-lg m-2 ml-auto group-data-[collapsed=true]/sidebar:hidden transition-all"
+          />
         </Button>
       </DropdownMenuTrigger>
 

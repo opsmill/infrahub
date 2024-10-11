@@ -1,7 +1,8 @@
-import { Button, ButtonProps } from "@/components/buttons/button-primitive";
+import { Button, ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Kbd from "@/components/ui/kbd";
+import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { classNames } from "@/utils/common";
 import { Combobox, Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
@@ -24,18 +25,23 @@ const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
     >
       <div className="flex items-center gap-2">
         <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
-        <span className="text-neutral-700 text-sm">Search</span>
+        <span className="text-neutral-700 text-sm group-data-[collapsed=true]/sidebar:hidden transition-all">
+          Search
+        </span>
       </div>
 
-      <Kbd keys="command">K</Kbd>
+      <Kbd keys="command" className="group-data-[collapsed=true]/sidebar:hidden transition-all">
+        K
+      </Kbd>
     </Button>
   );
 };
 
 type SearchModalProps = {
   className?: string;
+  isCollapsed?: boolean;
 };
-export function SearchAnywhere({ className = "" }: SearchModalProps) {
+export function SearchAnywhere({ className = "", isCollapsed }: SearchModalProps) {
   let [isOpen, setIsOpen] = useState(false);
 
   function closeDrawer() {
@@ -59,7 +65,21 @@ export function SearchAnywhere({ className = "" }: SearchModalProps) {
 
   return (
     <>
-      <SearchAnywhereTriggerButton onClick={openModal} onChange={openModal} className={className} />
+      {isCollapsed ? (
+        <CollapsedButton
+          tooltipContent="Search anywhere"
+          icon="mdi:search"
+          onClick={openModal}
+          onChange={openModal}
+          className={className}
+        />
+      ) : (
+        <SearchAnywhereTriggerButton
+          onClick={openModal}
+          onChange={openModal}
+          className={className}
+        />
+      )}
 
       <Transition appear show={isOpen} as={Fragment}>
         <Dialog onClose={closeDrawer}>

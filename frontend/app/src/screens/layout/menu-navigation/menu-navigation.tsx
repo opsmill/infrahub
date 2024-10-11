@@ -1,6 +1,7 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Divider } from "@/components/ui/divider";
 import { CONFIG } from "@/config/config";
+import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { MenuSectionInternal } from "@/screens/layout/menu-navigation/components/menu-section-internal";
 import { MenuSectionObject } from "@/screens/layout/menu-navigation/components/menu-section-object";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
@@ -11,7 +12,11 @@ import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-export default function MenuNavigation({ className }: { className: string }) {
+export default function MenuNavigation({
+  className,
+  isCollapsed,
+  setCollapsed,
+}: { className: string; isCollapsed?: boolean; setCollapsed: (collapsed: boolean) => void }) {
   const currentBranch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
   const [menu, setMenu] = useAtom(menuAtom);
@@ -35,10 +40,21 @@ export default function MenuNavigation({ className }: { className: string }) {
   if (!menu?.sections) return <div className="flex-grow" />;
 
   return (
-    <div className={classNames("flex flex-col", className)} data-testid="menu-navigation">
-      <MenuSectionObject items={menu.sections.object} />
+    <div
+      className={classNames("flex flex-col items-center", className)}
+      data-testid="menu-navigation"
+    >
+      {isCollapsed ? (
+        <CollapsedButton
+          icon="mdi:menu"
+          tooltipContent="Objects"
+          onClick={() => setCollapsed(false)}
+        />
+      ) : (
+        <MenuSectionObject items={menu.sections.object} />
+      )}
       <Divider />
-      <MenuSectionInternal items={menu.sections.internal} />
+      <MenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
     </div>
   );
 }

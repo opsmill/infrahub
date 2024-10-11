@@ -20,7 +20,7 @@ export interface MenuSectionObjectsProps {
 
 export function MenuSectionObject({ items }: MenuSectionObjectsProps) {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col w-full overflow-auto">
       {items.map((item) => {
         if (!item.children || item.children.length === 0) {
           return (
