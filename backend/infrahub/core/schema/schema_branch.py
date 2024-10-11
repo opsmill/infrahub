@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
+    AttributeAssignmentType,
     BranchSupportType,
     HashableModelState,
     InfrahubKind,
@@ -47,6 +48,7 @@ from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
+from infrahub.support.macro import MacroDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
@@ -487,6 +489,7 @@ class SchemaBranch:
     def process_validate(self) -> None:
         self.validate_names()
         self.validate_kinds()
+        self.validate_computed_attributes()
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
@@ -920,6 +923,64 @@ class SchemaBranch:
                     raise ValueError(
                         f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
                     ) from None
+
+    def validate_computed_attributes(self) -> None:
+        for name in self.nodes.keys():
+            node_schema = self.get_node(name=name, duplicate=False)
+            for attribute in node_schema.attributes:
+                self._validate_computed_attribute(node=node_schema, attribute=attribute)
+
+        for name in self.generics.keys():
+            generic_schema = self.get_generic(name=name, duplicate=False)
+            for attribute in generic_schema.attributes:
+                if attribute.assignment_type != AttributeAssignmentType.USER:
+                    raise ValueError(
+                        f"{generic_schema.kind}: Attribute {attribute.name!r} assignment_type=macro is only allowed on nodes not generics"
+                    )
+
+    def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
+        if attribute.assignment_type == AttributeAssignmentType.USER:
+            return
+        if not attribute.read_only:
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed macro but not marked as read_only"
+            )
+        if not attribute.kind == "Text":
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed macro currently only 'Text' kinds are supported."
+            )
+        if attribute.assignment_type == AttributeAssignmentType.MACRO and not attribute.computation_logic:
+            raise ValueError(f"{node.kind}: Attribute {attribute.name!r} is a computed macro but no macro is defined")
+        if attribute.assignment_type == AttributeAssignmentType.MACRO and attribute.computation_logic:
+            allowed_path_types = (
+                SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+            )
+            try:
+                macro = MacroDefinition(macro=attribute.computation_logic)
+            except ValueError as exc:
+                raise ValueError(
+                    f"{node.kind}: Attribute {attribute.name!r} is assigned by a macro, but has an invalid macro"
+                ) from exc
+
+            for variable in macro.variables:
+                try:
+                    schema_path = self.validate_schema_path(
+                        node_schema=node, path=variable, allowed_path_types=allowed_path_types
+                    )
+                except ValueError as exc:
+                    raise ValueError(
+                        f"{node.kind}: Attribute {attribute.name!r} the '{variable}' variable is not found within the schema path"
+                    ) from exc
+
+                if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == attribute.name:
+                    raise ValueError(
+                        f"{node.kind}: Attribute {attribute.name!r} the '{variable}' variable is a reference to itself"
+                    )
+
+        if attribute.assignment_type == AttributeAssignmentType.TRANSFORM and not attribute.optional:
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed transform, it can't be mandatory"
+            )
 
     def validate_count_against_cardinality(self) -> None:
         """Validate every RelationshipSchema cardinality against the min_count and max_count."""

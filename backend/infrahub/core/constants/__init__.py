@@ -107,6 +107,12 @@ class BranchSupportType(InfrahubStringEnum):
     LOCAL = "local"
 
 
+class AttributeAssignmentType(InfrahubStringEnum):
+    USER = "user"
+    MACRO = "macro"
+    TRANSFORM = "transform"
+
+
 class BranchConflictKeep(InfrahubStringEnum):
     TARGET = "target"
     SOURCE = "source"

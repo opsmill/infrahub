@@ -1,4 +1,6 @@
 CAR = "TestingCar"
+CHILD = "TestingChild"
 MANUFACTURER = "TestingManufacturer"
 PERSON = "TestingPerson"
+THING = "TestingThing"
 TICKET = "TestingTicket"

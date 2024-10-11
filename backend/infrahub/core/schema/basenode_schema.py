@@ -455,6 +455,24 @@ class SchemaAttributePath:
     def has_property(self) -> bool:
         return bool(self.attribute_property_name)
 
+    @property
+    def active_relationship_schema(self) -> RelationshipSchema:
+        if self.relationship_schema:
+            return self.relationship_schema
+        raise AttributePathParsingError("A relation_schema was expected but not found")
+
+    @property
+    def active_attribute_schema(self) -> AttributeSchema:
+        if self.attribute_schema:
+            return self.attribute_schema
+        raise AttributePathParsingError("An attribute_schema was expected but not found")
+
+    @property
+    def active_attribute_property_name(self) -> str:
+        if self.attribute_property_name:
+            return self.attribute_property_name
+        raise AttributePathParsingError("An attribute_property_name was expected but not found")
+
 
 @dataclass
 class SchemaAttributePathValue(SchemaAttributePath):
