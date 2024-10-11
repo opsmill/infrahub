@@ -585,7 +585,7 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
       - name: Run 'invoke demo.start'
-        run: invoke demo.start demo.load-infra-schema
+        run: invoke demo.start
 
       - name: Run 'invoke demo.load'
         run: invoke demo.load-infra-schema
