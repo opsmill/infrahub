@@ -55,6 +55,10 @@ class RelatedPrefixNodeInput(InputObjectType):
     _relation__source = String(required=False)
 
 
+class PermissionType(ObjectType):
+    update = String()
+
+
 class AttributeInterface(InfrahubInterface):
     is_default = Field(Boolean)
     is_inherited = Field(Boolean)
@@ -70,6 +74,7 @@ class AttributeInterface(InfrahubInterface):
 class BaseAttribute(ObjectType):
     id = Field(String)
     is_from_profile = Field(Boolean)
+    permissions = Field(PermissionType)
 
     @classmethod
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:

@@ -486,6 +486,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 response[field_name] = self.get_kind()
                 continue
 
+            if field_name == "permissions":
+                response[field_name] = {"update": "ALLOW_ALL"}
+                continue
+
             if field_name in ["source", "owner"]:
                 node_attr_getter = getattr(self, f"get_{field_name}")
                 node_attr = await node_attr_getter(db=db)
