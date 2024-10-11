@@ -1,3 +1,5 @@
+import { permissionsAllow } from "./permissions";
+
 export const taskMocksSchema = [
   {
     id: "8a4e2579-c300-48e1-b703-022bf6d224df",
@@ -128,6 +130,17 @@ query TestTask($offset: Int, $limit: Int) {
         }
       }
     }
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
+        }
+      }
+    }
   }
 }
 `;
@@ -136,6 +149,7 @@ export const taskMocksData = {
   TestTask: {
     count: 0,
     edges: [],
+    permissions: permissionsAllow,
     __typename: "PaginatedTestTask",
   },
 };
