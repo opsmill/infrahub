@@ -47,7 +47,7 @@ function Permissions() {
 
   const columns = [
     {
-      name: "display_label",
+      name: "display",
       label: "Name",
     },
     {
@@ -89,11 +89,12 @@ function Permissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: {
-            value: edge?.node?.display_value,
+          display_label: edge?.node?.display_label,
+          display: {
+            value: edge?.node?.display_label,
             display: (
               <div className="flex items-center gap-2">
-                {icon} {edge?.node?.display_value}
+                {icon} {edge?.node?.display_label}
               </div>
             ),
           },
