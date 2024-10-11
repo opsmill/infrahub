@@ -25,6 +25,12 @@ nodes:
       - "BuiltinIPPrefix"
     description: "IPv4 or IPv6 network"
     label: "IP Prefix"
+    relationships:
+      - name: vlan
+        peer: IpamVLAN
+        optional: true
+        cardinality: one
+        kind: Attribute
   - name: IPAddress
     namespace: Ipam
     include_in_menu: false
@@ -32,11 +38,33 @@ nodes:
       - "BuiltinIPAddress"
     description: "IP Address"
     label: "IP Address"
+  - name: VLAN
+    namespace: Ipam
+    description: "A VLAN is isolated layer two domain"
+    label: "VLAN"
+    icon: "mdi:lan-pending"
+    include_in_menu: true
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: prefixes
+        peer: IpamIPPrefix
+        optional: true
+        cardinality: many
   - name: Device
     namespace: Infra
     description: "A Device"
     icon: "mdi:server"
     label: "Device"
+    display_labels:
+      - name__value
     attributes:
       - name: name
         kind: Text
@@ -58,9 +86,13 @@ Load the schema with the `infrahubctl` command.
  1 schema processed in 6.846 seconds.
 ```
 
-## Creating an IP Prefix object
+## Using IP address pool
 
-Next we will be creating an IP Prefix object, which the resource manager will use as a resource to allocate resources from.
+A `CoreIPaddressPool` will allow you to dynamically allocate IP address from a given IP prefix.
+
+### Creating an IP Prefix object
+
+First we need to create an IP Prefix object, which the resource manager will use as a resource to allocate resources from.
 You can create a prefix `10.0.0.0/24` using the web interface, or by using this GraphQL mutation.
 
 ```graphql
@@ -80,7 +112,7 @@ mutation {
 
 Take note of the id of the prefix, we will need id in the next step.
 
-## Creating a resource manager
+### Creating a resource manager
 
 We can now create a resource manager of kind `CoreIPAddressPool`. The kind of the resource manager determines the kind of resource the manager will allocate.
 
@@ -88,20 +120,19 @@ We will create a `CoreIPaddressPool` with the following properties:
 
 - Name: My IP address pool
 - Default Address Type: `IpamIPAddress` (the kind of the IP address node defined in our schema)
-- Default Prefix Size: 32
+- Default Prefix Size: 24
 - Resources: 10.0.0.0/24
 - IP Namespace: Namespace > Default
 
-The `CoreIPAddresPool` can be created using the web interface, or by using this GraphQL mutation. Replace the id of the resource with the id of the prefix of the previous step.
+The `CoreIPAddressPool` can be created using the web interface, or by using this GraphQL mutation. Replace the id of the resource with the id of the prefix of the previous step.
 
 ```graphql
 mutation {
   CoreIPAddressPoolCreate(data: {
     name: {value: "My IP address pool"},
     default_address_type: {value: "IpamIPAddress"},
-    default_prefix_size: {value: 32},
+    default_prefix_length: {value: 24},
     resources: [{id: "<id of prefix>"}],
-    is_pool: {value: true},
     ip_namespace: {id: "default"}
   })
   {
@@ -115,18 +146,18 @@ mutation {
 
 Take note of the id of the `CoreIPAddressPool`, we will use it in the next steps.
 
-## Allocating a resource out of the pool
+### Allocating an IP address out of the pool
 
-We can now start allocating resources out of the `CoreIPAddressPool` we created.
+We can now start allocating IP addresses out of the `CoreIPAddressPool` we created.
 
 We can use the resource manager to allocate resources out of a pool in 2 different ways:
 
 1. Directly allocate a resource out of a pool. This is typically used when you need to allocate a resource that has no relation to other nodes. For example, allocating an IP address out of a pool that will be assigned to something that is not stored in Infrahub.
 2. Allocate a resource out of a pool to a relationship of a node. For example, create a device and allocate an IP address out of a pool and assign it to the device
 
-### Direct allocation of a resource
+Please refer to the [Resource Manager Topic](/topics/resource-manager) for further details.
 
-At this stage we can only do this using GraphQL queries or specific methods in the Python SDK. Support for the web interface will come in future releases.
+#### Direct allocation of an IP address
 
 Execute the following mutation to allocate an IP address out of the pool. Replace the id with the id of the `CoreIPAddressPool` we created previously.
 
@@ -152,6 +183,8 @@ mutation {
 
 In the mutation we passed additional data to the allocated resource, in this case we passed a description attribute. This description attribute will be set on the IP address that was allocated. You can do this for any other attribute and relationship for the destination address type.
 
+#### Idempotent allocation of an IP address
+
 You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](/topics/generator).
 
 Execute this mutation twice, note the identifier. The resulting IP address should be the same, as well as the id. Replace the id with the id of the `CoreIPAddressPool` we created previously.
@@ -174,7 +207,7 @@ mutation {
 }
 ```
 
-### Allocating resources to a relationship of a node
+#### Allocating an IP address to a relationship of a node
 
 Another way we can use resource managers is in situations where we create a node that has a relationship and we want to use a resource manager to allocate a new resource for that relationship. For example, we want to create a new device (or server) and assign an IP address to the device out of a pool.
 
