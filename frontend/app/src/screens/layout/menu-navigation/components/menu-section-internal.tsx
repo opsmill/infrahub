@@ -39,7 +39,7 @@ export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalP
           return (
             <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
               <Icon icon={item.icon} className="m-1 min-w-4" />
-              <span className="text-sm">{item.title}</span>
+              <span className="text-sm truncate">{item.title}</span>
             </Link>
           );
         }
@@ -54,7 +54,7 @@ export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalP
               ) : (
                 <>
                   <Icon icon={item.icon} className="text-lg min-w-4" />
-                  <span className="text-sm">{item.title}</span>
+                  <span className="text-sm truncate">{item.title}</span>
                   <Icon
                     icon="mdi:dots-vertical"
                     className="m-1 ml-auto opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
