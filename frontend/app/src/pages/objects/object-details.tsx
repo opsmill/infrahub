@@ -3,6 +3,7 @@ import { TASK_OBJECT } from "@/config/constants";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
+import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
@@ -25,14 +26,18 @@ export function ObjectDetailsPage() {
 
   if (!objectid) return <ObjectItems schema={schema} />;
 
-  const { data, networkStatus, error } = useObjectDetails(schema, objectid);
-
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching the object details." />;
-  }
+  const { data, networkStatus, error, permission } = useObjectDetails(schema, objectid);
 
   if (networkStatus === NetworkStatus.loading) {
     return <LoadingScreen />;
+  }
+
+  if (!permission.view.isAllowed) {
+    return <UnauthorizedScreen message={permission.view.message} />;
+  }
+
+  if (error) {
+    return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
   const objectDetailsData = schema && data && data[schema.kind!]?.edges[0]?.node;
@@ -51,6 +56,7 @@ export function ObjectDetailsPage() {
         <ObjectItemDetails
           schema={schema}
           objectDetailsData={objectDetailsData}
+          permission={permission}
           taskData={data[TASK_OBJECT]}
         />
       </Card>
