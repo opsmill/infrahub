@@ -24,8 +24,12 @@ export function MenuSectionObject({ items }: MenuSectionObjectsProps) {
       {items.map((item) => {
         if (!item.children || item.children.length === 0) {
           return (
-            <Link to={constructPath(item.path)}>
-              <Icon icon={item.icon} className="m-1 min-w-4" />
+            <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
+              {item.icon || Math.random() > 0.5 ? (
+                <Icon icon={item.icon} className="text-md m-1 min-w-4 min-h-4" />
+              ) : (
+                <ObjectAvatar name={item.title} />
+              )}
               <span className="text-sm">{item.title}</span>
             </Link>
           );
