@@ -1,22 +1,21 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Divider } from "@/components/ui/divider";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONFIG } from "@/config/config";
-import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { MenuSectionInternal } from "@/screens/layout/menu-navigation/components/menu-section-internal";
 import { MenuSectionObject } from "@/screens/layout/menu-navigation/components/menu-section-object";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { currentSchemaHashAtom, menuAtom } from "@/state/atoms/schema.atom";
-import { classNames } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-export default function MenuNavigation({
-  className,
-  isCollapsed,
-  setCollapsed,
-}: { className: string; isCollapsed?: boolean; setCollapsed: (collapsed: boolean) => void }) {
+export interface MenuNavigationProps {
+  isCollapsed?: boolean;
+  setCollapsed?: (value: boolean) => void;
+}
+export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
   const currentBranch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
   const [menu, setMenu] = useAtom(menuAtom);
@@ -40,21 +39,12 @@ export default function MenuNavigation({
   if (!menu?.sections) return <div className="flex-grow" />;
 
   return (
-    <div
-      className={classNames("flex flex-col items-center", className)}
-      data-testid="menu-navigation"
-    >
-      {isCollapsed ? (
-        <CollapsedButton
-          icon="mdi:menu"
-          tooltipContent="Objects"
-          onClick={() => setCollapsed(false)}
-        />
-      ) : (
-        <MenuSectionObject items={menu.sections.object} />
-      )}
+    <>
+      <ScrollArea>
+        <MenuSectionObject items={menu.sections.object} isCollapsed={isCollapsed} />
+      </ScrollArea>
       <Divider />
       <MenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
-    </div>
+    </>
   );
 }

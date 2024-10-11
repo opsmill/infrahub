@@ -30,11 +30,7 @@ export default function Sidebar() {
       </Button>
       <SearchAnywhere isCollapsed={collapsed} />
 
-      <MenuNavigation
-        className="flex-grow min-h-0 overflow-auto"
-        isCollapsed={collapsed}
-        setCollapsed={setCollapsed}
-      />
+      <MenuNavigation isCollapsed={collapsed} setCollapsed={setCollapsed} />
 
       <AccountMenu />
     </nav>

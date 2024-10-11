@@ -7,40 +7,49 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip } from "@/components/ui/tooltip";
 import { ObjectAvatar } from "@/screens/layout/menu-navigation/components/object-avatar";
 import { menuNavigationItemStyle } from "@/screens/layout/menu-navigation/styles";
 import { MenuItem } from "@/screens/layout/menu-navigation/types";
+import { classNames } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 
 export interface MenuSectionObjectsProps {
   items: MenuItem[];
+  isCollapsed?: boolean;
 }
 
-export function MenuSectionObject({ items }: MenuSectionObjectsProps) {
+export function MenuSectionObject({ isCollapsed, items }: MenuSectionObjectsProps) {
   return (
     <div className="flex flex-col w-full overflow-auto">
       {items.map((item) => {
         if (!item.children || item.children.length === 0) {
           return (
             <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
-              {item.icon || Math.random() > 0.5 ? (
-                <Icon icon={item.icon} className="text-md m-1 min-w-4 min-h-4" />
+              {item.icon ? (
+                <Icon icon={item.icon} className="text-md m-1 min-h-4 min-w-4" />
               ) : (
                 <ObjectAvatar name={item.title} />
               )}
-              <span className="text-sm">{item.title}</span>
+              <span className={classNames("text-sm", isCollapsed && "hidden")}>{item.title}</span>
             </Link>
           );
         }
 
         return (
           <DropdownMenu key={item.identifier}>
-            <DropdownMenuTrigger className={menuNavigationItemStyle}>
-              <ObjectAvatar name={item.title} />
-              <span className="text-sm">{item.title}</span>
-            </DropdownMenuTrigger>
+            <Tooltip enabled={isCollapsed} content={item.title} side="right">
+              <DropdownMenuTrigger className={menuNavigationItemStyle}>
+                {item.icon ? (
+                  <Icon icon={item.icon} className="text-md m-1 min-h-4 min-w-4" />
+                ) : (
+                  <ObjectAvatar name={item.title} />
+                )}
+                <span className={classNames("text-sm", isCollapsed && "hidden")}>{item.title}</span>
+              </DropdownMenuTrigger>
+            </Tooltip>
 
             <DropdownMenuContent
               side="left"
