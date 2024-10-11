@@ -1,11 +1,11 @@
-export type tPermission = {
+export type PermissionProps = {
   view: string;
   create: string;
   update: string;
   delete: string;
 };
 
-export type uiPermission = {
+export type Permission = {
   view: {
     isAllowed: boolean;
     message: string;
@@ -24,7 +24,7 @@ export type uiPermission = {
   };
 };
 
-export function getPermission(permission: tPermission): uiPermission {
+export function getPermission(permission: PermissionProps): Permission {
   return {
     view: {
       isAllowed: permission?.view === "ALLOW",
