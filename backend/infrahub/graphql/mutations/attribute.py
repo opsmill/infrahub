@@ -1,3 +1,5 @@
+from typing import Any
+
 from graphene import BigInt, Boolean, Field, InputObjectType, Int, String
 from graphene.types.generic import GenericScalar
 
@@ -12,7 +14,7 @@ class BaseAttributeCreate(InputObjectType):
     owner = String(required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs) -> None:
+    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         registry.input_type[cls.__name__] = cls
 
@@ -25,7 +27,7 @@ class BaseAttributeUpdate(InputObjectType):
     owner = String(required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs) -> None:
+    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         registry.input_type[cls.__name__] = cls
 
