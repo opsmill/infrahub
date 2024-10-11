@@ -1,10 +1,8 @@
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
-import { ACCOUNT_GENERIC_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
+import { ARTIFACT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { usePermission } from "@/hooks/usePermission";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { isGeneric } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Button, ButtonProps } from "../buttons/button-primitive";
@@ -19,22 +17,17 @@ export const ObjectCreateFormTrigger = ({
   schema,
   onSuccess,
   isLoading,
+  permission,
   ...props
 }: ObjectCreateFormTriggerProps) => {
-  const permission = usePermission();
-
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   if (schema.kind === ARTIFACT_OBJECT) {
     return null;
   }
 
-  const isAccount: boolean =
-    schema.kind === ACCOUNT_GENERIC_OBJECT ||
-    (!isGeneric(schema) && !!schema.inherit_from?.includes(ACCOUNT_GENERIC_OBJECT));
-
-  const isAllowed = isAccount ? permission.isAdmin.allow : permission.write.allow;
-  const tooltipMessage = isAccount ? permission.isAdmin.message : permission.isAdmin.message;
+  const isAllowed = permission.create.allow;
+  const tooltipMessage = permission.create.message;
 
   return (
     <>

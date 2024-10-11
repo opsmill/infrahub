@@ -33,6 +33,12 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
   const schemaKind = kindFilter?.value || (schema.kind as string);
   const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
   const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;
+  const { count, permissions } = data ? data[schemaKind] : {};
+  const currentPermission = permissions?.edges[0]?.node;
+
+  if (currentPermission?.view !== "ALLOW") {
+    return null;
+  }
 
   return (
     <Content.Title
@@ -45,7 +51,7 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
             <h1 className="font-semibold text-gray-900 mr-2 hover:underline">
               {breadcrumbModelLabel}
             </h1>
-            <Badge>{loading && !error ? "..." : data?.[schemaKind]?.count}</Badge>
+            <Badge>{loading && !error ? "..." : count}</Badge>
           </Link>
         </div>
       }
