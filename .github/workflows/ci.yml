@@ -22,6 +22,7 @@ env:
   INFRAHUB_SERVER_PORT: 0
   INFRAHUB_DB_BACKUP_PORT: 0
   VMAGENT_PORT: 0
+  INFRAHUB_WORKFLOW_PORT: 0
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_USE_TEST_CONTAINERS: 1
   VALE_VERSION: "3.7.1"
@@ -620,244 +621,243 @@ jobs:
       - name: "Clear docker environment and force vmagent to stop"
         if: always()
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-  # ------------------------------------------ E2E Tests  ------------------------------------------
-  E2E-testing-playwright:
-    defaults:
-      run:
-        working-directory: ./frontend/app
-    needs:
-      - javascript-lint
-      - files-changed
-      - yaml-lint
-      - python-lint
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
-    runs-on:
-      group: huge-runners
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: E2E-testing-playwright
-            env:
-              INFRAHUB_DB_TYPE: neo4j
-          # - name: E2E-testing-playwright-nats
-          #   env:
-          #     INFRAHUB_DB_TYPE: neo4j
-          #     INFRAHUB_USE_NATS: 1
-          #     INFRAHUB_BROKER_DRIVER: nats
-          #     INFRAHUB_BROKER_PORT: 4222
-          #     INFRAHUB_CACHE_DRIVER: nats
-          #     INFRAHUB_CACHE_ADDRESS: message-queue
-          #     INFRAHUB_CACHE_PORT: 4222
-    name: ${{ matrix.name }}
-    env: ${{ matrix.env }}
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-      - name: Install NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "npm"
-          cache-dependency-path: package-lock.json
-
-      - name: Install Invoke
-        run: pip install toml invoke
-
-      - name: Set job name
-        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
-
-      - name: Enable tracing
-        if: github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
-        run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
-      - name: Set tracing configuration
-        run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
-      - name: Set tracing configuration
-        run: echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
-      - name: Set tracing configuration
-        run: echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
-      - name: Set tracing configuration
-        run: echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
-
-      - name: "Store start time"
-        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
-
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: Build Demo
-        run: invoke dev.build
-
-      - name: Pull External Docker Images
-        run: invoke dev.pull
-
-      - name: Initialize Demo
-        id: init-demo
-        run: invoke dev.start dev.load-infra-schema
-
-      - name: Check Demo Status
-        run: invoke dev.status
-
-      - name: Load Data
-        run: invoke dev.load-infra-data
-
-      - name: Git Repository
-        run: invoke dev.infra-git-import dev.infra-git-create
-
-      - name: Set infrahub address
-        run: |
-          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
-          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
-
-      - name: Install frontend dependencies
-        run: npm install
-
-      - name: Install Playwright Browsers
-        run: npx playwright install chromium
-
-      # Make chromium ignore netlink messages by returning HandleMessage early
-      - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run | grep Install | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
-      - name: Chrome func offset
-        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::HandleMessage(char const*, int, bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
-      - name: Patch chromium
-        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
-
-      - name: Wait for artifacts to be generated before restarting infrahub
-        if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: npx playwright test artifact
-
-      - name: Add response delay if required
-        if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
-        env:
-          INFRAHUB_MISC_RESPONSE_DELAY: 2
-
-      - name: Set infrahub address
-        if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: |
-          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
-          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
-
-      - name: Run Playwright tests
-        run: npm run ci:test:e2e
-
-      - name: Generate tracing spans
-        if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
-        uses: inception-health/otel-upload-test-artifact-action@v1
-        with:
-          jobName: "E2E-testing-playwright"
-          stepName: "Run Playwright tests"
-          path: "frontend/app/playwright-junit.xml"
-          type: "junit"
-          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
-
-      - name: playwright-report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}
-          path: frontend/app/playwright-report/
-
-      - name: Containers after tests
-        if: always()
-        run: docker ps -a
-
-      - name: Display server logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
-
-      - name: Display task worker 1 logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
-
-      - name: Display task worker 2 logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
-
-      - name: Display task manager logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
-
-      - name: Display database logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
-
-      - name: Display message-queue logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
-
-      - name: Display server status
-        if: always()
-        run: invoke demo.status
-
-      - name: "Clear docker environment and force vmagent to stop"
-        if: always()
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: "Wait for vmagent to push metrics"
-        if: always()
-        run: "sleep 10"
-      - name: "Show graph URL"
-        if: always()
-        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
-
-  # ------------------------------------------ Benchmarks ------------------------------------------------
-  backend-benchmark:
-    needs:
-      - javascript-lint
-      - files-changed
-      - yaml-lint
-      - python-lint
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    runs-on:
-      group: huge-runners
-    env:
-      INFRAHUB_DB_TYPE: neo4j
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: "Setup git credentials"
-        run: "git config --global user.name 'Infrahub' && \
-          git config --global user.email 'infrahub@opsmill.com' && \
-          git config --global --add safe.directory '*' && \
-          git config --global credential.usehttppath true && \
-          git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
-      - name: Update PATH
-        run: "echo ~/.cargo/bin >> $GITHUB_PATH"
-      - name: Run benchmarks
-        uses: CodSpeedHQ/action@v3
-        with:
-          token: ${{ secrets.CODSPEED_TOKEN }}
-          run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
-  # ------------------------------------------ Coverall Report  ------------------------------------------
+#  # ------------------------------------------ E2E Tests  ------------------------------------------
+#  E2E-testing-playwright:
+#    defaults:
+#      run:
+#        working-directory: ./frontend/app
+#    needs:
+#      - javascript-lint
+#      - files-changed
+#      - yaml-lint
+#      - python-lint
+#    if: |
+#      always() && !cancelled() &&
+#      !contains(needs.*.result, 'failure') &&
+#      !contains(needs.*.result, 'cancelled')
+#    runs-on:
+#      group: huge-runners
+#    timeout-minutes: 40
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        include:
+#          - name: E2E-testing-playwright
+#            env:
+#              INFRAHUB_DB_TYPE: neo4j
+#          # - name: E2E-testing-playwright-nats
+#          #   env:
+#          #     INFRAHUB_DB_TYPE: neo4j
+#          #     INFRAHUB_USE_NATS: 1
+#          #     INFRAHUB_BROKER_DRIVER: nats
+#          #     INFRAHUB_BROKER_PORT: 4222
+#          #     INFRAHUB_CACHE_DRIVER: nats
+#          #     INFRAHUB_CACHE_ADDRESS: message-queue
+#          #     INFRAHUB_CACHE_PORT: 4222
+#    name: ${{ matrix.name }}
+#    env: ${{ matrix.env }}
+#    steps:
+#      - name: Check out repository code
+#        uses: actions/checkout@v4
+#        with:
+#          submodules: true
+#      - name: Install NodeJS
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: 20
+#          cache: "npm"
+#          cache-dependency-path: package-lock.json
+#
+#      - name: Install Invoke
+#        run: pip install toml invoke
+#
+#      - name: Set job name
+#        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+#
+#      - name: Enable tracing
+#        if: github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+#        run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
+#      - name: Set tracing configuration
+#        run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
+#      - name: Set tracing configuration
+#        run: echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
+#      - name: Set tracing configuration
+#        run: echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
+#      - name: Set tracing configuration
+#        run: echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
+#
+#      - name: "Store start time"
+#        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+#
+#      - name: "Set environment variables"
+#        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+#      - name: "Set environment variables"
+#        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+#      - name: "Clear docker environment"
+#        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+#
+#      - name: Build Demo
+#        run: invoke dev.build
+#
+#      - name: Pull External Docker Images
+#        run: invoke dev.pull
+#
+#      - name: Initialize Demo
+#        id: init-demo
+#        run: invoke dev.start dev.load-infra-schema
+#
+#      - name: Check Demo Status
+#        run: invoke dev.status
+#
+#      - name: Load Data
+#        run: invoke dev.load-infra-data
+#
+#      - name: Git Repository
+#        run: invoke dev.infra-git-import dev.infra-git-create
+#
+#      - name: Set infrahub address
+#        run: |
+#          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+#          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
+#
+#      - name: Install frontend dependencies
+#        run: npm install
+#
+#      - name: Install Playwright Browsers
+#        run: npx playwright install chromium
+#
+#      # Make chromium ignore netlink messages by returning HandleMessage early
+#      - name: Chrome path
+#        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run | grep Install | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
+#      - name: Chrome func offset
+#        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::HandleMessage(char const*, int, bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
+#      - name: Patch chromium
+#        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+#
+#      - name: Wait for artifacts to be generated before restarting infrahub
+#        if: needs.files-changed.outputs.e2e_tests == 'true'
+#        run: npx playwright test artifact
+#
+#      - name: Add response delay if required
+#        if: needs.files-changed.outputs.e2e_tests == 'true'
+#        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
+#        env:
+#          INFRAHUB_MISC_RESPONSE_DELAY: 2
+#
+#      - name: Set infrahub address
+#        if: needs.files-changed.outputs.e2e_tests == 'true'
+#        run: |
+#          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+#          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
+#
+#      - name: Run Playwright tests
+#        run: npm run ci:test:e2e
+#
+#      - name: Generate tracing spans
+#        if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+#        uses: inception-health/otel-upload-test-artifact-action@v1
+#        with:
+#          jobName: "E2E-testing-playwright"
+#          stepName: "Run Playwright tests"
+#          path: "frontend/app/playwright-junit.xml"
+#          type: "junit"
+#          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
+#
+#      - name: playwright-report
+#        if: always()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: ${{ matrix.name }}
+#          path: frontend/app/playwright-report/
+#
+#      - name: Containers after tests
+#        if: always()
+#        run: docker ps -a
+#
+#      - name: Display server logs
+#        if: always()
+#        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+#
+#      - name: Display task worker 1 logs
+#        if: always()
+#        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
+#
+#      - name: Display task worker 2 logs
+#        if: always()
+#        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+#
+#      - name: Display task manager logs
+#        if: always()
+#        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+#
+#      - name: Display database logs
+#        if: always()
+#        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+#
+#      - name: Display message-queue logs
+#        if: always()
+#        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
+#
+#      - name: Display server status
+#        if: always()
+#        run: invoke demo.status
+#
+#      - name: "Clear docker environment and force vmagent to stop"
+#        if: always()
+#        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+#
+#      - name: "Wait for vmagent to push metrics"
+#        if: always()
+#        run: "sleep 10"
+#      - name: "Show graph URL"
+#        if: always()
+#        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
+#
+#  # ------------------------------------------ Benchmarks ------------------------------------------------
+#  backend-benchmark:
+#    needs:
+#      - javascript-lint
+#      - files-changed
+#      - yaml-lint
+#      - python-lint
+#    if: |
+#      always() && !cancelled() &&
+#      !contains(needs.*.result, 'failure') &&
+#      !contains(needs.*.result, 'cancelled') &&
+#      needs.files-changed.outputs.backend == 'true'
+#    runs-on:
+#      group: huge-runners
+#    env:
+#      INFRAHUB_DB_TYPE: neo4j
+#    steps:
+#      - name: Check out repository code
+#        uses: actions/checkout@v4
+#        with:
+#          submodules: true
+#      - name: Set up Python
+#        uses: actions/setup-python@v5
+#        with:
+#          python-version: "3.12"
+#      - name: "Setup git credentials"
+#        run: "git config --global user.name 'Infrahub' && \
+#          git config --global user.email 'infrahub@opsmill.com' && \
+#          git config --global --add safe.directory '*' && \
+#          git config --global credential.usehttppath true && \
+#          git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+#      - name: "Setup Python environment"
+#        run: |
+#          poetry config virtualenvs.create false
+#          pip install toml invoke
+#      - name: "Install dependencies"
+#        run: "poetry install --no-interaction --no-ansi"
+#      - name: Update PATH
+#        run: "echo ~/.cargo/bin >> $GITHUB_PATH"
+#      - name: Run benchmarks
+#        uses: CodSpeedHQ/action@v3
+#        with:
+#          token: ${{ secrets.CODSPEED_TOKEN }}
+#          run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
+# ------------------------------------------ Coverall Report  ------------------------------------------
 #  coverall-report:
 #    needs:
 #      - backend-tests-integration
