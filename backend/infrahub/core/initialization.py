@@ -300,7 +300,7 @@ async def create_initial_permission(db: InfrahubDatabase) -> Node:
         db=db,
         name=format_label(GlobalPermissions.SUPER_ADMIN.value),
         action=GlobalPermissions.SUPER_ADMIN.value,
-        decision=PermissionDecision.ALLOWED_ALL.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
     )
     await permission.save(db=db)
     log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
@@ -329,7 +329,7 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
         db=db,
         name=format_label(GlobalPermissions.SUPER_ADMIN.value),
         action=GlobalPermissions.SUPER_ADMIN.value,
-        decision=PermissionDecision.ALLOWED_ALL.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
     )
     await permission.save(db=db)
     log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")

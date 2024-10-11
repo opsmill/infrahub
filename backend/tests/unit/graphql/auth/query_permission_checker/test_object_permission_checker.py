@@ -236,14 +236,14 @@ class TestObjectPermissions:
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.ANY.value,
-                decision=PermissionDecision.ALLOWED_DEFAULT.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
             ),
             ObjectPermission(
                 id="",
                 namespace="Core",
                 name="GraphQLQuery",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOWED_DEFAULT.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)

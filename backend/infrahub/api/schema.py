@@ -247,7 +247,7 @@ async def load_schema(
         if not await permission_backend.has_permission(
             db=db,
             account_id=account_session.account_id,
-            permission=f"global:{GlobalPermissions.MANAGE_SCHEMA.value}:{PermissionDecision.ALLOWED_ALL.value}",
+            permission=f"global:{GlobalPermissions.MANAGE_SCHEMA.value}:{PermissionDecision.ALLOW_ALL.value}",
             branch=branch,
         ):
             raise PermissionDeniedError("You are not allowed to manage the schema")

@@ -22,7 +22,7 @@ async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, cr
             namespace="*",
             name="*",
             action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOWED_ALL.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
         )
     )
 
@@ -48,7 +48,7 @@ async def test_has_permission_global(
     allow_default_branch_edition = GlobalPermission(
         id="",
         action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-        decision=PermissionDecision.ALLOWED_ALL.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
         name="Edit default branch",
     )
 
@@ -125,7 +125,7 @@ async def test_has_permission_object(
             namespace="*",
             name="*",
             action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOWED_ALL.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
         ),
         ObjectPermission(
             id="",
@@ -165,7 +165,7 @@ async def test_has_permission_object(
             namespace="Builtin",
             name="Tag",
             action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOWED_ALL.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
         ),
     ]:
         obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
@@ -189,7 +189,7 @@ async def test_has_permission_object(
         namespace="Builtin",
         name="Tag",
         action=PermissionAction.CREATE.value,
-        decision=PermissionDecision.ALLOWED_ALL.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
     )
     assert not await backend.has_permission(
         db=db, account_id=first_account.id, permission=str(permission), branch=default_branch

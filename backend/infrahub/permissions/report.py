@@ -24,24 +24,24 @@ async def report_schema_permissions(
     # Check for super admin permission and handle default branch edition if account is not super admin
     is_super_admin = perm_backend.resolve_global_permission(
         permissions=permissions["global_permissions"],
-        permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:allow",
+        permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:6",
     )
     restrict_changes = False
     if branch.name == registry.default_branch and not is_super_admin:
         restrict_changes = not perm_backend.resolve_global_permission(
             permissions=permissions["global_permissions"],
-            permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
+            permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:6",
         )
 
     # FIXME: report the actual flag to communicate the level of permission for branches
     decisions_map: dict[bool, PermissionDecisionFlag] = {
-        True: PermissionDecisionFlag.ALLOWED_ALL,
+        True: PermissionDecisionFlag.ALLOW_ALL,
         False: PermissionDecisionFlag.DENY,
     }
     decision = (
-        PermissionDecisionFlag.ALLOWED_DEFAULT
+        PermissionDecisionFlag.ALLOW_DEFAULT
         if branch.name == registry.default_branch
-        else PermissionDecisionFlag.ALLOWED_OTHER
+        else PermissionDecisionFlag.ALLOW_OTHER
     )
 
     permission_objects: list[KindPermissions] = []

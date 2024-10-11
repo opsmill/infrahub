@@ -30,10 +30,10 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         branch: Branch,
     ) -> CheckerResolution:
         required_decision = (
-            PermissionDecisionFlag.ALLOWED_DEFAULT
+            PermissionDecisionFlag.ALLOW_DEFAULT
             if analyzed_query.branch is None
             or analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-            else PermissionDecisionFlag.ALLOWED_OTHER
+            else PermissionDecisionFlag.ALLOW_OTHER
         )
 
         kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
@@ -90,7 +90,7 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     This is similar to object permission checker except that we care for any operations on any account related kinds.
     """
 
-    permission_required = f"global:{GlobalPermissions.MANAGE_ACCOUNTS.value}:{PermissionDecision.ALLOWED_ALL.value}"
+    permission_required = f"global:{GlobalPermissions.MANAGE_ACCOUNTS.value}:{PermissionDecision.ALLOW_ALL.value}"
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated
@@ -139,7 +139,7 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     This is similar to object permission checker except that we care for any operations on any permission related kinds.
     """
 
-    permission_required = f"global:{GlobalPermissions.MANAGE_PERMISSIONS.value}:{PermissionDecision.ALLOWED_ALL.value}"
+    permission_required = f"global:{GlobalPermissions.MANAGE_PERMISSIONS.value}:{PermissionDecision.ALLOW_ALL.value}"
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated
@@ -182,7 +182,7 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     This is similar to object permission checker except that we only care about mutations on repositories.
     """
 
-    permission_required = f"global:{GlobalPermissions.MANAGE_REPOSITORIES.value}:{PermissionDecision.ALLOWED_ALL.value}"
+    permission_required = f"global:{GlobalPermissions.MANAGE_REPOSITORIES.value}:{PermissionDecision.ALLOW_ALL.value}"
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated

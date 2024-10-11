@@ -935,7 +935,7 @@ core_models: dict[str, Any] = {
                     "name": "decision",
                     "kind": "Number",
                     "enum": PermissionDecision.available_types(),
-                    "default_value": PermissionDecision.ALLOWED_ALL.value,
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
                     "order_weight": 5000,
                 },
                 {

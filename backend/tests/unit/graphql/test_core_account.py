@@ -91,7 +91,7 @@ async def test_permissions(
                 id="",
                 name=GlobalPermissions.SUPER_ADMIN.value,
                 action=GlobalPermissions.SUPER_ADMIN.value,
-                decision=PermissionDecision.ALLOWED_ALL.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
             )
         )
     ]
@@ -104,7 +104,7 @@ async def test_permissions(
                 namespace="*",
                 name="*",
                 action=PermissionAction.ANY.value,
-                decision=PermissionDecision.ALLOWED_ALL.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
             )
         )
     ]

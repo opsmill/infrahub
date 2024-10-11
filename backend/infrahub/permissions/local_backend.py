@@ -26,7 +26,7 @@ class LocalPermissionBackend(PermissionBackend):
             specificity += 1
         if permission.action not in self.wildcard_actions:
             specificity += 1
-        if not permission.decision & PermissionDecisionFlag.ALLOWED_ALL:
+        if not permission.decision & PermissionDecisionFlag.ALLOW_ALL:
             specificity += 1
         return specificity
 
@@ -89,6 +89,6 @@ class LocalPermissionBackend(PermissionBackend):
             )
             or self.resolve_global_permission(
                 permissions=granted_permissions["global_permissions"],
-                permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:{PermissionDecision.ALLOWED_ALL.value}",
+                permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:{PermissionDecision.ALLOW_ALL.value}",
             )
         )

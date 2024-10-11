@@ -71,9 +71,9 @@ class PermissionAction(InfrahubStringEnum):
 
 class PermissionDecision(InfrahubNumberEnum):
     DENY = 1
-    ALLOWED_DEFAULT = 2
-    ALLOWED_OTHER = 4
-    ALLOWED_ALL = 6
+    ALLOW_DEFAULT = 2
+    ALLOW_OTHER = 4
+    ALLOW_ALL = 6
 
 
 class AccountRole(InfrahubStringEnum):

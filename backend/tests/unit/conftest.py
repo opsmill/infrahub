@@ -2543,7 +2543,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
         db=db,
         name=format_label(GlobalPermissions.SUPER_ADMIN.value),
         action=GlobalPermissions.SUPER_ADMIN.value,
-        decision=PermissionDecision.ALLOWED_ALL.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
     )
     await global_permission.save(db=db)
     permissions.append(global_permission)
@@ -2554,7 +2554,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
         namespace="*",
         name="*",
         action=PermissionAction.ANY.value,
-        decision=PermissionDecision.ALLOWED_ALL.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
     )
     await object_permission.save(db=db)
     permissions.append(object_permission)

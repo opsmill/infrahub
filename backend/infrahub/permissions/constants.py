@@ -14,6 +14,6 @@ class AssignedPermissions(TypedDict):
 
 class PermissionDecisionFlag(IntFlag):
     DENY = 1
-    ALLOWED_DEFAULT = 2
-    ALLOWED_OTHER = 4
-    ALLOWED_ALL = ALLOWED_DEFAULT | ALLOWED_OTHER
+    ALLOW_DEFAULT = 2
+    ALLOW_OTHER = 4
+    ALLOW_ALL = ALLOW_DEFAULT | ALLOW_OTHER

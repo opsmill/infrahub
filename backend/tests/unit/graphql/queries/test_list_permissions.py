@@ -82,28 +82,28 @@ class TestObjectPermissions:
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecisionFlag.ALLOWED_ALL,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
-                decision=PermissionDecisionFlag.ALLOWED_ALL,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
-                decision=PermissionDecisionFlag.ALLOWED_ALL,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
                 namespace="Core",
                 name="*",
                 action=PermissionAction.ANY.value,
-                decision=PermissionDecisionFlag.ALLOWED_ALL,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
@@ -152,7 +152,7 @@ class TestObjectPermissions:
         assert result.data
         assert result.data["BuiltinTag"]["permissions"]["count"] == 1
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
-            "node": {"kind": "BuiltinTag", "create": "DENY", "update": "DENY", "delete": "DENY", "view": "ALLOWED_ALL"}
+            "node": {"kind": "BuiltinTag", "create": "DENY", "update": "DENY", "delete": "DENY", "view": "ALLOW_ALL"}
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -180,10 +180,10 @@ class TestObjectPermissions:
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
             "node": {
                 "kind": "BuiltinTag",
-                "create": "ALLOWED_ALL",
+                "create": "ALLOW_ALL",
                 "update": "DENY",
-                "delete": "ALLOWED_ALL",
-                "view": "ALLOWED_ALL",
+                "delete": "ALLOW_ALL",
+                "view": "ALLOW_ALL",
             }
         }
 
@@ -216,7 +216,7 @@ class TestObjectPermissions:
                 "create": "DENY",
                 "update": "DENY",
                 "delete": "DENY",
-                "view": "ALLOWED_ALL",
+                "view": "ALLOW_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
@@ -225,7 +225,7 @@ class TestObjectPermissions:
                 "create": "DENY",
                 "update": "DENY",
                 "delete": "DENY",
-                "view": "ALLOWED_ALL",
+                "view": "ALLOW_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
@@ -234,7 +234,7 @@ class TestObjectPermissions:
                 "create": "DENY",
                 "update": "DENY",
                 "delete": "DENY",
-                "view": "ALLOWED_ALL",
+                "view": "ALLOW_ALL",
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
 
@@ -278,28 +278,28 @@ class TestAttributePermissions:
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecisionFlag.ALLOWED_ALL,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
-                decision=PermissionDecisionFlag.ALLOWED_ALL,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
-                decision=PermissionDecisionFlag.ALLOWED_ALL,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.UPDATE.value,
-                decision=PermissionDecisionFlag.ALLOWED_OTHER,
+                decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
@@ -348,7 +348,7 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecisionFlag.ALLOWED_OTHER
+            "update_value": PermissionDecisionFlag.ALLOW_OTHER
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -370,5 +370,5 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecisionFlag.ALLOWED_OTHER
+            "update_value": PermissionDecisionFlag.ALLOW_OTHER
         }
