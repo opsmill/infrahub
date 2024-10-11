@@ -23,14 +23,18 @@ export default function Sidebar() {
       <Button
         variant="outline"
         size="icon"
-        className="group-data-[collapsed=true]/sidebar:rotate-180 group-data-[collapsed=false]/sidebar:hidden group-hover/sidebar:!inline-flex transition-all absolute -right-3.5 top-6"
+        className={classNames(
+          "transition-all absolute -right-3.5 top-6",
+          collapsed ? "rotate-180" : "hidden group-hover/sidebar:inline-flex"
+        )}
         onClick={() => setCollapsed(!collapsed)}
       >
         <Icon icon="mdi:chevron-left" className="text-xl text-neutral-600" />
       </Button>
+
       <SearchAnywhere isCollapsed={collapsed} />
 
-      <MenuNavigation isCollapsed={collapsed} setCollapsed={setCollapsed} />
+      <MenuNavigation isCollapsed={collapsed} />
 
       <AccountMenu />
     </nav>

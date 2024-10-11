@@ -37,12 +37,10 @@ export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalP
             );
           }
           return (
-            <DropdownMenuItem key={item.identifier} asChild>
-              <Link to={constructPath(item.path)}>
-                <Icon icon={item.icon} className="m-1 min-w-4" />
-                <span className="text-sm">{item.title}</span>
-              </Link>
-            </DropdownMenuItem>
+            <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
+              <Icon icon={item.icon} className="m-1 min-w-4" />
+              <span className="text-sm">{item.title}</span>
+            </Link>
           );
         }
 

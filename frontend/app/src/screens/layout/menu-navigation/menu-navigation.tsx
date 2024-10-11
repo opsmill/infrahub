@@ -13,8 +13,8 @@ import { toast } from "react-toastify";
 
 export interface MenuNavigationProps {
   isCollapsed?: boolean;
-  setCollapsed?: (value: boolean) => void;
 }
+
 export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
   const currentBranch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
