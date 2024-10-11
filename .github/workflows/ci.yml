@@ -22,7 +22,6 @@ env:
   INFRAHUB_SERVER_PORT: 0
   INFRAHUB_DB_BACKUP_PORT: 0
   VMAGENT_PORT: 0
-  INFRAHUB_WORKFLOW_PORT: 0
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_USE_TEST_CONTAINERS: 1
   VALE_VERSION: "3.7.1"
@@ -587,6 +586,9 @@ jobs:
 
       - name: Run 'invoke demo.start'
         run: invoke demo.start demo.load-infra-schema
+
+      - name: Run 'invoke demo.load'
+        run: invoke demo.load-infra-schema
 
       - name: Check Demo Status
         run: invoke demo.status
