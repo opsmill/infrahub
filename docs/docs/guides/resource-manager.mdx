@@ -112,7 +112,7 @@ mutation {
 
 Take note of the id of the prefix, we will need id in the next step.
 
-### Creating a resource manager
+### Creating an IP address resource manager
 
 We can now create a resource manager of kind `CoreIPAddressPool`. The kind of the resource manager determines the kind of resource the manager will allocate.
 
@@ -245,6 +245,72 @@ In the web interface the same functionality is available. Navigate to the Device
 Next to the Primary IP Address dropdown menu, you can click on the Pools options button and select the resource pool.
 
 ![Add a device](../media/guides/resource-manager-create-device.png)
+
+{/* TODO: IP prefix pool */}
+
+## Using number pool
+
+A `CoreNumberPool` is connected to a node's numeric attribute. It lets you automatically assign numbers from a set range as values for that attribute.
+
+### Creating a number resource manager
+
+First we need to create a resource manager of kind `CoreNumberPool`. This resource manager will be linked to an attribute of type `Number` for a given node.
+
+We will create a `CoreNumberPool` with the following properties:
+
+- Name: My number pool
+- Node: `IpamVLAN`
+- Node attribute: `vlan_id`
+- Start range: 100
+- End range: 200
+
+The `CoreNumberPool` can be created using the web interface, or by using this GraphQL mutation.
+
+```graphql
+mutation {
+  CoreNumberPoolCreate(data:{
+    name: {value: "My number pool"},
+    node: {value: "IpamVLAN"},
+    node_attribute: {value: "vlan_id"},
+    start_range: {value: 100},
+    end_range: {value: 200}
+  })
+  {
+    ok
+    object {
+      hfid
+      id
+    }
+  }
+}
+```
+
+Take note of the id/hfid of the `CoreNumberPool`, we will use it in the next steps.
+
+### Allocating a number out of the pool
+
+In the following mutation we use the `from_pool` resolver to indicate that we want to allocate a `vlan_id` from a resource pool.
+
+```graphql
+mutation {
+  IpamVLANCreate(data:{
+    name: {value: "My vlan"},
+    vlan_id: {from_pool: {id: "My number pool"}} # Here we could either put the ID or HFID
+  })
+  {
+    ok
+    object {
+      name {
+        value
+      }
+      vlan_id {
+        value
+      }
+      id
+    }
+  }
+}
+```
 
 ## Branch agnostic resource allocation
 
