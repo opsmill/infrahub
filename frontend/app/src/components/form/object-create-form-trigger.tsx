@@ -3,6 +3,7 @@ import ObjectForm from "@/components/form/object-form";
 import { ARTIFACT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Button, ButtonProps } from "../buttons/button-primitive";
@@ -11,6 +12,7 @@ import { Tooltip } from "../ui/tooltip";
 interface ObjectCreateFormTriggerProps extends ButtonProps {
   schema: IModelSchema;
   onSuccess?: (newObject: any) => void;
+  permission: Permission;
 }
 
 export const ObjectCreateFormTrigger = ({
@@ -26,7 +28,7 @@ export const ObjectCreateFormTrigger = ({
     return null;
   }
 
-  const isAllowed = permission.create.allow;
+  const isAllowed = permission.create.isAllowed;
   const tooltipMessage = permission.create.message;
 
   return (
