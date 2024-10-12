@@ -94,7 +94,7 @@ export default function ObjectItems({
 
   const debouncedHandleSearch = debounce(handleSearch, 500);
 
-  if (!permission.view.isAllowed) {
+  if (!loading && !permission.view.isAllowed) {
     return <UnauthorizedScreen message={permission.view.message} />;
   }
 
