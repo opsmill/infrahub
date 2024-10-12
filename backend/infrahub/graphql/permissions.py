@@ -16,6 +16,7 @@ async def get_permissions(db: InfrahubDatabase, schema: MainSchemaTypes, context
     schema_objects = [schema]
     if isinstance(schema, GenericSchema):
         for node_name in schema.used_by:
+            schema_object: MainSchemaTypes
             try:
                 schema_object = registry.schema.get_node_schema(name=node_name, branch=context.branch, duplicate=False)
             except ValueError:
