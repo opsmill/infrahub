@@ -32,6 +32,7 @@ import {
   getSchemaObjectColumns,
   getTabs,
 } from "@/utils/getSchemaObjectColumns";
+import { getPermission } from "@/utils/permissions";
 import { gql } from "@apollo/client";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -105,6 +106,10 @@ export default function ArtifactsDetails() {
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
+  const permission = getPermission(
+    schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges[0]?.node
+  );
+
   const tabs = [
     {
       label: schemaData?.label,
@@ -150,6 +155,7 @@ export default function ArtifactsDetails() {
             <GroupsManagerTriggerButton
               schema={schemaData}
               objectId={objectid}
+              permission={permission}
               size="default"
               variant="outline"
             >
