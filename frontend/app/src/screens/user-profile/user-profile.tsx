@@ -12,14 +12,14 @@ import { gql, useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 import NoDataFound from "../errors/no-data-found";
-import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
 import TabTokens from "./tab-tokens";
+import TabUpdatePassword from "./tab-update-password";
 
 const PROFILE_TABS = {
   PROFILE: "profile",
   TOKENS: "tokens",
-  PREFERENCES: "preferences",
+  PASSWORD: "password",
 };
 
 const tabs = [
@@ -32,15 +32,15 @@ const tabs = [
     name: PROFILE_TABS.TOKENS,
   },
   {
-    label: "Preferences",
-    name: PROFILE_TABS.PREFERENCES,
+    label: "Password",
+    name: PROFILE_TABS.PASSWORD,
   },
 ];
 
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
-    case PROFILE_TABS.PREFERENCES:
-      return <TabPreferences />;
+    case PROFILE_TABS.PASSWORD:
+      return <TabUpdatePassword />;
     case PROFILE_TABS.TOKENS:
       return <TabTokens />;
     default:
