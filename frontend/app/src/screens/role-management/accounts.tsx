@@ -4,7 +4,7 @@ import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table, tRow, tRowValue } from "@/components/table/table";
+import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -97,7 +97,12 @@ function Accounts() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
+            <Button
+              variant={"primary"}
+              onClick={() => setShowDrawer(true)}
+              disabled={!schema}
+              data-testid="create-object-button"
+            >
               Create {schema?.label}
             </Button>
           </div>
