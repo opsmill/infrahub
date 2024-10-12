@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
-import { ACCESS_TOKEN_KEY, ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";

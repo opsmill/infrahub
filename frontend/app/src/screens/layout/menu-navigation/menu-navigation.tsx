@@ -1,17 +1,21 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Divider } from "@/components/ui/divider";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONFIG } from "@/config/config";
 import { MenuSectionInternal } from "@/screens/layout/menu-navigation/components/menu-section-internal";
 import { MenuSectionObject } from "@/screens/layout/menu-navigation/components/menu-section-object";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { currentSchemaHashAtom, menuAtom } from "@/state/atoms/schema.atom";
-import { classNames } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-export default function MenuNavigation({ className }: { className: string }) {
+export interface MenuNavigationProps {
+  isCollapsed?: boolean;
+}
+
+export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
   const currentBranch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
   const [menu, setMenu] = useAtom(menuAtom);
@@ -35,10 +39,12 @@ export default function MenuNavigation({ className }: { className: string }) {
   if (!menu?.sections) return <div className="flex-grow" />;
 
   return (
-    <div className={classNames("flex flex-col", className)} data-testid="menu-navigation">
-      <MenuSectionObject items={menu.sections.object} />
-      <Divider />
-      <MenuSectionInternal items={menu.sections.internal} />
-    </div>
+    <>
+      <ScrollArea>
+        <MenuSectionObject items={menu.sections.object} isCollapsed={isCollapsed} />
+      </ScrollArea>
+      <Divider className="p-0" />
+      <MenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
+    </>
   );
 }

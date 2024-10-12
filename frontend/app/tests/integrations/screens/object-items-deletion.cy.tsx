@@ -4,7 +4,7 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { AuthProvider } from "../../../src/hooks/useAuth";
 import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
 import { configState } from "../../../src/state/atoms/config.atom";
