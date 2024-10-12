@@ -19,6 +19,7 @@ from infrahub.core.schema import (
     GenericSchema,
     MainSchemaTypes,
     NodeSchema,
+    ProfileSchema,
     RelationshipSchema,
     SchemaRoot,
 )
@@ -96,6 +97,15 @@ class SchemaManager(NodeManager):
             return schema
 
         raise ValueError("The selected node is not of type NodeSchema")
+
+    def get_profile_schema(
+        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> ProfileSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if isinstance(schema, ProfileSchema):
+            return schema
+
+        raise ValueError("The selected node is not of type ProfileSchema")
 
     def get_full(
         self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
