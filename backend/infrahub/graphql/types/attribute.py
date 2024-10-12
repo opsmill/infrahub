@@ -56,7 +56,7 @@ class RelatedPrefixNodeInput(InputObjectType):
 
 
 class PermissionType(ObjectType):
-    update_value = String()
+    update_value = String(required=False)
 
 
 class AttributeInterface(InfrahubInterface):
@@ -74,7 +74,7 @@ class AttributeInterface(InfrahubInterface):
 class BaseAttribute(ObjectType):
     id = Field(String)
     is_from_profile = Field(Boolean)
-    permissions = Field(PermissionType)
+    permissions = Field(PermissionType, required=False)
 
     @classmethod
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:

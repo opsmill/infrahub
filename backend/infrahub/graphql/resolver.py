@@ -139,14 +139,15 @@ async def default_paginated_list_resolver(
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
 
-        permissions = await get_permissions(db=db, schema=schema, context=context)
+        permission_set: Optional[dict[str, Any]] = None
+        permissions = await get_permissions(db=db, schema=schema, context=context) if context.account_session else None
         if fields.get("permissions"):
             response["permissions"] = permissions
 
-        permission_set: Optional[dict[str, Any]] = None
-        for edge in permissions["edges"]:
-            if edge["node"]["kind"] == schema.kind:
-                permission_set = edge["node"]
+        if permissions:
+            for edge in permissions["edges"]:
+                if edge["node"]["kind"] == schema.kind:
+                    permission_set = edge["node"]
 
         objs = []
         if edges or "hfid" in filters:

@@ -487,8 +487,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 response[field_name] = self.get_kind()
                 continue
 
-            if field_name == "permissions" and permissions:
-                response[field_name] = {"update_value": permissions["update"]}
+            if field_name == "permissions":
+                response[field_name] = {"update_value": permissions["update"]} if permissions else None
                 continue
 
             if field_name in ["source", "owner"]:
