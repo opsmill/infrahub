@@ -194,7 +194,7 @@ async def test_has_permission_object(
         branch="*",
         namespace="Builtin",
         name="Tag",
-        action=PermissionAction.ADD.value,
+        action=PermissionAction.CREATE.value,
         decision=PermissionDecision.ALLOW.value,
     )
     assert not await backend.has_permission(

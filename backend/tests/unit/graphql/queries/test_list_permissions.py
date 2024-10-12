@@ -20,7 +20,8 @@ from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.protocols import BuiltinTag, CoreAccount
+    from infrahub.core.protocols import CoreAccount
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from tests.unit.graphql.conftest import PermissionsHelper
 
@@ -68,7 +69,7 @@ class TestObjectPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
-        register_core_models_schema: None,
+        register_core_models_schema: SchemaBranch,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
@@ -92,7 +93,7 @@ class TestObjectPermissions:
                 branch="*",
                 namespace="Builtin",
                 name="*",
-                action=PermissionAction.ADD.value,
+                action=PermissionAction.CREATE.value,
                 decision=PermissionDecision.ALLOW.value,
             ),
             ObjectPermission(
@@ -263,7 +264,7 @@ class TestAttributePermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
-        register_core_models_schema: None,
+        register_core_models_schema: SchemaBranch,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
@@ -287,7 +288,7 @@ class TestAttributePermissions:
                 branch="*",
                 namespace="Builtin",
                 name="*",
-                action=PermissionAction.ADD.value,
+                action=PermissionAction.CREATE.value,
                 decision=PermissionDecision.ALLOW.value,
             ),
             ObjectPermission(
@@ -296,6 +297,14 @@ class TestAttributePermissions:
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
+                decision=PermissionDecision.ALLOW.value,
+            ),
+            ObjectPermission(
+                id="",
+                branch="pr-12345",
+                namespace="Builtin",
+                name="*",
+                action=PermissionAction.UPDATE.value,
                 decision=PermissionDecision.ALLOW.value,
             ),
         ]:
@@ -322,8 +331,12 @@ class TestAttributePermissions:
         await group.members.add(db=db, data={"id": first_account.id})
         await group.members.save(db=db)
 
+        tag = await Node.init(db=db, schema=InfrahubKind.TAG)
+        await tag.new(db=db, name="Blue", description="Blue tag")
+        await tag.save(db=db)
+
     async def test_first_account_tags_main_branch(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, tag_blue_main: BuiltinTag
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """In the main branch the first account doesn't have the permission to make changes, so attribute cannot be changed"""
         session = AccountSession(
@@ -346,7 +359,7 @@ class TestAttributePermissions:
         }
 
     async def test_first_account_tags_non_main_branch(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, tag_blue_main: BuiltinTag
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """In other branches the permissions for the first account is less restrictive, attribute should be updatable"""
         branch2 = await create_branch(branch_name="pr-12345", db=db)

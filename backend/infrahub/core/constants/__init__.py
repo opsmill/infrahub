@@ -63,8 +63,8 @@ class GlobalPermissions(InfrahubStringEnum):
 
 class PermissionAction(InfrahubStringEnum):
     ANY = "any"
-    ADD = "create"
-    CHANGE = "update"
+    CREATE = "create"
+    UPDATE = "update"
     DELETE = "delete"
     VIEW = "view"
 
