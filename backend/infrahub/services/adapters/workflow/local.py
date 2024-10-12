@@ -1,20 +1,25 @@
-from typing import Any, Awaitable, Callable
+import uuid
+from typing import Any
 
-from infrahub.workflows.models import WorkflowDefinition
+from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 from . import InfrahubWorkflow, Return
 
 
 class WorkflowLocalExecution(InfrahubWorkflow):
-    async def execute(
+    async def execute_workflow(
         self,
-        workflow: WorkflowDefinition | None = None,
-        function: Callable[..., Awaitable[Return]] | None = None,
-        **kwargs: Any,
-    ) -> Return:
-        if workflow:
-            fn = workflow.get_function()
-            return await fn(**kwargs)
-        if function:
-            return await function(**kwargs)
-        raise ValueError("either a workflow definition or a flow must be provided")
+        workflow: WorkflowDefinition,
+        expected_return: type[Return] | None = None,
+        parameters: dict[str, Any] | None = None,
+    ) -> Any:
+        fn = workflow.get_function()
+        return await fn(**parameters or {})
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        parameters: dict[str, Any] | None = None,
+    ) -> WorkflowInfo:
+        workflow.get_function()
+        return WorkflowInfo(id=uuid.uuid4())

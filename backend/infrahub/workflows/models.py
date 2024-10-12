@@ -1,9 +1,10 @@
 import importlib
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable, Self, TypeVar
 from uuid import UUID
 
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import DeploymentScheduleCreate
+from prefect.client.schemas.objects import FlowRun
 from prefect.client.schemas.schedules import CronSchedule
 from pydantic import BaseModel
 
@@ -13,6 +14,8 @@ from .constants import WorkflowType
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
 
+WorkflowReturn = TypeVar("WorkflowReturn")
+
 
 class WorkerPoolDefinition(BaseModel):
     name: str
@@ -20,12 +23,21 @@ class WorkerPoolDefinition(BaseModel):
     description: str = ""
 
 
+class WorkflowInfo(BaseModel):
+    id: UUID
+    info: FlowRun | None = None
+
+    @classmethod
+    def from_flow(cls, flow_run: FlowRun) -> Self:
+        return cls(id=flow_run.id, info=flow_run)
+
+
 class WorkflowDefinition(BaseModel):
     name: str
     type: WorkflowType = WorkflowType.INTERNAL
     module: str
     function: str
-    cron: Optional[str] = None
+    cron: str | None = None
 
     @property
     def entrypoint(self) -> str:

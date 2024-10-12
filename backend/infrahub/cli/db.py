@@ -243,8 +243,10 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 schema_branch=candidate_schema,
                 constraints=result.constraints,
             )
-            error_messages = await service.workflow.execute(  # type: ignore[var-annotated]
-                workflow=SCHEMA_VALIDATE_MIGRATION, message=validate_migration_data
+            error_messages = await service.workflow.execute_workflow(
+                workflow=SCHEMA_VALIDATE_MIGRATION,
+                expected_return=list[str],
+                parameters={"message": validate_migration_data},
             )
             if error_messages:
                 rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
@@ -286,8 +288,8 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 previous_schema=origin_schema,
                 migrations=result.migrations,
             )
-            migration_error_msgs = await service.workflow.execute(  # type: ignore[var-annotated]
-                workflow=SCHEMA_APPLY_MIGRATION, message=apply_migration_data
+            migration_error_msgs = await service.workflow.execute_workflow(
+                workflow=SCHEMA_APPLY_MIGRATION, expected_return=list[str], parameters={"message": apply_migration_data}
             )
 
             if migration_error_msgs:

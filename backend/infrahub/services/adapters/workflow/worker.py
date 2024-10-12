@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, overload
 
 from prefect.client.schemas import StateType
 from prefect.deployments import run_deployment
 
 from infrahub.workflows.initialization import setup_task_manager
+from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
 
@@ -23,23 +24,41 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         if await service.component.is_primary_api():
             await setup_task_manager()
 
-    async def execute(
+    @overload
+    async def execute_workflow(
         self,
-        workflow: WorkflowDefinition | None = None,
-        function: Callable[..., Awaitable[Return]] | None = None,
-        **kwargs: Any,
-    ) -> Return:
-        if workflow:
-            response: FlowRun = await run_deployment(name=workflow.full_name, parameters=kwargs or {})  # type: ignore[return-value, misc]
-            if not response.state:
-                raise RuntimeError("Unable to read state from the response")
+        workflow: WorkflowDefinition,
+        expected_return: type[Return],
+        parameters: dict[str, Any] | None = ...,
+    ) -> Return: ...
 
-            if response.state.type == StateType.CRASHED:
-                raise RuntimeError(response.state.message)
+    @overload
+    async def execute_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        expected_return: None = ...,
+        parameters: dict[str, Any] | None = ...,
+    ) -> Any: ...
 
-            return await response.state.result(raise_on_failure=True, fetch=True)  # type: ignore[call-overload]
+    async def execute_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        expected_return: type[Return] | None = None,
+        parameters: dict[str, Any] | None = None,
+    ) -> Any:
+        response: FlowRun = await run_deployment(name=workflow.full_name, poll_interval=1, parameters=parameters or {})  # type: ignore[return-value, misc]
+        if not response.state:
+            raise RuntimeError("Unable to read state from the response")
 
-        if function:
-            return await function(**kwargs)
+        if response.state.type == StateType.CRASHED:
+            raise RuntimeError(response.state.message)
 
-        raise ValueError("either a workflow definition or a flow must be provided")
+        return await response.state.result(raise_on_failure=True, fetch=True)  # type: ignore[call-overload]
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        parameters: dict[str, Any] | None = None,
+    ) -> WorkflowInfo:
+        flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {})  # type: ignore[return-value, misc]
+        return WorkflowInfo.from_flow(flow_run=flow_run)

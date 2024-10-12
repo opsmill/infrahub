@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, ParamSpec, TypeVar, overload
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
-    from infrahub.workflows.models import WorkflowDefinition
+    from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 Return = TypeVar("Return")
 Params = ParamSpec("Params")
@@ -16,10 +16,33 @@ class InfrahubWorkflow:
     async def initialize(self, service: InfrahubServices) -> None:
         """Initialize the Workflow engine"""
 
-    async def execute(
+    @overload
+    async def execute_workflow(
         self,
-        workflow: WorkflowDefinition | None = None,
-        function: Callable[..., Awaitable[Return]] | None = None,
-        **kwargs: Any,
-    ) -> Return:
+        workflow: WorkflowDefinition,
+        expected_return: type[Return],
+        parameters: dict[str, Any] | None = ...,
+    ) -> Return: ...
+
+    @overload
+    async def execute_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        expected_return: None = ...,
+        parameters: dict[str, Any] | None = ...,
+    ) -> Any: ...
+
+    async def execute_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        expected_return: type[Return] | None = None,
+        parameters: dict[str, Any] | None = None,
+    ) -> Any:
+        raise NotImplementedError()
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        parameters: dict[str, Any] | None = None,
+    ) -> WorkflowInfo:
         raise NotImplementedError()
