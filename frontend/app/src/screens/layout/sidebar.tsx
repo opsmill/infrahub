@@ -10,7 +10,7 @@ import { Icon } from "@iconify-icon/react";
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);
 
-  const booleanCollapsed = JSON.parse(collapsed);
+  const booleanCollapsed = collapsed === "true";
 
   return (
     <nav
