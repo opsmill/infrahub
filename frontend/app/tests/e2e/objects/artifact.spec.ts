@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/CoreArtifact - Artifact page", () => {
+  test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
   test.describe.configure({ mode: "serial" });
 
   test.beforeEach(async function ({ page }) {
@@ -30,8 +32,6 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
   });
 
   test.describe("when logged in", async () => {
-    test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-
     test("should not be able to create a new artifact", async ({ page }) => {
       await page.goto("/objects/CoreArtifact");
       await expect(page.getByRole("heading", { name: "Artifact" })).toBeVisible();
