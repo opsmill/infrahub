@@ -3,7 +3,7 @@
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { AccountMenu } from "../../../src/components/account-menu";
-import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { AuthProvider } from "../../../src/hooks/useAuth";
 import { genericsState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";

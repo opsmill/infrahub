@@ -2,8 +2,6 @@ import { RelationshipKind } from "@/screens/objects/types";
 
 export const DEFAULT_BRANCH_NAME = "main";
 
-export const ACCESS_TOKEN_KEY = "access_token";
-
 export const REFRESH_TOKEN_KEY = "refresh_token";
 
 export const NODE_OBJECT = "CoreNode";

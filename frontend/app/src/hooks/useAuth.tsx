@@ -1,6 +1,7 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY, ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "@/config/constants";
+import { ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "@/config/constants";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { components } from "@/infraops";
 import { configState } from "@/state/atoms/config.atom";
 import { parseJwt } from "@/utils/common";
