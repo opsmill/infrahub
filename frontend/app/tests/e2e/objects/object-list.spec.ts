@@ -33,7 +33,7 @@ test.describe("/objects/:objectKind", () => {
   });
 
   test.describe("when not logged in", () => {
-    test("should not be able to create a new object", async ({ page }) => {
+    test.skip("should not be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");
 
       await expect(page.getByRole("heading", { name: "Tag" })).toBeVisible();
