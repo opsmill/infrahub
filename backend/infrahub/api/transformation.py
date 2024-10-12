@@ -146,6 +146,7 @@ async def transform_jinja2(
 
     service: InfrahubServices = request.app.state.service
 
-    response: str = await service.workflow.execute(workflow=TRANSFORM_JINJA2_RENDER, message=message)  # type: ignore[arg-type]
-
+    response = await service.workflow.execute_workflow(
+        workflow=TRANSFORM_JINJA2_RENDER, expected_return=str, parameters={"message": message}
+    )
     return PlainTextResponse(content=response)
