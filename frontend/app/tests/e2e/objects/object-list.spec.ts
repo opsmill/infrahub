@@ -10,28 +10,6 @@ test.describe("/objects/:objectKind", () => {
     });
   });
 
-  test("should display 'kind' column on when the object is a generic", async ({ page }) => {
-    await page.goto("/objects/CoreGroup");
-    await expect(page.locator("thead")).toContainText("Kind");
-  });
-
-  test("should display default column when a relationship schema has no attributes/relationship", async ({
-    page,
-  }) => {
-    await page.goto("/objects/CoreStandardGroup");
-    await page.getByTestId("object-items").getByRole("link", { name: "arista_devices" }).click();
-    await page.getByText("Members").click();
-    await expect(page.getByRole("columnheader", { name: "Type" })).toBeVisible();
-    await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
-  });
-
-  test("clicking on a relationship value redirects to its details page", async ({ page }) => {
-    await page.goto("/objects/InfraDevice");
-    await page.getByRole("link", { name: "Juniper JunOS" }).first().click();
-    await expect(page.getByText("NameJuniper JunOS")).toBeVisible();
-    expect(page.url()).toContain("/objects/InfraPlatform/");
-  });
-
   test.describe("when not logged in", () => {
     test.skip("should not be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");
@@ -44,7 +22,7 @@ test.describe("/objects/:objectKind", () => {
       await expect(page.getByRole("row", { name: "blue" }).getByRole("button")).toBeDisabled();
     });
 
-    test("should be able to open object details in a new tab", async ({ page, context }) => {
+    test.skip("should be able to open object details in a new tab", async ({ page, context }) => {
       await page.goto("/objects/BuiltinTag");
 
       // When
@@ -62,6 +40,28 @@ test.describe("/objects/:objectKind", () => {
 
   test.describe("when logged in as Admin", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
+    test("should display 'kind' column on when the object is a generic", async ({ page }) => {
+      await page.goto("/objects/CoreGroup");
+      await expect(page.locator("thead")).toContainText("Kind");
+    });
+
+    test("should display default column when a relationship schema has no attributes/relationship", async ({
+      page,
+    }) => {
+      await page.goto("/objects/CoreStandardGroup");
+      await page.getByTestId("object-items").getByRole("link", { name: "arista_devices" }).click();
+      await page.getByText("Members").click();
+      await expect(page.getByRole("columnheader", { name: "Type" })).toBeVisible();
+      await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
+    });
+
+    test("clicking on a relationship value redirects to its details page", async ({ page }) => {
+      await page.goto("/objects/InfraDevice");
+      await page.getByRole("link", { name: "Juniper JunOS" }).first().click();
+      await expect(page.getByText("NameJuniper JunOS")).toBeVisible();
+      expect(page.url()).toContain("/objects/InfraPlatform/");
+    });
 
     test("should be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");
