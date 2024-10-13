@@ -59,7 +59,11 @@ const getQuery = (schema?: IModelSchema, filters?: Array<Filter>) => {
   });
 };
 
-export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) => {
+export const useObjectItems = (
+  schema?: IModelSchema,
+  filters?: Array<Filter>,
+  kindFilter?: string
+) => {
   const query = gql`
     ${getQuery(schema, filters)}
   `;
@@ -69,7 +73,7 @@ export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) =
   const permission = getPermission(
     schema?.kind &&
       apolloQuery?.data &&
-      apolloQuery?.data[schema?.kind]?.permissions?.edges[0]?.node
+      apolloQuery?.data[kindFilter || schema?.kind]?.permissions?.edges[0]?.node
   );
 
   return {
