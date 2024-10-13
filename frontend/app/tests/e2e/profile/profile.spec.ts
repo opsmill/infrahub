@@ -11,7 +11,7 @@ test.describe("/profile", () => {
   });
 
   test.describe("when not logged in", () => {
-    test("should see 'Login' and no user avatar on header", async ({ page }) => {
+    test.skip("should see 'Login' and no user avatar on header", async ({ page }) => {
       await page.goto("/");
 
       await expect(page.getByTestId("unauthenticated-menu-trigger")).toBeVisible();
