@@ -12,6 +12,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.types.permission import PermissionDecision
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
@@ -152,10 +153,10 @@ class TestObjectPermissions:
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
             "node": {
                 "kind": "BuiltinTag",
-                "create": "ALLOW_OTHER",
-                "update": "DENY",
-                "delete": "ALLOW_OTHER",
-                "view": "ALLOW_ALL",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.DENY.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
             }
         }
 
@@ -175,10 +176,10 @@ class TestObjectPermissions:
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
             "node": {
                 "kind": "BuiltinTag",
-                "create": "ALLOW_OTHER",
-                "update": "DENY",
-                "delete": "ALLOW_OTHER",
-                "view": "ALLOW_ALL",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.DENY.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
             }
         }
 
@@ -205,28 +206,28 @@ class TestObjectPermissions:
         assert {
             "node": {
                 "kind": "CoreGenericRepository",
-                "create": "ALLOW_OTHER",
-                "update": "ALLOW_OTHER",
-                "delete": "ALLOW_OTHER",
-                "view": "ALLOW_ALL",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.ALLOW_OTHER.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
             "node": {
                 "kind": "CoreRepository",
-                "create": "ALLOW_OTHER",
-                "update": "ALLOW_OTHER",
-                "delete": "ALLOW_OTHER",
-                "view": "ALLOW_ALL",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.ALLOW_OTHER.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
             "node": {
                 "kind": "CoreReadOnlyRepository",
-                "create": "ALLOW_OTHER",
-                "update": "ALLOW_OTHER",
-                "delete": "ALLOW_OTHER",
-                "view": "ALLOW_ALL",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.ALLOW_OTHER.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
 
@@ -340,7 +341,7 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecisionFlag.ALLOW_OTHER
+            "update_value": PermissionDecision.ALLOW_OTHER.name
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -362,5 +363,5 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecisionFlag.ALLOW_OTHER
+            "update_value": PermissionDecision.ALLOW_OTHER.name
         }
