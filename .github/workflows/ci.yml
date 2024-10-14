@@ -724,6 +724,78 @@ jobs:
         if: always()
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
 
+  # ------------------------------------------ E2E invoke demo ------------------------------------------------
+  E2E-testing-invoke-demo-start:
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Invoke
+        run: |
+          pip install toml invoke
+
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+
+      - name: Run 'invoke demo'
+        run: |
+          unset INFRAHUB_IMAGE_VER
+          invoke demo.start demo.load-infra-schema demo.load-infra-data
+
+      - name: Display server logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+
+      - name: Display task worker 1 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
+
+      - name: Display task worker 2 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
+
+      - name: Display task manager logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+
+      - name: Display database logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+
+      - name: Display message-queue logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
+
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:
