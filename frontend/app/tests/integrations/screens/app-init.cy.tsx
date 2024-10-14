@@ -24,7 +24,7 @@ describe("Config fetch", () => {
     cy.intercept("GET", "/api/info", this.info).as("getInfo");
     cy.intercept("GET", "/api/schema*", this.schema).as("getSchema");
     cy.intercept("GET", "/api/schema/summary*", this.schema).as("getSchemaSummary");
-    cy.intercept("GET", "/api/menu/new*", this.menu).as("getMenu");
+    cy.intercept("GET", "/api/menu*", this.menu).as("getMenu");
     cy.intercept("POST", "/graphql/main", this.branches).as("branches");
 
     mount(

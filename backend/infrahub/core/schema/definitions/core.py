@@ -67,11 +67,12 @@ generic_menu_item: dict[str, Any] = {
     "description": "Base node for the menu",
     "label": "Menu Item",
     "hierarchical": True,
-    "uniqueness_constraints": [["namespace__value", "name__value"]],
+    "human_friendly_id": ["namespace__value", "name__value"],
     "attributes": [
         {"name": "namespace", "kind": "Text", "regex": NAMESPACE_REGEX, "order_weight": 1000},
         {"name": "name", "kind": "Text", "order_weight": 1000},
         {"name": "label", "kind": "Text", "optional": True, "order_weight": 2000},
+        {"name": "kind", "kind": "Text", "optional": True, "order_weight": 2500},
         {"name": "path", "kind": "Text", "optional": True, "order_weight": 2500},
         {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
         {"name": "icon", "kind": "Text", "optional": True, "order_weight": 4000},

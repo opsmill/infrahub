@@ -8,7 +8,6 @@ generics:
     label: "Interface"
     include_in_menu: true
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -150,7 +149,6 @@ generics:
     label: "MLAG Interface"
     icon: "mdi:ethernet"
     include_in_menu: true
-    menu_placement: "InfraDevice"
     attributes:
       - name: mlag_id
         label: MLAG Id
@@ -430,7 +428,6 @@ nodes:
     description: "A Platform represents the type of software running on a device"
     label: "Platform"
     icon: "mdi:application-cog-outline"
-    menu_placement: "InfraDevice"
     default_filter: name__value
     human_friendly_id: ["name__value"]
     order_by:
@@ -467,7 +464,6 @@ nodes:
     namespace: Infra
     description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
-    icon: "mdi:cable-data"
     default_filter: circuit_id__value
     human_friendly_id: ["circuit_id__value"]
     order_by:
@@ -540,8 +536,6 @@ nodes:
     namespace: Infra
     description: "A Circuit endpoint is attached to each end of a circuit"
     label: "Circuit Endpoint"
-    icon: "mdi:ethernet-cable"
-    menu_placement: "InfraCircuit"
     include_in_menu: false
     attributes:
       - name: description
@@ -566,8 +560,6 @@ nodes:
     namespace: Infra
     description: "Represents the group of devices that share interfaces in a multi chassis link aggregation group"
     label: "MLAG Domain"
-    icon: "eos-icons:cluster-management"
-    menu_placement: "InfraDevice"
     include_in_menu: true
     display_labels:
       - name__value
@@ -616,6 +608,7 @@ nodes:
     namespace: Infra
     description: "L3 MLAG Interface"
     label: "MLAG Interface L3"
+    icon: "mdi:ethernet"
     include_in_menu: false
     display_labels:
       - mlag_id__value

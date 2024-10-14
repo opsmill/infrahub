@@ -228,23 +228,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/menu/new": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get New Menu */
-    get: operations["get_new_menu_api_menu_new_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/oauth2/{provider_name}/authorize": {
     parameters: {
       query?: never;
@@ -1535,36 +1518,6 @@ export interface components {
       /** Version */
       version: string;
     };
-    /** InterfaceMenu */
-    InterfaceMenu: {
-      /**
-       * Title
-       * @description Title of the menu item
-       */
-      title: string;
-      /**
-       * Path
-       * @description URL endpoint if applicable
-       * @default
-       */
-      path: string;
-      /**
-       * Icon
-       * @description The icon to show for the current view
-       * @default
-       */
-      icon: string;
-      /**
-       * Children
-       * @description Child objects
-       */
-      children?: components["schemas"]["InterfaceMenu"][];
-      /**
-       * Kind
-       * @default
-       */
-      kind: string;
-    };
     /** JSONSchema */
     JSONSchema: {
       /**
@@ -1672,10 +1625,10 @@ export interface components {
        */
       identifier: string;
       /**
-       * Title
+       * Label
        * @description Title of the menu item
        */
-      title: string;
+      label: string;
       /**
        * Path
        * @description URL endpoint if applicable
@@ -2569,38 +2522,6 @@ export interface operations {
     };
   };
   get_menu_api_menu_get: {
-    parameters: {
-      query?: {
-        /** @description Name of the branch to use for the query */
-        branch?: string | null;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["InterfaceMenu"][];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_new_menu_api_menu_new_get: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */

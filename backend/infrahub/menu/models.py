@@ -72,7 +72,7 @@ class Menu:
 
 class MenuItem(BaseModel):
     identifier: str = Field(..., description="Unique identifier for this menu item")
-    title: str = Field(..., description="Title of the menu item")
+    label: str = Field(..., description="Title of the menu item")
     path: str = Field(default="", description="URL endpoint if applicable")
     icon: str = Field(default="", description="The icon to show for the current view")
     kind: str = Field(default="", description="Kind of the model associated with this menuitem if applicable")
@@ -83,11 +83,11 @@ class MenuItem(BaseModel):
     def from_node(cls, obj: CoreMenuItem) -> Self:
         return cls(
             identifier=get_full_name(obj),
-            title=obj.label.value or "",
+            label=obj.label.value or "",
             icon=obj.icon.value or "",
             order_weight=obj.order_weight.value,
             path=obj.path.value or "",
-            kind=obj.get_kind(),
+            kind=obj.kind.value or "",
             section=obj.section.value,
         )
 
@@ -95,7 +95,7 @@ class MenuItem(BaseModel):
     def from_schema(cls, model: NodeSchema | GenericSchema | ProfileSchema) -> Self:
         return cls(
             identifier=get_full_name(model),
-            title=model.label or model.kind,
+            label=model.label or model.kind,
             path=f"/objects/{model.kind}",
             icon=model.icon or "",
             kind=model.kind,

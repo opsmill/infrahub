@@ -23,7 +23,6 @@ nodes:
   - name: Continent
     namespace: Location
     description: "A continent on planet earth."
-    menu_placement: "LocationGeneric"
     icon: "jam:world"
     inherit_from:
       - "LocationGeneric"
@@ -38,7 +37,6 @@ nodes:
   - name: Country
     namespace: Location
     description: "A country within a continent."
-    menu_placement: "LocationGeneric"
     icon: "gis:search-country"
     inherit_from:
       - "LocationGeneric"
@@ -53,7 +51,6 @@ nodes:
   - name: Site
     namespace: Location
     description: "A site within a country."
-    menu_placement: "LocationGeneric"
     icon: "ri:building-line"
     inherit_from:
       - "LocationGeneric"

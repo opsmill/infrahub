@@ -24,7 +24,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await page.goto("/");
 
-    await page.getByRole("button", { name: "O Other" }).click();
+    await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
     await page.getByRole("menuitem", { name: "Tenant" }).click();
 
     await test.step("fill and submit form for new organization", async () => {
@@ -66,7 +66,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
 
-      await page.getByRole("button", { name: "O Other" }).click();
+      await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
       await page.getByRole("menuitem", { name: "Tenant" }).click();
 
       const myFirstOrgLink = page.getByRole("link", { name: "my-first-tenant" });
@@ -140,7 +140,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByRole("option", { name: "main default" }).click();
       await expect(page.getByTestId("branch-selector-trigger")).toContainText("main");
 
-      await page.getByRole("button", { name: "O Other" }).click();
+      await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
       await page.getByRole("menuitem", { name: "Tenant" }).click();
 
       await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");

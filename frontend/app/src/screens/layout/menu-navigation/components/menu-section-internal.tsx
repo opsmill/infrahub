@@ -30,7 +30,7 @@ export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalP
               <Link to={constructPath(item.path)}>
                 <CollapsedButton
                   icon={item.icon}
-                  tooltipContent={item.title}
+                  tooltipContent={item.label}
                   key={item.identifier}
                 />
               </Link>
@@ -39,7 +39,7 @@ export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalP
           return (
             <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
               <Icon icon={item.icon} className="m-1 min-w-4" />
-              <span className="text-sm truncate">{item.title}</span>
+              <span className="text-sm truncate">{item.label}</span>
             </Link>
           );
         }
@@ -50,11 +50,11 @@ export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalP
               className={classNames(menuNavigationItemStyle, isCollapsed && "p-0")}
             >
               {isCollapsed ? (
-                <CollapsedButton tooltipContent={item.title} icon={item.icon} className="p-0" />
+                <CollapsedButton tooltipContent={item.label} icon={item.icon} className="p-0" />
               ) : (
                 <>
                   <Icon icon={item.icon} className="text-lg min-w-4" />
-                  <span className="text-sm truncate">{item.title}</span>
+                  <span className="text-sm truncate">{item.label}</span>
                   <Icon
                     icon="mdi:dots-vertical"
                     className="m-1 ml-auto opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
@@ -68,20 +68,20 @@ export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalP
                 if (!child.children || child.children.length === 0) {
                   return (
                     <DropdownMenuItem key={child.identifier} asChild>
-                      <Link to={constructPath(child.path)}>{child.title}</Link>
+                      <Link to={constructPath(child.path)}>{child.label}</Link>
                     </DropdownMenuItem>
                   );
                 }
 
                 return (
                   <DropdownMenuSub key={child.identifier}>
-                    <DropdownMenuSubTrigger>{item.title}</DropdownMenuSubTrigger>
+                    <DropdownMenuSubTrigger>{item.label}</DropdownMenuSubTrigger>
 
                     <DropdownMenuSubContent>
                       {child.children.map((grandchild) => {
                         return (
                           <DropdownMenuItem key={grandchild.identifier} asChild>
-                            <Link to={constructPath(grandchild.path)}>{grandchild.title}</Link>
+                            <Link to={constructPath(grandchild.path)}>{grandchild.label}</Link>
                           </DropdownMenuItem>
                         );
                       })}
