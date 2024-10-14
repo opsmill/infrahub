@@ -1,6 +1,6 @@
 from typing import AsyncGenerator
 
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.schema import MainSchemaTypes
 from infrahub.database import InfrahubDatabase
@@ -33,6 +33,8 @@ class DiffMergeSerializer:
         self._relationship_id_cache: dict[tuple[str, str], str] = {}
         self._attribute_type_cache: dict[tuple[str, str], type] = {}
         self._branch_name: str | None = None
+        # {(node_id, relationship_id, peer_id)}
+        self._conflicted_cardinality_one_relationships: set[tuple[str, str, str]] = set()
 
     def _reset_caches(self) -> None:
         self._relationship_id_cache = {}
@@ -95,11 +97,34 @@ class DiffMergeSerializer:
         ) and isinstance(raw_value, str):
             return raw_value.lower() == "true"
         # this must be HAS_VALUE
-        if raw_value is None:
+        if raw_value in (None, "NULL"):
             return "NULL"
         if value_type:
             return value_type(raw_value)
         return raw_value
+
+    def _cache_conflicted_cardinality_one_relationships(self, diff: EnrichedDiffRoot) -> None:
+        for node in diff.nodes:
+            for rel in node.relationships:
+                if rel.cardinality is not RelationshipCardinality.ONE:
+                    continue
+                for element in rel.relationships:
+                    if element.conflict is None:
+                        continue
+                    for prop in element.properties:
+                        if prop.property_type is not DatabaseEdgeType.IS_RELATED:
+                            continue
+                        relationship_identifier = self._get_relationship_identifier(
+                            schema_kind=node.kind, relationship_name=rel.name
+                        )
+                        if prop.previous_value:
+                            self._conflicted_cardinality_one_relationships.add(
+                                (node.uuid, relationship_identifier, prop.previous_value)
+                            )
+                        if prop.new_value:
+                            self._conflicted_cardinality_one_relationships.add(
+                                (node.uuid, relationship_identifier, prop.new_value)
+                            )
 
     async def serialize_diff(
         self, diff: EnrichedDiffRoot
@@ -108,17 +133,18 @@ class DiffMergeSerializer:
     ]:
         self._reset_caches()
         self._branch_name = diff.diff_branch_name
+        self._cache_conflicted_cardinality_one_relationships(diff=diff)
         serialized_node_diffs = []
         serialized_property_diffs: list[AttributePropertyMergeDict | RelationshipPropertyMergeDict] = []
         for node in diff.nodes:
             node_action = self._get_action(action=node.action, conflict=node.conflict)
-            attribute_diffs = []
+            serial_attr_diffs = []
             for attr_diff in node.attributes:
-                attribute_diff, attribute_property_diff = self._serialize_attribute(
+                serial_attr_diff, attribute_property_diff = self._serialize_attribute(
                     attribute_diff=attr_diff, node_uuid=node.uuid, node_kind=node.kind
                 )
-                if attribute_diff:
-                    attribute_diffs.append(attribute_diff)
+                if serial_attr_diff:
+                    serial_attr_diffs.append(serial_attr_diff)
                 serialized_property_diffs.append(attribute_property_diff)
             relationship_diffs = []
             for rel_diff in node.relationships:
@@ -133,14 +159,15 @@ class DiffMergeSerializer:
                     )
                     relationship_diffs.extend(element_diffs)
                     serialized_property_diffs.extend(relationship_property_diffs)
-            serialized_node_diffs.append(
-                NodeMergeDict(
-                    uuid=node.uuid,
-                    action=self._to_action_str(action=node_action),
-                    attributes=attribute_diffs,
-                    relationships=relationship_diffs,
+            if node_action in (DiffAction.ADDED, DiffAction.REMOVED) or serial_attr_diffs or relationship_diffs:
+                serialized_node_diffs.append(
+                    NodeMergeDict(
+                        uuid=node.uuid,
+                        action=self._to_action_str(action=node_action),
+                        attributes=serial_attr_diffs,
+                        relationships=relationship_diffs,
+                    )
                 )
-            )
             if len(serialized_node_diffs) == self.max_batch_size:
                 yield (serialized_node_diffs, serialized_property_diffs)
                 serialized_node_diffs, serialized_property_diffs = [], []
@@ -206,69 +233,84 @@ class DiffMergeSerializer:
         )
         return attr_dict, attr_prop_dict
 
+    def _get_default_property_merge_dicts(self, action: DiffAction) -> dict[DatabaseEdgeType, PropertyMergeDict]:
+        # start with default values for IS_VISIBLE and IS_PROTECTED b/c we always want to update them during a merge
+        return {
+            DatabaseEdgeType.IS_VISIBLE: PropertyMergeDict(
+                property_type=DatabaseEdgeType.IS_VISIBLE.value,
+                action=self._to_action_str(action),
+                value=None,
+            ),
+            DatabaseEdgeType.IS_PROTECTED: PropertyMergeDict(
+                property_type=DatabaseEdgeType.IS_PROTECTED.value,
+                action=self._to_action_str(action),
+                value=None,
+            ),
+        }
+
+    def _get_added_removed_peers(
+        self, relationship_diff: EnrichedDiffSingleRelationship
+    ) -> tuple[str | None, str | None]:
+        is_related_prop = [p for p in relationship_diff.properties if p.property_type is DatabaseEdgeType.IS_RELATED][0]
+        actions_and_values = self._get_property_actions_and_values(property_diff=is_related_prop, python_value_type=str)
+        added = None
+        removed = None
+        for action, peer_id in actions_and_values:
+            if action is DiffAction.ADDED:
+                added = str(peer_id)
+            elif action is DiffAction.REMOVED:
+                removed = str(peer_id)
+        return added, removed
+
     def _serialize_relationship_element(
         self, relationship_diff: EnrichedDiffSingleRelationship, relationship_identifier: str, node_uuid: str
     ) -> tuple[list[RelationshipMergeDict], list[RelationshipPropertyMergeDict]]:
+        # if there is a relationship-element conflict and we are keeping the base branch version
+        # then we do not need to do anything special
+        if relationship_diff.conflict and relationship_diff.conflict.selected_branch is ConflictSelection.BASE_BRANCH:
+            return ([], [])
         relationship_dicts = []
-        # start with default values for IS_VISIBLE and IS_PROTECTED b/c we always want to update them during a merge
-        added_property_dicts: dict[DatabaseEdgeType, PropertyMergeDict] = {
-            DatabaseEdgeType.IS_VISIBLE: PropertyMergeDict(
-                property_type=DatabaseEdgeType.IS_VISIBLE.value,
-                action=self._to_action_str(DiffAction.ADDED),
-                value=None,
-            ),
-            DatabaseEdgeType.IS_PROTECTED: PropertyMergeDict(
-                property_type=DatabaseEdgeType.IS_PROTECTED.value,
-                action=self._to_action_str(DiffAction.ADDED),
-                value=None,
-            ),
-        }
-        removed_property_dicts: dict[DatabaseEdgeType, PropertyMergeDict] = {
-            DatabaseEdgeType.IS_VISIBLE: PropertyMergeDict(
-                property_type=DatabaseEdgeType.IS_VISIBLE.value,
-                action=self._to_action_str(DiffAction.REMOVED),
-                value=None,
-            ),
-            DatabaseEdgeType.IS_PROTECTED: PropertyMergeDict(
-                property_type=DatabaseEdgeType.IS_PROTECTED.value,
-                action=self._to_action_str(DiffAction.REMOVED),
-                value=None,
-            ),
-        }
-        added_peer_id: str | None = None
-        removed_peer_id: str | None = None
+        added_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.ADDED)
+        removed_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.REMOVED)
+        added_peer_id, removed_peer_id = self._get_added_removed_peers(relationship_diff=relationship_diff)
+
+        for action, peer_id in ((DiffAction.ADDED, added_peer_id), (DiffAction.REMOVED, removed_peer_id)):
+            if (
+                peer_id
+                and (peer_id, relationship_identifier, node_uuid) not in self._conflicted_cardinality_one_relationships
+            ):
+                relationship_dicts.append(
+                    RelationshipMergeDict(
+                        peer_id=peer_id, name=relationship_identifier, action=self._to_action_str(action=action)
+                    )
+                )
         for property_diff in relationship_diff.properties:
+            if property_diff.property_type is DatabaseEdgeType.IS_RELATED:
+                # handled above
+                continue
             python_value_type: type = str
             if property_diff.property_type in (DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED):
                 python_value_type = bool
             actions_and_values = self._get_property_actions_and_values(
                 property_diff=property_diff, python_value_type=python_value_type
             )
-            if property_diff.property_type is DatabaseEdgeType.IS_RELATED:
-                for action, value in actions_and_values:
-                    peer_id = str(value)
-                    if action is DiffAction.ADDED:
-                        added_peer_id = peer_id
-                    elif action is DiffAction.REMOVED:
-                        removed_peer_id = peer_id
-                    relationship_dicts.append(
-                        RelationshipMergeDict(
-                            peer_id=peer_id, name=relationship_identifier, action=self._to_action_str(action=action)
-                        )
-                    )
-            else:
-                for action, value in actions_and_values:
-                    property_dict = PropertyMergeDict(
-                        property_type=property_diff.property_type.value,
-                        action=self._to_action_str(action=action),
-                        value=value,
-                    )
-                    if action is DiffAction.ADDED:
-                        added_property_dicts[property_diff.property_type] = property_dict
-                    elif action is DiffAction.REMOVED:
-                        removed_property_dicts[property_diff.property_type] = property_dict
+            for action, value in actions_and_values:
+                property_dict = PropertyMergeDict(
+                    property_type=property_diff.property_type.value,
+                    action=self._to_action_str(action=action),
+                    value=value,
+                )
+                if action is DiffAction.ADDED:
+                    added_property_dicts[property_diff.property_type] = property_dict
+                elif action is DiffAction.REMOVED:
+                    removed_property_dicts[property_diff.property_type] = property_dict
         relationship_property_dicts = []
-        if added_peer_id and added_property_dicts:
+        if (
+            added_peer_id
+            and added_property_dicts
+            and (added_peer_id, relationship_identifier, node_uuid)
+            not in self._conflicted_cardinality_one_relationships
+        ):
             relationship_property_dicts.append(
                 RelationshipPropertyMergeDict(
                     node_uuid=node_uuid,
@@ -277,7 +319,12 @@ class DiffMergeSerializer:
                     properties=list(added_property_dicts.values()),
                 )
             )
-        if removed_peer_id and removed_property_dicts:
+        if (
+            removed_peer_id
+            and removed_property_dicts
+            and (removed_peer_id, relationship_identifier, node_uuid)
+            not in self._conflicted_cardinality_one_relationships
+        ):
             relationship_property_dicts.append(
                 RelationshipPropertyMergeDict(
                     node_uuid=node_uuid,
