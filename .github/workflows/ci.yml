@@ -586,13 +586,7 @@ jobs:
       - name: Run 'invoke demo.load'
         run: |
           unset INFRAHUB_IMAGE_VER
-          invoke demo.start demo.load-infra-schema
-
-      - name: Check Demo Status
-        run: invoke demo.status
-
-      - name: Load Data
-        run: invoke demo.load-infra-data
+          invoke demo.start demo.load-infra-schema demo.load-infra-data
 
       - name: Display server logs
         if: always()
