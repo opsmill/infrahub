@@ -3,7 +3,7 @@ import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table } from "@/components/table/table";
+import { Table, tRowValue } from "@/components/table/table";
 import { BadgeCopy } from "@/components/ui/badge-copy";
 import { Pagination } from "@/components/ui/pagination";
 import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
@@ -35,12 +35,19 @@ function Permissions() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
-  const [rowToDelete, setRowToDelete] = useState(null);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [rowToUpdate, setRowToUpdate] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
-      name: "display_label",
+      name: "display",
       label: "Name",
     },
     {
@@ -53,7 +60,7 @@ function Permissions() {
     },
     {
       name: "name",
-      label: "Node",
+      label: "Name",
     },
     {
       name: "action",
@@ -82,18 +89,38 @@ function Permissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: (
-            <div className="flex items-center gap-2">
-              {icon} {edge?.node?.display_label}
-            </div>
-          ),
-          branch: edge?.node?.branch?.value,
-          namespace: edge?.node?.namespace?.value,
-          name: edge?.node?.name?.value,
-          action: edge?.node?.action?.value,
-          decision: edge?.node?.decision?.value,
-          roles: <Pill>{edge?.node?.roles?.count}</Pill>,
-          identifier: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          display_label: edge?.node?.display_label,
+          display: {
+            value: edge?.node?.display_label,
+            display: (
+              <div className="flex items-center gap-2">
+                {icon} {edge?.node?.display_label}
+              </div>
+            ),
+          },
+          branch: {
+            value: edge?.node?.branch?.value,
+          },
+          namespace: {
+            value: edge?.node?.namespace?.value,
+          },
+          name: {
+            value: edge?.node?.name?.value,
+          },
+          action: {
+            value: edge?.node?.action?.value,
+          },
+          decision: {
+            value: edge?.node?.decision?.value,
+          },
+          roles: {
+            value: { edges: edge?.node?.roles?.edges },
+            display: <Pill>{edge?.node?.roles?.count}</Pill>,
+          },
+          identifier: {
+            value: edge?.node?.identifier?.value,
+            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          },
           __typename: edge?.node?.__typename,
         },
       };
@@ -115,11 +142,7 @@ function Permissions() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}
-            >
+            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
               Create {schema?.label}
             </Button>
           </div>
@@ -130,6 +153,10 @@ function Permissions() {
           rows={rows ?? []}
           className="border-0"
           onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
         />
 
         <Pagination count={data && data[OBJECT_PERMISSION_OBJECT]?.count} />
@@ -153,14 +180,15 @@ function Permissions() {
               subtitle={schema.description}
             />
           }
-          open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}
+          open={showDrawer}
+          setOpen={(value) => setShowDrawer(value)}
         >
           <ObjectForm
             kind={OBJECT_PERMISSION_OBJECT}
-            onCancel={() => setShowCreateDrawer(false)}
+            currentObject={rowToUpdate}
+            onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
-              setShowCreateDrawer(false);
+              setShowDrawer(false);
               globalRefetch();
             }}
           />

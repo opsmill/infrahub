@@ -136,6 +136,12 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
         await _gather_repository_repository_diffs(repositories=repositories)
 
+        destination_branch = await registry.get_branch(db=service.database, branch=message.destination_branch)
+        source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
+        component_registry = get_component_registry()
+        async with service.database.start_transaction() as dbt:
+            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+            await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
         diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
         branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
         await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)

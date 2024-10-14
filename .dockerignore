@@ -19,6 +19,11 @@ coverage.xml
 frontend/**/node_modules
 frontend/**/playwright-report
 
+# Documentation
+docs/build
+docs/node_modules
+docs/.docusaurus
+
 # Direnv files (https://direnv.net/)
 .direnv/
 .envrc

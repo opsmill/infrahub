@@ -185,7 +185,7 @@ pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
 disable_error_code = ["type-abstract"]
-exclude = ["^backend/tests/scale", "^backend/tests/unit"]
+exclude = ["^backend/tests/scale", "^backend/tests/unit", "^backend/tests/test_data", "^backend/tests/query_benchmark"]
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"
@@ -294,14 +294,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.git_credential.askpass"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.attribute"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

@@ -13,8 +13,10 @@ from prefect.flow_engine import run_flow_async
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
 from prometheus_client import start_http_server
 
+from infrahub import __version__ as infrahub_version
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.core import registry
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import build_component_registry
@@ -29,9 +31,20 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
+WORKER_QUERY_SECONDS = "2"
+WORKER_PERSIST_RESULT = "true"
+WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
+
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):
-    pass
+    env: dict[str, str | None] = {
+        "PREFECT_WORKER_QUERY_SECONDS": WORKER_QUERY_SECONDS,
+        "PREFECT_RESULTS_PERSIST_BY_DEFAULT": WORKER_PERSIST_RESULT,
+        "PREFECT_DEFAULT_RESULT_STORAGE_BLOCK": WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
+    }
+    labels: dict[str, str] = {
+        "infrahub.app/version": infrahub_version,
+    }
 
 
 class InfrahubWorkerAsyncTemplateVariables(BaseVariables):
@@ -50,7 +63,12 @@ class InfrahubWorkerAsync(BaseWorker):
     _logo_url = "https://example.com/logo"
     _description = "Infrahub worker designed to run the flow in the main async loop."
 
-    async def setup(self, **kwargs: dict[str, Any]) -> None:
+    async def setup(
+        self,
+        client: InfrahubClient | None = None,
+        metric_port: int | None = None,
+        **kwargs: dict[str, Any],
+    ) -> None:
         logging.getLogger("websockets").setLevel(logging.ERROR)
         logging.getLogger("httpx").setLevel(logging.ERROR)
         logging.getLogger("httpcore").setLevel(logging.ERROR)
@@ -59,30 +77,34 @@ class InfrahubWorkerAsync(BaseWorker):
         logging.getLogger("aiormq").setLevel(logging.ERROR)
         logging.getLogger("git").setLevel(logging.ERROR)
 
-        config_file = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-        config.load_and_exit(config_file_name=config_file)
+        if not config.SETTINGS.settings:
+            config_file = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+            config.load_and_exit(config_file_name=config_file)
 
-        # Start metric endpoint on port 8000
-        metric_port = int(os.environ.get("INFRAHUB_METRICS_PORT", 8000))
-        self._logger.info(f"Starting metric endpoint on port {metric_port}")
-        start_http_server(metric_port)
+        # Start metric endpoint
+        if metric_port is None or metric_port != 0:
+            metric_port = metric_port or int(os.environ.get("INFRAHUB_METRICS_PORT", 8000))
+            self._logger.info(f"Starting metric endpoint on port {metric_port}")
+            start_http_server(metric_port)
+
+        await super().setup(**kwargs)
 
         self._exit_stack.enter_context(
             prefect_settings.temporary_settings(
                 updates={  # type: ignore[arg-type]
                     prefect_settings.PREFECT_WORKER_QUERY_SECONDS: config.SETTINGS.workflow.worker_polling_interval,
                     prefect_settings.PREFECT_RESULTS_PERSIST_BY_DEFAULT: True,
-                    prefect_settings.PREFECT_DEFAULT_RESULT_STORAGE_BLOCK: f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}",
+                    prefect_settings.PREFECT_DEFAULT_RESULT_STORAGE_BLOCK: WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
                 }
             )
         )
 
-        await super().setup(**kwargs)
+        if not client:
+            self._logger.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
+            client = InfrahubClient(
+                config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=self._logger)
+            )
 
-        self._logger.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
-        client = InfrahubClient(
-            config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=self._logger)
-        )
         try:
             await client.branch.all()
         except SdkError as exc:
@@ -116,13 +138,13 @@ class InfrahubWorkerAsync(BaseWorker):
 
         await service.initialize()
 
-        # Initialize the lock
-        initialize_lock(service=service)
+        if not registry.schema_has_been_initialized():
+            initialize_lock(service=service)
 
-        async with service.database.start_session() as db:
-            await initialization(db=db)
+            async with service.database.start_session() as db:
+                await initialization(db=db)
 
-        await service.component.refresh_schema_hash()
+            await service.component.refresh_schema_hash()
 
         initialize_repositories_directory()
         build_component_registry()
@@ -142,7 +164,6 @@ class InfrahubWorkerAsync(BaseWorker):
         file_path.replace("/", ".")
         module_path = file_path.replace("backend/", "").replace(".py", "").replace("/", ".")
         module = importlib.import_module(module_path)
-
         flow_func = getattr(module, flow_name)
 
         flow_run_logger.debug("Validating parameters")
@@ -153,7 +174,6 @@ class InfrahubWorkerAsync(BaseWorker):
 
         await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
-        # exit_code = job_status.exit_code if job_status else -1 # Get result of execution for reporting
         return InfrahubWorkerAsyncResult(
             status_code=0,
             identifier=str(flow_run.id),

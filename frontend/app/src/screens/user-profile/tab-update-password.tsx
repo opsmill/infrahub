@@ -13,7 +13,7 @@ type UpdatePasswordFormData = {
   confirmPassword: string;
 };
 
-export default function TabPreferences() {
+export default function TabUpdatePassword() {
   const [updateAccountPassword] = useMutation(UPDATE_ACCOUNT_PASSWORD);
 
   const onSubmit = async ({ newPassword }: UpdatePasswordFormData) => {

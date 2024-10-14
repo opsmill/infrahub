@@ -21,7 +21,7 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             description=worker.description,
         )
         try:
-            await client.create_work_pool(work_pool=wp)
+            await client.create_work_pool(work_pool=wp, overwrite=True)
             log.info(f"Work pool {worker.name} created successfully ... ")
         except ObjectAlreadyExists:
             log.warning(f"Work pool {worker.name} already present ")

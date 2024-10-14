@@ -1,6 +1,6 @@
 import { Pill } from "@/components/display/pill";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table } from "@/components/table/table";
+import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_ROLES } from "@/graphql/queries/role-management/getRoles";
@@ -21,17 +21,20 @@ function Roles() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ROLES);
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_ROLE_OBJECT);
-  const [rowToDelete, setRowToDelete] = useState(null);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [rowToUpdate, setRowToUpdate] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const columns = [
     {
-      name: "display_label",
+      name: "name",
       label: "Name",
-    },
-    {
-      name: "description",
-      label: "Description",
     },
     {
       name: "groups",
@@ -48,11 +51,17 @@ function Roles() {
     data[ACCOUNT_ROLE_OBJECT]?.edges.map((edge) => ({
       values: {
         id: edge?.node?.id,
-        display_label: edge?.node?.display_label,
-        description: edge?.node?.description?.value,
-        groups: <Pill>{edge?.node?.groups?.count}</Pill>,
-        permissions: <Pill>{edge?.node?.permissions?.count}</Pill>,
-        __typename: edge?.node?.__typename,
+        name: { value: edge?.node?.name.value },
+        description: { value: edge?.node?.description?.value },
+        groups: {
+          value: { edges: edge?.node?.groups?.edges },
+          display: <Pill>{edge?.node?.groups?.count}</Pill>,
+        },
+        permissions: {
+          value: { edges: edge?.node?.permissions?.edges },
+          display: <Pill>{edge?.node?.permissions?.count}</Pill>,
+        },
+        __typename: { value: edge?.node?.__typename },
       },
     }));
 
@@ -72,11 +81,7 @@ function Roles() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}
-            >
+            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
               Create {schema?.label}
             </Button>
           </div>
@@ -87,6 +92,10 @@ function Roles() {
           rows={rows ?? []}
           className="border-0"
           onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
         />
 
         <Pagination count={data && data[ACCOUNT_ROLE_OBJECT]?.count} />
@@ -110,14 +119,15 @@ function Roles() {
               subtitle={schema.description}
             />
           }
-          open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}
+          open={showDrawer}
+          setOpen={(value) => setShowDrawer(value)}
         >
           <ObjectForm
             kind={ACCOUNT_ROLE_OBJECT}
-            onCancel={() => setShowCreateDrawer(false)}
+            currentObject={rowToUpdate}
+            onCancel={() => setShowDrawer(false)}
             onSuccess={() => {
-              setShowCreateDrawer(false);
+              setShowDrawer(false);
               globalRefetch();
             }}
           />

@@ -89,11 +89,11 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("delete a prefix between 2 other prefixes", async () => {
         await page.getByTestId("ipam-tree").getByRole("link", { name: "11.0.0.0/8" }).click();
         await page.getByText("Prefix Details").click();
-
         await page
           .getByRole("row", { name: "11.0.0.0/10" })
-          .getByTestId("delete-row-button")
+          .getByTestId("actions-row-button")
           .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toContainText(
           "Are you sure you want to delete the Prefix: 11.0.0.0/10"
         );
@@ -110,8 +110,9 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("delete a children prefix", async () => {
         await page
           .getByRole("row", { name: "11.0.0.0/16" })
-          .getByTestId("delete-row-button")
+          .getByTestId("actions-row-button")
           .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toContainText(
           "Are you sure you want to delete the Prefix: 11.0.0.0/16"
         );
@@ -136,8 +137,9 @@ test.describe("/ipam - Ipam home page", () => {
         await page.getByText("50").click();
         await page
           .getByRole("row", { name: "11.0.0.0/8" })
-          .getByTestId("delete-row-button")
+          .getByTestId("actions-row-button")
           .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toContainText(
           "Are you sure you want to delete the Prefix: 11.0.0.0/8"
         );
@@ -175,8 +177,9 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("update ip address from list", async () => {
         await page
           .getByRole("row", { name: "10.0.0.1/16" })
-          .getByTestId("update-row-button")
+          .getByTestId("actions-row-button")
           .click();
+        await page.getByTestId("update-row-button").click();
         await page.getByLabel("Description").fill("test");
         await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText("IPAddress updated")).toBeVisible();
@@ -198,11 +201,11 @@ test.describe("/ipam - Ipam home page", () => {
 
       await test.step("delete ip address", async () => {
         await page.getByRole("link", { name: "All IP Addresses" }).click();
-
         await page
           .getByRole("row", { name: "10.0.0.1/16 from summary" })
-          .getByTestId("delete-row-button")
+          .getByTestId("actions-row-button")
           .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toContainText(
           "Are you sure you want to delete the IP address: 10.0.0.1/16"
         );

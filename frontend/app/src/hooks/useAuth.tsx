@@ -1,6 +1,7 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY, ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "@/config/constants";
+import { ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "@/config/constants";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { components } from "@/infraops";
 import { configState } from "@/state/atoms/config.atom";
 import { parseJwt } from "@/utils/common";
@@ -30,7 +31,7 @@ export type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   permissions?: PermissionsType;
-  signIn: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
+  login: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
   signOut: (callback?: () => void) => void;
   setToken: (token: UserToken) => void;
   user: User | null;
@@ -90,7 +91,7 @@ export const AuthContext = createContext<AuthContextType>({
     isAdmin: false,
     write: false,
   },
-  signIn: async () => {},
+  login: async () => {},
   signOut: () => {},
   setToken: () => {},
   user: null,
@@ -113,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const result: components["schemas"]["UserToken"] = await fetchUrl(
-      CONFIG.AUTH_SIGN_IN_URL,
+      CONFIG.AUTH_LOGIN_URL,
       payload
     );
 
@@ -147,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       write: WRITE_ROLES.includes(data?.user_claims?.role),
       isAdmin: ADMIN_ROLES.includes(data?.user_claims?.role),
     },
-    signIn,
+    login: signIn,
     signOut,
     setToken,
     user: data?.sub ? { id: data?.sub } : null,
@@ -167,9 +168,9 @@ export function RequireAuth({ children }: { children: ReactElement }) {
 
   if (isAuthenticated || config?.main?.allow_anonymous_access) return children;
 
-  // Redirect them to the /signin page, but save the current location they were
+  // Redirect them to the /login page, but save the current location they were
   // trying to go to when they were redirected. This allows us to send them
   // along to that page after they log in, which is a nicer user experience
   // than dropping them off on the home page.
-  return <Navigate to="/signin" state={{ from: location }} replace />;
+  return <Navigate to="/login" state={{ from: location }} replace />;
 }

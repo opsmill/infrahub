@@ -32,14 +32,10 @@ const BranchesItems = () => {
   };
 
   return (
-    <Content>
-      <Content.Title
-        title={
-          <div className="flex items-center">
-            <h1 className="mr-2 truncate">Branches</h1>
-            <Badge>{branches.length}</Badge>
-          </div>
-        }
+    <Content.Card>
+      <Content.CardTitle
+        title="Branches"
+        badgeContent={branches.length}
         isReloadLoading={loading}
         reload={handleRefresh}
       />
@@ -105,7 +101,7 @@ const BranchesItems = () => {
           </li>
         ))}
       </ul>
-    </Content>
+    </Content.Card>
   );
 };
 

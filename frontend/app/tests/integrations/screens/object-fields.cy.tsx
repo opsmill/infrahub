@@ -6,7 +6,7 @@ import { Route, Routes } from "react-router-dom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 
 import { gql } from "@apollo/client";
-import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { AuthProvider } from "../../../src/hooks/useAuth";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";

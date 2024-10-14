@@ -69,25 +69,79 @@ class AccountGlobalPermissionQuery(Query):
         WITH account, r1 as r
         WHERE r.status = "active"
         WITH account
-        MATCH group_path = (account)-[]->(:Relationship {name: "group_member"})
-            <-[]-(:%(group_node)s)
-            -[]->(:Relationship {name: "role__accountgroups"})
-            <-[]-(:%(account_role_node)s)
-            -[]->(:Relationship {name: "role__permissions"})
-            <-[]-(global_permission:%(global_permission_node)s)
-            -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
-            -[:HAS_VALUE]->(global_permission_name:AttributeValue)
-        WITH global_permission, global_permission_name
-        WHERE all(r IN relationships(group_path) WHERE (%(branch_filter)s) AND r.status = "active")
-        MATCH action_path = (global_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[:HAS_VALUE]->(global_permission_action:AttributeValue)
-        WHERE all(r IN relationships(action_path) WHERE (%(branch_filter)s) AND r.status = "active")
-        MATCH decision_path = (global_permission)-[:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[:HAS_VALUE]->(global_permission_decision:AttributeValue)
-        WHERE all(r IN relationships(decision_path) WHERE (%(branch_filter)s) AND r.status = "active")
+        CALL {
+            WITH account
+            MATCH (account)-[r1:IS_RELATED]->(:Relationship {name: "group_member"})<-[r2:IS_RELATED]-(account_group:%(account_group_node)s)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH account_group, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY account_group.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH account_group, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN account_group
+        }
+        WITH account_group
+
+        CALL {
+            WITH account_group
+            MATCH (account_group)-[r1:IS_RELATED]->(:Relationship {name: "role__accountgroups"})<-[r2:IS_RELATED]-(account_role:%(account_role_node)s)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH account_role, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY account_role.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH account_role, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN account_role
+        }
+        WITH account_role
+
+        CALL {
+            WITH account_role
+            MATCH (account_role)-[r1:IS_RELATED]->(:Relationship {name: "role__permissions"})<-[r2:IS_RELATED]-(global_permission:%(global_permission_node)s)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH global_permission, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY global_permission.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH global_permission, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN global_permission
+        }
+        WITH global_permission
+
+        CALL {
+            WITH global_permission
+            MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r2:HAS_VALUE]->(global_permission_name:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN global_permission_name, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH global_permission, global_permission_name, is_active AS gpn_is_active
+        WHERE gpn_is_active = TRUE
+
+        CALL {
+            WITH global_permission
+            MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(global_permission_action:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN global_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH global_permission, global_permission_name, global_permission_action, is_active AS gpa_is_active
+        WHERE gpa_is_active = TRUE
+
+        CALL {
+            WITH global_permission
+            MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[r2:HAS_VALUE]->(global_permission_decision:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN global_permission_decision, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH global_permission, global_permission_name, global_permission_action, global_permission_decision, is_active AS gpd_is_active
+        WHERE gpd_is_active = TRUE
         """ % {
             "branch_filter": branch_filter,
             "generic_account_node": InfrahubKind.GENERICACCOUNT,
+            "account_group_node": InfrahubKind.ACCOUNTGROUP,
             "account_role_node": InfrahubKind.ACCOUNTROLE,
-            "group_node": InfrahubKind.ACCOUNTGROUP,
             "global_permission_node": InfrahubKind.GLOBALPERMISSION,
         }
 

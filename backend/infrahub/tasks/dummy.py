@@ -1,7 +1,19 @@
+from __future__ import annotations
+
 from prefect import flow, task
 from pydantic import BaseModel
 
 from infrahub.workflows.models import WorkflowDefinition
+
+
+class DummyInput(BaseModel):
+    firstname: str
+    lastname: str
+
+
+class DummyOutput(BaseModel):
+    full_name: str
+
 
 DUMMY_FLOW = WorkflowDefinition(
     name="dummy_flow",
@@ -14,15 +26,6 @@ DUMMY_FLOW_BROKEN = WorkflowDefinition(
     module="infrahub.tasks.dummy",
     function="dummy_flow_broken",
 )
-
-
-class DummyInput(BaseModel):
-    firstname: str
-    lastname: str
-
-
-class DummyOutput(BaseModel):
-    full_name: str
 
 
 @task

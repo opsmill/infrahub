@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from infrahub.core.constants import NULL_VALUE
 from infrahub.database import InfrahubDatabase
 from infrahub.server import app
-from infrahub.test_data import dataset01 as ds01
+from tests.test_data import dataset01 as ds01
 
 headers = {"Authorization": "Token nelly"}
 

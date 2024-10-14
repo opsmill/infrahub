@@ -24,6 +24,11 @@ export const GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS = gql`
           }
           roles {
             count
+            edges {
+              node {
+                id
+              }
+            }
           }
           identifier {
             value

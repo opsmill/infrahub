@@ -12,7 +12,6 @@ describe("Config fetch", () => {
     cy.fixture("info").as("info");
     cy.fixture("schema").as("schema");
     cy.fixture("schemaSummary").as("schemaSummary");
-    cy.fixture("menu-old").as("menuOld");
     cy.fixture("menu").as("menu");
     cy.fixture("branches").as("branches");
   });
@@ -26,7 +25,6 @@ describe("Config fetch", () => {
     cy.intercept("GET", "/api/schema*", this.schema).as("getSchema");
     cy.intercept("GET", "/api/schema/summary*", this.schema).as("getSchemaSummary");
     cy.intercept("GET", "/api/menu/new*", this.menu).as("getMenu");
-    cy.intercept("GET", "/api/menu*", this.menuOld).as("getMenuOld");
     cy.intercept("POST", "/graphql/main", this.branches).as("branches");
 
     mount(
@@ -35,11 +33,11 @@ describe("Config fetch", () => {
       </MockedProvider>
     );
 
-    cy.contains("Sign in to your account");
+    cy.contains("Log in to your account");
     cy.contains("label", "Username").parent().next().clear({ force: true });
     cy.contains("label", "Username").parent().next().type("test");
     cy.contains("label", "Password").parent().next().type("test");
-    cy.contains("button", "Sign in").click();
+    cy.contains("button", "Log in").click();
 
     cy.wait("@login").then(({ response }) => {
       expect(response?.body?.access_token).to.exist;
@@ -55,12 +53,6 @@ describe("Config fetch", () => {
       expect(schemaArray).to.have.lengthOf(1);
     });
 
-    cy.wait("@getMenuOld").then(() => {
-      // Check if the Objects menu is existing
-      cy.get("[data-cy='sidebar-menu']").within(() => {
-        cy.contains("Objects").should("exist");
-      });
-    });
     cy.wait("@getMenu").then(() => {
       cy.contains("Object Management").should("exist");
     });
