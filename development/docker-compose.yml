@@ -189,7 +189,7 @@ services:
       com.github.job: "${JOB_NAME:-unknown}"
 
   task-worker:
-    profiles: [demo, dev]
+    profiles: [dev]
     deploy:
       mode: replicated
       replicas: 2
