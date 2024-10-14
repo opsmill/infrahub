@@ -56,7 +56,7 @@ class RelatedPrefixNodeInput(InputObjectType):
 
 
 class PermissionType(ObjectType):
-    update_value = String(required=False)
+    update_value = Int(required=False)
 
 
 class AttributeInterface(InfrahubInterface):
