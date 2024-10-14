@@ -23,22 +23,33 @@ export type Permission = {
   delete: PermissionAction;
 };
 
-export function getPermission(permission: PermissionProps): Permission {
+export function getPermission(
+  permission: PermissionProps | Array<{ node: PermissionProps }>
+): Permission {
+  const isPermissionArray = Array.isArray(permission);
   return {
     view: {
-      isAllowed: permission?.view === "ALLOW",
+      isAllowed: isPermissionArray
+        ? permission.some(({ node }) => node.view === "ALLOW")
+        : permission.view === "ALLOW",
       message: "You can't access this view.",
     },
     create: {
-      isAllowed: permission?.create === "ALLOW",
+      isAllowed: isPermissionArray
+        ? permission.some(({ node }) => node.create === "ALLOW")
+        : permission.create === "ALLOW",
       message: "You can't create this object.",
     },
     update: {
-      isAllowed: permission?.update === "ALLOW",
+      isAllowed: isPermissionArray
+        ? permission.some(({ node }) => node.update === "ALLOW")
+        : permission.update === "ALLOW",
       message: "You can't update this object.",
     },
     delete: {
-      isAllowed: permission?.delete === "ALLOW",
+      isAllowed: isPermissionArray
+        ? permission.some(({ node }) => node.delete === "ALLOW")
+        : permission.delete === "ALLOW",
       message: "You can't delete this object.",
     },
   };
