@@ -586,7 +586,7 @@ jobs:
       - name: Run 'invoke demo.load'
         run: |
           unset INFRAHUB_IMAGE_VER
-          invoke invoke demo.start demo.load-infra-schema
+          invoke demo.start demo.load-infra-schema
 
       - name: Check Demo Status
         run: invoke demo.status
