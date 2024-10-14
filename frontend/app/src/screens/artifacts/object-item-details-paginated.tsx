@@ -107,7 +107,6 @@ export default function ArtifactsDetails() {
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
-  console.log("data: ", data);
   const permission = getPermission(
     schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges[0]?.node
   );
