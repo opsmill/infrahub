@@ -575,15 +575,21 @@ jobs:
         run: echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-      - name: "unset"
-        run: unset INFRAHUB_IMAGE_VER
+
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
       - name: Run 'invoke demo.start'
-        run: invoke demo.start demo.load-infra-schema
+        run: invoke demo.start
+
+      - name: Run 'invoke demo.load'
+        run: |
+          unset INFRAHUB_IMAGE_VER
+          invoke demo.load-infra-schema
 
       - name: Check Demo Status
         run: invoke demo.status
