@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, PermissionDecision
 from infrahub.core.query import Query
 from infrahub.core.registry import registry
 
@@ -27,7 +27,8 @@ class Permission:
 @dataclass
 class GlobalPermission(Permission):
     def __str__(self) -> str:
-        return f"global:{self.action}:{self.decision}"
+        decision = PermissionDecision(value=self.decision)
+        return f"global:{self.action}:{decision.name.lower()}"
 
 
 @dataclass
@@ -35,7 +36,8 @@ class ObjectPermission(Permission):
     namespace: str
 
     def __str__(self) -> str:
-        return f"object:{self.namespace}:{self.name}:{self.action}:{self.decision}"
+        decision = PermissionDecision(value=self.decision)
+        return f"object:{self.namespace}:{self.name}:{self.action}:{decision.name.lower()}"
 
 
 class AccountGlobalPermissionQuery(Query):
