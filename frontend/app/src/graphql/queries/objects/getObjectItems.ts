@@ -45,17 +45,20 @@ query {{kind}} (
         {{/each}}
       }
     }
-    permissions{
-      edges{
-        node{
-          kind
-          view
-          create
-          update
-          delete
+
+    {{#if hasPermissions}}
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
         }
       }
-    }
+    {{/if}}
   }
 }
 `);
