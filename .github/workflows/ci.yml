@@ -583,13 +583,10 @@ jobs:
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
-      - name: Run 'invoke demo.start'
-        run: invoke demo.start
-
       - name: Run 'invoke demo.load'
         run: |
           unset INFRAHUB_IMAGE_VER
-          invoke demo.load-infra-schema
+          invoke invoke demo.start demo.load-infra-schema
 
       - name: Check Demo Status
         run: invoke demo.status
