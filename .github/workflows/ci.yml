@@ -577,7 +577,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: frontend/app/package-lock.json
 
       - name: Install Invoke
         run: pip install toml invoke
