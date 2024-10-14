@@ -584,7 +584,13 @@ jobs:
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
       - name: Run 'invoke demo.start'
-        run: invoke demo.start demo.load-infra-schema
+        run: invoke demo.start
+
+      - name: Run 'invoke test'
+        run: curl http://server:8000/api/schema/load?branch=main;sleep 30
+
+      - name: Run 'invoke demo.load'
+        run: invoke demo.load-infra-schema
 
       - name: Check Demo Status
         run: invoke demo.status
