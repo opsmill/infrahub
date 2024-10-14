@@ -586,9 +586,6 @@ jobs:
       - name: Run 'invoke demo.start'
         run: invoke demo.start
 
-      - name: Run 'invoke test'
-        run: sleep 30
-
       - name: Run 'invoke demo.load'
         run: invoke demo.load-infra-schema
 
