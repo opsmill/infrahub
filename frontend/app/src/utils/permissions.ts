@@ -1,3 +1,5 @@
+import { IModelSchema } from "@/state/atoms/schema.atom";
+
 export type PermissionProps = {
   view: string;
   create: string;
@@ -5,23 +7,20 @@ export type PermissionProps = {
   delete: string;
 };
 
+export type PermissionAction =
+  | {
+      isAllowed: true;
+    }
+  | {
+      isAllowed: false;
+      message: string;
+    };
+
 export type Permission = {
-  view: {
-    isAllowed: boolean;
-    message: string;
-  };
-  create: {
-    isAllowed: boolean;
-    message: string;
-  };
-  update: {
-    isAllowed: boolean;
-    message: string;
-  };
-  delete: {
-    isAllowed: boolean;
-    message: string;
-  };
+  view: PermissionAction;
+  create: PermissionAction;
+  update: PermissionAction;
+  delete: PermissionAction;
 };
 
 export function getPermission(permission: PermissionProps): Permission {
@@ -44,3 +43,18 @@ export function getPermission(permission: PermissionProps): Permission {
     },
   };
 }
+
+export const PERMISSION_ALLOW: Permission = {
+  view: {
+    isAllowed: true,
+  },
+  create: {
+    isAllowed: true,
+  },
+  update: {
+    isAllowed: true,
+  },
+  delete: {
+    isAllowed: true,
+  },
+};
