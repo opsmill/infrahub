@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useTitle } from "@/hooks/useTitle";
 import { BranchDetails } from "@/screens/branches/branch-details";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
-import Content, { ContentCard } from "@/screens/layout/content";
+import Content from "@/screens/layout/content";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { constructPath } from "@/utils/fetch";
 import { useAtomValue } from "jotai";
@@ -46,7 +46,7 @@ export function BranchDetailsPage() {
   }
 
   return (
-    <ContentCard>
+    <Content.Card>
       <header className="p-5 font-bold flex gap-2 items-center">
         <h1 className="text-xl">{branch.name}</h1>
         {branch.is_default && <Badge variant="blue-outline">default</Badge>}
@@ -55,7 +55,7 @@ export function BranchDetailsPage() {
       <BranchTab />
 
       <BranchContent branchName={branchName} />
-    </ContentCard>
+    </Content.Card>
   );
 }
 
