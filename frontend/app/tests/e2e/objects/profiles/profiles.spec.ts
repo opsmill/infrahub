@@ -16,7 +16,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
   });
 
-  test.skip("should create a new profile successfully", async ({ page }) => {
+  test("should create a new profile successfully", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto("/objects/CoreProfile");
       await expect(page.getByRole("heading")).toContainText("Profile");
@@ -39,7 +39,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
   });
 
-  test.skip("access the created profile, view its data, and edit it", async ({ page }) => {
+  test("access the created profile, view its data, and edit it", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto("/objects/CoreProfile");
       await expect(page.getByRole("heading")).toContainText("Profile");
@@ -56,7 +56,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
   });
 
-  test.skip("create an object with a profile", async ({ page }) => {
+  test("create an object with a profile", async ({ page }) => {
     await test.step("Navigate to object creation page", async () => {
       await page.goto("/objects/BuiltinTag");
       await page.getByTestId("create-object-button").click();
@@ -106,7 +106,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
   });
 
-  test.skip("edit a used profile and verify the changes reflect in an object using it", async ({
+  test("edit a used profile and verify the changes reflect in an object using it", async ({
     page,
   }) => {
     await test.step("Navigate to an used profile", async () => {
@@ -129,7 +129,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
   });
 
-  test.skip("edit profile of tag without touching any other field", async ({ page }) => {
+  test("edit profile of tag without touching any other field", async ({ page }) => {
     await test.step("got to edit form of tag", async () => {
       await page.goto("/objects/BuiltinTag");
       await page.getByRole("link", { name: "tag with profile" }).click();
@@ -146,7 +146,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await expect(page.getByText("Description-")).toBeVisible();
   });
 
-  test.skip("delete the profile and reset object attribute value", async ({ page }) => {
+  test("delete the profile and reset object attribute value", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto("/objects/CoreProfile");
     });
@@ -188,9 +188,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     });
   });
 
-  test.skip("should verify the form fields for a new profile for interface L2", async ({
-    page,
-  }) => {
+  test("should verify the form fields for a new profile for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
       await page.goto("/objects/CoreProfile");
 
@@ -224,7 +222,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     });
   });
 
-  test.skip("should create a new profile successfully for interface L2", async ({ page }) => {
+  test("should create a new profile successfully for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
       await page.goto("/objects/CoreProfile");
       await page.getByTestId("create-object-button").click();
@@ -244,7 +242,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     });
   });
 
-  test.skip("should create a new profile successfully for generic interface", async ({ page }) => {
+  test("should create a new profile successfully for generic interface", async ({ page }) => {
     await test.step("access Interface form", async () => {
       await page.goto("/objects/CoreProfile");
       await page.getByTestId("create-object-button").click();
@@ -262,7 +260,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     });
   });
 
-  test.skip("should verify profile values after creation", async ({ page }) => {
+  test("should verify profile values after creation", async ({ page }) => {
     await page.goto("/objects/CoreProfile");
     await page.getByRole("link", { name: PROFILE_NAME }).click();
     await expect(page.locator("dl").getByText(PROFILE_NAME)).toBeVisible();
@@ -278,7 +276,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     await expect(page.getByText("Provisioning")).toBeVisible();
   });
 
-  test.skip("should verify the available profiles in the object form", async ({ page }) => {
+  test("should verify the available profiles in the object form", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Select an object type").click();

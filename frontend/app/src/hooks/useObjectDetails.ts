@@ -15,6 +15,7 @@ export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
   const relationshipsTabs = getTabs(schema);
   const columns = getSchemaObjectColumns({ schema });
 
+  const isProfileSchema = schema.namespace === "Profile";
   const query = gql(
     schema
       ? getObjectDetailsPaginated({
@@ -29,6 +30,7 @@ export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
             schema?.kind !== PROFILE_KIND &&
             !isGeneric(schema) &&
             schema?.generate_profile,
+          hasPermissions: !isProfileSchema,
         })
       : // Empty query to make the gql parsing work
         // TODO: Find another solution for queries while loading schema
