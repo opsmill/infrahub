@@ -51,11 +51,14 @@ const getQuery = (schema?: IModelSchema, filters?: Array<Filter>) => {
 
   const relationships = getObjectRelationships({ schema, forListView: true });
 
+  const isProfileSchema = schema.namespace === "Profile";
+
   return getObjectItemsPaginated({
     kind: kindFilterSchema?.kind || schema.kind,
     attributes,
     relationships,
     filters: filtersString,
+    hasPermissions: !isProfileSchema,
   });
 };
 
