@@ -583,6 +583,9 @@ jobs:
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
+      - name: Run 'invoke demo.start'
+        run: invoke demo.start
+
       - name: Run 'invoke demo.load'
         run: |
           unset INFRAHUB_IMAGE_VER
@@ -600,11 +603,11 @@ jobs:
 
       - name: Display task worker 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-run-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
 
       - name: Display task worker 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-run-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
 
       - name: Display task manager logs
         if: always()
