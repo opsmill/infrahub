@@ -54,7 +54,9 @@ export function BranchDetailsPage() {
 
       <BranchTab />
 
-      <BranchContent branchName={branchName} />
+      <Content.CardContent>
+        <BranchContent branchName={branchName} />
+      </Content.CardContent>
     </Content.Card>
   );
 }
