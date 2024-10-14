@@ -20,7 +20,7 @@ export default function TabProfile() {
   const tokenData = parseJwt(localToken);
   const accountId = tokenData?.sub;
 
-  const { data, error, networkStatus } = useObjectDetails(schema, accountId);
+  const { data, error, networkStatus, permission } = useObjectDetails(schema, accountId);
 
   const objectDetailsData = schema && data && data[schema.kind!]?.edges[0]?.node;
 
@@ -43,7 +43,12 @@ export default function TabProfile() {
   return (
     <Content className="p-2">
       <Card>
-        <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} hideHeaders />
+        <ObjectItemDetails
+          schema={schema}
+          objectDetailsData={objectDetailsData}
+          permission={permission}
+          hideHeaders
+        />
       </Card>
     </Content>
   );

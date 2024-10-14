@@ -23,6 +23,7 @@ import {
   getObjectTabs,
   getTabs,
 } from "@/utils/getSchemaObjectColumns";
+import { Permission } from "@/utils/permissions";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
@@ -40,6 +41,7 @@ type ObjectDetailsProps = {
   objectDetailsData: any;
   taskData?: Object;
   hideHeaders?: boolean;
+  permission: Permission;
 };
 
 export default function ObjectItemDetails({
