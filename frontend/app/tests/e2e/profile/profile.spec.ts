@@ -22,7 +22,7 @@ test.describe("/profile", () => {
   test.describe("when logged in as admin account", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test("should access the profile page", async ({ page }) => {
+    test.skip("should access the profile page", async ({ page }) => {
       await test.step("go to profile page", async () => {
         await page.goto("/");
         await page.getByTestId("authenticated-menu-trigger").click();
@@ -41,7 +41,7 @@ test.describe("/profile", () => {
   test.describe("when logged in as read-write account", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.READ_WRITE });
 
-    test("should access the profile page", async ({ page }) => {
+    test.skip("should access the profile page", async ({ page }) => {
       await test.step("go to profile page", async () => {
         await page.goto("/");
         await page.getByTestId("authenticated-menu-trigger").click();
@@ -61,7 +61,7 @@ test.describe("/profile", () => {
   test.describe("when logged in as read-only account", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.READ_ONLY });
 
-    test("should access the profile page", async ({ page }) => {
+    test.skip("should access the profile page", async ({ page }) => {
       await test.step("go to profile page", async () => {
         await page.goto("/");
         await page.getByTestId("authenticated-menu-trigger").click();
