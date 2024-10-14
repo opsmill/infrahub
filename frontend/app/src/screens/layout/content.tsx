@@ -1,4 +1,5 @@
 import { Retry } from "@/components/buttons/retry";
+import { Card, CardProps } from "@/components/ui/card";
 import { classNames } from "@/utils/common";
 import { HTMLAttributes, ReactNode } from "react";
 
@@ -46,9 +47,14 @@ export const ContentTitle = ({
   );
 };
 
+export const ContentCard = ({ className, ...props }: CardProps) => {
+  return <Card className={classNames("p-0 m-2 overflow-hidden", className)} {...props} />;
+};
+
 export const Content = Object.assign(ContentRoot, {
   Title: ContentTitle,
   Root: ContentRoot,
+  Card: ContentCard,
 });
 
 export default Content;
