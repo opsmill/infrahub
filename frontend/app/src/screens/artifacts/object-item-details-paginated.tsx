@@ -77,6 +77,7 @@ export default function ArtifactsDetails() {
         columns,
         relationshipsTabs,
         objectid,
+        hasPermissions: true,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -106,6 +107,7 @@ export default function ArtifactsDetails() {
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
+  console.log("data: ", data);
   const permission = getPermission(
     schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges[0]?.node
   );
