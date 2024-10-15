@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import GlobalPermissions
+from infrahub.core.account import GlobalPermission
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.permissions.constants import AssignedPermissions, PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
@@ -42,7 +43,9 @@ async def report_schema_permissions(
 
     is_super_admin = perm_backend.resolve_global_permission(
         permissions=permissions["global_permissions"],
-        permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:6",
+        permission_to_check=GlobalPermission(
+            id="", name="", action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+        ),
     )
 
     permission_objects: list[KindPermissions] = []

@@ -102,10 +102,10 @@ async def test_has_permission_global(
     await group2.members.save(db=db)
 
     assert await backend.has_permission(
-        db=db, account_id=first_account.id, permission=str(allow_default_branch_edition), branch=default_branch
+        db=db, account_id=first_account.id, permission=allow_default_branch_edition, branch=default_branch
     )
     assert not await backend.has_permission(
-        db=db, account_id=second_account.id, permission=str(allow_default_branch_edition), branch=default_branch
+        db=db, account_id=second_account.id, permission=allow_default_branch_edition, branch=default_branch
     )
 
 
@@ -193,10 +193,10 @@ async def test_has_permission_object(
         decision=PermissionDecision.ALLOW_ALL.value,
     )
     assert not await backend.has_permission(
-        db=db, account_id=first_account.id, permission=str(permission), branch=default_branch
+        db=db, account_id=first_account.id, permission=permission, branch=default_branch
     )
     assert await backend.has_permission(
-        db=db, account_id=second_account.id, permission=str(permission), branch=default_branch
+        db=db, account_id=second_account.id, permission=permission, branch=default_branch
     )
 
 

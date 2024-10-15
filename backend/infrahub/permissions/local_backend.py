@@ -54,29 +54,27 @@ class LocalPermissionBackend(PermissionBackend):
 
         return combined_decision
 
-    def resolve_object_permission(self, permissions: list[ObjectPermission], permission_to_check: str) -> bool:
+    def resolve_object_permission(
+        self, permissions: list[ObjectPermission], permission_to_check: ObjectPermission
+    ) -> bool:
         """Compute the permissions and check if the one provided is allowed."""
-        if not permission_to_check.startswith("object:"):
-            return False
-
-        _, namespace, name, action, decision = permission_to_check.split(":")
-
-        required_decision = PermissionDecisionFlag(value=int(decision))
+        required_decision = PermissionDecisionFlag(value=permission_to_check.decision)
         combined_decision = self.report_object_permission(
-            permissions=permissions, namespace=namespace, name=name, action=action
+            permissions=permissions,
+            namespace=permission_to_check.namespace,
+            name=permission_to_check.name,
+            action=permission_to_check.action,
         )
 
         return combined_decision & required_decision == required_decision
 
-    def resolve_global_permission(self, permissions: list[GlobalPermission], permission_to_check: str) -> bool:
-        if not permission_to_check.startswith("global:"):
-            return False
-
-        _, action, _ = permission_to_check.split(":")
+    def resolve_global_permission(
+        self, permissions: list[GlobalPermission], permission_to_check: GlobalPermission
+    ) -> bool:
         grant_permission = False
 
         for permission in permissions:
-            if permission.action == action:
+            if permission.action == permission_to_check.action:
                 # Early exit on deny as deny preempt allow
                 if permission.decision == PermissionDecisionFlag.DENY:
                     return False
@@ -87,19 +85,28 @@ class LocalPermissionBackend(PermissionBackend):
     async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions:
         return await fetch_permissions(db=db, account_id=account_id, branch=branch)
 
-    async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool:
+    async def has_permission(
+        self, db: InfrahubDatabase, account_id: str, permission: GlobalPermission | ObjectPermission, branch: Branch
+    ) -> bool:
         granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
+        is_super_admin = self.resolve_global_permission(
+            permissions=granted_permissions["global_permissions"],
+            permission_to_check=GlobalPermission(
+                id="", name="", action=GlobalPermissions.SUPER_ADMIN, decision=PermissionDecision.ALLOW_ALL
+            ),
+        )
 
-        # Check for a final super admin permission at the end if no permissions have matched before
-        return (
-            self.resolve_global_permission(
-                permissions=granted_permissions["global_permissions"], permission_to_check=permission
+        if isinstance(permission, GlobalPermission):
+            return (
+                self.resolve_global_permission(
+                    permissions=granted_permissions["global_permissions"], permission_to_check=permission
+                )
+                or is_super_admin
             )
-            or self.resolve_object_permission(
+
+        return (
+            self.resolve_object_permission(
                 permissions=granted_permissions["object_permissions"], permission_to_check=permission
             )
-            or self.resolve_global_permission(
-                permissions=granted_permissions["global_permissions"],
-                permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:{PermissionDecision.ALLOW_ALL.value}",
-            )
+            or is_super_admin
         )

@@ -29,8 +29,8 @@ class CoreGlobalPermission(Node):
 
         if fields:
             if "identifier" in fields:
-                decision = PermissionDecisionFlag(value=self.decision.value.value)
-                response["identifier"] = {"value": f"global:{self.action.value}:{decision.name.lower()}"}  # type: ignore[attr-defined]
+                decision = PermissionDecisionFlag(value=self.decision.value.value)  # type: ignore[attr-defined]
+                response["identifier"] = {"value": f"global:{self.action.value}:{decision.name.lower()}"}  # type: ignore[attr-defined,union-attr]
 
         return response
 
@@ -54,9 +54,9 @@ class CoreObjectPermission(Node):
 
         if fields:
             if "identifier" in fields:
-                decision = PermissionDecisionFlag(value=self.decision.value.value)
+                decision = PermissionDecisionFlag(value=self.decision.value.value)  # type: ignore[attr-defined]
                 response["identifier"] = {
-                    "value": f"object:{self.namespace.value}:{self.name.value}:{self.action.value.value}:{decision.name.lower()}"  # type: ignore[attr-defined]
+                    "value": f"object:{self.namespace.value}:{self.name.value}:{self.action.value.value}:{decision.name.lower()}"  # type: ignore[attr-defined,union-attr]
                 }
 
         return response

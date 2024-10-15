@@ -27,7 +27,7 @@ class Permission:
 @dataclass
 class GlobalPermission(Permission):
     def __str__(self) -> str:
-        decision = PermissionDecision(value=self.decision)
+        decision = PermissionDecision(self.decision)
         return f"global:{self.action}:{decision.name.lower()}"
 
 
@@ -36,7 +36,7 @@ class ObjectPermission(Permission):
     namespace: str
 
     def __str__(self) -> str:
-        decision = PermissionDecision(value=self.decision)
+        decision = PermissionDecision(self.decision)
         return f"object:{self.namespace}:{self.name}:{self.action}:{decision.name.lower()}"
 
 

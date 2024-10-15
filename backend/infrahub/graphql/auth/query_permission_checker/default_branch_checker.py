@@ -1,5 +1,6 @@
 from infrahub.auth import AccountSession
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.database import InfrahubDatabase
@@ -13,7 +14,9 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can edit data in the default branch."""
 
-    permission_required = f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:{PermissionDecision.ALLOW_ALL.value}"
+    permission_required = GlobalPermission(
+        id="", name="", action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
     exempt_operations = ["BranchCreate"]
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:

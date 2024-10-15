@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
@@ -12,3 +13,18 @@ class KindPermissions(TypedDict):
     delete: PermissionDecisionFlag
     update: PermissionDecisionFlag
     view: PermissionDecisionFlag
+
+
+@dataclass
+class GlobalPermissionToVerify:
+    name: str
+    action: str
+    decision: PermissionDecisionFlag
+
+
+@dataclass
+class ObjectPermissionToVerify:
+    namespace: str
+    name: str
+    action: str
+    decision: PermissionDecisionFlag

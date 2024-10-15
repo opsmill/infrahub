@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from infrahub.core.account import ObjectPermission
+    from infrahub.core.account import GlobalPermission, ObjectPermission
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.permissions.constants import AssignedPermissions, PermissionDecisionFlag
@@ -20,4 +20,6 @@ class PermissionBackend(ABC):
     ) -> PermissionDecisionFlag: ...
 
     @abstractmethod
-    async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool: ...
+    async def has_permission(
+        self, db: InfrahubDatabase, account_id: str, permission: GlobalPermission | ObjectPermission, branch: Branch
+    ) -> bool: ...
