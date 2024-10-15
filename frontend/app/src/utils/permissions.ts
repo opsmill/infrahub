@@ -65,7 +65,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't access this view",
+          message: "You can't update this view",
         },
     delete: isDeleteAllowed
       ? {
