@@ -39,6 +39,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();
@@ -121,6 +122,10 @@ export default function ArtifactsDetails() {
 
   if (!objectDetailsData) {
     return null;
+  }
+
+  if (!permission.view.isAllowed) {
+    return <UnauthorizedScreen message={permission.view.message} />;
   }
 
   const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);

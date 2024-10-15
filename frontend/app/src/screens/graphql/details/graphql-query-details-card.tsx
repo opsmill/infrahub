@@ -12,25 +12,47 @@ import { iNodeSchema } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/utils/objects";
+import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
   schema: iNodeSchema;
   refetch: () => Promise<unknown>;
+  permission: Permission;
 };
 
-const GraphqlQueryDetailsCard = ({ data, schema, refetch }: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryDetailsCard = ({
+  data,
+  schema,
+  refetch,
+  permission,
+}: GraphqlQueryDetailsCardProps) => {
   return (
     <CardWithBorder>
-      <GraphqlQueryDetailsTitle data={data} schema={schema} refetch={refetch} />
+      <GraphqlQueryDetailsTitle
+        data={data}
+        schema={schema}
+        refetch={refetch}
+        permission={permission}
+      />
 
-      <GraphqlQueryPropertyList data={data} schema={schema} refetch={refetch} />
+      <GraphqlQueryPropertyList
+        data={data}
+        schema={schema}
+        refetch={refetch}
+        permission={permission}
+      />
     </CardWithBorder>
   );
 };
 
-const GraphqlQueryDetailsTitle = ({ data, schema, refetch }: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryDetailsTitle = ({
+  data,
+  schema,
+  refetch,
+  permission,
+}: GraphqlQueryDetailsCardProps) => {
   return (
     <>
       <CardWithBorder.Title className="flex items-center gap-1">
@@ -40,13 +62,23 @@ const GraphqlQueryDetailsTitle = ({ data, schema, refetch }: GraphqlQueryDetails
           {schema.name} - {data.display_label}
         </span>
 
-        <ObjectEditSlideOverTrigger data={data} schema={schema} onUpdateComplete={refetch} />
+        <ObjectEditSlideOverTrigger
+          data={data}
+          schema={schema}
+          onUpdateComplete={refetch}
+          permission={permission}
+        />
       </CardWithBorder.Title>
     </>
   );
 };
 
-const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryPropertyList = ({
+  data,
+  schema,
+  refetch,
+  permission,
+}: GraphqlQueryDetailsCardProps) => {
   const properties: Property[] = [
     {
       name: "ID",
@@ -89,6 +121,7 @@ const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetails
                 refetch={refetch}
                 data={data}
                 schema={schema}
+                permission={permission}
               />
             </div>
           </div>
@@ -119,6 +152,7 @@ const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetails
                   refetch={refetch}
                   data={data}
                   schema={schema}
+                  permission={permission}
                 />
               </div>
             )),
@@ -147,6 +181,7 @@ const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetails
                   refetch={refetch}
                   data={data}
                   schema={schema}
+                  permission={permission}
                 />
               </div>
             </div>
