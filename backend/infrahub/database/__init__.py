@@ -182,6 +182,11 @@ class InfrahubDatabase:
             return True
         return False
 
+    def get_context(self) -> dict[str, Any]:
+        return {
+            "queries_names_to_config": self.queries_names_to_config,
+        }
+
     def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
         self._schemas[name or schema.name] = schema
 
@@ -191,6 +196,8 @@ class InfrahubDatabase:
         if read_only:
             session_mode = InfrahubDatabaseSessionMode.READ
 
+        context = self.get_context()
+
         return self.__class__(
             mode=InfrahubDatabaseMode.SESSION,
             db_type=self.db_type,
@@ -198,10 +205,12 @@ class InfrahubDatabase:
             db_manager=self.manager,
             driver=self._driver,
             session_mode=session_mode,
-            queries_names_to_config=self.queries_names_to_config,
+            **context,
         )
 
     def start_transaction(self, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
+        context = self.get_context()
+
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
@@ -210,7 +219,7 @@ class InfrahubDatabase:
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
-            queries_names_to_config=self.queries_names_to_config,
+            **context,
         )
 
     async def session(self) -> AsyncSession:

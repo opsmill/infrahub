@@ -1,6 +1,12 @@
 import pytest
 
 from infrahub.core.schema import SchemaRoot
+from tests.helpers.query_benchmark.db_query_profiler import QueryAnalyzer
+
+
+@pytest.fixture(scope="session")
+def query_analyzer() -> QueryAnalyzer:
+    return QueryAnalyzer()
 
 
 @pytest.fixture

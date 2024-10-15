@@ -15,13 +15,12 @@ from tests.helpers.query_benchmark.car_person_generators import (
     CarGenerator,
 )
 from tests.helpers.query_benchmark.data_generator import load_data_and_profile
-from tests.helpers.utils import start_db_and_create_default_branch
+
+from .utils import start_db_and_create_default_branch
 
 RESULTS_FOLDER = Path(__file__).resolve().parent / "query_performance_results"
 
 log = get_logger()
-
-pytestmark = pytest.mark.skip("Not relevant to test this currently.")
 
 
 @pytest.mark.parametrize(
@@ -42,11 +41,11 @@ pytestmark = pytest.mark.skip("Not relevant to test this currently.")
     ],
 )
 async def test_query_unique_cars_single_attribute(
-    neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root
+    query_analyzer, neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root
 ):
     queries_names_to_config = {NodeUniqueAttributeConstraintQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime)}
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(
-        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config
+        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config, query_analyzer=query_analyzer
     )
 
     # Register schema
@@ -70,5 +69,6 @@ async def test_query_unique_cars_single_attribute(
         profile_frequency=50,
         nb_elements=1000,
         graphs_output_location=graph_output_location,
+        query_analyzer=query_analyzer,
         test_label=f" data: {neo4j_image}" + f" runtime: {neo4j_runtime}",
     )

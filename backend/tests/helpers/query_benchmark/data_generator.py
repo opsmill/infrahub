@@ -5,7 +5,7 @@ from typing import Callable
 from rich.console import Console
 from rich.progress import Progress
 
-from tests.helpers.query_benchmark.db_query_profiler import InfrahubDatabaseProfiler, ProfilerEnabler, query_analyzer
+from tests.helpers.query_benchmark.db_query_profiler import InfrahubDatabaseProfiler, ProfilerEnabler, QueryAnalyzer
 
 
 class DataGenerator:
@@ -33,6 +33,7 @@ async def load_data_and_profile(
     profile_frequency: int,
     graphs_output_location: Path,
     test_label: str,
+    query_analyzer: QueryAnalyzer,
     memory_profiling_rate: int = 25,
 ) -> None:
     """
@@ -67,7 +68,7 @@ async def load_data_and_profile(
             await data_generator.load_data(nb_elements=nb_elem_to_load)
             query_analyzer.increase_nb_elements_loaded(profile_frequency)
             profile_memory = i % memory_profiling_rate == 0 if memory_profiling_rate is not None else False
-            with ProfilerEnabler(profile_memory=profile_memory):
+            with ProfilerEnabler(profile_memory=profile_memory, query_analyzer=query_analyzer):
                 await func_call()
             progress.advance(task)
 

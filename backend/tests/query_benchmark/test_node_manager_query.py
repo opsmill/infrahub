@@ -23,8 +23,6 @@ RESULTS_FOLDER = Path(__file__).resolve().parent / "query_performance_results"
 
 log = get_logger()
 
-pytestmark = pytest.mark.skip("Not relevant to test this currently.")
-
 
 @pytest.mark.parametrize(
     "neo4j_image, neo4j_runtime",
@@ -43,14 +41,14 @@ pytestmark = pytest.mark.skip("Not relevant to test this currently.")
         ),
     ],
 )
-async def test_query_persons(neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root):
+async def test_query_persons(query_analyzer, neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root):
     queries_names_to_config = {
         NodeGetListQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
         NodeListGetAttributeQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
         NodeListGetInfoQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
     }
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(
-        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config
+        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config, query_analyzer=query_analyzer
     )
 
     registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
@@ -67,6 +65,7 @@ async def test_query_persons(neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_
         profile_frequency=50,
         nb_elements=1000,
         graphs_output_location=graph_output_location,
+        query_analyzer=query_analyzer,
         test_label=f" data: {neo4j_image}" + f" runtime: {neo4j_runtime}",
     )
 
@@ -88,14 +87,16 @@ async def test_query_persons(neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_
         ),
     ],
 )
-async def test_query_persons_with_isolated_cars(neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root):
+async def test_query_persons_with_isolated_cars(
+    query_analyzer, neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root
+):
     queries_names_to_config = {
         NodeGetListQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
         NodeListGetAttributeQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
         NodeListGetInfoQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
     }
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(
-        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config
+        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config, query_analyzer=query_analyzer
     )
 
     registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
@@ -117,6 +118,7 @@ async def test_query_persons_with_isolated_cars(neo4j_image: str, neo4j_runtime:
         profile_frequency=50,
         nb_elements=1000,
         graphs_output_location=graph_output_location,
+        query_analyzer=query_analyzer,
         test_label=f" data: {neo4j_image}" + f" runtime: {neo4j_runtime}",
     )
 
@@ -138,14 +140,16 @@ async def test_query_persons_with_isolated_cars(neo4j_image: str, neo4j_runtime:
         ),
     ],
 )
-async def test_query_persons_with_connected_cars(neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root):
+async def test_query_persons_with_connected_cars(
+    query_analyzer, neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root
+):
     queries_names_to_config = {
         NodeGetListQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
         NodeListGetAttributeQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
         NodeListGetInfoQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime),
     }
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(
-        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config
+        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config, query_analyzer=query_analyzer
     )
 
     registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
@@ -163,5 +167,6 @@ async def test_query_persons_with_connected_cars(neo4j_image: str, neo4j_runtime
         profile_frequency=50,
         nb_elements=1000,
         graphs_output_location=graph_output_location,
+        query_analyzer=query_analyzer,
         test_label=f" data: {neo4j_image}" + f" runtime: {neo4j_runtime}",
     )
