@@ -171,6 +171,7 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
     def __init__(self, query_analyzer: QueryAnalyzer, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.query_analyzer = query_analyzer
+        # Note that any attribute added here should be added to get_context method.
 
     def get_context(self) -> dict[str, Any]:
         ctx = super().get_context()

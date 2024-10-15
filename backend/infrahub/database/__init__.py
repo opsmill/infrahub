@@ -183,9 +183,12 @@ class InfrahubDatabase:
         return False
 
     def get_context(self) -> dict[str, Any]:
-        return {
-            "queries_names_to_config": self.queries_names_to_config,
-        }
+        """
+        This method is meant to be overridden by subclasses in order to fill in subclass attributes
+        to methods returning a copy of this object using self.__class__ constructor.
+        """
+
+        return {}
 
     def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
         self._schemas[name or schema.name] = schema
@@ -205,6 +208,7 @@ class InfrahubDatabase:
             db_manager=self.manager,
             driver=self._driver,
             session_mode=session_mode,
+            queries_names_to_config=self.queries_names_to_config,
             **context,
         )
 
@@ -219,6 +223,7 @@ class InfrahubDatabase:
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
+            queries_names_to_config=self.queries_names_to_config,
             **context,
         )
 
