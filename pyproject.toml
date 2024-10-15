@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "infrahub"
+name = "infrahub-server"
 version = "1.0.0-dev0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
@@ -16,20 +16,15 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-packages = [{ include = "infrahub", from = "backend" }]
-
-
-[tool.poetry.group.test-scale]
-optional = true
+packages = [
+    { include = "infrahub", from = "backend" },
+    { include = "infrahub_sdk", from = "python_sdk" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.10, < 3.13"
 neo4j = "~5.24"
 neo4j-rust-ext = "^5.24.0.0"
-infrahub-sdk = { path = "python_sdk", extras = [
-    "ctl",
-    "tests",
-], develop = true }
 pydantic = "2.7.2"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
@@ -38,8 +33,13 @@ structlog = "24.1.0"
 boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"] }
-typer = "0.12.3"
+typer = "0.12.5"
 prefect = "3.0.3"
+ujson = "^5"
+Jinja2 = "^3"
+gitpython = "^3"
+pyyaml = "^6"
+toml = "^0.10"
 
 # Dependencies specific to the API Server
 fastapi = "~0.112"
@@ -60,6 +60,17 @@ opentelemetry-exporter-otlp-proto-http = "^1.24.0"
 nats-py = "^2.7.2"
 netaddr = "1.3.0"
 authlib = "1.3.2"
+
+
+# Dependencies specific to the SDK
+rich = "^13"
+pyarrow = "^14"
+numpy = [
+    { version = "^1.24.2", optional = true, python = ">=3.9,<3.12" },
+    { version = "^1.26.2", optional = true, python = ">=3.12" },
+]
+
+
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
@@ -90,16 +101,20 @@ pytest-env = "^1.1.3"
 testcontainers = "^4.8.1"
 pytest-timeout = "^2.3.1"
 
-[tool.poetry.group.test-scale.dependencies]
-locust = "^2.20.1"
-docker = "^7.0.0"
-matplotlib = "^3.8"
-pandas = "^2.2"
+# [tool.poetry.group.test-scale.dependencies]
+# locust = "^2.20.1"
+# docker = "^7.0.0"
+# matplotlib = "^3.8"
+# pandas = "^2.2"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
+infrahubctl = "infrahub_sdk.ctl.cli:app"
+
+[tool.poetry.plugins."pytest11"]
+"pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
 
 [tool.poetry.plugins."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"

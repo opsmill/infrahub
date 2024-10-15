@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
+from typing_extensions import Self
 
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreMenuItem

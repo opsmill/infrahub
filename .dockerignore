@@ -15,7 +15,6 @@ node_modules
 coverage.xml
 .git*
 .devcontainer
-.husky
 frontend/**/node_modules
 frontend/**/playwright-report
 
