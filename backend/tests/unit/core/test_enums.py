@@ -18,5 +18,5 @@ def test_generate_python_enum_with_integers():
 
     enum_two = enum_class(2)
     assert isinstance(enum_two, enum.Enum)
-    assert {enum.name for enum in enum_class} == {"Value_2", "Value_5", "Value_14"}
+    assert {enum.name for enum in enum_class} == {"2", "5", "14"}
     assert {enum.value for enum in enum_class} == {2, 5, 14}
