@@ -57,9 +57,9 @@ const PropertiesPopover = ({
                   });
                   setShowMetaEditModal(true);
                 }}
-                disabled={!permission.create.isAllowed}
-                tooltipEnabled={!permission.create.isAllowed}
-                tooltipContent={permission.create.message ?? undefined}
+                disabled={!permission.update.isAllowed}
+                tooltipEnabled={!permission.update.isAllowed}
+                tooltipContent={permission.update.message ?? undefined}
                 data-testid="properties-edit-button"
               >
                 <Icon icon="mdi:pencil" className="text-custom-blue-500" />
