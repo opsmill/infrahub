@@ -16,8 +16,9 @@ from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.constants import GlobalPermissions, PermissionDecision
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import (  # noqa: TCH001
     SchemaBranchHash,
@@ -247,7 +248,16 @@ async def load_schema(
         if not await permission_backend.has_permission(
             db=db,
             account_id=account_session.account_id,
-            permission=f"global:{GlobalPermissions.MANAGE_SCHEMA.value}:{PermissionDecision.ALLOW.value}",
+            permission=GlobalPermission(
+                id="",
+                name="",
+                action=GlobalPermissions.MANAGE_SCHEMA.value,
+                decision=(
+                    PermissionDecision.ALLOW_DEFAULT
+                    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+                    else PermissionDecision.ALLOW_OTHER
+                ).value,
+            ),
             branch=branch,
         ):
             raise PermissionDeniedError("You are not allowed to manage the schema")

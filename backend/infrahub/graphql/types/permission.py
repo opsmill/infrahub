@@ -2,15 +2,21 @@ from __future__ import annotations
 
 from graphene import Field, Int, List, ObjectType, String
 
-from .enums import PermissionDecision
+from infrahub.graphql.types.enums import PermissionDecision
 
 
 class ObjectPermission(ObjectType):
     kind = Field(String, required=True, description="The kind this permission refers to.")
-    view = Field(PermissionDecision, required=True, description="Indicates if the account has the read permission")
-    create = Field(PermissionDecision, required=True, description="Indicates if the account has the create permission")
-    update = Field(PermissionDecision, required=True, description="Indicates if the account has the update permission")
-    delete = Field(PermissionDecision, required=True, description="Indicates if the account has the delete permission")
+    view = Field(PermissionDecision, required=True, description="Indicates the permission level for the read action.")
+    create = Field(
+        PermissionDecision, required=True, description="Indicates the permission level for the create action."
+    )
+    update = Field(
+        PermissionDecision, required=True, description="Indicates the permission level for the update action."
+    )
+    delete = Field(
+        PermissionDecision, required=True, description="Indicates the permission level for the delete action."
+    )
 
 
 class ObjectPermissionNode(ObjectType):

@@ -16,7 +16,11 @@ def get_enum_attribute_type_name(node_schema: MainSchemaTypes, attr_schema: Attr
 def generate_graphql_enum(name: str, options: List[Any]) -> graphene.Enum:
     def description_func(value: Any) -> str:
         if value:
-            return value.value
+            try:
+                int(value.value)
+                return value.name
+            except ValueError:
+                return value.value
         return f"Enum for {name}"
 
     py_enum = generate_python_enum(name=name, options=options)

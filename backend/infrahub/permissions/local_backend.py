@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.account import GlobalPermission, ObjectPermission, fetch_permissions
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
+from infrahub.permissions.constants import PermissionDecisionFlag
 
 from .backend import PermissionBackend
 
@@ -17,55 +18,65 @@ class LocalPermissionBackend(PermissionBackend):
     wildcard_values = ["*"]
     wildcard_actions = ["any"]
 
-    def compute_specificity(self, permission: ObjectPermission) -> int:
+    def _compute_specificity(self, permission: ObjectPermission) -> int:
         specificity = 0
-        if permission.branch not in self.wildcard_values:
-            specificity += 1
         if permission.namespace not in self.wildcard_values:
             specificity += 1
         if permission.name not in self.wildcard_values:
             specificity += 1
         if permission.action not in self.wildcard_actions:
             specificity += 1
+        if not permission.decision & PermissionDecisionFlag.ALLOW_ALL:
+            specificity += 1
         return specificity
 
-    def resolve_object_permission(self, permissions: list[ObjectPermission], permission_to_check: str) -> bool:
-        """Compute the permissions and check if the one provided is allowed."""
-        if not permission_to_check.startswith("object:"):
-            return False
-
-        most_specific_permission: str | None = None
+    def report_object_permission(
+        self, permissions: list[ObjectPermission], namespace: str, name: str, action: str
+    ) -> PermissionDecisionFlag:
+        """Given a set of permissions, return the permission decision for a given kind and action."""
         highest_specificity: int = -1
-        _, branch, namespace, name, action, _ = permission_to_check.split(":")
+        combined_decision = PermissionDecisionFlag.DENY
 
         for permission in permissions:
             if (
-                permission.branch in [branch, *self.wildcard_values]
-                and permission.namespace in [namespace, *self.wildcard_values]
+                permission.namespace in [namespace, *self.wildcard_values]
                 and permission.name in [name, *self.wildcard_values]
                 and permission.action in [action, *self.wildcard_actions]
             ):
+                permission_decision = PermissionDecisionFlag(value=permission.decision)
                 # Compute the specifity of a permission to keep the decision of the most specific if two or more permissions overlap
-                specificity = self.compute_specificity(permission=permission)
+                specificity = self._compute_specificity(permission=permission)
                 if specificity > highest_specificity:
-                    most_specific_permission = permission.decision
+                    combined_decision = permission_decision
                     highest_specificity = specificity
-                elif specificity == highest_specificity and permission.decision == PermissionDecision.DENY.value:
-                    most_specific_permission = permission.decision
+                elif specificity == highest_specificity:
+                    combined_decision |= permission_decision
 
-        return most_specific_permission == PermissionDecision.ALLOW.value
+        return combined_decision
 
-    def resolve_global_permission(self, permissions: list[GlobalPermission], permission_to_check: str) -> bool:
-        if not permission_to_check.startswith("global:"):
-            return False
+    def resolve_object_permission(
+        self, permissions: list[ObjectPermission], permission_to_check: ObjectPermission
+    ) -> bool:
+        """Compute the permissions and check if the one provided is allowed."""
+        required_decision = PermissionDecisionFlag(value=permission_to_check.decision)
+        combined_decision = self.report_object_permission(
+            permissions=permissions,
+            namespace=permission_to_check.namespace,
+            name=permission_to_check.name,
+            action=permission_to_check.action,
+        )
 
-        _, action, _ = permission_to_check.split(":")
+        return combined_decision & required_decision == required_decision
+
+    def resolve_global_permission(
+        self, permissions: list[GlobalPermission], permission_to_check: GlobalPermission
+    ) -> bool:
         grant_permission = False
 
         for permission in permissions:
-            if permission.action == action:
+            if permission.action == permission_to_check.action:
                 # Early exit on deny as deny preempt allow
-                if permission.decision == PermissionDecision.DENY.value:
+                if permission.decision == PermissionDecisionFlag.DENY:
                     return False
                 grant_permission = True
 
@@ -74,19 +85,28 @@ class LocalPermissionBackend(PermissionBackend):
     async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions:
         return await fetch_permissions(db=db, account_id=account_id, branch=branch)
 
-    async def has_permission(self, db: InfrahubDatabase, account_id: str, permission: str, branch: Branch) -> bool:
+    async def has_permission(
+        self, db: InfrahubDatabase, account_id: str, permission: GlobalPermission | ObjectPermission, branch: Branch
+    ) -> bool:
         granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
+        is_super_admin = self.resolve_global_permission(
+            permissions=granted_permissions["global_permissions"],
+            permission_to_check=GlobalPermission(
+                id="", name="", action=GlobalPermissions.SUPER_ADMIN, decision=PermissionDecision.ALLOW_ALL
+            ),
+        )
 
-        # Check for a final super admin permission at the end if no permissions have matched before
-        return (
-            self.resolve_global_permission(
-                permissions=granted_permissions["global_permissions"], permission_to_check=permission
+        if isinstance(permission, GlobalPermission):
+            return (
+                self.resolve_global_permission(
+                    permissions=granted_permissions["global_permissions"], permission_to_check=permission
+                )
+                or is_super_admin
             )
-            or self.resolve_object_permission(
+
+        return (
+            self.resolve_object_permission(
                 permissions=granted_permissions["object_permissions"], permission_to_check=permission
             )
-            or self.resolve_global_permission(
-                permissions=granted_permissions["global_permissions"],
-                permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:{PermissionDecision.ALLOW.value}",
-            )
+            or is_super_admin
         )

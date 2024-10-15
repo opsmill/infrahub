@@ -150,7 +150,6 @@ async def resolve_account_permissions(
             {
                 "node": {
                     "id": obj.id,
-                    "branch": obj.branch,
                     "namespace": obj.namespace,
                     "name": obj.name,
                     "action": obj.action,

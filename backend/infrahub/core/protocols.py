@@ -391,7 +391,6 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
 
 
 class CoreObjectPermission(CoreBasePermission):
-    branch: String
     namespace: String
     name: String
     action: Enum

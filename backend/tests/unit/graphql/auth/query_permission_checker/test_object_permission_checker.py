@@ -233,25 +233,22 @@ class TestObjectPermissions:
         for object_permission in [
             ObjectPermission(
                 id="",
-                branch="main",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.ANY.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
             ),
             ObjectPermission(
                 id="",
-                branch="main",
                 namespace="Core",
                 name="GraphQLQuery",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
             await obj.new(
                 db=db,
-                branch=object_permission.branch,
                 namespace=object_permission.namespace,
                 name=object_permission.name,
                 action=object_permission.action,
@@ -307,10 +304,7 @@ class TestObjectPermissions:
             auth_type=AuthType.JWT,
         )
 
-        with pytest.raises(
-            PermissionDeniedError,
-            match="You do not have the following permission: object:main:Core:Repository:view:allow",
-        ):
+        with pytest.raises(PermissionDeniedError, match=r":Repository:view:"):
             await perms.check(
                 db=db,
                 account_session=session,
@@ -357,7 +351,7 @@ class TestObjectPermissions:
             auth_type=AuthType.JWT,
         )
 
-        with pytest.raises(PermissionDeniedError, match="Repository:view:allow"):
+        with pytest.raises(PermissionDeniedError, match=r"Repository:view:"):
             await perms.check(
                 db=db,
                 account_session=session,

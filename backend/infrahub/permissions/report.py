@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
-from infrahub.core.registry import registry
+from infrahub.permissions.constants import AssignedPermissions, PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
@@ -11,7 +12,30 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
+    from infrahub.permissions.backend import PermissionBackend
     from infrahub.permissions.types import KindPermissions
+
+
+def get_permission_report(
+    backend: PermissionBackend,
+    permissions: AssignedPermissions,
+    node: MainSchemaTypes,
+    action: str,
+    is_super_admin: bool = False,
+    can_edit_default_branch: bool = False,  # pylint: disable=unused-argument
+) -> PermissionDecisionFlag:
+    if is_super_admin:
+        return PermissionDecisionFlag.ALLOW_ALL
+
+    decision = backend.report_object_permission(
+        permissions=permissions["object_permissions"], namespace=node.namespace, name=node.name, action=action
+    )
+
+    # What do we do if edit default branch global permission is set?
+    # if can_edit_default_branch:
+    #     decision |= PermissionDecisionFlag.ALLOW_DEFAULT
+
+    return decision
 
 
 async def report_schema_permissions(
@@ -20,48 +44,59 @@ async def report_schema_permissions(
     perm_backend = LocalPermissionBackend()
     permissions = await perm_backend.load_permissions(db=db, account_id=account_session.account_id, branch=branch)
 
-    # Check for super admin permission and handle default branch edition if account is not super admin
     is_super_admin = perm_backend.resolve_global_permission(
         permissions=permissions["global_permissions"],
-        permission_to_check=f"global:{GlobalPermissions.SUPER_ADMIN.value}:allow",
+        permission_to_check=GlobalPermission(
+            id="", name="", action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+        ),
     )
-    restrict_changes = False
-    if branch.name == registry.default_branch and not is_super_admin:
-        restrict_changes = not perm_backend.resolve_global_permission(
-            permissions=permissions["global_permissions"],
-            permission_to_check=f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:allow",
-        )
+    can_edit_default_branch = perm_backend.resolve_global_permission(
+        permissions=permissions["global_permissions"],
+        permission_to_check=GlobalPermission(
+            id="",
+            name="",
+            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        ),
+    )
 
     permission_objects: list[KindPermissions] = []
     for node in schemas:
-        permission_base = f"object:{branch.name}:{node.namespace}:{node.name}"
-
-        has_create = perm_backend.resolve_object_permission(
-            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:create:allow"
-        )
-        has_delete = perm_backend.resolve_object_permission(
-            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:delete:allow"
-        )
-        has_update = perm_backend.resolve_object_permission(
-            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:update:allow"
-        )
-        has_view = perm_backend.resolve_object_permission(
-            permissions=permissions["object_permissions"], permission_to_check=f"{permission_base}:view:allow"
-        )
-
         permission_objects.append(
             {
                 "kind": node.kind,
-                "create": PermissionDecision.ALLOW
-                if is_super_admin or (has_create and not restrict_changes)
-                else PermissionDecision.DENY,
-                "delete": PermissionDecision.ALLOW
-                if is_super_admin or (has_delete and not restrict_changes)
-                else PermissionDecision.DENY,
-                "update": PermissionDecision.ALLOW
-                if is_super_admin or (has_update and not restrict_changes)
-                else PermissionDecision.DENY,
-                "view": PermissionDecision.ALLOW if is_super_admin or has_view else PermissionDecision.DENY,
+                "create": get_permission_report(
+                    backend=perm_backend,
+                    permissions=permissions,
+                    node=node,
+                    action="create",
+                    is_super_admin=is_super_admin,
+                    can_edit_default_branch=can_edit_default_branch,
+                ),
+                "delete": get_permission_report(
+                    backend=perm_backend,
+                    permissions=permissions,
+                    node=node,
+                    action="delete",
+                    is_super_admin=is_super_admin,
+                    can_edit_default_branch=can_edit_default_branch,
+                ),
+                "update": get_permission_report(
+                    backend=perm_backend,
+                    permissions=permissions,
+                    node=node,
+                    action="update",
+                    is_super_admin=is_super_admin,
+                    can_edit_default_branch=can_edit_default_branch,
+                ),
+                "view": get_permission_report(
+                    backend=perm_backend,
+                    permissions=permissions,
+                    node=node,
+                    action="view",
+                    is_super_admin=is_super_admin,
+                    can_edit_default_branch=can_edit_default_branch,
+                ),
             }
         )
 

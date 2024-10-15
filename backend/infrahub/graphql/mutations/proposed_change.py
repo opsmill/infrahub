@@ -4,8 +4,16 @@ from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub import lock
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import CheckType, GlobalPermissions, InfrahubKind, ProposedChangeState, ValidatorConclusion
+from infrahub.core.constants import (
+    CheckType,
+    GlobalPermissions,
+    InfrahubKind,
+    PermissionDecision,
+    ProposedChangeState,
+    ValidatorConclusion,
+)
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
@@ -101,7 +109,12 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                 if has_merge_permission := await permission_backend.has_permission(
                     db=context.db,
                     account_id=context.active_account_session.account_id,
-                    permission=f"global:{GlobalPermissions.MERGE_PROPOSED_CHANGE.value}:allow",
+                    permission=GlobalPermission(
+                        id="",
+                        name="",
+                        action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+                        decision=PermissionDecision.ALLOW_ALL.value,
+                    ),
                     branch=branch,
                 ):
                     break
