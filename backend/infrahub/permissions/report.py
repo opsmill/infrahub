@@ -22,17 +22,20 @@ def get_permission_report(
     node: MainSchemaTypes,
     action: str,
     is_super_admin: bool = False,
+    can_edit_default_branch: bool = False,
 ) -> PermissionDecisionFlag:
-    return (
-        PermissionDecisionFlag.ALLOW_ALL
-        if is_super_admin
-        else backend.report_object_permission(
-            permissions=permissions["object_permissions"],
-            namespace=node.namespace,
-            name=node.name,
-            action=action,
-        )
+    if is_super_admin:
+        return PermissionDecisionFlag.ALLOW_ALL
+
+    decision = backend.report_object_permission(
+        permissions=permissions["object_permissions"], namespace=node.namespace, name=node.name, action=action
     )
+
+    # What do we do if edit default branch global permission is set?
+    # if can_edit_default_branch:
+    #     decision |= PermissionDecisionFlag.ALLOW_DEFAULT
+
+    return decision
 
 
 async def report_schema_permissions(
@@ -47,30 +50,54 @@ async def report_schema_permissions(
             id="", name="", action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
         ),
     )
+    can_edit_default_branch = perm_backend.resolve_global_permission(
+        permissions=permissions["global_permissions"],
+        permission_to_check=GlobalPermission(
+            id="",
+            name="",
+            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        ),
+    )
 
     permission_objects: list[KindPermissions] = []
     for node in schemas:
-        permission_report: KindPermissions = {
-            "kind": node.kind,
-            "create": get_permission_report(
-                backend=perm_backend, permissions=permissions, node=node, action="create", is_super_admin=is_super_admin
-            ),
-            "delete": get_permission_report(
-                backend=perm_backend, permissions=permissions, node=node, action="delete", is_super_admin=is_super_admin
-            ),
-            "update": get_permission_report(
-                backend=perm_backend, permissions=permissions, node=node, action="update", is_super_admin=is_super_admin
-            ),
-            "view": get_permission_report(
-                backend=perm_backend, permissions=permissions, node=node, action="view", is_super_admin=is_super_admin
-            ),
-        }
-
-        # What do we do if edit default branch global permission is set?
-        # if not restrict_changes:
-        #     for key in permission_report:
-        #         permission_report[key] |= PermissionDecisionFlag.ALLOW_DEFAULT
-
-        permission_objects.append(permission_report)
+        permission_objects.append(
+            {
+                "kind": node.kind,
+                "create": get_permission_report(
+                    backend=perm_backend,
+                    permissions=permissions,
+                    node=node,
+                    action="create",
+                    is_super_admin=is_super_admin,
+                    can_edit_default_branch=can_edit_default_branch,
+                ),
+                "delete": get_permission_report(
+                    backend=perm_backend,
+                    permissions=permissions,
+                    node=node,
+                    action="delete",
+                    is_super_admin=is_super_admin,
+                    can_edit_default_branch=can_edit_default_branch,
+                ),
+                "update": get_permission_report(
+                    backend=perm_backend,
+                    permissions=permissions,
+                    node=node,
+                    action="update",
+                    is_super_admin=is_super_admin,
+                    can_edit_default_branch=can_edit_default_branch,
+                ),
+                "view": get_permission_report(
+                    backend=perm_backend,
+                    permissions=permissions,
+                    node=node,
+                    action="view",
+                    is_super_admin=is_super_admin,
+                    can_edit_default_branch=can_edit_default_branch,
+                ),
+            }
+        )
 
     return permission_objects
