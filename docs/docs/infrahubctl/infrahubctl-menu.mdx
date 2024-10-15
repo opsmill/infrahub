@@ -1,0 +1,40 @@
+# `infrahubctl menu`
+
+Manage the menu in a remote Infrahub instance.
+
+**Usage**:
+
+```console
+$ infrahubctl menu [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--install-completion`: Install completion for the current shell.
+* `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `load`: Load one or multiple menu files into...
+
+## `infrahubctl menu load`
+
+Load one or multiple menu files into Infrahub.
+
+**Usage**:
+
+```console
+$ infrahubctl menu load [OPTIONS] MENUS...
+```
+
+**Arguments**:
+
+* `MENUS...`: [required]
+
+**Options**:
+
+* `--debug / --no-debug`: [default: no-debug]
+* `--branch TEXT`: Branch on which to load the menu.  [default: main]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--help`: Show this message and exit.
