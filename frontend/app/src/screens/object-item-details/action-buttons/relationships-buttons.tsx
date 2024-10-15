@@ -6,9 +6,9 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
-import { usePermission } from "@/hooks/usePermission";
 import { useMutation } from "@/hooks/useQuery";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
@@ -16,8 +16,11 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
-export function RelationshipsButtons() {
-  const permission = usePermission();
+interface RelationshipsButtonsProps {
+  permission: Permission;
+}
+
+export function RelationshipsButtons({ permission }: RelationshipsButtonsProps) {
   const { objectKind, objectid } = useParams();
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
   const generics = useAtomValue(genericsState);
@@ -89,9 +92,9 @@ export function RelationshipsButtons() {
   return (
     <>
       <ButtonWithTooltip
-        disabled={!permission.write.allow}
+        disabled={!permission.create.isAllowed}
         tooltipEnabled
-        tooltipContent={permission.write.message ?? "Add relationship"}
+        tooltipContent={permission.create.message ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
         data-testid="open-relationship-form-button"
       >
