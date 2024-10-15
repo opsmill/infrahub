@@ -4,10 +4,13 @@ import ObjectForm from "@/components/form/object-form";
 import { Tabs } from "@/components/tabs";
 import { Card } from "@/components/ui/card";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { usePermission } from "@/hooks/usePermission";
+import { getPermissions } from "@/graphql/queries/getPermissions";
+import useQuery from "@/hooks/useQuery";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
+import { getPermission } from "@/utils/permissions";
+import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
@@ -34,7 +37,6 @@ function IpamRouter() {
   const [qspTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
   const navigate = useNavigate();
   const { prefix } = useParams();
-  const permission = usePermission();
   const branch = useAtomValue(currentBranchAtom);
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
@@ -42,13 +44,22 @@ function IpamRouter() {
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const refetchRef = useRef(null);
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const objectname = qspTab ? tabToKind[qspTab] : IP_PREFIX_GENERIC;
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const schemaData = schema || generic;
 
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const queryString = getPermissions({ kind: objectname });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, data, error } = useQuery(query);
+
+  const permission = data && getPermission(data?.[objectname]?.permissions?.edges[0]?.node);
 
   const tabs = [
     {
@@ -119,9 +130,9 @@ function IpamRouter() {
 
   const rightitems = (
     <ButtonWithTooltip
-      disabled={!permission.write.allow}
-      tooltipEnabled={!permission.write.allow}
-      tooltipContent={permission.write.message ?? undefined}
+      disabled={loading || !permission?.create.isAllowed}
+      tooltipEnabled={!permission?.create.isAllowed}
+      tooltipContent={permission?.create.message ?? undefined}
       onClick={() => setShowCreateDrawer(true)}
       className="mr-4"
       data-testid="create-object-button"

@@ -57,7 +57,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't create this view",
+          message: "You can't create this object",
         },
     update: isUpdateAllowed
       ? {
@@ -65,7 +65,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't update this view",
+          message: "You can't update this object",
         },
     delete: isDeleteAllowed
       ? {
@@ -73,7 +73,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't delete this view",
+          message: "You can't delete this object",
         },
   };
 }
