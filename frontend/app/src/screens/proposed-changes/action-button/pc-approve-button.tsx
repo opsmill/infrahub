@@ -12,16 +12,18 @@ import { useAtomValue } from "jotai/index";
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 
-interface PcMergeButtonProps extends ButtonProps {
+interface PcApproveButtonProps extends ButtonProps {
   proposedChangeId: string;
   approvers: Array<any>;
+  state: "closed" | "open" | "merged";
 }
 
 export const PcApproveButton = ({
   approvers = [],
   proposedChangeId,
+  state,
   ...props
-}: PcMergeButtonProps) => {
+}: PcApproveButtonProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
@@ -81,7 +83,13 @@ export const PcApproveButton = ({
       variant="outline"
       onClick={handleApprove}
       isLoading={isLoadingApprove}
-      disabled={!auth?.permissions?.write || !approverId || !canApprove}
+      disabled={
+        !auth?.permissions?.write ||
+        !approverId ||
+        !canApprove ||
+        state === "closed" ||
+        state === "merged"
+      }
       {...props}
     >
       Approve
