@@ -1,5 +1,5 @@
 export const INFRAHUB_GITHUB_URL = "https://github.com/opsmill/infrahub";
-
+export const INFRAHUB_DISCORD_URL = "https://discord.gg/opsmill";
 export const INFRAHUB_DOC_URL = "https://docs.infrahub.app";
 
 export const INFRAHUB_API_SERVER_URL = import.meta.env.DEV
