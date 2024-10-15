@@ -122,7 +122,6 @@ export const DropdownMenuAccordionTrigger = forwardRef<
       ref={ref}
       onSelect={(e) => {
         e.preventDefault();
-        e.stopPropagation();
       }}
       asChild
     >

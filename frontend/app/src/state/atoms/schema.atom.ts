@@ -30,7 +30,7 @@ export const menuFlatAtom = atom((get) => {
   const menuItems: MenuItem[] = [];
 
   const flattenMenuItems = (menuItem: MenuItem) => {
-    if (menuItem.path !== "" && menuItem.children?.length === 0) menuItems.push(menuItem);
+    if (menuItem.path !== "") menuItems.push(menuItem);
 
     if (menuItem.children && menuItem.children.length > 0) {
       menuItem.children.forEach(flattenMenuItems);
