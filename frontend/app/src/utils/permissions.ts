@@ -73,7 +73,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't create this view",
+          message: "You can't delete this view",
         },
   };
 }
