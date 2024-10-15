@@ -9,7 +9,7 @@ def generate_python_enum(name: str, options: list[Any]) -> type[enum.Enum]:
     main_attrs = {}
     for option in options:
         if isinstance(option, int):
-            enum_name = f"Value_{option!s}"
+            enum_name = str(option)
         else:
             enum_name = "_".join(re.findall(ENUM_NAME_REGEX, option)).upper()
 
