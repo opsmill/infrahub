@@ -9,7 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { INFRAHUB_DOC_LOCAL, INFRAHUB_GITHUB_URL, INFRAHUB_SWAGGER_DOC_URL } from "@/config/config";
+import {
+  INFRAHUB_DISCORD_URL,
+  INFRAHUB_DOC_LOCAL,
+  INFRAHUB_GITHUB_URL,
+  INFRAHUB_SWAGGER_DOC_URL,
+} from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,13 +47,6 @@ export const AccountMenu = () => {
 const CommonMenuItems = () => (
   <>
     <DropdownMenuItem asChild>
-      <Link to={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
-        <Icon icon="mdi:github" className="text-base" />
-        GitHub Repository
-      </Link>
-    </DropdownMenuItem>
-
-    <DropdownMenuItem asChild>
       <Link to={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
         <Icon icon="mdi:file-document" className="text-base" />
         Infrahub documentation
@@ -66,6 +64,22 @@ const CommonMenuItems = () => (
       <Link to={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
         <Icon icon="mdi:code-json" className="text-base" />
         Swagger documentation
+      </Link>
+    </DropdownMenuItem>
+
+    <DropdownMenuDivider />
+
+    <DropdownMenuItem asChild>
+      <Link to={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:github" className="text-base" />
+        GitHub Repository
+      </Link>
+    </DropdownMenuItem>
+
+    <DropdownMenuItem asChild>
+      <Link to={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:discord" className="text-base" />
+        Join our Discord server
       </Link>
     </DropdownMenuItem>
   </>
