@@ -29,20 +29,19 @@ const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   return <ObjectAvatar name={item.label} />;
 };
 
-const RenderMenuItem: React.FC<{
+const RecursiveObjectMenuItem: React.FC<{
   item: MenuItem;
   isCollapsed?: boolean;
   level?: number;
 }> = ({ item, isCollapsed, level = 0 }) => {
-  const commonProps = {
-    key: item.identifier,
+  const commonStyleProps = {
     className: menuNavigationItemStyle,
     style: { marginLeft: level * 20 },
   };
 
   if (!item.children?.length) {
     return (
-      <DropdownMenuItem {...commonProps}>
+      <DropdownMenuItem {...commonStyleProps} asChild>
         <Link to={constructPath(item.path)}>
           <Icon icon={item.icon} className="w-5 shrink-0 inline-flex justify-center items-center" />
           {item.label}
@@ -53,12 +52,12 @@ const RenderMenuItem: React.FC<{
 
   return (
     <DropdownMenuAccordion value={item.identifier}>
-      <DropdownMenuAccordionTrigger {...commonProps}>
+      <DropdownMenuAccordionTrigger {...commonStyleProps}>
         {item.path ? <Link to={constructPath(item.path)}>{item.label}</Link> : item.label}
       </DropdownMenuAccordionTrigger>
       <DropdownMenuAccordionContent>
         {item.children.map((child) => (
-          <RenderMenuItem
+          <RecursiveObjectMenuItem
             key={child.identifier}
             item={child}
             isCollapsed={isCollapsed}
@@ -76,7 +75,7 @@ const TopLevelMenuItem: React.FC<{
 }> = ({ item, isCollapsed }) => {
   if (!item.children?.length) {
     return (
-      <Link key={item.identifier} to={constructPath(item.path)} className={menuNavigationItemStyle}>
+      <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
         <MenuItemIcon item={item} />
         <span className={classNames("text-sm", isCollapsed && "hidden")}>{item.label}</span>
       </Link>
@@ -84,7 +83,7 @@ const TopLevelMenuItem: React.FC<{
   }
 
   return (
-    <DropdownMenu key={item.identifier}>
+    <DropdownMenu>
       <DropdownMenuTrigger className={classNames(menuNavigationItemStyle, isCollapsed && "p-2")}>
         <Tooltip enabled={isCollapsed} content={item.label} side="right">
           <span className="flex">
@@ -105,7 +104,7 @@ const TopLevelMenuItem: React.FC<{
       >
         <h3 className="text-xl font-medium text-neutral-800 mb-5">{item.label}</h3>
         {item.children.map((child) => (
-          <RenderMenuItem key={child.identifier} item={child} isCollapsed={isCollapsed} />
+          <RecursiveObjectMenuItem key={child.identifier} item={child} isCollapsed={isCollapsed} />
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

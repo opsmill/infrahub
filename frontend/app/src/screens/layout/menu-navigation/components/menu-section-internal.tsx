@@ -21,21 +21,21 @@ export interface MenuSectionInternalProps {
   isCollapsed?: boolean;
 }
 
-const RecursiveDropdownMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
+const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (!item.children?.length) {
     return (
-      <DropdownMenuItem key={item.identifier} asChild>
+      <DropdownMenuItem asChild>
         <Link to={constructPath(item.path)}>{item.label}</Link>
       </DropdownMenuItem>
     );
   }
 
   return (
-    <DropdownMenuSub key={item.identifier}>
+    <DropdownMenuSub>
       <DropdownMenuSubTrigger>{item.label}</DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
         {item.children.map((childItem) => (
-          <RecursiveDropdownMenuItem key={childItem.identifier} item={childItem} />
+          <RecursiveInternalMenuItem key={childItem.identifier} item={childItem} />
         ))}
       </DropdownMenuSubContent>
     </DropdownMenuSub>
@@ -43,13 +43,13 @@ const RecursiveDropdownMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
 };
 
 const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
-  <Link to={constructPath(item.path)} key={item.identifier}>
+  <Link to={constructPath(item.path)}>
     <CollapsedButton icon={item.icon} tooltipContent={item.label} />
   </Link>
 );
 
 const ExpandedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
-  <Link to={constructPath(item.path)} className={menuNavigationItemStyle} key={item.identifier}>
+  <Link to={constructPath(item.path)} className={classNames(menuNavigationItemStyle, "h-10")}>
     <Icon icon={item.icon} className="min-w-4" />
     <span className="text-sm truncate">{item.label}</span>
   </Link>
@@ -95,7 +95,7 @@ export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalP
             <DropdownMenuTriggerButton item={item} isCollapsed={!!isCollapsed} />
             <DropdownMenuContent side="left" align="start" className="min-w-[200px]">
               {item.children.map((childItem) => (
-                <RecursiveDropdownMenuItem key={childItem.identifier} item={childItem} />
+                <RecursiveInternalMenuItem key={childItem.identifier} item={childItem} />
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
