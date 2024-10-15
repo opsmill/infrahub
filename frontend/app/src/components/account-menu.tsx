@@ -52,12 +52,14 @@ const CommonMenuItems = () => (
         Infrahub documentation
       </Link>
     </DropdownMenuItem>
+
     <DropdownMenuItem asChild>
       <Link to={constructPath("/graphql")} className="text-base">
         <Icon icon="mdi:graphql" className="text-base" />
         GraphQL Sandbox
       </Link>
     </DropdownMenuItem>
+
     <DropdownMenuItem asChild>
       <Link to={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
         <Icon icon="mdi:code-json" className="text-base" />
