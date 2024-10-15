@@ -1,3 +1,4 @@
+import { Button } from "@/components/buttons/button-primitive";
 import { Retry } from "@/components/buttons/retry";
 import { PieChart } from "@/components/display/pie-chart";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
@@ -14,7 +15,9 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { genericsState } from "@/state/atoms/schema.atom";
 import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
 import { getValidatorsStats } from "@/utils/checks";
+import { classNames } from "@/utils/common";
 import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -85,13 +88,15 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     <div className="flex justify-center m-4" data-testid="checks-summary">
       <div className="flex flex-col-reverse items-center relative">
         <div className="lg:absolute lg:top-1/2 lg:-left-28 lg:transform lg:-translate-y-1/2 flex items-center justify-between p-2">
-          <span className="mr-1 text-xs">Retry all:</span>
-
-          <Retry
+          <Button
             onClick={() => handleRetry("all")}
-            isLoading={isLoading || !!validatorsInProgress.length}
-            isDisabled={!auth?.permissions?.write}
-          />
+            disabled={!auth?.permissions?.write}
+            variant="ghost"
+            className="gap-1 hover:bg-neutral-200"
+          >
+            Retry all
+            <Icon icon="mdi:reload" className={classNames(isLoading && "animate-spin")} />
+          </Button>
         </div>
 
         <div className="flex">
