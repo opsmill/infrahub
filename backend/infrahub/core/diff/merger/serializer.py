@@ -92,14 +92,16 @@ class DiffMergeSerializer:
         if property_type in (DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED):
             return raw_value
         # these are boolean
-        if (
-            property_type in (DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED) or (value_type is bool)
-        ) and isinstance(raw_value, str):
+        if (property_type in (DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED)) and isinstance(
+            raw_value, str
+        ):
             return raw_value.lower() == "true"
         # this must be HAS_VALUE
         if raw_value in (None, "NULL"):
             return "NULL"
         if value_type:
+            if value_type is bool and isinstance(raw_value, str):
+                return raw_value.lower() == "true"
             return value_type(raw_value)
         return raw_value
 
@@ -272,6 +274,7 @@ class DiffMergeSerializer:
         relationship_dicts = []
         added_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.ADDED)
         removed_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.REMOVED)
+        other_property_dicts = {}
         added_peer_id, removed_peer_id = self._get_added_removed_peers(relationship_diff=relationship_diff)
 
         for action, peer_id in ((DiffAction.ADDED, added_peer_id), (DiffAction.REMOVED, removed_peer_id)):
@@ -300,37 +303,29 @@ class DiffMergeSerializer:
                     action=self._to_action_str(action=action),
                     value=value,
                 )
-                if action is DiffAction.ADDED:
+                if added_peer_id and action is DiffAction.ADDED:
                     added_property_dicts[property_diff.property_type] = property_dict
-                elif action is DiffAction.REMOVED:
+                elif removed_peer_id and action is DiffAction.REMOVED:
                     removed_property_dicts[property_diff.property_type] = property_dict
+                else:
+                    other_property_dicts[property_diff.property_type] = property_dict
         relationship_property_dicts = []
-        if (
-            added_peer_id
-            and added_property_dicts
-            and (added_peer_id, relationship_identifier, node_uuid)
-            not in self._conflicted_cardinality_one_relationships
+        for peer_id, property_dicts in (
+            (added_peer_id, added_property_dicts),
+            (removed_peer_id, removed_property_dicts),
+            (relationship_diff.peer_id, other_property_dicts),
         ):
-            relationship_property_dicts.append(
-                RelationshipPropertyMergeDict(
-                    node_uuid=node_uuid,
-                    relationship_id=relationship_identifier,
-                    peer_uuid=added_peer_id,
-                    properties=list(added_property_dicts.values()),
+            if (
+                peer_id
+                and property_dicts
+                and (peer_id, relationship_identifier, node_uuid) not in self._conflicted_cardinality_one_relationships
+            ):
+                relationship_property_dicts.append(
+                    RelationshipPropertyMergeDict(
+                        node_uuid=node_uuid,
+                        relationship_id=relationship_identifier,
+                        peer_uuid=peer_id,
+                        properties=list(property_dicts.values()),
+                    )
                 )
-            )
-        if (
-            removed_peer_id
-            and removed_property_dicts
-            and (removed_peer_id, relationship_identifier, node_uuid)
-            not in self._conflicted_cardinality_one_relationships
-        ):
-            relationship_property_dicts.append(
-                RelationshipPropertyMergeDict(
-                    node_uuid=node_uuid,
-                    relationship_id=relationship_identifier,
-                    peer_uuid=removed_peer_id,
-                    properties=list(removed_property_dicts.values()),
-                )
-            )
         return relationship_dicts, relationship_property_dicts

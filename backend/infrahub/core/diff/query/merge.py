@@ -451,7 +451,7 @@ class DiffMergeFinalizeQuery(Query):
             "at": self.at.to_string(),
         }
         query = """
-            MATCH (p)-[rel {branch:$source_branch}]-(q)
+            MATCH (p)-[rel {branch: $source_branch}]->(q)
             WHERE rel.to IS NULL
             SET rel.to = $at
         """
