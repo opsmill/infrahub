@@ -9,12 +9,25 @@ import pandas as pd
 from infrahub_sdk import Timestamp
 from neo4j import Record
 
+from infrahub.config import SETTINGS
+
 # pylint: skip-file
 from infrahub.database import InfrahubDatabase
 from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
+from tests.helpers.constants import NEO4J_ENTERPRISE_IMAGE
 
 log = get_logger()
+
+
+@dataclass
+class BenchmarkConfig:
+    neo4j_image: str = NEO4J_ENTERPRISE_IMAGE
+    neo4j_runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT
+    load_db_indexes: bool = False
+
+    def __str__(self) -> str:
+        return f"{self.neo4j_image=} ; runtime: {self.neo4j_runtime} ; indexes: {self.load_db_indexes}"
 
 
 @dataclass
@@ -97,7 +110,7 @@ class QueryAnalyzer:
 
         for query_name in query_names:
             self.create_duration_graph(query_name=query_name, label=label, output_dir=output_location)
-            self.create_memory_graph(query_name=query_name, label=label, output_dir=output_location)
+            # self.create_memory_graph(query_name=query_name, label=label, output_dir=output_location)
 
     def create_duration_graph(self, query_name: str, label: str, output_dir: Path) -> None:
         metric = "duration"
@@ -113,14 +126,14 @@ class QueryAnalyzer:
         y = df_query[metric].values * 1000
         plt.plot(x, y, label=label)
 
-        plt.legend()
+        plt.legend(bbox_to_anchor=(1.04, 1), borderaxespad=0)
 
         plt.ylabel("msec", fontsize=15)
         plt.title(f"Query - {query_name} | {metric}", fontsize=20)
         plt.grid()
 
         file_name = f"{name}.png"
-        plt.savefig(str(output_dir / file_name))
+        plt.savefig(str(output_dir / file_name), bbox_inches="tight")
 
     def create_memory_graph(self, query_name: str, label: str, output_dir: Path) -> None:
         metric = "memory"
@@ -168,9 +181,9 @@ class ProfilerEnabler:
 
 
 class InfrahubDatabaseProfiler(InfrahubDatabase):
-    def __init__(self, query_analyzer: QueryAnalyzer, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.query_analyzer = query_analyzer
+        self.query_analyzer = QueryAnalyzer()
         # Note that any attribute added here should be added to get_context method.
 
     def get_context(self) -> dict[str, Any]:
@@ -193,10 +206,14 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
         else:
             profile_memory = False
 
+        assert profile_memory is False, "Do not profile memory for now"
+
         # Do the query and measure duration
         time_start = time.time()
         response, metadata = await super().execute_query_with_metadata(query, params, name)
         duration_time = time.time() - time_start
+
+        assert len(response) < SETTINGS.database.query_size_limit // 2, "make sure data return is small"
 
         measurement = QueryMeasurement(
             duration=duration_time,

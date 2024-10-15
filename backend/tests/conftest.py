@@ -48,6 +48,7 @@ from tests.helpers.constants import (
     NEO4J_IMAGE,
     PORT_BOLT_NEO4J,
     PORT_CLIENT_RABBITMQ,
+    PORT_HTTP_NEO4J,
     PORT_HTTP_RABBITMQ,
     PORT_MEMGRAPH,
     PORT_NATS,
@@ -97,6 +98,7 @@ async def db(
         config.SETTINGS.database.address = "localhost"
         if neo4j is not None:
             config.SETTINGS.database.port = neo4j[PORT_BOLT_NEO4J]
+            config.SETTINGS.database.neo4j_http_port = neo4j[PORT_HTTP_NEO4J]
         else:
             assert memgraph is not None
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
@@ -120,7 +122,8 @@ async def reset_registry(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+async def default_branch(db: InfrahubDatabase) -> Branch:
+    await create_root_node(db=db)
     branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
@@ -183,7 +186,10 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optio
     container = start_neo4j_container(NEO4J_IMAGE)
     request.addfinalizer(container.stop)
 
-    return {PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J)}
+    return {
+        PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J),
+        PORT_HTTP_NEO4J: get_exposed_port(container, PORT_HTTP_NEO4J),
+    }
 
 
 @pytest.fixture(scope="session")
@@ -475,8 +481,6 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                         "name": "owner",
                         "label": "Commander of Car",
                         "peer": "TestPerson",
-                        "optional": False,
-                        "kind": "Parent",
                         "cardinality": "one",
                         "direction": "outbound",
                     },

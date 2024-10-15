@@ -1,74 +1,163 @@
 import inspect
-from functools import partial
 from pathlib import Path
 
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.validators.uniqueness.model import NodeUniquenessQueryRequest, QueryAttributePath
+from infrahub.core.validators.uniqueness.model import (
+    NodeUniquenessQueryRequest,
+    QueryAttributePath,
+    QueryRelationshipAttributePath,
+)
 from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.database import QueryConfig
 from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_COMMUNITY_IMAGE, NEO4J_ENTERPRISE_IMAGE
 from tests.helpers.query_benchmark.car_person_generators import (
-    CarGenerator,
+    CarGeneratorWithOwnerHavingUniqueCar,
 )
-from tests.helpers.query_benchmark.data_generator import load_data_and_profile
-
-from .utils import start_db_and_create_default_branch
-
-RESULTS_FOLDER = Path(__file__).resolve().parent / "query_performance_results"
+from tests.helpers.query_benchmark.data_generator import BenchmarkConfig, load_data_and_profile
+from tests.query_benchmark.conftest import RESULTS_FOLDER
+from tests.query_benchmark.utils import start_db_and_create_default_branch
 
 log = get_logger()
 
+# pytestmark = pytest.mark.skip("Not relevant to test this currently.")
 
-@pytest.mark.parametrize(
-    "neo4j_image, neo4j_runtime",
-    [
-        (
-            NEO4J_ENTERPRISE_IMAGE,
-            Neo4jRuntime.PARALLEL,
-        ),
-        (
-            NEO4J_ENTERPRISE_IMAGE,
-            Neo4jRuntime.DEFAULT,
-        ),
-        (
-            NEO4J_COMMUNITY_IMAGE,
-            Neo4jRuntime.DEFAULT,
-        ),
-    ],
-)
-async def test_query_unique_cars_single_attribute(
-    query_analyzer, neo4j_image: str, neo4j_runtime: Neo4jRuntime, car_person_schema_root
+
+async def benchmark_uniqueness_query(
+    query_request, car_person_schema_root, benchmark_config: BenchmarkConfig, test_params_label: str, test_name: str
 ):
-    queries_names_to_config = {NodeUniqueAttributeConstraintQuery.name: QueryConfig(neo4j_runtime=neo4j_runtime)}
-    db_profiling_queries, default_branch = await start_db_and_create_default_branch(
-        neo4j_image=neo4j_image, queries_names_to_config=queries_names_to_config, query_analyzer=query_analyzer
-    )
+    """
+    Profile NodeUniqueAttributeConstraintQuery with a given query_request / configuration, using a Car generator.
+    """
 
-    # Register schema
+    # Initialization
+    queries_names_to_config = {
+        NodeUniqueAttributeConstraintQuery.name: QueryConfig(neo4j_runtime=benchmark_config.neo4j_runtime)
+    }
+    db_profiling_queries, default_branch = await start_db_and_create_default_branch(
+        neo4j_image=benchmark_config.neo4j_image,
+        load_indexes=benchmark_config.load_db_indexes,
+        queries_names_to_config=queries_names_to_config,
+    )
     registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
 
-    query_unique_cars_name = await NodeUniqueAttributeConstraintQuery.init(
-        db=db_profiling_queries,
-        branch=default_branch,
-        query_request=NodeUniquenessQueryRequest(
-            kind="TestCar", unique_attribute_paths={QueryAttributePath(attribute_name="name", property_name="value")}
-        ),
-    )
+    # Build function to profile
+    async def init_and_execute():
+        # Need this function to avoid loading data between `init` and `execute` methods.
+        query = await NodeUniqueAttributeConstraintQuery.init(
+            db=db_profiling_queries,
+            branch=default_branch,
+            query_request=query_request,
+        )
+        await query.execute(db=db_profiling_queries)
+        assert len(query.results) == 0  # supposed to have no violation with CarGeneratorWithOwnerHavingUniqueCar
 
-    cars_generator = CarGenerator(db=db_profiling_queries)
-
-    graph_output_location = RESULTS_FOLDER / inspect.currentframe().f_code.co_name
+    nb_cars = 10_000
+    cars_generator = CarGeneratorWithOwnerHavingUniqueCar(db=db_profiling_queries, nb_persons=nb_cars)
+    module_name = Path(__file__).stem
+    graph_output_location = RESULTS_FOLDER / module_name / test_name
 
     await load_data_and_profile(
         data_generator=cars_generator,
-        func_call=partial(query_unique_cars_name.execute, db=db_profiling_queries),
-        profile_frequency=50,
-        nb_elements=1000,
+        func_call=init_and_execute,
+        profile_frequency=100,
+        nb_elements=nb_cars,
         graphs_output_location=graph_output_location,
-        query_analyzer=query_analyzer,
-        test_label=f" data: {neo4j_image}" + f" runtime: {neo4j_runtime}",
+        test_label=test_params_label,
+    )
+
+
+@pytest.mark.parametrize(
+    "query_request",
+    [
+        NodeUniquenessQueryRequest(
+            kind="TestCar", unique_attribute_paths={QueryAttributePath(attribute_name="name", property_name="value")}
+        ),
+        NodeUniquenessQueryRequest(
+            kind="TestCar",
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+            },
+        ),
+        NodeUniquenessQueryRequest(
+            kind="TestCar",
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+            },
+            relationship_attribute_paths={
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")
+            },
+        ),
+    ],
+)
+async def test_multiple_constraints(query_request, car_person_schema_root):
+    benchmark_config = BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE)
+    await benchmark_uniqueness_query(
+        query_request=query_request,
+        car_person_schema_root=car_person_schema_root,
+        benchmark_config=benchmark_config,
+        test_params_label=str(query_request),
+        test_name=inspect.currentframe().f_code.co_name,
+    )
+
+
+@pytest.mark.parametrize(
+    "benchmark_config",
+    [
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE),
+    ],
+)
+async def test_multiple_runtimes(benchmark_config, car_person_schema_root):
+    query_request = NodeUniquenessQueryRequest(
+        kind="TestCar",
+        unique_attribute_paths={
+            QueryAttributePath(attribute_name="name", property_name="value"),
+            QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+        },
+        relationship_attribute_paths={
+            QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")
+        },
+    )
+
+    await benchmark_uniqueness_query(
+        query_request=query_request,
+        car_person_schema_root=car_person_schema_root,
+        benchmark_config=benchmark_config,
+        test_params_label=str(benchmark_config),
+        test_name=inspect.currentframe().f_code.co_name,
+    )
+
+
+@pytest.mark.parametrize(
+    "benchmark_config",
+    [
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=True),
+    ],
+)
+async def test_indexes(benchmark_config, car_person_schema_root):
+    query_request = NodeUniquenessQueryRequest(
+        kind="TestCar",
+        unique_attribute_paths={
+            QueryAttributePath(attribute_name="name", property_name="value"),
+            QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+        },
+        relationship_attribute_paths={
+            QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")
+        },
+    )
+
+    await benchmark_uniqueness_query(
+        query_request=query_request,
+        car_person_schema_root=car_person_schema_root,
+        benchmark_config=benchmark_config,
+        test_params_label=str(benchmark_config),
+        test_name=inspect.currentframe().f_code.co_name,
     )

@@ -1,6 +1,6 @@
 import random
 import uuid
-from typing import Optional
+from typing import Optional, Tuple
 
 from infrahub.core import registry
 from infrahub.core.node import Node
@@ -44,7 +44,11 @@ class PersonGenerator(DataGenerator):
     async def load_data(self, nb_elements: int) -> None:
         await self.load_persons(nb_persons=nb_elements)
 
-    async def load_persons(self, nb_persons: int, cars: Optional[dict[str, Node]] = None) -> dict[str, Node]:
+    async def load_persons(
+        self,
+        nb_persons: int,
+        cars: Optional[dict[str, Node]] = None,
+    ) -> dict[str, Node]:
         """
         Load persons and return a mapping person_name -> person_node.
         If 'cars' is specified, each person created is linked to a few random cars.
@@ -58,6 +62,7 @@ class PersonGenerator(DataGenerator):
             short_id = str(uuid.uuid4())[:8]
             person_name = f"person-{short_id}"
             person_node = await Node.init(db=self.db, schema=person_schema, branch=default_branch)
+
             if cars is not None:
                 random_cars = [cars[car_name] for car_name in random.choices(list(cars.keys()), k=5)]
                 await person_node.new(db=self.db, name=person_name, cars=random_cars)
@@ -88,6 +93,67 @@ class PersonFromExistingCarGenerator(PersonGenerator):
     async def load_data(self, nb_elements: int) -> None:
         assert self.cars is not None, "'init' method should be called before 'load_data'"
         await self.load_persons(nb_persons=nb_elements, cars=self.cars)
+
+
+class CarFromExistingPersonGenerator(CarGenerator):
+    persons: Optional[dict[str, Node]]  # mapping of existing cars names -> node
+    nb_persons: int
+
+    def __init__(self, db: InfrahubDatabaseProfiler, nb_persons: int) -> None:
+        super().__init__(db)
+        self.nb_persons = nb_persons
+        self.persons = None
+
+    async def init(self) -> None:
+        """Load persons, that will be later connected to generated cars."""
+        self.persons = await PersonGenerator(self.db).load_persons(nb_persons=self.nb_persons)
+
+    async def load_data(self, nb_elements: int) -> None:
+        assert self.persons is not None, "'init' method should be called before 'load_data'"
+        await self.load_cars(nb_cars=nb_elements, persons=self.persons)
+
+
+class CarGeneratorWithOwnerHavingUniqueCar(CarGenerator):
+    persons: list[Tuple[str, Node]]  # mapping of existing cars names -> node
+    nb_persons: int
+    nb_cars_loaded: int
+
+    def __init__(self, db: InfrahubDatabaseProfiler, nb_persons: int) -> None:
+        super().__init__(db)
+        self.nb_persons = nb_persons
+        self.persons = []
+        self.nb_cars_loaded = 0
+
+    async def init(self) -> None:
+        """Load persons, that will be later connected to generated cars."""
+        persons = await PersonGenerator(self.db).load_persons(nb_persons=self.nb_persons)
+        self.persons = list(persons.items())
+
+    async def load_data(self, nb_elements: int) -> None:
+        """
+        Generate cars with an owner, in a way that an owner can't have multiple cars.
+        Also generate distinct nb_seats per car.
+        """
+
+        default_branch = await registry.get_branch(db=self.db)
+        car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
+
+        for i in range(nb_elements):
+            short_id = str(uuid.uuid4())[:8]
+            car_name = f"car-{short_id}"
+            car_node = await Node.init(db=self.db, schema=car_schema, branch=default_branch)
+
+            await car_node.new(
+                db=self.db,
+                name=car_name,
+                nbr_seats=self.nb_cars_loaded + i,
+                owner=self.persons[self.nb_cars_loaded + i][1],
+            )
+
+            async with self.db.start_session():
+                await car_node.save(db=self.db)
+
+        self.nb_cars_loaded += nb_elements
 
 
 class CarAndPersonIsolatedGenerator(DataGenerator):
