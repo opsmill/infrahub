@@ -94,7 +94,11 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       name: "Actions",
       value: (
         <div className="flex flex-wrap gap-2">
-          <PcApproveButton approvers={approvers} proposedChangeId={proposedChangeId!} />
+          <PcApproveButton
+            approvers={approvers}
+            proposedChangeId={proposedChangeId!}
+            state={state}
+          />
           <PcMergeButton
             proposedChangeId={proposedChangeId!}
             state={state}
