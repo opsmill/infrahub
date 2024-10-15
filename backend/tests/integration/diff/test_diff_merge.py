@@ -19,6 +19,7 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 BRANCH_NAME = "this-branch"
+PERSON_KIND = "TestingPerson"
 
 
 class TestDiffMerge(TestInfrahubApp):
@@ -78,8 +79,7 @@ class TestDiffMerge(TestInfrahubApp):
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffCoordinator, db=db, branch=default_branch)
 
-    @pytest.fixture(scope="class")
-    async def diff_merger(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffMerger:
+    async def _get_diff_merger(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffMerger:
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffMerger, db=db, branch=diff_branch)
 
@@ -111,7 +111,6 @@ class TestDiffMerge(TestInfrahubApp):
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
-        diff_merger: DiffMerger,
         diff_repository: DiffRepository,
     ):
         delorean_id = initial_dataset["delorean"].get_id()
@@ -125,6 +124,7 @@ class TestDiffMerge(TestInfrahubApp):
             conflict_id=owner_conflict.uuid, selection=ConflictSelection.BASE_BRANCH
         )
         right_now = Timestamp()
+        diff_merger = await self._get_diff_merger(db=db, diff_branch=diff_branch)
         await diff_merger.merge_graph(at=right_now)
 
         delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean_id)

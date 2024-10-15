@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.merge import DiffMergeFinalizeQuery, DiffMergePropertiesQuery, DiffMergeQuery
 
@@ -30,8 +31,18 @@ class DiffMerger:
         self.serializer = serializer
 
     async def merge_graph(self, at: Timestamp) -> None:
+        enriched_diffs = await self.diff_repository.get_empty_roots(
+            diff_branch_names=[self.source_branch.name], base_branch_names=[self.destination_branch.name]
+        )
+        latest_diff = None
+        tracking_id = BranchTrackingId(name=self.source_branch.name)
+        for diff in enriched_diffs:
+            if latest_diff is None or (diff.tracking_id == tracking_id and diff.to_time > latest_diff.to_time):
+                latest_diff = diff
+        if latest_diff is None:
+            raise RuntimeError(f"Missing diff for branch {self.source_branch.name}")
         enriched_diff = await self.diff_repository.get_one(
-            diff_branch_name=self.source_branch.name, tracking_id=BranchTrackingId(name=self.source_branch.name)
+            diff_branch_name=self.source_branch.name, diff_id=latest_diff.uuid
         )
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
             merge_query = await DiffMergeQuery.init(
@@ -56,3 +67,4 @@ class DiffMerger:
 
         self.source_branch.branched_from = at.to_string()
         await self.source_branch.save(db=self.db)
+        registry.branch[self.source_branch.name] = self.source_branch

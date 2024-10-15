@@ -17,14 +17,16 @@ if TYPE_CHECKING:
 CAR_SCHEMA = SchemaRoot(nodes=[CAR, MANUFACTURER, PERSON])
 
 
-async def load_schema(db: InfrahubDatabase, schema: SchemaRoot) -> None:
+async def load_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
     default_branch_name = registry.default_branch
-    branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
+    branch_schema = registry.schema.get_schema_branch(name=branch_name or default_branch_name)
     tmp_schema = branch_schema.duplicate()
     tmp_schema.load_schema(schema=schema)
     tmp_schema.process()
 
-    await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
+    await registry.schema.update_schema_branch(
+        schema=tmp_schema, db=db, branch=branch_name or default_branch_name, update_db=True
+    )
 
 
 __all__ = ["CAR", "CAR_SCHEMA", "MANUFACTURER", "PERSON", "TICKET"]

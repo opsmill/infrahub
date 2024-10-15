@@ -4,6 +4,7 @@ from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.schema import MainSchemaTypes
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 
 from ..model.path import (
@@ -32,7 +33,8 @@ class DiffMergeSerializer:
         self.max_batch_size = max_batch_size
         self._relationship_id_cache: dict[tuple[str, str], str] = {}
         self._attribute_type_cache: dict[tuple[str, str], type] = {}
-        self._branch_name: str | None = None
+        self._source_branch_name: str | None = None
+        self._target_branch_name: str | None = None
         # {(node_id, relationship_id, peer_id)}
         self._conflicted_cardinality_one_relationships: set[tuple[str, str, str]] = set()
 
@@ -41,13 +43,19 @@ class DiffMergeSerializer:
         self._attribute_type_cache = {}
 
     @property
-    def branch_name(self) -> str:
-        if self._branch_name is None:
-            raise RuntimeError("branch_name not set")
-        return self._branch_name
+    def source_branch_name(self) -> str:
+        if self._source_branch_name is None:
+            raise RuntimeError("source_branch_name not set")
+        return self._source_branch_name
 
-    def _get_schema(self, kind: str) -> MainSchemaTypes:
-        schema_branch = self.db.schema.get_schema_branch(name=self.branch_name)
+    @property
+    def target_branch_name(self) -> str:
+        if self._target_branch_name is None:
+            raise RuntimeError("target_branch_name not set")
+        return self._target_branch_name
+
+    def _get_schema(self, kind: str, branch_name: str) -> MainSchemaTypes:
+        schema_branch = self.db.schema.get_schema_branch(name=branch_name)
         return schema_branch.get(name=kind, duplicate=False)
 
     def _get_action(self, action: DiffAction, conflict: EnrichedDiffConflict | None) -> DiffAction:
@@ -66,8 +74,12 @@ class DiffMergeSerializer:
         cache_key = (schema_kind, relationship_name)
         if cache_key in self._relationship_id_cache:
             return self._relationship_id_cache[cache_key]
-        node_schema = self._get_schema(kind=schema_kind)
-        relationship_schema = node_schema.get_relationship(name=relationship_name)
+        try:
+            node_schema = self._get_schema(kind=schema_kind, branch_name=self.source_branch_name)
+            relationship_schema = node_schema.get_relationship(name=relationship_name)
+        except (SchemaNotFoundError, ValueError):
+            node_schema = self._get_schema(kind=schema_kind, branch_name=self.target_branch_name)
+            relationship_schema = node_schema.get_relationship(name=relationship_name)
         relationship_identifier = relationship_schema.get_identifier()
         self._relationship_id_cache[cache_key] = relationship_identifier
         return relationship_identifier
@@ -76,8 +88,12 @@ class DiffMergeSerializer:
         cache_key = (schema_kind, attribute_name)
         if cache_key in self._attribute_type_cache:
             return self._attribute_type_cache[cache_key]
-        node_schema = self._get_schema(kind=schema_kind)
-        attribute_schema = node_schema.get_attribute(name=attribute_name)
+        try:
+            node_schema = self._get_schema(kind=schema_kind, branch_name=self.source_branch_name)
+            attribute_schema = node_schema.get_attribute(name=attribute_name)
+        except (SchemaNotFoundError, ValueError):
+            node_schema = self._get_schema(kind=schema_kind, branch_name=self.target_branch_name)
+            attribute_schema = node_schema.get_attribute(name=attribute_name)
         python_type = ATTRIBUTE_PYTHON_TYPES[attribute_schema.kind]
         final_python_type: type = str
         if python_type in (str, int, float, bool):
@@ -134,7 +150,8 @@ class DiffMergeSerializer:
         tuple[list[NodeMergeDict], list[AttributePropertyMergeDict | RelationshipPropertyMergeDict]], None
     ]:
         self._reset_caches()
-        self._branch_name = diff.diff_branch_name
+        self._source_branch_name = diff.diff_branch_name
+        self._target_branch_name = diff.base_branch_name
         self._cache_conflicted_cardinality_one_relationships(diff=diff)
         serialized_node_diffs = []
         serialized_property_diffs: list[AttributePropertyMergeDict | RelationshipPropertyMergeDict] = []

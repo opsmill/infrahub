@@ -1,3 +1,4 @@
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.query_parser import DiffQueryParser
