@@ -22,7 +22,7 @@ def get_permission_report(
     node: MainSchemaTypes,
     action: str,
     is_super_admin: bool = False,
-    can_edit_default_branch: bool = False,
+    can_edit_default_branch: bool = False,  # pylint: disable=unused-argument
 ) -> PermissionDecisionFlag:
     if is_super_admin:
         return PermissionDecisionFlag.ALLOW_ALL
