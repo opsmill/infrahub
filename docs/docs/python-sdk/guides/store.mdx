@@ -143,7 +143,7 @@ You can use a custom store, outside of the Infrahub SDK client. Storing or retri
   store = NodeStore()
 
   device = await client.get(kind="TestDevice", name__value="atl1-edge1")
-  store.set(key=device.name.value, node=store)
+  store.set(key=device.name.value, node=device)
   store.get(key=device.name.value)
   ```
 
