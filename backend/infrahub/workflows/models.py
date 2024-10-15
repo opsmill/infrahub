@@ -1,5 +1,5 @@
 import importlib
-from typing import Any, Awaitable, Callable, Self, TypeVar
+from typing import Any, Awaitable, Callable, TypeVar
 from uuid import UUID
 
 from prefect.client.orchestration import PrefectClient
@@ -7,6 +7,7 @@ from prefect.client.schemas.actions import DeploymentScheduleCreate
 from prefect.client.schemas.objects import FlowRun
 from prefect.client.schemas.schedules import CronSchedule
 from pydantic import BaseModel
+from typing_extensions import Self
 
 from infrahub import __version__
 

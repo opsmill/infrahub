@@ -252,12 +252,12 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Unit Tests"
-        run: "invoke backend.test-unit"
+        run: "poetry run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -305,16 +305,16 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
-        run: "invoke backend.mypy"
+        run: "poetry run invoke backend.mypy"
       - name: "Pylint Tests"
-        run: "invoke backend.pylint"
+        run: "poetry run invoke backend.pylint"
       - name: "Integration Tests"
-        run: "invoke backend.test-integration"
+        run: "poetry run invoke backend.test-integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -366,12 +366,12 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Unit Tests"
-        run: "invoke backend.test-unit"
+        run: "poetry run invoke backend.test-unit"
 
   backend-validate-generated:
     if: |
@@ -829,8 +829,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: Update PATH
