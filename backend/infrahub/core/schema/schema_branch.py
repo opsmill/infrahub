@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Union
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
+from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 from infrahub.core.constants import (
@@ -63,6 +64,47 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
+class ComputedAttributeTarget(BaseModel):
+    kind: str
+    attribute: AttributeSchema
+    filter_keys: list[str] = Field(default_factory=list)
+
+    @property
+    def key_name(self) -> str:
+        return f"{self.kind}_{self.attribute.name}"
+
+    @property
+    def node_filters(self) -> list[str]:
+        if self.filter_keys:
+            return self.filter_keys
+
+        return ["ids"]
+
+
+class RegisteredNodeComputedAttribute(BaseModel):
+    local_fields: dict[str, list[ComputedAttributeTarget]] = Field(
+        default_factory=dict,
+        description="These are fields local to the modified node, which can include the names of attributes and relationships",
+    )
+    relationships: dict[str, list[ComputedAttributeTarget]] = Field(
+        default_factory=dict,
+        description="These relationships refer to the name of the relationship as seen from the source node.",
+    )
+
+    def get_targets(self, updates: list[str]) -> list[ComputedAttributeTarget]:
+        targets: dict[str, ComputedAttributeTarget] = {}
+        for attribute, entries in self.local_fields.items():
+            if attribute in updates:
+                for entry in entries:
+                    if entry.key_name not in targets:
+                        targets[entry.key_name] = entry
+
+        for relationship_name, entries in self.relationships.items():
+            for entry in entries:
+                if entry.key_name in targets:
+                    targets[entry.key_name].filter_keys.append(f"{relationship_name}__ids")
+
+        return list(targets.values())
 
 
 class SchemaBranch:
@@ -74,6 +116,7 @@ class SchemaBranch:
         self.profiles: dict[str, str] = {}
         self._graphql_schema: Optional[GraphQLSchema] = None
         self._graphql_manager: Optional[GraphQLSchemaManager] = None
+        self._computed_macro_map: dict[str, RegisteredNodeComputedAttribute] = {}
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -925,6 +968,7 @@ class SchemaBranch:
                     ) from None
 
     def validate_computed_attributes(self) -> None:
+        self._computed_macro_map = {}
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
@@ -953,7 +997,9 @@ class SchemaBranch:
             raise ValueError(f"{node.kind}: Attribute {attribute.name!r} is a computed macro but no macro is defined")
         if attribute.assignment_type == AttributeAssignmentType.MACRO and attribute.computation_logic:
             allowed_path_types = (
-                SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+                SchemaElementPathType.ATTR_WITH_PROP
+                | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+                | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
             )
             try:
                 macro = MacroDefinition(macro=attribute.computation_logic)
@@ -977,10 +1023,60 @@ class SchemaBranch:
                         f"{node.kind}: Attribute {attribute.name!r} the '{variable}' variable is a reference to itself"
                     )
 
+                self._register_computed_attribute_target(node=node, attribute=attribute, schema_path=schema_path)
+
         if attribute.assignment_type == AttributeAssignmentType.TRANSFORM and not attribute.optional:
             raise ValueError(
                 f"{node.kind}: Attribute {attribute.name!r} is a computed transform, it can't be mandatory"
             )
+
+    def get_impacted_macros(self, kind: str, updates: list[str]) -> list[ComputedAttributeTarget]:
+        if mapping := self._computed_macro_map.get(kind):
+            return mapping.get_targets(updates=updates)
+
+        return []
+
+    def _register_computed_attribute_target(
+        self, node: NodeSchema, attribute: AttributeSchema, schema_path: SchemaAttributePath
+    ) -> None:
+        key = node.kind
+        if schema_path.is_type_relationship:
+            key = schema_path.active_relationship_schema.peer
+
+        if key not in self._computed_macro_map:
+            self._computed_macro_map[key] = RegisteredNodeComputedAttribute()
+
+        source_attribute = ComputedAttributeTarget(kind=node.kind, attribute=attribute)
+        trigger_node = self._computed_macro_map[key]
+        if schema_path.is_type_attribute:
+            if schema_path.active_attribute_schema.name not in trigger_node.local_fields:
+                trigger_node.local_fields[schema_path.active_attribute_schema.name] = []
+
+            trigger_node.local_fields[schema_path.active_attribute_schema.name].append(source_attribute)
+        elif schema_path.is_type_relationship:
+            if schema_path.active_attribute_schema.name not in trigger_node.local_fields:
+                trigger_node.local_fields[schema_path.active_attribute_schema.name] = []
+
+            trigger_node.local_fields[schema_path.active_attribute_schema.name].append(source_attribute)
+
+            if schema_path.active_relationship_schema.name not in trigger_node.relationships:
+                trigger_node.relationships[schema_path.active_relationship_schema.name] = []
+
+            trigger_node.relationships[schema_path.active_relationship_schema.name].append(source_attribute)
+
+            if source_attribute.kind not in self._computed_macro_map:
+                self._computed_macro_map[source_attribute.kind] = RegisteredNodeComputedAttribute()
+
+            if (
+                schema_path.active_relationship_schema.name
+                not in self._computed_macro_map[source_attribute.kind].local_fields
+            ):
+                self._computed_macro_map[source_attribute.kind].local_fields[
+                    schema_path.active_relationship_schema.name
+                ] = []
+            self._computed_macro_map[source_attribute.kind].local_fields[
+                schema_path.active_relationship_schema.name
+            ].append(source_attribute)
 
     def validate_count_against_cardinality(self) -> None:
         """Validate every RelationshipSchema cardinality against the min_count and max_count."""
