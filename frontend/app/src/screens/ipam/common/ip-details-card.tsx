@@ -9,14 +9,16 @@ import { IModelSchema } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "@/utils/objects";
+import { Permission } from "@/utils/permissions";
 
 type tIpDetailsCard = {
   schema: IModelSchema;
   data: { id: string; display_label: string } & Record<string, AttributeType>;
   refetch: () => void;
+  permission: Permission;
 };
 
-export function IpDetailsCard({ schema, data, refetch }: tIpDetailsCard) {
+export function IpDetailsCard({ schema, data, refetch, permission }: tIpDetailsCard) {
   const properties: Property[] = [
     { name: "ID", value: data.id },
     ...(schema.attributes ?? []).map((schemaAttribute) => {
@@ -63,7 +65,12 @@ export function IpDetailsCard({ schema, data, refetch }: tIpDetailsCard) {
         <div>
           <Badge variant="blue">{schema.namespace}</Badge> {schema.label} summary
         </div>
-        <ObjectEditSlideOverTrigger data={data} schema={schema} onUpdateComplete={refetch} />
+        <ObjectEditSlideOverTrigger
+          data={data}
+          schema={schema}
+          onUpdateComplete={refetch}
+          permission={permission}
+        />
       </CardWithBorder.Title>
 
       <PropertyList properties={properties} labelClassName="font-semibold" />

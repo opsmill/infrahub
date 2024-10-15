@@ -2,23 +2,24 @@ import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
-import { usePermission } from "@/hooks/usePermission";
 import AddGroupForm from "@/screens/groups/add-group-form";
 import { iNodeSchema } from "@/state/atoms/schema.atom";
+import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 type AddGroupTriggerButtonProps = {
   schema: iNodeSchema;
   objectId: string;
+  permission: Permission;
 };
 
 export default function AddGroupTriggerButton({
   schema,
   objectId,
+  permission,
   ...props
 }: AddGroupTriggerButtonProps) {
-  const permission = usePermission();
   const [isAddGroupFormOpen, setIsAddGroupFormOpen] = useState(false);
 
   const { data } = useObjectDetails(schema, objectId);
@@ -30,8 +31,8 @@ export default function AddGroupTriggerButton({
       <ButtonWithTooltip
         onClick={() => setIsAddGroupFormOpen(true)}
         className="p-2"
-        disabled={!permission.write.allow}
-        tooltipContent={permission.write.message ?? "Add groups"}
+        disabled={!permission.update.isAllowed}
+        tooltipContent={permission.update.message ?? "Add groups"}
         tooltipEnabled
         data-testid="open-group-form-button"
         {...props}

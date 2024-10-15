@@ -9,6 +9,7 @@ import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
+import { getPermission } from "@/utils/permissions";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
@@ -73,6 +74,7 @@ const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProp
       kind: prefixKind,
       columns,
       filters,
+      hasPermissions: true,
     })
   );
 
@@ -85,13 +87,20 @@ const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProp
 
   const prefixData = data[prefixKind]?.edges?.length && data[prefixKind]?.edges[0].node;
 
+  const permission = getPermission(data[prefixKind]?.permissions?.edges[0]?.node);
+
   if (!prefixData) {
     return <NoDataFound />;
   }
 
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <IpDetailsCard schema={prefixSchema} data={prefixData} refetch={refetch} />
+      <IpDetailsCard
+        schema={prefixSchema}
+        data={prefixData}
+        refetch={refetch}
+        permission={permission}
+      />
     </div>
   );
 };

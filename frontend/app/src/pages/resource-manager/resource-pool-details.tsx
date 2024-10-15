@@ -55,7 +55,7 @@ type ResourcePoolContentProps = {
 };
 
 const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
-  const { loading, error, data, refetch } = useObjectDetails(schema, id);
+  const { loading, error, data, refetch, permission } = useObjectDetails(schema, id);
 
   const getResourcePoolUtilizationQuery = useQuery(GET_RESOURCE_POOL_UTILIZATION, {
     variables: {
@@ -150,6 +150,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
                   refetch();
                   getResourcePoolUtilizationQuery.refetch();
                 }}
+                permission={permission}
               />
             </CardWithBorder.Title>
 
