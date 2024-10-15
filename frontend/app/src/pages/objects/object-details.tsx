@@ -37,6 +37,12 @@ export function ObjectDetailsPage() {
   }
 
   if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+
+      return <UnauthorizedScreen message={message} />;
+    }
+
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
