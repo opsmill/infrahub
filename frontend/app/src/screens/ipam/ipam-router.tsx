@@ -16,6 +16,8 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import ErrorScreen from "../errors/error-screen";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
 import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import {
   IPAM_QSP,
@@ -127,6 +129,16 @@ function IpamRouter() {
       }
     }
   };
+
+  if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+
+      return <UnauthorizedScreen message={message} />;
+    }
+
+    return <ErrorScreen message="Something went wrong when fetching IPAM details." />;
+  }
 
   const rightitems = (
     <ButtonWithTooltip
