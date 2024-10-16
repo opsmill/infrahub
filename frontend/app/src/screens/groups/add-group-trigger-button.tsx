@@ -4,9 +4,9 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import AddGroupForm from "@/screens/groups/add-group-form";
 import { iNodeSchema } from "@/state/atoms/schema.atom";
-import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+import { Permission } from "../permission/types";
 
 type AddGroupTriggerButtonProps = {
   schema: iNodeSchema;

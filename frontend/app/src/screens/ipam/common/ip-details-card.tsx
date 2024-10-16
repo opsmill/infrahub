@@ -5,11 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
+import { Permission } from "@/screens/permission/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "@/utils/objects";
-import { Permission } from "@/utils/permissions";
 
 type tIpDetailsCard = {
   schema: IModelSchema;

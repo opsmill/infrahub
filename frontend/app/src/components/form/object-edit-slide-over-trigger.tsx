@@ -1,8 +1,9 @@
 import { ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import { Permission } from "@/screens/permission/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { Permission } from "@/utils/permissions";
+
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 

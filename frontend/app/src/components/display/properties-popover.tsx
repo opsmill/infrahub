@@ -1,7 +1,7 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { Permission } from "@/screens/permission/types";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
-import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai/index";
 import { useState } from "react";

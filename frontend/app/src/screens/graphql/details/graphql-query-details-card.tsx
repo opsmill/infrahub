@@ -8,11 +8,11 @@ import { Link } from "@/components/ui/link";
 import { Tooltip } from "@/components/ui/tooltip";
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 import { CoreGraphQlQuery } from "@/generated/graphql";
+import { Permission } from "@/screens/permission/types";
 import { iNodeSchema } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/utils/objects";
-import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 
 type GraphqlQueryDetailsCardProps = {

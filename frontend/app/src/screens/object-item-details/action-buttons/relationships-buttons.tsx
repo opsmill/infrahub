@@ -9,7 +9,6 @@ import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelations
 import { useMutation } from "@/hooks/useQuery";
 import { Permission } from "@/screens/permission/types";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
-import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
