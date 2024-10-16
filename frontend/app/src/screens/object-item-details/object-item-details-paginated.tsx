@@ -9,6 +9,7 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useTitle } from "@/hooks/useTitle";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { Permission } from "@/screens/role-management/types";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
 import { TaskItems } from "@/screens/tasks/task-items";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
@@ -23,7 +24,6 @@ import {
   getObjectTabs,
   getTabs,
 } from "@/utils/getSchemaObjectColumns";
-import { Permission } from "@/utils/permissions";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";

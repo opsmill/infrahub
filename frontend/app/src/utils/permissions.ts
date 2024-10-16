@@ -27,7 +27,10 @@ const isActionAllowedOnBranch = (
   }
 };
 
-const getMessage = (decision: PermissionDecisionData, action: string): string => {
+const getMessage = (action: string, decision?: PermissionDecisionData): string => {
+  if (!decision)
+    return `Unable to determine permission to ${action} this object. Please contact your administrator.`;
+
   switch (decision) {
     case "DENY":
       return `You don't have permission to ${action} this object.`;
@@ -39,7 +42,7 @@ const getMessage = (decision: PermissionDecisionData, action: string): string =>
       return `You have permission to ${action} this object on any branch.`;
     default:
       warnUnexpectedType(decision);
-      return `Unable to determine permission to ${action} this object. Please contact your administrator.`;
+      return "";
   }
 };
 
@@ -51,18 +54,22 @@ export function getPermission(permission?: Array<{ node: PermissionData }>): Per
   const isOnDefaultBranch = !!currentBranch?.is_default;
 
   const createPermissionAction = (action: PermissionAction): PermissionDecision => {
-    const permissionNode = permission.find(({ node }) =>
+    if (action === "view" && config?.main.allow_anonymous_access) return { isAllowed: true };
+
+    const permissionAllowNode = permission.find(({ node }) =>
       isActionAllowedOnBranch(node[action], isOnDefaultBranch)
     );
 
-    if (permissionNode) {
+    if (permissionAllowNode) {
       return { isAllowed: true };
     } else {
-      const deniedNode = permission.find(({ node }) => node[action] === "DENY");
-      const message = deniedNode
-        ? getMessage(deniedNode.node[action], action)
-        : getMessage("DENY", action);
-      return { isAllowed: false, message };
+      const permissionDeniedNode = permission.find(
+        ({ node }) => !isActionAllowedOnBranch(node[action], isOnDefaultBranch)
+      );
+      return {
+        isAllowed: false,
+        message: getMessage(action, permissionDeniedNode?.node?.[action]),
+      };
     }
   };
 
