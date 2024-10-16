@@ -10,10 +10,10 @@ import GraphqlQueryDetailsCard from "@/screens/graphql/details/graphql-query-det
 import GraphQLQueryDetailsPageSkeleton from "@/screens/graphql/details/graphql-query-details-page-skeleton";
 import GraphqlQueryViewerCard from "@/screens/graphql/details/graphql-query-viewer-card";
 import Content from "@/screens/layout/content";
+import { getPermission } from "@/screens/permission/utils";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
-import { Permission, getPermission } from "@/utils/permissions";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
