@@ -486,7 +486,6 @@ class SchemaBranch:
 
     def process_validate(self) -> None:
         self.validate_names()
-        self.validate_menu_placements()
         self.validate_kinds()
         self.validate_default_values()
         self.validate_count_against_cardinality()
@@ -898,28 +897,6 @@ class SchemaBranch:
                     isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
-
-    def validate_menu_placements(self) -> None:
-        menu_placements: dict[str, str] = {}
-
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name, duplicate=False)
-            if node.menu_placement:
-                try:
-                    placement_node = self.get(name=node.menu_placement, duplicate=False)
-                except SchemaNotFoundError as exc:
-                    raise SchemaNotFoundError(
-                        branch_name=self.name,
-                        identifier=node.menu_placement,
-                        message=f"{node.kind} refers to an invalid menu placement node: {node.menu_placement}.",
-                    ) from exc
-                if node == placement_node:
-                    raise ValueError(f"{node.kind}: cannot be placed under itself in the menu") from None
-
-                if menu_placements.get(placement_node.kind) == node.kind:
-                    raise ValueError(f"{node.kind}: cyclic menu placement with {placement_node.kind}") from None
-
-                menu_placements[node.kind] = placement_node.kind
 
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):

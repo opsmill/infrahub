@@ -3,7 +3,7 @@
     "internal": [
       {
         "identifier": "Builtin:ObjectManagement",
-        "title": "Object Management",
+        "label": "Object Management",
         "path": "",
         "icon": "mdi:cube-outline",
         "kind": "CoreMenuItem",
@@ -12,7 +12,7 @@
         "children": [
           {
             "identifier": "Builtin:Groups",
-            "title": "Groups",
+            "label": "Groups",
             "path": "/objects/CoreGroup",
             "icon": "mdi:group",
             "kind": "CoreMenuItem",
@@ -22,7 +22,7 @@
           },
           {
             "identifier": "Builtin:Profiles",
-            "title": "Profiles",
+            "label": "Profiles",
             "path": "/objects/CoreProfile",
             "icon": "mdi:shape-plus-outline",
             "kind": "CoreMenuItem",
@@ -32,7 +32,7 @@
           },
           {
             "identifier": "Builtin:ResourceManager",
-            "title": "Resource Manager",
+            "label": "Resource Manager",
             "path": "/resource-manager",
             "icon": "mdi:view-grid-outline",
             "kind": "CoreMenuItem",
@@ -44,7 +44,7 @@
       },
       {
         "identifier": "Builtin:ChangeControl",
-        "title": "Change Control",
+        "label": "Change Control",
         "path": "",
         "icon": "mdi:compare-vertical",
         "kind": "CoreMenuItem",
@@ -53,7 +53,7 @@
         "children": [
           {
             "identifier": "Builtin:Branches",
-            "title": "Branches",
+            "label": "Branches",
             "path": "/branches",
             "icon": "mdi:layers-triple",
             "kind": "CoreMenuItem",
@@ -63,7 +63,7 @@
           },
           {
             "identifier": "Builtin:ProposedChanges",
-            "title": "Proposed Changes",
+            "label": "Proposed Changes",
             "path": "/proposed-changes",
             "icon": "mdi:file-replace-outline",
             "kind": "CoreMenuItem",
@@ -73,7 +73,7 @@
           },
           {
             "identifier": "Builtin:CheckDefinition",
-            "title": "Check Definition",
+            "label": "Check Definition",
             "path": "/objects/CoreCheckDefinition",
             "icon": "mdi:check-all",
             "kind": "CoreMenuItem",
@@ -83,7 +83,7 @@
           },
           {
             "identifier": "Builtin:Tasks",
-            "title": "Tasks",
+            "label": "Tasks",
             "path": "/tasks",
             "icon": "mdi:shield-check",
             "kind": "CoreMenuItem",
@@ -95,7 +95,7 @@
       },
       {
         "identifier": "Builtin:UnifiedStorage",
-        "title": "Unified Storage",
+        "label": "Unified Storage",
         "path": "",
         "icon": "mdi:archive-arrow-down-outline",
         "kind": "CoreMenuItem",
@@ -104,7 +104,7 @@
         "children": [
           {
             "identifier": "Builtin:Schema",
-            "title": "Schema",
+            "label": "Schema",
             "path": "/schema",
             "icon": "mdi:file-code",
             "kind": "CoreMenuItem",
@@ -114,7 +114,7 @@
           },
           {
             "identifier": "Builtin:Repository",
-            "title": "Repository",
+            "label": "Repository",
             "path": "/objects/CoreGenericRepository",
             "icon": "mdi:source-repository",
             "kind": "CoreMenuItem",
@@ -124,7 +124,7 @@
           },
           {
             "identifier": "Builtin:GraphqlQuery",
-            "title": "GraphQL Query",
+            "label": "GraphQL Query",
             "path": "/objects/CoreGraphQLQuery",
             "icon": "mdi:graphql",
             "kind": "CoreMenuItem",
@@ -136,7 +136,7 @@
       },
       {
         "identifier": "Builtin:Admin",
-        "title": "Admin",
+        "label": "Admin",
         "path": "",
         "icon": "mdi:settings-outline",
         "kind": "CoreMenuItem",
@@ -145,7 +145,7 @@
         "children": [
           {
             "identifier": "Builtin:RoleManagement",
-            "title": "Role Management",
+            "label": "Role Management",
             "path": "/role-management",
             "icon": "mdi:user-key",
             "kind": "CoreMenuItem",
@@ -155,7 +155,7 @@
           },
           {
             "identifier": "Builtin:Credentials",
-            "title": "Credentials",
+            "label": "Credentials",
             "path": "/objects/CoreCredential",
             "icon": "mdi:key-variant",
             "kind": "CoreMenuItem",
@@ -165,7 +165,7 @@
           },
           {
             "identifier": "Builtin:Webhooks",
-            "title": "Webhooks",
+            "label": "Webhooks",
             "path": "",
             "icon": "mdi:cog-outline",
             "kind": "CoreMenuItem",
@@ -174,7 +174,7 @@
             "children": [
               {
                 "identifier": "Builtin:WebhookStandard",
-                "title": "Webhook",
+                "label": "Webhook",
                 "path": "/objects/CoreStandardWebhook",
                 "icon": "mdi:webhook",
                 "kind": "CoreMenuItem",
@@ -184,7 +184,7 @@
               },
               {
                 "identifier": "Builtin:WebhookCustom",
-                "title": "Custom Webhook",
+                "label": "Custom Webhook",
                 "path": "/objects/CoreCustomWebhook",
                 "icon": "mdi:cog-outline",
                 "kind": "CoreMenuItem",
@@ -200,7 +200,7 @@
     "object": [
       {
         "identifier": "Builtin:Other",
-        "title": "Other",
+        "label": "Other",
         "path": "",
         "icon": "",
         "kind": "CoreMenuItem",
@@ -209,7 +209,7 @@
         "children": [
           {
             "identifier": "Builtin:Tag",
-            "title": "Tag",
+            "label": "Tag",
             "path": "/objects/BuiltinTag",
             "icon": "mdi:tag-multiple",
             "kind": "BuiltinTag",
@@ -219,7 +219,7 @@
           },
           {
             "identifier": "Infra:AutonomousSystem",
-            "title": "Autonomous System",
+            "label": "Autonomous System",
             "path": "/objects/InfraAutonomousSystem",
             "icon": "mdi:bank-circle-outline",
             "kind": "InfraAutonomousSystem",
@@ -229,7 +229,7 @@
           },
           {
             "identifier": "Infra:BGPPeerGroup",
-            "title": "BGP Peer Group",
+            "label": "BGP Peer Group",
             "path": "/objects/InfraBGPPeerGroup",
             "icon": "mdi:view-grid-plus-outline",
             "kind": "InfraBGPPeerGroup",
@@ -239,7 +239,7 @@
           },
           {
             "identifier": "Infra:BGPSession",
-            "title": "BGP Session",
+            "label": "BGP Session",
             "path": "/objects/InfraBGPSession",
             "icon": "mdi:router",
             "kind": "InfraBGPSession",
@@ -249,7 +249,7 @@
           },
           {
             "identifier": "Infra:BackBoneService",
-            "title": "Backbone Service",
+            "label": "Backbone Service",
             "path": "/objects/InfraBackBoneService",
             "icon": "carbon:container-services",
             "kind": "InfraBackBoneService",
@@ -259,7 +259,7 @@
           },
           {
             "identifier": "Infra:Circuit",
-            "title": "Circuit",
+            "label": "Circuit",
             "path": "/objects/InfraCircuit",
             "icon": "mdi:cable-data",
             "kind": "InfraCircuit",
@@ -269,7 +269,7 @@
           },
           {
             "identifier": "Infra:Device",
-            "title": "Device",
+            "label": "Device",
             "path": "/objects/InfraDevice",
             "icon": "mdi:server",
             "kind": "InfraDevice",
@@ -279,7 +279,7 @@
           },
           {
             "identifier": "Infra:MlagDomain",
-            "title": "MLAG Domain",
+            "label": "MLAG Domain",
             "path": "/objects/InfraMlagDomain",
             "icon": "eos-icons:cluster-management",
             "kind": "InfraMlagDomain",
@@ -289,7 +289,7 @@
           },
           {
             "identifier": "Infra:Platform",
-            "title": "Platform",
+            "label": "Platform",
             "path": "/objects/InfraPlatform",
             "icon": "mdi:application-cog-outline",
             "kind": "InfraPlatform",
@@ -299,7 +299,7 @@
           },
           {
             "identifier": "Infra:VLAN",
-            "title": "VLAN",
+            "label": "VLAN",
             "path": "/objects/InfraVLAN",
             "icon": "mdi:lan-pending",
             "kind": "InfraVLAN",
@@ -309,7 +309,7 @@
           },
           {
             "identifier": "Location:Continent",
-            "title": "Continent",
+            "label": "Continent",
             "path": "/objects/LocationContinent",
             "icon": "jam:world",
             "kind": "LocationContinent",
@@ -319,7 +319,7 @@
           },
           {
             "identifier": "Location:Country",
-            "title": "Country",
+            "label": "Country",
             "path": "/objects/LocationCountry",
             "icon": "gis:search-country",
             "kind": "LocationCountry",
@@ -329,7 +329,7 @@
           },
           {
             "identifier": "Location:Rack",
-            "title": "Rack",
+            "label": "Rack",
             "path": "/objects/LocationRack",
             "icon": "clarity:rack-server-solid",
             "kind": "LocationRack",
@@ -339,7 +339,7 @@
           },
           {
             "identifier": "Location:Site",
-            "title": "Site",
+            "label": "Site",
             "path": "/objects/LocationSite",
             "icon": "ri:building-line",
             "kind": "LocationSite",
@@ -349,7 +349,7 @@
           },
           {
             "identifier": "Organization:Manufacturer",
-            "title": "Manufacturer",
+            "label": "Manufacturer",
             "path": "/objects/OrganizationManufacturer",
             "icon": "mdi:domain",
             "kind": "OrganizationManufacturer",
@@ -359,7 +359,7 @@
           },
           {
             "identifier": "Organization:Provider",
-            "title": "Provider",
+            "label": "Provider",
             "path": "/objects/OrganizationProvider",
             "icon": "mdi:domain",
             "kind": "OrganizationProvider",
@@ -369,7 +369,7 @@
           },
           {
             "identifier": "Organization:Tenant",
-            "title": "Tenant",
+            "label": "Tenant",
             "path": "/objects/OrganizationTenant",
             "icon": "mdi:domain",
             "kind": "OrganizationTenant",
@@ -379,7 +379,7 @@
           },
           {
             "identifier": "Infra:Interface",
-            "title": "Interface",
+            "label": "Interface",
             "path": "/objects/InfraInterface",
             "icon": "mdi:ethernet",
             "kind": "InfraInterface",
@@ -389,7 +389,7 @@
           },
           {
             "identifier": "Infra:MlagInterface",
-            "title": "MLAG Interface",
+            "label": "MLAG Interface",
             "path": "/objects/InfraMlagInterface",
             "icon": "mdi:ethernet",
             "kind": "InfraMlagInterface",
@@ -399,7 +399,7 @@
           },
           {
             "identifier": "Infra:Service",
-            "title": "Service",
+            "label": "Service",
             "path": "/objects/InfraService",
             "icon": "",
             "kind": "InfraService",
@@ -409,7 +409,7 @@
           },
           {
             "identifier": "Location:Generic",
-            "title": "Location",
+            "label": "Location",
             "path": "/objects/LocationGeneric",
             "icon": "mingcute:location-line",
             "kind": "LocationGeneric",
@@ -419,7 +419,7 @@
           },
           {
             "identifier": "Organization:Generic",
-            "title": "Organization",
+            "label": "Organization",
             "path": "/objects/OrganizationGeneric",
             "icon": "mdi:domain",
             "kind": "OrganizationGeneric",

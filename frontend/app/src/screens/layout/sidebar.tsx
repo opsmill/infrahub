@@ -22,6 +22,7 @@ export default function Sidebar() {
         "group/sidebar transition-all",
         booleanCollapsed && "w-[72px] px-2 items-center"
       )}
+      data-testid="sidebar"
     >
       <Button
         variant="outline"

@@ -32,31 +32,29 @@ async def generate_menu(
     full_schema = registry.schema.get_full(branch=branch, duplicate=False)
 
     already_processed = []
-    havent_been_processed = []
 
     # Process the parent first
     for item in menu_items:
         full_name = get_full_name(item)
-        parent = await item.parent.get_peer(db=db, peer_type=CoreMenuItem)
-        if parent:
-            havent_been_processed.append(full_name)
+        parent1 = await item.parent.get_peer(db=db, peer_type=CoreMenuItem)
+        if parent1:
             continue
         structure.data[full_name] = MenuItemDict.from_node(obj=item)
         already_processed.append(full_name)
 
     # Process the children
-    havent_been_processed = []
+    havent_been_processed: list[str] = []
     for item in menu_items:
         full_name = get_full_name(item)
         if full_name in already_processed:
             continue
 
-        parent = await item.parent.get_peer(db=db, peer_type=CoreMenuItem)
-        if not parent:
+        parent2 = await item.parent.get_peer(db=db, peer_type=CoreMenuItem)
+        if not parent2:
             havent_been_processed.append(full_name)
             continue
 
-        parent_full_name = get_full_name(parent)
+        parent_full_name = get_full_name(parent2)
         menu_item = structure.find_item(name=parent_full_name)
         if menu_item:
             child_item = MenuItemDict.from_node(obj=item)
@@ -65,8 +63,8 @@ async def generate_menu(
             log.warning(
                 "new_menu_request: unable to find the parent menu item",
                 branch=branch.name,
-                menu_item=item.name.value,
-                parent_item=parent.name.value,
+                menu_item=child_item.identifier,
+                parent_item=parent_full_name,
             )
 
     default_menu = structure.find_item(name=FULL_DEFAULT_MENU)

@@ -33,7 +33,12 @@ def load_infrastructure_schema(
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run {SERVICE_WORKER_NAME} infrahubctl schema load {target}"
+        command_schema = f"{base_cmd} run {SERVICE_WORKER_NAME} infrahubctl schema load {target}"
         if add_wait:
-            command += " --wait 30"
-        execute_command(context=context, command=command)
+            command_schema += " --wait 30"
+        execute_command(context=context, command=command_schema)
+
+        menu_target = "models/base_menu.yml"
+        if namespace == Namespace.DEV:
+            command_menu = f"{base_cmd} run {SERVICE_WORKER_NAME} infrahubctl menu load {menu_target}"
+            execute_command(context=context, command=command_menu)

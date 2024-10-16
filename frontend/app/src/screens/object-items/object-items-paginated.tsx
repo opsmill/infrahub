@@ -63,7 +63,6 @@ export default function ObjectItems({
   const result = data && schema?.kind ? (data[kindFilter?.value || schema?.kind] ?? {}) : {};
 
   const { count = "...", edges, permissions } = result;
-  console.log("permissions: ", permissions);
 
   useTitle(`${schema.label || schema.name} list`);
 
