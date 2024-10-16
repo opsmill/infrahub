@@ -9,10 +9,11 @@ from infrahub.dependencies.component.registry import ComponentDependencyRegistry
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations.event.branch import delete, merge, rebased
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
 
 
-async def test_delete():
+async def test_delete(prefect_test_fixture):
     """Validate that a deleted branch triggers a registry refresh and cancels open proposed changes"""
 
     message = messages.EventBranchDelete(
@@ -31,7 +32,7 @@ async def test_delete():
     assert trigger_cancel.branch == "cr1234"
 
 
-async def test_merged(default_branch: Branch):
+async def test_merged(default_branch: Branch, prefect_test_fixture):
     source_branch_name = "cr1234"
     target_branch_name = "main"
     right_now = Timestamp()
@@ -41,7 +42,8 @@ async def test_merged(default_branch: Branch):
 
     recorder = BusRecorder()
     database = MagicMock()
-    service = InfrahubServices(message_bus=recorder, database=database)
+    workflow = WorkflowLocalExecution()
+    service = InfrahubServices(message_bus=recorder, database=database, workflow=workflow)
     tracked_diff_roots = [
         EnrichedDiffRoot(
             base_branch_name=target_branch_name,
@@ -76,16 +78,15 @@ async def test_merged(default_branch: Branch):
 
     mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=database, branch=default_branch)
     diff_repo.get_empty_roots.assert_awaited_once_with(base_branch_names=[target_branch_name])
-    assert len(recorder.messages) == 6
+    assert len(recorder.messages) == 5
     assert recorder.messages[0] == messages.RefreshRegistryBranches()
-    assert recorder.messages[1] == messages.TriggerIpamReconciliation(branch=target_branch_name, ipam_node_details=[])
-    assert recorder.messages[2] == messages.TriggerArtifactDefinitionGenerate(branch=target_branch_name)
-    assert recorder.messages[3] == messages.TriggerGeneratorDefinitionRun(branch=target_branch_name)
-    assert recorder.messages[4] == messages.RequestDiffUpdate(branch_name=tracked_diff_roots[0].diff_branch_name)
-    assert recorder.messages[5] == messages.RequestDiffUpdate(branch_name=tracked_diff_roots[1].diff_branch_name)
+    assert recorder.messages[1] == messages.TriggerArtifactDefinitionGenerate(branch=target_branch_name)
+    assert recorder.messages[2] == messages.TriggerGeneratorDefinitionRun(branch=target_branch_name)
+    assert recorder.messages[3] == messages.RequestDiffUpdate(branch_name=tracked_diff_roots[0].diff_branch_name)
+    assert recorder.messages[4] == messages.RequestDiffUpdate(branch_name=tracked_diff_roots[1].diff_branch_name)
 
 
-async def test_rebased(default_branch: Branch):
+async def test_rebased(default_branch: Branch, prefect_test_fixture):
     """Validate that a rebased branch triggers a registry refresh and cancels open proposed changes"""
     branch_name = "cr1234"
     right_now = Timestamp()

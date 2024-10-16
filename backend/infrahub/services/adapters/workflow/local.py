@@ -21,5 +21,5 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         workflow: WorkflowDefinition,
         parameters: dict[str, Any] | None = None,
     ) -> WorkflowInfo:
-        workflow.get_function()
+        await self.execute_workflow(workflow=workflow, parameters=parameters)
         return WorkflowInfo(id=uuid.uuid4())
