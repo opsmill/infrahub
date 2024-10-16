@@ -3,9 +3,9 @@ import { getTokens } from "@/graphql/queries/accounts/getTokens";
 import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import { Filter } from "@/hooks/useFilters";
 import useQuery from "@/hooks/useQuery";
+import { getPermission } from "@/screens/permission/utils";
 import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "@/utils/getSchemaObjectColumns";
-import { getPermission } from "@/utils/permissions";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 

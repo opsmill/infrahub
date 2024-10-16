@@ -1,4 +1,3 @@
-import { Branch } from "@/generated/graphql";
 import {
   Permission,
   PermissionAction,
@@ -9,7 +8,7 @@ import {
 import { store } from "@/state";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { configState } from "@/state/atoms/config.atom";
-import { warnUnexpectedType } from "./common";
+import { warnUnexpectedType } from "@/utils/common";
 
 const isActionAllowedOnBranch = (
   decision: PermissionDecisionData,

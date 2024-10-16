@@ -7,9 +7,9 @@ import useFilters from "@/hooks/useFilters";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import { useObjectItems } from "@/hooks/useObjectItems";
 import Content from "@/screens/layout/content";
+import { getPermission } from "@/screens/permission/utils";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
-import { getPermission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 
