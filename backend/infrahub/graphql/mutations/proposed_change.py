@@ -112,7 +112,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     permission=GlobalPermission(
                         id="",
                         name="",
-                        action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+                        action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
                         decision=PermissionDecision.ALLOW_ALL.value,
                     ),
                     branch=branch,
