@@ -10,9 +10,6 @@ export const GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS = gql`
           name {
             value
           }
-          branch {
-            value
-          }
           namespace {
             value
           }
