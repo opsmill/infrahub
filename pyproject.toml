@@ -42,7 +42,7 @@ pyyaml = "^6"
 toml = "^0.10"
 
 # Dependencies specific to the API Server
-fastapi = "~0.112"
+fastapi = "~0.115"
 fastapi-storages = "~0.3"
 graphene = "~3.3"
 gunicorn = "^22.0.0"
