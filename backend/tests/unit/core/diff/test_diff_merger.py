@@ -52,12 +52,14 @@ class TestMergeDiff:
         mock_diff_repository: DiffRepository,
         car_person_schema: SchemaBranch,
     ) -> DiffMerger:
+        db.add_schema(car_person_schema)
+        db.add_schema(car_person_schema, name=source_branch.name)
         return DiffMerger(
             db=db,
             source_branch=source_branch,
             destination_branch=default_branch,
             diff_repository=mock_diff_repository,
-            serializer=DiffMergeSerializer(schema_branch=car_person_schema, max_batch_size=50),
+            serializer=DiffMergeSerializer(db=db, max_batch_size=50),
         )
 
     @pytest.fixture
@@ -324,6 +326,7 @@ class TestMergeDiff:
         check_idempotent: bool,
     ):
         empty_diff_root.nodes = {added_person_node_diff}
+        mock_diff_repository.get_empty_roots.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -332,7 +335,7 @@ class TestMergeDiff:
             await diff_merger.merge_graph(at=at)
 
         expected_awaits = [
-            call(diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)),
+            call(diff_branch_name=source_branch.name, diff_id=empty_diff_root.uuid),
         ]
         if check_idempotent:
             expected_awaits *= 2
@@ -370,6 +373,7 @@ class TestMergeDiff:
         person_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
         await person_branch.delete(db=db)
         empty_diff_root.nodes = {deleted_person_node_diff}
+        mock_diff_repository.get_empty_roots.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -378,7 +382,7 @@ class TestMergeDiff:
             await diff_merger.merge_graph(at=at)
 
         expected_awaits = [
-            call(diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)),
+            call(diff_branch_name=source_branch.name, diff_id=empty_diff_root.uuid),
         ]
         if check_idempotent:
             expected_awaits *= 2
@@ -413,13 +417,14 @@ class TestMergeDiff:
         )
         deleted_node_diff.conflict = node_conflict
         empty_diff_root.nodes = {deleted_node_diff}
+        mock_diff_repository.get_empty_roots.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
         await diff_merger.merge_graph(at=at)
 
         mock_diff_repository.get_one.assert_awaited_once_with(
-            diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)
+            diff_branch_name=source_branch.name, diff_id=empty_diff_root.uuid
         )
         if expect_deleted:
             with pytest.raises(NodeNotFoundError):
@@ -628,6 +633,7 @@ class TestMergeDiff:
         await car_branch.save(db=db)
 
         empty_diff_root.nodes = {updated_person_node_diff, updated_car_diff}
+        mock_diff_repository.get_empty_roots.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -636,7 +642,7 @@ class TestMergeDiff:
             await diff_merger.merge_graph(at=at)
 
         expected_awaits = [
-            call(diff_branch_name=source_branch.name, tracking_id=BranchTrackingId(name=source_branch.name)),
+            call(diff_branch_name=source_branch.name, diff_id=empty_diff_root.uuid),
         ]
         if check_idempotent:
             expected_awaits *= 2

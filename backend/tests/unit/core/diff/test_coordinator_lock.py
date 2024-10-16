@@ -69,13 +69,13 @@ class TestDiffCoordinatorLocks:
             diff_coordinator.create_or_update_arbitrary_timeframe_diff(
                 base_branch=default_branch,
                 diff_branch=diff_branch,
-                from_time=Timestamp(branch_with_data.created_at),
+                from_time=Timestamp(branch_with_data.branched_from),
                 to_time=Timestamp(),
             ),
             diff_coordinator.create_or_update_arbitrary_timeframe_diff(
                 base_branch=default_branch,
                 diff_branch=diff_branch,
-                from_time=Timestamp(branch_with_data.created_at),
+                from_time=Timestamp(branch_with_data.branched_from),
                 to_time=Timestamp(),
             ),
         )
@@ -102,7 +102,7 @@ class TestDiffCoordinatorLocks:
             diff_coordinator.create_or_update_arbitrary_timeframe_diff(
                 base_branch=default_branch,
                 diff_branch=diff_branch,
-                from_time=Timestamp(branch_with_data.created_at),
+                from_time=Timestamp(branch_with_data.branched_from),
                 to_time=Timestamp(),
             ),
             diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
@@ -133,7 +133,7 @@ class TestDiffCoordinatorLocks:
             diff_coordinator.create_or_update_arbitrary_timeframe_diff(
                 base_branch=default_branch,
                 diff_branch=diff_branch,
-                from_time=Timestamp(branch_with_data.created_at),
+                from_time=Timestamp(branch_with_data.branched_from),
                 to_time=Timestamp(),
             ),
         )

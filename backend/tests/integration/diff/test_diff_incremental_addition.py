@@ -340,7 +340,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
-            from_time=Timestamp(diff_branch.created_at),
+            from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4),
         )
@@ -413,7 +413,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
-            from_time=Timestamp(diff_branch.created_at),
+            from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4),
         )
@@ -492,7 +492,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
-            from_time=Timestamp(diff_branch.created_at),
+            from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4),
         )
@@ -562,7 +562,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
-            from_time=Timestamp(diff_branch.created_at),
+            from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4),
         )

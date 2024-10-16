@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
-from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipStatus
+from infrahub.core.constants import BranchSupportType, DiffAction, RelationshipCardinality, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 
@@ -362,6 +362,7 @@ class DiffRelationshipIntermediate:
 
 @dataclass
 class DiffNodeIntermediate(TrackedStatusUpdates):
+    force_action: DiffAction | None
     uuid: str
     kind: str
     attributes_by_name: dict[str, DiffAttributeIntermediate] = field(default_factory=dict)
@@ -381,6 +382,8 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
         action, changed_at = self.get_action_and_timestamp(from_time=from_time)
         if not attributes and not relationships:
             action = DiffAction.UNCHANGED
+        if self.force_action:
+            action = self.force_action
         return DiffNode(
             uuid=self.uuid,
             kind=self.kind,
@@ -488,6 +491,9 @@ class DiffQueryParser:
             diff_root.nodes_by_id[node_id] = DiffNodeIntermediate(
                 uuid=node_id,
                 kind=database_path.node_kind,
+                force_action=DiffAction.UPDATED
+                if database_path.node_branch_support is BranchSupportType.AGNOSTIC
+                else None,
             )
         diff_node = diff_root.nodes_by_id[node_id]
         diff_node.track_database_path(database_path=database_path)
@@ -529,11 +535,14 @@ class DiffQueryParser:
         if property_type not in diff_attribute.properties_by_type:
             diff_attribute.properties_by_type[property_type] = DiffPropertyIntermediate(property_type=property_type)
         diff_property = diff_attribute.properties_by_type[property_type]
+        value = database_path.property_value
+        if database_path.property_is_peer:
+            value = database_path.peer_id
         diff_property.add_value(
             diff_value=DiffValueIntermediate(
                 changed_at=database_path.property_changed_at,
                 status=database_path.property_status,
-                value=database_path.property_value,
+                value=value,
             )
         )
 
