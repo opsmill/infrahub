@@ -1,8 +1,28 @@
-export type PermissionProps = {
-  view: string;
-  create: string;
-  update: string;
-  delete: string;
+import { Branch } from "@/generated/graphql";
+
+type Action = "view" | "create" | "update" | "delete";
+
+type Decision = "DENY" | "ALLOW_ALL" | "ALLOW_DEFAULT" | "ALLOW_OTHER";
+
+const getAllowedValue = (decision: Decision, isOnDefaultBranch: boolean) => {
+  if (decision === "ALLOW_ALL") return true;
+  if (decision === "ALLOW_DEFAULT" && isOnDefaultBranch) return true;
+  if (decision === "ALLOW_OTHER" && !isOnDefaultBranch) return true;
+  return false;
+};
+
+const getMessage = (decision: Decision, action: string) => {
+  switch (decision) {
+    case "DENY": {
+      return `You can't ${action} this object.`;
+    }
+    case "ALLOW_DEFAULT": {
+      return `You can't ${action} this object in this branch. Switch to the default branch.`;
+    }
+    case "ALLOW_OTHER": {
+      return `You can't ${action} this object in the default branch. Switch to another one.`;
+    }
+  }
 };
 
 export type PermissionAction =
@@ -22,25 +42,26 @@ export type Permission = {
 };
 
 export function getPermission(
-  permission: PermissionProps | Array<{ node: PermissionProps }>
+  permission: Array<{ node: Record<Action, Decision> }>,
+  currentBranch: Branch | null
 ): Permission {
-  const isPermissionArray = Array.isArray(permission);
+  const isOnDefaultBranch = !!currentBranch?.is_default;
 
-  const isViewAllowed = isPermissionArray
-    ? permission.some(({ node }) => node.view === "ALLOW")
-    : permission.view === "ALLOW";
+  const isViewAllowed = permission.find(({ node }) =>
+    getAllowedValue(node.view, isOnDefaultBranch)
+  );
 
-  const isCreateAllowed = isPermissionArray
-    ? permission.some(({ node }) => node.create === "ALLOW")
-    : permission.create === "ALLOW";
+  const isCreateAllowed = permission.find(({ node }) =>
+    getAllowedValue(node.create, isOnDefaultBranch)
+  );
 
-  const isUpdateAllowed = isPermissionArray
-    ? permission.some(({ node }) => node.update === "ALLOW")
-    : permission.update === "ALLOW";
+  const isUpdateAllowed = permission.find(({ node }) =>
+    getAllowedValue(node.update, isOnDefaultBranch)
+  );
 
-  const isDeleteAllowed = isPermissionArray
-    ? permission.some(({ node }) => node.delete === "ALLOW")
-    : permission.delete === "ALLOW";
+  const isDeleteAllowed = permission.find(({ node }) =>
+    getAllowedValue(node.delete, isOnDefaultBranch)
+  );
 
   return {
     view: isViewAllowed
@@ -49,7 +70,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't access this view",
+          message: "You can't access this object.",
         },
     create: isCreateAllowed
       ? {
@@ -57,7 +78,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't create this view",
+          message: "You can't create this object",
         },
     update: isUpdateAllowed
       ? {
@@ -65,7 +86,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't update this view",
+          message: "You can't update this object",
         },
     delete: isDeleteAllowed
       ? {
@@ -73,7 +94,7 @@ export function getPermission(
         }
       : {
           isAllowed: false,
-          message: "You can't delete this view",
+          message: "You can't delete this object",
         },
   };
 }
