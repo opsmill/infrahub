@@ -1,115 +1,82 @@
 import { Branch } from "@/generated/graphql";
+import {
+  Permission,
+  PermissionAction,
+  PermissionData,
+  PermissionDecision,
+  PermissionDecisionData,
+} from "@/screens/role-management/types";
+import { store } from "@/state";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { configState } from "@/state/atoms/config.atom";
+import { warnUnexpectedType } from "./common";
 
-type Action = "view" | "create" | "update" | "delete";
-
-type Decision = "DENY" | "ALLOW_ALL" | "ALLOW_DEFAULT" | "ALLOW_OTHER";
-
-const getAllowedValue = (decision: Decision, isOnDefaultBranch: boolean) => {
-  if (decision === "ALLOW_ALL") return true;
-  if (decision === "ALLOW_DEFAULT" && isOnDefaultBranch) return true;
-  if (decision === "ALLOW_OTHER" && !isOnDefaultBranch) return true;
-  return false;
-};
-
-const getMessage = (decision: Decision, action: string) => {
+const isActionAllowedOnBranch = (
+  decision: PermissionDecisionData,
+  isOnDefaultBranch: boolean
+): boolean => {
   switch (decision) {
-    case "DENY": {
-      return `You can't ${action} this object.`;
-    }
-    case "ALLOW_DEFAULT": {
-      return `You can't ${action} this object in this branch. Switch to the default branch.`;
-    }
-    case "ALLOW_OTHER": {
-      return `You can't ${action} this object in the default branch. Switch to another one.`;
-    }
+    case "ALLOW_ALL":
+      return true;
+    case "ALLOW_DEFAULT":
+      return isOnDefaultBranch;
+    case "ALLOW_OTHER":
+      return !isOnDefaultBranch;
+    default:
+      return false;
   }
 };
 
-export type PermissionAction =
-  | {
-      isAllowed: true;
-    }
-  | {
-      isAllowed: false;
-      message: string;
-    };
-
-export type Permission = {
-  view: PermissionAction;
-  create: PermissionAction;
-  update: PermissionAction;
-  delete: PermissionAction;
+const getMessage = (decision: PermissionDecisionData, action: string): string => {
+  switch (decision) {
+    case "DENY":
+      return `You don't have permission to ${action} this object.`;
+    case "ALLOW_DEFAULT":
+      return `This action is only allowed on the default branch. Please switch to the default branch to ${action} this object.`;
+    case "ALLOW_OTHER":
+      return `This action is not allowed on the default branch. Please switch to a different branch to ${action} this object.`;
+    case "ALLOW_ALL":
+      return `You have permission to ${action} this object on any branch.`;
+    default:
+      warnUnexpectedType(decision);
+      return `Unable to determine permission to ${action} this object. Please contact your administrator.`;
+  }
 };
 
-export function getPermission(
-  permission: Array<{ node: Record<Action, Decision> }>,
-  currentBranch: Branch | null
-): Permission {
+export function getPermission(permission?: Array<{ node: PermissionData }>): Permission {
+  if (!permission) return PERMISSION_ALLOW_ALL;
+
+  const config = store.get(configState);
+  const currentBranch = store.get(currentBranchAtom);
   const isOnDefaultBranch = !!currentBranch?.is_default;
 
-  const isViewAllowed = permission.find(({ node }) =>
-    getAllowedValue(node.view, isOnDefaultBranch)
-  );
+  const createPermissionAction = (action: PermissionAction): PermissionDecision => {
+    const permissionNode = permission.find(({ node }) =>
+      isActionAllowedOnBranch(node[action], isOnDefaultBranch)
+    );
 
-  const isCreateAllowed = permission.find(({ node }) =>
-    getAllowedValue(node.create, isOnDefaultBranch)
-  );
-
-  const isUpdateAllowed = permission.find(({ node }) =>
-    getAllowedValue(node.update, isOnDefaultBranch)
-  );
-
-  const isDeleteAllowed = permission.find(({ node }) =>
-    getAllowedValue(node.delete, isOnDefaultBranch)
-  );
+    if (permissionNode) {
+      return { isAllowed: true };
+    } else {
+      const deniedNode = permission.find(({ node }) => node[action] === "DENY");
+      const message = deniedNode
+        ? getMessage(deniedNode.node[action], action)
+        : getMessage("DENY", action);
+      return { isAllowed: false, message };
+    }
+  };
 
   return {
-    view: isViewAllowed
-      ? {
-          isAllowed: true,
-        }
-      : {
-          isAllowed: false,
-          message: "You can't access this object.",
-        },
-    create: isCreateAllowed
-      ? {
-          isAllowed: true,
-        }
-      : {
-          isAllowed: false,
-          message: "You can't create this object",
-        },
-    update: isUpdateAllowed
-      ? {
-          isAllowed: true,
-        }
-      : {
-          isAllowed: false,
-          message: "You can't update this object",
-        },
-    delete: isDeleteAllowed
-      ? {
-          isAllowed: true,
-        }
-      : {
-          isAllowed: false,
-          message: "You can't delete this object",
-        },
+    view: createPermissionAction("view"),
+    create: createPermissionAction("create"),
+    update: createPermissionAction("update"),
+    delete: createPermissionAction("delete"),
   };
 }
 
-export const PERMISSION_ALLOW: Permission = {
-  view: {
-    isAllowed: true,
-  },
-  create: {
-    isAllowed: true,
-  },
-  update: {
-    isAllowed: true,
-  },
-  delete: {
-    isAllowed: true,
-  },
+export const PERMISSION_ALLOW_ALL: Permission = {
+  view: { isAllowed: true },
+  create: { isAllowed: true },
+  update: { isAllowed: true },
+  delete: { isAllowed: true },
 };
