@@ -2,7 +2,7 @@ export type PermissionDecisionData = "DENY" | "ALLOW_ALL" | "ALLOW_DEFAULT" | "A
 
 export type PermissionAction = "view" | "create" | "update" | "delete";
 
-export type PermissionData = Record<PermissionAction, PermissionDecisionData>;
+export type PermissionData = Record<PermissionAction, PermissionDecisionData> & { kind: string };
 
 export type PermissionDecision = { isAllowed: true } | { isAllowed: false; message: string };
 
