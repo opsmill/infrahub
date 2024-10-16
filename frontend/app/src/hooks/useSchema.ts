@@ -8,7 +8,7 @@ import {
 } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
 
-type UseSchema = (kind?: string) =>
+type UseSchema = (kind?: string | null) =>
   | {
       schema: iNodeSchema;
       isGeneric: false;

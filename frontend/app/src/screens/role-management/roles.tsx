@@ -5,7 +5,6 @@ import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_ROLES } from "@/graphql/queries/role-management/getRoles";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ErrorScreen from "../errors/error-screen";
@@ -15,6 +14,7 @@ import { Button } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 
 function Roles() {

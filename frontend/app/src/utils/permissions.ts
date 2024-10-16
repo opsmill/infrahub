@@ -5,7 +5,7 @@ import {
   PermissionData,
   PermissionDecision,
   PermissionDecisionData,
-} from "@/screens/role-management/types";
+} from "@/screens/permission/types";
 import { store } from "@/state";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { configState } from "@/state/atoms/config.atom";
