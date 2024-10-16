@@ -11,7 +11,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
   });
 
   test.describe("when not logged in", () => {
-    test.skip("should not be able to edit object", async ({ page }) => {
+    test("should not be able to edit object", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
       await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
