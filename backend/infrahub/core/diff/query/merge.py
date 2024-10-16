@@ -429,30 +429,3 @@ CALL {
 }
         """
         self.add_to_query(query=query)
-
-
-class DiffMergeFinalizeQuery(Query):
-    name = "diff_merge_finalize"
-    type = QueryType.WRITE
-    insert_return = False
-
-    def __init__(
-        self,
-        at: Timestamp,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(**kwargs)
-        self.source_branch_name = self.branch.name
-        self.at = at
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
-        self.params = {
-            "source_branch": self.source_branch_name,
-            "at": self.at.to_string(),
-        }
-        query = """
-            MATCH (p)-[rel {branch: $source_branch}]->(q)
-            WHERE rel.to IS NULL
-            SET rel.to = $at
-        """
-        self.add_to_query(query=query)

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
-from infrahub.core.diff.query.merge import DiffMergeFinalizeQuery, DiffMergePropertiesQuery, DiffMergeQuery
+from infrahub.core.diff.query.merge import DiffMergePropertiesQuery, DiffMergeQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -61,9 +61,6 @@ class DiffMerger:
                 property_diff_dicts=property_diff_dicts,
             )
             await merge_properties_query.execute(db=self.db)
-
-        finalize_query = await DiffMergeFinalizeQuery.init(db=self.db, branch=self.source_branch, at=at)
-        await finalize_query.execute(db=self.db)
 
         self.source_branch.branched_from = at.to_string()
         await self.source_branch.save(db=self.db)
