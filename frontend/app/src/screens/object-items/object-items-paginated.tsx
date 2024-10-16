@@ -100,10 +100,6 @@ export default function ObjectItems({
 
   const debouncedHandleSearch = debounce(handleSearch, 500);
 
-  if (!loading && !permission.view.isAllowed) {
-    return <UnauthorizedScreen message={permission.view.message} />;
-  }
-
   if (error) {
     if (error.networkError?.statusCode === 403) {
       const { message } = error.networkError?.result?.errors?.[0] ?? {};
@@ -112,6 +108,10 @@ export default function ObjectItems({
     }
 
     return <ErrorScreen message="Something went wrong when fetching list." />;
+  }
+
+  if (!loading && !permission.view.isAllowed) {
+    return <UnauthorizedScreen message={permission.view.message} />;
   }
 
   return (
