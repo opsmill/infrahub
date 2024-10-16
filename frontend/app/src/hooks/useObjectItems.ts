@@ -3,6 +3,7 @@ import { getTokens } from "@/graphql/queries/accounts/getTokens";
 import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import { Filter } from "@/hooks/useFilters";
 import useQuery from "@/hooks/useQuery";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { PERMISSION_ALLOW, getPermission } from "@/utils/permissions";
@@ -67,6 +68,8 @@ export const useObjectItems = (
   filters?: Array<Filter>,
   kindFilter?: string
 ) => {
+  const currentBranch = useAtomValue(currentBranchAtom);
+
   const query = gql`
     ${getQuery(schema, filters)}
   `;
@@ -86,7 +89,9 @@ export const useObjectItems = (
       : apolloQuery.data[currentKind].permissions
     : null;
 
-  const permission = permissionData ? getPermission(permissionData) : PERMISSION_ALLOW;
+  const permission = permissionData
+    ? getPermission(permissionData, currentBranch)
+    : PERMISSION_ALLOW;
 
   return {
     ...apolloQuery,

@@ -19,6 +19,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
@@ -36,13 +37,14 @@ import { getPermission } from "@/utils/permissions";
 import { gql } from "@apollo/client";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();
 
+  const currentBranch = useAtomValue(currentBranchAtom);
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const auth = useAuth();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
@@ -108,7 +110,8 @@ export default function ArtifactsDetails() {
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
   const permission = getPermission(
-    schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges[0]?.node
+    schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges,
+    currentBranch
   );
 
   const tabs = [

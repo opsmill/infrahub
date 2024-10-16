@@ -34,7 +34,7 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
   const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
   const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;
   const { count, permissions } = data ? data[schemaKind] : {};
-  const currentPermission = permissions?.edges[0]?.node;
+  const currentPermission = permissions?.edges;
 
   if (currentPermission?.view !== "ALLOW") {
     return null;
