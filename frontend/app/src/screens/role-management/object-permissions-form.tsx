@@ -83,12 +83,20 @@ export const ObjectPermissionForm = ({
 
   const decisionOptions = [
     {
-      value: "allow",
-      label: "Allow",
+      value: 1,
+      label: "Deny",
     },
     {
-      value: "deny",
-      label: "Deny",
+      value: 2,
+      label: "Allow Default",
+    },
+    {
+      value: 4,
+      label: "Allow Other",
+    },
+    {
+      value: 6,
+      label: "Allow All",
     },
   ];
 
@@ -141,13 +149,6 @@ export const ObjectPermissionForm = ({
   return (
     <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <DropdownField
-          name="branch"
-          label="Branch"
-          items={branchesOptions}
-          rules={{ required: true, validate: { required: isRequired } }}
-        />
-
         <NodeSelect />
 
         <DropdownField

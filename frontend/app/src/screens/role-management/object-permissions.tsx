@@ -51,10 +51,6 @@ function Permissions() {
       label: "Name",
     },
     {
-      name: "branch",
-      label: "Branch",
-    },
-    {
       name: "namespace",
       label: "Namespace",
     },
@@ -97,9 +93,6 @@ function Permissions() {
                 {icon} {edge?.node?.display_label}
               </div>
             ),
-          },
-          branch: {
-            value: edge?.node?.branch?.value,
           },
           namespace: {
             value: edge?.node?.namespace?.value,
