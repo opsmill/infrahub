@@ -215,7 +215,7 @@ async def test_diff_tree_no_changes(
     diff_branch: Branch,
 ):
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    from_time = datetime.fromisoformat(diff_branch.created_at)
+    from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
@@ -312,7 +312,7 @@ async def test_diff_tree_one_attr_change(
         root_value=None,
         variable_values={"branch": diff_branch.name},
     )
-    from_time = datetime.fromisoformat(diff_branch.created_at)
+    from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     assert result.errors is None
@@ -425,7 +425,7 @@ async def test_diff_tree_one_relationship_change(
         root_value=None,
         variable_values={"branch": diff_branch.name},
     )
-    from_time = datetime.fromisoformat(diff_branch.created_at)
+    from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     assert result.errors is None
@@ -705,7 +705,7 @@ async def test_diff_tree_summary_no_changes(
     diff_branch: Branch,
 ):
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    from_time = datetime.fromisoformat(diff_branch.created_at)
+    from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)

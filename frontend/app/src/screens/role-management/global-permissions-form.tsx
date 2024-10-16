@@ -69,12 +69,12 @@ export const GlobalPermissionForm = ({
 
   const decisionOptions = [
     {
-      value: "allow",
-      label: "Allow",
+      value: 1,
+      label: "Deny",
     },
     {
-      value: "deny",
-      label: "Deny",
+      value: 6,
+      label: "Allow",
     },
   ];
 

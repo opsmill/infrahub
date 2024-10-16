@@ -19,6 +19,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { getPermission } from "@/screens/permission/utils";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
@@ -32,7 +33,6 @@ import {
   getSchemaObjectColumns,
   getTabs,
 } from "@/utils/getSchemaObjectColumns";
-import { getPermission } from "@/utils/permissions";
 import { gql } from "@apollo/client";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -109,7 +109,7 @@ export default function ArtifactsDetails() {
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
   const permission = getPermission(
-    schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges[0]?.node
+    schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges
   );
 
   const tabs = [

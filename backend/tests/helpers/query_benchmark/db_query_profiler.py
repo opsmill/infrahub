@@ -147,35 +147,46 @@ class QueryAnalyzer:
 class ProfilerEnabler:
     profile_memory: bool
 
-    def __init__(self, profile_memory: bool) -> None:
+    def __init__(self, profile_memory: bool, query_analyzer: QueryAnalyzer) -> None:
         self.profile_memory = profile_memory
+        self.query_analyzer = query_analyzer
 
     def __enter__(self) -> None:
-        query_analyzer.profile_duration = True
-        query_analyzer.profile_memory = self.profile_memory
+        self.query_analyzer.profile_duration = True
+        self.query_analyzer.profile_memory = self.profile_memory
 
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None:
-        query_analyzer.profile_duration = False
-        query_analyzer.profile_memory = False
+        self.query_analyzer.profile_duration = False
+        self.query_analyzer.profile_memory = False
 
 
 # Tricky to have it as an attribute of InfrahubDatabaseProfiler as some copies of InfrahubDatabase are made
 # during start_session calls.
-query_analyzer = QueryAnalyzer()
+# query_analyzer = QueryAnalyzer()
 
 
 class InfrahubDatabaseProfiler(InfrahubDatabase):
+    def __init__(self, query_analyzer: QueryAnalyzer, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.query_analyzer = query_analyzer
+        # Note that any attribute added here should be added to get_context method.
+
+    def get_context(self) -> dict[str, Any]:
+        ctx = super().get_context()
+        ctx["query_analyzer"] = self.query_analyzer
+        return ctx
+
     async def execute_query_with_metadata(
         self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
     ) -> tuple[list[Record], dict[str, Any]]:
-        if not query_analyzer.profile_duration:
+        if not self.query_analyzer.profile_duration:
             # Profiling might be disabled to avoid capturing queries while loading data
             return await super().execute_query_with_metadata(query, params, name)
 
         # We don't want to memory profile all queries
-        if query_analyzer.profile_memory and name in self.queries_names_to_config:
+        if self.query_analyzer.profile_memory and name in self.queries_names_to_config:
             # Following call to super().execute_query_with_metadata() will use this value to set PROFILE option
             self.queries_names_to_config[name].profile_memory = True
             profile_memory = True
@@ -193,6 +204,6 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
             query_name=str(name),
             start_time=time_start,
         )
-        query_analyzer.add_measurement(measurement)
+        self.query_analyzer.add_measurement(measurement)
 
         return response, metadata

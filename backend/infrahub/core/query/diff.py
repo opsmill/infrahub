@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
 
@@ -527,6 +527,7 @@ class DiffAllPathsQuery(DiffQuery):
             {
                 "base_branch_name": self.base_branch.name,
                 "branch_name": self.branch.name,
+                "global_branch_name": GLOBAL_BRANCH_NAME,
                 "branch_from_time": self.diff_branch_from_time.to_string(),
                 "from_time": from_str,
                 "to_time": self.diff_to.to_string(),
@@ -633,30 +634,31 @@ CALL {
             MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:HAS_ATTRIBUTE {branch: $branch_name}]->(q:Attribute)
             // exclude attributes and relationships under added/removed nodes b/c they are covered above
             WHERE (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
-            AND r_root.branch IN [$branch_name, $base_branch_name]
-            AND r_root.from < from_time
+            AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
+            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
+            // if p has a different type of branch support and was addded within our timeframe
+            AND (r_root.from < from_time OR NOT (p.branch_support IN $branch_support))
             AND r_root.status = "active"
             // get attributes and relationships added on the branch during the timeframe
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
             AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
-            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
             RETURN root, r_root, p, diff_rel, q
             UNION ALL
             WITH node_field_specifiers_list, from_time
             MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:IS_RELATED {branch: $branch_name}]-(q:Relationship)
             // exclude attributes and relationships under added/removed nodes b/c they are covered above
             WHERE (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
-            AND r_root.branch IN [$branch_name, $base_branch_name]
-            AND r_root.from < from_time
-            AND r_root.status = "active"
+            AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
+            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
+            // if p has a different type of branch support and was addded within our timeframe
+            AND (r_root.from < from_time OR NOT (p.branch_support IN $branch_support))
             // get attributes and relationships added on the branch during the timeframe
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
             AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
-            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
             RETURN root, r_root, p, diff_rel, q
         }
         WITH root, r_root, p, diff_rel, q, from_time

@@ -18,7 +18,7 @@ type SchemaHelpMenuProps = {
 
 export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
   const menuItems = useAtomValue(menuFlatAtom);
-  const schemaInMenu = menuItems.find(({ title }) => title === schema.label);
+  const schemaInMenu = menuItems.find(({ label }) => label === schema.label);
 
   const documentationUrl = schema.documentation
     ? `${INFRAHUB_DOC_LOCAL}${schema.documentation}`

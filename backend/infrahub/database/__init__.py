@@ -182,6 +182,14 @@ class InfrahubDatabase:
             return True
         return False
 
+    def get_context(self) -> dict[str, Any]:
+        """
+        This method is meant to be overridden by subclasses in order to fill in subclass attributes
+        to methods returning a copy of this object using self.__class__ constructor.
+        """
+
+        return {}
+
     def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
         self._schemas[name or schema.name] = schema
 
@@ -191,6 +199,8 @@ class InfrahubDatabase:
         if read_only:
             session_mode = InfrahubDatabaseSessionMode.READ
 
+        context = self.get_context()
+
         return self.__class__(
             mode=InfrahubDatabaseMode.SESSION,
             db_type=self.db_type,
@@ -199,9 +209,12 @@ class InfrahubDatabase:
             driver=self._driver,
             session_mode=session_mode,
             queries_names_to_config=self.queries_names_to_config,
+            **context,
         )
 
     def start_transaction(self, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
+        context = self.get_context()
+
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
@@ -211,6 +224,7 @@ class InfrahubDatabase:
             session=self._session,
             session_mode=self._session_mode,
             queries_names_to_config=self.queries_names_to_config,
+            **context,
         )
 
     async def session(self) -> AsyncSession:

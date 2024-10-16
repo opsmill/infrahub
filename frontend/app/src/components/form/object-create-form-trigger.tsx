@@ -2,8 +2,8 @@ import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import { ARTIFACT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { Permission } from "@/screens/permission/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Button, ButtonProps } from "../buttons/button-primitive";
@@ -29,11 +29,10 @@ export const ObjectCreateFormTrigger = ({
   }
 
   const isAllowed = permission.create.isAllowed;
-  const tooltipMessage = permission.create.message;
 
   return (
     <>
-      <Tooltip enabled={!isAllowed} content={tooltipMessage}>
+      <Tooltip enabled={!isAllowed} content={!isAllowed && permission.create.message}>
         <Button
           data-cy="create"
           data-testid="create-object-button"

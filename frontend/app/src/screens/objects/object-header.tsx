@@ -7,6 +7,7 @@ import useFilters from "@/hooks/useFilters";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import { useObjectItems } from "@/hooks/useObjectItems";
 import Content from "@/screens/layout/content";
+import { getPermission } from "@/screens/permission/utils";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
@@ -34,9 +35,9 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
   const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
   const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;
   const { count, permissions } = data ? data[schemaKind] : {};
-  const currentPermission = permissions?.edges[0]?.node;
+  const currentPermission = getPermission(permissions?.edges);
 
-  if (currentPermission?.view !== "ALLOW") {
+  if (!currentPermission.view.isAllowed) {
     return null;
   }
 

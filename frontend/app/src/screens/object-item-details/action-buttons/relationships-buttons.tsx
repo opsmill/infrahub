@@ -7,6 +7,7 @@ import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
 import { useMutation } from "@/hooks/useQuery";
+import { Permission } from "@/screens/permission/types";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { Permission } from "@/utils/permissions";
 import { Icon } from "@iconify-icon/react";

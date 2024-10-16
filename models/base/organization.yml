@@ -46,7 +46,6 @@ nodes:
       - OrganizationGeneric
     generate_profile: false
     include_in_menu: true
-    menu_placement: OrganizationGeneric
     relationships:
       - name: platform
         peer: InfraPlatform
@@ -63,7 +62,6 @@ nodes:
     inherit_from:
       - OrganizationGeneric
     include_in_menu: true
-    menu_placement: OrganizationGeneric
     relationships:
       - name: location
         peer: LocationSite
@@ -84,7 +82,6 @@ nodes:
     inherit_from:
       - OrganizationGeneric
     include_in_menu: true
-    menu_placement: OrganizationGeneric
     relationships:
       - name: location
         peer: LocationSite

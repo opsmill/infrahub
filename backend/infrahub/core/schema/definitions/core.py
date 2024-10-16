@@ -67,11 +67,12 @@ generic_menu_item: dict[str, Any] = {
     "description": "Base node for the menu",
     "label": "Menu Item",
     "hierarchical": True,
-    "uniqueness_constraints": [["namespace__value", "name__value"]],
+    "human_friendly_id": ["namespace__value", "name__value"],
     "attributes": [
         {"name": "namespace", "kind": "Text", "regex": NAMESPACE_REGEX, "order_weight": 1000},
         {"name": "name", "kind": "Text", "order_weight": 1000},
         {"name": "label", "kind": "Text", "optional": True, "order_weight": 2000},
+        {"name": "kind", "kind": "Text", "optional": True, "order_weight": 2500},
         {"name": "path", "kind": "Text", "optional": True, "order_weight": 2500},
         {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
         {"name": "icon", "kind": "Text", "optional": True, "order_weight": 4000},
@@ -933,9 +934,9 @@ core_models: dict[str, Any] = {
             "attributes": [
                 {
                     "name": "decision",
-                    "kind": "Text",
+                    "kind": "Number",
                     "enum": PermissionDecision.available_types(),
-                    "default_value": PermissionDecision.ALLOW.value,
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
                     "order_weight": 5000,
                 },
                 {
@@ -2186,15 +2187,12 @@ core_models: dict[str, Any] = {
             "description": "A permission that grants rights to perform actions on objects",
             "label": "Object permission",
             "include_in_menu": False,
-            "order_by": ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"],
-            "display_labels": ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"],
-            "uniqueness_constraints": [
-                ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"]
-            ],
+            "order_by": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "display_labels": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "uniqueness_constraints": [["namespace__value", "name__value", "action__value", "decision__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
             "attributes": [
-                {"name": "branch", "kind": "Text", "order_weight": 1000},
                 {"name": "namespace", "kind": "Text", "order_weight": 2000},
                 {"name": "name", "kind": "Text", "order_weight": 3000},
                 {

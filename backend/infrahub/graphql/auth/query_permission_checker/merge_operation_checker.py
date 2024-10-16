@@ -1,7 +1,8 @@
 from infrahub.auth import AccountSession
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GlobalPermissions
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -13,7 +14,9 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can merge a branch without going through a proposed change."""
 
-    permission_required = f"global:{GlobalPermissions.MERGE_BRANCH.value}:allow"
+    permission_required = GlobalPermission(
+        id="", name="", action=GlobalPermissions.MERGE_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated

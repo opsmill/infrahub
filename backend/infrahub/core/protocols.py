@@ -137,6 +137,7 @@ class CoreMenu(CoreNode):
     namespace: String
     name: String
     label: StringOptional
+    kind: StringOptional
     path: StringOptional
     description: StringOptional
     icon: StringOptional
@@ -391,7 +392,6 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
 
 
 class CoreObjectPermission(CoreBasePermission):
-    branch: String
     namespace: String
     name: String
     action: Enum

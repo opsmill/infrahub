@@ -17,8 +17,8 @@ export const SearchActions = ({ query }: SearchProps) => {
   const menuItems = useAtomValue(menuFlatAtom);
 
   const queryLowerCased = query.toLowerCase();
-  const resultsMenu = menuItems.filter(({ title }) =>
-    title.toLowerCase().includes(queryLowerCased)
+  const resultsMenu = menuItems.filter(({ label }) =>
+    label.toLowerCase().includes(queryLowerCased)
   );
   const resultsSchema = models.filter(
     ({ kind, label, description }) =>
@@ -55,7 +55,7 @@ const ActionOnMenu = ({ menuItem }: ActionOnMenuProps) => {
     <SearchResultItem to={constructPath(menuItem.path)}>
       <span className="font-medium">Menu</span>
       <Icon icon="mdi:chevron-right" />
-      <span className="font-semibold">{menuItem.title}</span>
+      <span className="font-semibold">{menuItem.label}</span>
     </SearchResultItem>
   );
 };

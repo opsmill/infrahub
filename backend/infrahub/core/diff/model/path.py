@@ -4,7 +4,13 @@ from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
 
-from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection, RelationshipStatus
+from infrahub.core.constants import (
+    BranchSupportType,
+    DiffAction,
+    RelationshipCardinality,
+    RelationshipDirection,
+    RelationshipStatus,
+)
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 
@@ -627,6 +633,10 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return RelationshipStatus(self.path_to_node.get("status"))
 
     @property
+    def node_branch_support(self) -> BranchSupportType:
+        return BranchSupportType(self.node_node.get("branch_support"))
+
+    @property
     def attribute_name(self) -> str:
         return str(self.attribute_node.get("name"))
 
@@ -674,14 +684,18 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return self.property_node.get("value")
 
     @property
+    def property_is_peer(self) -> bool:
+        return "Node" in self.property_node.labels
+
+    @property
     def peer_id(self) -> Optional[str]:
-        if "Node" not in self.property_node.labels:
+        if not self.property_is_peer:
             return None
         return str(self.property_node.get("uuid"))
 
     @property
     def peer_kind(self) -> Optional[str]:
-        if "Node" not in self.property_node.labels:
+        if not self.property_is_peer:
             return None
         return str(self.property_node.get("kind"))
 

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+from infrahub.permissions.constants import PermissionDecisionFlag
+
 from . import Node
 
 if TYPE_CHECKING:
@@ -27,7 +29,8 @@ class CoreGlobalPermission(Node):
 
         if fields:
             if "identifier" in fields:
-                response["identifier"] = {"value": f"global:{self.action.value}:{self.decision.value.value}"}  # type: ignore[attr-defined]
+                decision = PermissionDecisionFlag(value=self.decision.value.value)  # type: ignore[attr-defined]
+                response["identifier"] = {"value": f"global:{self.action.value}:{decision.name.lower()}"}  # type: ignore[attr-defined,union-attr]
 
         return response
 
@@ -51,11 +54,9 @@ class CoreObjectPermission(Node):
 
         if fields:
             if "identifier" in fields:
+                decision = PermissionDecisionFlag(value=self.decision.value.value)  # type: ignore[attr-defined]
                 response["identifier"] = {
-                    "value": (
-                        f"object:{self.branch.value}:{self.namespace.value}:{self.name.value}:{self.action.value.value}:"  # type: ignore[attr-defined]
-                        f"{self.decision.value.value}"  # type: ignore[attr-defined]
-                    )
+                    "value": f"object:{self.namespace.value}:{self.name.value}:{self.action.value.value}:{decision.name.lower()}"  # type: ignore[attr-defined,union-attr]
                 }
 
         return response

@@ -1,14 +1,15 @@
 from infrahub.auth import AccountSession
 from infrahub.core import registry
-from infrahub.core.account import ObjectPermission
+from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.manager import get_schema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import GraphqlParams
+from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.utils import extract_camelcase_words
 
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
@@ -28,6 +29,13 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
+        required_decision = (
+            PermissionDecisionFlag.ALLOW_DEFAULT
+            if analyzed_query.branch is None
+            or analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+            else PermissionDecisionFlag.ALLOW_OTHER
+        )
+
         kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
 
         # Identify which operations are performed. As we don't have a mapping between kinds and the
@@ -47,21 +55,17 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                         actions.add(query_action)
 
         # Infer required permissions from the kind/operation map
-        permissions: list[str] = []
+        permissions: list[ObjectPermission] = []
         for action in actions:
             for kind in kinds:
                 extracted_words = extract_camelcase_words(kind)
                 permissions.append(
-                    str(
-                        # Create a object permission instance just to get its string representation
-                        ObjectPermission(
-                            id="",
-                            branch=branch.name,
-                            namespace=extracted_words[0],
-                            name="".join(extracted_words[1:]),
-                            action=action.lower(),
-                            decision=PermissionDecision.ALLOW.value,
-                        )
+                    ObjectPermission(
+                        id="",
+                        namespace=extracted_words[0],
+                        name="".join(extracted_words[1:]),
+                        action=action.lower(),
+                        decision=required_decision,
                     )
                 )
 
@@ -83,7 +87,9 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     This is similar to object permission checker except that we care for any operations on any account related kinds.
     """
 
-    permission_required = f"global:{GlobalPermissions.MANAGE_ACCOUNTS.value}:{PermissionDecision.ALLOW.value}"
+    permission_required = GlobalPermission(
+        id="", name="", action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated
@@ -132,7 +138,9 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     This is similar to object permission checker except that we care for any operations on any permission related kinds.
     """
 
-    permission_required = f"global:{GlobalPermissions.MANAGE_PERMISSIONS.value}:{PermissionDecision.ALLOW.value}"
+    permission_required = GlobalPermission(
+        id="", name="", action=GlobalPermissions.MANAGE_PERMISSIONS.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated
@@ -175,7 +183,9 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     This is similar to object permission checker except that we only care about mutations on repositories.
     """
 
-    permission_required = f"global:{GlobalPermissions.MANAGE_REPOSITORIES.value}:{PermissionDecision.ALLOW.value}"
+    permission_required = GlobalPermission(
+        id="", name="", action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated

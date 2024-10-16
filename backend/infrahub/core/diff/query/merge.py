@@ -60,15 +60,8 @@ CALL {
         WHERE node_rel_status IS NOT NULL
         MATCH (root:Root)
         // ------------------------------
-        // set IS_PART_OF.to on source branch and, optionally, target branch
+        // set IS_PART_OF.to, optionally, target branch
         // ------------------------------
-        WITH root, n, node_rel_status
-        CALL {
-            WITH root, n, node_rel_status
-            OPTIONAL MATCH (root)<-[source_r_root:IS_PART_OF {branch: $source_branch, status: node_rel_status}]-(n)
-            WHERE source_r_root.from <= $at AND source_r_root.to IS NULL
-            SET source_r_root.to = $at
-        }
         WITH root, n, node_rel_status
         CALL {
             WITH root, n, node_rel_status
@@ -122,17 +115,6 @@ CALL {
             }
             WITH n, attr_rel_status, a
             // ------------------------------
-            // set HAS_ATTRIBUTE.to on source branch if necessary
-            // ------------------------------
-            CALL {
-                WITH n, attr_rel_status, a
-                OPTIONAL MATCH (n)
-                    -[source_r_attr:HAS_ATTRIBUTE {branch: $source_branch, status: attr_rel_status}]
-                    ->(a)
-                WHERE source_r_attr.from <= $at AND source_r_attr.to IS NULL
-                SET source_r_attr.to = $at
-            }
-            // ------------------------------
             // set HAS_ATTRIBUTE.to on target branch if necessary
             // ------------------------------
             CALL {
@@ -179,22 +161,17 @@ CALL {
                 ELSE NULL
             END AS related_rel_status
             // ------------------------------
-            // set IS_RELATED.to on source branch and, optionally, target_branch
+            // determine the directions of each IS_RELATED
             // ------------------------------
             CALL {
                 WITH n, rel_name, rel_peer_id, related_rel_status
                 MATCH (n)
-                    -[source_r_rel_1:IS_RELATED {branch: $source_branch, status: related_rel_status}]
+                    -[source_r_rel_1:IS_RELATED {branch: $source_branch}]
                     -(r:Relationship {name: rel_name})
-                    -[source_r_rel_2:IS_RELATED {branch: $source_branch, status: related_rel_status}]
+                    -[source_r_rel_2:IS_RELATED {branch: $source_branch}]
                     -(:Node {uuid: rel_peer_id})
                 WHERE source_r_rel_1.from <= $at AND source_r_rel_1.to IS NULL
                 AND source_r_rel_2.from <= $at AND source_r_rel_2.to IS NULL
-                SET source_r_rel_1.to = $at
-                SET source_r_rel_2.to = $at
-                // ------------------------------
-                // determine the directions of each IS_RELATED
-                // ------------------------------
                 RETURN r, CASE
                     WHEN startNode(source_r_rel_1).uuid = n.uuid THEN "r"
                     ELSE "l"
@@ -328,13 +305,15 @@ CALL {
     CALL {
         WITH attr_rel_prop_diff
         OPTIONAL MATCH (n:Node {uuid: attr_rel_prop_diff.node_uuid})
-            -[r1:IS_RELATED {branch: $source_branch}]
+            -[r1:IS_RELATED]
             -(rel:Relationship {name: attr_rel_prop_diff.relationship_id})
-            -[r2:IS_RELATED {branch: $source_branch}]
+            -[r2:IS_RELATED]
             -(:Node {uuid: attr_rel_prop_diff.peer_uuid})
         WHERE attr_rel_prop_diff.relationship_id IS NOT NULL
+        AND r1.branch IN [$source_branch, $target_branch]
+        AND r2.branch IN [$source_branch, $target_branch]
         RETURN rel
-        ORDER BY r1.from DESC, r2.from DESC
+        ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
         LIMIT 1
     }
     WITH attr_rel_prop_diff, COALESCE(attr, rel) AS attr_rel
@@ -387,17 +366,8 @@ CALL {
             ELSE NULL
         END as prop_rel_status
         // ------------------------------
-        // set property edge.to on source branch and, optionally, target branch
+        // set property edge.to, optionally, on target branch
         // ------------------------------
-        CALL {
-            WITH attr_rel, prop_rel_status, prop_type
-            OPTIONAL MATCH (attr_rel)
-                -[source_r_prop {branch: $source_branch, status: prop_rel_status}]
-                ->()
-            WHERE type(source_r_prop) = prop_type
-            AND source_r_prop.from < $at AND source_r_prop.to IS NULL
-            SET source_r_prop.to = $at
-        }
         CALL {
             WITH attr_rel, prop_rel_status, prop_type
             OPTIONAL MATCH (attr_rel)

@@ -9,9 +9,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/graphql/queries/role-management/getObjectPermissions";
+import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { ReactNode, useState } from "react";
@@ -49,10 +49,6 @@ function Permissions() {
     {
       name: "display",
       label: "Name",
-    },
-    {
-      name: "branch",
-      label: "Branch",
     },
     {
       name: "namespace",
@@ -97,9 +93,6 @@ function Permissions() {
                 {icon} {edge?.node?.display_label}
               </div>
             ),
-          },
-          branch: {
-            value: edge?.node?.branch?.value,
           },
           namespace: {
             value: edge?.node?.namespace?.value,

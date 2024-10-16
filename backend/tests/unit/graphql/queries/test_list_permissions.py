@@ -7,15 +7,13 @@ from graphql import graphql
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import (
-    InfrahubKind,
-    PermissionAction,
-    PermissionDecision,
-)
+from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.types.permission import PermissionDecision
+from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
@@ -82,41 +80,43 @@ class TestObjectPermissions:
         for object_permission in [
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Core",
                 name="*",
                 action=PermissionAction.ANY.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOW_OTHER,
+            ),
+            ObjectPermission(
+                id="",
+                namespace="Core",
+                name="*",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
             await obj.new(
                 db=db,
-                branch=object_permission.branch,
                 namespace=object_permission.namespace,
                 name=object_permission.name,
                 action=object_permission.action,
@@ -136,31 +136,28 @@ class TestObjectPermissions:
         await group.members.add(db=db, data={"id": first_account.id})
         await group.members.save(db=db)
 
-    async def test_first_account_tags_main_branch(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ) -> None:
-        """In the main branch the first account doesn't have the permission to make changes"""
+    async def test_first_account_tags(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
+        """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
         session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         gql_params = prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
 
-        result = await graphql(
-            schema=gql_params.schema,
-            source=QUERY_TAGS,
-            context_value=gql_params.context,
-        )
+        result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
 
         assert not result.errors
         assert result.data
         assert result.data["BuiltinTag"]["permissions"]["count"] == 1
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
-            "node": {"kind": "BuiltinTag", "create": "DENY", "update": "DENY", "delete": "DENY", "view": "ALLOW"}
+            "node": {
+                "kind": "BuiltinTag",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.DENY.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
+            }
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -169,24 +166,21 @@ class TestObjectPermissions:
         """In other branches the permissions for the first account is less restrictive"""
         branch2 = await create_branch(branch_name="pr-12345", db=db)
         session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
-
-        result = await graphql(
-            schema=gql_params.schema,
-            source=QUERY_TAGS,
-            context_value=gql_params.context,
-        )
-
+        result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
         assert not result.errors
         assert result.data
         assert result.data["BuiltinTag"]["permissions"]["count"] == 1
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
-            "node": {"kind": "BuiltinTag", "create": "ALLOW", "update": "DENY", "delete": "ALLOW", "view": "ALLOW"}
+            "node": {
+                "kind": "BuiltinTag",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.DENY.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
+            }
         }
 
     async def test_first_account_list_permissions_for_generics(
@@ -194,10 +188,7 @@ class TestObjectPermissions:
     ) -> None:
         """In the main branch the first account doesn't have the permission to make changes"""
         session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         gql_params = prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
@@ -215,28 +206,28 @@ class TestObjectPermissions:
         assert {
             "node": {
                 "kind": "CoreGenericRepository",
-                "create": "DENY",
-                "update": "DENY",
-                "delete": "DENY",
-                "view": "ALLOW",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.ALLOW_OTHER.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
             "node": {
                 "kind": "CoreRepository",
-                "create": "DENY",
-                "update": "DENY",
-                "delete": "DENY",
-                "view": "ALLOW",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.ALLOW_OTHER.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
             "node": {
                 "kind": "CoreReadOnlyRepository",
-                "create": "DENY",
-                "update": "DENY",
-                "delete": "DENY",
-                "view": "ALLOW",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.ALLOW_OTHER.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
 
@@ -277,41 +268,36 @@ class TestAttributePermissions:
         for object_permission in [
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="*",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
                 id="",
-                branch="pr-12345",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.UPDATE.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
             await obj.new(
                 db=db,
-                branch=object_permission.branch,
                 namespace=object_permission.namespace,
                 name=object_permission.name,
                 action=object_permission.action,
@@ -355,7 +341,7 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecision.DENY
+            "update_value": PermissionDecision.ALLOW_OTHER.name
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -377,5 +363,5 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecision.ALLOW
+            "update_value": PermissionDecision.ALLOW_OTHER.name
         }
