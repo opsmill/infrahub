@@ -73,6 +73,15 @@ nodes:
         name: street
         optional: true
       - kind: Text
+        name: city
+        optional: true
+      - kind: Text
+        name: county
+        optional: true
+      - kind: Text
+        name: state
+        optional: true
+      - kind: Text
         name: zipcode
         optional: true
       - kind: Text
@@ -340,6 +349,10 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
+      - name: ip_addresses
+        peer: InfraIPAddress
+        cardinality: many
+        kind: Component
   - name: IPAddress
     namespace: Infra
     description: "IP Address"
