@@ -39,12 +39,12 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_CACHE_DATABASE: ${INFRAHUB_CACHE_DATABASE:-0}
   INFRAHUB_CACHE_DRIVER: ${INFRAHUB_CACHE_DRIVER:-redis}
   INFRAHUB_CACHE_ENABLE: ${INFRAHUB_CACHE_ENABLE:-true}
-  INFRAHUB_CACHE_PASSWORD: ${INFRAHUB_CACHE_PASSWORD:-infrahub}
+  # INFRAHUB_CACHE_PASSWORD: ${INFRAHUB_CACHE_PASSWORD:-infrahub}
   INFRAHUB_CACHE_PORT:
   INFRAHUB_CACHE_TLS_CA_FILE:
   INFRAHUB_CACHE_TLS_ENABLED: ${INFRAHUB_CACHE_TLS_ENABLED:-false}
   INFRAHUB_CACHE_TLS_INSECURE: ${INFRAHUB_CACHE_TLS_INSECURE:-false}
-  INFRAHUB_CACHE_USERNAME: ${INFRAHUB_CACHE_USERNAME:-infrahub}
+  # INFRAHUB_CACHE_USERNAME: ${INFRAHUB_CACHE_USERNAME:-infrahub}
   INFRAHUB_CONFIG:
   INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-localhost}
   INFRAHUB_DB_DATABASE:
@@ -62,7 +62,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DOCS_INDEX_PATH: ${INFRAHUB_DOCS_INDEX_PATH:-/opt/infrahub/docs/build/search-index.json}
   INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS: ${INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:-false}
   INFRAHUB_EXPERIMENTAL_PULL_REQUEST: ${INFRAHUB_EXPERIMENTAL_PULL_REQUEST:-false}
-  INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-repositories}
+  INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-/opt/infrahub/git}
   INFRAHUB_GIT_SYNC_INTERVAL: ${INFRAHUB_GIT_SYNC_INTERVAL:-10}
   INFRAHUB_INITIAL_ADMIN_PASSWORD: ${INFRAHUB_INITIAL_ADMIN_PASSWORD:-infrahub}
   INFRAHUB_INITIAL_ADMIN_TOKEN:
@@ -101,6 +101,8 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
   INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
   OTEL_RESOURCE_ATTRIBUTES:
+  INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
+  INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
 
 services:
   message-queue:
@@ -113,7 +115,8 @@ services:
       test: rabbitmq-diagnostics -q check_port_connectivity
       interval: 5s
       timeout: 30s
-      retries: 3
+      retries: 10
+      start_period: 3s
     ports:
       - 15692:15692
 
@@ -130,7 +133,7 @@ services:
     image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: neo4j/${INFRAHUB_DB_PASSWORD:-admin}
+      NEO4J_AUTH: ${INFRAHUB_DB_USERNAME:-neo4j}/${INFRAHUB_DB_PASSWORD:-admin}
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_dbms_security_auth__minimum__password__length: 4
     volumes:
@@ -150,18 +153,19 @@ services:
     image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.3-python3.12}"
     command: prefect server start --host 0.0.0.0 --ui
     restart: unless-stopped
+    depends_on:
+      - task-manager-db
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
-      PREFECT_WORKER_QUERY_SECONDS: 3
-      PREFECT_AGENT_QUERY_INTERVAL: 3
+      PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
+      # PREFECT_WORKER_QUERY_SECONDS: 3
+      # PREFECT_AGENT_QUERY_INTERVAL: 3
     healthcheck:
       test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 10s
-    depends_on:
-      - task-manager-db
 
   task-manager-db:
     image: postgres:16-alpine
@@ -183,6 +187,7 @@ services:
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
+      -w ${WEB_CONCURRENCY:-4}
       --logger-class infrahub.serve.log.GunicornLogger
       infrahub.server:app
     depends_on:
@@ -192,6 +197,9 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
+      task-manager:
+        condition: service_healthy
+        required: false
     environment:
       <<: *infrahub_config
       INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
@@ -202,10 +210,12 @@ services:
       INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_INITIAL_ADMIN_TOKEN:-06438eb2-8019-4776-878c-0941b1f1d1ec}
       INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
       INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_SECURITY_SECRET_KEY:-327f747f-efac-42be-9e73-999f08f86b92"}
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
     ports:
       - 8000:8000
     volumes:
       - "storage_data:${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}"
+      - "workflow_data:/opt/infrahub/workflow"
     tty: true
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
@@ -214,12 +224,12 @@ services:
       retries: 20
       start_period: 10s
 
-  infrahub-git:
+  task-worker:
     deploy:
       mode: replicated
       replicas: 2
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-0.16.2}"
-    command: infrahub git-agent start --debug
+    command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
       - infrahub-server
@@ -227,7 +237,7 @@ services:
       <<: *infrahub_config
       INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-DEBUG}
-      INFRAHUB_API_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
+      INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
       INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_SECURITY_SECRET_KEY:-327f747f-efac-42be-9e73-999f08f86b92"}
       INFRAHUB_ADDRESS: ${INFRAHUB_ADDRESS:-http://infrahub-server:8000}
       INFRAHUB_INTERNAL_ADDRESS: ${INFRAHUB_INTERNAL_ADDRESS:-http://infrahub-server:8000}
@@ -235,6 +245,7 @@ services:
       INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
       INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-database}
       INFRAHUB_TIMEOUT: ${INFRAHUB_TIMEOUT:-60}
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
     volumes:
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
@@ -247,3 +258,4 @@ volumes:
   git_remote_data:
   storage_data:
   workflow_db:
+  workflow_data:
