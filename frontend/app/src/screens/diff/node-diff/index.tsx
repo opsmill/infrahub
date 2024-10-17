@@ -55,7 +55,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
 };
 
 export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
-  const auth = useAuth();
+  const { isAuthenticated } = useAuth();
   const [qspStatus] = useQueryParam(QSP.STATUS, StringParam);
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -162,7 +162,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
 
         <RefreshButton
           onClick={handleRefresh}
-          disabled={!auth?.permissions?.write || isLoadingUpdate}
+          disabled={!isAuthenticated || isLoadingUpdate}
           isLoading={isLoadingUpdate}
         />
       </div>
@@ -192,7 +192,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
 
         <RefreshButton
           onClick={handleRefresh}
-          disabled={!auth?.permissions?.write || isLoadingUpdate}
+          disabled={!isAuthenticated || isLoadingUpdate}
           isLoading={isLoadingUpdate}
         />
       </div>
@@ -225,7 +225,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
               size="sm"
               variant="primary"
               onClick={handleRefresh}
-              disabled={!auth?.permissions?.write || isLoadingUpdate}
+              disabled={!isAuthenticated || isLoadingUpdate}
             >
               Refresh diff
             </Button>

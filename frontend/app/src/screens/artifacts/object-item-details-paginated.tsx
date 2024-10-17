@@ -247,7 +247,7 @@ export default function ArtifactsDetails() {
 
                                 <Button
                                   buttonType={BUTTON_TYPES.INVISIBLE}
-                                  disabled={!auth?.permissions?.write}
+                                  disabled={!permission.update.isAllowed}
                                   onClick={() => {
                                     setMetaEditFieldDetails({
                                       type: "attribute",
