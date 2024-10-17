@@ -200,9 +200,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             <ButtonWithTooltip
                               variant="ghost"
                               size="icon"
-                              disabled={!permission?.create.isAllowed}
-                              tooltipEnabled={!permission?.create.isAllowed}
-                              tooltipContent={permission?.create.message ?? undefined}
+                              disabled={!permission?.update.isAllowed}
+                              tooltipEnabled={!permission?.update.isAllowed}
+                              tooltipContent={permission?.update.message ?? undefined}
                               onClick={() => {
                                 setMetaEditFieldDetails({
                                   type: "relationship",

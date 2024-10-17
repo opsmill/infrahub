@@ -7,7 +7,6 @@ import { CONFIG } from "@/config/config";
 import { ARTIFACT_OBJECT, MENU_EXCLUDELIST } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
-import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
@@ -45,7 +44,6 @@ export default function ArtifactsDetails() {
   const { objectid } = useParams();
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const auth = useAuth();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
