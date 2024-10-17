@@ -14,6 +14,8 @@ import {
   deviceDetailsMocksQuery,
   deviceDetailsMocksSchema,
   deviceDetailsMocksTagName,
+  getPermissionsData,
+  getPermissionsQuery,
 } from "../../mocks/data/devices";
 import { TestProvider } from "../../mocks/jotai/atom";
 
@@ -34,6 +36,18 @@ const mocks: any[] = [
     },
     result: {
       data: deviceDetailsMocksData,
+    },
+  },
+  // Permissions
+  {
+    request: {
+      query: gql`
+        ${getPermissionsQuery}
+      `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: getPermissionsData,
     },
   },
 ];
