@@ -13,7 +13,6 @@ import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
-import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
@@ -24,7 +23,6 @@ import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { classNames } from "@/utils/common";
-import { constructPath } from "@/utils/fetch";
 import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import {
   getObjectAttributes,
@@ -36,7 +34,7 @@ import { gql } from "@apollo/client";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 
@@ -129,23 +127,7 @@ export default function ArtifactsDetails() {
   const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);
 
   return (
-    <Content>
-      <Content.Title
-        title={
-          <div className="flex items-center gap-1">
-            <Link to={constructPath(`/objects/${ARTIFACT_OBJECT}`)} className="hover:underline">
-              {schemaData.name}
-            </Link>
-            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
-            <p className="max-w-2xl text-sm text-gray-500 font-normal">
-              {objectDetailsData.display_label}
-            </p>
-          </div>
-        }
-      />
-
-      <div className="px-4 text-sm">{schemaData?.description}</div>
-
+    <>
       <Tabs
         tabs={tabs}
         rightItems={
@@ -323,6 +305,6 @@ export default function ArtifactsDetails() {
           row={objectDetailsData}
         />
       </SlideOver>
-    </Content>
+    </>
   );
 }

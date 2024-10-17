@@ -1,4 +1,3 @@
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
 import { CoreGraphQlQuery } from "@/generated/graphql";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
@@ -9,20 +8,19 @@ import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import GraphqlQueryDetailsCard from "@/screens/graphql/details/graphql-query-details-card";
 import GraphQLQueryDetailsPageSkeleton from "@/screens/graphql/details/graphql-query-details-page-skeleton";
 import GraphqlQueryViewerCard from "@/screens/graphql/details/graphql-query-viewer-card";
-import Content from "@/screens/layout/content";
+import { Permission } from "@/screens/permission/types";
 import { getPermission } from "@/screens/permission/utils";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
-const GraphqlQueryDetailsPage = () => {
+export default function GraphqlQueryDetailsPage() {
   useTitle("GraphQL Query details");
 
-  const { graphqlQueryId } = useParams();
+  const { objectid } = useParams();
+  console.log("objectid: ", objectid);
 
   const nodes = useAtomValue(schemaState);
   const graphqlQuerySchema = nodes.find((s) => s.kind === GRAPHQL_QUERY_OBJECT);
@@ -31,7 +29,7 @@ const GraphqlQueryDetailsPage = () => {
 
   const query = gql(
     getObjectDetailsPaginated({
-      objectid: graphqlQueryId,
+      objectid,
       kind: GRAPHQL_QUERY_OBJECT,
       columns,
       hasPermissions: true,
@@ -56,49 +54,16 @@ const GraphqlQueryDetailsPage = () => {
   }
 
   return (
-    <Content>
-      <Content.Title
-        title={
-          <div className="flex items-center gap-1">
-            <Link
-              to={constructPath(`/objects/${graphqlQuerySchema.kind}`)}
-              className="hover:underline"
-            >
-              {graphqlQuerySchema.label}
-            </Link>
-
-            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
-
-            {loading ? (
-              <span>...</span>
-            ) : (
-              <p className="max-w-2xl text-sm text-gray-500 font-normal">
-                {graphqlQuery.display_label}
-              </p>
-            )}
-          </div>
-        }
-        reload={() => refetch()}
-        isReloadLoading={loading}
-      >
-        <ObjectHelpButton
-          className="ml-auto"
-          documentationUrl={graphqlQuerySchema.documentation}
-          kind={graphqlQuerySchema.kind}
-        />
-      </Content.Title>
-
-      {graphqlQuery && (
-        <GraphqlQueryDetailsContent
-          graphqlQuerySchema={graphqlQuerySchema}
-          graphqlQuery={graphqlQuery}
-          refetch={refetch}
-          permission={permission}
-        />
-      )}
-    </Content>
+    graphqlQuery && (
+      <GraphqlQueryDetailsContent
+        graphqlQuerySchema={graphqlQuerySchema}
+        graphqlQuery={graphqlQuery}
+        refetch={refetch}
+        permission={permission}
+      />
+    )
   );
-};
+}
 
 const GraphqlQueryDetailsContent = ({
   graphqlQuery,
@@ -124,7 +89,3 @@ const GraphqlQueryDetailsContent = ({
     </section>
   );
 };
-
-export function Component() {
-  return <GraphqlQueryDetailsPage />;
-}
