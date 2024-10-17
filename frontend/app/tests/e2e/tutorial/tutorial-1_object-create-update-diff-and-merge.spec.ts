@@ -18,9 +18,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   let dateBeforeTest: Date;
 
   test("1. Create a new organization", async ({ page }) => {
-    dateBeforeTest = new Date(
-      Math.floor(new Date().getTime() / (1000 * 60 * 10)) * (1000 * 60 * 10)
-    );
+    dateBeforeTest = new Date();
 
     await page.goto("/");
 
@@ -160,6 +158,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page
         .getByRole("option", { name: format(dateBeforeTest, "h:mm aa"), exact: true })
         .click();
+      await expect(page.getByRole("link", { name: "Duff" })).toBeVisible();
       await expect(
         page.getByRole("link", { name: "Changes from branch cr1234" })
       ).not.toBeVisible();
@@ -167,7 +166,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("Row my-first-tenant is visible again when we reset date input", async () => {
       await page.getByTestId("reset-timeframe-selector").click();
-      await expect(page.getByRole("link", { name: "my-first-tenant" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Changes from branch cr1234" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Testing Infrahub" })).not.toBeVisible();
     });
   });
 });
