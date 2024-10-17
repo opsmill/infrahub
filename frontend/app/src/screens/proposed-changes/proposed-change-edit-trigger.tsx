@@ -7,7 +7,7 @@ import { usePermission } from "@/hooks/usePermission";
 import { useSchema } from "@/hooks/useSchema";
 import { ProposedChangeEditForm } from "@/screens/proposed-changes/form/proposed-change-edit-form";
 import { Icon } from "@iconify-icon/react";
-import React, { useState } from "react";
+import { useState } from "react";
 
 export const ProposedChangeEditTrigger = ({
   proposedChangesDetails,

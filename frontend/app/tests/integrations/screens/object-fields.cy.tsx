@@ -1,7 +1,6 @@
 /// <reference types="cypress" />
 
 import { MockedProvider } from "@apollo/client/testing";
-import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 

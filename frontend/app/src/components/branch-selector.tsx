@@ -6,7 +6,7 @@ import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import { ComboboxItem } from "@/components/ui/combobox";
