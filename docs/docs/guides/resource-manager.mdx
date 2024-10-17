@@ -360,7 +360,7 @@ In the mutation we passed additional data to the allocated resource, in this cas
 
 #### Allocating an IP prefix to a relationship of a node
 
-Another way we can use resource managers is in situations where we create a node that has a relationship and we want to use a resource manager to allocate a new resource for that relationship. For example, we want to create a new customer service and assign a oprefix of a pool.
+Another way we can use resource managers is in situations where we create a node that has a relationship and we want to use a resource manager to allocate a new resource for that relationship. For example, we want to create a new customer service and assign a prefix of a pool.
 
 In this mutation we use the `from_pool` resolver to indicate we want to allocate a `assigned_prefix` from a resource pool. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
 
