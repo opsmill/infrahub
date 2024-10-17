@@ -4,7 +4,6 @@ import ObjectForm from "@/components/form/object-form";
 import { Tabs } from "@/components/tabs";
 import { Card } from "@/components/ui/card";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { getPermissions } from "@/graphql/queries/getPermissions";
 import useQuery from "@/hooks/useQuery";
 import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
@@ -18,6 +17,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
+import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import {
   IPAM_QSP,
@@ -53,13 +53,7 @@ function IpamRouter() {
   const generic = genericList.find((s) => s.kind === objectname);
   const schemaData = schema || generic;
 
-  const queryString = getPermissions({ kind: objectname });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, data, error } = useQuery(query);
+  const { loading, data, error } = useQuery(gql(getObjectPermissionsQuery(objectname)));
 
   const permission = data && getPermission(data?.[objectname]?.permissions?.edges[0]?.node);
 

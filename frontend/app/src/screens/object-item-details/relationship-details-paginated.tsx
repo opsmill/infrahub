@@ -6,7 +6,6 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link as StyledLink } from "@/components/ui/link";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { getPermissions } from "@/graphql/queries/getPermissions";
 import useQuery from "@/hooks/useQuery";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
@@ -31,6 +30,7 @@ import { toast } from "react-toastify";
 import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { ObjectAttributeRow } from "./object-attribute-row";
 
 type iRelationDetailsProps = {
@@ -82,13 +82,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
-  const queryString = getPermissions({ kind: objectKind });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, data, error } = useQuery(query);
+  const { loading, data, error } = useQuery(gql(getObjectPermissionsQuery(objectKind)));
 
   const permission = data && getPermission(data?.[objectKind]?.permissions?.edges[0]?.node);
 
