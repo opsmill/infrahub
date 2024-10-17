@@ -15,7 +15,9 @@ from pydantic import BaseModel
 from infrahub import config, lock
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, RepositoryInternalStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.model.diff import SchemaConflict
+from infrahub.core.diff.uniqueness_data_conflict_finder import DiffUniquenessDataConflictFinder
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.checker import schema_validators_checker
@@ -97,7 +99,22 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
         component_registry = get_component_registry()
         async with service.database.start_transaction() as dbt:
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
-            await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+            enriched_diff = await diff_coordinator.update_branch_diff(
+                base_branch=destination_branch, diff_branch=source_branch, do_sync_data_checks=False
+            )
+
+        uniqueness_conflict_finder = await component_registry.get_component(
+            DiffUniquenessDataConflictFinder, db=service.database, branch=source_branch
+        )
+        uniqueness_data_conflicts = await uniqueness_conflict_finder.get_data_conflicts(
+            enriched_diff=enriched_diff, source_branch=source_branch, destination_branch=destination_branch
+        )
+        data_check_synchronizer = await component_registry.get_component(
+            DiffDataCheckSynchronizer, db=service.database, branch=source_branch
+        )
+        await data_check_synchronizer.synchronize(
+            enriched_diff=enriched_diff, extra_conflicts=uniqueness_data_conflicts
+        )
 
 
 @flow(name="proposed-changed-pipeline")

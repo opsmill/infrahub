@@ -19,6 +19,7 @@ from .builder.diff.enricher.aggregated import DiffAggregatedEnricherDependency
 from .builder.diff.enricher.cardinality_one import DiffCardinalityOneEnricherDependency
 from .builder.diff.enricher.hierarchy import DiffHierarchyEnricherDependency
 from .builder.diff.repository import DiffRepositoryDependency
+from .builder.diff.uniqueness_data_conflict_finder import DiffUniquenessDataConflictFinderDependency
 from .builder.node.delete_validator import NodeDeleteValidatorDependency
 from .component.registry import ComponentDependencyRegistry
 
@@ -47,6 +48,7 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(DiffCoordinatorDependency)
     component_registry.track_dependency(DiffDataCheckSynchronizerDependency)
     component_registry.track_dependency(DiffMergerDependency)
+    component_registry.track_dependency(DiffUniquenessDataConflictFinderDependency)
     return component_registry
 
 

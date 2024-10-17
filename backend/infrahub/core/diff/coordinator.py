@@ -105,7 +105,9 @@ class DiffCoordinator:
             lock_name += "__incremental"
         return lock_name
 
-    async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
+    async def update_branch_diff(
+        self, base_branch: Branch, diff_branch: Branch, do_sync_data_checks: bool = True
+    ) -> EnrichedDiffRoot:
         log.debug(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
         incremental_lock_name = self._get_lock_name(
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=True
@@ -141,7 +143,8 @@ class DiffCoordinator:
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
-            await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
+            if do_sync_data_checks:
+                await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
             log.debug(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
