@@ -79,7 +79,7 @@ const IpAddressSummaryContent = ({ ipAddressId, ipAddressKind }: IpAddressSummar
 
   if (loading || !data || !ipAddressSchema) return <IpamSummarySkeleton />;
 
-  const permission = getPermission(data[ipAddressKind]?.permissions?.edges[0]?.node);
+  const permission = getPermission(data[ipAddressKind]?.permissions?.edges);
 
   if (error) {
     return <ErrorScreen message="An error occurred while retrieving prefixes" />;

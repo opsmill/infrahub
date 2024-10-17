@@ -45,8 +45,7 @@ export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProp
 
   const currentObjectData = data[schema.kind!]?.edges[0]?.node;
 
-  const permission = getPermission(data[schema.kind!]?.permissions?.edges[0]?.node);
-  console.log("permission: ", permission);
+  const permission = getPermission(data[schema.kind!]?.permissions?.edges);
 
   if (!currentObjectData) {
     return (

@@ -87,7 +87,7 @@ const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProp
 
   const prefixData = data[prefixKind]?.edges?.length && data[prefixKind]?.edges[0].node;
 
-  const permission = getPermission(data[prefixKind]?.permissions?.edges[0]?.node);
+  const permission = getPermission(data[prefixKind]?.permissions?.edges);
 
   if (!prefixData) {
     return <NoDataFound />;

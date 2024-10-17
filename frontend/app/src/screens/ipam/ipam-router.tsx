@@ -55,7 +55,7 @@ function IpamRouter() {
 
   const { loading, data, error } = useQuery(gql(getObjectPermissionsQuery(objectname)));
 
-  const permission = data && getPermission(data?.[objectname]?.permissions?.edges[0]?.node);
+  const permission = data && getPermission(data?.[objectname]?.permissions?.edges);
 
   const tabs = [
     {

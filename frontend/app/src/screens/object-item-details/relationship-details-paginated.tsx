@@ -84,7 +84,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const { loading, data, error } = useQuery(gql(getObjectPermissionsQuery(objectKind)));
 
-  const permission = data && getPermission(data?.[objectKind]?.permissions?.edges[0]?.node);
+  const permission = data && getPermission(data?.[objectKind]?.permissions?.edges);
 
   if (error) {
     if (error.networkError?.statusCode === 403) {
