@@ -15,7 +15,6 @@ import { classNames } from "@/utils/common";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import React from "react";
 
 const RepositoryForm = ({
   onSuccess,

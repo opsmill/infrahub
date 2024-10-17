@@ -16,7 +16,7 @@ import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {

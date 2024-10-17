@@ -13,7 +13,6 @@ import Content from "@/screens/layout/content";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { constructPath } from "@/utils/fetch";
 import { useAtomValue } from "jotai";
-import React from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 

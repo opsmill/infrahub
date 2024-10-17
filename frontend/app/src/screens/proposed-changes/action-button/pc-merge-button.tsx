@@ -9,7 +9,7 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import React, { useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 interface PcMergeButtonProps extends ButtonProps {
