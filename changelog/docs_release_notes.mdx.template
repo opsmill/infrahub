@@ -1,0 +1,30 @@
+---
+title: Release {{ version }}
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>{{ version }}</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>{{ today }}</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>{{ codename }}</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v{{ version }}](https://github.com/opsmill/infrahub/releases/tag/infrahub-v{{ version }})</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 0.16.2
+
+We are thrilled to announce the latest release of Infrahub, version *{{ version }}*!
+
+This release focuses largely on bug fixes and is driven by our Beta Test users,
+and as always we greatly appreciate their feedback and time!

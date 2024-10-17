@@ -1,0 +1,1 @@
+Editing old `CHANGELOG.md` entries to use uniform formatting from new Towncrier template.

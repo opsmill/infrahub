@@ -31,6 +31,11 @@ doc_files: &doc_files
   - package.json
   - package-lock.json
 
+release_files: &release_files
+  - "changelog/*.md"
+  - CHANGELOG.md
+  - "docs/docs/relese_notes/infrahub/*.mdx"
+
 helm_files: &helm_files
   - "helm/**"
 
@@ -46,7 +51,6 @@ yaml_all: &yaml_all
 markdown_all: &markdown_all
   - "**/*.{md,mdx}"
 
-
 backend_all:
   - *backend_files
   - *ci_config
@@ -57,6 +61,9 @@ documentation_all:
   - *development_files
   - *doc_files
   - *markdown_all
+
+release_all:
+  - *release_files
 
 helm_all:
   - *helm_files
