@@ -6,7 +6,6 @@ from typing import Any, Optional, Type
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from infrahub_sdk import Timestamp
 from neo4j import Record
 
 from infrahub.config import SETTINGS
@@ -40,18 +39,10 @@ class QueryMeasurement:
 
 
 class QueryAnalyzer:
-    _start_time: Optional[Timestamp]
     name: Optional[str]
-    count: int
     measurements: list[QueryMeasurement]
-    count_per_query: dict[str, int]
-    _df: Optional[pd.DataFrame]
-    measure_memory_usage: bool
-    sampling_memory_usage: int
     output_location: Path
-    neo4j_runtime: Neo4jRuntime
     nb_elements_loaded: int
-    query_to_nb_elts_loaded_to_measurements: dict[str, dict[int, QueryMeasurement]]
     profile_memory: bool
     profile_duration: bool
 
@@ -59,36 +50,15 @@ class QueryAnalyzer:
         self.reset()
 
     def reset(self) -> None:
-        self._start_time = Timestamp()
         self.name = None
-        self.count = 0
         self.measurements = []
-        self.query_to_nb_elts_loaded_to_measurements = {}
-        self._df = None
         self.output_location = Path.cwd()
-        self.neo4j_runtime = Neo4jRuntime.DEFAULT
         self.nb_elements_loaded = 0
         self.profile_duration = False
         self.profile_memory = False
 
     def increase_nb_elements_loaded(self, increment: int) -> None:
         self.nb_elements_loaded += increment
-
-    @property
-    def start_time(self) -> Timestamp:
-        if self._start_time:
-            return self._start_time
-        raise ValueError("start_time hasnt't been initialized yet")
-
-    def create_directory(self, prefix: str, output_location: Path) -> Path:
-        time_str = self.start_time.to_string()
-        for char in [":", "-", "."]:
-            time_str = time_str.replace(char, "_")
-        directory_name = f"{time_str}_{prefix}"
-        full_directory = output_location / directory_name
-        if not full_directory.exists():
-            full_directory.mkdir(parents=True)
-        return full_directory
 
     def get_df(self) -> pd.DataFrame:
         data = {}

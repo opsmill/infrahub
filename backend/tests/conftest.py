@@ -98,7 +98,6 @@ async def db(
         config.SETTINGS.database.address = "localhost"
         if neo4j is not None:
             config.SETTINGS.database.port = neo4j[PORT_BOLT_NEO4J]
-            config.SETTINGS.database.neo4j_http_port = neo4j[PORT_HTTP_NEO4J]
         else:
             assert memgraph is not None
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
@@ -122,8 +121,7 @@ async def reset_registry(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def default_branch(db: InfrahubDatabase) -> Branch:
-    await create_root_node(db=db)
+async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
     branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
@@ -481,6 +479,8 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                         "name": "owner",
                         "label": "Commander of Car",
                         "peer": "TestPerson",
+                        "optional": False,
+                        "kind": "Parent",
                         "cardinality": "one",
                         "direction": "outbound",
                     },

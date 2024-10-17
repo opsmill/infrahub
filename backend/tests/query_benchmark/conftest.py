@@ -38,7 +38,6 @@ async def car_person_schema_root() -> SchemaRoot:
                         "label": "Commander of Car",
                         "peer": "TestPerson",
                         "cardinality": "one",
-                        "direction": "outbound",
                     },
                 ],
             },
@@ -54,8 +53,8 @@ async def car_person_schema_root() -> SchemaRoot:
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"},
-                    {"name": "animal", "peer": "TestAnimal", "cardinality": "one", "direction": "inbound"},
+                    {"name": "cars", "peer": "TestCar", "cardinality": "many"},
+                    {"name": "animal", "peer": "TestAnimal", "cardinality": "one"},
                 ],
             },
         ],

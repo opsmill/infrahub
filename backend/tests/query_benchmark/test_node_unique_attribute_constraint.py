@@ -17,7 +17,8 @@ from tests.helpers.constants import NEO4J_COMMUNITY_IMAGE, NEO4J_ENTERPRISE_IMAG
 from tests.helpers.query_benchmark.car_person_generators import (
     CarGeneratorWithOwnerHavingUniqueCar,
 )
-from tests.helpers.query_benchmark.data_generator import BenchmarkConfig, load_data_and_profile
+from tests.helpers.query_benchmark.data_generator import load_data_and_profile
+from tests.helpers.query_benchmark.db_query_profiler import BenchmarkConfig
 from tests.query_benchmark.conftest import RESULTS_FOLDER
 from tests.query_benchmark.utils import start_db_and_create_default_branch
 
