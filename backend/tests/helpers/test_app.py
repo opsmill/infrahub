@@ -58,7 +58,7 @@ class TestInfrahubApp(TestInfrahub):
 
     @pytest.fixture(scope="class")
     def bus_simulator(self, db: InfrahubDatabase) -> Generator[BusSimulator, None, None]:
-        bus = BusSimulator(database=db)
+        bus = BusSimulator(database=db, workflow=WorkflowLocalExecution())
         original = config.OVERRIDE.message_bus
         config.OVERRIDE.message_bus = bus
         yield bus

@@ -9,6 +9,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_CREATE_BRANCH, IPAM_RECONCILIATION
 
 log = get_logger()
 
@@ -19,7 +20,10 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
 
     events: List[InfrahubMessage] = [messages.RefreshRegistryBranches()]
     if message.sync_with_git:
-        events.append(messages.RequestGitCreateBranch(branch=message.branch, branch_id=message.branch_id))
+        await service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+            parameters={"branch": message.branch, "branch_id": message.branch_id},
+        )
 
     for event in events:
         event.assign_meta(parent=message)
@@ -46,7 +50,6 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
 
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryBranches(),
-        messages.TriggerIpamReconciliation(branch=message.target_branch, ipam_node_details=message.ipam_node_details),
         messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch),
         messages.TriggerGeneratorDefinitionRun(branch=message.target_branch),
     ]
@@ -55,6 +58,11 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
     diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=default_branch)
     # send diff update requests for every branch-tracking diff
     branch_diff_roots = await diff_repository.get_empty_roots(base_branch_names=[message.target_branch])
+
+    await service.workflow.submit_workflow(
+        workflow=IPAM_RECONCILIATION,
+        parameters={"branch": message.target_branch, "ipam_node_details": message.ipam_node_details},
+    )
 
     for diff_root in branch_diff_roots:
         if (
@@ -77,8 +85,9 @@ async def rebased(message: messages.EventBranchRebased, service: InfrahubService
         messages.RefreshRegistryRebasedBranch(branch=message.branch),
     ]
     if message.ipam_node_details:
-        events.append(
-            messages.TriggerIpamReconciliation(branch=message.branch, ipam_node_details=message.ipam_node_details),
+        await service.workflow.submit_workflow(
+            workflow=IPAM_RECONCILIATION,
+            parameters={"branch": message.branch, "ipam_node_details": message.ipam_node_details},
         )
 
     # for every diff that touches the rebased branch, recalculate it

@@ -39,8 +39,6 @@ from .request_diff_update import RequestDiffUpdate
 from .request_generator_run import RequestGeneratorRun
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_generatordefinition_run import RequestGeneratorDefinitionRun
-from .request_git_createbranch import RequestGitCreateBranch
-from .request_git_sync import RequestGitSync
 from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
 from .request_proposed_change_cancel import RequestProposedChangeCancel
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
@@ -55,7 +53,6 @@ from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemp
 from .transform_python_data import TransformPythonData, TransformPythonDataResponse
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
 from .trigger_generatordefinition_run import TriggerGeneratorDefinitionRun
-from .trigger_ipam_reconciliation import TriggerIpamReconciliation
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
 
@@ -95,8 +92,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.generator.run": RequestGeneratorRun,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.generator_definition.run": RequestGeneratorDefinitionRun,
-    "request.git.create_branch": RequestGitCreateBranch,
-    "request.git.sync": RequestGitSync,
     "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
     "request.proposed_change.cancel": RequestProposedChangeCancel,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
@@ -115,7 +110,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "transform.python.data": TransformPythonData,
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
     "trigger.generator_definition.run": TriggerGeneratorDefinitionRun,
-    "trigger.ipam.reconciliation": TriggerIpamReconciliation,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
 }

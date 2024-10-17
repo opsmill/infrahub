@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.tasks.keepalive import refresh_heartbeat
-from infrahub.tasks.recurring import push_telemetry, resync_repositories, trigger_branch_refresh
+from infrahub.tasks.recurring import push_telemetry, trigger_branch_refresh
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices, ServiceFunction
@@ -43,14 +43,6 @@ class InfrahubScheduler:
             ]
             self.schedules.extend(schedules)
 
-            if config.SETTINGS.git.sync_interval:
-                self.schedules.append(
-                    Schedule(
-                        name="resync_repositories",
-                        interval=config.SETTINGS.git.sync_interval,
-                        function=resync_repositories,
-                    )
-                )
             if not config.SETTINGS.main.telemetry_optout:
                 self.schedules.append(
                     Schedule(
