@@ -20,7 +20,6 @@ export default function GraphqlQueryDetailsPage() {
   useTitle("GraphQL Query details");
 
   const { objectid } = useParams();
-  console.log("objectid: ", objectid);
 
   const nodes = useAtomValue(schemaState);
   const graphqlQuerySchema = nodes.find((s) => s.kind === GRAPHQL_QUERY_OBJECT);
