@@ -76,6 +76,18 @@ const mocks: any[] = [
       data: getPermissionsData,
     },
   },
+  // Permissions
+  {
+    request: {
+      query: gql`
+              ${getPermissionsQuery}
+            `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: getPermissionsData,
+    },
+  },
   // Relationships view
   {
     request: {
