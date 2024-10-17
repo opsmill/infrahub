@@ -226,7 +226,17 @@ def update_docker_compose(context: Context, docker_file: Optional[str] = "docker
 
 def get_enum_mappings() -> dict:
     """Extracts enum mappings dynamically."""
-    from infrahub.config import BrokerDriver, CacheDriver, StorageDriver, TraceExporterType, TraceTransportProtocol
+    from infrahub.config import (
+        BrokerDriver,
+        CacheDriver,
+        Oauth2Provider,
+        OIDCProvider,
+        SSOProtocol,
+        StorageDriver,
+        TraceExporterType,
+        TraceTransportProtocol,
+        WorkflowDriver,
+    )
     from infrahub.database.constants import DatabaseType
 
     enum_mappings = {}
@@ -234,10 +244,14 @@ def get_enum_mappings() -> dict:
     for enum_class in [
         BrokerDriver,
         CacheDriver,
-        DatabaseType,
+        Oauth2Provider,
+        OIDCProvider,
+        SSOProtocol,
         StorageDriver,
         TraceExporterType,
         TraceTransportProtocol,
+        WorkflowDriver,
+        DatabaseType,
     ]:
         for item in enum_class:
             enum_mappings[item] = item.value
@@ -252,6 +266,8 @@ def update_docker_compose_env_vars(
     docker_file: Optional[str] = "docker-compose.yml",
 ) -> None:
     """Update the docker-compose.yml file with the environment variables."""
+    import json
+
     docker_path = Path(docker_file)
     docker_compose = docker_path.read_text(encoding="utf-8").splitlines()
 
@@ -281,10 +297,13 @@ def update_docker_compose_env_vars(
     for var in all_vars:
         default_value = env_defaults.get(var, "")
         if isinstance(default_value, bool):
-            default_value = str(default_value).lower()
+            default_value_str = str(default_value).lower()
         elif isinstance(default_value, Enum):
-            default_value = enum_mappings.get(default_value, str(default_value))
-        default_value_str = str(default_value) if default_value is not None else ""
+            default_value_str = enum_mappings.get(default_value, str(default_value))
+        elif isinstance(default_value, list):
+            default_value_str = json.dumps(default_value)
+        else:
+            default_value_str = str(default_value) if default_value is not None else ""
 
         if var in existing_vars:
             line_idx = existing_vars[var]
@@ -293,14 +312,14 @@ def update_docker_compose_env_vars(
             match = pattern.match(existing_value)
             if match and match.group(1) == var and match.group(2) == default_value_str:
                 new_config_lines.append(docker_compose[line_idx])
-            elif var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
+            elif var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD", "INFRAHUB_CACHE_USERNAME", "INFRAHUB_CACHE_PASSWORD"]:
                 key_name = var.replace("INFRAHUB_", "").lower()
                 new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
             elif default_value_str:
                 new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
             else:
                 new_config_lines.append(f"  {var}:")
-        elif var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
+        elif var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD", "INFRAHUB_CACHE_USERNAME", "INFRAHUB_CACHE_PASSWORD"]:
             key_name = var.replace("INFRAHUB_", "").lower()
             new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
         elif default_value_str:
