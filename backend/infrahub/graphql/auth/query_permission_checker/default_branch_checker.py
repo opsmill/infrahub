@@ -17,7 +17,13 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     permission_required = GlobalPermission(
         id="", name="", action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
     )
-    exempt_operations = ["BranchCreate"]
+    exempt_operations = [
+        "BranchCreate",
+        "DiffUpdate",
+        "InfrahubAccountSelfUpdate",
+        "InfrahubAccountTokenCreate",
+        "InfrahubAccountTokenDelete",
+    ]
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
         return account_session.authenticated
@@ -42,9 +48,8 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             GLOBAL_BRANCH_NAME,
             registry.default_branch,
         )
-        is_exempt_operation = analyzed_query.operation_name is not None and (
-            analyzed_query.operation_name in self.exempt_operations
-            or analyzed_query.operation_name.startswith("InfrahubAccount")  # Allow user to manage self
+        is_exempt_operation = all(
+            operation_name in self.exempt_operations for operation_name in analyzed_query.operation_names
         )
 
         if (
