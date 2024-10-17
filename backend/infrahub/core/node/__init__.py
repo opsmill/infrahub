@@ -7,12 +7,14 @@ from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import AttributeAssignmentType, BranchSupportType, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
+from infrahub.support.macro import MacroDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ..relationship import RelationshipManager
@@ -162,6 +164,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._source: Optional[Node] = None
         self._owner: Optional[Node] = None
         self._is_protected: bool = None
+        self._computed_macros: list[str] = []
 
         # Lists of attributes and relationships names
         self._attributes: list[str] = []
@@ -278,6 +281,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not self._existing:
             for mandatory_attr in self._schema.mandatory_attribute_names:
                 if mandatory_attr not in fields.keys():
+                    if self._schema.is_node_schema:
+                        mandatory_attribute = self._schema.get_attribute(name=mandatory_attr)
+                        if mandatory_attribute.assignment_type == AttributeAssignmentType.MACRO:
+                            self._computed_macros.append(mandatory_attr)
+                            continue
+
                     errors.append(
                         ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"})
                     )
@@ -317,6 +326,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         for attr_schema in self._schema.attributes:
             self._attributes.append(attr_schema.name)
+            if not self._existing and attr_schema.name in self._computed_macros:
+                continue
 
             # Check if there is a more specific generator present
             # Otherwise use the default generator
@@ -349,6 +360,71 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for name in self._attributes + self._relationships:
             if hasattr(self, f"process_{name}"):
                 await getattr(self, f"process_{name}")(db=db)
+
+    async def _process_macros(self, db: InfrahubDatabase) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=self._branch.name)
+        allowed_path_types = (
+            SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+        )
+        errors = []
+        for macro in self._computed_macros:
+            variables = {}
+            attr_schema = self._schema.get_attribute(name=macro)
+            if not attr_schema.computation_logic:
+                errors.append(
+                    ValidationError({macro: f"{macro} is missing computational_logic for macro ({attr_schema.kind})"})
+                )
+                continue
+            macro_definition = MacroDefinition(macro=attr_schema.computation_logic)
+
+            for variable in macro_definition.variables:
+                attribute_path = schema_branch.validate_schema_path(
+                    node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types
+                )
+                if attribute_path.is_type_relationship:
+                    relationship_attribute: RelationshipManager = getattr(
+                        self, attribute_path.active_relationship_schema.name
+                    )
+                    peer = await relationship_attribute.get_peer(db=db, raise_on_error=True)
+
+                    related_node = await registry.manager.get_one_by_id_or_default_filter(
+                        db=db, id=peer.id, kind=attribute_path.active_relationship_schema.peer
+                    )
+
+                    attribute: BaseAttribute = getattr(
+                        getattr(related_node, attribute_path.active_attribute_schema.name),
+                        attribute_path.active_attribute_property_name,
+                    )
+                    variables[variable] = attribute
+
+                elif attribute_path.is_type_attribute:
+                    attribute = getattr(
+                        getattr(self, attribute_path.active_attribute_schema.name),
+                        attribute_path.active_attribute_property_name,
+                    )
+                    variables[variable] = attribute
+
+            content = macro_definition.render(variables=variables)
+
+            generator_method_name = "_generate_attribute_default"
+            if hasattr(self, f"generate_{attr_schema.name}"):
+                generator_method_name = f"generate_{attr_schema.name}"
+
+            generator_method = getattr(self, generator_method_name)
+            try:
+                setattr(
+                    self,
+                    attr_schema.name,
+                    await generator_method(db=db, name=attr_schema.name, schema=attr_schema, data=content),
+                )
+                attribute = getattr(self, attr_schema.name)
+
+                attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
+            except ValidationError as exc:
+                errors.append(exc)
+
+        if errors:
+            raise ValidationError(errors)
 
     async def _generate_relationship_default(
         self,
@@ -408,6 +484,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self.id = id or str(UUIDT())
 
         await self._process_fields(db=db, fields=kwargs)
+        await self._process_macros(db=db)
 
         return self
 

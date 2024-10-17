@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import Field
 
-from infrahub.core.constants import AllowOverrideType, HashableModelState
+from infrahub.core.constants import AllowOverrideType, AttributeAssignmentType, HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TCH001
 
@@ -64,6 +64,16 @@ class GeneratedAttributeSchema(HashableModel):
         default=None,
         description="Short description of the attribute.",
         max_length=128,
+        json_schema_extra={"update": "allowed"},
+    )
+    assignment_type: AttributeAssignmentType = Field(
+        default=AttributeAssignmentType.USER,
+        description="Reflects how the value is assigned if it comes directly from an end user, a macro or a transform",
+        json_schema_extra={"update": "not_supported"},
+    )
+    computation_logic: Optional[str] = Field(
+        default=None,
+        description="Specifies a macro that will be used when assignment_type=MACRO or transform when assignment_type=TRANSFORM",
         json_schema_extra={"update": "allowed"},
     )
     read_only: bool = Field(

@@ -55,7 +55,7 @@ class InfrahubMutationOptions(MutationOptions):
 
 class InfrahubMutationMixin:
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, *args: Any, **kwargs):
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: InputObjectType, *args: Any, **kwargs):
         context: GraphqlContext = info.context
 
         obj = None
@@ -64,10 +64,14 @@ class InfrahubMutationMixin:
         validate_mutation_permissions(operation=cls.__name__, account_session=context.account_session)
 
         if "Create" in cls.__name__:
-            obj, mutation = await cls.mutate_create(info=info, branch=context.branch, at=context.at, **kwargs)
+            obj, mutation = await cls.mutate_create(
+                info=info, branch=context.branch, data=data, at=context.at, **kwargs
+            )
             action = MutationAction.ADDED
         elif "Update" in cls.__name__:
-            obj, mutation = await cls.mutate_update(info=info, branch=context.branch, at=context.at, **kwargs)
+            obj, mutation = await cls.mutate_update(
+                info=info, branch=context.branch, data=data, at=context.at, **kwargs
+            )
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
             node_manager = NodeManager()
@@ -77,14 +81,16 @@ class InfrahubMutationMixin:
                 MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
-                info=info, branch=context.branch, at=context.at, node_getters=node_getters, **kwargs
+                info=info, branch=context.branch, data=data, at=context.at, node_getters=node_getters, **kwargs
             )
             if created:
                 action = MutationAction.ADDED
             else:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
-            obj, mutation = await cls.mutate_delete(info=info, branch=context.branch, at=context.at, **kwargs)
+            obj, mutation = await cls.mutate_delete(
+                info=info, branch=context.branch, data=data, at=context.at, **kwargs
+            )
             action = MutationAction.REMOVED
         else:
             raise ValueError(
@@ -94,22 +100,31 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         context.at = Timestamp()
 
+        # Get relevant macros based on the current change
+        # schema_branch = registry.schema.get_schema_branch(name=context.branch.name)
+        # macros = schema_branch.get_impacted_macros(kind=obj.get_kind(), updates=data.keys())
+
         if config.SETTINGS.broker.enable and context.background:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            data = await obj.to_graphql(db=context.db, filter_sensitive=True)
+            graphql_payload = await obj.to_graphql(db=context.db, filter_sensitive=True)
 
             event = NodeMutatedEvent(
                 branch=context.branch.name,
                 kind=obj._schema.kind,
                 node_id=obj.id,
-                data=data,
+                data=graphql_payload,
                 action=action,
                 meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
 
             context.background.add_task(context.service.event.send, event)
+
+            # Add event
+            # if macros:
+            #    event = SomeMacroEvent(branch=context.branch.name, kind=obj.get_kind(), node_id=obj.id, action=action, macros=macros)
+            #    context.background.add_task(context.service.event.send, event)
 
         return mutation
 
