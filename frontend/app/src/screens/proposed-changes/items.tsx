@@ -59,7 +59,6 @@ export const ProposedChangesPage = () => {
       notifyOnNetworkStatusChange: true,
     }
   );
-
   const [deleteProposedChange, { loading: isDeleteLoading }] = useMutation(DELETE_PROPOSED_CHANGE);
 
   if (error) {
