@@ -7,6 +7,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 from .conflicts_extractor import DiffConflictsExtractor
+from .model.diff import DataConflict
 from .model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot
 
 
@@ -21,7 +22,9 @@ class DiffDataCheckSynchronizer:
         self.conflicts_extractor = conflicts_extractor
         self.conflict_recorder = conflict_recorder
 
-    async def synchronize(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
+    async def synchronize(
+        self, enriched_diff: EnrichedDiffRoot, extra_conflicts: list[DataConflict] | None = None
+    ) -> list[Node]:
         proposed_changes = await NodeManager.query(
             db=self.db,
             schema=InfrahubKind.PROPOSEDCHANGE,
@@ -31,6 +34,8 @@ class DiffDataCheckSynchronizer:
             return []
         enriched_conflicts = enriched_diff.get_all_conflicts()
         data_conflicts = await self.conflicts_extractor.get_data_conflicts(enriched_diff_root=enriched_diff)
+        if extra_conflicts:
+            data_conflicts += extra_conflicts
         all_data_checks = []
         for pc in proposed_changes:
             core_data_checks = await self.conflict_recorder.record_conflicts(
