@@ -309,6 +309,7 @@ export const ProposedChangesPage = () => {
             columns={columns}
             rows={rows}
             onDelete={(row) => setRelatedRowToDelete(row)}
+            permission={permission}
             className="border-0 border-t"
           />
         </CardWithBorder>

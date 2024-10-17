@@ -22,6 +22,7 @@ import {
 } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -58,6 +59,8 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
     },
     skip: !defaultIpNamespace,
   });
+
+  const permission = getPermission(data?.[IP_ADDRESS_GENERIC]?.permissions?.edges);
 
   const { data: getPrefixKindData } = useQuery(GET_PREFIX_KIND, {
     variables: { ids: [prefix] },
@@ -165,7 +168,13 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
       {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
 
       {data && (
-        <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />
+        <Table
+          rows={rows}
+          columns={columns}
+          onDelete={handleDelete}
+          onUpdate={handleUpdate}
+          permission={permission}
+        />
       )}
 
       {relatedRowToDelete && (
