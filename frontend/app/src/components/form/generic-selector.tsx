@@ -18,7 +18,7 @@ import { getPermission } from "@/screens/permission/utils";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import React, { useId, useState } from "react";
+import { useId, useState } from "react";
 
 type GenericSelectorProps = {
   currentKind: string;

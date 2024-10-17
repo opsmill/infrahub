@@ -49,7 +49,7 @@
       },
       "correctness": {
         "noSwitchDeclarations": "off",
-        "noUndeclaredDependencies": "off",
+        "noUndeclaredDependencies": "error",
         "noUndeclaredVariables": "off",
         "noUnusedFunctionParameters": "off",
         "noUnusedImports": "error",
