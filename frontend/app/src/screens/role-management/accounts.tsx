@@ -9,9 +9,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/graphql/queries/role-management/getAccounts";
+import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ErrorScreen from "../errors/error-screen";
@@ -97,7 +97,12 @@ function Accounts() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
+            <Button
+              variant={"primary"}
+              onClick={() => setShowDrawer(true)}
+              disabled={!schema}
+              data-testid="create-object-button"
+            >
               Create {schema?.label}
             </Button>
           </div>

@@ -7,6 +7,7 @@ import useFilters from "@/hooks/useFilters";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import { useObjectItems } from "@/hooks/useObjectItems";
 import Content from "@/screens/layout/content";
+import { getPermission } from "@/screens/permission/utils";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
@@ -33,6 +34,12 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
   const schemaKind = kindFilter?.value || (schema.kind as string);
   const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
   const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;
+  const { count, permissions } = data?.[schemaKind] ?? { count: undefined, permissions: undefined };
+  const currentPermission = getPermission(permissions?.edges);
+
+  if (!currentPermission.view.isAllowed) {
+    return null;
+  }
 
   return (
     <Content.Title
@@ -45,7 +52,7 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
             <h1 className="font-semibold text-gray-900 mr-2 hover:underline">
               {breadcrumbModelLabel}
             </h1>
-            <Badge>{loading && !error ? "..." : data?.[schemaKind]?.count}</Badge>
+            <Badge>{loading && !error ? "..." : count}</Badge>
           </Link>
         </div>
       }

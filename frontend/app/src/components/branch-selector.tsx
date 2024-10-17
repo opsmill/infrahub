@@ -1,7 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { QSP } from "@/config/qsp";
 import { Branch } from "@/generated/graphql";
-import { usePermission } from "@/hooks/usePermission";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { Icon } from "@iconify-icon/react";
@@ -12,6 +11,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { ComboboxItem } from "@/components/ui/combobox";
 import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
 import { useSetAtom } from "jotai";
 import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
@@ -162,13 +162,13 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
 }
 
 export const BranchFormTriggerButton = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
-  const permission = usePermission();
+  const { isAuthenticated } = useAuth();
 
   return (
     <ButtonWithTooltip
-      disabled={!permission.write.allow}
-      tooltipEnabled={!permission.write.allow}
-      tooltipContent={permission.write.message ?? undefined}
+      disabled={!isAuthenticated}
+      tooltipEnabled={!isAuthenticated}
+      tooltipContent={"You need to be authenticated."}
       className="h-8 w-8 shadow-none"
       onKeyDown={(e) => {
         if (e.key === "Enter") {

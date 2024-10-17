@@ -19,6 +19,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { getPermission } from "@/screens/permission/utils";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
@@ -76,6 +77,7 @@ export default function ArtifactsDetails() {
         columns,
         relationshipsTabs,
         objectid,
+        hasPermissions: true,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -104,6 +106,10 @@ export default function ArtifactsDetails() {
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
+
+  const permission = getPermission(
+    schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges
+  );
 
   const tabs = [
     {
@@ -150,6 +156,7 @@ export default function ArtifactsDetails() {
             <GroupsManagerTriggerButton
               schema={schemaData}
               objectId={objectid}
+              permission={permission}
               size="default"
               variant="outline"
             >

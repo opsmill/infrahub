@@ -3,6 +3,7 @@ import { getTokens } from "@/graphql/queries/accounts/getTokens";
 import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import { Filter } from "@/hooks/useFilters";
 import useQuery from "@/hooks/useQuery";
+import { getPermission } from "@/screens/permission/utils";
 import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
@@ -50,18 +51,45 @@ const getQuery = (schema?: IModelSchema, filters?: Array<Filter>) => {
 
   const relationships = getObjectRelationships({ schema, forListView: true });
 
+  const isProfileSchema = schema.namespace === "Profile";
+
   return getObjectItemsPaginated({
     kind: kindFilterSchema?.kind || schema.kind,
     attributes,
     relationships,
     filters: filtersString,
+    hasPermissions: !isProfileSchema,
   });
 };
 
-export const useObjectItems = (schema?: IModelSchema, filters?: Array<Filter>) => {
+export const useObjectItems = (
+  schema?: IModelSchema,
+  filters?: Array<Filter>,
+  kindFilter?: string
+) => {
   const query = gql`
     ${getQuery(schema, filters)}
   `;
 
-  return useQuery(query, { notifyOnNetworkStatusChange: true, skip: !schema });
+  const apolloQuery = useQuery(query, { notifyOnNetworkStatusChange: true, skip: !schema });
+
+  const currentKind = kindFilter || schema?.kind;
+  const hasPermission = !!(
+    currentKind &&
+    apolloQuery?.data &&
+    apolloQuery?.data[currentKind]?.permissions
+  );
+
+  const permissionData = hasPermission
+    ? apolloQuery.data[currentKind].permissions?.edges
+      ? apolloQuery.data[currentKind].permissions.edges
+      : apolloQuery.data[currentKind].permissions
+    : null;
+
+  const permission = getPermission(permissionData);
+
+  return {
+    ...apolloQuery,
+    permission,
+  };
 };
