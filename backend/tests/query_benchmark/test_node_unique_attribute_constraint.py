@@ -14,6 +14,7 @@ from infrahub.database import QueryConfig
 from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_COMMUNITY_IMAGE, NEO4J_ENTERPRISE_IMAGE
+from tests.helpers.query_benchmark.benchmark_config import BenchmarkConfig
 from tests.helpers.query_benchmark.car_person_generators import (
     CarGeneratorWithOwnerHavingUniqueCar,
 )
@@ -147,8 +148,12 @@ async def test_multiple_runtimes(benchmark_config, car_person_schema_root, graph
 @pytest.mark.parametrize(
     "benchmark_config",
     [
-        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False),
-        # BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=True),
+        # BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=True),
+        # BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False),
+        # BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=True),
+        # BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE, load_db_indexes=False),
+        # BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE, load_db_indexes=True),
     ],
 )
 async def test_indexes(benchmark_config, car_person_schema_root, graph_generator):

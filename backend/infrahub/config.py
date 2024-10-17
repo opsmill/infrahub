@@ -197,9 +197,9 @@ class DatabaseSettings(BaseSettings):
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     query_size_limit: int = Field(
-        default=5000,
+        default=1_000_000,
         ge=1,
-        le=20000,
+        le=1_000_000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
     )
     max_depth_search_hierarchy: int = Field(

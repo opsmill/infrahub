@@ -40,6 +40,17 @@ async def car_person_schema_root() -> SchemaRoot:
                         "peer": "TestPerson",
                         "cardinality": "one",
                     },
+                    {
+                        "name": "drivers",
+                        "label": "Who already drove the car",
+                        "peer": "TestPerson",
+                        "identifier": "testcar__drivers",
+                        "cardinality": "many",
+                    },
+                    {"name": "engine",
+                     "label": "engine of the car",
+                     "peer": "TestCar",
+                     "cardinality": "one"},
                 ],
             },
             {
@@ -55,6 +66,25 @@ async def car_person_schema_root() -> SchemaRoot:
                 ],
                 "relationships": [
                     {"name": "cars", "peer": "TestCar", "cardinality": "many"},
+                    {"name": "driven_cars",
+                     "label": "Already driven by the Person",
+                     "peer": "TestCar",
+                     "identifier": "testperson__driven_cars",
+                     "cardinality": "many"},
+                ],
+            },
+            {
+                "name": "Engine",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "uniqueness_constraints": [["name__value"]],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "car", "peer": "TestCar", "cardinality": "one"},
                 ],
             },
         ],

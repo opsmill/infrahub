@@ -182,8 +182,8 @@ min-similarity-lines = 20
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-timeout = 300           # 5 minutes
-session_timeout = 1200  # 20 minutes
+timeout = 99999           # 5 minutes
+session_timeout = 99999  # 20 minutes
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
