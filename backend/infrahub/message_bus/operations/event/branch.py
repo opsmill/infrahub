@@ -9,7 +9,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
-from infrahub.workflows.catalogue import IPAM_RECONCILIATION
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_CREATE_BRANCH, IPAM_RECONCILIATION
 
 log = get_logger()
 
@@ -20,7 +20,10 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
 
     events: List[InfrahubMessage] = [messages.RefreshRegistryBranches()]
     if message.sync_with_git:
-        events.append(messages.RequestGitCreateBranch(branch=message.branch, branch_id=message.branch_id))
+        await service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+            parameters={"branch": message.branch, "branch_id": message.branch_id},
+        )
 
     for event in events:
         event.assign_meta(parent=message)

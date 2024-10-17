@@ -51,8 +51,6 @@ COMMAND_MAP = {
     "request.generator.run": requests.generator.run,
     "request.generator_definition.check": requests.generator_definition.check,
     "request.generator_definition.run": requests.generator_definition.run,
-    "request.git.create_branch": requests.git.create_branch,
-    "request.git.sync": requests.git.sync,
     "request.graphql_query_group.update": requests.graphql_query_group.update,
     "request.artifact.generate": requests.artifact.generate,
     "request.artifact_definition.check": requests.artifact_definition.check,
