@@ -1,4 +1,4 @@
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.git import InfrahubRepository
