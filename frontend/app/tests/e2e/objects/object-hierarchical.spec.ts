@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("Object hierarchical view", () => {
-  test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-
   test("should display correctly", async ({ page }) => {
     await test.step("view tree and list for a hierarchical model", async () => {
       await page.goto("/objects/LocationGeneric");

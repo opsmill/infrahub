@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../constants";
 
 test.describe("when searching an object", () => {
   test.beforeEach(async function ({ page }) {

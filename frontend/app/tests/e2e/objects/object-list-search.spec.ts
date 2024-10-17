@@ -1,12 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../constants";
 
 const OBJECT_NAME = "atl1-core1";
 const SEARCH = "atl";
 
 test.describe("Object list search", async () => {
-  test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
