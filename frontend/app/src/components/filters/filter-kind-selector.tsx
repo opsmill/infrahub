@@ -13,7 +13,7 @@ import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import useFilters from "@/hooks/useFilters";
 import { iGenericSchema, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai/index";
-import React, { useState } from "react";
+import { useState } from "react";
 
 export const FilterKindSelector = ({ genericSchema }: { genericSchema: iGenericSchema }) => {
   const [activeFilters] = useFilters();

@@ -4,7 +4,6 @@ import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/brea
 import { breadcrumbActiveStyle } from "@/screens/layout/breadcrumb-navigation/style";
 import { classNames } from "@/utils/common";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
-import React from "react";
 
 interface BreadcrumbSchemaSelectorProps {
   kind: string;

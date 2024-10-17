@@ -9,7 +9,6 @@ import { BRANCH_CREATE } from "@/graphql/mutations/branches/createBranch";
 import { useMutation } from "@/hooks/useQuery";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { useAtom } from "jotai";
-import React from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
 type BranchFormData = {

@@ -1,5 +1,4 @@
 import { DateDisplay } from "@/components/display/date-display";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
 import { useLazyQuery } from "@/hooks/useQuery";

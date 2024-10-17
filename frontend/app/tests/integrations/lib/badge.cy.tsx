@@ -1,6 +1,3 @@
-/// <reference types="cypress" />
-
-import React from "react";
 import { BADGE_TYPES, Badge } from "../../../src/components/display/badge";
 
 describe("Badge component", () => {

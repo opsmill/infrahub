@@ -5,7 +5,6 @@ import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/brea
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { NetworkStatus } from "@apollo/client";
-import React from "react";
 
 export default function BreadcrumbObjectSelector({
   kind,

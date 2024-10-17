@@ -7,7 +7,7 @@ import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
 import { Filter } from "@/hooks/useFilters";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { classNames, isGeneric } from "@/utils/common";
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
 
 export interface FilterFormProps extends FormProps {
   schema: IModelSchema;
