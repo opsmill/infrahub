@@ -44,6 +44,20 @@ class NodeUniquenessQueryRequest(BaseModel):
             return True
         return False
 
+    def __str__(self) -> str:
+        return (
+            "ATTRS: "
+            + "; ".join(
+                q.attribute_name + " " + str(q.property_name) + " " + (str(q.value) if q.value is not None else "")
+                for q in self.unique_attribute_paths
+            )
+            + " RELS: "
+            + "; ".join(
+                q.identifier + " " + str(q.attribute_name) + " " + (str(q.value) if q.value is not None else "")
+                for q in self.relationship_attribute_paths
+            )
+        )
+
 
 class NonUniqueRelatedAttribute(BaseModel):
     relationship: RelationshipSchema

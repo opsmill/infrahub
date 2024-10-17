@@ -5,7 +5,10 @@ from typing import Callable
 from rich.console import Console
 from rich.progress import Progress
 
-from tests.helpers.query_benchmark.db_query_profiler import InfrahubDatabaseProfiler, ProfilerEnabler, QueryAnalyzer
+from tests.helpers.query_benchmark.db_query_profiler import (
+    InfrahubDatabaseProfiler,
+    ProfilerEnabler,
+)
 
 
 class DataGenerator:
@@ -33,7 +36,6 @@ async def load_data_and_profile(
     profile_frequency: int,
     graphs_output_location: Path,
     test_label: str,
-    query_analyzer: QueryAnalyzer,
     memory_profiling_rate: int = 25,
 ) -> None:
     """
@@ -54,10 +56,10 @@ async def load_data_and_profile(
 
     await data_generator.init()
 
-    query_analyzer.reset()
-
     q, r = divmod(nb_elements, profile_frequency)
     nb_elem_per_batch = [profile_frequency] * q + ([r] if r else [])
+
+    query_analyzer = data_generator.db.query_analyzer
 
     with Progress(console=Console(force_terminal=True)) as progress:  # Need force_terminal to display with pytest
         task = progress.add_task(
