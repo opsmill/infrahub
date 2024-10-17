@@ -1,7 +1,7 @@
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
 import { GraphiQL } from "graphiql";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
