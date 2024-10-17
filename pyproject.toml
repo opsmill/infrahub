@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.16.3"
+version = "0.16.4"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
