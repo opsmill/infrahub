@@ -17,7 +17,6 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 - Fixed an issue on the UI where a new relationship was being added to the main branch instead of the current branch. ([#4598](https://github.com/opsmill/infrahub/issues/4598))
 
-
 ## [0.16.3](https://github.com/opsmill/infrahub/tree/v0.16.3) - 2024-10-10
 
 ### Removed
