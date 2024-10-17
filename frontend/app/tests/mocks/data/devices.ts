@@ -1736,3 +1736,43 @@ mutation InfraDeviceUpdate {
   }
 }
 `;
+
+export const getPermissionsQuery = `query getObjectPermissions {
+  InfraDevice {
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
+        }
+      }
+    }
+  }
+}`;
+
+export const getPermissionsData = {
+  data: {
+    InfraDevice: {
+      permissions: {
+        edges: [
+          {
+            node: {
+              kind: "InfraDevice",
+              view: "ALLOW_ALL",
+              create: "ALLOW_ALL",
+              update: "ALLOW_ALL",
+              delete: "ALLOW_ALL",
+              __typename: "ObjectPermission",
+            },
+            __typename: "ObjectPermissionNode",
+          },
+        ],
+        __typename: "PaginatedObjectPermission",
+      },
+      __typename: "PaginatedInfraDevice",
+    },
+  },
+};

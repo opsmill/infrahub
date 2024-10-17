@@ -14,6 +14,8 @@ import {
   deviceDetailsMocksId,
   deviceDetailsMocksQuery,
   deviceDetailsMocksSchema,
+  getPermissionsData,
+  getPermissionsQuery,
   interfaceDescription,
   interfaceLabelName,
   interfacesArrayCount,
@@ -63,6 +65,18 @@ const mocks: any[] = [
       data: deviceDetailsMocksData,
     },
   },
+  // Permissions
+  {
+    request: {
+      query: gql`
+            ${getPermissionsQuery}
+          `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: getPermissionsData,
+    },
+  },
   // Relationships view
   {
     request: {
@@ -73,6 +87,18 @@ const mocks: any[] = [
     },
     result: {
       data: deviceDetailsInterfacesMocksData,
+    },
+  },
+  // Permissions
+  {
+    request: {
+      query: gql`
+            ${getPermissionsQuery}
+          `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: getPermissionsData,
     },
   },
   {
