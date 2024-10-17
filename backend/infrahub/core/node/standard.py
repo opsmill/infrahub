@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
 from uuid import UUID
 
 import ujson
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
 from infrahub.core.constants import NULL_VALUE

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, Optional,
 
 import nats
 import ujson
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 

@@ -2,7 +2,7 @@ import copy
 from collections import defaultdict
 from ipaddress import IPv4Network
 
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

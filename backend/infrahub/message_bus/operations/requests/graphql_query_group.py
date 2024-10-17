@@ -1,6 +1,7 @@
 from typing import List
 
-from infrahub_sdk import InfrahubClient, InfrahubNode
+from infrahub_sdk import InfrahubClient
+from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.utils import dict_hash
 from prefect import flow
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, overload
 
-from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_uuid
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
