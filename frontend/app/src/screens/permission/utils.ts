@@ -46,7 +46,7 @@ const getMessage = (action: string, decision?: PermissionDecisionData): string =
 };
 
 export function getPermission(permission?: Array<{ node: PermissionData }>): Permission {
-  if (!permission) return PERMISSION_ALLOW_ALL;
+  if (!Array.isArray(permission)) return PERMISSION_ALLOW_ALL;
 
   const config = store.get(configState);
   const currentBranch = store.get(currentBranchAtom);

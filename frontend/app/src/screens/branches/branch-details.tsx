@@ -35,7 +35,7 @@ import { toast } from "react-toastify";
 export const BranchDetails = () => {
   const { "*": branchName } = useParams();
   const date = useAtomValue(datetimeAtom);
-  const auth = useAuth();
+  const { isAuthenticated } = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
 
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
@@ -172,7 +172,7 @@ export const BranchDetails = () => {
             <>
               <div className="flex flex-1 flex-col md:flex-row">
                 <Button
-                  disabled={!auth?.permissions?.write || branch.is_default}
+                  disabled={!isAuthenticated || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() =>
                     branchAction({
@@ -191,7 +191,7 @@ export const BranchDetails = () => {
                 </Button>
 
                 <Button
-                  disabled={!auth?.permissions?.write || branch.is_default}
+                  disabled={!isAuthenticated || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() => setShowCreateDrawer(true)}
                 >
@@ -200,7 +200,7 @@ export const BranchDetails = () => {
                 </Button>
 
                 <Button
-                  disabled={!auth?.permissions?.write || branch.is_default}
+                  disabled={!isAuthenticated || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() =>
                     branchAction({
@@ -237,7 +237,7 @@ export const BranchDetails = () => {
                 </Button>
 
                 <Button
-                  disabled={!auth?.permissions?.write || branch.is_default}
+                  disabled={!isAuthenticated || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() => setDisplayModal(true)}
                   buttonType={BUTTON_TYPES.CANCEL}

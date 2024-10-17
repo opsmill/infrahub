@@ -80,11 +80,7 @@ export const useObjectItems = (
     apolloQuery?.data[currentKind]?.permissions
   );
 
-  const permissionData = hasPermission
-    ? apolloQuery.data[currentKind].permissions?.edges
-      ? apolloQuery.data[currentKind].permissions.edges
-      : apolloQuery.data[currentKind].permissions
-    : null;
+  const permissionData = hasPermission ? apolloQuery.data[currentKind].permissions?.edges : null;
 
   const permission = getPermission(permissionData);
 

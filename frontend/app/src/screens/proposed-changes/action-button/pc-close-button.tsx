@@ -3,7 +3,6 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { usePermission } from "@/hooks/usePermission";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -17,11 +16,15 @@ interface PcCloseButtonProps extends ButtonProps {
   state: "closed" | "open" | "merged";
 }
 
-export const PcCloseButton = ({ proposedChangeId, state, ...props }: PcCloseButtonProps) => {
+export const PcCloseButton = ({
+  proposedChangeId,
+  state,
+  disabled,
+  ...props
+}: PcCloseButtonProps) => {
   const [isLoadingClose, setIsLoadingClose] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const permission = usePermission();
 
   const handleClose = async () => {
     setIsLoadingClose(true);
@@ -77,7 +80,7 @@ export const PcCloseButton = ({ proposedChangeId, state, ...props }: PcCloseButt
       variant="danger"
       onClick={handleClose}
       isLoading={isLoadingClose}
-      disabled={!permission.write.allow || state === "merged"}
+      disabled={!disabled || state === "merged"}
       {...props}
     >
       {state === "closed" ? "Re-open" : "Close"}

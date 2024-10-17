@@ -9,6 +9,9 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { useAuth } from "@/hooks/useAuth";
+import useQuery from "@/hooks/useQuery";
+import { getObjectPermissionsQuery } from "@/screens/permission/queries/getObjectPermissions";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
@@ -47,6 +50,13 @@ export const Thread = (props: tThread) => {
   const [displayAddComment, setDisplayAddComment] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
   const [markAsResolved, setMarkAsResolved] = useState(false);
+
+  const { loading, data } = useQuery(
+    gql(getObjectPermissionsQuery(PROPOSED_CHANGES_THREAD_COMMENT_OBJECT))
+  );
+
+  const permission =
+    data && getPermission(data?.[PROPOSED_CHANGES_THREAD_COMMENT_OBJECT]?.permissions?.edges);
 
   const handleSubmit = async ({ comment }: { comment: string }) => {
     try {
@@ -201,7 +211,10 @@ export const Thread = (props: tThread) => {
         <div className="flex justify-between">
           {MarkAsResolved}
 
-          <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
+          <Button
+            onClick={() => setDisplayAddComment(true)}
+            disabled={loading || permission?.create?.isAllowed}
+          >
             Reply
           </Button>
         </div>

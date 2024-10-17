@@ -69,6 +69,17 @@ export const GET_PROPOSED_CHANGES = gql`
         }
         __typename
       }
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
       __typename
     }
     CoreProposedChangeVisible: CoreProposedChange(state__values: $statesVisible) {

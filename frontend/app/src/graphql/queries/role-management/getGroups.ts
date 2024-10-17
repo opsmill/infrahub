@@ -34,6 +34,17 @@ export const GET_ROLE_MANAGEMENT_GROUPS = gql`
           }
         }
       }
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
     }
   }
 `;
