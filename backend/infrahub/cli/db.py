@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib
 import logging
 import os
@@ -14,11 +16,22 @@ from rich.table import Table
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import GRAPH_SCHEMA
-from infrahub.core.initialization import first_time_initialization, get_root_node, initialization, initialize_registry
+from infrahub.core.initialization import (
+    create_default_menu,
+    create_default_roles,
+    create_super_administrator_role,
+    create_super_administrators_group,
+    first_time_initialization,
+    get_root_node,
+    initialization,
+    initialize_registry,
+)
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph import get_graph_migrations
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -35,6 +48,7 @@ from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
+    from infrahub.database import InfrahubDatabase
 
 app = AsyncTyper()
 
@@ -228,6 +242,7 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 raise typer.Exit(1)
 
             if not result.diff.all:
+                await create_defaults(db=db)
                 rprint("Core Schema Up to date, nothing to update")
                 raise typer.Exit(0)
 
@@ -297,6 +312,8 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 for message in migration_error_msgs:
                     rprint(message)
                 raise typer.Exit(1)
+
+            await create_defaults(db=db)
 
 
 @app.command()
@@ -381,3 +398,34 @@ async def index(
     console.print(table)
 
     await dbdriver.close()
+
+
+async def create_defaults(db: InfrahubDatabase) -> None:
+    """Create and assign default objects."""
+    existing_permissions = await NodeManager.query(
+        schema=InfrahubKind.OBJECTPERMISSION,
+        db=db,
+        limit=1,
+    )
+    if not existing_permissions:
+        await setup_permissions(db=db)
+
+    existing_menu_items = await NodeManager.query(
+        schema=InfrahubKind.MENUITEM,
+        db=db,
+        limit=1,
+    )
+    if not existing_menu_items:
+        await create_default_menu(db=db)
+
+
+async def setup_permissions(db: InfrahubDatabase) -> None:
+    existing_accounts = await NodeManager.query(
+        schema=InfrahubKind.ACCOUNT,
+        db=db,
+        limit=1,
+    )
+    administrator_role = await create_super_administrator_role(db=db)
+    await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=existing_accounts)
+
+    await create_default_roles(db=db)
