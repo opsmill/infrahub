@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional, Union
 
 from git.exc import BadName, GitCommandError
-from infrahub_sdk import GraphQLError
+from infrahub_sdk.exceptions import GraphQLError
 from pydantic import Field
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus

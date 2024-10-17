@@ -2,7 +2,9 @@ import logging
 import random
 from ipaddress import IPv4Interface, IPv4Network
 
-from infrahub_sdk import InfrahubClient, InfrahubNode, NodeStore
+from infrahub_sdk import InfrahubClient
+from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.store import NodeStore
 
 from infrahub_sdk.protocols import CoreAccount
 

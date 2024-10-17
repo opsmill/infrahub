@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, Optional,
 import aio_pika
 import opentelemetry.instrumentation.aio_pika.span_builder
 import ujson
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from opentelemetry.instrumentation.aio_pika import AioPikaInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 

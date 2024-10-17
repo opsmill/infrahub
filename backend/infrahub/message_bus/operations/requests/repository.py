@@ -1,6 +1,6 @@
 from typing import List
 
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 
 from infrahub.core.constants import InfrahubKind

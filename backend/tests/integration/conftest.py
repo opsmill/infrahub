@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 import pytest
 import yaml
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from prefect.testing.utilities import prefect_test_harness
 
 from infrahub import config

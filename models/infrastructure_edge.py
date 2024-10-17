@@ -7,7 +7,7 @@ from enum import Enum
 from ipaddress import IPv4Network, IPv6Network
 from typing import Optional, cast
 
-from infrahub_sdk import UUIDT, InfrahubClient, NodeStore
+from infrahub_sdk import InfrahubClient
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.protocols import (
     CoreAccount,
@@ -18,6 +18,8 @@ from infrahub_sdk.protocols import (
     IpamNamespace,
 )
 from infrahub_sdk.protocols_base import CoreNode
+from infrahub_sdk.store import NodeStore
+from infrahub_sdk.uuidt import UUIDT
 from protocols import (
     InfraAutonomousSystem,
     InfraBGPSession,
