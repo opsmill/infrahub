@@ -48,6 +48,21 @@ IPAM_RECONCILIATION = WorkflowDefinition(
     function="ipam_reconciliation",
 )
 
+GIT_REPOSITORIES_SYNC = WorkflowDefinition(
+    name="git_repositories_sync",
+    type=WorkflowType.INTERNAL,
+    cron="*/10 * * * *",
+    module="infrahub.git.tasks",
+    function="sync_remote_repositories",
+)
+
+GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
+    name="git_repositories_create_branch",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="create_branch",
+)
+
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
@@ -57,4 +72,6 @@ workflows = [
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_VALIDATE_MIGRATION,
     IPAM_RECONCILIATION,
+    GIT_REPOSITORIES_SYNC,
+    GIT_REPOSITORIES_CREATE_BRANCH,
 ]
