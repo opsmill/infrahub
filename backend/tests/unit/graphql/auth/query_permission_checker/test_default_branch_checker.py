@@ -87,7 +87,7 @@ class TestDefaultBranchPermission:
         graphql_query.branch = MagicMock()
         graphql_query.branch.name = branch_name
         graphql_query.contains_mutation = contains_mutation
-        graphql_query.operation_name = "CreateTags"
+        graphql_query.operation_names = ["CreateTags"]
 
         resolution = await checker.check(
             db=db,
@@ -114,7 +114,7 @@ class TestDefaultBranchPermission:
         graphql_query.branch = MagicMock()
         graphql_query.branch.name = branch_name
         graphql_query.contains_mutation = contains_mutation
-        graphql_query.operation_name = "CreateTags"
+        graphql_query.operation_names = ["CreateTags"]
 
         if not contains_mutation or branch_name != "main":
             resolution = await checker.check(

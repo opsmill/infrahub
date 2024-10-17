@@ -8,10 +8,10 @@ test.describe("Role management - READ", () => {
 
     await test.step("check counts", async () => {
       await expect(page.getByRole("link", { name: "Accounts 9" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Groups 1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Roles 1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Global Permissions 1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Object Permissions 0" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Groups 2" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Roles 2" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Global Permissions 4" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Object Permissions 2" })).toBeVisible();
     });
 
     await test.step("check accounts view", async () => {
@@ -20,13 +20,13 @@ test.describe("Role management - READ", () => {
     });
 
     await test.step("check groups view", async () => {
-      await page.getByRole("link", { name: "Groups 1" }).click();
+      await page.getByRole("link", { name: "Groups 2" }).click();
       await expect(page.getByRole("cell", { name: "Administrators" })).toBeVisible();
       await expect(page.getByRole("cell", { name: "+ 4" })).toBeVisible();
     });
 
     await test.step("check roles view", async () => {
-      await page.getByRole("link", { name: "Roles 1" }).click();
+      await page.getByRole("link", { name: "Roles 2" }).click();
       await expect(page.getByRole("cell", { name: "Super Administrator" })).toBeVisible();
       await expect(page.getByRole("cell", { name: "1" }).first()).toBeVisible();
     });
