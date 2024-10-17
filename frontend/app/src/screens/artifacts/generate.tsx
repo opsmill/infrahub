@@ -21,6 +21,7 @@ export const Generate = (props: tGenerateProps) => {
   const { label, artifactid, definitionid } = props;
 
   const { objectid } = useParams();
+  const auth = useAuth();
 
   const [branch] = useQueryParam(QSP.BRANCH, StringParam);
   const [at] = useQueryParam(QSP.DATETIME, StringParam);
