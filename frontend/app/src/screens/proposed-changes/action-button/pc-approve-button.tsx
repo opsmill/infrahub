@@ -9,7 +9,7 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import React, { useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 interface PcApproveButtonProps extends ButtonProps {
@@ -22,6 +22,7 @@ export const PcApproveButton = ({
   approvers = [],
   proposedChangeId,
   state,
+  disabled,
   ...props
 }: PcApproveButtonProps) => {
   const branch = useAtomValue(currentBranchAtom);
@@ -83,13 +84,7 @@ export const PcApproveButton = ({
       variant="outline"
       onClick={handleApprove}
       isLoading={isLoadingApprove}
-      disabled={
-        !auth?.permissions?.write ||
-        !approverId ||
-        !canApprove ||
-        state === "closed" ||
-        state === "merged"
-      }
+      disabled={disabled || !approverId || !canApprove || state === "closed" || state === "merged"}
       {...props}
     >
       Approve

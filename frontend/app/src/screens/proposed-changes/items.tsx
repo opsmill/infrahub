@@ -1,7 +1,6 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Table, tRow } from "@/components/table/table";
 import { Badge } from "@/components/ui/badge";
-import { usePermission } from "@/hooks/usePermission";
 import useQuery, { useMutation } from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
@@ -33,6 +32,8 @@ import { useState } from "react";
 import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
+import { getPermission } from "../permission/utils";
 
 const STATES = {
   open: ["open"],
@@ -40,7 +41,6 @@ const STATES = {
 };
 
 export const ProposedChangesPage = () => {
-  const permission = usePermission();
   const navigate = useNavigate();
   const [qspState] = useQueryParam(QSP.PROPOSED_CHANGES_STATE, StringParam);
   useTitle("Proposed changes");
@@ -62,7 +62,15 @@ export const ProposedChangesPage = () => {
 
   const [deleteProposedChange, { loading: isDeleteLoading }] = useMutation(DELETE_PROPOSED_CHANGE);
 
+  const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
+
   if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+
+      return <UnauthorizedScreen message={message} />;
+    }
+
     return (
       <ErrorScreen message="Something went wrong when fetching proposed changes. Try reloading the page." />
     );
@@ -286,9 +294,9 @@ export const ProposedChangesPage = () => {
             <TabsButtons tabs={tabs} qsp={QSP.PROPOSED_CHANGES_STATE} />
 
             <ButtonWithTooltip
-              disabled={!permission.write.allow}
-              tooltipEnabled={!permission.write.allow}
-              tooltipContent={permission.write.message ?? undefined}
+              disabled={!permission.create.isAllowed}
+              tooltipEnabled={!permission.create.isAllowed}
+              tooltipContent={permission.create.message ?? undefined}
               onClick={() => navigate(constructPath("/proposed-changes/new"))}
               data-testid="add-proposed-changes-button"
             >
