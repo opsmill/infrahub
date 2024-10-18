@@ -158,7 +158,11 @@ const ObjectTreeItem = ({ element }: TreeItemProps) => {
       className="flex items-center gap-2"
       data-testid="hierarchical-tree-item"
     >
-      {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
+      {schema?.icon ? (
+        <Icon icon={schema.icon as string} className="w-4" />
+      ) : (
+        <div className="w-4" />
+      )}
       <span className="whitespace-nowrap">{element.name}</span>
     </Link>
   );

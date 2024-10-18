@@ -10,12 +10,10 @@ import GraphQLQueryDetailsPageSkeleton from "@/screens/graphql/details/graphql-q
 import GraphqlQueryViewerCard from "@/screens/graphql/details/graphql-query-viewer-card";
 import Content from "@/screens/layout/content";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");
@@ -47,37 +45,20 @@ const GraphqlQueryDetailsPage = () => {
   const graphqlQuery: CoreGraphQlQuery = graphqlQueries[0].node;
 
   return (
-    <Content>
-      <Content.Title
-        title={
-          <div className="flex items-center gap-1">
-            <Link
-              to={constructPath(`/objects/${graphqlQuerySchema.kind}`)}
-              className="hover:underline"
-            >
-              {graphqlQuerySchema.label}
-            </Link>
-
-            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
-
-            {loading ? (
-              <span>...</span>
-            ) : (
-              <p className="max-w-2xl text-sm text-gray-500 font-normal">
-                {graphqlQuery.display_label}
-              </p>
-            )}
-          </div>
-        }
+    <Content.Card>
+      <Content.CardTitle
+        title={graphqlQuery.display_label}
+        badgeContent={graphqlQuerySchema.label}
         reload={() => refetch()}
         isReloadLoading={loading}
-      >
-        <ObjectHelpButton
-          className="ml-auto"
-          documentationUrl={graphqlQuerySchema.documentation}
-          kind={graphqlQuerySchema.kind}
-        />
-      </Content.Title>
+        end={
+          <ObjectHelpButton
+            className="ml-auto"
+            documentationUrl={graphqlQuerySchema.documentation}
+            kind={graphqlQuerySchema.kind}
+          />
+        }
+      />
 
       {graphqlQuery && (
         <GraphqlQueryDetailsContent
@@ -86,7 +67,7 @@ const GraphqlQueryDetailsPage = () => {
           refetch={refetch}
         />
       )}
-    </Content>
+    </Content.Card>
   );
 };
 

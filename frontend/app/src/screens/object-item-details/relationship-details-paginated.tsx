@@ -239,7 +239,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         </td>
                       ))}
 
-                      <td className="h-9 text-right">
+                      <td className="h-9 flex items-center justify-end">
                         {properties && (
                           <MetaDetailsTooltip
                             updatedAt={properties.updated_at}

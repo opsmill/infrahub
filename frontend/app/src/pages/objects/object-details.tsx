@@ -1,10 +1,8 @@
-import { Card } from "@/components/ui/card";
 import { TASK_OBJECT } from "@/config/constants";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
-import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
 import ObjectItems from "@/screens/object-items/object-items-paginated";
@@ -51,16 +49,12 @@ export function ObjectDetailsPage() {
   }
 
   return (
-    <Content>
-      <Card className="p-2 pt-0">
-        <ObjectItemDetails
-          schema={schema}
-          objectDetailsData={objectDetailsData}
-          permission={permission}
-          taskData={data[TASK_OBJECT]}
-        />
-      </Card>
-    </Content>
+    <ObjectItemDetails
+      schema={schema}
+      objectDetailsData={objectDetailsData}
+      permission={permission}
+      taskData={data[TASK_OBJECT]}
+    />
   );
 }
 
