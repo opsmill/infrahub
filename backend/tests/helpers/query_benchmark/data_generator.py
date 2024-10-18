@@ -1,13 +1,13 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 from rich.console import Console
 from rich.progress import Progress
 
 from tests.helpers.query_benchmark.db_query_profiler import (
+    GraphProfileGenerator,
     InfrahubDatabaseProfiler,
-    ProfilerEnabler,
 )
 
 
@@ -36,7 +36,8 @@ async def load_data_and_profile(
     profile_frequency: int,
     graphs_output_location: Path,
     test_label: str,
-    memory_profiling_rate: int = 25,
+    graph_generator: GraphProfileGenerator,
+    memory_profiling_rate: Optional[int] = None,
 ) -> None:
     """
     Loads data using the provided data generator, profiles the execution at specified loading intervals,
@@ -59,7 +60,7 @@ async def load_data_and_profile(
     q, r = divmod(nb_elements, profile_frequency)
     nb_elem_per_batch = [profile_frequency] * q + ([r] if r else [])
 
-    query_analyzer = data_generator.db.query_analyzer
+    db_profiling_queries = data_generator.db
 
     with Progress(console=Console(force_terminal=True)) as progress:  # Need force_terminal to display with pytest
         task = progress.add_task(
@@ -68,12 +69,14 @@ async def load_data_and_profile(
 
         for i, nb_elem_to_load in enumerate(nb_elem_per_batch):
             await data_generator.load_data(nb_elements=nb_elem_to_load)
-            query_analyzer.increase_nb_elements_loaded(profile_frequency)
+            db_profiling_queries.increase_nb_elements_loaded(nb_elem_to_load)
             profile_memory = i % memory_profiling_rate == 0 if memory_profiling_rate is not None else False
-            with ProfilerEnabler(profile_memory=profile_memory, query_analyzer=query_analyzer):
+            with db_profiling_queries.profile(profile_memory):
                 await func_call()
             progress.advance(task)
 
         # Remove first measurements as queries when there is no data seem always extreme
-        query_analyzer.measurements = [m for m in query_analyzer.measurements if m.nb_elements_loaded != 0]
-        query_analyzer.create_graphs(output_location=graphs_output_location, label=test_label)
+        measurements = [m for m in db_profiling_queries.measurements if m.nb_elements_loaded != 0]
+        graph_generator.create_graphs(
+            measurements=measurements, output_location=graphs_output_location, label=test_label
+        )
