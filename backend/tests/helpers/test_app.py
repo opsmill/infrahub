@@ -2,7 +2,8 @@ import os
 from typing import Generator
 
 import pytest
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.core import registry

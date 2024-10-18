@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub_sdk import Timestamp as BaseTimestamp
+from infrahub_sdk.timestamp import Timestamp as BaseTimestamp
 
 if TYPE_CHECKING:
     from pendulum.datetime import DateTime

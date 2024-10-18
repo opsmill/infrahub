@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Optional, TypeVar
 
 import ujson
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.components import ComponentType
 from infrahub.database import InfrahubDatabase
