@@ -406,6 +406,11 @@ class Query(ABC):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         raise NotImplementedError
 
+    def get_context(self) -> dict[str, str]:
+        """Provide additional context for this query, beyond the name.
+        Right niw it's mainly used to add more labels to the metrics."""
+        return {}
+
     def add_to_query(self, query: Union[str, list[str]]) -> None:
         """Add a new section at the end of the query.
 
@@ -529,13 +534,15 @@ class Query(ABC):
 
         if self.type == QueryType.READ:
             if self.limit or self.offset:
-                results = await db.execute_query(query=query_str, params=self.params, name=self.name)
+                results = await db.execute_query(
+                    query=query_str, params=self.params, name=self.name, context=self.get_context()
+                )
             else:
                 results = await self.query_with_size_limit(db=db)
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str, params=self.params, name=self.name
+                query=query_str, params=self.params, name=self.name, context=self.get_context()
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -560,6 +567,7 @@ class Query(ABC):
                 query=self.get_query(limit=query_limit, offset=offset),
                 params=self.params,
                 name=self.name,
+                context=self.get_context(),
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))

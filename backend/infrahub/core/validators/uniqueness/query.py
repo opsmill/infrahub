@@ -26,6 +26,9 @@ class NodeUniqueAttributeConstraintQuery(Query):
         self.min_count_required = min_count_required
         super().__init__(**kwargs)
 
+    def get_context(self) -> dict[str, str]:
+        return {"kind": self.query_request.kind}
+
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
