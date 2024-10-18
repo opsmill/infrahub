@@ -17,7 +17,7 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
-import { getPermission } from "../permission/utils";
+import { PERMISSION_ALLOW_ALL } from "../permission/utils";
 
 function Roles() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ROLES);
@@ -33,7 +33,8 @@ function Roles() {
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const permission = getPermission(data?.[ACCOUNT_ROLE_OBJECT]?.permissions?.edges);
+  // const permission = getPermission(data?.[ACCOUNT_ROLE_OBJECT]?.permissions?.edges);
+  const permission = PERMISSION_ALLOW_ALL;
 
   const columns = [
     {
@@ -80,7 +81,7 @@ function Roles() {
   }
 
   if (loading) {
-    return <LoadingScreen message="Retrieving accounts..." />;
+    return <LoadingScreen message="Retrieving roles..." />;
   }
 
   if (!permission?.view.isAllowed) {

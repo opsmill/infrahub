@@ -134,7 +134,7 @@ function Permissions() {
   }
 
   if (loading) {
-    return <LoadingScreen message="Retrieving accounts..." />;
+    return <LoadingScreen message="Retrieving object permissions..." />;
   }
 
   if (!permission?.view.isAllowed) {

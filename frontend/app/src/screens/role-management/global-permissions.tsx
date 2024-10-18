@@ -96,7 +96,7 @@ function GlobalPermissions() {
   }
 
   if (loading) {
-    return <LoadingScreen message="Retrieving accounts..." />;
+    return <LoadingScreen message="Retrieving global permissions..." />;
   }
 
   if (!permission?.view.isAllowed) {

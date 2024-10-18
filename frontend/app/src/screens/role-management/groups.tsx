@@ -94,7 +94,7 @@ function Groups() {
   }
 
   if (loading) {
-    return <LoadingScreen message="Retrieving accounts..." />;
+    return <LoadingScreen message="Retrieving groups..." />;
   }
 
   if (!permission?.view.isAllowed) {
