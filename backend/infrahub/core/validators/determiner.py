@@ -1,11 +1,8 @@
-from collections import defaultdict
 from typing import Union
-
-from infrahub_sdk.diff import NodeDiff
 
 from infrahub.core.constants import RelationshipKind, SchemaPathType
 from infrahub.core.constants.schema import UpdateSupport
-from infrahub.core.diff.model.diff import DiffElementType
+from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes
@@ -20,43 +17,30 @@ LOG = get_logger(__name__)
 class ConstraintValidatorDeterminer:
     def __init__(self, schema_branch: SchemaBranch) -> None:
         self.schema_branch = schema_branch
-        self._node_diffs_by_kind: dict[str, NodeDiff] = defaultdict(list)
-        self._attribute_element_map: dict[str, dict[str, list[NodeDiff]]] = {}
-        self._relationship_element_map: dict[str, dict[str, list[NodeDiff]]] = {}
+        self._node_kinds: set[str] = set()
+        self._attribute_element_map: dict[str, set[str]] = {}
+        self._relationship_element_map: dict[str, set[str]] = {}
 
-    def _index_node_diffs(self, node_diffs: list[NodeDiff]) -> None:
+    def _index_node_diffs(self, node_diffs: list[NodeDiffFieldSummary]) -> None:
         for node_diff in node_diffs:
-            node_kind = node_diff["kind"]
-            self._node_diffs_by_kind[node_kind].append(node_diff)
-            if node_kind not in self._attribute_element_map:
-                self._attribute_element_map[node_kind] = {}
-            for element in node_diff["elements"]:
-                element_name = element["name"]
-                element_type = element["element_type"]
-                if element_type.lower() in (
-                    DiffElementType.RELATIONSHIP_MANY.value.lower(),
-                    DiffElementType.RELATIONSHIP_ONE.value.lower(),
-                ):
-                    if node_kind not in self._relationship_element_map:
-                        self._relationship_element_map[node_kind] = {}
-                    if element_name not in self._relationship_element_map[node_kind]:
-                        self._relationship_element_map[node_kind][element_name] = []
-                    self._relationship_element_map[node_kind][element_name].append(element)
-                elif element_type.lower() in (DiffElementType.ATTRIBUTE.value.lower(),):
-                    if node_kind not in self._attribute_element_map:
-                        self._attribute_element_map[node_kind] = {}
-                    if element_name not in self._attribute_element_map[node_kind]:
-                        self._attribute_element_map[node_kind][element_name] = []
-                    self._attribute_element_map[node_kind][element_name].append(element)
+            self._node_kinds.add(node_diff.kind)
+            if node_diff.kind not in self._attribute_element_map:
+                self._attribute_element_map[node_diff.kind] = set()
+            for attribute_name in node_diff.attribute_names:
+                self._attribute_element_map[node_diff.kind].add(attribute_name)
+            if node_diff.kind not in self._relationship_element_map:
+                self._relationship_element_map[node_diff.kind] = set()
+            for relationship_name in node_diff.relationship_names:
+                self._relationship_element_map[node_diff.kind].add(relationship_name)
 
-    def _get_attribute_diffs(self, kind: str, name: str) -> list[NodeDiff]:
-        return self._attribute_element_map.get(kind, {}).get(name, [])
+    def _has_attribute_diff(self, kind: str, name: str) -> bool:
+        return name in self._attribute_element_map.get(kind, set())
 
-    def _get_relationship_diffs(self, kind: str, name: str) -> list[NodeDiff]:
-        return self._relationship_element_map.get(kind, {}).get(name, [])
+    def _has_relationship_diff(self, kind: str, name: str) -> bool:
+        return name in self._relationship_element_map.get(kind, set())
 
     async def get_constraints(
-        self, node_diffs: list[NodeDiff], filter_invalid: bool = True
+        self, node_diffs: list[NodeDiffFieldSummary], filter_invalid: bool = True
     ) -> list[SchemaUpdateConstraintInfo]:
         self._index_node_diffs(node_diffs)
         constraints: list[SchemaUpdateConstraintInfo] = []
@@ -65,7 +49,7 @@ class ConstraintValidatorDeterminer:
 
         constraints.extend(await self._get_all_property_constraints())
 
-        for kind in self._node_diffs_by_kind.keys():
+        for kind in self._node_kinds:
             schema = self.schema_branch.get(name=kind, duplicate=False)
             constraints.extend(await self._get_constraints_for_one_schema(schema))
 
@@ -132,11 +116,9 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for field_name in schema.attribute_names:
-            node_diffs_for_attribute = self._get_attribute_diffs(kind=schema.kind, name=field_name)
-            if not node_diffs_for_attribute:
-                continue
-            field = schema.get_attribute(field_name)
-            constraints.extend(await self._get_constraints_for_one_field(schema=schema, field=field))
+            if self._has_attribute_diff(kind=schema.kind, name=field_name):
+                field = schema.get_attribute(field_name)
+                constraints.extend(await self._get_constraints_for_one_field(schema=schema, field=field))
         return constraints
 
     async def _get_relationship_constraints_for_one_schema(
@@ -144,11 +126,9 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for field_name in schema.relationship_names:
-            node_diffs_for_relationship = self._get_relationship_diffs(kind=schema.kind, name=field_name)
-            if not node_diffs_for_relationship:
-                continue
-            field = schema.get_relationship(field_name)
-            constraints.extend(await self._get_constraints_for_one_field(schema=schema, field=field))
+            if self._has_relationship_diff(kind=schema.kind, name=field_name):
+                field = schema.get_relationship(field_name)
+                constraints.extend(await self._get_constraints_for_one_field(schema=schema, field=field))
         return constraints
 
     async def _get_constraints_for_one_field(
