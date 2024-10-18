@@ -15,7 +15,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
   });
 
   test.describe("when not logged in", () => {
-    test.skip("should not be able to edit relationship", async ({ page }) => {
+    test("should not be able to edit relationship", async ({ page }) => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
@@ -66,6 +66,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
         await page.getByText("Devices9").click();
+        await expect(page.getByText("Just a moment")).not.toBeVisible();
       });
 
       await test.step("Add a new relationship", async () => {
