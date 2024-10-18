@@ -5,7 +5,7 @@ import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 
-import { ReactNode } from "react";
+import { ReactNode, isValidElement } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -150,6 +150,8 @@ const renderRowValue = (data: string | number | tRowValue): ReactNode => {
   if ("display" in data) return data.display as ReactNode;
 
   if ("value" in data) return data.value as ReactNode;
+
+  if (isValidElement(data)) return data;
 
   return "-";
 };
