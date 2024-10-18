@@ -1,7 +1,7 @@
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
-from tests.helpers.constants import PORT_BOLT_NEO4J
+from tests.helpers.constants import PORT_BOLT_NEO4J, PORT_HTTP_NEO4J
 
 
 def get_exposed_port(container: DockerContainer, port: int) -> int:
@@ -23,6 +23,7 @@ def start_neo4j_container(neo4j_image: str) -> DockerContainer:
         .with_env("NEO4J_dbms_security_procedures_unrestricted", "apoc.*")
         .with_env("NEO4J_dbms_security_auth__minimum__password__length", "4")
         .with_exposed_ports(PORT_BOLT_NEO4J)
+        .with_exposed_ports(PORT_HTTP_NEO4J)
     )
 
     container.start()
