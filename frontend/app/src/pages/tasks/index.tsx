@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { TASK_OBJECT } from "@/config/constants";
 import { getTasksItemsCount } from "@/graphql/queries/tasks/getTasksItemsCount";
 import useQuery from "@/hooks/useQuery";
@@ -35,17 +34,13 @@ const TasksPage = () => {
   const { count } = result;
 
   return (
-    <Content className="bg-custom-white">
-      <Content.Title
-        title={
-          <>
-            Task Overview <Badge>{count}</Badge>
-          </>
-        }
-      />
+    <Content.Card>
+      <Content.CardTitle title="Task Overview" badgeContent={count} />
 
-      <TaskItems />
-    </Content>
+      <Content.CardContent className="mt-4">
+        <TaskItems />
+      </Content.CardContent>
+    </Content.Card>
   );
 };
 

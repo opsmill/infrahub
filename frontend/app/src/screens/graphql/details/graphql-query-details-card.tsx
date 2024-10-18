@@ -3,7 +3,7 @@ import PropertiesPopover from "@/components/display/properties-popover";
 import ObjectEditSlideOverTrigger from "@/components/form/object-edit-slide-over-trigger";
 import { Property, PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
-import { CardWithBorder } from "@/components/ui/card";
+import { Card, CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
 import { Tooltip } from "@/components/ui/tooltip";
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
@@ -22,18 +22,18 @@ type GraphqlQueryDetailsCardProps = {
 
 const GraphqlQueryDetailsCard = ({ data, schema, refetch }: GraphqlQueryDetailsCardProps) => {
   return (
-    <CardWithBorder>
+    <Card>
       <GraphqlQueryDetailsTitle data={data} schema={schema} refetch={refetch} />
 
       <GraphqlQueryPropertyList data={data} schema={schema} refetch={refetch} />
-    </CardWithBorder>
+    </Card>
   );
 };
 
 const GraphqlQueryDetailsTitle = ({ data, schema, refetch }: GraphqlQueryDetailsCardProps) => {
   return (
     <>
-      <CardWithBorder.Title className="flex items-center gap-1">
+      <CardWithBorder.Title className="flex items-center gap-1 rounded-t">
         <Badge variant="blue">{schema.namespace}</Badge>
 
         <span>

@@ -54,7 +54,7 @@ function Layout() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-stone-100">
+    <div className="h-screen w-screen overflow-hidden bg-stone-100 text-stone-800">
       <Header />
 
       <div className="flex items-stretch h-[calc(100vh-57px)]">

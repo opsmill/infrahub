@@ -34,7 +34,9 @@ export const ObjectItemsCell = ({ row, attribute }: ObjectItemsCellProps) => {
 };
 
 export const TextCell = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => {
-  return <span className={classNames("p-2 text-xs whitespace-nowrap", className)} {...props} />;
+  return (
+    <span className={classNames("p-2 px-4 text-xs whitespace-nowrap", className)} {...props} />
+  );
 };
 
 export const LinkCell = ({ className, children, ...props }: LinkProps) => {

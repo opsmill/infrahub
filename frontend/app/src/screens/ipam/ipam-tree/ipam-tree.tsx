@@ -7,6 +7,7 @@ import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { GET_PREFIXES_ONLY } from "@/graphql/queries/ipam/prefixes";
 import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";

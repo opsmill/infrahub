@@ -154,7 +154,7 @@ export function Component() {
 
   if (error || !proposedChangesData) {
     return (
-      <Content>
+      <Content.Card>
         <Content.Title
           title={
             <div className="flex items-center gap-2">
@@ -181,14 +181,14 @@ export function Component() {
         )}
 
         {!proposedChangesData && <NoDataFound message="No proposed changes found." />}
-      </Content>
+      </Content.Card>
     );
   }
 
   return (
-    <Content>
-      <Content.Title
-        title={<h1>{proposedChangesData.display_label}</h1>}
+    <Content.Card className="min-h-[calc(100%-1rem)] flex flex-col">
+      <Content.CardTitle
+        title={proposedChangesData.display_label}
         description={
           <div className="inline-flex gap-1 text-xs items-center">
             <Link
@@ -220,17 +220,18 @@ export function Component() {
         }
         reload={() => client.reFetchObservableQueries()}
         isReloadLoading={loading}
-      >
-        <ObjectHelpButton
-          documentationUrl={schema?.documentation}
-          kind={PROPOSED_CHANGES_OBJECT}
-          className="ml-auto"
-        />
-      </Content.Title>
+        end={
+          <ObjectHelpButton
+            documentationUrl={schema?.documentation}
+            kind={PROPOSED_CHANGES_OBJECT}
+            className="ml-auto"
+          />
+        }
+      />
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
       <ProposedChangeDetailsContent proposedChangeData={proposedChangesData} />
-    </Content>
+    </Content.Card>
   );
 }
