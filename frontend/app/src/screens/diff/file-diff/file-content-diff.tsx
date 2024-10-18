@@ -368,7 +368,7 @@ export const FileContentDiff = (props: any) => {
 
     const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
-    if (thread || !auth?.permissions?.write || !proposedChangeId) {
+    if (thread || !auth?.isAuthenticated || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }

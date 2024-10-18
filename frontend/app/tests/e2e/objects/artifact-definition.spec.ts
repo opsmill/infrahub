@@ -15,6 +15,7 @@ test.describe("/objects/CoreArtifactDefinition - Artifact Definition page", () =
   test("should generate artifacts successfully", async ({ page }) => {
     await page.goto("/objects/CoreArtifactDefinition");
     await page.getByRole("link", { name: "startup-config" }).click();
+    await expect(page.getByRole("button", { name: "Generate" })).not.toBeDisabled();
     await page.getByRole("button", { name: "Generate" }).click();
     await expect(page.getByRole("alert")).toContainText("Artifacts generated");
   });

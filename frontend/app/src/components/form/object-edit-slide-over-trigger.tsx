@@ -1,8 +1,9 @@
 import { ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import { usePermission } from "@/hooks/usePermission";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import { Permission } from "@/screens/permission/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
@@ -10,15 +11,16 @@ interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;
   schema: IModelSchema;
   onUpdateComplete?: () => void;
+  permission: Permission;
 }
 
 const ObjectEditSlideOverTrigger = ({
   data,
   schema,
   onUpdateComplete,
+  permission,
   ...props
 }: ObjectEditSlideOverTriggerProps) => {
-  const permission = usePermission();
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
 
   return (
@@ -28,9 +30,9 @@ const ObjectEditSlideOverTrigger = ({
         variant="outline"
         size="icon"
         onClick={() => setIsEditDrawerOpen(true)}
-        disabled={!permission.write.allow}
-        tooltipEnabled={!permission.write.allow}
-        tooltipContent={permission.write.message ?? undefined}
+        disabled={!permission.create.isAllowed}
+        tooltipEnabled={!permission.create.isAllowed}
+        tooltipContent={permission.create.message ?? undefined}
         data-testid="edit-button"
         {...props}
       >

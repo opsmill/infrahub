@@ -1,6 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import { ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "@/config/constants";
+import { ADMIN_ROLES, REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { components } from "@/infraops";
 import { configState } from "@/state/atoms/config.atom";
@@ -13,7 +13,6 @@ import { toast } from "react-toastify";
 
 type PermissionsType = {
   isAdmin: boolean;
-  write: boolean;
 };
 
 type User = {
@@ -89,7 +88,6 @@ export const AuthContext = createContext<AuthContextType>({
   data: undefined,
   permissions: {
     isAdmin: false,
-    write: false,
   },
   login: async () => {},
   signOut: () => {},
@@ -145,7 +143,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!accessToken,
     isLoading,
     permissions: {
-      write: WRITE_ROLES.includes(data?.user_claims?.role),
       isAdmin: ADMIN_ROLES.includes(data?.user_claims?.role),
     },
     login: signIn,

@@ -52,6 +52,17 @@ export const GET_IP_ADDRESSES = gql`
           }
         }
       }
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
     }
   }
 `;

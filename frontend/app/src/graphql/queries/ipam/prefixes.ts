@@ -88,6 +88,17 @@ export const GET_PREFIXES = gql`
           }
         }
       }
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
     }
   }
 `;
@@ -153,6 +164,17 @@ export const GET_PREFIX = gql`
                 }
               }
             }
+          }
+        }
+      }
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
           }
         }
       }
