@@ -15,7 +15,8 @@ from pydantic import BaseModel
 from infrahub import config, lock
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, RepositoryInternalStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.model.diff import SchemaConflict
+from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
+from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.checker import schema_validators_checker
@@ -894,5 +895,22 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
 async def _get_proposed_change_schema_integrity_constraints(
     message: messages.RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
 ) -> list[SchemaUpdateConstraintInfo]:
+    node_diff_field_summary_map: dict[str, NodeDiffFieldSummary] = {}
+    for node_diff in message.branch_diff.diff_summary:
+        node_kind = node_diff["kind"]
+        if node_kind not in node_diff_field_summary_map:
+            node_diff_field_summary_map[node_kind] = NodeDiffFieldSummary(kind=node_kind)
+        field_summary = node_diff_field_summary_map[node_kind]
+        for element in node_diff["elements"]:
+            element_name = element["name"]
+            element_type = element["element_type"]
+            if element_type.lower() in (
+                DiffElementType.RELATIONSHIP_MANY.value.lower(),
+                DiffElementType.RELATIONSHIP_ONE.value.lower(),
+            ):
+                field_summary.relationship_names.add(element_name)
+            elif element_type.lower() in (DiffElementType.ATTRIBUTE.value.lower(),):
+                field_summary.attribute_names.add(element_name)
+
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)
-    return await determiner.get_constraints(node_diffs=message.branch_diff.diff_summary)
+    return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
