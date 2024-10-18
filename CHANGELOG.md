@@ -1,9 +1,9 @@
-# Infrahub Changelog
+# Infrahub changelog
 
 This is the changelog for Infrahub.
 All notable changes to this project will be documented in this file.
 
-Issue tracking is located in [Github](https://github.com/opsmill/infrahub/issues).
+Issue tracking is located in [GitHub](https://github.com/opsmill/infrahub/issues).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -40,7 +40,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix performance issue for GraphQL queries that only count nodes. ([#4454](https://github.com/opsmill/infrahub/issues/4454))
 - Fix ability to construct HFID for upsert mutations where a number attribute is used. ([#4460](https://github.com/opsmill/infrahub/issues/4460))
 
-## [0.16.1](https://github.com/opsmill/infrahub/tree/v0.16.1) - 2024-09-24
+## [Infrahub - v0.16.1](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.1) - 2024-09-24
 
 The largest change in this version is the movement of the Infrahub SDK into a
 [separate repository](https://github.com/opsmill/infrahub-sdk-python) and package.
@@ -105,7 +105,7 @@ git submodule update --init
 - Added cancel button in repository form ([#4402](https://github.com/opsmill/infrahub/issues/4402))
 - Fixes the tasks pagination in the proposed changes tab ([#4434](https://github.com/opsmill/infrahub/issues/4434))
 
-## [0.16.0](https://github.com/opsmill/infrahub/tree/v0.16.0) - 2024-09-11
+## [Infrahub - v0.16.0](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.0) - 2024-09-11
 
 ### Removed
 
@@ -154,7 +154,7 @@ git submodule update --init
 - Do not allow '/' character in repository name to avoid sync failure. ([#4120](https://github.com/opsmill/infrahub/issues/4120))
 - Can't close a comment thread on an Artifact. ([#4189](https://github.com/opsmill/infrahub/issues/4189))
 
-## [0.15.3](https://github.com/opsmill/infrahub/tree/v0.15.3) - 2024-08-13
+## [Infrahub - v0.15.3](https://github.com/opsmill/infrahub/tree/infrahub-v0.15.3) - 2024-08-13
 
 ### Added
 

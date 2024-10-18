@@ -1,0 +1,19 @@
+## Main Changes
+
+{{ changelog_contents }}
+
+## Migration Guide
+
+### Rebuild the demo environment
+
+It's mandatory to completely rebuild your demo environment with the following commands.
+
+```
+invoke demo.destroy demo.build demo.start
+invoke demo.load-infra-schema
+invoke demo.load-infra-data
+```
+
+> All data will be lost, please make sure to backup everything you need before running this command.
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommend to pull the latest changes into your fork.

@@ -636,9 +636,10 @@ directory = "changelog"
 filename = "CHANGELOG.md"
 start_string = "<!-- towncrier release notes start -->\n"
 underlines = ["", "", ""]
-title_format = "## [{version}](https://github.com/opsmill/infrahub/tree/v{version}) - {project_date}"
+title_format = "## [Infrahub - v{version}](https://github.com/opsmill/infrahub/tree/infrahub-v{version}) - {project_date}"
 issue_format = "[#{issue}](https://github.com/opsmill/infrahub/issues/{issue})"
 orphan_prefix = "+"
+template = "changelog/towncrier.md.template"
 
 [[tool.towncrier.type]]
 directory = "security"

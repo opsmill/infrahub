@@ -37,6 +37,7 @@ jobs:
     outputs:
       backend: ${{ steps.changes.outputs.backend_all }}
       documentation: ${{ steps.changes.outputs.documentation_all }}
+      release: ${{ steps.changes.outputs.release_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       helm: ${{ steps.changes.outputs.helm_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
@@ -130,7 +131,9 @@ jobs:
         run: "ruff format --check --diff ."
 
   markdown-lint:
-    if: needs.files-changed.outputs.documentation == 'true'
+    if: |
+      needs.files-changed.outputs.documentation == 'true' ||
+      needs.files-changed.outputs.release == 'true'
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
@@ -145,7 +148,6 @@ jobs:
           config: .markdownlint.yaml
           globs: |
             **/*.{md,mdx}
-            !changelog/*.md
 
   action-lint:
     if: needs.files-changed.outputs.github_workflows == 'true'
@@ -528,7 +530,32 @@ jobs:
         env:
           VALE_VERSION: ${{ env.VALE_VERSION }}
       - name: "Validate documentation style"
-        run: ./vale $(find . -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+        run: ./vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+
+  validate-release-notes-style:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.documentation == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+        with:
+          submodules: true
+      # The official GitHub Action for Vale doesn't work, installing manually instead:
+      # https://github.com/errata-ai/vale-action/issues/103
+      - name: Download Vale
+        run: |
+          curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
+          tar -xzf vale.tar.gz
+        env:
+          VALE_VERSION: ${{ env.VALE_VERSION }}
+      - name: "Validate documentation style"
+        run: ./vale $(find ./changelog ./docs/docs/release-notes/infrahub -type f \( -name '*.mdx' -o -name '*.md' \)) CHANGELOG.md
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing-playwright:
