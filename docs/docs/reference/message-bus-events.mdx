@@ -1041,57 +1041,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
-### Transform Jinja
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event transform.jinja.template
-<!-- vale on -->
-
-**Description**: Sent to trigger the checks for a repository to be executed.
-
-**Priority**: 4
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The kind of the repository | string | None |
-| **data** | Input data for the template | object | None |
-| **branch** | The branch to target | string | None |
-| **template_location** | Location of the template within the repository | string | None |
-| **commit** | The commit id to use when rendering the template | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Transform Python
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event transform.python.data
-<!-- vale on -->
-
-**Description**: Sent to run a Python transform.
-
-**Priority**: 4
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The kind of the repository | string | None |
-| **data** | Input data for the template | object | None |
-| **branch** | The branch to target | string | None |
-| **transform_location** | Location of the transform within the repository | string | None |
-| **commit** | The commit id to use when rendering the template | string | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
 ### Trigger Artifact Definition
 <!-- vale on -->
 
@@ -2245,59 +2194,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
-### Transform Jinja
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event transform.jinja.template
-<!-- vale on -->
-
-**Description**: Sent to trigger the checks for a repository to be executed.
-
-**Priority**: 4
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The kind of the repository | string | None |
-| **data** | Input data for the template | object | None |
-| **branch** | The branch to target | string | None |
-| **template_location** | Location of the template within the repository | string | None |
-| **commit** | The commit id to use when rendering the template | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Transform Python
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event transform.python.data
-<!-- vale on -->
-
-**Description**: Sent to run a Python transform.
-
-**Priority**: 4
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The kind of the repository | string | None |
-| **data** | Input data for the template | object | None |
-| **branch** | The branch to target | string | None |
-| **transform_location** | Location of the transform within the repository | string | None |
-| **commit** | The commit id to use when rendering the template | string | None |
 <!-- vale on -->
 
 
