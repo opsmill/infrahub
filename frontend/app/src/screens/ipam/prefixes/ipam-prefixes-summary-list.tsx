@@ -46,7 +46,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
 
   useImperativeHandle(ref, () => ({ refetch }));
 
-  const permission = getPermission(data[IP_PREFIX_GENERIC]?.permissions?.edges);
+  const permission = getPermission(data?.[IP_PREFIX_GENERIC]?.permissions?.edges);
 
   const columns = [
     { name: "prefix", label: "Prefix" },
