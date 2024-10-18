@@ -3,7 +3,7 @@ from pathlib import Path
 
 import fastapi_storages
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.exceptions import NodeNotFoundError

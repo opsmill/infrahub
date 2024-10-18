@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 import toml
-from infrahub_sdk import generate_uuid
+from infrahub_sdk.utils import generate_uuid
 from pydantic import AliasChoices, BaseModel, Field, PrivateAttr, ValidationError, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self

@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import AsyncMock, patch
 
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus

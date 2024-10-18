@@ -1,7 +1,7 @@
 import os
 
-from infrahub_sdk import InfrahubNode
 from infrahub_sdk.exceptions import ModuleImportError
+from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
 from prefect import flow
 

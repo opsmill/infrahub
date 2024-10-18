@@ -15,7 +15,7 @@ export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
   const relationshipsTabs = getTabs(schema);
   const columns = getSchemaObjectColumns({ schema });
 
-  const isProfileSchema = schema.namespace === "Profile";
+  const isProfileSchema = schema?.namespace === "Profile";
   const query = gql(
     schema
       ? getObjectDetailsPaginated({
