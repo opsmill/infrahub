@@ -1,0 +1,1 @@
+Fix metric missing the query name in Prometheus data
