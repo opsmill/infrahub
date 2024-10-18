@@ -213,7 +213,7 @@ export const Thread = (props: tThread) => {
 
           <Button
             onClick={() => setDisplayAddComment(true)}
-            disabled={loading || permission?.create?.isAllowed}
+            disabled={loading || !permission?.create?.isAllowed}
           >
             Reply
           </Button>
