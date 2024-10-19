@@ -6,7 +6,6 @@ import {
   CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
-  VALIDATION_STATES,
 } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { runCheck } from "@/graphql/mutations/diff/runCheck";
@@ -34,7 +33,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   const { proposedChangeId } = useParams();
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const schemaList = useAtomValue(genericsState);
-  const auth = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
 
@@ -45,10 +44,6 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
     return { ...acc, [kind]: getValidatorsStats(relatedValidators) };
   }, {});
-
-  const validatorsInProgress = validators.filter(
-    (validator: any) => validator?.state?.value === VALIDATION_STATES.IN_PROGRESS
-  );
 
   const handleRetry = async (validator: string) => {
     const runParams = {
@@ -90,7 +85,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
         <div className="lg:absolute lg:top-1/2 lg:-left-28 lg:transform lg:-translate-y-1/2 flex items-center justify-between p-2">
           <Button
             onClick={() => handleRetry("all")}
-            disabled={!auth?.permissions?.write}
+            disabled={!isAuthenticated}
             variant="ghost"
             className="gap-1 hover:bg-neutral-200"
           >

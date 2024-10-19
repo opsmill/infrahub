@@ -12,6 +12,8 @@ import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
+  artifactPermissionsData,
+  artifactPermissionsQuery,
   artifactThreadMockData,
   artifactThreadMockQuery,
   artifactThreadSchema,
@@ -37,6 +39,17 @@ const mocks = [
     },
     result: {
       data: artifactThreadMockData,
+    },
+  },
+  {
+    request: {
+      query: gql`
+        ${artifactPermissionsQuery}
+      `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: artifactPermissionsData,
     },
   },
 ];

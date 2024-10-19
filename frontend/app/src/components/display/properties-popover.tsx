@@ -1,6 +1,6 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { usePermission } from "@/hooks/usePermission";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { Permission } from "@/screens/permission/types";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai/index";
@@ -16,6 +16,7 @@ interface PropertiesEditTriggerProps {
   data: any;
   schema: any;
   hideHeader?: boolean;
+  permission: Permission;
 }
 
 const PropertiesPopover = ({
@@ -26,8 +27,8 @@ const PropertiesPopover = ({
   data,
   schema,
   hideHeader,
+  permission,
 }: PropertiesEditTriggerProps) => {
-  const permission = usePermission();
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
@@ -56,9 +57,9 @@ const PropertiesPopover = ({
                   });
                   setShowMetaEditModal(true);
                 }}
-                disabled={!permission.write.allow}
-                tooltipEnabled={!permission.write.allow}
-                tooltipContent={permission.write.message ?? undefined}
+                disabled={!permission.update.isAllowed}
+                tooltipEnabled={!permission.update.isAllowed}
+                tooltipContent={permission.update.message ?? undefined}
                 data-testid="properties-edit-button"
               >
                 <Icon icon="mdi:pencil" className="text-custom-blue-500" />

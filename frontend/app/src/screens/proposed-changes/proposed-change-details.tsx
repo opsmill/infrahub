@@ -5,6 +5,8 @@ import { Property, PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
 import { CardWithBorder } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import useQuery from "@/hooks/useQuery";
 import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
 import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";
 import { PcMergeButton } from "@/screens/proposed-changes/action-button/pc-merge-button";
@@ -14,16 +16,25 @@ import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { classNames } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
+import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
+import { getPermission } from "../permission/utils";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
   const navigate = useNavigate();
+
+  const { loading, data, error } = useQuery(
+    gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT))
+  );
+
+  const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
 
   const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
   const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
@@ -98,13 +109,19 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
             approvers={approvers}
             proposedChangeId={proposedChangeId!}
             state={state}
+            disabled={!permission.update.isAllowed}
           />
           <PcMergeButton
             proposedChangeId={proposedChangeId!}
             state={state}
             sourceBranch={proposedChangesDetails?.source_branch?.value}
+            disabled={!permission.update.isAllowed}
           />
-          <PcCloseButton proposedChangeId={proposedChangeId!} state={state} />
+          <PcCloseButton
+            proposedChangeId={proposedChangeId!}
+            state={state}
+            disabled={!permission.update.isAllowed}
+          />
         </div>
       ),
     },

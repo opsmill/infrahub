@@ -18,6 +18,7 @@ import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/screens/ipam/constant
 import { reloadIpamTreeAtom } from "@/screens/ipam/ipam-tree/ipam-tree.state";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -45,6 +46,8 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   });
 
   useImperativeHandle(ref, () => ({ refetch }));
+
+  const permission = getPermission(data?.[IP_PREFIX_GENERIC]?.permissions?.edges);
 
   if (!prefix) {
     return <div>Select a Prefix in the Tree to the left to see details</div>;
@@ -169,7 +172,13 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       </div>
 
       {data && (
-        <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />
+        <Table
+          rows={rows}
+          columns={columns}
+          onDelete={handleDelete}
+          onUpdate={handleUpdate}
+          permission={permission}
+        />
       )}
 
       {relatedRowToDelete && (

@@ -19,6 +19,17 @@ export const GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS = gql`
           __typename
         }
       }
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
     }
   }
 `;

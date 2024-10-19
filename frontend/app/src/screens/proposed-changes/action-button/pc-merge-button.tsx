@@ -3,7 +3,6 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { usePermission } from "@/hooks/usePermission";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -22,12 +21,12 @@ export const PcMergeButton = ({
   sourceBranch,
   proposedChangeId,
   state,
+  disabled,
   ...props
 }: PcMergeButtonProps) => {
   const [isLoadingMerge, setIsLoadingMerge] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const permission = usePermission();
 
   const handleMerge = async () => {
     if (!sourceBranch) return;
@@ -77,7 +76,7 @@ export const PcMergeButton = ({
       variant="active"
       onClick={handleMerge}
       isLoading={isLoadingMerge}
-      disabled={!permission.write.allow || state === "closed" || state === "merged"}
+      disabled={disabled || state === "closed" || state === "merged"}
       {...props}
     >
       Merge

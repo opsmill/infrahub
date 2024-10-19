@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
-import { TASK_OBJECT } from "@/config/constants";
+import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
+import ArtifactsDetails from "@/screens/artifacts/object-item-details-paginated";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
@@ -12,6 +13,7 @@ import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.a
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
+import GraphqlQueryDetailsPage from "./CoreGraphQLQuery/graphql-query-details";
 
 export function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();
@@ -37,6 +39,12 @@ export function ObjectDetailsPage() {
   }
 
   if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+
+      return <UnauthorizedScreen message={message} />;
+    }
+
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
@@ -47,6 +55,18 @@ export function ObjectDetailsPage() {
       <div className="flex column justify-center">
         <NoDataFound message="No item found for that id." />
       </div>
+    );
+  }
+
+  if (objectKind === ARTIFACT_OBJECT) {
+    return <ArtifactsDetails />;
+  }
+
+  if (objectKind === GRAPHQL_QUERY_OBJECT) {
+    return (
+      <Content>
+        <GraphqlQueryDetailsPage />
+      </Content>
     );
   }
 

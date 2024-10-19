@@ -4,15 +4,20 @@ import ObjectForm from "@/components/form/object-form";
 import { Tabs } from "@/components/tabs";
 import { Card } from "@/components/ui/card";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { usePermission } from "@/hooks/usePermission";
+import useQuery from "@/hooks/useQuery";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
+import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import ErrorScreen from "../errors/error-screen";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
+import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import {
   IPAM_QSP,
@@ -34,7 +39,6 @@ function IpamRouter() {
   const [qspTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
   const navigate = useNavigate();
   const { prefix } = useParams();
-  const permission = usePermission();
   const branch = useAtomValue(currentBranchAtom);
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
@@ -42,13 +46,16 @@ function IpamRouter() {
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const refetchRef = useRef(null);
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const objectname = qspTab ? tabToKind[qspTab] : IP_PREFIX_GENERIC;
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const schemaData = schema || generic;
 
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const { loading, data, error } = useQuery(gql(getObjectPermissionsQuery(objectname)));
+
+  const permission = data && getPermission(data?.[objectname]?.permissions?.edges);
 
   const tabs = [
     {
@@ -117,11 +124,21 @@ function IpamRouter() {
     }
   };
 
+  if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+
+      return <UnauthorizedScreen message={message} />;
+    }
+
+    return <ErrorScreen message="Something went wrong when fetching IPAM details." />;
+  }
+
   const rightitems = (
     <ButtonWithTooltip
-      disabled={!permission.write.allow}
-      tooltipEnabled={!permission.write.allow}
-      tooltipContent={permission.write.message ?? undefined}
+      disabled={loading || !permission?.create.isAllowed}
+      tooltipEnabled={!permission?.create.isAllowed}
+      tooltipContent={permission?.create.message ?? undefined}
       onClick={() => setShowCreateDrawer(true)}
       className="mr-4"
       data-testid="create-object-button"
@@ -134,9 +151,7 @@ function IpamRouter() {
   return (
     <Card className="p-0 overflow-hidden flex flex-col h-full" data-testid="ipam-main-content">
       <Tabs tabs={tabs} qsp={IPAM_QSP.TAB} rightItems={rightitems} />
-
       <div className="m-4 flex flex-grow overflow-auto">{renderContent()}</div>
-
       <SlideOver
         title={
           <div className="space-y-2">

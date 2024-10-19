@@ -32,6 +32,17 @@ export const GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS = gql`
           }
         }
       }
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
     }
   }
 `;

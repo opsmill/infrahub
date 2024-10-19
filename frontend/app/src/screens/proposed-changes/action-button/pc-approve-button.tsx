@@ -22,6 +22,7 @@ export const PcApproveButton = ({
   approvers = [],
   proposedChangeId,
   state,
+  disabled,
   ...props
 }: PcApproveButtonProps) => {
   const branch = useAtomValue(currentBranchAtom);
@@ -83,13 +84,7 @@ export const PcApproveButton = ({
       variant="outline"
       onClick={handleApprove}
       isLoading={isLoadingApprove}
-      disabled={
-        !auth?.permissions?.write ||
-        !approverId ||
-        !canApprove ||
-        state === "closed" ||
-        state === "merged"
-      }
+      disabled={disabled || !approverId || !canApprove || state === "closed" || state === "merged"}
       {...props}
     >
       Approve

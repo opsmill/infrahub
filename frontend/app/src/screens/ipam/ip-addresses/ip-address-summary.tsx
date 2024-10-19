@@ -3,11 +3,13 @@ import { GET_IP_ADDRESS_KIND } from "@/graphql/queries/ipam/ip-address";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
+import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import { IpDetailsCard } from "@/screens/ipam/common/ip-details-card";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC } from "@/screens/ipam/constants";
 import { IpamSummarySkeleton } from "@/screens/ipam/prefixes/ipam-summary-skeleton";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { getPermission } from "@/screens/permission/utils";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
@@ -66,6 +68,7 @@ const IpAddressSummaryContent = ({ ipAddressId, ipAddressKind }: IpAddressSummar
       objectid: ipAddressId,
       kind: ipAddressKind,
       columns,
+      hasPermission: true,
     })
   );
 
@@ -76,15 +79,26 @@ const IpAddressSummaryContent = ({ ipAddressId, ipAddressKind }: IpAddressSummar
 
   if (loading || !data || !ipAddressSchema) return <IpamSummarySkeleton />;
 
+  const permission = getPermission(data[ipAddressKind]?.permissions?.edges);
+
   if (error) {
     return <ErrorScreen message="An error occurred while retrieving prefixes" />;
+  }
+
+  if (!permission.view.isAllowed) {
+    return <UnauthorizedScreen message={permission.view.message} />;
   }
 
   const ipAddressData = data[ipAddressKind].edges[0].node;
 
   return (
     <div className="flex items-start gap-2">
-      <IpDetailsCard schema={ipAddressSchema} data={ipAddressData} refetch={refetch} />
+      <IpDetailsCard
+        schema={ipAddressSchema}
+        data={ipAddressData}
+        refetch={refetch}
+        permission={permission}
+      />
     </div>
   );
 };
