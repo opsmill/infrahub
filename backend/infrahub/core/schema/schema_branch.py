@@ -118,7 +118,7 @@ class SchemaBranch:
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
 
-        Since the object themselves are considered immuable we just need to use the hash from each object to calculate the global hash.
+        Since the object themselves are considered immutable we just need to use the hash from each object to calculate the global hash.
         """
         md5hash = hashlib.md5(usedforsecurity=False)
         for key, value in sorted(tuple(self.nodes.items()) + tuple(self.generics.items())):

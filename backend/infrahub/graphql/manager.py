@@ -17,6 +17,7 @@ from infrahub.core.schema import (
     ProfileSchema,
     RelationshipSchema,
 )
+from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
@@ -106,14 +107,23 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     _managers_by_branch: dict[str, GraphQLSchemaManager] = {}
 
     @classmethod
+    def _is_refresh_required(cls, cached_branch: Branch, new_branch: Branch) -> bool:
+        if cached_branch.schema_changed_at or new_branch.schema_changed_at:
+            return cached_branch.schema_changed_at != new_branch.schema_changed_at
+        right_now = Timestamp()
+        if not cached_branch.schema_hash:
+            cached_branch.update_schema_hash(at=right_now)
+        if not new_branch.schema_hash:
+            new_branch.update_schema_hash(at=right_now)
+        return cached_branch.active_schema_hash.main != new_branch.active_schema_hash.main
+
+    @classmethod
     def get_manager_for_branch(cls, branch: Branch, force_refresh: bool = False) -> GraphQLSchemaManager:
         if branch.name not in cls._branches_by_name:
             cls._branches_by_name[branch.name] = branch
-            cached_branch = branch
-        else:
+        elif not force_refresh:
             cached_branch = cls._branches_by_name[branch.name]
-            if cached_branch.schema_changed_at != branch.schema_changed_at:
-                force_refresh |= True
+            force_refresh = cls._is_refresh_required(cached_branch=cached_branch, new_branch=branch)
         if force_refresh or branch.name not in cls._managers_by_branch:
             schema_branch = registry.schema.get_schema_branch(name=branch.name)
             cls._managers_by_branch[branch.name] = cls(schema=schema_branch)
@@ -177,7 +187,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                     auto_camelcase=False,
                     directives=DIRECTIVES,
                 )
-                subscription = self.get_gql_subscription(partial_graphql_schema=partial_graphene_schema)
+                subscription = self.get_gql_subscription(partial_graphql_schema=partial_graphene_schema.graphql_schema)
 
             graphene_schema = graphene.Schema(
                 query=query,

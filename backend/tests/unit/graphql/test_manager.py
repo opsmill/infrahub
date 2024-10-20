@@ -4,6 +4,7 @@ import graphene
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.types import InfrahubObject
@@ -258,3 +259,30 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "subscriber_of_groups__name__values",
     ]
     assert sorted(list(filters.keys())) == sorted(expected_filters)
+
+
+async def test_branch_caching_hit(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics
+):
+    right_now = Timestamp()
+    default_branch.schema_changed_at = right_now
+    same_branch = await registry.branch_object.get_by_name(db=db, name=default_branch.name)
+    same_branch.schema_changed_at = right_now
+
+    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch)
+    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch)
+
+    assert manager1 is manager2
+
+
+async def test_branch_caching_miss(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics
+):
+    default_branch.schema_changed_at = Timestamp()
+    same_branch = await registry.branch_object.get_by_name(db=db, name=default_branch.name)
+    same_branch.schema_changed_at = Timestamp().to_string()
+
+    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch)
+    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch)
+
+    assert manager1 is not manager2
