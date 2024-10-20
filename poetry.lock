@@ -68,20 +68,6 @@ typing-extensions = ">=4"
 tz = ["backports.zoneinfo"]
 
 [[package]]
-name = "aniso8601"
-version = "9.0.1"
-description = "A library for parsing ISO 8601 strings."
-optional = false
-python-versions = "*"
-files = [
-    {file = "aniso8601-9.0.1-py2.py3-none-any.whl", hash = "sha256:1d2b7ef82963909e93c4f24ce48d4de9e66009a21bf1c1e1c85bdd0812fe412f"},
-    {file = "aniso8601-9.0.1.tar.gz", hash = "sha256:72e3117667eedf66951bb2d93f4296a56b94b078a8a95905a052611fb3f1b973"},
-]
-
-[package.extras]
-dev = ["black", "coverage", "isort", "pre-commit", "pyenchant", "pylint"]
-
-[[package]]
 name = "annotated-types"
 version = "0.7.0"
 description = "Reusable constraint types to use with typing.Annotated"
@@ -1321,23 +1307,23 @@ grpc = ["grpcio (>=1.44.0,<2.0.0.dev0)"]
 
 [[package]]
 name = "graphene"
-version = "3.3"
+version = "3.4"
 description = "GraphQL Framework for Python"
 optional = false
 python-versions = "*"
 files = [
-    {file = "graphene-3.3-py2.py3-none-any.whl", hash = "sha256:bb3810be33b54cb3e6969506671eb72319e8d7ba0d5ca9c8066472f75bf35a38"},
-    {file = "graphene-3.3.tar.gz", hash = "sha256:529bf40c2a698954217d3713c6041d69d3f719ad0080857d7ee31327112446b0"},
+    {file = "graphene-3.4-py2.py3-none-any.whl", hash = "sha256:28bf359b802cdb808130a5521135d4c88a262564598cfdc91628d2c172b99dce"},
+    {file = "graphene-3.4.tar.gz", hash = "sha256:65e5ec84c5b7fb4fc41518acfbafb62ebb393d3982fbba00cd5393e431a80b97"},
 ]
 
 [package.dependencies]
-aniso8601 = ">=8,<10"
 graphql-core = ">=3.1,<3.3"
 graphql-relay = ">=3.1,<3.3"
+typing-extensions = ">=4.7.1,<5"
 
 [package.extras]
-dev = ["black (==22.3.0)", "coveralls (>=3.3,<4)", "flake8 (>=4,<5)", "iso8601 (>=1,<2)", "mock (>=4,<5)", "pytest (>=6,<7)", "pytest-asyncio (>=0.16,<2)", "pytest-benchmark (>=3.4,<4)", "pytest-cov (>=3,<4)", "pytest-mock (>=3,<4)", "pytz (==2022.1)", "snapshottest (>=0.6,<1)"]
-test = ["coveralls (>=3.3,<4)", "iso8601 (>=1,<2)", "mock (>=4,<5)", "pytest (>=6,<7)", "pytest-asyncio (>=0.16,<2)", "pytest-benchmark (>=3.4,<4)", "pytest-cov (>=3,<4)", "pytest-mock (>=3,<4)", "pytz (==2022.1)", "snapshottest (>=0.6,<1)"]
+dev = ["coveralls (>=3.3,<5)", "pytest (>=8,<9)", "pytest-asyncio (>=0.16,<2)", "pytest-benchmark (>=4,<5)", "pytest-cov (>=5,<6)", "pytest-mock (>=3,<4)", "ruff (==0.5.0)"]
+test = ["coveralls (>=3.3,<5)", "pytest (>=8,<9)", "pytest-asyncio (>=0.16,<2)", "pytest-benchmark (>=4,<5)", "pytest-cov (>=5,<6)", "pytest-mock (>=3,<4)"]
 
 [[package]]
 name = "graphql-core"
@@ -1540,13 +1526,13 @@ protobuf = ["grpcio-tools (>=1.66.1)"]
 
 [[package]]
 name = "gunicorn"
-version = "22.0.0"
+version = "23.0.0"
 description = "WSGI HTTP Server for UNIX"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "gunicorn-22.0.0-py3-none-any.whl", hash = "sha256:350679f91b24062c86e386e198a15438d53a7a8207235a78ba1b53df4c4378d9"},
-    {file = "gunicorn-22.0.0.tar.gz", hash = "sha256:4a0b436239ff76fb33f11c07a16482c521a7e09c1ce3cc293c2330afe01bec63"},
+    {file = "gunicorn-23.0.0-py3-none-any.whl", hash = "sha256:ec400d38950de4dfd418cff8328b2c8faed0edb0d517d3394e457c317908ca4d"},
+    {file = "gunicorn-23.0.0.tar.gz", hash = "sha256:f014447a0101dc57e294f6c18ca6b40227a4c90e9bdb586042628030cba004ec"},
 ]
 
 [package.dependencies]
@@ -5290,13 +5276,13 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "uvicorn"
-version = "0.30.6"
+version = "0.32.0"
 description = "The lightning-fast ASGI server."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "uvicorn-0.30.6-py3-none-any.whl", hash = "sha256:65fd46fe3fda5bdc1b03b94eb634923ff18cd35b2f084813ea79d1f103f711b5"},
-    {file = "uvicorn-0.30.6.tar.gz", hash = "sha256:4b15decdda1e72be08209e860a1e10e92439ad5b97cf44cc945fcbee66fc5788"},
+    {file = "uvicorn-0.32.0-py3-none-any.whl", hash = "sha256:60b8f3a5ac027dcd31448f411ced12b5ef452c646f76f02f8cc3f25d8d26fd82"},
+    {file = "uvicorn-0.32.0.tar.gz", hash = "sha256:f78b36b143c16f54ccdb8190d0a26b5f1901fe5a3c777e1ab29f26391af8551e"},
 ]
 
 [package.dependencies]
@@ -5803,4 +5789,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "b437678c60ec0262fce076efdfe6f69744b00efa2dac60f8d20dfda0c99a970c"
+content-hash = "5ed95f29951a02e0a58ebf5084a57ef69809a698eb8759d05f30921e3e3acdaa"

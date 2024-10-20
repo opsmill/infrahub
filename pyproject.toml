@@ -44,15 +44,15 @@ toml = "^0.10"
 # Dependencies specific to the API Server
 fastapi = "~0.115"
 fastapi-storages = "~0.3"
-graphene = "~3.3"
-gunicorn = "^22.0.0"
+graphene = "~3.4"
+gunicorn = "^23.0.0"
 lunr = "^0.7.0.post1"
 starlette-exporter = "~0.23"
 python-multipart = "0.0.9"                             # Required by FastAPI to upload large files
 asgi-correlation-id = "4.2.0"                          # Middleware for FastAPI to generate ID per request
 bcrypt = "~4.1"                                        # Used to hash and validate password
 pyjwt = "~2.8"                                         # Used to manage JWT tokens
-uvicorn = { version = "~0.30", extras = ["standard"] }
+uvicorn = { version = "~0.32", extras = ["standard"] }
 opentelemetry-instrumentation-aio-pika = "^0.45b0"
 opentelemetry-instrumentation-fastapi = "^0.45b0"
 opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
