@@ -45,7 +45,6 @@ from infrahub.core.schema import (
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
-from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
@@ -56,7 +55,6 @@ from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 log = get_logger()
 
 if TYPE_CHECKING:
-    from graphql import GraphQLSchema
     from pydantic import ValidationInfo
 
 
@@ -70,8 +68,6 @@ class SchemaBranch:
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
-        self._graphql_schema: Optional[GraphQLSchema] = None
-        self._graphql_manager: Optional[GraphQLSchemaManager] = None
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -164,31 +160,6 @@ class SchemaBranch:
                 cache[node_hash] = node
 
         return cls(cache=cache, data=nodes)
-
-    def clear_cache(self) -> None:
-        self._graphql_manager = None
-        self._graphql_schema = None
-
-    def get_graphql_manager(self) -> GraphQLSchemaManager:
-        if not self._graphql_manager:
-            self._graphql_manager = GraphQLSchemaManager(schema=self)
-        return self._graphql_manager
-
-    def get_graphql_schema(
-        self,
-        include_query: bool = True,
-        include_mutation: bool = True,
-        include_subscription: bool = True,
-        include_types: bool = True,
-    ) -> GraphQLSchema:
-        if not self._graphql_schema:
-            self._graphql_schema = self.get_graphql_manager().generate(
-                include_query=include_query,
-                include_mutation=include_mutation,
-                include_subscription=include_subscription,
-                include_types=include_types,
-            )
-        return self._graphql_schema
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed

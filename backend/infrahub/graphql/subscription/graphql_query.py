@@ -1,11 +1,9 @@
 import asyncio
 from typing import TYPE_CHECKING, Any, AsyncGenerator
 
-from graphene import Field, Int, String
-from graphene.types.generic import GenericScalar
+from graphene import Schema
 from graphql import GraphQLResolveInfo, graphql
 
-from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGraphQLQuery
@@ -22,6 +20,7 @@ async def resolver_graphql_query(
     parent: dict,  # pylint: disable=unused-argument
     info: GraphQLResolveInfo,
     name: str,
+    graphql_schema: Schema,
     params: dict[str, Any] | None = None,
     interval: int = 10,
 ) -> AsyncGenerator[dict[str, Any], None]:
@@ -35,9 +34,6 @@ async def resolver_graphql_query(
         )
         if not graphql_query:
             raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")
-
-        schema_branch = registry.schema.get_schema_branch(name=context.branch.name)
-        graphql_schema = schema_branch.get_graphql_schema()
 
     while True:
         async with context.db.start_session() as db:
@@ -54,11 +50,3 @@ async def resolver_graphql_query(
                 yield result.data
 
         await asyncio.sleep(delay=float(interval))
-
-
-GraphQLQuerySubscription = Field(
-    GenericScalar(),
-    name=String(),
-    params=GenericScalar(required=False),
-    interval=Int(required=False),
-)

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
 import graphene
 
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import (
@@ -67,6 +68,7 @@ from .types.attribute import TextAttributeType
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
+    from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
@@ -100,16 +102,54 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         "DiffSummaryElementRelationshipOne": DiffSummaryElementRelationshipOne,
         "DiffSummaryElementRelationshipMany": DiffSummaryElementRelationshipMany,
     }
+    _branches_by_name: dict[str, Branch] = {}
+    _managers_by_branch: dict[str, GraphQLSchemaManager] = {}
+
+    @classmethod
+    def get_manager_for_branch(cls, branch: Branch, force_refresh: bool = False) -> GraphQLSchemaManager:
+        if branch.name not in cls._branches_by_name:
+            cls._branches_by_name[branch.name] = branch
+            cached_branch = branch
+        else:
+            cached_branch = cls._branches_by_name[branch.name]
+            if cached_branch.schema_changed_at != branch.schema_changed_at:
+                force_refresh |= True
+        if force_refresh or branch.name not in cls._managers_by_branch:
+            schema_branch = registry.schema.get_schema_branch(name=branch.name)
+            cls._managers_by_branch[branch.name] = cls(schema=schema_branch)
+        return cls._managers_by_branch[branch.name]
 
     def __init__(self, schema: SchemaBranch) -> None:
         self.schema = schema
 
+        self._full_graphql_schema: GraphQLSchema | None = None
         self._graphql_types: dict[str, GraphQLTypes] = {}
 
         self._load_attribute_types()
         if config.SETTINGS.experimental_features.graphql_enums:
             self._load_all_enum_types(node_schemas=self.schema.get_all().values())
         self._load_node_interface()
+
+    def get_graphql_types(self) -> dict[str, GraphQLTypes]:
+        return self._graphql_types
+
+    def get_graphql_schema(
+        self,
+        include_query: bool = True,
+        include_mutation: bool = True,
+        include_subscription: bool = True,
+        include_types: bool = True,
+    ) -> GraphQLSchema:
+        if all((include_query, include_mutation, include_subscription, include_types)):
+            if not self._full_graphql_schema:
+                self._full_graphql_schema = self.generate()
+            return self._full_graphql_schema
+        return self.generate(
+            include_query=include_query,
+            include_mutation=include_mutation,
+            include_subscription=include_subscription,
+            include_types=include_types,
+        )
 
     def generate(
         self,
@@ -128,7 +168,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
             query = self.get_gql_query() if include_query else None
             mutation = self.get_gql_mutation() if include_mutation else None
-            subscription = self.get_gql_subscription() if include_subscription else None
+            subscription = None
+            if include_subscription:
+                partial_graphene_schema = graphene.Schema(
+                    query=query,
+                    mutation=mutation,
+                    types=types,
+                    auto_camelcase=False,
+                    directives=DIRECTIVES,
+                )
+                subscription = self.get_gql_subscription(partial_graphql_schema=partial_graphene_schema)
 
             graphene_schema = graphene.Schema(
                 query=query,
@@ -157,9 +206,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return Mutation
 
-    def get_gql_subscription(self) -> type[InfrahubBaseSubscription]:
+    def get_gql_subscription(self, partial_graphql_schema: graphene.Schema) -> type[InfrahubBaseSubscription]:
         class Subscription(InfrahubBaseSubscription):
-            pass
+            graphql_schema = partial_graphql_schema
 
         return Subscription
 

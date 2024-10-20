@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 from starlette.background import BackgroundTasks
 
@@ -52,21 +52,19 @@ class GraphqlContext:
 
 def prepare_graphql_params(
     db: InfrahubDatabase,
-    branch: Union[Branch, str],
-    at: Optional[Union[Timestamp, str]] = None,
-    account_session: Optional[AccountSession] = None,
-    request: Optional[HTTPConnection] = None,
-    service: Optional[InfrahubServices] = None,
+    branch: Branch | str,
+    at: Timestamp | str | None = None,
+    account_session: AccountSession | None = None,
+    request: HTTPConnection | None = None,
+    service: InfrahubServices | None = None,
     include_query: bool = True,
     include_mutation: bool = True,
     include_subscription: bool = True,
     include_types: bool = True,
 ) -> GraphqlParams:
     branch = registry.get_branch_from_registry(branch=branch)
-    schema = registry.schema.get_schema_branch(name=branch.name)
-
-    gqlm = schema.get_graphql_manager()
-    gql_schema = schema.get_graphql_schema(
+    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch)
+    gql_schema = gqlm.get_graphql_schema(
         include_query=include_query,
         include_mutation=include_mutation,
         include_subscription=include_subscription,
@@ -82,29 +80,11 @@ def prepare_graphql_params(
             db=db,
             branch=branch,
             at=Timestamp(at),
-            types=gqlm._graphql_types,
+            types=gqlm.get_graphql_types(),
             related_node_ids=set(),
             background=BackgroundTasks(),
             request=request,
             service=service,
             account_session=account_session,
         ),
-    )
-
-
-def generate_graphql_schema(
-    db: InfrahubDatabase,  # pylint: disable=unused-argument
-    branch: Union[Branch, str],
-    include_query: bool = True,
-    include_mutation: bool = True,
-    include_subscription: bool = True,
-    include_types: bool = True,
-) -> GraphQLSchema:
-    branch = registry.get_branch_from_registry(branch)
-    schema = registry.schema.get_schema_branch(name=branch.name)
-    return GraphQLSchemaManager(schema=schema).generate(
-        include_query=include_query,
-        include_mutation=include_mutation,
-        include_subscription=include_subscription,
-        include_types=include_types,
     )
