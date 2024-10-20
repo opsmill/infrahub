@@ -207,9 +207,11 @@ class StandardNode(BaseModel):
 
     @classmethod
     async def get_list(
-        cls, db: InfrahubDatabase, limit: int = 1000, ids: Optional[list[str]] = None, **kwargs
+        cls, db: InfrahubDatabase, limit: int = 1000, ids: list[str] | None = None, name: str | None = None, **kwargs
     ) -> list[Self]:
-        query: Query = await StandardNodeGetListQuery.init(db=db, node_class=cls, ids=ids, limit=limit, **kwargs)
+        query: Query = await StandardNodeGetListQuery.init(
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+        )
         await query.execute(db=db)
 
         return [cls.from_db(result.get("n")) for result in query.get_results()]
