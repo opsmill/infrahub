@@ -17,6 +17,11 @@ jinja2_transforms:
     query: "person_with_cars"
     template_path: "templates/person_with_cars.j2"
 
+python_transforms:
+  - name: PersonWithCarsTransform
+    class_name: PersonWithCarsTransform
+    file_path: "transforms/person_with_cars_transform.py"
+
 artifact_definitions:
   - name: "Ownership report"
     artifact_name: "car-owner"

@@ -13,7 +13,6 @@ from infrahub.message_bus.operations import (
     requests,
     schema,
     send,
-    transform,
     trigger,
 )
 from infrahub.message_bus.types import MessageTTL
@@ -70,8 +69,6 @@ COMMAND_MAP = {
     "send.telemetry.push": send.telemetry.push,
     "schema.migration.path": schema.migration.path,
     "schema.validator.path": schema.validator.path,
-    "transform.jinja.template": transform.jinja.template,
-    "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
     "trigger.generator_definition.run": trigger.generator_definition.run,
     "trigger.proposed_change.cancel": trigger.proposed_change.cancel,
