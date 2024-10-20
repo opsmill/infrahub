@@ -943,11 +943,13 @@ class RelationshipManager:
         for peer_id in details.peer_ids_present_local_only:
             await self.remove(peer_id=peer_id, db=db)
 
-    async def get(self, db: InfrahubDatabase) -> Union[Relationship, list[Relationship]]:
+    async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)
 
-        if self.schema.cardinality == "one":
+        if self.schema.cardinality == "one" and rels:
             return rels[0]
+        if self.schema.cardinality == "one" and not rels:
+            return None
 
         return rels
 

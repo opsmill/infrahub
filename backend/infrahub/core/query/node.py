@@ -557,6 +557,7 @@ class NodeListGetAttributeQuery(Query):
 
 class NodeListGetRelationshipsQuery(Query):
     name: str = "node_list_get_relationship"
+    insert_return: bool = False
 
     def __init__(self, ids: list[str], **kwargs):
         self.ids = ids
@@ -569,18 +570,24 @@ class NodeListGetRelationshipsQuery(Query):
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
-        query = (
-            """
+        query = """
         MATCH (n) WHERE n.uuid IN $ids
-        MATCH p = ((n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer))
-        WHERE all(r IN relationships(p) WHERE (%s))
-        """
-            % rels_filter
-        )
+        MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
+        WHERE all(r IN relationships(paths_in) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "inbound" as direction
+        UNION
+        MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
+        WHERE all(r IN relationships(paths_out) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "outbound" as direction
+        UNION
+        MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
+        WHERE all(r IN relationships(paths_bidir) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "bidirectional" as direction
+        """ % {"filters": rels_filter}
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "rel", "peer", "r1", "r2"]
+        self.return_labels = ["n", "rel", "peer", "r1", "r2", "direction"]
 
     def get_peers_group_by_node(self) -> dict[str, dict[str, list[str]]]:
         peers_by_node = defaultdict(lambda: defaultdict(list))
@@ -589,8 +596,9 @@ class NodeListGetRelationshipsQuery(Query):
             node_id = result.get("n").get("uuid")
             rel_name = result.get("rel").get("name")
             peer_id = result.get("peer").get("uuid")
+            direction = result.get("direction")
 
-            peers_by_node[node_id][rel_name].append(peer_id)
+            peers_by_node[node_id][f"{direction}::{rel_name}"].append(peer_id)
 
         return peers_by_node
 
