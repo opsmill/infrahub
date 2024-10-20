@@ -72,6 +72,8 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
 
+# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
+
 
 class DeleteInput(graphene.InputObjectType):
     id = graphene.String(required=False)
@@ -108,6 +110,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     @classmethod
     def _is_refresh_required(cls, cached_branch: Branch, new_branch: Branch) -> bool:
+        if cached_branch.get_uuid() != new_branch.get_uuid():
+            return True
         if cached_branch.schema_changed_at or new_branch.schema_changed_at:
             return cached_branch.schema_changed_at != new_branch.schema_changed_at
         right_now = Timestamp()
@@ -119,11 +123,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     @classmethod
     def get_manager_for_branch(cls, branch: Branch, force_refresh: bool = False) -> GraphQLSchemaManager:
-        if branch.name not in cls._branches_by_name:
-            cls._branches_by_name[branch.name] = branch
-        elif not force_refresh:
+        if branch.name in cls._branches_by_name and not force_refresh:
             cached_branch = cls._branches_by_name[branch.name]
             force_refresh = cls._is_refresh_required(cached_branch=cached_branch, new_branch=branch)
+        cls._branches_by_name[branch.name] = branch
         if force_refresh or branch.name not in cls._managers_by_branch:
             schema_branch = registry.schema.get_schema_branch(name=branch.name)
             cls._managers_by_branch[branch.name] = cls(schema=schema_branch)

@@ -266,8 +266,7 @@ async def test_branch_caching_hit(
 ):
     right_now = Timestamp()
     default_branch.schema_changed_at = right_now
-    same_branch = await registry.branch_object.get_by_name(db=db, name=default_branch.name)
-    same_branch.schema_changed_at = right_now
+    same_branch = default_branch.model_copy()
 
     manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch)
     manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch)
