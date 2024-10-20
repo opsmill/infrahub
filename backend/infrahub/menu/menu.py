@@ -319,6 +319,16 @@ default_menu = [
             ),
             MenuItemDefinition(
                 namespace="Builtin",
+                name="Menu",
+                label="Menu",
+                kind=InfrahubKind.MENU,
+                icon="mdi:menu",
+                protected=True,
+                section=MenuSection.INTERNAL,
+                order_weight=2500,
+            ),
+            MenuItemDefinition(
+                namespace="Builtin",
                 name="Webhooks",
                 label="Webhooks",
                 icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.CUSTOMWEBHOOK)),
