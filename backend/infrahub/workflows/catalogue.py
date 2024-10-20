@@ -15,8 +15,15 @@ WEBHOOK_SEND = WorkflowDefinition(
 TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     name="transform_render_jinja2_template",
     type=WorkflowType.USER,
-    module="infrahub.message_bus.operations.transform.jinja",
+    module="infrahub.transformations.tasks",
     function="transform_render_jinja2_template",
+)
+
+TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
+    name="transform_render_python",
+    type=WorkflowType.USER,
+    module="infrahub.transformations.tasks",
+    function="transform_python",
 )
 
 ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
@@ -68,6 +75,7 @@ worker_pools = [INFRAHUB_WORKER_POOL]
 workflows = [
     WEBHOOK_SEND,
     TRANSFORM_JINJA2_RENDER,
+    TRANSFORM_PYTHON_RENDER,
     ANONYMOUS_TELEMETRY_SEND,
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_VALIDATE_MIGRATION,

@@ -7,6 +7,7 @@ import pytest
 import yaml
 from infrahub_sdk.uuidt import UUIDT
 from prefect.testing.utilities import prefect_test_harness
+from pytest import TempPathFactory
 
 from infrahub import config
 from infrahub.core import registry
@@ -103,32 +104,26 @@ def integration_helper(db: InfrahubDatabase) -> IntegrationHelper:
     return IntegrationHelper(db=db)
 
 
-@pytest.fixture
-def git_sources_dir(tmp_path: Path) -> Path:
-    source_dir = tmp_path / "sources"
-    source_dir.mkdir()
-
-    return source_dir
+@pytest.fixture(scope="session")
+def git_sources_dir(tmp_path_factory: TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp("sources")
 
 
-@pytest.fixture
-def git_repos_dir(tmp_path: Path) -> Path:
-    repos_dir = tmp_path / "repositories"
-    repos_dir.mkdir()
-
+@pytest.fixture(scope="session")
+def git_repos_dir(tmp_path_factory: TempPathFactory) -> Path:
+    repos_dir = tmp_path_factory.mktemp("repositories")
     config.SETTINGS.git.repositories_directory = str(repos_dir)
-
     return repos_dir
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def git_repo_infrahub_demo_edge(git_sources_dir: Path) -> FileRepo:
     """Git Repository used as part of the  demo-edge tutorial."""
 
     return FileRepo(name="infrahub-demo-edge", sources_directory=git_sources_dir)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
     """Simple Git Repository used for testing."""
 
