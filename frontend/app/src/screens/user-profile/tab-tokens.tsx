@@ -1,6 +1,4 @@
-import { Card } from "@/components/ui/card";
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import Content from "@/screens/layout/content";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai";
 import { useState } from "react";

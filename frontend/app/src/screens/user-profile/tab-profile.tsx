@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/card";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
@@ -10,7 +9,6 @@ import { genericsState } from "@/state/atoms/schema.atom";
 import { parseJwt } from "@/utils/common";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import Content from "../layout/content";
 
 export default function TabProfile() {
   const nodes = useAtomValue(genericsState);
