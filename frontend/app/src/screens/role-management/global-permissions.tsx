@@ -108,8 +108,6 @@ function GlobalPermissions() {
     return <UnauthorizedScreen message={permission?.view?.message} />;
   }
 
-  console.log("rowToUpdate: ", rowToUpdate);
-
   return (
     <>
       <div>

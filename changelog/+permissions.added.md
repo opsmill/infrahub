@@ -1,1 +1,4 @@
-Added permissions in the frontend, to be able to have CRUD views to manage accounts/groups/roles/permissions, and retrieve permissions from the object queries to compute the access and the messages
+New permissions system in UI:
+- Implemented CRUD views for managing accounts, groups, roles, and permissions
+- Updated all components to support new permission system
+- Added dynamic message display according to user access levels
