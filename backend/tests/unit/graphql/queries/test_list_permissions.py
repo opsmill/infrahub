@@ -63,6 +63,31 @@ query {
 """
 
 
+QUERY_ACCOUNT_ROLE = """
+query {
+  CoreAccountRole {
+    edges {
+        node {
+            display_label
+        }
+    }
+    permissions {
+        count
+        edges {
+            node {
+                kind
+                create
+                update
+                delete
+                view
+            }
+        }
+    }
+  }
+}
+"""
+
+
 class TestObjectPermissions:
     async def test_setup(
         self,
@@ -230,6 +255,33 @@ class TestObjectPermissions:
                 "view": PermissionDecision.ALLOW_ALL.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
+
+    async def test_first_account_account_role(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
+    ) -> None:
+        """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+        gql_params = prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+
+        result = await graphql(schema=gql_params.schema, source=QUERY_ACCOUNT_ROLE, context_value=gql_params.context)
+
+        assert not result.errors
+        assert result.data
+        assert result.data["CoreAccountRole"]["permissions"]["count"] == 1
+        assert result.data["CoreAccountRole"]["permissions"]["edges"][0] == {
+            "node": {
+                "kind": "CoreAccountRole",
+                "create": PermissionDecision.ALLOW_OTHER.name,
+                "update": PermissionDecision.ALLOW_OTHER.name,
+                "delete": PermissionDecision.ALLOW_OTHER.name,
+                "view": PermissionDecision.ALLOW_ALL.name,
+            }
+        }
+        assert result.data["CoreAccountRole"]["edges"][0]["node"]["display_label"] == "admin"
 
 
 QUERY_TAGS_ATTR = """

@@ -48,6 +48,7 @@ from .resolver import (
     default_resolver,
     descendants_resolver,
     many_relationship_resolver,
+    parent_field_name_resolver,
     single_relationship_resolver,
 )
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery
@@ -886,7 +887,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         if isinstance(schema, (NodeSchema, GenericSchema)):
-            main_attrs["permissions"] = graphene.Field(PaginatedObjectPermission, required=True)
+            main_attrs["permissions"] = graphene.Field(
+                PaginatedObjectPermission, required=True, resolver=parent_field_name_resolver
+            )
 
         graphql_paginated_object = type(object_name, (InfrahubObject,), main_attrs)
 
