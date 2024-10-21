@@ -353,8 +353,27 @@ async def test_query_NodeListGetRelationshipsQuery(db: InfrahubDatabase, default
     await query.execute(db=db)
     result = query.get_peers_group_by_node()
     assert person_jack_tags_main.id in result
-    assert "builtintag__testperson" in result[person_jack_tags_main.id]
-    assert len(result[person_jack_tags_main.id]["builtintag__testperson"]) == 2
+    assert "inbound::builtintag__testperson" in result[person_jack_tags_main.id]
+    assert len(result[person_jack_tags_main.id]["inbound::builtintag__testperson"]) == 2
+
+
+async def test_query_NodeListGetRelationshipsQuery_hierarchical(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+):
+    node_ids = [value.id for value in hierarchical_location_data.values()]
+    paris_id = hierarchical_location_data["paris"].id
+    default_branch = await registry.get_branch(db=db, branch="main")
+    query = await NodeListGetRelationshipsQuery.init(
+        db=db,
+        ids=node_ids,
+        branch=default_branch,
+    )
+    await query.execute(db=db)
+    result = query.get_peers_group_by_node()
+    assert paris_id in result
+    assert "inbound::parent__child" in result[paris_id]
+    assert "outbound::parent__child" in result[paris_id]
+    assert len(result[paris_id]["inbound::parent__child"]) == 2
 
 
 async def test_query_NodeDeleteQuery(

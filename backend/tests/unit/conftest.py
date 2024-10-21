@@ -2118,14 +2118,14 @@ async def hierarchical_location_schema(
 @pytest.fixture
 async def hierarchical_location_data_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db)
 
 
 @pytest.fixture
 async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db)
 
 
