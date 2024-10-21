@@ -7,7 +7,6 @@ import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useTitle } from "@/hooks/useTitle";
-import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
 import { Permission } from "@/screens/permission/types";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
@@ -82,14 +81,6 @@ export default function ObjectItemDetails({
       ? `${objectDetailsData?.display_label} details`
       : `${schema.label} details`
   );
-
-  if (!objectDetailsData) {
-    return (
-      <div className="flex column justify-center">
-        <NoDataFound message="No item found for that id." />
-      </div>
-    );
-  }
 
   const tabs = [
     {

@@ -2,7 +2,6 @@ import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
 import SlideOver from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import { Tabs } from "@/components/tabs";
-import { Card } from "@/components/ui/card";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import useQuery from "@/hooks/useQuery";
 import { getPermission } from "@/screens/permission/utils";
@@ -149,9 +148,13 @@ function IpamRouter() {
   );
 
   return (
-    <Card className="p-0 overflow-hidden flex flex-col h-full" data-testid="ipam-main-content">
+    <>
       <Tabs tabs={tabs} qsp={IPAM_QSP.TAB} rightItems={rightitems} />
-      <div className="m-4 flex flex-grow overflow-auto">{renderContent()}</div>
+
+      <div className="p-3 flex flex-grow overflow-auto" data-testid="ipam-main-content">
+        {renderContent()}
+      </div>
+
       <SlideOver
         title={
           <div className="space-y-2">
@@ -195,7 +198,7 @@ function IpamRouter() {
           onCancel={() => setShowCreateDrawer(false)}
         />
       </SlideOver>
-    </Card>
+    </>
   );
 }
 

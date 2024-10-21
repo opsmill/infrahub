@@ -1,5 +1,4 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { useAuth } from "@/hooks/useAuth";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
@@ -40,8 +39,6 @@ type TableProps = {
 };
 
 export const Table = ({ columns, rows, onDelete, onUpdate, className, permission }: TableProps) => {
-  const auth = useAuth();
-
   return (
     <>
       <table

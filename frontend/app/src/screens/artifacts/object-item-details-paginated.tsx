@@ -34,12 +34,12 @@ import { gql } from "@apollo/client";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 
-export default function ArtifactsDetails() {
-  const { objectid } = useParams();
+export default function ArtifactsDetails({ artifactId }: { artifactId: string }) {
+  const objectid = artifactId;
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);

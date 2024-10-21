@@ -11,7 +11,7 @@ test.describe("/objects/:objectKind", () => {
   });
 
   test.describe("when not logged in", () => {
-    test.skip("should not be able to create a new object", async ({ page }) => {
+    test("should not be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");
 
       await expect(page.getByRole("heading", { name: "Tag" })).toBeVisible();
@@ -22,7 +22,7 @@ test.describe("/objects/:objectKind", () => {
       await expect(page.getByRole("row", { name: "blue" }).getByRole("button")).toBeDisabled();
     });
 
-    test.skip("should be able to open object details in a new tab", async ({ page, context }) => {
+    test("should be able to open object details in a new tab", async ({ page, context }) => {
       await page.goto("/objects/BuiltinTag");
 
       // When

@@ -107,7 +107,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
       {rows && (
         <div>
-          <Table columns={columns} rows={rows} />
+          <Table columns={columns} rows={rows} className="border-none" />
 
           <Pagination count={count} />
         </div>

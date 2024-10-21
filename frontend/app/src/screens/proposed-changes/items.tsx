@@ -11,7 +11,6 @@ import { TabsButtons } from "@/components/buttons/tabs-buttons";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import ModalDelete from "@/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { CardWithBorder } from "@/components/ui/card";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { ARTIFACT_OBJECT, PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
@@ -48,19 +47,23 @@ export const ProposedChangesPage = () => {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<tRow | undefined>();
   const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
-  const [statesVisible, statesHidden] = qspState
-    ? [STATES.close, STATES.open]
-    : [STATES.open, STATES.close];
-
-  const { loading, networkStatus, previousData, error, data, refetch } = useQuery(
-    GET_PROPOSED_CHANGES,
-    {
-      variables: { statesVisible, statesHidden, search },
-      notifyOnNetworkStatusChange: true,
-    }
-  );
+  const {
+    loading,
+    networkStatus,
+    previousData,
+    error,
+    data: latestData,
+    refetch,
+  } = useQuery(GET_PROPOSED_CHANGES, {
+    variables: {
+      statesVisible: qspState === "close" ? STATES.close : STATES.open,
+      search,
+    },
+    notifyOnNetworkStatusChange: true,
+  });
   const [deleteProposedChange, { loading: isDeleteLoading }] = useMutation(DELETE_PROPOSED_CHANGE);
 
+  const data = latestData || previousData;
   const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
 
   if (error) {
@@ -79,7 +82,7 @@ export const ProposedChangesPage = () => {
     return <LoadingScreen />;
   }
 
-  const proposedChangesData = (data || previousData)?.[PROPOSED_CHANGES_OBJECT];
+  const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT];
   if (!proposedChangesData) {
     return (
       <ErrorScreen message="Something went wrong when displaying proposed changes. Try reloading the page." />
@@ -241,7 +244,7 @@ export const ProposedChangesPage = () => {
         <>
           Opened
           <Badge className={classNames("ml-1", !qspState && "bg-green-700 text-white")}>
-            {data?.[PROPOSED_CHANGES_OBJECT + (qspState ? "Hidden" : "Visible")]?.count ?? "..."}
+            {data?.[`${PROPOSED_CHANGES_OBJECT}Open`]?.count ?? "..."}
           </Badge>
         </>
       ),
@@ -252,7 +255,7 @@ export const ProposedChangesPage = () => {
         <>
           Closed
           <Badge className={classNames("ml-1", qspState && "bg-green-700 text-white")}>
-            {data?.[PROPOSED_CHANGES_OBJECT + (qspState ? "Visible" : "Hidden")]?.count ?? "..."}
+            {data?.[`${PROPOSED_CHANGES_OBJECT}Close`]?.count ?? "..."}
           </Badge>
         </>
       ),
@@ -261,75 +264,69 @@ export const ProposedChangesPage = () => {
   ];
 
   return (
-    <>
-      <Content.Title
-        title={
-          <h1 className="flex items-center gap-2">
-            Proposed changes <Badge>{proposedChangesData?.count ?? "..."}</Badge>
-          </h1>
-        }
+    <Content.Card>
+      <Content.CardTitle
+        title="Proposed changes"
+        badgeContent={proposedChangesData?.count ?? "..."}
         reload={() => refetch()}
         isReloadLoading={loading}
-      >
-        <ObjectHelpButton
-          className="ml-auto"
-          documentationUrl={schema?.documentation}
-          kind={PROPOSED_CHANGES_OBJECT}
+        end={
+          <ObjectHelpButton
+            className="ml-auto"
+            documentationUrl={schema?.documentation}
+            kind={PROPOSED_CHANGES_OBJECT}
+          />
+        }
+      />
+
+      <div className="flex items-center m-2 gap-2">
+        <SearchInput
+          loading={loading}
+          onChange={debouncedHandleSearch}
+          placeholder="Search a Proposed Change"
+          className="border-none focus-visible:ring-0 h-7"
+          containerClassName=" flex-grow"
+          data-testid="proposed-changes-list-search-bar"
         />
-      </Content.Title>
 
-      <Content>
-        <CardWithBorder className="m-2">
-          <div className="flex items-center m-2 gap-2">
-            <SearchInput
-              loading={loading}
-              onChange={debouncedHandleSearch}
-              placeholder="Search a Proposed Change"
-              className="border-none focus-visible:ring-0 h-7"
-              containerClassName=" flex-grow"
-              data-testid="proposed-changes-list-search-bar"
-            />
+        <TabsButtons tabs={tabs} qsp={QSP.PROPOSED_CHANGES_STATE} />
 
-            <TabsButtons tabs={tabs} qsp={QSP.PROPOSED_CHANGES_STATE} />
+        <ButtonWithTooltip
+          disabled={!permission.create.isAllowed}
+          tooltipEnabled={!permission.create.isAllowed}
+          tooltipContent={permission.create.message ?? undefined}
+          onClick={() => navigate(constructPath("/proposed-changes/new"))}
+          data-testid="add-proposed-changes-button"
+        >
+          <Icon icon="mdi:plus" className="text-sm" />
+          New proposed change
+        </ButtonWithTooltip>
+      </div>
 
-            <ButtonWithTooltip
-              disabled={!permission.create.isAllowed}
-              tooltipEnabled={!permission.create.isAllowed}
-              tooltipContent={permission.create.message ?? undefined}
-              onClick={() => navigate(constructPath("/proposed-changes/new"))}
-              data-testid="add-proposed-changes-button"
-            >
-              <Icon icon="mdi:plus" className="text-sm" />
-              New proposed change
-            </ButtonWithTooltip>
-          </div>
+      <Table
+        columns={columns}
+        rows={rows}
+        onDelete={(row) => setRelatedRowToDelete(row)}
+        permission={permission}
+        className="border-0 border-t"
+      />
 
-          <Table
-            columns={columns}
-            rows={rows}
-            onDelete={(row) => setRelatedRowToDelete(row)}
-            permission={permission}
-            className="border-0 border-t"
-          />
-        </CardWithBorder>
-
-        {relatedRowToDelete && (
-          <ModalDelete
-            title="Delete"
-            description={
-              <>
-                Are you sure you want to delete the Proposed Change:{" "}
-                <b>{relatedRowToDelete?.values?.display_label}</b>
-              </>
-            }
-            onCancel={() => setRelatedRowToDelete(undefined)}
-            onDelete={submitDeleteProposedChange}
-            open={!!relatedRowToDelete}
-            setOpen={() => setRelatedRowToDelete(undefined)}
-            isLoading={isDeleteLoading}
-          />
-        )}
-      </Content>
-    </>
+      {relatedRowToDelete && (
+        <ModalDelete
+          title="Delete"
+          description={
+            <>
+              Are you sure you want to delete the Proposed Change:{" "}
+              <b>{relatedRowToDelete?.values?.display_label}</b>
+            </>
+          }
+          onCancel={() => setRelatedRowToDelete(undefined)}
+          onDelete={submitDeleteProposedChange}
+          open={!!relatedRowToDelete}
+          setOpen={() => setRelatedRowToDelete(undefined)}
+          isLoading={isDeleteLoading}
+        />
+      )}
+    </Content.Card>
   );
 };

@@ -13,13 +13,11 @@ const ResourceManagerPage = () => {
   if (!resourcePoolSchema) return <LoadingScreen />;
 
   return (
-    <>
+    <Content.Card>
       <ObjectHeader schema={resourcePoolSchema} />
 
-      <Content className="p-2">
-        <ObjectItems schema={resourcePoolSchema} />
-      </Content>
-    </>
+      <ObjectItems schema={resourcePoolSchema} />
+    </Content.Card>
   );
 };
 

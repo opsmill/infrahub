@@ -1,5 +1,6 @@
-import { CardWithBorder } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import NoDataFound from "@/screens/errors/no-data-found";
+import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
 import ObjectHeader from "@/screens/objects/object-header";
@@ -17,12 +18,13 @@ const ObjectPageLayout = () => {
   const state = useAtomValue(stateAtom);
   const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
 
-  if (!state.isReady)
+  if (!state.isReady) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <Content.Card className="flex justify-center items-center p-5 min-h-[400px]">
         <LoadingScreen message="Loading schema..." />
-      </div>
+      </Content.Card>
     );
+  }
 
   if (!schema) return <NoDataFound message="No schema found for this kind." />;
 
@@ -44,25 +46,25 @@ const ObjectPageLayout = () => {
   const treeSchema = getTreeSchema();
 
   return (
-    <>
+    <Content.Card>
       <ObjectHeader schema={schema} objectId={objectid} />
 
-      <div className="flex-grow flex gap-2 p-2 overflow-auto">
+      <div className="flex-grow flex overflow-auto">
         {treeSchema && (
-          <CardWithBorder className="min-w-64 max-w-[400px]">
+          <ScrollArea className="min-w-64 max-w-[400px] border-r">
             <HierarchicalTree
               schema={treeSchema}
               currentNodeId={objectid}
               className="p-2 min-w-full"
             />
-          </CardWithBorder>
+          </ScrollArea>
         )}
 
-        <div className="flex-grow">
+        <div className="flex-grow overflow-auto">
           <Outlet />
         </div>
       </div>
-    </>
+    </Content.Card>
   );
 };
 

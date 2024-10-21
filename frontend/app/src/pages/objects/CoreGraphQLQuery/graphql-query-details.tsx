@@ -14,12 +14,11 @@ import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import { useParams } from "react-router-dom";
 
-export default function GraphqlQueryDetailsPage() {
+export default function GraphqlQueryDetailsPage({ graphqlQueryId }: { graphqlQueryId: string }) {
   useTitle("GraphQL Query details");
 
-  const { objectid } = useParams();
+  const objectid = graphqlQueryId;
 
   const nodes = useAtomValue(schemaState);
   const graphqlQuerySchema = nodes.find((s) => s.kind === GRAPHQL_QUERY_OBJECT);
