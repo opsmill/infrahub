@@ -571,15 +571,17 @@ class NodeListGetRelationshipsQuery(Query):
         self.params.update(rels_params)
 
         query = """
-        MATCH (n) WHERE n.uuid IN $ids
+        MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
         WHERE all(r IN relationships(paths_in) WHERE (%(filters)s))
         RETURN n, rel, peer, r1, r2, "inbound" as direction
         UNION
+        MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
         WHERE all(r IN relationships(paths_out) WHERE (%(filters)s))
         RETURN n, rel, peer, r1, r2, "outbound" as direction
         UNION
+        MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
         WHERE all(r IN relationships(paths_bidir) WHERE (%(filters)s))
         RETURN n, rel, peer, r1, r2, "bidirectional" as direction

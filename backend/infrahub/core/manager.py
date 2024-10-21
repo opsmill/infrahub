@@ -1138,14 +1138,14 @@ class NodeManager:
 
         # if prefetch_relationships is enabled
         # Query all the peers associated with all nodes at once.
-        peers_per_node = None
+        peers_per_node: dict[str, dict[str, list[str]]] = {}
         peers: dict[str, Node] = {}
         if prefetch_relationships:
             query = await NodeListGetRelationshipsQuery.init(
                 db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic
             )
             await query.execute(db=db)
-            peers_per_node: dict[str, dict[str, list[str]]] = query.get_peers_group_by_node()
+            peers_per_node = query.get_peers_group_by_node()
             peer_ids = []
 
             for node_data in peers_per_node.values():
