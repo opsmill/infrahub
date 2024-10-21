@@ -9,7 +9,7 @@ import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/config/constant
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
@@ -37,7 +37,6 @@ export const ObjectPermissionForm = ({
   onCancel,
   onUpdateComplete,
 }: NumberPoolFormProps) => {
-  const branches = useAtomValue(branchesState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
@@ -46,17 +45,16 @@ export const ObjectPermissionForm = ({
   });
 
   const defaultValues = {
-    branch: getCurrentFieldValue("branch", currentObject),
     namespace: getCurrentFieldValue("namespace", currentObject),
     name: getCurrentFieldValue("name", currentObject),
+    action: getCurrentFieldValue("action", currentObject),
+    decision: getCurrentFieldValue("decision", currentObject),
     roles,
   };
 
   const form = useForm<FieldValues>({
     defaultValues,
   });
-
-  const branchesOptions = branches.map((branch) => ({ value: branch.name, label: branch.name }));
 
   const actionOptions = [
     {

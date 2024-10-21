@@ -72,9 +72,14 @@ function GlobalPermissions() {
                 {edge?.node?.display_label}
               </div>
             ),
+            value: edge?.node?.name?.value,
           },
-          description: { value: edge?.node?.description?.value },
-          roles: { display: <Pill>{edge?.node?.roles?.count}</Pill> },
+          action: { value: edge?.node?.action?.value },
+          decision: { value: edge?.node?.decision?.value },
+          roles: {
+            display: <Pill>{edge?.node?.roles?.count}</Pill>,
+            value: { edges: edge?.node?.roles?.edges },
+          },
           identifier: { display: <BadgeCopy value={edge?.node?.identifier?.value} /> },
         },
       };
@@ -120,7 +125,17 @@ function GlobalPermissions() {
           </div>
         </div>
 
-        <Table columns={columns} rows={rows ?? []} className="border-0" permission={permission} />
+        <Table
+          columns={columns}
+          rows={rows ?? []}
+          onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
+          className="border-0"
+          permission={permission}
+        />
 
         <Pagination count={data && data[GLOBAL_PERMISSION_OBJECT]?.count} />
       </div>
