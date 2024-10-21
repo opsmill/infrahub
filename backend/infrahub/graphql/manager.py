@@ -16,6 +16,7 @@ from infrahub.core.schema import (
     ProfileSchema,
     RelationshipSchema,
 )
+from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
@@ -67,7 +68,10 @@ from .types.attribute import TextAttributeType
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
+    from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
+
+# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
 
 
 class DeleteInput(graphene.InputObjectType):
@@ -94,22 +98,98 @@ def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) ->
     return get_enum_attribute_type_name(node_schema=node_schema, attr_schema=attr_schema)
 
 
+@dataclass
+class BranchDetails:
+    branch_name: str
+    schema_changed_at: Timestamp
+    schema_hash: str
+    gql_manager: GraphQLSchemaManager
+
+
 class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     _extra_types: dict[str, GraphQLTypes] = {
         "DiffSummaryElementAttribute": DiffSummaryElementAttribute,
         "DiffSummaryElementRelationshipOne": DiffSummaryElementRelationshipOne,
         "DiffSummaryElementRelationshipMany": DiffSummaryElementRelationshipMany,
     }
+    _branch_details_by_name: dict[str, BranchDetails] = {}
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        cls._branch_details_by_name = {}
+
+    @classmethod
+    def _cache_branch(
+        cls, branch: Branch, schema_branch: SchemaBranch, schema_hash: str | None = None
+    ) -> BranchDetails:
+        if not schema_hash:
+            if branch.schema_hash:
+                schema_hash = branch.schema_hash.main
+            else:
+                schema_hash = schema_branch.get_hash()
+        branch_details = BranchDetails(
+            branch_name=branch.name,
+            schema_changed_at=Timestamp(branch.schema_changed_at) if branch.schema_changed_at else Timestamp(),
+            schema_hash=schema_hash,
+            gql_manager=cls(schema=schema_branch),
+        )
+        cls._branch_details_by_name[branch.name] = branch_details
+        return branch_details
+
+    @classmethod
+    def get_manager_for_branch(cls, branch: Branch, schema_branch: SchemaBranch) -> GraphQLSchemaManager:
+        if branch.name not in cls._branch_details_by_name:
+            branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch)
+            return branch_details.gql_manager
+        cached_branch_details = cls._branch_details_by_name[branch.name]
+        # try to use the schema_changed_at time b/c it is faster than checking the hash
+        if branch.schema_changed_at:
+            changed_at_time = Timestamp(branch.schema_changed_at)
+            if changed_at_time > cached_branch_details.schema_changed_at:
+                cached_branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch)
+            return cached_branch_details.gql_manager
+        if branch.schema_hash:
+            current_hash = branch.active_schema_hash.main
+        else:
+            current_hash = schema_branch.get_hash()
+        if cached_branch_details.schema_hash != current_hash:
+            cached_branch_details = cls._cache_branch(
+                branch=branch, schema_branch=schema_branch, schema_hash=current_hash
+            )
+
+        return cached_branch_details.gql_manager
 
     def __init__(self, schema: SchemaBranch) -> None:
         self.schema = schema
 
+        self._full_graphql_schema: GraphQLSchema | None = None
         self._graphql_types: dict[str, GraphQLTypes] = {}
 
         self._load_attribute_types()
         if config.SETTINGS.experimental_features.graphql_enums:
             self._load_all_enum_types(node_schemas=self.schema.get_all().values())
         self._load_node_interface()
+
+    def get_graphql_types(self) -> dict[str, GraphQLTypes]:
+        return self._graphql_types
+
+    def get_graphql_schema(
+        self,
+        include_query: bool = True,
+        include_mutation: bool = True,
+        include_subscription: bool = True,
+        include_types: bool = True,
+    ) -> GraphQLSchema:
+        if all((include_query, include_mutation, include_subscription, include_types)):
+            if not self._full_graphql_schema:
+                self._full_graphql_schema = self.generate()
+            return self._full_graphql_schema
+        return self.generate(
+            include_query=include_query,
+            include_mutation=include_mutation,
+            include_subscription=include_subscription,
+            include_types=include_types,
+        )
 
     def generate(
         self,
@@ -128,7 +208,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
             query = self.get_gql_query() if include_query else None
             mutation = self.get_gql_mutation() if include_mutation else None
-            subscription = self.get_gql_subscription() if include_subscription else None
+            subscription = None
+            if include_subscription:
+                partial_graphene_schema = graphene.Schema(
+                    query=query,
+                    mutation=mutation,
+                    types=types,
+                    auto_camelcase=False,
+                    directives=DIRECTIVES,
+                )
+                subscription = self.get_gql_subscription(partial_graphql_schema=partial_graphene_schema.graphql_schema)
 
             graphene_schema = graphene.Schema(
                 query=query,
@@ -157,9 +246,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return Mutation
 
-    def get_gql_subscription(self) -> type[InfrahubBaseSubscription]:
+    def get_gql_subscription(self, partial_graphql_schema: graphene.Schema) -> type[InfrahubBaseSubscription]:
         class Subscription(InfrahubBaseSubscription):
-            pass
+            graphql_schema = partial_graphql_schema
 
         return Subscription
 

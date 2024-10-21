@@ -119,13 +119,13 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
         return False
 
-    def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> bool:
+    def update_schema_hash(self, at: Timestamp | str | None = None) -> bool:
         latest_schema = registry.schema.get_schema_branch(name=self.name)
-        self.schema_changed_at = Timestamp(at).to_string()
         new_hash = latest_schema.get_hash_full()
         if self.schema_hash and new_hash.main == self.schema_hash.main:
             return False
 
+        self.schema_changed_at = Timestamp(at).to_string()
         self.schema_hash = new_hash
         return True
 

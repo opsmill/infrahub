@@ -819,8 +819,10 @@ async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_bra
 
 
 async def test_create_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
-    car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    car_schema = schema_branch.get("TestCar", duplicate=True)
     car_schema.uniqueness_constraints = [["owner", "color"]]
+    schema_branch.set(name="TestCar", schema=car_schema)
 
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="Bruce Wayne", height=180)
