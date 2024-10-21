@@ -115,6 +115,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     _branch_details_by_name: dict[str, BranchDetails] = {}
 
     @classmethod
+    def clear_cache(cls) -> None:
+        cls._branch_details_by_name = {}
+
+    @classmethod
     def _cache_branch(
         cls, branch: Branch, schema_branch: SchemaBranch, schema_hash: str | None = None
     ) -> BranchDetails:
