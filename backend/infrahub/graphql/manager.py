@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
 import graphene
 
 from infrahub import config
-from infrahub.core import registry
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import (
@@ -99,38 +98,62 @@ def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) ->
     return get_enum_attribute_type_name(node_schema=node_schema, attr_schema=attr_schema)
 
 
+@dataclass
+class BranchDetails:
+    branch_name: str
+    schema_changed_at: Timestamp
+    schema_hash: str
+    gql_manager: GraphQLSchemaManager
+
+
 class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     _extra_types: dict[str, GraphQLTypes] = {
         "DiffSummaryElementAttribute": DiffSummaryElementAttribute,
         "DiffSummaryElementRelationshipOne": DiffSummaryElementRelationshipOne,
         "DiffSummaryElementRelationshipMany": DiffSummaryElementRelationshipMany,
     }
-    _branches_by_name: dict[str, Branch] = {}
-    _managers_by_branch: dict[str, GraphQLSchemaManager] = {}
+    _branch_details_by_name: dict[str, BranchDetails] = {}
 
     @classmethod
-    def _is_refresh_required(cls, cached_branch: Branch, new_branch: Branch) -> bool:
-        if cached_branch.get_uuid() != new_branch.get_uuid():
-            return True
-        if cached_branch.schema_changed_at or new_branch.schema_changed_at:
-            return cached_branch.schema_changed_at != new_branch.schema_changed_at
-        right_now = Timestamp()
-        if not cached_branch.schema_hash:
-            cached_branch.update_schema_hash(at=right_now)
-        if not new_branch.schema_hash:
-            new_branch.update_schema_hash(at=right_now)
-        return cached_branch.active_schema_hash.main != new_branch.active_schema_hash.main
+    def _cache_branch(
+        cls, branch: Branch, schema_branch: SchemaBranch, schema_hash: str | None = None
+    ) -> BranchDetails:
+        if not schema_hash:
+            if branch.schema_hash:
+                schema_hash = branch.schema_hash.main
+            else:
+                schema_hash = schema_branch.get_hash()
+        branch_details = BranchDetails(
+            branch_name=branch.name,
+            schema_changed_at=Timestamp(branch.schema_changed_at) if branch.schema_changed_at else Timestamp(),
+            schema_hash=schema_hash,
+            gql_manager=cls(schema=schema_branch),
+        )
+        cls._branch_details_by_name[branch.name] = branch_details
+        return branch_details
 
     @classmethod
-    def get_manager_for_branch(cls, branch: Branch, force_refresh: bool = False) -> GraphQLSchemaManager:
-        if branch.name in cls._branches_by_name and not force_refresh:
-            cached_branch = cls._branches_by_name[branch.name]
-            force_refresh = cls._is_refresh_required(cached_branch=cached_branch, new_branch=branch)
-        cls._branches_by_name[branch.name] = branch
-        if force_refresh or branch.name not in cls._managers_by_branch:
-            schema_branch = registry.schema.get_schema_branch(name=branch.name)
-            cls._managers_by_branch[branch.name] = cls(schema=schema_branch)
-        return cls._managers_by_branch[branch.name]
+    def get_manager_for_branch(cls, branch: Branch, schema_branch: SchemaBranch) -> GraphQLSchemaManager:
+        if branch.name not in cls._branch_details_by_name:
+            branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch)
+            return branch_details.gql_manager
+        cached_branch_details = cls._branch_details_by_name[branch.name]
+        # try to use the schema_changed_at time b/c it is faster than checking the hash
+        if branch.schema_changed_at:
+            changed_at_time = Timestamp(branch.schema_changed_at)
+            if changed_at_time > cached_branch_details.schema_changed_at:
+                cached_branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch)
+            return cached_branch_details.gql_manager
+        if branch.schema_hash:
+            current_hash = branch.active_schema_hash.main
+        else:
+            current_hash = schema_branch.get_hash()
+        if cached_branch_details.schema_hash != current_hash:
+            cached_branch_details = cls._cache_branch(
+                branch=branch, schema_branch=schema_branch, schema_hash=current_hash
+            )
+
+        return cached_branch_details.gql_manager
 
     def __init__(self, schema: SchemaBranch) -> None:
         self.schema = schema

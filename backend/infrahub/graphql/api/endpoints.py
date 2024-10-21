@@ -4,6 +4,7 @@ from graphql import print_schema
 from starlette.routing import Route, WebSocketRoute
 
 from infrahub.api.dependencies import get_branch_dep
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.graphql.manager import GraphQLSchemaManager
 
@@ -21,6 +22,7 @@ router.routes.append(WebSocketRoute(path="/graphql/{branch_name:str}", endpoint=
 
 @router.get("/schema.graphql", include_in_schema=False)
 async def get_graphql_schema(branch: Branch = Depends(get_branch_dep)) -> PlainTextResponse:
-    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
     graphql_schema = gqlm.get_graphql_schema()
     return PlainTextResponse(content=print_schema(graphql_schema))

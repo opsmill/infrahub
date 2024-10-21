@@ -63,7 +63,8 @@ def prepare_graphql_params(
     include_types: bool = True,
 ) -> GraphqlParams:
     branch = registry.get_branch_from_registry(branch=branch)
-    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
     gql_schema = gqlm.get_graphql_schema(
         include_query=include_query,
         include_mutation=include_mutation,

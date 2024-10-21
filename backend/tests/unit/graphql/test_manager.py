@@ -1,6 +1,7 @@
 import inspect
 
 import graphene
+import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -261,27 +262,50 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
     assert sorted(list(filters.keys())) == sorted(expected_filters)
 
 
+@pytest.mark.parametrize(
+    "schema_changed_at_null,schema_hash_null", [(False, False), (True, False), (False, True), (True, True)]
+)
 async def test_branch_caching_hit(
-    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_schema,
+    car_person_schema_generics,
+    schema_changed_at_null: bool,
+    schema_hash_null: bool,
 ):
-    right_now = Timestamp()
-    default_branch.schema_changed_at = right_now
+    default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
+    if schema_changed_at_null:
+        same_branch.schema_changed_at = None
+    if schema_hash_null:
+        same_branch.schema_hash = None
+    schema_branch = registry.schema.get_schema_branch(default_branch.name)
 
-    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch)
-    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch)
+    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
 
     assert manager1 is manager2
 
 
+@pytest.mark.parametrize("schema_changed_at_new,schema_hash_updated", [(True, False), (False, True), (True, True)])
 async def test_branch_caching_miss(
-    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_schema,
+    car_person_schema_generics,
+    schema_changed_at_new: bool,
+    schema_hash_updated: bool,
 ):
-    default_branch.schema_changed_at = Timestamp()
-    same_branch = await registry.branch_object.get_by_name(db=db, name=default_branch.name)
-    same_branch.schema_changed_at = Timestamp().to_string()
+    default_branch.update_schema_hash()
+    same_branch = default_branch.model_copy()
+    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+    if schema_changed_at_new:
+        same_branch.schema_changed_at = Timestamp().to_string()
+    if schema_hash_updated:
+        default_branch.schema_hash.main = "abc"
+        same_branch.update_schema_hash()
 
-    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch)
-    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch)
+    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
 
     assert manager1 is not manager2
