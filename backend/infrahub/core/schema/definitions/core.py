@@ -64,10 +64,12 @@ generic_menu_item: dict[str, Any] = {
     "name": "Menu",
     "namespace": "Core",
     "include_in_menu": False,
-    "description": "Base node for the menu",
-    "label": "Menu Item",
+    "description": "Element of the Menu",
+    "label": "Menu",
     "hierarchical": True,
     "human_friendly_id": ["namespace__value", "name__value"],
+    "display_labels": ["label__value"],
+    "generate_profile": False,
     "attributes": [
         {"name": "namespace", "kind": "Text", "regex": NAMESPACE_REGEX, "order_weight": 1000},
         {"name": "name", "kind": "Text", "order_weight": 1000},
@@ -95,6 +97,7 @@ menu_item: dict[str, Any] = {
     "description": "Menu Item",
     "label": "Menu Item",
     "inherit_from": ["CoreMenu"],
+    "generate_profile": False,
 }
 
 core_models: dict[str, Any] = {
