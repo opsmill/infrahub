@@ -51,7 +51,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await expect(page.getByText("DescriptionA profile for E2E")).toBeVisible();
 
     await test.step("return to profiles list using breadcrumb", async () => {
-      await page.getByTestId("object-header").getByRole("link", { name: "All Profiles" }).click();
+      await page
+        .getByTestId("breadcrumb-navigation")
+        .getByRole("link", { name: "Profile", exact: true })
+        .click();
       expect(page.url()).toContain("/objects/CoreProfile");
     });
   });

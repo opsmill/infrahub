@@ -104,7 +104,7 @@ export function UserProfilePage() {
 
       <Tabs tabs={tabs} />
 
-      <div>{renderContent(qspTab)}</div>
+      {renderContent(qspTab)}
     </Content.Card>
   );
 }

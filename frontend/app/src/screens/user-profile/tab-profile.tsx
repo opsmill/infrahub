@@ -41,15 +41,11 @@ export default function TabProfile() {
   }
 
   return (
-    <Content className="p-2">
-      <Card>
-        <ObjectItemDetails
-          schema={schema}
-          objectDetailsData={objectDetailsData}
-          permission={permission}
-          hideHeaders
-        />
-      </Card>
-    </Content>
+    <ObjectItemDetails
+      schema={schema}
+      objectDetailsData={objectDetailsData}
+      permission={permission}
+      hideHeaders
+    />
   );
 }

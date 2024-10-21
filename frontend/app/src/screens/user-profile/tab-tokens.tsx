@@ -25,12 +25,7 @@ export default function TabTokens() {
 
   return (
     <>
-      <Content className="p-2">
-        <Card className="m-auto w-full">
-          <h3 className="leading-6 font-semibold mb-4">Tokens</h3>
-          <ObjectItems schema={schema} onSuccess={handleSuccess} preventLinks />
-        </Card>
-      </Content>
+      <ObjectItems schema={schema} onSuccess={handleSuccess} preventLinks />
 
       <ModalSuccess
         open={open}
