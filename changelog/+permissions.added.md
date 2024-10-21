@@ -1,0 +1,1 @@
+Added permissions in the frontend, to be able to have CRUD views to manage accounts/groups/roles/permissions, and retrieve permissions from the object queries to compute the access and the messages
