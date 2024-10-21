@@ -110,7 +110,11 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
         return ctx
 
     async def execute_query_with_metadata(
-        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str | None = "undefined",
+        context: dict[str, str] | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
         if not self.profiling_enabled:
             # Profiling might be disabled to avoid capturing queries while loading data
