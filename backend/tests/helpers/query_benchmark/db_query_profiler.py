@@ -2,7 +2,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Optional, Type
+from typing import Any, List, Optional, Self, Type
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -38,53 +38,27 @@ class QueryMeasurement:
     memory: Optional[float] = None
 
 
-class QueryAnalyzer:
-    name: Optional[str]
-    measurements: list[QueryMeasurement]
-    output_location: Path
-    nb_elements_loaded: int
-    profile_memory: bool
-    profile_duration: bool
-
-    def __init__(self) -> None:
-        self.reset()
-
-    def reset(self) -> None:
-        self.name = None
-        self.measurements = []
-        self.output_location = Path.cwd()
-        self.nb_elements_loaded = 0
-        self.profile_duration = False
-        self.profile_memory = False
-
-    def increase_nb_elements_loaded(self, increment: int) -> None:
-        self.nb_elements_loaded += increment
-
-    def get_df(self) -> pd.DataFrame:
+class GraphProfileGenerator:
+    def build_df_from_measuremenst(self, measurements: list[QueryMeasurement]) -> pd.DataFrame:
         data = {}
         for item in QueryMeasurement.__dataclass_fields__.keys():
-            data[item] = [getattr(m, item) for m in self.measurements]
+            data[item] = [getattr(m, item) for m in measurements]
 
         return pd.DataFrame(data)
 
-    def add_measurement(self, measurement: QueryMeasurement) -> None:
-        measurement.nb_elements_loaded = self.nb_elements_loaded
-        self.measurements.append(measurement)
-
-    def create_graphs(self, output_location: Path, label: str) -> None:
-        df = self.get_df()
+    def create_graphs(self, measurements: List[QueryMeasurement], output_location: Path, label: str) -> None:
+        df = self.build_df_from_measuremenst(measurements)
         query_names = set(df["query_name"].tolist())
 
         if not output_location.exists():
             output_location.mkdir(parents=True)
 
         for query_name in query_names:
-            self.create_duration_graph(query_name=query_name, label=label, output_dir=output_location)
+            self.create_duration_graph(df=df, query_name=query_name, label=label, output_dir=output_location)
             # self.create_memory_graph(query_name=query_name, label=label, output_dir=output_location)
 
-    def create_duration_graph(self, query_name: str, label: str, output_dir: Path) -> None:
+    def create_duration_graph(self, df: pd.DataFrame, query_name: str, label: str, output_dir: Path) -> None:
         metric = "duration"
-        df = self.get_df()
 
         name = f"{query_name}_{metric}"
         plt.figure(name)
@@ -105,71 +79,45 @@ class QueryAnalyzer:
         file_name = f"{name}.png"
         plt.savefig(str(output_dir / file_name), bbox_inches="tight")
 
-    def create_memory_graph(self, query_name: str, label: str, output_dir: Path) -> None:
-        metric = "memory"
-        df = self.get_df()
-        df_query = df[(df["query_name"] == query_name) & (~df["memory"].isna())]
-
-        plt.figure(query_name)
-
-        x = df_query["nb_elements_loaded"].values
-        y = df_query[metric].values
-
-        plt.plot(x, y, label=label)
-
-        plt.legend()
-
-        plt.ylabel("memory", fontsize=15)
-        plt.title(f"Query - {query_name} | {metric}", fontsize=20)
-
-        file_name = f"{query_name}_{metric}.png"
-
-        plt.savefig(str(output_dir / file_name))
-
-
-class ProfilerEnabler:
-    profile_memory: bool
-
-    def __init__(self, profile_memory: bool, query_analyzer: QueryAnalyzer) -> None:
-        self.profile_memory = profile_memory
-        self.query_analyzer = query_analyzer
-
-    def __enter__(self) -> None:
-        self.query_analyzer.profile_duration = True
-        self.query_analyzer.profile_memory = self.profile_memory
-
-    def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
-    ) -> None:
-        self.query_analyzer.profile_duration = False
-        self.query_analyzer.profile_memory = False
-
-
-# Tricky to have it as an attribute of InfrahubDatabaseProfiler as some copies of InfrahubDatabase are made
-# during start_session calls.
-# query_analyzer = QueryAnalyzer()
-
 
 class InfrahubDatabaseProfiler(InfrahubDatabase):
-    def __init__(self, **kwargs: Any) -> None:
+    profiling_enabled: bool
+    profile_memory: bool
+    measurements: List[QueryMeasurement]
+    nb_elements_loaded: int
+
+    def __init__(
+        self,
+        profiling_enabled: bool = False,
+        profile_memory: bool = False,
+        measurements: Optional[List[QueryMeasurement]] = None,
+        nb_elements_loaded: int = 0,
+        **kwargs: Any,
+    ) -> None:  # todo args in constructor only because of __class__ pattern
         super().__init__(**kwargs)
-        self.query_analyzer = QueryAnalyzer()
+        self.profiling_enabled = profiling_enabled
+        self.profile_memory = profile_memory
+        self.measurements = measurements if measurements is not None else []
+        self.nb_elements_loaded = nb_elements_loaded
         # Note that any attribute added here should be added to get_context method.
 
     def get_context(self) -> dict[str, Any]:
         ctx = super().get_context()
-        ctx["query_analyzer"] = self.query_analyzer
+        ctx["profiling_enabled"] = self.profiling_enabled
+        ctx["profile_memory"] = self.profile_memory
+        ctx["measurements"] = self.measurements
+        ctx["nb_elements_loaded"] = self.nb_elements_loaded
         return ctx
 
     async def execute_query_with_metadata(
         self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
     ) -> tuple[list[Record], dict[str, Any]]:
-        if not self.query_analyzer.profile_duration:
+        if not self.profiling_enabled:
             # Profiling might be disabled to avoid capturing queries while loading data
             return await super().execute_query_with_metadata(query, params, name)
 
         # We don't want to memory profile all queries
-        if self.query_analyzer.profile_memory and name in self.queries_names_to_config:
+        if self.profile_memory and name in self.queries_names_to_config:
             # Following call to super().execute_query_with_metadata() will use this value to set PROFILE option
             self.queries_names_to_config[name].profile_memory = True
             profile_memory = True
@@ -190,7 +138,34 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
             memory=metadata["profile"]["args"]["GlobalMemory"] if profile_memory else None,
             query_name=str(name),
             start_time=time_start,
+            nb_elements_loaded=self.nb_elements_loaded,
         )
-        self.query_analyzer.add_measurement(measurement)
+        self.measurements.append(measurement)
 
         return response, metadata
+
+    def profile(self, profile_memory: bool) -> Self:
+        """
+        This method allows to enable profiling of a InfrahubDatabaseProfiler instance
+        through a context manager with this syntax:
+
+        `with db.profile(profile_memory=...):
+            # run code to profile
+        `
+        """
+
+        self.profile_memory = profile_memory
+        return self
+
+    def __enter__(self) -> None:
+        self.profiling_enabled = True
+        self.profile_memory = self.profile_memory
+
+    def __exit__(
+        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+    ) -> None:
+        self.profiling_enabled = False
+        self.profile_memory = False
+
+    def increase_nb_elements_loaded(self, nb_elements_loaded: int) -> None:
+        self.nb_elements_loaded += nb_elements_loaded

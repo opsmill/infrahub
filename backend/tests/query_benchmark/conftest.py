@@ -5,6 +5,7 @@ import pytest
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import SchemaRoot
+from tests.helpers.query_benchmark.db_query_profiler import GraphProfileGenerator
 
 RESULTS_FOLDER = Path(__file__).resolve().parent / "query_performance_results"
 
@@ -54,10 +55,19 @@ async def car_person_schema_root() -> SchemaRoot:
                 ],
                 "relationships": [
                     {"name": "cars", "peer": "TestCar", "cardinality": "many"},
-                    {"name": "animal", "peer": "TestAnimal", "cardinality": "one"},
                 ],
             },
         ],
     }
 
     return SchemaRoot(**schema)
+
+
+@pytest.fixture(scope="session")
+async def graph_generator() -> GraphProfileGenerator:
+    """
+    Use GraphProfileGenerator as a fixture as it may allow to properly generate graphs from
+    distinct tests, instead of having each test managing its own display.
+    """
+
+    return GraphProfileGenerator()
