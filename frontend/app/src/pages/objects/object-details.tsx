@@ -1,18 +1,17 @@
-import { Card } from "@/components/ui/card";
 import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import ArtifactsDetails from "@/screens/artifacts/object-item-details-paginated";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
-import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
 import ObjectItems from "@/screens/object-items/object-items-paginated";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { constructPath } from "@/utils/fetch";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import GraphqlQueryDetailsPage from "./CoreGraphQLQuery/graphql-query-details";
 
 export function ObjectDetailsPage() {
@@ -53,35 +52,35 @@ export function ObjectDetailsPage() {
   if (!objectDetailsData) {
     return (
       <div className="flex column justify-center">
-        <NoDataFound message="No item found for that id." />
+        <NoDataFound message={`No ${schema.label} found with ID: ${objectid}`} />
       </div>
     );
   }
 
-  if (objectKind === ARTIFACT_OBJECT) {
-    return <ArtifactsDetails />;
-  }
-
-  if (objectKind === GRAPHQL_QUERY_OBJECT) {
-    return (
-      <Content>
-        <GraphqlQueryDetailsPage />
-      </Content>
-    );
-  }
-
   return (
-    <Content>
-      <Card className="p-2 pt-0">
-        <ObjectItemDetails
-          schema={schema}
-          objectDetailsData={objectDetailsData}
-          permission={permission}
-          taskData={data[TASK_OBJECT]}
-        />
-      </Card>
-    </Content>
+    <ObjectItemDetails
+      schema={schema}
+      objectDetailsData={objectDetailsData}
+      permission={permission}
+      taskData={data[TASK_OBJECT]}
+    />
   );
 }
 
-export const Component = ObjectDetailsPage;
+export const Component = () => {
+  const { objectKind, objectid } = useParams();
+
+  if (!objectid) {
+    return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
+  }
+
+  if (objectKind === ARTIFACT_OBJECT) {
+    return <ArtifactsDetails artifactId={objectid} />;
+  }
+
+  if (objectKind === GRAPHQL_QUERY_OBJECT) {
+    return <GraphqlQueryDetailsPage graphqlQueryId={objectid} />;
+  }
+
+  return <ObjectDetailsPage />;
+};

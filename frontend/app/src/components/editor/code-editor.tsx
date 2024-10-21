@@ -5,7 +5,7 @@ import Prism from "prismjs";
 import "prismjs/components/prism-json"; // need this
 import "prismjs/themes/prism.css"; //Example style, you can use another
 
-import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import { Button } from "@/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { classNames } from "@/utils/common";
 import { useState } from "react";
@@ -34,7 +34,8 @@ export const CodeEditor = (props: any) => {
       {enableCopy && (
         <Button
           className="absolute z-10 top-0 right-0"
-          buttonType={BUTTON_TYPES.INVISIBLE}
+          variant="ghost"
+          size="square"
           onClick={handleCopy}
         >
           {!isCopied && <ClipboardDocumentIcon className="h-4 w-4" />}

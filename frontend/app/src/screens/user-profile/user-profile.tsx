@@ -87,8 +87,8 @@ export function UserProfilePage() {
   }
 
   return (
-    <Content>
-      <Content.Title
+    <Content.Card>
+      <Content.CardTitle
         title={
           <div className="flex items-center gap-2">
             <Avatar name={profile?.name?.value} />
@@ -105,6 +105,6 @@ export function UserProfilePage() {
       <Tabs tabs={tabs} />
 
       <div>{renderContent(qspTab)}</div>
-    </Content>
+    </Content.Card>
   );
 }

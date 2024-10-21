@@ -1,5 +1,4 @@
 import ErrorScreen from "@/screens/errors/error-screen";
-import Content from "@/screens/layout/content";
 import ObjectItems from "@/screens/object-items/object-items-paginated";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { useAtomValue } from "jotai";
@@ -16,11 +15,7 @@ export function ObjectItemsPage() {
 
   if (!schema) return <ErrorScreen message={`Object ${objectKind} not found.`} />;
 
-  return (
-    <Content>
-      <ObjectItems schema={schema} />
-    </Content>
-  );
+  return <ObjectItems schema={schema} />;
 }
 
 export const Component = ObjectItemsPage;
