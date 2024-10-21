@@ -118,6 +118,15 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
         return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
 
 
+async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResolveInfo) -> dict:
+    """This resolver gets used when we know that the parent resolver has already gathered the required information.
+
+    An example of this is the permissions field at the top level within default_paginated_list_resolver()
+    """
+
+    return parent[info.field_name]
+
+
 async def default_paginated_list_resolver(
     root: dict,  # pylint: disable=unused-argument
     info: GraphQLResolveInfo,
