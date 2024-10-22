@@ -91,16 +91,13 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
         DiffRepository, db=service.database, branch=default_branch
     )
     diff_repo.get_empty_roots.assert_awaited_once_with(base_branch_names=[target_branch_name])
+
     assert len(service.message_bus.messages) == 5
     assert service.message_bus.messages[0] == messages.RefreshRegistryBranches()
-    assert service.message_bus.messages[1] == messages.TriggerArtifactDefinitionGenerate(branch=target_branch_name)
-    assert service.message_bus.messages[2] == messages.TriggerGeneratorDefinitionRun(branch=target_branch_name)
-    assert service.message_bus.messages[3] == messages.RequestDiffUpdate(
-        branch_name=tracked_diff_roots[0].diff_branch_name
-    )
-    assert service.message_bus.messages[4] == messages.RequestDiffUpdate(
-        branch_name=tracked_diff_roots[1].diff_branch_name
-    )
+    assert service.message_bus.messages[1] == messages.TriggerGeneratorDefinitionRun(branch=target_branch_name)
+    assert service.message_bus.messages[2] == messages.RequestDiffUpdate(branch_name=tracked_diff_roots[0].diff_branch_name)
+    assert service.message_bus.messages[3] == messages.RequestDiffUpdate(branch_name=tracked_diff_roots[1].diff_branch_name)
+
 
 
 async def test_rebased(default_branch: Branch, prefect_test_fixture):

@@ -48,6 +48,13 @@ SCHEMA_VALIDATE_MIGRATION = WorkflowDefinition(
     function="schema_validate_migrations",
 )
 
+TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
+    name="artifact-definition-generate",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="generate",
+)
+
 IPAM_RECONCILIATION = WorkflowDefinition(
     name="ipam_reconciliation",
     type=WorkflowType.INTERNAL,

@@ -48,7 +48,6 @@ from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathRespo
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 from .send_telemetry_push import SendTelemetryPush
 from .send_webhook_event import SendWebhookEvent
-from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
 from .trigger_generatordefinition_run import TriggerGeneratorDefinitionRun
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
@@ -102,7 +101,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "send.echo.request": SendEchoRequest,
     "send.webhook.event": SendWebhookEvent,
     "send.telemetry.push": SendTelemetryPush,
-    "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
     "trigger.generator_definition.run": TriggerGeneratorDefinitionRun,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
