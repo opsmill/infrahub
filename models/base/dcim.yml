@@ -168,7 +168,6 @@ nodes:
     description: "Generic Device object"
     label: "Device"
     icon: "mdi:server"
-    default_filter: name__value
     human_friendly_id: ["name__value"]
     inherit_from:
       - "CoreArtifactTarget"
@@ -428,7 +427,7 @@ nodes:
     description: "A Platform represents the type of software running on a device"
     label: "Platform"
     icon: "mdi:application-cog-outline"
-    default_filter: name__value
+    menu_placement: "InfraDevice"
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
@@ -464,7 +463,7 @@ nodes:
     namespace: Infra
     description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
-    default_filter: circuit_id__value
+    icon: "mdi:cable-data"
     human_friendly_id: ["circuit_id__value"]
     order_by:
       - circuit_id__value

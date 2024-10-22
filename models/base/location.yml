@@ -27,7 +27,7 @@ nodes:
     inherit_from:
       - "LocationGeneric"
     generate_profile: false
-    default_filter: "name__value"
+    human_friendly_id: ["name__value"]
     order_by:
       - "name__value"
     display_labels:
@@ -41,7 +41,7 @@ nodes:
     inherit_from:
       - "LocationGeneric"
     generate_profile: false
-    default_filter: "name__value"
+    human_friendly_id: ["name__value"]
     order_by:
       - "name__value"
     display_labels:
@@ -54,7 +54,7 @@ nodes:
     icon: "ri:building-line"
     inherit_from:
       - "LocationGeneric"
-    default_filter: "name__value"
+    human_friendly_id: ["name__value"]
     order_by:
       - "name__value"
     display_labels:

@@ -8,7 +8,7 @@ nodes:
     description: "An Autonomous System (AS) is a set of Internet routable IP prefixes belonging to a network"
     label: "Autonomous System"
     icon: "mdi:bank-circle-outline"
-    default_filter: name__value
+    menu_placement: InfraBGPSession
     human_friendly_id: ["name__value", "asn__value"]
     order_by: ["asn__value"]
     display_labels:
@@ -35,7 +35,7 @@ nodes:
     description: "A BGP Peer Group is used to regroup parameters that are shared across multiple peers"
     label: "BGP Peer Group"
     icon: "mdi:view-grid-plus-outline"
-    default_filter: name__value
+    menu_placement: InfraBGPSession
     human_friendly_id: ["name__value"]
     order_by:
       - name__value

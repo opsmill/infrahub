@@ -15,6 +15,7 @@ development/docker-compose.dev-override.yml
 .ruff_cache
 **/.ruff_cache
 **/.idea/**
+venv
 
 # Direnv files (https://direnv.net/)
 .direnv/
