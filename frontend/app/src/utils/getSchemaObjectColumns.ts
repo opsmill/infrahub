@@ -215,16 +215,18 @@ type tgetOptionsFromRelationship = {
   options: any[];
   schemas?: any;
   generic?: any;
+  peerField?: string;
 };
 
 export const getOptionsFromRelationship = ({
   options,
   schemas,
   generic,
+  peerField,
 }: tgetOptionsFromRelationship) => {
   if (!generic) {
     return options.map((option: any) => ({
-      name: option.display_label,
+      name: peerField ? (option[peerField]?.value ?? option[peerField]) : option.display_label,
       id: option.id,
       kind: option.__typename,
     }));
