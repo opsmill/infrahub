@@ -295,19 +295,6 @@ async def create_ipam_namespace(
     return obj
 
 
-async def create_initial_permission(db: InfrahubDatabase) -> Node:
-    permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await permission.new(
-        db=db,
-        name=format_label(GlobalPermissions.SUPER_ADMIN.value),
-        action=GlobalPermissions.SUPER_ADMIN.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-    )
-    await permission.save(db=db)
-    log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
-    return permission
-
-
 async def create_default_menu(db: InfrahubDatabase) -> None:
     for item in default_menu:
         obj = await item.to_node(db=db)
@@ -363,6 +350,22 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
         decision=PermissionDecision.ALLOW_ALL.value,
     )
     await proposed_change_permission.save(db=db)
+
+    # Other permissions, created to keep references of them from the start
+    for permission_action in (
+        GlobalPermissions.EDIT_DEFAULT_BRANCH,
+        GlobalPermissions.MANAGE_ACCOUNTS,
+        GlobalPermissions.MANAGE_PERMISSIONS,
+        GlobalPermissions.MERGE_BRANCH,
+    ):
+        permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        await permission.new(
+            db=db,
+            name=format_label(permission_action.value),
+            action=permission_action.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        )
+        await permission.save(db=db)
 
     view_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
     await view_permission.new(
