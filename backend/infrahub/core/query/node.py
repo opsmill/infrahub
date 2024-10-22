@@ -557,6 +557,7 @@ class NodeListGetAttributeQuery(Query):
 
 class NodeListGetRelationshipsQuery(Query):
     name: str = "node_list_get_relationship"
+    insert_return: bool = False
 
     def __init__(self, ids: list[str], **kwargs):
         self.ids = ids
@@ -569,28 +570,43 @@ class NodeListGetRelationshipsQuery(Query):
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
-        query = (
-            """
-        MATCH (n) WHERE n.uuid IN $ids
-        MATCH p = ((n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer))
-        WHERE all(r IN relationships(p) WHERE (%s))
-        """
-            % rels_filter
-        )
+        query = """
+        MATCH (n1:Node)
+        WHERE n1.uuid IN $ids
+        MATCH paths_in = ((n1)<-[r1:IS_RELATED]-(rel1:Relationship)<-[r2:IS_RELATED]-(peer1))
+        WHERE all(r IN relationships(paths_in) WHERE (%(filters)s))
+        RETURN n1 as res4_node, rel1 as res3_rel, peer1 as res2_peer, "inbound" as res1_direction
+        UNION ALL
+        MATCH (n2:Node)
+        WHERE n2.uuid IN $ids
+        MATCH paths_out = ((n2)-[r1:IS_RELATED]->(rel2:Relationship)-[r2:IS_RELATED]->(peer2))
+        WHERE all(r IN relationships(paths_out) WHERE (%(filters)s))
+        RETURN n2 as res4_node, rel2 as res3_rel, peer2 as res2_peer, "outbound" as res1_direction
+        UNION ALL
+        MATCH (n3:Node)
+        WHERE n3.uuid IN $ids
+        MATCH paths_bidir = ((n3)-[r1:IS_RELATED]->(rel3:Relationship)<-[r2:IS_RELATED]-(peer3))
+        WHERE all(r IN relationships(paths_bidir) WHERE (%(filters)s))
+        RETURN n3 as res4_node, rel3 as res3_rel, peer3 as res2_peer, "bidirectional" as res1_direction
+        """ % {"filters": rels_filter}
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "rel", "peer", "r1", "r2"]
+        # NOTE Not sure why but when using UNION memgraph 2.19 is returning the result in alphabetically reverse order
+        # instead of respecting the order defined in the query
+        # In order to have a consistent ordering, all the results have been prepended with res<id>
+        self.return_labels = ["res4_node", "res3_rel", "res2_peer", "res1_direction"]
 
     def get_peers_group_by_node(self) -> dict[str, dict[str, list[str]]]:
         peers_by_node = defaultdict(lambda: defaultdict(list))
 
-        for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
-            node_id = result.get("n").get("uuid")
-            rel_name = result.get("rel").get("name")
-            peer_id = result.get("peer").get("uuid")
+        for result in self.get_results_group_by(("res4_node", "uuid"), ("res3_rel", "name"), ("res2_peer", "uuid")):
+            node_id = result.get_node("res4_node").get("uuid")
+            rel_name = result.get_node("res3_rel").get("name")
+            peer_id = result.get_node("res2_peer").get("uuid")
+            direction = result.get_as_str("res1_direction")
 
-            peers_by_node[node_id][rel_name].append(peer_id)
+            peers_by_node[node_id][f"{direction}::{rel_name}"].append(peer_id)
 
         return peers_by_node
 

@@ -7,6 +7,7 @@ from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
+from infrahub.core.relationship import Relationship
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -261,6 +262,32 @@ async def test_get_many_prefetch(db: InfrahubDatabase, default_branch: Branch, p
     assert len(tags) == 2
     assert tags[0]._peer
     assert tags[1]._peer
+
+
+async def test_get_many_prefetch_hierarchical(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+):
+    nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
+    node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
+    nodes = await NodeManager.get_many(db=db, ids=node_ids, prefetch_relationships=True)
+    assert len(nodes) == 5
+
+    paris_id = hierarchical_location_data["paris"].id
+    europe_id = hierarchical_location_data["europe"].id
+
+    assert nodes[paris_id]
+    children_paris = await nodes[paris_id].children.get(db=db)
+    assert len(children_paris) == 2
+    parent_paris = await nodes[paris_id].parent.get(db=db)
+    assert isinstance(parent_paris, Relationship)
+    assert parent_paris.peer_id == europe_id
+
+    europe_id = hierarchical_location_data["europe"].id
+    assert nodes[europe_id]
+    children_europe = await nodes[europe_id].children.get(db=db)
+    assert len(children_europe) == 2
+    parent_europe = await nodes[europe_id].parent.get(db=db)
+    assert parent_europe is None
 
 
 async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
