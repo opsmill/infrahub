@@ -158,6 +158,7 @@ function Groups() {
           }
           open={showDrawer}
           setOpen={(value) => setShowDrawer(value)}
+          onClose={() => setRowToUpdate(null)}
         >
           <ObjectForm
             kind={ACCOUNT_GROUP_OBJECT}
