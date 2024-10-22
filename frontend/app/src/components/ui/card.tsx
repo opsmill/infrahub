@@ -40,7 +40,7 @@ const CardWithBorderTitle = forwardRef<HTMLElement, HTMLAttributes<HTMLElement>>
   ({ className, ...props }, ref) => (
     <header
       ref={ref}
-      className={classNames("bg-neutral-100 p-2 font-semibold text-sm", className)}
+      className={classNames("bg-neutral-100 p-2 font-semibold text-sm rounded-t", className)}
       {...props}
     />
   )

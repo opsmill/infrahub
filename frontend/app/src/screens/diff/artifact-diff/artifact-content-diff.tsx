@@ -348,7 +348,7 @@ export const ArtifactContentDiff = (props: any) => {
       itemNew?.storage_id
     );
 
-    if (thread || !auth?.permissions?.write || !proposedChangeId) {
+    if (thread || !auth?.isAuthenticated || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }

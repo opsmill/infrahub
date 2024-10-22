@@ -11,6 +11,7 @@ from infrahub.core.constants import (
     AccountRole,
     GlobalPermissions,
     InfrahubKind,
+    PermissionAction,
     PermissionDecision,
 )
 from infrahub.core.graph import GRAPH_VERSION
@@ -335,6 +336,79 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     return obj
 
 
+async def create_default_roles(db: InfrahubDatabase) -> Node:
+    repo_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await repo_permission.new(
+        db=db,
+        name=format_label(GlobalPermissions.MANAGE_REPOSITORIES.value),
+        action=GlobalPermissions.MANAGE_REPOSITORIES.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+    )
+    await repo_permission.save(db=db)
+
+    schema_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await schema_permission.new(
+        db=db,
+        name=format_label(GlobalPermissions.MANAGE_SCHEMA.value),
+        action=GlobalPermissions.MANAGE_SCHEMA.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+    )
+    await schema_permission.save(db=db)
+
+    proposed_change_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await proposed_change_permission.new(
+        db=db,
+        name=format_label(GlobalPermissions.MERGE_PROPOSED_CHANGE.value),
+        action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+    )
+    await proposed_change_permission.save(db=db)
+
+    view_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await view_permission.new(
+        db=db,
+        name="*",
+        namespace="*",
+        action=PermissionAction.VIEW.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+    )
+    await view_permission.save(db=db)
+
+    modify_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await modify_permission.new(
+        db=db,
+        name="*",
+        namespace="*",
+        action=PermissionAction.ANY.value,
+        decision=PermissionDecision.ALLOW_OTHER.value,
+    )
+    await modify_permission.save(db=db)
+
+    role_name = "General Access"
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(
+        db=db,
+        name=role_name,
+        permissions=[
+            repo_permission,
+            schema_permission,
+            proposed_change_permission,
+            view_permission,
+            modify_permission,
+        ],
+    )
+    await role.save(db=db)
+    log.info(f"Created account role: {role_name}")
+
+    group_name = "Infrahub Users"
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name=group_name, roles=[role])
+    await group.save(db=db)
+    log.info(f"Created account group: {group_name}")
+
+    return role
+
+
 async def create_super_administrators_group(
     db: InfrahubDatabase, role: Node, admin_accounts: list[CoreAccount]
 ) -> Node:
@@ -411,6 +485,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     administrator_role = await create_super_administrator_role(db=db)
     await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=admin_accounts)
 
+    await create_default_roles(db=db)
     # --------------------------------------------------
     # Create Default IPAM Namespace
     # --------------------------------------------------

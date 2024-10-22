@@ -56,6 +56,7 @@ export type ContentCardTitleProps = {
   title?: ReactNode;
   subtitle?: ReactNode;
   description?: ReactNode;
+  end?: ReactNode;
   badgeContent?: ReactNode;
   reload?: () => void;
   isReloadLoading?: boolean;
@@ -69,20 +70,22 @@ export const ContentCardTitle = ({
   reload,
   title,
   className,
+  end,
   ...props
 }: ContentCardTitleProps) => {
   return (
-    <header className={classNames("flex items-center p-5", className)} {...props}>
+    <header className={classNames("flex p-5 border-b", className)} {...props}>
       <div className="flex flex-col gap-0.5 overflow-hidden">
         {title && (
           <div className="font-bold text-xl flex items-center gap-2">
-            <div className="truncate">{title}</div>
-            {badgeContent && <Badge className="text-sm">{badgeContent}</Badge>}
+            <h1 className="truncate">{title}</h1>
+            {!!badgeContent && <Badge className="text-sm">{badgeContent}</Badge>}
             {reload && <Retry isLoading={isReloadLoading} onClick={reload} />}
           </div>
         )}
-        {description && <div className="text-sm truncate">{description}</div>}
+        {description && <div className="text-sm truncate text-neutral-600">{description}</div>}
       </div>
+      {end}
     </header>
   );
 };

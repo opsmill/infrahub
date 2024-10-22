@@ -1,4 +1,4 @@
-import { Button, ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Kbd from "@/components/ui/kbd";

@@ -2,7 +2,6 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
@@ -14,6 +13,8 @@ import {
   deviceDetailsMocksQuery,
   deviceDetailsMocksSchema,
   deviceDetailsMocksTagName,
+  getPermissionsData,
+  getPermissionsQuery,
 } from "../../mocks/data/devices";
 import { TestProvider } from "../../mocks/jotai/atom";
 
@@ -34,6 +35,18 @@ const mocks: any[] = [
     },
     result: {
       data: deviceDetailsMocksData,
+    },
+  },
+  // Permissions
+  {
+    request: {
+      query: gql`
+        ${getPermissionsQuery}
+      `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: getPermissionsData,
     },
   },
 ];

@@ -1,7 +1,7 @@
 from enum import Enum
 
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.core.attribute import (

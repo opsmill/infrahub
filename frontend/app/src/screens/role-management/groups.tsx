@@ -8,13 +8,15 @@ import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_GROUPS } from "@/graphql/queries/role-management/getGroups";
+import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ErrorScreen from "../errors/error-screen";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { getPermission } from "../permission/utils";
 import { GroupMembers } from "./group-member";
 
 function Groups() {
@@ -30,6 +32,8 @@ function Groups() {
     string | number | tRowValue
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  const permission = getPermission(data?.[ACCOUNT_GROUP_OBJECT]?.permissions?.edges);
 
   const columns = [
     {
@@ -79,9 +83,23 @@ function Groups() {
       },
     }));
 
-  if (error) return <ErrorScreen message="An error occured while retrieving the accounts." />;
+  if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
 
-  if (loading) return <LoadingScreen message="Retrieving accounts..." />;
+      return <UnauthorizedScreen message={message} />;
+    }
+
+    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+  }
+
+  if (loading) {
+    return <LoadingScreen message="Retrieving groups..." />;
+  }
+
+  if (!permission?.view.isAllowed) {
+    return <UnauthorizedScreen message={permission?.view?.message} />;
+  }
 
   const globalRefetch = () => {
     graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
@@ -95,7 +113,11 @@ function Groups() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
+            <Button
+              variant={"primary"}
+              onClick={() => setShowDrawer(true)}
+              disabled={!schema || !permission?.create.isAllowed}
+            >
               Create {schema?.label}
             </Button>
           </div>
@@ -110,6 +132,7 @@ function Groups() {
             setRowToUpdate(row.values);
             setShowDrawer(true);
           }}
+          permission={permission}
         />
 
         <Pagination count={data && data[ACCOUNT_GROUP_OBJECT]?.count} />

@@ -21,12 +21,13 @@ export const Generate = (props: tGenerateProps) => {
   const { label, artifactid, definitionid } = props;
 
   const { objectid } = useParams();
+  const auth = useAuth();
 
   const [branch] = useQueryParam(QSP.BRANCH, StringParam);
   const [at] = useQueryParam(QSP.DATETIME, StringParam);
   const [isLoading, setIsLoading] = useState(false);
 
-  const auth = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const handleGenerate = async () => {
     try {
@@ -65,7 +66,7 @@ export const Generate = (props: tGenerateProps) => {
 
   return (
     <Button
-      disabled={!auth?.permissions?.write || isLoading}
+      disabled={!isAuthenticated || isLoading}
       onClick={handleGenerate}
       className="mr-4"
       buttonType={BUTTON_TYPES.VALIDATE}

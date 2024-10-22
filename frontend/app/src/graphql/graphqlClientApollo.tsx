@@ -124,6 +124,10 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
             forward(operation);
           });
         }
+        case 403: {
+          // Do not display alert on unauthorized errors
+          return;
+        }
         default:
           const { processErrorMessage } = operation.getContext();
 

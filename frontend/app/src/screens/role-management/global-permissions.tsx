@@ -9,14 +9,16 @@ import { Pagination } from "@/components/ui/pagination";
 import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/graphql/queries/role-management/getGlobalPermissions";
+import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ErrorScreen from "../errors/error-screen";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { getPermission } from "../permission/utils";
 
 function GlobalPermissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);
@@ -31,6 +33,8 @@ function GlobalPermissions() {
     string | number | tRowValue
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  const permission = getPermission(data?.[GLOBAL_PERMISSION_OBJECT]?.permissions?.edges);
 
   const columns = [
     {
@@ -68,9 +72,14 @@ function GlobalPermissions() {
                 {edge?.node?.display_label}
               </div>
             ),
+            value: edge?.node?.name?.value,
           },
-          description: { value: edge?.node?.description?.value },
-          roles: { display: <Pill>{edge?.node?.roles?.count}</Pill> },
+          action: { value: edge?.node?.action?.value },
+          decision: { value: edge?.node?.decision?.value },
+          roles: {
+            display: <Pill>{edge?.node?.roles?.count}</Pill>,
+            value: { edges: edge?.node?.roles?.edges },
+          },
           identifier: { display: <BadgeCopy value={edge?.node?.identifier?.value} /> },
         },
       };
@@ -81,9 +90,23 @@ function GlobalPermissions() {
     refetch();
   };
 
-  if (error) return <ErrorScreen message="An error occured while retrieving the accounts." />;
+  if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
 
-  if (loading) return <LoadingScreen message="Retrieving accounts..." />;
+      return <UnauthorizedScreen message={message} />;
+    }
+
+    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+  }
+
+  if (loading) {
+    return <LoadingScreen message="Retrieving global permissions..." />;
+  }
+
+  if (!permission?.view.isAllowed) {
+    return <UnauthorizedScreen message={permission?.view?.message} />;
+  }
 
   return (
     <>
@@ -92,13 +115,27 @@ function GlobalPermissions() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
+            <Button
+              variant={"primary"}
+              onClick={() => setShowDrawer(true)}
+              disabled={!schema || !permission?.create.isAllowed}
+            >
               Create {schema?.label}
             </Button>
           </div>
         </div>
 
-        <Table columns={columns} rows={rows ?? []} className="border-0" />
+        <Table
+          columns={columns}
+          rows={rows ?? []}
+          onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
+          className="border-0"
+          permission={permission}
+        />
 
         <Pagination count={data && data[GLOBAL_PERMISSION_OBJECT]?.count} />
       </div>

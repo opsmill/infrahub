@@ -1,11 +1,11 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { useAuth } from "@/hooks/useAuth";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 
-import { ReactNode } from "react";
+import { Permission } from "@/screens/permission/types";
+import { ReactNode, isValidElement } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,11 +35,10 @@ type TableProps = {
   onDelete?: (row: tRow) => void;
   onUpdate?: (row: tRow) => void;
   className?: string;
+  permission?: Permission;
 };
 
-export const Table = ({ columns, rows, onDelete, onUpdate, className }: TableProps) => {
-  const auth = useAuth();
-
+export const Table = ({ columns, rows, onDelete, onUpdate, className, permission }: TableProps) => {
   return (
     <>
       <table
@@ -110,7 +109,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                       {onUpdate && (
                         <DropdownMenuItem
                           onClick={() => onUpdate(row)}
-                          disabled={!auth?.permissions?.write}
+                          disabled={!permission?.update?.isAllowed}
                           data-testid="update-row-button"
                         >
                           <Icon icon="mdi:pencil" className="text-custom-blue-500" />
@@ -121,7 +120,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
                       {onDelete && (
                         <DropdownMenuItem
                           onClick={() => onDelete(row)}
-                          disabled={!auth?.permissions?.write}
+                          disabled={!permission?.delete?.isAllowed}
                           data-testid="delete-row-button"
                         >
                           <Icon icon="mdi:trash-outline" className="text-red-500" />
@@ -150,6 +149,8 @@ const renderRowValue = (data: string | number | tRowValue): ReactNode => {
   if ("display" in data) return data.display as ReactNode;
 
   if ("value" in data) return data.value as ReactNode;
+
+  if (isValidElement(data)) return data;
 
   return "-";
 };

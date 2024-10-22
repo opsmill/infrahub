@@ -1,7 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-hori.svg";
 import { Login } from "@/screens/authentification/login";
-import Content from "@/screens/layout/content";
 import { Navigate, useLocation } from "react-router-dom";
 
 function LoginPage() {
@@ -14,7 +13,7 @@ function LoginPage() {
   }
 
   return (
-    <Content className="bg-stone-100 h-screen w-screen pt-[25vh]">
+    <div className="bg-stone-100 h-screen w-screen py-[25vh] overflow-auto">
       <div className="flex flex-col items-center gap-6 w-full max-w-sm m-auto">
         <InfrahubLogo className="h-12" alt="Intrahub logo" />
 
@@ -30,7 +29,7 @@ function LoginPage() {
           )
         )}
       </div>
-    </Content>
+    </div>
   );
 }
 

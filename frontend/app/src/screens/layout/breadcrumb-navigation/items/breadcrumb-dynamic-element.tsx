@@ -4,7 +4,6 @@ import BreadcrumbObjectSelector from "@/screens/layout/breadcrumb-navigation/ite
 import BreadcrumbSchemaSelector from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-schema-selector";
 import { BreadcrumbItem } from "@/screens/layout/breadcrumb-navigation/type";
 import { warnUnexpectedType } from "@/utils/common";
-import React from "react";
 
 export type BreadcrumbDynamicElementProps = BreadcrumbItem & {
   isLast?: boolean;

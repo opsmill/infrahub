@@ -10,12 +10,8 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 import jinja2
 import ujson
 import yaml
-from infrahub_sdk import (
-    InfrahubClient,
-    InfrahubNode,
-    InfrahubRepositoryConfig,
-    ValidationError,
-)
+from infrahub_sdk import InfrahubClient  # noqa: TCH002
+from infrahub_sdk.exceptions import ValidationError
 from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
@@ -31,6 +27,7 @@ from infrahub_sdk.schema import (
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
+    InfrahubRepositoryConfig,
 )
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import SchemaFile
@@ -46,6 +43,7 @@ if TYPE_CHECKING:
     import types
 
     from infrahub_sdk.checks import InfrahubCheck
+    from infrahub_sdk.node import InfrahubNode
     from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 

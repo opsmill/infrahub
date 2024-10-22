@@ -4,18 +4,20 @@ import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table, tRow, tRowValue } from "@/components/table/table";
+import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/graphql/queries/role-management/getAccounts";
+import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ErrorScreen from "../errors/error-screen";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { getPermission } from "../permission/utils";
 
 function Accounts() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS);
@@ -31,6 +33,8 @@ function Accounts() {
     string | number | tRowValue
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  const permission = getPermission(data?.[ACCOUNT_GENERIC_OBJECT]?.permissions?.edges);
 
   const columns = [
     {
@@ -81,9 +85,23 @@ function Accounts() {
       },
     }));
 
-  if (error) return <ErrorScreen message="An error occured while retrieving the accounts." />;
+  if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
 
-  if (loading) return <LoadingScreen message="Retrieving accounts..." />;
+      return <UnauthorizedScreen message={message} />;
+    }
+
+    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+  }
+
+  if (loading) {
+    return <LoadingScreen message="Retrieving accounts..." />;
+  }
+
+  if (!permission?.view.isAllowed) {
+    return <UnauthorizedScreen message={permission?.view?.message} />;
+  }
 
   const globalRefetch = () => {
     graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
@@ -97,7 +115,12 @@ function Accounts() {
           <div>{/* Search input + filter button */}</div>
 
           <div>
-            <Button variant={"primary"} onClick={() => setShowDrawer(true)} disabled={!schema}>
+            <Button
+              variant={"primary"}
+              onClick={() => setShowDrawer(true)}
+              disabled={!schema || !permission?.create.isAllowed}
+              data-testid="create-object-button"
+            >
               Create {schema?.label}
             </Button>
           </div>
@@ -112,6 +135,7 @@ function Accounts() {
             setRowToUpdate(row.values);
             setShowDrawer(true);
           }}
+          permission={permission}
         />
 
         <Pagination count={data && data[ACCOUNT_GENERIC_OBJECT]?.count} />

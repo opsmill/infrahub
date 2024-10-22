@@ -86,7 +86,10 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     await expect(page.getByText("Metadata updated")).toBeVisible();
 
     await test.step("return to list using breadcrumb", async () => {
-      await page.getByRole("main").getByRole("link", { name: "GraphQL Query" }).click();
+      await page
+        .getByTestId("breadcrumb-navigation")
+        .getByRole("link", { name: "GraphQL Query" })
+        .click();
       expect(page.url()).toContain("/objects/CoreGraphQLQuery");
     });
   });

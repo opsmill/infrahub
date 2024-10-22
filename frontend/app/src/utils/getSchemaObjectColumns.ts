@@ -78,7 +78,7 @@ export const getObjectRelationships = ({
   return relationships;
 };
 
-export const getTabs = (schema: iNodeSchema | iGenericSchema) => {
+export const getTabs = (schema?: iNodeSchema | iGenericSchema) => {
   if (!schema) {
     return [];
   }

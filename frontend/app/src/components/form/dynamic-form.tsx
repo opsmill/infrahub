@@ -15,7 +15,7 @@ import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { warnUnexpectedType } from "@/utils/common";
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;

@@ -1,5 +1,4 @@
 import { DateDisplay } from "@/components/display/date-display";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
 import { useLazyQuery } from "@/hooks/useQuery";
@@ -48,7 +47,7 @@ const BranchesItems = () => {
         {branches.map((branch) => (
           <li
             key={branch.name}
-            className="col-span-1 rounded-lg bg-custom-white border cursor-pointer hover:bg-gray-50"
+            className="col-span-1 rounded-lg border cursor-pointer bg-gray-50 hover:bg-gray-100"
             onClick={() => navigate(constructPath(`/branches/${branch.name}`))}
           >
             <div className="flex w-full items-center justify-between space-x-6 p-6">

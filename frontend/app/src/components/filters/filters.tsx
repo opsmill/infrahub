@@ -8,7 +8,7 @@ import useFilters from "@/hooks/useFilters";
 import usePagination from "@/hooks/usePagination";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { Icon } from "@iconify-icon/react";
-import React, { useState } from "react";
+import { useState } from "react";
 
 type FiltersProps = {
   schema: IModelSchema;

@@ -1,3 +1,5 @@
+import { permissionsAllow } from "./permissions";
+
 export const deviceDetailsMocksId = "bd3110b9-5923-45e9-b643-776b8151c074";
 export const deviceSiteMocksId = "06c3ab9e-535e-41af-bf4b-ec9134cc4353";
 export const deviceSiteOwnerMocksId = "1790adb9-7030-259c-35c7-d8e28044d715";
@@ -1348,6 +1350,17 @@ query InfraDevice {
         }
       }
     }
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
+        }
+      }
+    }
   }
   InfrahubTask(related_node__ids: ["${deviceDetailsMocksId}"]) {
     count
@@ -1564,6 +1577,7 @@ export const deviceDetailsMocksData = {
         __typename: "EdgedInfraDevice",
       },
     ],
+    permissions: permissionsAllow,
     __typename: "PaginatedInfraDevice",
   },
 };
@@ -1722,3 +1736,43 @@ mutation InfraDeviceUpdate {
   }
 }
 `;
+
+export const getPermissionsQuery = `query getObjectPermissions {
+  InfraDevice {
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
+        }
+      }
+    }
+  }
+}`;
+
+export const getPermissionsData = {
+  data: {
+    InfraDevice: {
+      permissions: {
+        edges: [
+          {
+            node: {
+              kind: "InfraDevice",
+              view: "ALLOW_ALL",
+              create: "ALLOW_ALL",
+              update: "ALLOW_ALL",
+              delete: "ALLOW_ALL",
+              __typename: "ObjectPermission",
+            },
+            __typename: "ObjectPermissionNode",
+          },
+        ],
+        __typename: "PaginatedObjectPermission",
+      },
+      __typename: "PaginatedInfraDevice",
+    },
+  },
+};

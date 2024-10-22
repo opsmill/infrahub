@@ -16,6 +16,17 @@ query getProposedChangesThreadsFor{{kind}} {
         }
       }
     }
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
+        }
+      }
+    }
   }
 }
 `);

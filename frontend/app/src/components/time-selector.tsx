@@ -53,7 +53,7 @@ export const TimeFrameSelector = () => {
         selected={date}
         onChange={onChange}
         showTimeSelect
-        timeIntervals={10}
+        timeIntervals={1}
         calendarStartDay={1}
         maxDate={new Date()}
         filterTime={(date) => isPast(date)}
