@@ -12,6 +12,7 @@ from infrahub.core.attribute import (
     Integer,
     IPHost,
     IPNetwork,
+    ListAttribute,
     MacAddress,
     String,
 )
@@ -702,3 +703,85 @@ async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_
     # TextArea field should have no size limitation
     await obj.new(db=db, name="obj2", mytextarea=large_string)
     await obj.save(db=db)
+
+
+@pytest.mark.parametrize(
+    "regex_value,input_value,error",
+    [
+        pytest.param(
+            "^box_",
+            ["mystring"],
+            "mystring must conform with the regex: '^box_' at test",
+            id="not-a-box",
+        ),
+        pytest.param(
+            "^box_",
+            ["box_a", "box_b", "chest_a"],
+            "chest_a must conform with the regex: '^box_' at test",
+            id="is-chest",
+        ),
+    ],
+)
+def test_attribute_list_invalid_regex(
+    default_branch: Branch, regex_value: str, input_value: list[str], error: str
+) -> None:
+    storage_attribute = AttributeSchema(name="storage", kind="List", regex=regex_value)
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        label="Widget",
+        attributes=[
+            storage_attribute,
+        ],
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        ListAttribute(
+            id=str(UUIDT()),
+            name="test",
+            schema=storage_attribute,
+            branch=default_branch,
+            at=Timestamp(),
+            node=Node(schema=widget, branch=default_branch, at=Timestamp()),
+            data=input_value,
+        )
+
+    assert error in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "regex_value,input_value",
+    [
+        pytest.param(
+            "^box_",
+            ["box_one"],
+            id="a-box",
+        ),
+        pytest.param(
+            "^box_",
+            ["box_a", "box_b", "box_another"],
+            id="several_boxes",
+        ),
+    ],
+)
+def test_attribute_list_regex(default_branch: Branch, regex_value: str, input_value: list[str]) -> None:
+    storage_attribute = AttributeSchema(name="storage", kind="List", regex=regex_value)
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        label="Widget",
+        attributes=[
+            storage_attribute,
+        ],
+    )
+
+    list_attrib = ListAttribute(
+        id=str(UUIDT()),
+        name="test",
+        schema=storage_attribute,
+        branch=default_branch,
+        at=Timestamp(),
+        node=Node(schema=widget, branch=default_branch, at=Timestamp()),
+        data=input_value,
+    )
+    assert list_attrib.value == input_value

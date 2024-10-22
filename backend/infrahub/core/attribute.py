@@ -234,15 +234,21 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             ValidationError: Content of the attribute value is not valid
         """
         if schema.regex:
-            try:
-                is_valid = re.match(pattern=schema.regex, string=str(value))
-            except re.error as exc:
-                raise ValidationError(
-                    {name: f"The regex defined in the schema is not valid ({schema.regex!r})"}
-                ) from exc
+            if schema.kind == "List":
+                validation_values = [str(entry) for entry in value]
+            else:
+                validation_values = [str(value)]
 
-            if not is_valid:
-                raise ValidationError({name: f"{value} must be conform with the regex: {schema.regex!r}"})
+            for validation_value in validation_values:
+                try:
+                    is_valid = re.match(pattern=schema.regex, string=str(validation_value))
+                except re.error as exc:
+                    raise ValidationError(
+                        {name: f"The regex defined in the schema is not valid ({schema.regex!r})"}
+                    ) from exc
+
+                if not is_valid:
+                    raise ValidationError({name: f"{validation_value} must conform with the regex: {schema.regex!r}"})
 
         if schema.min_length:
             if len(value) < schema.min_length:
