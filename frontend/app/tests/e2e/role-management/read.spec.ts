@@ -33,7 +33,7 @@ test.describe("Role management - READ", () => {
 
     await test.step("check global permissions view", async () => {
       await page.getByRole("link", { name: "Global Permissions" }).click();
-      await expect(page.getByRole('cell', { name: 'super_admin', exact: true })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "super_admin", exact: true })).toBeVisible();
       await expect(page.getByText("global:super_admin:allow")).toBeVisible();
     });
   });
