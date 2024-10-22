@@ -24,6 +24,7 @@ import RelationshipField from "@/components/form/fields/relationship.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 import { useSchema } from "@/hooks/useSchema";
+import { globalDecisionOptions } from "./contants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -66,17 +67,6 @@ export const GlobalPermissionForm = ({
         value: choice.name,
       };
     });
-
-  const decisionOptions = [
-    {
-      value: 1,
-      label: "Deny",
-    },
-    {
-      value: 6,
-      label: "Allow",
-    },
-  ];
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     try {
@@ -148,7 +138,7 @@ export const GlobalPermissionForm = ({
         <DropdownField
           name="decision"
           label="Decision"
-          items={decisionOptions}
+          items={globalDecisionOptions}
           rules={{ required: true, validate: { required: isRequired } }}
         />
 

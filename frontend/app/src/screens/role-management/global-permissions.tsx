@@ -18,6 +18,7 @@ import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
+import { globalDecisionOptions } from "./contants";
 
 function GlobalPermissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);
@@ -62,7 +63,12 @@ function GlobalPermissions() {
           id: { value: edge?.node?.id },
           display_label: { value: edge?.node?.display_label },
           action: { value: edge?.node?.action?.value },
-          decision: { value: edge?.node?.decision?.value },
+          decision: {
+            display: globalDecisionOptions.find(
+              (decision) => decision.value === edge?.node?.decision?.value
+            )?.label,
+            value: edge?.node?.decision?.value,
+          },
           roles: {
             display: <Pill>{edge?.node?.roles?.count}</Pill>,
             value: { edges: edge?.node?.roles?.edges },

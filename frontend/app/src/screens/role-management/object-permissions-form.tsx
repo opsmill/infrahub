@@ -24,6 +24,7 @@ import DropdownField from "@/components/form/fields/dropdown.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
+import { objectDecisionOptions } from "./contants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -76,25 +77,6 @@ export const ObjectPermissionForm = ({
     {
       value: "delete",
       label: "Delete",
-    },
-  ];
-
-  const decisionOptions = [
-    {
-      value: 1,
-      label: "Deny",
-    },
-    {
-      value: 2,
-      label: "Allow Default",
-    },
-    {
-      value: 4,
-      label: "Allow Other",
-    },
-    {
-      value: 6,
-      label: "Allow All",
     },
   ];
 
@@ -159,7 +141,7 @@ export const ObjectPermissionForm = ({
         <DropdownField
           name="decision"
           label="Decision"
-          items={decisionOptions}
+          items={objectDecisionOptions}
           rules={{ required: true, validate: { required: isRequired } }}
         />
 
