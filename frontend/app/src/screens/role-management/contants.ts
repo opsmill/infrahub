@@ -1,19 +1,19 @@
 export const objectDecisionOptions = [
   {
     value: 1,
-    label: "Deny",
+    label: "Deny everywhere",
   },
   {
     value: 2,
-    label: "Allow Default",
+    label: "Allow on default branch",
   },
   {
     value: 4,
-    label: "Allow Other",
+    label: "Allow on other branches",
   },
   {
     value: 6,
-    label: "Allow All",
+    label: "Allow in all branches",
   },
 ];
 
