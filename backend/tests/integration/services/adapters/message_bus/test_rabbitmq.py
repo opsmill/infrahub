@@ -4,7 +4,7 @@ import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import httpx
@@ -109,7 +109,7 @@ class RabbitMQManager:
         response = await self._request(method="DELETE", url=f"{self.base_url}/vhosts/{self.settings.virtualhost}")
         assert response.status_code in {204, 404}
 
-    async def _request(self, method: str, url: str, payload: Optional[dict] = None) -> httpx.Response:
+    async def _request(self, method: str, url: str, payload: dict | None = None) -> httpx.Response:
         params: dict[str, Any] = {}
         if payload:
             params["json"] = payload

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from invoke.tasks import task
 
@@ -43,7 +43,7 @@ NAMESPACE = Namespace.DEV
 @task(optional=["database"])
 def build(
     context: Context,
-    service: Optional[str] = None,
+    service: str | None = None,
     python_ver: str = PYTHON_VER,
     nocache: bool = False,
     database: str = INFRAHUB_DATABASE,
@@ -190,7 +190,7 @@ def get_version_from_pyproject() -> str:
 
 
 @task
-def update_helm_chart(context: Context, chart_file: Optional[str] = "helm/Chart.yaml") -> None:
+def update_helm_chart(context: Context, chart_file: str = "helm/Chart.yaml") -> None:
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     version = get_version_from_pyproject()
     version_pattern = r"^appVersion:\s*[\d\.\-a-zA-Z]+"
@@ -208,7 +208,7 @@ def update_helm_chart(context: Context, chart_file: Optional[str] = "helm/Chart.
 
 
 @task
-def update_docker_compose(context: Context, docker_file: Optional[str] = "docker-compose.yml") -> None:
+def update_docker_compose(context: Context, docker_file: str = "docker-compose.yml") -> None:
     """Update docker-compose.yml with the current version from pyproject.toml."""
     version = get_version_from_pyproject()
     version_pattern = r"registry.opsmill.io/opsmill/infrahub:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
@@ -249,7 +249,7 @@ def update_docker_compose_env_vars(
     env_vars: list[str],
     env_defaults: dict[str, Any],
     enum_mappings: dict[Any, str],
-    docker_file: Optional[str] = "docker-compose.yml",
+    docker_file: str = "docker-compose.yml",
 ) -> None:
     """Update the docker-compose.yml file with the environment variables."""
     docker_path = Path(docker_file)
@@ -315,9 +315,7 @@ def update_docker_compose_env_vars(
 
 
 @task
-def gen_config_env(
-    context: Context, docker_file: Optional[str] = "docker-compose.yml", update_docker_file: Optional[bool] = False
-) -> None:
+def gen_config_env(context: Context, docker_file: str = "docker-compose.yml", update_docker_file: bool = False) -> None:
     """Generate list of env vars required for configuration and update docker file.yml if need be."""
     from pydantic_settings import BaseSettings
     from pydantic_settings.sources import EnvSettingsSource

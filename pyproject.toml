@@ -565,7 +565,6 @@ ignore = [
     "SIM300",   # Yoda condition detected
     "SIM401",   # Use `property["items"].get("format", None)` instead of an `if` block
     "SIM910",   #  Use `data.get("identifier")` instead of `data.get("identifier", None)`
-    "UP007",    # Use X | Y for type annotations
     "UP012",    # Unnecessary call to encode as UTF-8
     "UP018",    # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",    # Use format specifiers instead of percent format
@@ -604,6 +603,7 @@ allow-dunder-method-names = [
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN204", # Missing return type annotation for special method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "UP007",  # Use X | Y for type annotations
 ]
 
 "backend/infrahub/config.py" = [
