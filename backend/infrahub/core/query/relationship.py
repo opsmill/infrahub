@@ -701,7 +701,7 @@ class RelationshipGetPeerQuery(Query):
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=rels[0]["from"],
                 rels=[RelData.from_db(rel) for rel in rels],
-                branch=self.branch,
+                branch=self.branch.name,
                 properties={},
             )
 
