@@ -272,7 +272,7 @@ nodes:
     description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
     icon: "mdi:transit-connection-variant"
-    human_friendly_id: ["name__value"]
+    human_friendly_id: ["circuit_id__value"]
     order_by:
       - circuit_id__value
     display_labels:
@@ -554,7 +554,7 @@ nodes:
     label: "IP Address"
     icon: "mdi:ip-outline"
     menu_placement: "InfraPrefix"
-    human_friendly_id: ["name__value"]
+    human_friendly_id: ["address__value"]
     order_by:
       - "address__value"
     display_labels:
@@ -691,7 +691,7 @@ nodes:
     description: "IPv4 or IPv6 network (with mask)"
     icon: "mdi:ip-network"
     label: "Prefix"
-    human_friendly_id: ["name__value"]
+    human_friendly_id: ["prefix__value"]
     order_by:
       - prefix__value
     display_labels:
