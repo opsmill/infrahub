@@ -275,7 +275,7 @@ nodes:
     description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
     icon: "mdi:transit-connection-variant"
-    human_friendly_id: ["name__value"]
+    human_friendly_id: ["circuit_id__value"]
     order_by:
       - circuit_id__value
     display_labels:

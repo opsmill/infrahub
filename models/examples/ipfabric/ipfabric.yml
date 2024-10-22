@@ -439,7 +439,7 @@ nodes:
     description: "IP Address"
     label: "IP Address"
     icon: "mdi:ip"
-    human_friendly_id: ["name__value"]
+    human_friendly_id: ["address__value"]
     order_by:
       - "address__value"
     display_labels:
@@ -464,7 +464,7 @@ nodes:
     description: "IPv4 or IPv6 network (with mask)"
     icon: "mdi:ip-network"
     label: "Prefix"
-    human_friendly_id: ["name__value"]
+    human_friendly_id: ["prefix__value"]
     menu_placement: "InfraIPAddress"
     order_by:
       - vrf__name__value
