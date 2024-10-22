@@ -6,7 +6,7 @@ nodes:
     namespace: Infra
     description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
     label: "Rack"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     icon: clarity:rack-server-solid
     display_labels:
       - name__value

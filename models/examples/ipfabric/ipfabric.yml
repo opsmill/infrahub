@@ -48,7 +48,7 @@ generics:
     description: "Generic Choice"
     include_in_menu: false
     label: "Choice"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels:
       - name__value
     order_by:
@@ -80,7 +80,7 @@ nodes:
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels: [label__value]
     order_by: [name__value]
     icon: mdi:domain
@@ -109,7 +109,7 @@ nodes:
     namespace: Location
     label: Location
     description: 'A location represent a physical element: a building, a site, a city'
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels: [name__value]
     order_by: [name__value]
     icon: mdi:map-marker-radius-outline
@@ -141,7 +141,7 @@ nodes:
     label: "Platform"
     icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
     menu_placement: "InfraDevice"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - name__value
     display_labels:
@@ -176,7 +176,7 @@ nodes:
     label: "Device Type"
     icon: "mdi:poll"
     menu_placement: "InfraDevice"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels:
       - name__value
     order_by:
@@ -386,7 +386,7 @@ nodes:
     description: "A VRF is isolated layer three domain"
     label: "VRF"
     icon: "mdi:router"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     menu_placement: "InfraIPAddress"
     order_by:
       - name__value
@@ -439,7 +439,7 @@ nodes:
     description: "IP Address"
     label: "IP Address"
     icon: "mdi:ip"
-    default_filter: address__value
+    human_friendly_id: ["name__value"]
     order_by:
       - "address__value"
     display_labels:
@@ -464,7 +464,7 @@ nodes:
     description: "IPv4 or IPv6 network (with mask)"
     icon: "mdi:ip-network"
     label: "Prefix"
-    default_filter: prefix__value
+    human_friendly_id: ["name__value"]
     menu_placement: "InfraIPAddress"
     order_by:
       - vrf__name__value

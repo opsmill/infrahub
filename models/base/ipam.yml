@@ -29,7 +29,6 @@ nodes:
     description: "A VLAN is a logical grouping of devices in the same broadcast domain"
     label: "VLAN"
     icon: "mdi:lan-pending"   # mdi:lan
-    default_filter: name__value
     human_friendly_id: ["name__value", "vlan_id__value"]
     order_by:
       - name__value

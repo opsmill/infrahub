@@ -9,7 +9,6 @@ nodes:
     label: "Autonomous System"
     icon: "mdi:bank-circle-outline"
     menu_placement: InfraBGPSession
-    default_filter: name__value
     human_friendly_id: ["name__value", "asn__value"]
     order_by: ["asn__value"]
     display_labels:
@@ -37,7 +36,6 @@ nodes:
     label: "BGP Peer Group"
     icon: "mdi:view-grid-plus-outline"
     menu_placement: InfraBGPSession
-    default_filter: name__value
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
