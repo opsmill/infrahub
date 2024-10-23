@@ -52,7 +52,7 @@ test.describe("/profile", () => {
         await expect(
           page.getByRole("heading", { name: "Chloe O'Brian", exact: true })
         ).toBeVisible();
-        await expect(page.getByText("NameChloe O'Brian")).toBeVisible();
+        await expect(page.getByText("LabelChloe O'Brian")).toBeVisible();
         await expect(page.getByText("Roleread-write")).toBeVisible();
       });
     });
@@ -70,7 +70,7 @@ test.describe("/profile", () => {
 
       await test.step("display account details", async () => {
         await expect(page.getByRole("heading", { name: "Jack Bauer", exact: true })).toBeVisible();
-        await expect(page.getByText("NameJack Bauer")).toBeVisible();
+        await expect(page.getByText("LabelJack Bauer")).toBeVisible();
         await expect(page.getByText("Roleread-only")).toBeVisible();
       });
     });
