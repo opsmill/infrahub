@@ -119,6 +119,9 @@ class MainSettings(BaseSettings):
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
+    anonymous_access_role: str = Field(
+        default="Anonymous User", description="Name of the role defining which permissions anonymous users have"
+    )
     telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
     telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
     telemetry_interval: int = Field(
