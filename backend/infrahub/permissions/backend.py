@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
     from infrahub.core.account import GlobalPermission, ObjectPermission
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
@@ -12,7 +13,9 @@ if TYPE_CHECKING:
 
 class PermissionBackend(ABC):
     @abstractmethod
-    async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions: ...
+    async def load_permissions(
+        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch
+    ) -> AssignedPermissions: ...
 
     @abstractmethod
     def report_object_permission(
@@ -21,5 +24,9 @@ class PermissionBackend(ABC):
 
     @abstractmethod
     async def has_permission(
-        self, db: InfrahubDatabase, account_id: str, permission: GlobalPermission | ObjectPermission, branch: Branch
+        self,
+        db: InfrahubDatabase,
+        account_session: AccountSession,
+        permission: GlobalPermission | ObjectPermission,
+        branch: Branch,
     ) -> bool: ...

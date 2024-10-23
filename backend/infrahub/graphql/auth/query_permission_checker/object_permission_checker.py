@@ -72,7 +72,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             has_permission = False
             for permission_backend in registry.permission_backends:
                 has_permission = await permission_backend.has_permission(
-                    db=db, account_id=account_session.account_id, permission=permission, branch=branch
+                    db=db, account_session=account_session, permission=permission, branch=branch
                 )
             if not has_permission:
                 raise PermissionDeniedError(f"You do not have the following permission: {permission}")
@@ -121,7 +121,7 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         has_permission = False
         for permission_backend in registry.permission_backends:
             if has_permission := await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+                db=db, account_session=account_session, permission=self.permission_required, branch=branch
             ):
                 break
 
@@ -169,7 +169,7 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
 
         for permission_backend in registry.permission_backends:
             if not await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+                db=db, account_session=account_session, permission=self.permission_required, branch=branch
             ):
                 raise PermissionDeniedError("You do not have the permission to manage permissions")
 
@@ -214,7 +214,7 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
 
         for permission_backend in registry.permission_backends:
             if not await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+                db=db, account_session=account_session, permission=self.permission_required, branch=branch
             ):
                 raise PermissionDeniedError("You do not have the permission to manage repositories")
 

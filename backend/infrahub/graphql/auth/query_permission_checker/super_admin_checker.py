@@ -30,7 +30,7 @@ class SuperAdminPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     ) -> CheckerResolution:
         for permission_backend in registry.permission_backends:
             if await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+                db=db, account_session=account_session, permission=self.permission_required, branch=branch
             ):
                 return CheckerResolution.TERMINATE
 
