@@ -329,7 +329,7 @@ class DiffRelationshipIntermediate:
             )
         )
         to_time = database_path.property_to_time
-        if (
+        if (  # pylint: disable=chained-comparison
             to_time
             and diff_from_time <= to_time <= diff_to_time
             and database_path.property_from_time < diff_from_time
