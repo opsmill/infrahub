@@ -332,10 +332,9 @@ class DiffRelationshipIntermediate:
             )
         )
         to_time = database_path.property_to_time
-        if (  # pylint: disable=chained-comparison
+        if (
             to_time
-            and diff_from_time <= to_time <= diff_to_time
-            and database_path.property_from_time < diff_from_time
+            and database_path.property_from_time < diff_from_time <= to_time <= diff_to_time
             and database_path.property_status is RelationshipStatus.ACTIVE
         ):
             self.properties_by_db_id[db_id].add(
