@@ -19,7 +19,8 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can perform some action on some kind of objects."""
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        return account_session.authenticated
+        # This checker will always run including for anonymous users as permissions for them are infered from a role
+        return True
 
     async def check(
         self,
@@ -78,7 +79,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             if not has_permission:
                 raise PermissionDeniedError(f"You do not have the following permission: {permission}")
 
-        return CheckerResolution.NEXT_CHECKER
+        return CheckerResolution.TERMINATE
 
 
 class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
