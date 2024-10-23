@@ -1,3 +1,4 @@
+import Accordion from "@/components/display/accordion";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { ReactElement } from "react";
@@ -19,7 +20,12 @@ export default function UnauthorizedScreen({ className, message, icon, hideIcon 
           {icon || <Icon icon={"mdi:warning-circle-outline"} className="text-3xl" />}
         </div>
       )}
-      <div>{message ?? DEFAULT_MESSAGE}</div>
+      <Accordion
+        title={"You can't access this view"}
+        className="flex flex-col items-center w-full text-center"
+      >
+        <div>{message ?? DEFAULT_MESSAGE}</div>
+      </Accordion>
     </div>
   );
 }
