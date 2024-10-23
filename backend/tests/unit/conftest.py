@@ -55,7 +55,6 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.utils import format_label
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
