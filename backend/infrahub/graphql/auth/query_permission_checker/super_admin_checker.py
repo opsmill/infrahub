@@ -1,3 +1,4 @@
+from infrahub import config
 from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
@@ -18,7 +19,7 @@ class SuperAdminPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        return account_session.authenticated
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,

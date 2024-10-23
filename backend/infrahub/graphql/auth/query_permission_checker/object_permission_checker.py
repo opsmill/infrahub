@@ -1,3 +1,4 @@
+from infrahub import config
 from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission, ObjectPermission
@@ -19,8 +20,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can perform some action on some kind of objects."""
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        # This checker will always run including for anonymous users as permissions for them are infered from a role
-        return True
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
@@ -92,7 +92,7 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        return account_session.authenticated
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
@@ -143,7 +143,7 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        return account_session.authenticated
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
@@ -188,7 +188,7 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        return account_session.authenticated
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
