@@ -665,19 +665,19 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return self.property_node.element_id
 
     @property
-    def property_changed_at(self) -> Timestamp:
+    def property_from_time(self) -> Timestamp:
         return Timestamp(self.path_to_property.get("from"))
+
+    @property
+    def property_to_time(self) -> Timestamp | None:
+        raw_to = self.path_to_property.get("to")
+        if not raw_to:
+            return None
+        return Timestamp(str(raw_to))
 
     @property
     def property_status(self) -> RelationshipStatus:
         return RelationshipStatus(self.path_to_property.get("status"))
-
-    @property
-    def property_end_time(self) -> Optional[Timestamp]:
-        end_time_str = self.path_to_property.get("to")
-        if not end_time_str:
-            return None
-        return Timestamp(end_time_str)
 
     @property
     def property_value(self) -> Any:

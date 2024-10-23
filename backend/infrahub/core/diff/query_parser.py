@@ -307,7 +307,7 @@ class DiffRelationshipIntermediate:
     properties_by_db_id: dict[str, set[DiffRelationshipPropertyIntermediate]] = field(default_factory=dict)
     _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
 
-    def add_path(self, database_path: DatabasePath) -> None:
+    def add_path(self, database_path: DatabasePath, diff_from_time: Timestamp, diff_to_time: Timestamp) -> None:
         if database_path.property_type in [
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.HAS_OWNER,
@@ -323,11 +323,27 @@ class DiffRelationshipIntermediate:
             DiffRelationshipPropertyIntermediate(
                 db_id=db_id,
                 property_type=database_path.property_type,
-                changed_at=database_path.property_changed_at,
+                changed_at=database_path.property_from_time,
                 status=database_path.property_status,
                 value=value,
             )
         )
+        to_time = database_path.property_to_time
+        if (
+            to_time
+            and diff_from_time <= to_time <= diff_to_time
+            and database_path.property_from_time < diff_from_time
+            and database_path.property_status is RelationshipStatus.ACTIVE
+        ):
+            self.properties_by_db_id[db_id].add(
+                DiffRelationshipPropertyIntermediate(
+                    db_id=db_id,
+                    property_type=database_path.property_type,
+                    changed_at=to_time.add_delta(microseconds=-1),
+                    status=RelationshipStatus.DELETED,
+                    value=value,
+                )
+            )
 
     def _index_relationships(self) -> None:
         self._single_relationship_list = [
@@ -513,7 +529,9 @@ class DiffQueryParser:
         if not relationship_schema:
             return
         diff_relationship = self._get_diff_relationship(diff_node=diff_node, relationship_schema=relationship_schema)
-        diff_relationship.add_path(database_path=database_path)
+        diff_relationship.add_path(
+            database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
+        )
 
     def _get_diff_attribute(
         self, database_path: DatabasePath, diff_node: DiffNodeIntermediate
@@ -540,7 +558,7 @@ class DiffQueryParser:
             value = database_path.peer_id
         diff_property.add_value(
             diff_value=DiffValueIntermediate(
-                changed_at=database_path.property_changed_at,
+                changed_at=database_path.property_from_time,
                 status=database_path.property_status,
                 value=value,
             )
