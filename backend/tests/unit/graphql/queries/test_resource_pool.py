@@ -633,6 +633,7 @@ async def test_number_pool_utilization(db: InfrahubDatabase, default_branch: Bra
     assert first.data
     assert second.data
     assert third.data
+    second_id = second.data["TestingTicketCreate"]["object"]["id"]
 
     utilization = await graphql(
         schema=gql_params.schema,
@@ -669,6 +670,32 @@ async def test_number_pool_utilization(db: InfrahubDatabase, default_branch: Bra
     assert allocation.data["InfrahubResourcePoolAllocated"]["count"] == 3
     numbers = [entry["node"]["display_label"] for entry in allocation.data["InfrahubResourcePoolAllocated"]["edges"]]
     assert sorted(numbers) == ["1", "2", "3"]
+
+    remove_two = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_TICKET,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": second_id},
+    )
+    assert not remove_two.errors
+
+    allocation = await graphql(
+        schema=gql_params.schema,
+        source=POOL_ALLOCATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "pool_id": pool_id,
+            "resource_id": pool_id,
+        },
+    )
+
+    assert not allocation.errors
+    assert allocation.data
+    assert allocation.data["InfrahubResourcePoolAllocated"]["count"] == 2
+    numbers = [entry["node"]["display_label"] for entry in allocation.data["InfrahubResourcePoolAllocated"]["edges"]]
+    assert sorted(numbers) == ["1", "3"]
 
 
 CREATE_NUMBER_POOL = """
@@ -716,6 +743,14 @@ mutation CreateTestingTicket(
       title { value }
       ticket_id { value }
     }
+  }
+}
+"""
+
+DELETE_TICKET = """
+mutation DeleteTicket($id: String!) {
+  TestingTicketDelete(data: {id: $id}) {
+    ok
   }
 }
 """
