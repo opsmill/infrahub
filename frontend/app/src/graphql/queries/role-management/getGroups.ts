@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const GET_ROLE_MANAGEMENT_GROUPS = gql`
-  query GET_ROLE_MANAGEMENT_GROUPS {
-    CoreAccountGroup {
+  query GET_ROLE_MANAGEMENT_GROUPS($search: String) {
+    CoreAccountGroup(any__value: $search, partial_match: true) {
       count
       edges {
         node {
