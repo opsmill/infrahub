@@ -69,6 +69,12 @@ GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
     module="infrahub.git.tasks",
     function="create_branch",
 )
+BRANCH_REBASE = WorkflowDefinition(
+    name="branch_rebase",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.branch.tasks",
+    function="branch_rebase",
+)
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
@@ -82,4 +88,5 @@ workflows = [
     IPAM_RECONCILIATION,
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORIES_CREATE_BRANCH,
+    BRANCH_REBASE,
 ]
