@@ -52,7 +52,7 @@ TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
     name="artifact-definition-generate",
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
-    function="generate",
+    function="generate_artifact_definition",
 )
 
 IPAM_RECONCILIATION = WorkflowDefinition(
@@ -60,6 +60,13 @@ IPAM_RECONCILIATION = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.ipam.tasks",
     function="ipam_reconciliation",
+)
+
+REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
+    name="artifact-generate",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="generate_artifact",
 )
 
 GIT_REPOSITORIES_SYNC = WorkflowDefinition(
@@ -90,4 +97,5 @@ workflows = [
     IPAM_RECONCILIATION,
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORIES_CREATE_BRANCH,
+    REQUEST_ARTIFACT_GENERATE,
 ]

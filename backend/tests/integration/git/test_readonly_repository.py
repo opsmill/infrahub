@@ -10,7 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RequestArtifactDefinitionGenerate
-from infrahub.services import InfrahubServices
+from infrahub.services import services
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -58,6 +58,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         initial_dataset: None,
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
+        set_service_client,
     ) -> None:
         branch = await client.branch.create(branch_name="ro_repository", sync_with_git=False)
 
@@ -83,12 +84,16 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         assert repository.commit.value
         assert check_definition.file_path.value == "checks/car_overview.py"
 
-    async def test_step02_validate_generated_artifacts(self, db: InfrahubDatabase, client: InfrahubClient):
+    async def test_step02_validate_generated_artifacts(
+        self, db: InfrahubDatabase, client: InfrahubClient, set_service_client
+    ):
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT, branch="ro_repository")
         assert artifacts
         assert artifacts[0].name.value == "Ownership report"
 
-    async def test_step03_merge_branch(self, db: InfrahubDatabase, client: InfrahubClient, helper: TestHelper):
+    async def test_step03_merge_branch(
+        self, db: InfrahubDatabase, client: InfrahubClient, helper: TestHelper, set_service_client
+    ):
         await client.branch.merge(branch_name="ro_repository")
 
         check_definition: CoreCheckDefinition = await NodeManager.get_one_by_id_or_default_filter(
@@ -96,13 +101,10 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         )
         assert check_definition.file_path.value == "checks/car_overview.py"
 
-        bus_simulator = helper.get_message_bus_simulator()
-        service = InfrahubServices(client=client, message_bus=bus_simulator)
-        bus_simulator.service = service
-
         artifact_definitions = await client.all(kind=InfrahubKind.ARTIFACTDEFINITION)
+
         for artifact_definition in artifact_definitions:
-            await service.send(
+            await services.service.send(
                 message=RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch="main")
             )
 

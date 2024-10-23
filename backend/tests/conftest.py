@@ -379,6 +379,7 @@ def reload_settings_before_each_module(tmpdir_factory):
 
     # Other settings
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
+    config.SETTINGS.workflow.driver = config.WorkflowDriver.LOCAL
 
     storage_dir = tmpdir_factory.mktemp("storage")
     config.SETTINGS.storage.local.path_ = str(storage_dir)

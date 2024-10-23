@@ -1,5 +1,4 @@
 from . import (
-    artifact,
     artifact_definition,
     diff,
     generator,
@@ -10,7 +9,6 @@ from . import (
 )
 
 __all__ = [
-    "artifact",
     "artifact_definition",
     "diff",
     "generator",
