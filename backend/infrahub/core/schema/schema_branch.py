@@ -471,6 +471,7 @@ class SchemaBranch:
         self.validate_required_relationships()
 
     def process_post_validation(self) -> None:
+        self.cleanup_inherited_elements()
         self.add_groups()
         self.add_hierarchy()
         self.generate_weight()
@@ -1272,6 +1273,49 @@ class SchemaBranch:
                     item.order_weight = current_weight
 
             self.set(name=name, schema=node)
+
+    def cleanup_inherited_elements(self) -> None:
+        for name in self.node_names:
+            node = self.get_node(name=name, duplicate=False)
+
+            attributes_to_delete = []
+            relationships_to_delete = []
+
+            inherited_attribute_names = set(node.attribute_names) - set(node.local_attribute_names)
+            inherited_relationship_names = set(node.relationship_names) - set(node.local_relationship_names)
+            for item_name in inherited_attribute_names:
+                found = False
+                for generic_name in node.inherit_from:
+                    generic = self.get_generic(name=generic_name, duplicate=False)
+                    if item_name in generic.attribute_names:
+                        attr = generic.get_attribute(name=item_name)
+                        if attr.state != HashableModelState.ABSENT:
+                            found = True
+                if not found:
+                    attributes_to_delete.append(item_name)
+
+            for item_name in inherited_relationship_names:
+                found = False
+                for generic_name in node.inherit_from:
+                    generic = self.get_generic(name=generic_name, duplicate=False)
+                    if item_name in generic.relationship_names:
+                        rel = generic.get_relationship(name=item_name)
+                        if rel.state != HashableModelState.ABSENT:
+                            found = True
+                if not found:
+                    relationships_to_delete.append(item_name)
+
+            # If there is either an attribute or a relationship to delete
+            # We clone the node and we set the attribute / relationship as ABSENT
+            if attributes_to_delete or relationships_to_delete:
+                node_copy = self.get_node(name=name, duplicate=True)
+                for item_name in attributes_to_delete:
+                    attr = node_copy.get_attribute(name=item_name)
+                    attr.state = HashableModelState.ABSENT
+                for item_name in relationships_to_delete:
+                    rel = node_copy.get_relationship(name=item_name)
+                    rel.state = HashableModelState.ABSENT
+                self.set(name=name, schema=node_copy)
 
     def add_groups(self) -> None:
         if not self.has(name=InfrahubKind.GENERICGROUP):
