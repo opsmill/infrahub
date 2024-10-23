@@ -212,7 +212,10 @@ class DiffSingleRelationshipIntermediate:
             raise DiffNoPeerIdError(f"Cannot identify peer ID for relationship property {(properties[0]).db_id}")
 
         ordered_properties_by_type: dict[DatabaseEdgeType, list[DiffRelationshipPropertyIntermediate]] = {}
-        chronological_properties = sorted(properties, key=lambda p: p.changed_at)
+        # tiebreaker for simultaneous updates is to prefer the DELETED relationship
+        chronological_properties = sorted(
+            properties, key=lambda p: (p.changed_at, p.status is RelationshipStatus.ACTIVE)
+        )
         last_changed_at = chronological_properties[-1].changed_at
         for chronological_property in chronological_properties:
             property_key = DatabaseEdgeType(chronological_property.property_type)
@@ -339,7 +342,7 @@ class DiffRelationshipIntermediate:
                 DiffRelationshipPropertyIntermediate(
                     db_id=db_id,
                     property_type=database_path.property_type,
-                    changed_at=to_time.add_delta(microseconds=-1),
+                    changed_at=to_time,
                     status=RelationshipStatus.DELETED,
                     value=value,
                 )
