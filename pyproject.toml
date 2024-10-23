@@ -488,7 +488,6 @@ ignore = [
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",     # Unnecessary `list` call within `sorted()`
     "C420",     # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
-    "E721",     # Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
     "FURB113",  # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB116",  # Replace `bin` call with f-string
     "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
