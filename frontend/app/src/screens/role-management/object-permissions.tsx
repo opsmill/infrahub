@@ -204,7 +204,6 @@ function Permissions() {
             kind={OBJECT_PERMISSION_OBJECT}
             currentObject={rowToUpdate}
             onCancel={() => {
-              console.log("ON CANCEL");
               setRowToUpdate(null);
               setShowDrawer(false);
             }}
