@@ -247,7 +247,7 @@ async def load_schema(
     for permission_backend in registry.permission_backends:
         if not await permission_backend.has_permission(
             db=db,
-            account_id=account_session.account_id,
+            account_session=account_session,
             permission=GlobalPermission(
                 id="",
                 name="",

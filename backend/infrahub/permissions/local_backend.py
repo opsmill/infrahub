@@ -9,6 +9,7 @@ from infrahub.permissions.constants import PermissionDecisionFlag
 from .backend import PermissionBackend
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.permissions.constants import AssignedPermissions
@@ -82,13 +83,19 @@ class LocalPermissionBackend(PermissionBackend):
 
         return grant_permission
 
-    async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions:
-        return await fetch_permissions(db=db, account_id=account_id, branch=branch)
+    async def load_permissions(
+        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch
+    ) -> AssignedPermissions:
+        return await fetch_permissions(db=db, account_id=account_session.account_id, branch=branch)
 
     async def has_permission(
-        self, db: InfrahubDatabase, account_id: str, permission: GlobalPermission | ObjectPermission, branch: Branch
+        self,
+        db: InfrahubDatabase,
+        account_session: AccountSession,
+        permission: GlobalPermission | ObjectPermission,
+        branch: Branch,
     ) -> bool:
-        granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
+        granted_permissions = await self.load_permissions(db=db, account_session=account_session, branch=branch)
         is_super_admin = self.resolve_global_permission(
             permissions=granted_permissions["global_permissions"],
             permission_to_check=GlobalPermission(

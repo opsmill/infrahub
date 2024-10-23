@@ -33,7 +33,7 @@ class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             can_merge_branch = False
             for permission_backend in registry.permission_backends:
                 can_merge_branch = await permission_backend.has_permission(
-                    db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+                    db=db, account_session=account_session, permission=self.permission_required, branch=branch
                 )
                 if can_merge_branch:
                     break

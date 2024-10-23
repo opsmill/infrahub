@@ -42,7 +42,7 @@ async def report_schema_permissions(
     db: InfrahubDatabase, schemas: list[MainSchemaTypes], account_session: AccountSession, branch: Branch
 ) -> list[KindPermissions]:
     perm_backend = LocalPermissionBackend()
-    permissions = await perm_backend.load_permissions(db=db, account_id=account_session.account_id, branch=branch)
+    permissions = await perm_backend.load_permissions(db=db, account_session=account_session, branch=branch)
 
     is_super_admin = perm_backend.resolve_global_permission(
         permissions=permissions["global_permissions"],
