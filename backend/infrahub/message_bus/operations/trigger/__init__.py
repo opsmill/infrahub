@@ -1,3 +1,3 @@
-from . import artifact_definition, generator_definition, proposed_change, webhook
+from . import generator_definition, proposed_change, webhook
 
-__all__ = ["artifact_definition", "generator_definition", "proposed_change", "webhook"]
+__all__ = ["generator_definition", "proposed_change", "webhook"]

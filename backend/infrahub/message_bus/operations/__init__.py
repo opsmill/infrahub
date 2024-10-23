@@ -68,7 +68,6 @@ COMMAND_MAP = {
     "send.telemetry.push": send.telemetry.push,
     "schema.migration.path": schema.migration.path,
     "schema.validator.path": schema.validator.path,
-    "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
     "trigger.generator_definition.run": trigger.generator_definition.run,
     "trigger.proposed_change.cancel": trigger.proposed_change.cancel,
     "trigger.webhook.actions": trigger.webhook.actions,

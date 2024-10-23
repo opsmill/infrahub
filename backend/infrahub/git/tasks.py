@@ -8,6 +8,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.services import services
 
+from ..message_bus import messages
 from .repository import InfrahubRepository
 
 
@@ -108,3 +109,16 @@ async def git_branch_create(
     repo = await InfrahubRepository.init(id=repository_id, name=repository_name, client=client)
     async with lock.registry.get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id)
+
+
+@flow(name="artifact-definition-generate")
+async def generate(branch: str) -> None:
+    service = services.service
+    artifact_definitions = await service.client.all(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch, include=["id"])
+
+    events = [
+        messages.RequestArtifactDefinitionGenerate(branch=branch, artifact_definition=artifact_definition.id)
+        for artifact_definition in artifact_definitions
+    ]
+    for event in events:
+        await service.send(message=event)
