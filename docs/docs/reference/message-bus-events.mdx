@@ -565,40 +565,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
-### Request Artifact
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.artifact.generate
-<!-- vale on -->
-
-**Description**: Runs to generate an artifact
-
-**Priority**: 2
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_name** | Name of the artifact | string | None |
-| **artifact_definition** | The the ID of the artifact definition | string | None |
-| **commit** | The commit to target | string | None |
-| **content_type** | Content type of the artifact | string | None |
-| **transform_type** | The type of transform associated with this artifact | string | None |
-| **transform_location** | The transforms location within the repository | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this artifact | string | None |
-| **target_name** | Name of the artifact target | string | None |
-| **artifact_id** | The id of the artifact if it previously existed | N/A | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **timeout** | Timeout for requests used to generate this artifact | integer | None |
-| **variables** | Input variables when generating the artifact | object | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Request Artifact Definition
 <!-- vale on -->
 
@@ -1656,41 +1622,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 <!-- vale on -->
 
-
-<!-- vale off -->
-### Request Artifact
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.artifact.generate
-<!-- vale on -->
-
-**Description**: Runs to generate an artifact
-
-**Priority**: 2
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_name** | Name of the artifact | string | None |
-| **artifact_definition** | The the ID of the artifact definition | string | None |
-| **commit** | The commit to target | string | None |
-| **content_type** | Content type of the artifact | string | None |
-| **transform_type** | The type of transform associated with this artifact | string | None |
-| **transform_location** | The transforms location within the repository | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this artifact | string | None |
-| **target_name** | Name of the artifact target | string | None |
-| **artifact_id** | The id of the artifact if it previously existed | N/A | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **timeout** | Timeout for requests used to generate this artifact | integer | None |
-| **variables** | Input variables when generating the artifact | object | None |
-<!-- vale on -->
 
 <!-- vale off -->
 ### Request Artifact Definition

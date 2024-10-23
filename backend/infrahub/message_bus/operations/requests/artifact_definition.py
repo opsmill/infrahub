@@ -5,10 +5,12 @@ from prefect import flow
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
+from infrahub.git.models import RequestArtifactGenerate
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_GENERATE
 
 log = get_logger()
 
@@ -183,37 +185,35 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
     elif transform.typename == InfrahubKind.TRANSFORMPYTHON:
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
 
-    events = []
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
         if message.limit and artifact_id not in message.limit:
             continue
 
-        events.append(
-            messages.RequestArtifactGenerate(
-                artifact_name=artifact_definition.name.value,
-                artifact_id=artifact_id,
-                artifact_definition=message.artifact_definition,
-                commit=repository.commit.value,
-                content_type=artifact_definition.content_type.value,
-                transform_type=transform.typename,
-                transform_location=transform_location,
-                repository_id=repository.id,
-                repository_name=repository.name.value,
-                repository_kind=repository.get_kind(),
-                branch_name=message.branch,
-                query=query.name.value,
-                variables=member.extract(params=artifact_definition.parameters.value),
-                target_id=member.id,
-                target_name=member.display_label,
-                timeout=transform.timeout.value,
-            )
+        model = RequestArtifactGenerate(
+            artifact_name=artifact_definition.name.value,
+            artifact_id=artifact_id,
+            artifact_definition=message.artifact_definition,
+            commit=repository.commit.value,
+            content_type=artifact_definition.content_type.value,
+            transform_type=transform.typename,
+            transform_location=transform_location,
+            repository_id=repository.id,
+            repository_name=repository.name.value,
+            repository_kind=repository.get_kind(),
+            branch_name=message.branch,
+            query=query.name.value,
+            variables=member.extract(params=artifact_definition.parameters.value),
+            target_id=member.id,
+            target_name=member.display_label,
+            timeout=transform.timeout.value,
         )
 
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
+        await service.workflow.submit_workflow(
+            workflow=REQUEST_ARTIFACT_GENERATE,
+            parameters={"model": model},
+        )
 
 
 def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_artifacts: list[str]) -> bool:

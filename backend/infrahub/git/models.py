@@ -1,11 +1,9 @@
 from typing import Optional
 
-from pydantic import Field
-
-from infrahub.message_bus import InfrahubMessage
+from pydantic import BaseModel, Field
 
 
-class RequestArtifactGenerate(InfrahubMessage):
+class RequestArtifactGenerate(BaseModel):
     """Runs to generate an artifact"""
 
     artifact_name: str = Field(..., description="Name of the artifact")

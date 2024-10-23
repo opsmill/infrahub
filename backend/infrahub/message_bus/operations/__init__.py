@@ -50,7 +50,6 @@ COMMAND_MAP = {
     "request.generator_definition.check": requests.generator_definition.check,
     "request.generator_definition.run": requests.generator_definition.run,
     "request.graphql_query_group.update": requests.graphql_query_group.update,
-    "request.artifact.generate": requests.artifact.generate,
     "request.artifact_definition.check": requests.artifact_definition.check,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
     "request.proposed_change.cancel": requests.proposed_change.cancel,
