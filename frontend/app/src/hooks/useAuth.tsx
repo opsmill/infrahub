@@ -2,6 +2,7 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import { ADMIN_ROLES, REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 import { components } from "@/infraops";
 import { configState } from "@/state/atoms/config.atom";
 import { parseJwt } from "@/utils/common";
@@ -133,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = () => {
     removeTokensInLocalStorage();
     setAccessToken(null);
+    graphqlClient.refetchQueries({ include: "active" });
   };
 
   const data = parseJwt(accessToken);
