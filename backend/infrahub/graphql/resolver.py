@@ -1,27 +1,32 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, TypeVar
 
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk.utils import extract_fields, extract_fields_first_node
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
+from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import NodeNotFoundError
 
 from .parser import extract_selection
 from .permissions import get_permissions
 from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
-if TYPE_CHECKING:
-    from graphql import GraphQLResolveInfo
+SchemaType = TypeVar("SchemaType")
 
-    from infrahub.core.schema import MainSchemaTypes, NodeSchema
+if TYPE_CHECKING:
+    from graphql import GraphQLObjectType, GraphQLOutputType, GraphQLResolveInfo
+
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.graphql.initialization import GraphqlContext
+    from infrahub.graphql.types import InfrahubObject
+    from infrahub.graphql.types.node import InfrahubObjectOptions
 
 
 async def account_resolver(
-    root,  # pylint: disable=unused-argument
+    root: Any,  # pylint: disable=unused-argument
     info: GraphQLResolveInfo,
 ) -> dict:
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -30,7 +35,7 @@ async def account_resolver(
     async with context.db.start_session() as db:
         results = await NodeManager.query(
             schema=InfrahubKind.GENERICACCOUNT,
-            filters={"ids": [context.account_session.account_id]},
+            filters={"ids": [context.active_account_session.account_id]},
             fields=fields,
             db=db,
         )
@@ -38,10 +43,12 @@ async def account_resolver(
             account_profile = await results[0].to_graphql(db=db, fields=fields)
             return account_profile
 
-        raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
+        raise NodeNotFoundError(
+            node_type=InfrahubKind.GENERICACCOUNT, identifier=context.active_account_session.account_id
+        )
 
 
-async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
+async def default_resolver(*args: Any, **kwargs: dict[str, Any]) -> dict | list[dict] | None:
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
     When it returns 4, they are organized as follow
@@ -135,7 +142,7 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    schema: MainSchemaTypes = info.return_type.graphene_type._meta.schema
+    schema = _return_object_type_schema(object_type=info.return_type)
     fields = await extract_selection(info.field_nodes[0], schema=schema)
 
     context: GraphqlContext = info.context
@@ -205,7 +212,9 @@ async def default_paginated_list_resolver(
         return response
 
 
-async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+async def single_relationship_resolver(
+    parent: dict, info: GraphQLResolveInfo, **kwargs: dict[str, Any]
+) -> dict[str, Any]:
     """Resolver for relationships of cardinality=one for Edged responses
 
     This resolver is used for paginated responses and as such we redefined the requested
@@ -213,12 +222,12 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
     """
     # Extract the InfraHub schema by inspecting the GQL Schema
 
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+    node_schema = _return_requested_object_type_schema(object_type=info.parent_type, schema_type=NodeSchema)
 
     context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = await extract_fields_first_node(info)
     node_fields = fields.get("node", {})
     property_fields = fields.get("properties", {})
     for key, value in property_fields.items():
@@ -264,7 +273,12 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
 
 async def many_relationship_resolver(
-    parent: dict, info: GraphQLResolveInfo, include_descendants: Optional[bool] = False, **kwargs
+    parent: dict,
+    info: GraphQLResolveInfo,
+    include_descendants: Optional[bool] = False,
+    limit: int | None = None,
+    offset: int | None = None,
+    **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
     """Resolver for relationships of cardinality=many for Edged responses
 
@@ -272,12 +286,12 @@ async def many_relationship_resolver(
     fields by only reusing information below the 'node' key.
     """
     # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+    node_schema = _return_requested_object_type_schema(object_type=info.parent_type, schema_type=NodeSchema)
 
     context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = await extract_fields_first_node(info)
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
     property_fields = edges.get("properties", {})
@@ -287,10 +301,6 @@ async def many_relationship_resolver(
 
     # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
-
-    # Extract only the filters from the kwargs and prepend the name of the field to the filters
-    offset = kwargs.pop("offset", None)
-    limit = kwargs.pop("limit", None)
 
     filters = {
         f"{info.field_name}__{key}": value
@@ -357,7 +367,7 @@ async def many_relationship_resolver(
 
         entries = []
         for node in node_graph:
-            entry = {"node": {}, "properties": {}}
+            entry: dict[str, dict] = {"node": {}, "properties": {}}
             for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
                 value = node.pop(key, None)
                 if value:
@@ -369,39 +379,61 @@ async def many_relationship_resolver(
         return response
 
 
-async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+async def ancestors_resolver(
+    parent: dict,
+    info: GraphQLResolveInfo,
+    limit: int | None = None,
+    offset: int | None = None,
+    **kwargs: dict[str, Any],
+) -> dict[str, Any]:
     return await hierarchy_resolver(
-        direction=RelationshipHierarchyDirection.ANCESTORS, parent=parent, info=info, **kwargs
+        direction=RelationshipHierarchyDirection.ANCESTORS,
+        parent=parent,
+        info=info,
+        limit=limit,
+        offset=offset,
+        **kwargs,
     )
 
 
-async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+async def descendants_resolver(
+    parent: dict,
+    info: GraphQLResolveInfo,
+    limit: int | None = None,
+    offset: int | None = None,
+    **kwargs: dict[str, Any],
+) -> dict[str, Any]:
     return await hierarchy_resolver(
-        direction=RelationshipHierarchyDirection.DESCENDANTS, parent=parent, info=info, **kwargs
+        direction=RelationshipHierarchyDirection.DESCENDANTS,
+        parent=parent,
+        info=info,
+        limit=limit,
+        offset=offset,
+        **kwargs,
     )
 
 
 async def hierarchy_resolver(
-    direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
+    direction: RelationshipHierarchyDirection,
+    parent: dict,
+    info: GraphQLResolveInfo,
+    limit: int | None = None,
+    offset: int | None = None,
+    **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
     """Resolver for ancestors and dependants for Hierarchical nodes
 
     This resolver is used for paginated responses and as such we redefined the requested
     fields by only reusing information below the 'node' key.
     """
-    # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+    node_schema = _return_requested_object_type_schema(object_type=info.parent_type, schema_type=NodeSchema)
 
     context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = await extract_fields_first_node(info)
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
-
-    # Extract only the filters from the kwargs and prepend the name of the field to the filters
-    offset = kwargs.pop("offset", None)
-    limit = kwargs.pop("limit", None)
 
     filters = {
         f"{info.field_name}__{key}": value
@@ -445,9 +477,25 @@ async def hierarchy_resolver(
 
         entries = []
         for node in node_graph:
-            entry = {"node": {}, "properties": {}}
+            entry: dict[str, dict] = {"node": {}, "properties": {}}
             entry["node"] = node
             entries.append(entry)
         response["edges"] = entries
 
         return response
+
+
+def _return_object_type_schema(object_type: GraphQLObjectType | GraphQLOutputType) -> MainSchemaTypes:
+    infrahub_object: InfrahubObject = getattr(object_type, "graphene_type")
+    object_options: InfrahubObjectOptions = getattr(infrahub_object, "_meta")
+    return object_options.schema
+
+
+def _return_requested_object_type_schema(
+    object_type: GraphQLObjectType | GraphQLOutputType, schema_type: type[SchemaType]
+) -> SchemaType:
+    schema = _return_object_type_schema(object_type=object_type)
+    if isinstance(schema, schema_type):
+        return schema
+
+    raise TypeError("The object doesn't match the requested schema")
