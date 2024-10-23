@@ -78,9 +78,5 @@ export function RoleManagementNavigation() {
     },
   ];
 
-  return (
-    <div>
-      <Tabs tabs={tabs} className="pr-2" />
-    </div>
-  );
+  return <Tabs tabs={tabs} className="pr-2" />;
 }
