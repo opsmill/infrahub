@@ -24,6 +24,7 @@ def get_anonymous_access_setting() -> bool:
 def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
     return GraphQLQueryPermissionChecker(
         [
+            AnonymousGraphQLPermissionChecker(get_anonymous_access_setting),
             # This checker never raises, it either terminates the checker chains (user is super admin) or go to the next one
             SuperAdminPermissionChecker(),
             DefaultBranchPermissionChecker(),
@@ -33,7 +34,6 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
             ObjectPermissionChecker(),
             ReadWriteGraphQLPermissionChecker(),  # Deprecated, will be replace by either a global permission or object permissions
             ReadOnlyGraphQLPermissionChecker(),  # Deprecated, will be replace by either a global permission or object permissions
-            AnonymousGraphQLPermissionChecker(get_anonymous_access_setting),
         ]
     )
 
