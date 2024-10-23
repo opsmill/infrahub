@@ -2541,10 +2541,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     permissions: list[Node] = []
     global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await global_permission.new(
-        db=db,
-        name=format_label(GlobalPermissions.SUPER_ADMIN.value),
-        action=GlobalPermissions.SUPER_ADMIN.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
+        db=db, action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
     )
     await global_permission.save(db=db)
     permissions.append(global_permission)

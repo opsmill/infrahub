@@ -110,8 +110,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     db=context.db,
                     account_id=context.active_account_session.account_id,
                     permission=GlobalPermission(
-                        id="",
-                        name="",
                         action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
                         decision=PermissionDecision.ALLOW_ALL.value,
                     ),

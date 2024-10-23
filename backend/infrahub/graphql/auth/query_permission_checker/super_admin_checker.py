@@ -14,7 +14,7 @@ class SuperAdminPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker allows a user to do anything (if the checker runs first)."""
 
     permission_required = GlobalPermission(
-        id="", name="", action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+        action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:

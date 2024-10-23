@@ -70,6 +70,7 @@ AccountToken = Field(
 
 class AccountGlobalPermissionNode(ObjectType):
     id = Field(String, required=True)
+    description = Field(String, required=False)
     name = Field(String, required=True)
     action = Field(String, required=True)
     decision = Field(String, required=True)
@@ -78,7 +79,7 @@ class AccountGlobalPermissionNode(ObjectType):
 
 class AccountObjectPermissionNode(ObjectType):
     id = Field(String, required=True)
-    branch = Field(String, required=True)
+    description = Field(String, required=False)
     namespace = Field(String, required=True)
     name = Field(String, required=True)
     action = Field(String, required=True)
@@ -135,7 +136,7 @@ async def resolve_account_permissions(
             {
                 "node": {
                     "id": obj.id,
-                    "name": obj.name,
+                    "description": obj.description,
                     "action": obj.action,
                     "decision": obj.decision,
                     "identifier": str(obj),
@@ -150,6 +151,7 @@ async def resolve_account_permissions(
             {
                 "node": {
                     "id": obj.id,
+                    "description": obj.description,
                     "namespace": obj.namespace,
                     "name": obj.name,
                     "action": obj.action,

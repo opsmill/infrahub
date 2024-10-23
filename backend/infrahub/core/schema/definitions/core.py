@@ -935,6 +935,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "generate_profile": False,
             "attributes": [
+                {"name": "description", "kind": "Text", "optional": True},
                 {
                     "name": "decision",
                     "kind": "Number",
@@ -2169,13 +2170,12 @@ core_models: dict[str, Any] = {
             "description": "A permission that grants global rights to perform actions in Infrahub",
             "label": "Global permission",
             "include_in_menu": False,
-            "order_by": ["name__value", "action__value"],
-            "display_labels": ["name__value"],
+            "order_by": ["action__value"],
+            "display_labels": ["action__value"],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
                 {
                     "name": "action",
                     "kind": "Dropdown",
