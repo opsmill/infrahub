@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 export const GET_ROLE_MANAGEMENT_ROLES = gql`
   query GET_ROLE_MANAGEMENT_ROLES {
     CoreAccountRole {
+      count
       edges {
         node {
           id

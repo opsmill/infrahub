@@ -24,6 +24,8 @@ import DropdownField from "@/components/form/fields/dropdown.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
+import { useSchema } from "@/hooks/useSchema";
+import { objectDecisionOptions } from "./constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -37,6 +39,7 @@ export const ObjectPermissionForm = ({
   onCancel,
   onUpdateComplete,
 }: NumberPoolFormProps) => {
+  const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
@@ -76,25 +79,6 @@ export const ObjectPermissionForm = ({
     {
       value: "delete",
       label: "Delete",
-    },
-  ];
-
-  const decisionOptions = [
-    {
-      value: 1,
-      label: "Deny",
-    },
-    {
-      value: 2,
-      label: "Allow Default",
-    },
-    {
-      value: 4,
-      label: "Allow Other",
-    },
-    {
-      value: 6,
-      label: "Allow All",
     },
   ];
 
@@ -159,7 +143,10 @@ export const ObjectPermissionForm = ({
         <DropdownField
           name="decision"
           label="Decision"
-          items={decisionOptions}
+          description={
+            schema?.attributes?.find((attribute) => attribute.name === "decision")?.description
+          }
+          items={objectDecisionOptions}
           rules={{ required: true, validate: { required: isRequired } }}
         />
 

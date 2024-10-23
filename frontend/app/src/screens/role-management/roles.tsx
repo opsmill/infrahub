@@ -144,6 +144,7 @@ function Roles() {
           }
           open={showDrawer}
           setOpen={(value) => setShowDrawer(value)}
+          onClose={() => setRowToUpdate(null)}
         >
           <ObjectForm
             kind={ACCOUNT_ROLE_OBJECT}

@@ -12,13 +12,13 @@ import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/graphql/queries/role-m
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
+import { globalDecisionOptions } from "./constants";
 
 function GlobalPermissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);
@@ -38,20 +38,20 @@ function GlobalPermissions() {
 
   const columns = [
     {
-      name: "name",
-      label: "Name",
+      name: "identifier",
+      label: "Identifier",
     },
     {
       name: "action",
       label: "Action",
     },
     {
-      name: "roles",
-      label: "Roles",
+      name: "decision",
+      label: "Decision",
     },
     {
-      name: "identifier",
-      label: "Identifier",
+      name: "roles",
+      label: "Roles",
     },
   ];
 
@@ -62,20 +62,13 @@ function GlobalPermissions() {
         values: {
           id: { value: edge?.node?.id },
           display_label: { value: edge?.node?.display_label },
-          name: {
-            display: (
-              <div className="flex items-center gap-2">
-                <Pill className="flex items-center justify-center w-6 h-6 bg-custom-blue-500/20">
-                  <Icon icon={"mdi:lock-outline"} className="text-custom-blue-900" />
-                </Pill>
-
-                {edge?.node?.display_label}
-              </div>
-            ),
-            value: edge?.node?.name?.value,
-          },
           action: { value: edge?.node?.action?.value },
-          decision: { value: edge?.node?.decision?.value },
+          decision: {
+            display: globalDecisionOptions.find(
+              (decision) => decision.value === edge?.node?.decision?.value
+            )?.label,
+            value: edge?.node?.decision?.value,
+          },
           roles: {
             display: <Pill>{edge?.node?.roles?.count}</Pill>,
             value: { edges: edge?.node?.roles?.edges },
@@ -160,6 +153,7 @@ function GlobalPermissions() {
           }
           open={showDrawer}
           setOpen={(value) => setShowDrawer(value)}
+          onClose={() => setRowToUpdate(null)}
         >
           <ObjectForm
             kind={GLOBAL_PERMISSION_OBJECT}

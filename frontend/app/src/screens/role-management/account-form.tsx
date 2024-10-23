@@ -115,17 +115,19 @@ export const AccountForm = ({
           }}
         />
 
-        <InputField
-          name="password"
-          label="Password"
-          type="password"
-          rules={{
-            required: true,
-            validate: {
-              required: isRequired,
-            },
-          }}
-        />
+        {!currentObject && (
+          <InputField
+            name="password"
+            label="Password"
+            type="password"
+            rules={{
+              required: true,
+              validate: {
+                required: isRequired,
+              },
+            }}
+          />
+        )}
 
         <InputField name="description" label="Description" />
 

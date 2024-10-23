@@ -19,6 +19,7 @@ import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
+import { objectDecisionOptions } from "./constants";
 
 const icons: Record<string, ReactNode> = {
   allow: (
@@ -51,8 +52,8 @@ function Permissions() {
 
   const columns = [
     {
-      name: "display",
-      label: "Name",
+      name: "identifier",
+      label: "Identifier",
     },
     {
       name: "namespace",
@@ -73,10 +74,6 @@ function Permissions() {
     {
       name: "roles",
       label: "Roles",
-    },
-    {
-      name: "identifier",
-      label: "Identifier",
     },
   ];
 
@@ -108,6 +105,9 @@ function Permissions() {
             value: edge?.node?.action?.value,
           },
           decision: {
+            display: objectDecisionOptions.find(
+              (decision) => decision.value === edge?.node?.decision?.value
+            )?.label,
             value: edge?.node?.decision?.value,
           },
           roles: {
@@ -198,11 +198,15 @@ function Permissions() {
           }
           open={showDrawer}
           setOpen={(value) => setShowDrawer(value)}
+          onClose={() => setRowToUpdate(null)}
         >
           <ObjectForm
             kind={OBJECT_PERMISSION_OBJECT}
             currentObject={rowToUpdate}
-            onCancel={() => setShowDrawer(false)}
+            onCancel={() => {
+              setRowToUpdate(null);
+              setShowDrawer(false);
+            }}
             onSuccess={() => {
               setShowDrawer(false);
               globalRefetch();

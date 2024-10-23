@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 export const GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS = gql`
   query GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS {
     CoreObjectPermission {
+      count
       edges {
         node {
           id
