@@ -16,8 +16,10 @@ Below is the list of all available options to define an Attribute in the schema
 | Name | Type | Description | Mandatory |
 | ---- | ---- | ---- | --------- |
 | [**allow_override**](#allow_override) | Attribute | Type of allowed override for the attribute. | False |
+| [**assignment_type**](#assignment_type) | Attribute | Reflects how the value is assigned if it comes directly from an end user, a macro or a transform | True |
 | [**branch**](#branch) | Attribute | Type of branch support for the attribute, if not defined it will be inherited from the node. | False |
 | [**choices**](#choices) | Attribute | Define a list of valid choices for a dropdown attribute. | False |
+| [**computation_logic**](#computation_logic) | Attribute | Specifies a macro that will be used when assignment_type=MACRO or transform when assignment_type=TRANSFORM | False |
 | [**default_value**](#default_value) | Attribute | Default value of the attribute. | False |
 | [**description**](#description) | Attribute | Short description of the attribute. | False |
 | [**enum**](#enum) | Attribute | Define a list of valid values for the attribute. | False |
@@ -68,6 +70,18 @@ extensions:
 | **Constraints** |  |
 | **Accepted Values** | `none` `any` |
 
+### assignment_type
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | assignment_type |
+| **Kind** | `Text` |
+| **Description** | Reflects how the value is assigned if it comes directly from an end user, a macro or a transform |
+| **Optional** | False |
+| **Default Value** | user |
+| **Constraints** |  |
+| **Accepted Values** | `user` `macro` `transform` |
+
 ### branch
 
 | Key | Value |
@@ -87,6 +101,17 @@ extensions:
 | **Name** | choices |
 | **Kind** | `List` |
 | **Description** | Define a list of valid choices for a dropdown attribute. |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### computation_logic
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | computation_logic |
+| **Kind** | `Text` |
+| **Description** | Specifies a macro that will be used when assignment_type=MACRO or transform when assignment_type=TRANSFORM |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
