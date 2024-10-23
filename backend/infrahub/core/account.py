@@ -322,6 +322,238 @@ async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branc
     return {"global_permissions": global_permissions, "object_permissions": object_permissions}
 
 
+class AccountRoleGlobalPermissionQuery(Query):
+    name: str = "account_role_global_permissions"
+
+    def __init__(self, role_id: str, **kwargs: Any):
+        self.role_id = role_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params["role_id"] = self.role_id
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        MATCH (account_role:%(account_role_node)s)
+        WHERE account_role.uuid = $role_id
+        CALL {
+            WITH account_role
+            MATCH (account_role)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN account_role as account_role1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH account_role, r1 as r
+        WHERE r.status = "active"
+        WITH account_role
+
+        CALL {
+            WITH account_role
+            MATCH (account_role)-[r1:IS_RELATED]->(:Relationship {name: "role__permissions"})<-[r2:IS_RELATED]-(global_permission:%(global_permission_node)s)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH global_permission, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY global_permission.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH global_permission, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN global_permission
+        }
+        WITH global_permission
+
+        CALL {
+            WITH global_permission
+            MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r2:HAS_VALUE]->(global_permission_name:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN global_permission_name, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH global_permission, global_permission_name, is_active AS gpn_is_active
+        WHERE gpn_is_active = TRUE
+
+        CALL {
+            WITH global_permission
+            MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(global_permission_action:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN global_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH global_permission, global_permission_name, global_permission_action, is_active AS gpa_is_active
+        WHERE gpa_is_active = TRUE
+
+        CALL {
+            WITH global_permission
+            MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[r2:HAS_VALUE]->(global_permission_decision:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN global_permission_decision, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH global_permission, global_permission_name, global_permission_action, global_permission_decision, is_active AS gpd_is_active
+        WHERE gpd_is_active = TRUE
+        """ % {
+            "branch_filter": branch_filter,
+            "account_role_node": InfrahubKind.ACCOUNTROLE,
+            "global_permission_node": InfrahubKind.GLOBALPERMISSION,
+        }
+
+        self.add_to_query(query)
+
+        self.return_labels = [
+            "global_permission",
+            "global_permission_name",
+            "global_permission_action",
+            "global_permission_decision",
+        ]
+
+    def get_permissions(self) -> list[GlobalPermission]:
+        permissions: list[GlobalPermission] = []
+
+        for result in self.get_results():
+            permissions.append(
+                GlobalPermission(
+                    id=result.get("global_permission").get("uuid"),
+                    name=result.get("global_permission_name").get("value"),
+                    action=result.get("global_permission_action").get("value"),
+                    decision=result.get("global_permission_decision").get("value"),
+                )
+            )
+
+        return permissions
+
+
+class AccountRoleObjectPermissionQuery(Query):
+    name: str = "account_role_object_permissions"
+
+    def __init__(self, role_id: str, **kwargs: Any):
+        self.role_id = role_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params["role_id"] = self.role_id
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        query = """
+        MATCH (account_role:%(account_role_node)s)
+        WHERE account_role.uuid = $role_id
+        CALL {
+            WITH account_role
+            MATCH (account_role)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN account_role as account_role1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH account_role, r1 as r
+        WHERE r.status = "active"
+        WITH account_role
+
+        CALL {
+            WITH account_role
+            MATCH (account_role)-[r1:IS_RELATED]->(:Relationship {name: "role__permissions"})<-[r2:IS_RELATED]-(object_permission:%(object_permission_node)s)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH object_permission, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY object_permission.uuid, r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            WITH object_permission, head(collect(is_active)) as latest_is_active
+            WHERE latest_is_active = TRUE
+            RETURN object_permission
+        }
+        WITH object_permission
+
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[r2:HAS_VALUE]->(object_permission_namespace:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN object_permission_namespace, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH object_permission, object_permission_namespace, is_active AS opn_is_active
+        WHERE opn_is_active = TRUE
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r2:HAS_VALUE]->(object_permission_name:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN object_permission_name, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH object_permission, object_permission_namespace, object_permission_name, is_active AS opn_is_active
+        WHERE opn_is_active = TRUE
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(object_permission_action:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN object_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH object_permission, object_permission_namespace, object_permission_name, object_permission_action, is_active AS opa_is_active
+        WHERE opa_is_active = TRUE
+        CALL {
+            WITH object_permission
+            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[r2:HAS_VALUE]->(object_permission_decision:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN object_permission_decision, (r1.status = "active" AND r2.status = "active") AS is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH object_permission, object_permission_namespace, object_permission_name, object_permission_action, object_permission_decision, is_active AS opd_is_active
+        WHERE opd_is_active = TRUE
+        """ % {
+            "branch_filter": branch_filter,
+            "account_role_node": InfrahubKind.ACCOUNTROLE,
+            "object_permission_node": InfrahubKind.OBJECTPERMISSION,
+        }
+
+        self.add_to_query(query)
+
+        self.return_labels = [
+            "object_permission",
+            "object_permission_namespace",
+            "object_permission_name",
+            "object_permission_action",
+            "object_permission_decision",
+        ]
+
+    def get_permissions(self) -> list[ObjectPermission]:
+        permissions: list[ObjectPermission] = []
+        for result in self.get_results():
+            permissions.append(
+                ObjectPermission(
+                    id=result.get("object_permission").get("uuid"),
+                    namespace=result.get("object_permission_namespace").get("value"),
+                    name=result.get("object_permission_name").get("value"),
+                    action=result.get("object_permission_action").get("value"),
+                    decision=result.get("object_permission_decision").get("value"),
+                )
+            )
+
+        return permissions
+
+
+async def fetch_role_permissions(role_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
+    query1 = await AccountRoleGlobalPermissionQuery.init(db=db, branch=branch, role_id=role_id, branch_agnostic=True)
+    await query1.execute(db=db)
+    global_permissions = query1.get_permissions()
+
+    query2 = await AccountRoleObjectPermissionQuery.init(db=db, branch=branch, role_id=role_id)
+    await query2.execute(db=db)
+    object_permissions = query2.get_permissions()
+
+    return {"global_permissions": global_permissions, "object_permissions": object_permissions}
+
+
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
 
