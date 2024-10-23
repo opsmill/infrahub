@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.graph import GRAPH_VERSION
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.permissions import CoreGlobalPermission, CoreObjectPermission
@@ -412,6 +413,29 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
     return role
 
 
+async def create_anonymous_role(db: InfrahubDatabase) -> Node:
+    deny_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await deny_permission.new(
+        db=db, name="*", namespace="*", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
+    )
+    await deny_permission.save(db=db)
+
+    view_permission = await NodeManager.get_one_by_hfid(
+        db=db,
+        kind=InfrahubKind.OBJECTPERMISSION,
+        hfid=["*", "*", PermissionAction.VIEW.value, str(PermissionDecision.ALLOW_ALL.value)],
+    )
+
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(
+        db=db, name=config.SETTINGS.main.anonymous_access_role, permissions=[deny_permission, view_permission]
+    )
+    await role.save(db=db)
+    log.info(f"Created anonymous account role: {config.SETTINGS.main.anonymous_access_role}")
+
+    return role
+
+
 async def create_super_administrators_group(
     db: InfrahubDatabase, role: Node, admin_accounts: list[CoreAccount]
 ) -> Node:
@@ -489,6 +513,9 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=admin_accounts)
 
     await create_default_roles(db=db)
+    if config.SETTINGS.main.allow_anonymous_access:
+        await create_anonymous_role(db=db)
+
     # --------------------------------------------------
     # Create Default IPAM Namespace
     # --------------------------------------------------
