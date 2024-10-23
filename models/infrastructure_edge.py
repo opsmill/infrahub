@@ -596,7 +596,7 @@ async def create_backbone_connectivity(
             branch=branch,
             kind="InfraCircuitEndpoint",
             description=f"Endpoint {backbone_link.circuit} to {backbone_link.site1_device}",
-            site=backbone_link.site1,
+            site={"hfid": [backbone_link.site1]},
             circuit=obj,
             connected_endpoint=intf1,
         )
@@ -606,7 +606,7 @@ async def create_backbone_connectivity(
             branch=branch,
             kind="InfraCircuitEndpoint",
             description=f"Endpoint {backbone_link.circuit} to {backbone_link.site2_device}",
-            site=backbone_link.site2,
+            site={"hfid": [backbone_link.site2]},
             circuit=obj,
             connected_endpoint=intf2,
         )
