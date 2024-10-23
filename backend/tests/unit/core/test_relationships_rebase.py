@@ -242,27 +242,48 @@ class TestRelationshipsWithRebase:
         for person_uuid in person_uuids:
             expected_car_ids_main = {c_id for c_id, p_id in car_person_id_map_main.items() if p_id == person_uuid}
             for car_id in expected_car_ids_main:
-                expected_path_tuples.update((
-                            person_uuid,
-                            ("IS_RELATED", "main", "active", False, False),
-                            (edge_type, "main", "active", False, False),
-                            peer_or_value,
-                        ) for edge_type, peer_or_value in (("IS_RELATED", car_id), ("IS_VISIBLE", True), ("IS_PROTECTED", False)))
-                expected_path_tuples.update((
-                            person_uuid,
-                            ("IS_RELATED", branch_name, "deleted", True, False),
-                            (edge_type, branch_name, "deleted", True, False),
-                            peer_or_value,
-                        ) for edge_type, peer_or_value in (("IS_RELATED", car_id), ("IS_VISIBLE", True), ("IS_PROTECTED", False)))
+                expected_path_tuples.update(
+                    (
+                        person_uuid,
+                        ("IS_RELATED", "main", "active", False, False),
+                        (edge_type, "main", "active", False, False),
+                        peer_or_value,
+                    )
+                    for edge_type, peer_or_value in (
+                        ("IS_RELATED", car_id),
+                        ("IS_VISIBLE", True),
+                        ("IS_PROTECTED", False),
+                    )
+                )
+                expected_path_tuples.update(
+                    (
+                        person_uuid,
+                        ("IS_RELATED", branch_name, "deleted", True, False),
+                        (edge_type, branch_name, "deleted", True, False),
+                        peer_or_value,
+                    )
+                    for edge_type, peer_or_value in (
+                        ("IS_RELATED", car_id),
+                        ("IS_VISIBLE", True),
+                        ("IS_PROTECTED", False),
+                    )
+                )
 
             expected_car_ids_branch = {c_id for c_id, p_id in car_person_id_map_branch.items() if p_id == person_uuid}
             for car_id in expected_car_ids_branch:
-                expected_path_tuples.update((
-                            person_uuid,
-                            ("IS_RELATED", branch_name, "active", True, False),
-                            (edge_type, branch_name, "active", True, False),
-                            peer_or_value,
-                        ) for edge_type, peer_or_value in (("IS_RELATED", car_id), ("IS_VISIBLE", True), ("IS_PROTECTED", False)))
+                expected_path_tuples.update(
+                    (
+                        person_uuid,
+                        ("IS_RELATED", branch_name, "active", True, False),
+                        (edge_type, branch_name, "active", True, False),
+                        peer_or_value,
+                    )
+                    for edge_type, peer_or_value in (
+                        ("IS_RELATED", car_id),
+                        ("IS_VISIBLE", True),
+                        ("IS_PROTECTED", False),
+                    )
+                )
 
         for ept in expected_path_tuples:
             assert ept in retrieved_path_tuples
