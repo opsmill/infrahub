@@ -31,7 +31,6 @@ from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
-from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
 from .request_diff_refresh import RequestDiffRefresh
 from .request_diff_update import RequestDiffUpdate
 from .request_generator_run import RequestGeneratorRun
@@ -79,7 +78,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
-    "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
     "request.diff.update": RequestDiffUpdate,
     "request.diff.refresh": RequestDiffRefresh,
     "request.generator.run": RequestGeneratorRun,

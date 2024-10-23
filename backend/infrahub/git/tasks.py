@@ -7,12 +7,12 @@ from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.services import services
-from infrahub.workflows.utils import add_branch_tag
 
 from ..log import get_logger
-from ..message_bus import messages
 from ..tasks.artifact import define_artifact
-from .models import RequestArtifactGenerate
+from ..workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_ARTIFACT_GENERATE
+from ..workflows.utils import add_branch_tag
+from .models import RequestArtifactDefinitionGenerate, RequestArtifactGenerate
 from .repository import InfrahubRepository, get_initialized_repo
 
 log = get_logger()
@@ -124,12 +124,11 @@ async def generate_artifact_definition(branch: str) -> None:
     service = services.service
     artifact_definitions = await service.client.all(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch, include=["id"])
 
-    events = [
-        messages.RequestArtifactDefinitionGenerate(branch=branch, artifact_definition=artifact_definition.id)
-        for artifact_definition in artifact_definitions
-    ]
-    for event in events:
-        await service.send(message=event)
+    for artifact_definition in artifact_definitions:
+        model = RequestArtifactDefinitionGenerate(branch=branch, artifact_definition=artifact_definition.id)
+        await service.workflow.submit_workflow(
+            workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+        )
 
 
 @flow(name="artifact-generate")
@@ -161,3 +160,77 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         log.exception("Failed to generate artifact", error=exc)
         artifact.status.value = "Error"
         await artifact.save()
+
+
+@flow(name="artifact-definition-generate")
+async def generate_request_artifact_definition(model: RequestArtifactDefinitionGenerate) -> None:
+    await add_branch_tag(branch_name=model.branch)
+
+    service = services.service
+    artifact_definition = await service.client.get(
+        kind=InfrahubKind.ARTIFACTDEFINITION, id=model.artifact_definition, branch=model.branch
+    )
+
+    await artifact_definition.targets.fetch()
+    group = artifact_definition.targets.peer
+    await group.members.fetch()
+
+    existing_artifacts = await service.client.filters(
+        kind=InfrahubKind.ARTIFACT,
+        definition__ids=[model.artifact_definition],
+        include=["object"],
+        branch=model.branch,
+    )
+    artifacts_by_member = {}
+    for artifact in existing_artifacts:
+        artifacts_by_member[artifact.object.peer.id] = artifact.id
+
+    await artifact_definition.transformation.fetch()
+    transformation_repository = artifact_definition.transformation.peer.repository
+
+    await transformation_repository.fetch()
+
+    transform = artifact_definition.transformation.peer
+    await transform.query.fetch()
+    query = transform.query.peer
+    repository = transformation_repository.peer
+    branch = await service.client.branch.get(branch_name=model.branch)
+    if branch.sync_with_git:
+        repository = await service.client.get(
+            kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=model.branch, fragment=True
+        )
+    transform_location = ""
+
+    if transform.typename == InfrahubKind.TRANSFORMJINJA2:
+        transform_location = transform.template_path.value
+    elif transform.typename == InfrahubKind.TRANSFORMPYTHON:
+        transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
+
+    for relationship in group.members.peers:
+        member = relationship.peer
+        artifact_id = artifacts_by_member.get(member.id)
+        if model.limit and artifact_id not in model.limit:
+            continue
+
+        request_artifact_generate_model = RequestArtifactGenerate(
+            artifact_name=artifact_definition.name.value,
+            artifact_id=artifact_id,
+            artifact_definition=model.artifact_definition,
+            commit=repository.commit.value,
+            content_type=artifact_definition.content_type.value,
+            transform_type=transform.typename,
+            transform_location=transform_location,
+            repository_id=repository.id,
+            repository_name=repository.name.value,
+            repository_kind=repository.get_kind(),
+            branch_name=model.branch,
+            query=query.name.value,
+            variables=member.extract(params=artifact_definition.parameters.value),
+            target_id=member.id,
+            target_name=member.display_label,
+            timeout=transform.timeout.value,
+        )
+
+        await service.workflow.submit_workflow(
+            workflow=REQUEST_ARTIFACT_GENERATE, parameters={"model": request_artifact_generate_model}
+        )
