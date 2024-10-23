@@ -9,9 +9,7 @@ interface GroupMembersProps {
 
 export function GroupMembers({ members }: GroupMembersProps) {
   const trimedMembers = members.slice(0, 5);
-  const restOfItems = members.slice(5);
-
-  const lengthDiff = members.length - trimedMembers.length;
+  const remainingItems = members.slice(5);
 
   return (
     <div className="flex items-center gap-2">
@@ -28,15 +26,15 @@ export function GroupMembers({ members }: GroupMembersProps) {
         ))}
       </div>
 
-      {!!lengthDiff && (
+      {!!remainingItems?.length && (
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size={"icon"}>{`+${lengthDiff}`}</Button>
+            <Button variant="outline" size={"icon"}>{`+${remainingItems?.length}`}</Button>
           </PopoverTrigger>
 
           <PopoverContent align="start">
             <div className="flex gap-2">
-              {restOfItems.map((item, index) => (
+              {remainingItems.map((item, index) => (
                 <Tooltip enabled key={index} content={item}>
                   <Avatar name={item} size={"md"} />
                 </Tooltip>

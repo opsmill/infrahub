@@ -8,9 +8,7 @@ interface RelationshipDisplayProps {
 
 export function RelationshipDisplay({ items }: RelationshipDisplayProps) {
   const trimedItems = items.slice(0, 3);
-  const restOfItems = items.slice(3);
-
-  const lengthDiff = items.length - trimedItems.length;
+  const remainingItems = items.slice(3);
 
   return (
     <div className="flex items-center gap-2">
@@ -20,15 +18,15 @@ export function RelationshipDisplay({ items }: RelationshipDisplayProps) {
         ))}
       </div>
 
-      {!!lengthDiff && (
+      {!!remainingItems?.length && (
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size={"icon"}>{`+${lengthDiff}`}</Button>
+            <Button variant="outline" size={"icon"}>{`+${remainingItems?.length}`}</Button>
           </PopoverTrigger>
 
           <PopoverContent align="start">
             <div className="flex flex-col gap-2">
-              {restOfItems.map((item, index) => (
+              {remainingItems.map((item, index) => (
                 <Badge key={index}>{item}</Badge>
               ))}
             </div>
