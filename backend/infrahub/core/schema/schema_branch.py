@@ -1275,6 +1275,7 @@ class SchemaBranch:
             self.set(name=name, schema=node)
 
     def cleanup_inherited_elements(self) -> None:
+        # pylint: disable=too-many-branches
         for name in self.node_names:
             node = self.get_node(name=name, duplicate=False)
 
