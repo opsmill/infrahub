@@ -133,7 +133,7 @@ function Accounts() {
             loading={loading}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search an account"
+            placeholder="Search accounts"
             className="border-none focus-visible:ring-0"
             containerClassName="flex-grow"
           />

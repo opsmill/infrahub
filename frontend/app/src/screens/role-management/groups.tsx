@@ -130,7 +130,7 @@ function Groups() {
             loading={loading}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search a group"
+            placeholder="Search groups"
             className="border-none focus-visible:ring-0"
             containerClassName="flex-grow"
           />

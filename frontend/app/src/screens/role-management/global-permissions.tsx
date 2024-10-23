@@ -125,7 +125,7 @@ function GlobalPermissions() {
             loading={loading}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search a global permission"
+            placeholder="Search global permissions"
             className="border-none focus-visible:ring-0"
             containerClassName="flex-grow"
           />
