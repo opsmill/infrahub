@@ -8,7 +8,6 @@ import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/graphql/queries/role-management/getAccounts";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -129,13 +128,14 @@ function Accounts() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between p-2">
+        <div className="flex items-center justify-between gap-2 p-2 border-b">
           <SearchInput
             loading={loading}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search an account"
             className="border-none focus-visible:ring-0"
+            containerClassName="flex-grow"
           />
 
           <Button
