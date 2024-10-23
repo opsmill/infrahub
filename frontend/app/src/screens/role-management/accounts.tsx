@@ -6,21 +6,40 @@ import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/graphql/queries/role-management/getAccounts";
+import { useDebounce } from "@/hooks/useDebounce";
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
+import { StringParam, useQueryParam } from "use-query-params";
 import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
 
 function Accounts() {
-  const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS);
+  const [search, setSearch] = useQueryParam(QSP.SEARCH, StringParam);
+  const searchDebounced = useDebounce(search, 300);
+
+  const {
+    loading,
+    networkStatus,
+    data: latestData,
+    previousData,
+    error,
+    refetch,
+  } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS, {
+    variables: { search: searchDebounced },
+    notifyOnNetworkStatusChange: true,
+  });
+  const data = latestData || previousData;
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_GENERIC_OBJECT);
 
@@ -95,7 +114,7 @@ function Accounts() {
     return <ErrorScreen message="An error occured while retrieving the accounts." />;
   }
 
-  if (loading) {
+  if (networkStatus === NetworkStatus.loading) {
     return <LoadingScreen message="Retrieving accounts..." />;
   }
 
@@ -112,18 +131,22 @@ function Accounts() {
     <>
       <div>
         <div className="flex items-center justify-between p-2">
-          <div>{/* Search input + filter button */}</div>
+          <SearchInput
+            loading={loading}
+            value={search ?? ""}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search an account"
+            className="border-none focus-visible:ring-0"
+          />
 
-          <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowDrawer(true)}
-              disabled={!schema || !permission?.create.isAllowed}
-              data-testid="create-object-button"
-            >
-              Create {schema?.label}
-            </Button>
-          </div>
+          <Button
+            variant={"primary"}
+            onClick={() => setShowDrawer(true)}
+            disabled={!schema || !permission?.create.isAllowed}
+            data-testid="create-object-button"
+          >
+            Create {schema?.label}
+          </Button>
         </div>
 
         <Table
