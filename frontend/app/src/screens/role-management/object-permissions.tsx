@@ -19,7 +19,7 @@ import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
-import { objectDecisionOptions } from "./contants";
+import { objectDecisionOptions } from "./constants";
 
 const icons: Record<string, ReactNode> = {
   allow: (
