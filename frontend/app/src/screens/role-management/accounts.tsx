@@ -18,14 +18,13 @@ import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
 import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
 
 function Accounts() {
-  const [search, setSearch] = useQueryParam(QSP.SEARCH, StringParam);
+  const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
 
   const {
@@ -133,7 +132,7 @@ function Accounts() {
         <div className="flex items-center justify-between p-2">
           <SearchInput
             loading={loading}
-            value={search ?? ""}
+            value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search an account"
             className="border-none focus-visible:ring-0"
