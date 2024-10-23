@@ -1,5 +1,4 @@
 import { Button } from "@/components/buttons/button-primitive";
-import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
@@ -19,6 +18,7 @@ import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
 import { globalDecisionOptions } from "./constants";
+import { RelationshipDisplay } from "./relationship-display";
 
 function GlobalPermissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);
@@ -70,7 +70,11 @@ function GlobalPermissions() {
             value: edge?.node?.decision?.value,
           },
           roles: {
-            display: <Pill>{edge?.node?.roles?.count}</Pill>,
+            display: (
+              <RelationshipDisplay
+                items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+              />
+            ),
             value: { edges: edge?.node?.roles?.edges },
           },
           identifier: { display: <BadgeCopy value={edge?.node?.identifier?.value} /> },

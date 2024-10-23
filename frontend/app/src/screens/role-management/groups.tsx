@@ -1,5 +1,4 @@
 import { Button } from "@/components/buttons/button-primitive";
-import { Pill } from "@/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
@@ -18,6 +17,7 @@ import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
 import { GroupMembers } from "./group-member";
+import { RelationshipDisplay } from "./relationship-display";
 
 function Groups() {
   const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_GROUPS);
@@ -77,7 +77,11 @@ function Groups() {
         },
         roles: {
           value: { edges: edge?.node?.roles?.edges },
-          display: <Pill>{edge?.node?.roles?.count}</Pill>,
+          display: (
+            <RelationshipDisplay
+              items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+            />
+          ),
         },
         __typename: edge?.node?.__typename,
       },

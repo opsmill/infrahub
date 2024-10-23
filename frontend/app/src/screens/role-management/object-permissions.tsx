@@ -20,6 +20,7 @@ import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
 import { objectDecisionOptions } from "./constants";
+import { RelationshipDisplay } from "./relationship-display";
 
 const icons: Record<string, ReactNode> = {
   allow: (
@@ -112,7 +113,11 @@ function Permissions() {
           },
           roles: {
             value: { edges: edge?.node?.roles?.edges },
-            display: <Pill>{edge?.node?.roles?.count}</Pill>,
+            display: (
+              <RelationshipDisplay
+                items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+              />
+            ),
           },
           identifier: {
             value: edge?.node?.identifier?.value,
