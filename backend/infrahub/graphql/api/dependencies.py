@@ -6,7 +6,6 @@ from ..app import InfrahubGraphQLApp
 from ..auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
 from ..auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
 from ..auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
-from ..auth.query_permission_checker.default_checker import DefaultGraphQLPermissionChecker
 from ..auth.query_permission_checker.merge_operation_checker import MergeBranchPermissionChecker
 from ..auth.query_permission_checker.object_permission_checker import (
     AccountManagerPermissionChecker,
@@ -35,7 +34,6 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
             ReadWriteGraphQLPermissionChecker(),  # Deprecated, will be replace by either a global permission or object permissions
             ReadOnlyGraphQLPermissionChecker(),  # Deprecated, will be replace by either a global permission or object permissions
             AnonymousGraphQLPermissionChecker(get_anonymous_access_setting),
-            DefaultGraphQLPermissionChecker(),
         ]
     )
 
