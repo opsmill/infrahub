@@ -13,7 +13,6 @@ from .event_node_mutated import EventNodeMutated
 from .event_schema_update import EventSchemaUpdate
 from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
-from .git_branch_create import GitBranchCreate
 from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_add import GitRepositoryAdd
@@ -68,7 +67,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "event.schema.update": EventSchemaUpdate,
     "event.worker.new_primary_api": EventWorkerNewPrimaryAPI,
     "finalize.validator.execution": FinalizeValidatorExecution,
-    "git.branch.create": GitBranchCreate,
     "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
     "git.repository.add": GitRepositoryAdd,

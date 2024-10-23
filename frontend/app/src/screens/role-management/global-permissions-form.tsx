@@ -24,7 +24,7 @@ import RelationshipField from "@/components/form/fields/relationship.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 import { useSchema } from "@/hooks/useSchema";
-import { globalDecisionOptions } from "./contants";
+import { globalDecisionOptions } from "./constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;

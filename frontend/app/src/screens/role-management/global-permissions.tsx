@@ -18,7 +18,7 @@ import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
-import { globalDecisionOptions } from "./contants";
+import { globalDecisionOptions } from "./constants";
 
 function GlobalPermissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);

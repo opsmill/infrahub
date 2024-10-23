@@ -8,6 +8,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.manager import GraphQLSchemaManager
 
 
 async def test_update_simple_object(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
@@ -85,6 +86,7 @@ async def test_update_simple_object_with_enum(
     enum_value,
     response_value,
 ):
+    GraphQLSchemaManager.clear_cache()
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
     query = """
     mutation {

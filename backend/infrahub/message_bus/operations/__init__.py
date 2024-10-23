@@ -33,7 +33,6 @@ COMMAND_MAP = {
     "event.schema.update": event.schema.update,
     "event.worker.new_primary_api": event.worker.new_primary_api,
     "finalize.validator.execution": finalize.validator.execution,
-    "git.branch.create": git.branch.create,
     "git.diff.names_only": git.diff.names_only,
     "git.file.get": git.file.get,
     "git.repository.add": git.repository.add,
