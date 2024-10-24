@@ -15,7 +15,7 @@ test.describe("Role management - READ", () => {
     });
 
     await test.step("check accounts view", async () => {
-      await expect(page.getByRole("cell", { name: "Admin" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "admin", exact: true })).toBeVisible();
       await expect(page.getByRole("cell", { name: "Pop-Builder" })).toBeVisible();
     });
 
@@ -27,7 +27,9 @@ test.describe("Role management - READ", () => {
 
     await test.step("check roles view", async () => {
       await page.getByRole("link", { name: "Roles 2" }).click();
-      await expect(page.getByRole("cell", { name: "Super Administrator" })).toBeVisible();
+      await expect(
+        page.getByRole("cell", { name: "Super Administrator", exact: true })
+      ).toBeVisible();
       await expect(page.getByRole("cell", { name: "1" }).first()).toBeVisible();
     });
 
