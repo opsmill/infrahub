@@ -17,22 +17,24 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 async def base_authentication(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    create_test_admin,
-    register_core_models_schema,
+    db: InfrahubDatabase, default_branch: Branch, create_test_admin, register_core_models_schema
 ) -> None:
     pass
 
 
 async def test_query_endpoint_group_no_params(
-    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, car_person_data, patch_services
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    create_test_admin,
+    default_branch,
+    car_person_data,
+    patch_services,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
-            "/api/query/query01?update_group=true&subscribers=AAAAAA&subscribers=BBBBBB",
-            headers=client_headers,
+            "/api/query/query01?update_group=true&subscribers=AAAAAA&subscribers=BBBBBB", headers=admin_headers
         )
 
     assert "errors" not in response.json()
@@ -66,14 +68,11 @@ async def test_query_endpoint_group_no_params(
 
 
 async def test_query_endpoint_group_params(
-    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, car_person_data
+    db: InfrahubDatabase, client: TestClient, admin_headers, default_branch, create_test_admin, car_person_data
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.get(
-            "/api/query/query02?update_group=true&person=John",
-            headers=client_headers,
-        )
+        response = client.get("/api/query/query02?update_group=true&person=John", headers=admin_headers)
 
     assert "errors" not in response.json()
     assert response.status_code == 200
@@ -100,14 +99,11 @@ async def test_query_endpoint_group_params(
 
 
 async def test_query_endpoint_get_default_branch(
-    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, car_person_data
+    db: InfrahubDatabase, client: TestClient, admin_headers, default_branch, create_test_admin, car_person_data
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.get(
-            "/api/query/query01",
-            headers=client_headers,
-        )
+        response = client.get("/api/query/query01", headers=admin_headers)
 
     assert "errors" not in response.json()
     assert response.status_code == 200
@@ -168,16 +164,19 @@ async def test_query_endpoint_post_with_params(
 
 
 async def test_query_endpoint_branch1(
-    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, car_person_data, authentication_base
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch,
+    create_test_admin,
+    car_person_data,
+    authentication_base,
 ):
     await create_branch(branch_name="branch1", db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.get(
-            "/api/query/query01?branch=branch1",
-            headers=client_headers,
-        )
+        response = client.get("/api/query/query01?branch=branch1", headers=admin_headers)
 
     assert "errors" not in response.json()
     assert response.status_code == 200

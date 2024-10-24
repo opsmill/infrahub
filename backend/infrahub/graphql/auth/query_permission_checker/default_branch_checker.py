@@ -1,3 +1,4 @@
+from infrahub import config
 from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
@@ -26,7 +27,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     ]
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        return account_session.authenticated
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
@@ -39,7 +40,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         can_edit_default_branch = False
         for permission_backend in registry.permission_backends:
             can_edit_default_branch = await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+                db=db, account_session=account_session, permission=self.permission_required, branch=branch
             )
             if can_edit_default_branch:
                 break

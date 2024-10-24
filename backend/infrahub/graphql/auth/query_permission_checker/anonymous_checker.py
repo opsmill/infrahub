@@ -25,6 +25,6 @@ class AnonymousGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
-        if self.anonymous_access_allowed_func() and not analyzed_query.contains_mutation:
-            return CheckerResolution.TERMINATE
-        raise AuthorizationError("Authentication is required to perform this operation")
+        if not self.anonymous_access_allowed_func() or analyzed_query.contains_mutation:
+            raise AuthorizationError("Authentication is required to perform this operation")
+        return CheckerResolution.NEXT_CHECKER

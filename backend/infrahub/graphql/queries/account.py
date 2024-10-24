@@ -122,7 +122,7 @@ async def resolve_account_permissions(
     permissions: AssignedPermissions = {"global_permissions": [], "object_permissions": []}
     for permission_backend in registry.permission_backends:
         backend_permissions = await permission_backend.load_permissions(
-            db=context.db, account_id=context.account_session.account_id, branch=context.branch
+            db=context.db, account_session=context.account_session, branch=context.branch
         )
         permissions["global_permissions"].extend(backend_permissions["global_permissions"])
         permissions["object_permissions"].extend(backend_permissions["object_permissions"])

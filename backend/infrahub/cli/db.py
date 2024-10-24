@@ -22,6 +22,7 @@ from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintMan
 from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import (
+    create_anonymous_role,
     create_default_menu,
     create_default_roles,
     create_super_administrator_role,
@@ -431,3 +432,6 @@ async def setup_permissions(db: InfrahubDatabase) -> None:
     await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=existing_accounts)
 
     await create_default_roles(db=db)
+
+    if config.SETTINGS.main.allow_anonymous_access:
+        await create_anonymous_role(db=db)

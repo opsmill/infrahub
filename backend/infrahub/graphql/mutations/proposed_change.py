@@ -108,7 +108,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             for permission_backend in registry.permission_backends:
                 if has_merge_permission := await permission_backend.has_permission(
                     db=context.db,
-                    account_id=context.active_account_session.account_id,
+                    account_session=context.active_account_session,
                     permission=GlobalPermission(
                         id="",
                         name="",

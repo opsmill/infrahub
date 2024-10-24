@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.account import GlobalPermission, ObjectPermission, fetch_permissions
+from infrahub import config
+from infrahub.core.account import GlobalPermission, ObjectPermission, fetch_permissions, fetch_role_permissions
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreAccountRole
 from infrahub.permissions.constants import PermissionDecisionFlag
 
 from .backend import PermissionBackend
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.permissions.constants import AssignedPermissions
@@ -49,7 +53,7 @@ class LocalPermissionBackend(PermissionBackend):
                 if specificity > highest_specificity:
                     combined_decision = permission_decision
                     highest_specificity = specificity
-                elif specificity == highest_specificity:
+                elif specificity == highest_specificity and permission_decision != PermissionDecisionFlag.DENY:
                     combined_decision |= permission_decision
 
         return combined_decision
@@ -82,13 +86,32 @@ class LocalPermissionBackend(PermissionBackend):
 
         return grant_permission
 
-    async def load_permissions(self, db: InfrahubDatabase, account_id: str, branch: Branch) -> AssignedPermissions:
-        return await fetch_permissions(db=db, account_id=account_id, branch=branch)
+    async def load_permissions(
+        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch
+    ) -> AssignedPermissions:
+        if not account_session.authenticated:
+            anonymous_permissions: AssignedPermissions = {"global_permissions": [], "object_permissions": []}
+            if not config.SETTINGS.main.allow_anonymous_access:
+                return anonymous_permissions
+
+            role = await NodeManager.get_one_by_hfid(
+                db=db, kind=CoreAccountRole, hfid=[config.SETTINGS.main.anonymous_access_role]
+            )
+            if role:
+                anonymous_permissions = await fetch_role_permissions(db=db, role_id=role.id, branch=branch)
+
+            return anonymous_permissions
+
+        return await fetch_permissions(db=db, account_id=account_session.account_id, branch=branch)
 
     async def has_permission(
-        self, db: InfrahubDatabase, account_id: str, permission: GlobalPermission | ObjectPermission, branch: Branch
+        self,
+        db: InfrahubDatabase,
+        account_session: AccountSession,
+        permission: GlobalPermission | ObjectPermission,
+        branch: Branch,
     ) -> bool:
-        granted_permissions = await self.load_permissions(db=db, account_id=account_id, branch=branch)
+        granted_permissions = await self.load_permissions(db=db, account_session=account_session, branch=branch)
         is_super_admin = self.resolve_global_permission(
             permissions=granted_permissions["global_permissions"],
             permission_to_check=GlobalPermission(
