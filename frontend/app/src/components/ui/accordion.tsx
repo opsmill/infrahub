@@ -17,13 +17,13 @@ export const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={classNames(
-        "flex flex-1 items-center py-4 font-medium transition-all [&[data-state=open]>iconify-icon]:rotate-180",
+        "flex flex-1 items-center py-4 font-medium transition-all [&[data-state=open]>iconify-icon]:rotate-90",
         className
       )}
       {...props}
     >
       <Icon
-        icon="mdi:chevron-down"
+        icon="mdi:chevron-right"
         className="text-xl shrink-0 transition-transform duration-200"
       />
       {children}
