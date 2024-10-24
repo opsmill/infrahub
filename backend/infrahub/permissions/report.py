@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
-from infrahub.core.constants import GlobalPermissions, PermissionDecision
-from infrahub.permissions.constants import AssignedPermissions, PermissionDecisionFlag
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
+from infrahub.permissions.constants import AssignedPermissions, BranchAwarePermissionDecision, PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
@@ -19,13 +20,16 @@ if TYPE_CHECKING:
 def get_permission_report(
     backend: PermissionBackend,
     permissions: AssignedPermissions,
+    branch: Branch,
     node: MainSchemaTypes,
     action: str,
     is_super_admin: bool = False,
     can_edit_default_branch: bool = False,  # pylint: disable=unused-argument
-) -> PermissionDecisionFlag:
+) -> BranchAwarePermissionDecision:
+    is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+
     if is_super_admin:
-        return PermissionDecisionFlag.ALLOW_ALL
+        return BranchAwarePermissionDecision.ALLOW
 
     decision = backend.report_object_permission(
         permissions=permissions["object_permissions"], namespace=node.namespace, name=node.name, action=action
@@ -35,7 +39,18 @@ def get_permission_report(
     # if can_edit_default_branch:
     #     decision |= PermissionDecisionFlag.ALLOW_DEFAULT
 
-    return decision
+    if (
+        decision == PermissionDecisionFlag.ALLOW_ALL
+        or (decision & PermissionDecisionFlag.ALLOW_DEFAULT and is_default_branch)
+        or (decision & PermissionDecisionFlag.ALLOW_OTHER and not is_default_branch)
+    ):
+        return BranchAwarePermissionDecision.ALLOW
+    if decision & PermissionDecisionFlag.ALLOW_DEFAULT:
+        return BranchAwarePermissionDecision.ALLOW_DEFAULT
+    if decision & PermissionDecisionFlag.ALLOW_OTHER:
+        return BranchAwarePermissionDecision.ALLOW_OTHER
+
+    return BranchAwarePermissionDecision.DENY
 
 
 async def report_schema_permissions(
@@ -68,6 +83,7 @@ async def report_schema_permissions(
                 "create": get_permission_report(
                     backend=perm_backend,
                     permissions=permissions,
+                    branch=branch,
                     node=node,
                     action="create",
                     is_super_admin=is_super_admin,
@@ -76,6 +92,7 @@ async def report_schema_permissions(
                 "delete": get_permission_report(
                     backend=perm_backend,
                     permissions=permissions,
+                    branch=branch,
                     node=node,
                     action="delete",
                     is_super_admin=is_super_admin,
@@ -84,6 +101,7 @@ async def report_schema_permissions(
                 "update": get_permission_report(
                     backend=perm_backend,
                     permissions=permissions,
+                    branch=branch,
                     node=node,
                     action="update",
                     is_super_admin=is_super_admin,
@@ -92,6 +110,7 @@ async def report_schema_permissions(
                 "view": get_permission_report(
                     backend=perm_backend,
                     permissions=permissions,
+                    branch=branch,
                     node=node,
                     action="view",
                     is_super_admin=is_super_admin,

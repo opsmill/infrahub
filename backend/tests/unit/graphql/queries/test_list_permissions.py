@@ -12,8 +12,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.types.permission import PermissionDecision
-from infrahub.permissions.constants import PermissionDecisionFlag
+from infrahub.permissions.constants import BranchAwarePermissionDecision, PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
@@ -178,10 +177,10 @@ class TestObjectPermissions:
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
             "node": {
                 "kind": "BuiltinTag",
-                "create": PermissionDecision.ALLOW_OTHER.name,
-                "update": PermissionDecision.DENY.name,
-                "delete": PermissionDecision.ALLOW_OTHER.name,
-                "view": PermissionDecision.ALLOW_ALL.name,
+                "create": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "update": BranchAwarePermissionDecision.DENY.name,
+                "delete": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "view": BranchAwarePermissionDecision.ALLOW.name,
             }
         }
 
@@ -201,10 +200,10 @@ class TestObjectPermissions:
         assert result.data["BuiltinTag"]["permissions"]["edges"][0] == {
             "node": {
                 "kind": "BuiltinTag",
-                "create": PermissionDecision.ALLOW_OTHER.name,
-                "update": PermissionDecision.DENY.name,
-                "delete": PermissionDecision.ALLOW_OTHER.name,
-                "view": PermissionDecision.ALLOW_ALL.name,
+                "create": BranchAwarePermissionDecision.ALLOW.name,
+                "update": BranchAwarePermissionDecision.DENY.name,
+                "delete": BranchAwarePermissionDecision.ALLOW.name,
+                "view": BranchAwarePermissionDecision.ALLOW.name,
             }
         }
 
@@ -231,28 +230,28 @@ class TestObjectPermissions:
         assert {
             "node": {
                 "kind": "CoreGenericRepository",
-                "create": PermissionDecision.ALLOW_OTHER.name,
-                "update": PermissionDecision.ALLOW_OTHER.name,
-                "delete": PermissionDecision.ALLOW_OTHER.name,
-                "view": PermissionDecision.ALLOW_ALL.name,
+                "create": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "update": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "delete": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "view": BranchAwarePermissionDecision.ALLOW.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
             "node": {
                 "kind": "CoreRepository",
-                "create": PermissionDecision.ALLOW_OTHER.name,
-                "update": PermissionDecision.ALLOW_OTHER.name,
-                "delete": PermissionDecision.ALLOW_OTHER.name,
-                "view": PermissionDecision.ALLOW_ALL.name,
+                "create": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "update": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "delete": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "view": BranchAwarePermissionDecision.ALLOW.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
         assert {
             "node": {
                 "kind": "CoreReadOnlyRepository",
-                "create": PermissionDecision.ALLOW_OTHER.name,
-                "update": PermissionDecision.ALLOW_OTHER.name,
-                "delete": PermissionDecision.ALLOW_OTHER.name,
-                "view": PermissionDecision.ALLOW_ALL.name,
+                "create": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "update": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "delete": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "view": BranchAwarePermissionDecision.ALLOW.name,
             }
         } in result.data["CoreGenericRepository"]["permissions"]["edges"]
 
@@ -275,10 +274,10 @@ class TestObjectPermissions:
         assert result.data["CoreAccountRole"]["permissions"]["edges"][0] == {
             "node": {
                 "kind": "CoreAccountRole",
-                "create": PermissionDecision.ALLOW_OTHER.name,
-                "update": PermissionDecision.ALLOW_OTHER.name,
-                "delete": PermissionDecision.ALLOW_OTHER.name,
-                "view": PermissionDecision.ALLOW_ALL.name,
+                "create": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "update": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "delete": BranchAwarePermissionDecision.ALLOW_OTHER.name,
+                "view": BranchAwarePermissionDecision.ALLOW.name,
             }
         }
         assert result.data["CoreAccountRole"]["edges"][0]["node"]["display_label"] == "admin"
@@ -393,7 +392,7 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecision.ALLOW_OTHER.name
+            "update_value": BranchAwarePermissionDecision.ALLOW_OTHER.name
         }
 
     async def test_first_account_tags_non_main_branch(
@@ -415,5 +414,5 @@ class TestAttributePermissions:
         assert result.data
         assert result.data["BuiltinTag"]["count"] == 1
         assert result.data["BuiltinTag"]["edges"][0]["node"]["name"]["permissions"] == {
-            "update_value": PermissionDecision.ALLOW_OTHER.name
+            "update_value": BranchAwarePermissionDecision.ALLOW.name
         }

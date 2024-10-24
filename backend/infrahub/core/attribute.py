@@ -512,9 +512,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                     )
                 continue
 
-            if field_name == "permissions":
-                response["permissions"] = {"view": "ALLOW", "update": "ALLOW"}
-
             if field_name.startswith("_"):
                 field = getattr(self, field_name[1:])
             else:
