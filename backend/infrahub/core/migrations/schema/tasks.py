@@ -10,6 +10,7 @@ from infrahub.message_bus.messages.schema_migration_path import (
 )
 from infrahub.message_bus.operations.schema.migration import schema_path_migrate
 from infrahub.services import services
+from infrahub.workflows.utils import add_branch_tag
 
 from .models import SchemaApplyMigrationData  # noqa: TCH001
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 @flow(name="schema-migrations-apply")
 async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
     service = services.service
+    await add_branch_tag(branch_name=message.branch.name)
 
     batch = InfrahubBatch()
     error_messages: list[str] = []

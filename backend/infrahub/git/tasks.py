@@ -7,6 +7,7 @@ from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.services import services
+from infrahub.workflows.utils import add_branch_tag
 
 from ..log import get_logger
 from ..message_bus import messages
@@ -21,6 +22,8 @@ log = get_logger()
 async def create_branch(branch: str, branch_id: str) -> None:
     """Request to the creation of git branches in available repositories."""
     service = services.service
+    await add_branch_tag(branch_name=branch)
+
     repositories: list[CoreRepository] = await service.client.filters(kind=CoreRepository)
 
     batch = await service.client.create_batch()
