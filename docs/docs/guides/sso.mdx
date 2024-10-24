@@ -5,20 +5,19 @@ title: Configuring Single sign-on
 
 In Infrahub you can configure SSO using either Open ID Connect (OIDC) or can use OAuth2.
 
-The SSO system in Infrahub allows for the configuration of one or more identity providers. While most organizations will only use one provider a reason to have two could be that the providers manage different security domains where one of them might be for regular users the other identity provider could be for administrative accounts.
-Infrahub supports three different OIDC providers:
+We can enable 3 different identity providers in Infrahub:
 
 * PROVIDER1
 * PROVIDER2
 * GOOGLE
 
-All of them work in the same way the main difference is that the one for Google includes some predefined settings that limit the amount of configuration you have to do yourself.
+PROVIDER1 and PROVIDER2 can be used to configure any identity provider that supports OAuth2 or Open ID Connect (OIDC). GOOGLE can be used if you are using Google Workspace as your identity provider, the main difference with the other providers is that GOOGLE has some predefined configuration settings, which makes the configuration more simple.
 
 When configuring Infrahub, setting up OAuth2 or OIDC is fairly similar, though there are some slight differences with regards to the settings you need to have in place. Both options are provided below.
 
 ## Setting up OAuth2 in Infrahub
 
-In this case we are going to focus on PROVIDER1 which allows you to connect Infrahub to your first OAuth2 provider. Configuring the first provider uses environment variables with the `INFRAHUB_OAUTH2_PROVIDER1_` prefix, the others follow suite so it would be `INFRAHUB_OAUTH2_PROVIDER2_` and `INFRAHUB_OAUTH2_GOOGLE_`.
+In this case we are going to setup PROVIDER1 as an OAuth2 identify provider in Infrahub. Configuring the first provider with OAuth2 uses environment variables with the `INFRAHUB_OAUTH2_PROVIDER1_` prefix. For PROVIDER2 and GOOGLE the prefixes are `INFRAHUB_OAUTH2_PROVIDER2_` and `INFRAHUB_OAUTH2_GOOGLE_`.
 
 | Variable | Type | Description | Mandatory |
 | ---- | ---- | ----------- | --------- |
@@ -69,16 +68,16 @@ export INFRAHUB_SECURITY_OAUTH2_PROVIDERS='["provider1","provider2"]'
 
 ## Setting up OIDC in Infrahub
 
-In this case we are going to focus on PROVIDER1 which allows you to connect Infrahub to your first OIDC provider. Configuring the first provider uses environment variables with the `INFRAHUB_OIDC_PROVIDER1_` prefix, the others follow suite so it would be `INFRAHUB_OIDC_PROVIDER2_` and `INFRAHUB_OIDC_GOOGLE_`.
+In this case we are going to setup PROVIDER1 as an OIDC identify provider in Infrahub. Configuring the first provider with OIDC uses environment variables with the `INFRAHUB_OIDC_PROVIDER1_` prefix. For PROVIDER2 and GOOGLE the prefixes are `INFRAHUB_OIDC_PROVIDER2_` and `INFRAHUB_OIDC_GOOGLE_`.
 
 | Variable | Type | Description | Mandatory |
 | ---- | ---- | ----------- | --------- |
 | INFRAHUB_OIDC_PROVIDER1_CLIENT_ID | `Text` | The client ID from the IDP | `true` |
 | INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET | `Text` | The client secret from the IDP | `true` |
 | INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL | `Url` | The discovery URL on the IDP | `true` |
-| INFRAHUB_OAUTH2_PROVIDER1_SCOPES | `Array[Text]` | The scopes to request from the IDP | `false` |
-| INFRAHUB_OAUTH2_PROVIDER1_DISPLAY_LABEL | `Text` | Display label for the provider on the login screen | `false` |
-| INFRAHUB_OAUTH2_PROVIDER1_ICON | `Text` | MDI icon to display on the login screen (ex: mdi:key) | `false` |
+| INFRAHUB_OIDC_PROVIDER1_SCOPES | `Array[Text]` | The scopes to request from the IDP | `false` |
+| INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL | `Text` | Display label for the provider on the login screen | `false` |
+| INFRAHUB_OIDC_PROVIDER1_ICON | `Text` | MDI icon to display on the login screen (ex: mdi:key) | `false` |
 
 :::note
 
@@ -114,7 +113,7 @@ Alternatively if you are setting up multiple providers each with their different
 export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1","provider2"]'
 ```
 
-## On configuring the redirect URI
+## Configuring the redirect URI in the identity provider
 
 Within your identity provider when configuring the client you will need to configure a redirect URI that defines an allowed URI. The convention used for Infrahub is that it should point back to the Infrahub host on `/auth/{protocol}/{provider_name}/callback`.
 

@@ -25,8 +25,8 @@ Infrahub supports two authentication methods
 | ------------------ | ---- | ----- |
 | API / GraphQL      | Yes  | Yes   |
 | Frontend           | Yes  | No    |
-| Python SDK         | Soon | Yes   |
-| infrahubctl        | Soon | Yes   |
+| Python SDK         | Yes  | Yes   |
+| infrahubctl        | Yes  | Yes   |
 | GraphQL Playground | No   | Yes   |
 
 More information on managing API token can be found in the [managing API tokens guide](/guides/managing-api-tokens).
@@ -40,3 +40,21 @@ X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec
 ```
 
 :::
+
+## Authentication backends
+
+Infrahub supports authenticating users in a local user store or by using single sign-on through an external identity provider.
+
+### Local user store
+
+Users can be created in the local user store. Local users can be added to groups, which can have roles assigned to them.
+
+### Single sign-on
+
+Infrahub supports identity providers that support either OAuth2 or OpenID Connect (OIDC).
+
+Multiple identity providers can be enabled simultaneously, for example to support organizations that use different providers for different security domains.
+
+A user that was authenticated using SSO will be created in the local user store of Infrahub and optionally automatically added to groups, which can have roles assigned to them.
+
+For more information on setting up single sign-on can be found in the [configuring single sign-on guide](/guides/sso).
