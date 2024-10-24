@@ -747,7 +747,8 @@ class BranchDiffer:
             dst_node_id = result.get("dn").get("uuid")
 
             from_time = Timestamp(result.get("r1").get("from"))
-            # to_time = result.get("r1").get("to", None)
+            to_time_raw = result.get("r1").get("to", None)
+            to_time = Timestamp(to_time_raw) if to_time_raw else None
 
             item = {
                 "branch": branch_name,
@@ -779,14 +780,21 @@ class BranchDiffer:
             item["paths"] = relationship_paths.paths
             item["conflict_paths"] = relationship_paths.conflict_paths
 
-            # FIXME Need to revisit changed_at, mostlikely not accurate. More of a placeholder at this point
-            if branch_status == RelationshipStatus.ACTIVE.value:
-                item["action"] = DiffAction.ADDED
-                item["changed_at"] = from_time
-            elif branch_status == RelationshipStatus.DELETED.value:
+            if branch_status == RelationshipStatus.DELETED.value:
                 item["action"] = DiffAction.REMOVED
                 item["changed_at"] = from_time
                 rel_ids_to_query.append(rel_id)
+            elif (
+                branch_status == RelationshipStatus.ACTIVE.value
+                and to_time
+                and from_time < self.diff_from <= to_time <= self.diff_to
+            ):
+                item["action"] = DiffAction.REMOVED
+                item["changed_at"] = to_time
+                rel_ids_to_query.append(rel_id)
+            elif branch_status == RelationshipStatus.ACTIVE.value:
+                item["action"] = DiffAction.ADDED
+                item["changed_at"] = from_time
             else:
                 raise ValueError(f"Unexpected value for branch_status: {branch_status}")
 
@@ -804,7 +812,6 @@ class BranchDiffer:
 
         for result in query_props.get_results():
             branch_name = result.get("r3").get("branch")
-            branch_status = result.get("r3").get("status")
             rel_name = result.get("rel").get("name")
             rel_id = result.get("rel").get("uuid")
 
@@ -871,6 +878,8 @@ class BranchDiffer:
 
             prop_type = result.get_rel("r3").type
             prop_from = Timestamp(result.get("r3").get("from"))
+            prop_to_raw = result.get("r3").get("to", None)
+            prop_to = Timestamp(prop_to_raw) if prop_to_raw else None
 
             origin_prop = origin_rel_properties_query.get_results_by_id_and_prop_type(
                 rel_id=rel_id, prop_type=prop_type
@@ -892,6 +901,9 @@ class BranchDiffer:
             if not origin_prop and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
                 prop["action"] = DiffAction.ADDED
                 prop["changed_at"] = prop_from
+            elif prop_to and prop_to >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
+                prop["action"] = DiffAction.REMOVED
+                prop["changed_at"] = prop_to
             elif prop_from >= self.diff_from and branch_status == RelationshipStatus.DELETED.value:
                 prop["action"] = DiffAction.REMOVED
                 prop["changed_at"] = prop_from

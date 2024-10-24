@@ -1081,12 +1081,17 @@ class RelationshipManager:
         remove_at = Timestamp(at)
         branch = self.get_branch_based_on_support_type()
 
-        # when we remove a relationship we need to :
         # - Update the existing relationship if we are on the same branch
-        # - Create a new rel of type DELETED in the right branch
         rel_ids_per_branch = peer_data.rel_ids_per_branch()
         if branch.name in rel_ids_per_branch:
             await update_relationships_to([str(ri) for ri in rel_ids_per_branch[self.branch.name]], to=remove_at, db=db)
+
+        # - Create a new rel of type DELETED if the existing relationship is on a different branch
+        rel_branches: set[str] = set()
+        if peer_data.rels:
+            rel_branches = {r.branch for r in peer_data.rels}
+        if rel_branches == {peer_data.branch}:
+            return
 
         query = await RelationshipDataDeleteQuery.init(
             db=db,
