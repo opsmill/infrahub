@@ -5,6 +5,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -357,6 +358,39 @@ async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_p
     assert new_branch2.branched_from != branch2.branched_from
 
     assert recorder.seen_routing_keys == ["event.branch.rebased"]
+
+
+async def test_branch_rebase_diff_conflict(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, car_camry_main, session_admin
+):
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
+    car_main.name.value += "-main"
+    await car_main.save(db=db)
+    car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+    car_branch.name.value += "-branch"
+    await car_branch.save(db=db)
+
+    query = """
+    mutation {
+        BranchRebase(data: { name: "branch2" }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder)
+    result = await graphql_mutation(
+        query=query, db=db, branch=default_branch, service=service, account_session=session_admin
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "contains conflicts with the default branch that must be addressed" in result.errors[0].message
+    assert recorder.seen_routing_keys == []
 
 
 async def test_branch_rebase_wrong_branch(

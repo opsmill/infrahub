@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pydantic
 from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, String
@@ -12,12 +12,16 @@ from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.branch_differ import BranchDiffer
+from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.task import UserTask
 from infrahub.core.validators.checker import schema_validators_checker
+from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.database import retry_db_transaction
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
@@ -192,14 +196,31 @@ class BranchRebase(Mutation):
 
         async with UserTask.from_graphql_context(title=f"Rebase branch : {data.name}", context=context) as task:
             obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+            base_branch = await Branch.get_by_name(db=context.db, name=registry.default_branch)
             merger = BranchMerger(db=context.db, source_branch=obj, service=context.service)
+            component_registry = get_component_registry()
+            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=context.db, branch=obj)
+            diff_repository = await component_registry.get_component(DiffRepository, db=context.db, branch=obj)
+            enriched_diff = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+            if enriched_diff.get_all_conflicts():
+                raise ValidationError(
+                    f"Branch {obj.name} contains conflicts with the default branch that must be addressed."
+                    " Please review the diff for details and manually update the conflicts before rebasing."
+                )
+            node_diff_field_summaries = await diff_repository.get_node_field_summaries(
+                diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+            )
+
+            candidate_schema = merger.get_candidate_schema()
+            determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
+            constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
 
             # If there are some changes related to the schema between this branch and main, we need to
-            #  - Run all the validations to ensure everything if correct before rebasing the branch
+            #  - Run all the validations to ensure everything is correct before rebasing the branch
             #  - Run all the migrations after the rebase
             if obj.has_schema_changes:
-                candidate_schema = merger.get_candidate_schema()
-                constraints = await merger.calculate_validations(target_schema=candidate_schema)
+                constraints += await merger.calculate_validations(target_schema=candidate_schema)
+            if constraints:
                 error_messages, _ = await schema_validators_checker(
                     branch=obj, schema=candidate_schema, constraints=constraints, service=context.service
                 )
@@ -312,7 +333,7 @@ class BranchMerge(Mutation):
         async with UserTask.from_graphql_context(title=f"Merge branch: {data['name']}", context=context) as task:
             obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
-            merger: Optional[BranchMerger] = None
+            merger: BranchMerger | None = None
             async with lock.registry.global_graph_lock():
                 async with context.db.start_transaction() as db:
                     merger = BranchMerger(db=db, source_branch=obj, service=context.service)

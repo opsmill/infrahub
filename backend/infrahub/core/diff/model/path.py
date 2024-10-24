@@ -197,7 +197,10 @@ class EnrichedDiffSingleRelationship(BaseSummary):
     properties: set[EnrichedDiffProperty] = field(default_factory=set)
 
     def __hash__(self) -> int:
-        return hash(self.peer_id)
+        hash_str = self.peer_id
+        for p in self.properties:
+            hash_str += f"{p.property_type}|{p.previous_value}|{p.new_value}"
+        return hash(hash_str)
 
     def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
         all_conflicts = []
