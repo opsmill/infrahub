@@ -58,7 +58,6 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         initial_dataset: None,
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
-        set_service_client,
     ) -> None:
         branch = await client.branch.create(branch_name="ro_repository", sync_with_git=False)
 
@@ -85,14 +84,19 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         assert check_definition.file_path.value == "checks/car_overview.py"
 
     async def test_step02_validate_generated_artifacts(
-        self, db: InfrahubDatabase, client: InfrahubClient, set_service_client
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
     ):
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT, branch="ro_repository")
         assert artifacts
         assert artifacts[0].name.value == "Ownership report"
 
     async def test_step03_merge_branch(
-        self, db: InfrahubDatabase, client: InfrahubClient, helper: TestHelper, set_service_client
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        helper: TestHelper,
     ):
         await client.branch.merge(branch_name="ro_repository")
 

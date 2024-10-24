@@ -51,7 +51,12 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         return await create_branch(db=db, branch_name="delete_prefix")
 
     async def test_step01_add_address(
-        self, db: InfrahubDatabase, initial_dataset, client: InfrahubClient, branch_1, new_address_1, set_service_client
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        client: InfrahubClient,
+        branch_1,
+        new_address_1,
     ) -> None:
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,
@@ -67,7 +72,12 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         assert parent_rels[0].peer_id == initial_dataset["net140"].id
 
     async def test_step02_add_delete_prefix(
-        self, db: InfrahubDatabase, initial_dataset, client: InfrahubClient, branch_2, new_address_1, set_service_client
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        client: InfrahubClient,
+        branch_2,
+        new_address_1,
     ) -> None:
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,
