@@ -8,6 +8,10 @@ The GraphQL interface is the main interface to interact with Infrahub. The Graph
 
 The endpoint to interact with the main branch is accessible at `https://<host>/graphql`.
 To interact with a branch the URL must include the name of the branch, such as `https://<host>/graphql/<branch_name>`.
+If you need to extract the current GraphQL schema in your environment you can issue an HTTP get request to:
+
+- `https://<host>//schema.graphql`
+- `https://<host>//schema.graphql?branch=some-other-branch`
 
 ## Query & mutations
 
