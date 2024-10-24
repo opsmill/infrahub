@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -67,8 +67,9 @@ class TestSuperAdminPermission:
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ):
         checker = SuperAdminPermissionChecker()
-        is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
-        assert is_supported == user.authenticated
+        with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
+            is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
+            assert is_supported == user.authenticated
 
     async def test_account_with_permission(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper):
         checker = SuperAdminPermissionChecker()
