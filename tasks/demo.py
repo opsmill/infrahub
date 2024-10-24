@@ -73,7 +73,7 @@ def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = Fals
 
 @task(optional=["database"])
 def restart(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Restart Infrahub API Server and Git Agent within docker compose."""
+    """Restart Infrahub API Server and Task worker within docker compose."""
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 

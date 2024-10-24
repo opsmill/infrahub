@@ -10,9 +10,6 @@ Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrast
 
 ## Quick Start
 
-> [!NOTE]
-> Infrahub is currently in beta, and the team is actively working towards reaching version 1.0 by the end of the year. The project is committed to ensuring data safety and providing a migration path for future releases. See our [FAQ](https://docs.infrahub.app/faq/) for more information.
-
 Leveraging [GitHub Codespaces](https://docs.github.com/en/codespaces/overview), it's possible to start a new instance of Infrahub in the Cloud in minutes:
 
 |  No Data | Demo Data |
