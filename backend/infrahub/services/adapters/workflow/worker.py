@@ -30,6 +30,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         workflow: WorkflowDefinition,
         expected_return: type[Return],
         parameters: dict[str, Any] | None = ...,
+        tags: list[str] | None = ...,
     ) -> Return: ...
 
     @overload
@@ -38,6 +39,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         workflow: WorkflowDefinition,
         expected_return: None = ...,
         parameters: dict[str, Any] | None = ...,
+        tags: list[str] | None = ...,
     ) -> Any: ...
 
     async def execute_workflow(
@@ -45,8 +47,11 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         workflow: WorkflowDefinition,
         expected_return: type[Return] | None = None,
         parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> Any:
-        response: FlowRun = await run_deployment(name=workflow.full_name, poll_interval=1, parameters=parameters or {})  # type: ignore[return-value, misc]
+        response: FlowRun = await run_deployment(
+            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags
+        )  # type: ignore[return-value, misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
@@ -56,9 +61,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         return await response.state.result(raise_on_failure=True, fetch=True)  # type: ignore[call-overload]
 
     async def submit_workflow(
-        self,
-        workflow: WorkflowDefinition,
-        parameters: dict[str, Any] | None = None,
+        self, workflow: WorkflowDefinition, parameters: dict[str, Any] | None = None, tags: list[str] | None = None
     ) -> WorkflowInfo:
-        flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {})  # type: ignore[return-value, misc]
+        flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[return-value, misc]
         return WorkflowInfo.from_flow(flow_run=flow_run)

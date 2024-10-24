@@ -22,6 +22,7 @@ class InfrahubWorkflow:
         workflow: WorkflowDefinition,
         expected_return: type[Return],
         parameters: dict[str, Any] | None = ...,
+        tags: list[str] | None = ...,
     ) -> Return: ...
 
     @overload
@@ -30,6 +31,7 @@ class InfrahubWorkflow:
         workflow: WorkflowDefinition,
         expected_return: None = ...,
         parameters: dict[str, Any] | None = ...,
+        tags: list[str] | None = ...,
     ) -> Any: ...
 
     async def execute_workflow(
@@ -37,6 +39,7 @@ class InfrahubWorkflow:
         workflow: WorkflowDefinition,
         expected_return: type[Return] | None = None,
         parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> Any:
         raise NotImplementedError()
 
@@ -44,5 +47,6 @@ class InfrahubWorkflow:
         self,
         workflow: WorkflowDefinition,
         parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> WorkflowInfo:
         raise NotImplementedError()
