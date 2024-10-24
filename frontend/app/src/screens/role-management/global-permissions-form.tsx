@@ -125,6 +125,9 @@ export const GlobalPermissionForm = ({
         <DropdownField
           name="decision"
           label="Decision"
+          description={
+            schema?.attributes?.find((attribute) => attribute.name === "decision")?.description
+          }
           items={globalDecisionOptions}
           rules={{ required: true, validate: { required: isRequired } }}
         />
