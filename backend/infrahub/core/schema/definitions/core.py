@@ -942,6 +942,10 @@ core_models: dict[str, Any] = {
                     "enum": PermissionDecision.available_types(),
                     "default_value": PermissionDecision.ALLOW_ALL.value,
                     "order_weight": 5000,
+                    "description": (
+                        "Decide whether to deny or allow the action. If allowed, it can be configured for the default branch, any other "
+                        "branches or all branches"
+                    ),
                 },
                 {
                     "name": "identifier",
