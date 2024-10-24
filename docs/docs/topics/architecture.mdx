@@ -6,7 +6,7 @@ title: Architecture
 
 Infrahub is deployed as a container-based architecture, composed of multiple components. A minimum deployment consists of the following architecture:
 
-![Infrahub Architecture](../media/high_level_architecture.excalidraw.svg)
+![Infrahub Architecture](../media/high_nlevel_architecture.excalidraw.svg)
 
 ## Infrahub components
 
@@ -14,7 +14,8 @@ The main components are:
 
 - A **Frontend** written in React and rendered in the user's browser.
 - An **API server** written in Python with FastAPI.
-- A **Git agent** written in Python to manage the interaction with external Git repositories.
+- A **Task manager** based on `Prefect` to orchestrate workflow tasks.
+- A **Task worker** written in Python to execute specific tasks such as managing the interaction with external Git repositories.
 - A **Graph database** based on `neo4j`.
 - A **Message bus** based on `RabbitMQ`.
 - A **Cache** based on `redis`.
@@ -33,13 +34,23 @@ Multiple instance of the API Server can run at the same time to process more req
 
 :::
 
-### Git agent
+### Task manager
+
+The Task manager is based on Prefect, and is responsible for orchestration of tasks to be delegated to one or more Task workers.
+
+### Task worker
 
 Language: Python
 
-The Git agent is responsible for managing all the content related to the Git repositories. It organizes the file systems in order to quickly access any relevant commit. The Git Agent periodically pulls the Git server for updates and listens to the RPC channel on the event bus for tasks to execute.
+The Task worker is responsible for managing all the content related to the Git repositories. It organizes the file systems in order to quickly access any relevant commit. The Task worker periodically pulls the Git server for updates and listens to the RPC channel on the event bus for tasks to execute.
 
-Some of the tasks that can be executed on the Git agent includes:
+Currently there are three types of tasks:
+
+- *Internal* tasks
+- *User* tasks
+- *Git* tasks
+
+Some of the tasks that can be executed on the Task worker include:
 
 - Rendering a Jinja template.
 - Rendering a transform function.
@@ -48,7 +59,7 @@ Some of the tasks that can be executed on the Git agent includes:
 
 :::note
 
-Multiple instance of the Git agent can run at the same time to process more requests.
+Multiple instance of the Task worker can run at the same time to process more requests.
 
 :::
 
