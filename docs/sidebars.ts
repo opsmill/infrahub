@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
         'guides/installation',
         'guides/create-schema',
         'guides/import-schema',
+        'guides/accounts-permissions',
         'guides/groups',
         'guides/generator',
         'guides/repository',
@@ -102,6 +103,7 @@ const sidebars: SidebarsConfig = {
         'topics/groups',
         'topics/metadata',
         'topics/object-storage',
+        'topics/permissions-roles',
         'topics/version-control',
         'topics/proposed-change',
         'topics/repository',
@@ -158,6 +160,7 @@ const sidebars: SidebarsConfig = {
         'reference/api-server',
         'reference/dotinfrahub',
         'reference/infrahub-tests',
+        'reference/permissions',
         'reference/schema-validation'
       ],
     },
