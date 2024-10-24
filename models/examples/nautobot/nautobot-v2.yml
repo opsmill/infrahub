@@ -82,7 +82,7 @@ generics:
     description: "Generic Choice"
     include_in_menu: false
     label: "Choice"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels:
       - name__value
     order_by:
@@ -141,7 +141,7 @@ nodes:
     label: "Autonomous System"
     icon: "mdi:bank-circle-outline"
     menu_placement: InfraBGPSession
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by: ["asn__value"]
     display_labels:
       - name__value
@@ -168,7 +168,7 @@ nodes:
     label: "BGP Peer Group"
     icon: "mdi:view-grid-plus-outline"
     menu_placement: InfraBGPSession
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - name__value
     display_labels:
@@ -275,7 +275,7 @@ nodes:
     description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
     icon: "mdi:transit-connection-variant"
-    default_filter: circuit_id__value
+    human_friendly_id: ["circuit_id__value"]
     order_by:
       - circuit_id__value
     display_labels:
@@ -369,7 +369,7 @@ nodes:
     description: "Generic Device object"
     label: "Device"
     icon: "mdi:router-network"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     inherit_from:
       - "CoreArtifactTarget"
     order_by:
@@ -458,7 +458,7 @@ nodes:
     label: "Device Type"
     icon: "mdi:poll"
     menu_placement: "InfraDevice"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels:
       - name__value
     order_by:
@@ -603,7 +603,7 @@ nodes:
     namespace: Nautobot
     label: "Nautobot Namespace"
     include_in_menu: false
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels:
       - name__value
     order_by:
@@ -622,7 +622,7 @@ nodes:
     label: "Platform"
     icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - name__value
     display_labels:
@@ -659,7 +659,7 @@ nodes:
     label: "Provider Network"
     icon: "mdi:cloud"
     menu_placement: "InfraCircuit"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - name__value
     display_labels:
@@ -744,7 +744,7 @@ nodes:
     label: "Rack"
     icon: "mdi:server"
     menu_placement: "LocationGeneric"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels:
       - name__value
     attributes:
@@ -814,7 +814,7 @@ nodes:
     label: "Route Target"
     icon: "mdi:target"
     menu_placement: "InfraVRF"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - name__value
     display_labels:
@@ -842,7 +842,7 @@ nodes:
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
     icon: "mdi:lan-pending"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     uniqueness_constraints:
       - ["name__value"]
     order_by:
@@ -961,7 +961,7 @@ nodes:
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels: [label__value]
     order_by: [name__value]
     icon: mdi:domain
@@ -995,7 +995,7 @@ nodes:
     namespace: Status
     label: Status
     description: 'Represent the status of an object: active, maintenance'
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels: [label__value]
     icon: mdi:list-status
     include_in_menu: false
@@ -1013,7 +1013,7 @@ nodes:
     namespace: Role
     label: Role
     description: Represent the role of an object
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels: [label__value]
     order_by: [name__value]
     icon: mdi:ballot
@@ -1032,7 +1032,7 @@ nodes:
     namespace: Location
     label: Location
     description: 'A location represent a physical element: a building, a site, a city'
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     display_labels: [name__value]
     order_by: [name__value]
     icon: mdi:map-marker-radius-outline
