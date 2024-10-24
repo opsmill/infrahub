@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+from typing_extensions import Self
+
 from infrahub.core.constants import InfrahubKind, PermissionDecision
 from infrahub.core.query import Query
 from infrahub.core.registry import registry
@@ -29,6 +31,22 @@ class GlobalPermission(Permission):
     def __str__(self) -> str:
         decision = PermissionDecision(self.decision)
         return f"global:{self.action}:{decision.name.lower()}"
+
+    @classmethod
+    def from_string(cls, input: str) -> Self:
+        parts = input.split(":")
+        if len(parts) != 3 and parts[0] != "global":
+            raise ValueError(f"{input} is not a valid format for a Global permission")
+
+        # FIXME there is probably a better way to convert the decision
+        decision = PermissionDecision.DENY
+        if parts[2] == "allow_default":
+            decision = PermissionDecision.ALLOW_DEFAULT
+        elif parts[2] == "allow_all":
+            decision = PermissionDecision.ALLOW_ALL
+        elif parts[2] == "allow_other":
+            decision = PermissionDecision.ALLOW_OTHER
+        return cls(id="", name="", action=str(parts[1]), decision=decision)
 
 
 @dataclass

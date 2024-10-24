@@ -80,12 +80,13 @@ generic_menu_item: dict[str, Any] = {
         {"name": "icon", "kind": "Text", "optional": True, "order_weight": 4000},
         {"name": "protected", "kind": "Boolean", "default_value": False, "read_only": True, "order_weight": 5000},
         {"name": "order_weight", "kind": "Number", "default_value": 2000, "order_weight": 6000},
+        {"name": "required_permissions", "kind": "List", "optional": True, "order_weight": 7000},
         {
             "name": "section",
             "kind": "Text",
             "enum": ["object", "internal"],
             "default_value": "object",
-            "order_weight": 7000,
+            "order_weight": 8000,
         },
     ],
 }

@@ -143,6 +143,7 @@ class CoreMenu(CoreNode):
     icon: StringOptional
     protected: Boolean
     order_weight: Integer
+    required_permissions: ListAttributeOptional
     section: Enum
     parent: RelationshipManager
     children: RelationshipManager
