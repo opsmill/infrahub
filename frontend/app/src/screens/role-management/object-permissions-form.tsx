@@ -25,6 +25,7 @@ import RelationshipField from "@/components/form/fields/relationship.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 import { useSchema } from "@/hooks/useSchema";
+import { useEffect } from "react";
 import { objectDecisionOptions } from "./constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
@@ -181,28 +182,37 @@ const NodeSelect = () => {
 
   const form = useFormContext();
   const selectedNamespaceField: FormAttributeValue = form.watch("namespace");
+  console.log("selectedNamespaceField: ", selectedNamespaceField);
+  const selectedNameField: FormAttributeValue = form.watch("name");
+  console.log("selectedNameField: ", selectedNameField);
 
   const namespaceOptions = [
     {
       value: "*",
       label: "*",
     },
-    ...namespaces
-      .filter((namespace) => {
-        return namespace.name !== "Internal" && namespace.name !== "Lineage";
-      })
-      .map((namespace) => {
-        return {
-          value: namespace.name,
-          label: namespace.name,
-        };
-      }),
+    ...namespaces.map((namespace) => {
+      return {
+        value: namespace.name,
+        label: namespace.name,
+      };
+    }),
   ];
 
   const selectedNamespace =
     selectedNamespaceField?.value === "*"
       ? { value: "*", name: "*" }
-      : namespaces.find((namespace) => namespace.name === selectedNamespaceField?.value);
+      : namespaces
+          .filter((namespace) => {
+            if (!selectedNameField?.value) {
+              return true;
+            }
+
+            return namespace.used_by?.includes(selectedNameField?.value);
+          })
+          .find((namespace) => {
+            return namespace.name === selectedNamespaceField?.value;
+          });
 
   const nameOptions = [
     {
@@ -218,8 +228,23 @@ const NodeSelect = () => {
       .map((node) => ({
         value: node.name,
         label: node.label,
+        badge: node.namespace,
       })),
   ];
+
+  useEffect(() => {
+    // Break if namespace already set
+    if (selectedNamespaceField?.value) return;
+
+    // Break if no name is provided
+    if (!selectedNameField?.value) return;
+
+    // Get current node from form field value
+    const currentNode = nodes.find((node) => node.name === selectedNameField?.value);
+    if (!currentNode) return;
+
+    form.setValue("namespace", { value: currentNode.namespace, label: currentNode.namespace });
+  }, [selectedNameField?.value]);
 
   return (
     <>
