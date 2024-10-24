@@ -19,7 +19,6 @@ import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import DropdownField from "@/components/form/fields/dropdown.field";
-import InputField from "@/components/form/fields/input.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
@@ -47,7 +46,6 @@ export const GlobalPermissionForm = ({
   });
 
   const defaultValues = {
-    name: getCurrentFieldValue("name", currentObject),
     action: getCurrentFieldValue("action", currentObject),
     decision: getCurrentFieldValue("decision", currentObject),
     roles,
@@ -117,17 +115,6 @@ export const GlobalPermissionForm = ({
   return (
     <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <InputField
-          name="name"
-          label="Name"
-          rules={{
-            required: true,
-            validate: {
-              required: isRequired,
-            },
-          }}
-        />
-
         <DropdownField
           name="action"
           label="Action"
