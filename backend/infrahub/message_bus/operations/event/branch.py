@@ -9,7 +9,11 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
-from infrahub.workflows.catalogue import GIT_REPOSITORIES_CREATE_BRANCH, IPAM_RECONCILIATION
+from infrahub.workflows.catalogue import (
+    GIT_REPOSITORIES_CREATE_BRANCH,
+    IPAM_RECONCILIATION,
+    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+)
 
 log = get_logger()
 
@@ -50,7 +54,6 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
 
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryBranches(),
-        messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch),
         messages.TriggerGeneratorDefinitionRun(branch=message.target_branch),
     ]
     component_registry = get_component_registry()
@@ -58,6 +61,11 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
     diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=default_branch)
     # send diff update requests for every branch-tracking diff
     branch_diff_roots = await diff_repository.get_empty_roots(base_branch_names=[message.target_branch])
+
+    await service.workflow.submit_workflow(
+        workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+        parameters={"branch": message.target_branch},
+    )
 
     await service.workflow.submit_workflow(
         workflow=IPAM_RECONCILIATION,
@@ -84,11 +92,6 @@ async def rebased(message: messages.EventBranchRebased, service: InfrahubService
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryRebasedBranch(branch=message.branch),
     ]
-    if message.ipam_node_details:
-        await service.workflow.submit_workflow(
-            workflow=IPAM_RECONCILIATION,
-            parameters={"branch": message.branch, "ipam_node_details": message.ipam_node_details},
-        )
 
     # for every diff that touches the rebased branch, recalculate it
     component_registry = get_component_registry()

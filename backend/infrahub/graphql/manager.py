@@ -331,12 +331,12 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def _get_related_input_type(self, relationship: RelationshipSchema) -> type[RelatedNodeInput]:
         peer_schema = self.schema.get(name=relationship.peer, duplicate=False)
         if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
-            isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == relationship.peer
+            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPPREFIX
         ):
             return RelatedPrefixNodeInput
 
         if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
-            isinstance(peer_schema, GenericSchema) and InfrahubKind.IPADDRESS == relationship.peer
+            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPADDRESS
         ):
             return RelatedIPAddressNodeInput
 

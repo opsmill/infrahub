@@ -221,7 +221,7 @@ async def test_merge_proposed_change_permission_failure(
     )
 
     assert update_status.errors
-    assert "You do not have the permission to merge proposed changes" == update_status.errors[0].message
+    assert update_status.errors[0].message == "You do not have the permission to merge proposed changes"
 
     update_status = await graphql_mutation(
         query=UPDATE_PROPOSED_CHANGE,

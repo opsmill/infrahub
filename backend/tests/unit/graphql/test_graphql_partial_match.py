@@ -217,6 +217,7 @@ async def test_query_filter_local_attrs_partial_match_values(
     assert result.errors is None
     assert result.data
     assert len(result.data["TestCriticality"]["edges"]) == 2
-    assert ["green", "grey"] == sorted(
-        [node["node"]["name"]["value"] for node in result.data["TestCriticality"]["edges"]]
-    )
+    assert sorted([node["node"]["name"]["value"] for node in result.data["TestCriticality"]["edges"]]) == [
+        "green",
+        "grey",
+    ]

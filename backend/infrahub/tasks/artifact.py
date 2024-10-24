@@ -1,15 +1,18 @@
 from typing import Union
 
 from infrahub_sdk.node import InfrahubNode
+from prefect import task
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind
+from infrahub.git.models import RequestArtifactGenerate
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 
+@task
 async def define_artifact(
-    message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate], service: InfrahubServices
+    message: Union[messages.CheckArtifactCreate, RequestArtifactGenerate], service: InfrahubServices
 ) -> InfrahubNode:
     if message.artifact_id:
         artifact = await service.client.get(

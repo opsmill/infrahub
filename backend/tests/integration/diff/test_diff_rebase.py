@@ -290,6 +290,7 @@ class TestDiffRebase(TestInfrahubApp):
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
+        set_service_client,
     ):
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
@@ -370,7 +371,12 @@ class TestDiffRebase(TestInfrahubApp):
                 assert prop_diff.conflict is None
 
     async def test_resolve_conflict(
-        self, client: InfrahubClient, branch_2: Branch, diff_repository: DiffRepository, initial_dataset
+        self,
+        client: InfrahubClient,
+        branch_2: Branch,
+        diff_repository: DiffRepository,
+        initial_dataset,
+        set_service_client,
     ):
         cyberdyne_id = initial_dataset["cyberdyne"].id
         branch_2_diff = await diff_repository.get_one(

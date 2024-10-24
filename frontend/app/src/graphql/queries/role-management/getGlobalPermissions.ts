@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS = gql`
-  query GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS {
-    CoreGlobalPermission {
+  query GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS($search: String) {
+    CoreGlobalPermission(any__value: $search, partial_match: true) {
       count
       edges {
         node {

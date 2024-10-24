@@ -242,9 +242,9 @@ def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> 
 
     if DATABASE_DOCKER_IMAGE:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = DATABASE_DOCKER_IMAGE
-    elif INFRAHUB_DATABASE == DatabaseType.NEO4J.value:
+    elif DatabaseType.NEO4J.value == INFRAHUB_DATABASE:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = NEO4J_DOCKER_IMAGE
-    elif INFRAHUB_DATABASE == DatabaseType.MEMGRAPH.value:
+    elif DatabaseType.MEMGRAPH.value == INFRAHUB_DATABASE:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = MEMGRAPH_DOCKER_IMAGE
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 

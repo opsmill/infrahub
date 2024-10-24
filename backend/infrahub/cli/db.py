@@ -304,7 +304,9 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 migrations=result.migrations,
             )
             migration_error_msgs = await service.workflow.execute_workflow(
-                workflow=SCHEMA_APPLY_MIGRATION, expected_return=list[str], parameters={"message": apply_migration_data}
+                workflow=SCHEMA_APPLY_MIGRATION,
+                expected_return=list[str],
+                parameters={"message": apply_migration_data},
             )
 
             if migration_error_msgs:

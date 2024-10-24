@@ -1,4 +1,6 @@
-from .constants import WorkflowType
+from infrahub.core.constants import BranchSupportType
+
+from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(
@@ -17,6 +19,7 @@ TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     type=WorkflowType.USER,
     module="infrahub.transformations.tasks",
     function="transform_render_jinja2_template",
+    branch_support=BranchSupportType.AWARE,
 )
 
 TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
@@ -24,6 +27,7 @@ TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
     type=WorkflowType.USER,
     module="infrahub.transformations.tasks",
     function="transform_python",
+    branch_support=BranchSupportType.AWARE,
 )
 
 ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
@@ -39,6 +43,8 @@ SCHEMA_APPLY_MIGRATION = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.migrations.schema.tasks",
     function="schema_apply_migrations",
+    branch_support=BranchSupportType.AWARE,
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 SCHEMA_VALIDATE_MIGRATION = WorkflowDefinition(
@@ -46,6 +52,14 @@ SCHEMA_VALIDATE_MIGRATION = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.validators.tasks",
     function="schema_validate_migrations",
+    branch_support=BranchSupportType.AWARE,
+)
+
+TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
+    name="artifact-definition-generate",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="generate_artifact_definition",
 )
 
 IPAM_RECONCILIATION = WorkflowDefinition(
@@ -53,6 +67,15 @@ IPAM_RECONCILIATION = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.ipam.tasks",
     function="ipam_reconciliation",
+    branch_support=BranchSupportType.AWARE,
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
+    name="artifact-generate",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="generate_artifact",
 )
 
 GIT_REPOSITORIES_SYNC = WorkflowDefinition(
@@ -68,6 +91,14 @@ GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
     function="create_branch",
+    branch_support=BranchSupportType.AWARE,
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+BRANCH_REBASE = WorkflowDefinition(
+    name="branch-rebase",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.branch.tasks",
+    function="rebase_branch",
 )
 
 worker_pools = [INFRAHUB_WORKER_POOL]
@@ -79,7 +110,10 @@ workflows = [
     ANONYMOUS_TELEMETRY_SEND,
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_VALIDATE_MIGRATION,
+    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     IPAM_RECONCILIATION,
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORIES_CREATE_BRANCH,
+    REQUEST_ARTIFACT_GENERATE,
+    BRANCH_REBASE,
 ]
