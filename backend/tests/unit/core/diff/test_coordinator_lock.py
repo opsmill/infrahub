@@ -7,7 +7,6 @@ import pytest
 from infrahub import config, lock
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
@@ -35,8 +34,6 @@ class TestDiffCoordinatorLocks:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
-        mock_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
-        diff_coordinator.data_check_synchronizer = mock_synchronizer
         wrapped_repo = AsyncMock(wraps=diff_coordinator.diff_repo)
         diff_coordinator.diff_repo = wrapped_repo
         wrapped_calculator = AsyncMock(wraps=diff_coordinator.diff_calculator)
