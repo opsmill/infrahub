@@ -7,12 +7,13 @@ spec:
       name: MainMenu
       label: Organization
       icon: "mdi:domain"
+      kind: OrganizationGeneric
       children:
         data:
           - namespace: Organization
             name: Manufacturer
             label: Manufacturer
-            kind: LocationManufacturer
+            kind: OrganizationManufacturer
             icon: "mdi:domain"
 
           - namespace: Organization
@@ -34,6 +35,12 @@ spec:
       icon: "mingcute:location-line"
       children:
         data:
+          - namespace: Location
+            name: All
+            label: All Locations
+            kind: LocationGeneric
+            icon: "mingcute:location-line"
+
           - namespace: Location
             name: Continent
             label: Continent

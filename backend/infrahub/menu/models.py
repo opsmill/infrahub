@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
+from infrahub.core.account import GlobalPermission
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema
@@ -23,11 +24,11 @@ def get_full_name(obj: CoreMenuItem | NodeSchema | GenericSchema | ProfileSchema
 
 
 def _get_full_name_node(obj: CoreMenuItem) -> str:
-    return f"{obj.namespace.value}:{obj.name.value}"
+    return f"{obj.namespace.value}{obj.name.value}"
 
 
 def _get_full_name_schema(node: MainSchemaTypes) -> str:
-    return f"{node.namespace}:{node.name}"
+    return f"{node.namespace}{node.name}"
 
 
 @dataclass
@@ -54,7 +55,9 @@ class MenuDict:
         data: dict[str, list[MenuItemList]] = {}
 
         for section in [MenuSection.INTERNAL, MenuSection.OBJECT]:
-            item_per_section = [value.to_list() for key, value in self.data.items() if value.section == section]
+            item_per_section = [
+                value.to_list() for value in self.data.values() if value.section == section and value.hidden is False
+            ]
             data[section.value] = sorted(item_per_section, key=lambda d: d.order_weight)
 
         return Menu(sections=data)
@@ -78,6 +81,8 @@ class MenuItem(BaseModel):
     kind: str = Field(default="", description="Kind of the model associated with this menuitem if applicable")
     order_weight: int = 5000
     section: MenuSection = MenuSection.OBJECT
+    permissions: list[str] = Field(default_factory=list)
+    hidden: bool = False
 
     @classmethod
     def from_node(cls, obj: CoreMenuItem) -> Self:
@@ -89,6 +94,7 @@ class MenuItem(BaseModel):
             path=obj.path.value or "",
             kind=obj.kind.value or "",
             section=obj.section.value,
+            permissions=obj.required_permissions.value or [],
         )
 
     @classmethod
@@ -107,9 +113,17 @@ class MenuItemDict(MenuItem):
 
     def to_list(self) -> MenuItemList:
         data = self.model_dump(exclude={"children"})
-        unsorted_children = [child.to_list() for child in self.children.values()]
+        unsorted_children = [child.to_list() for child in self.children.values() if child.hidden is False]
         data["children"] = sorted(unsorted_children, key=lambda d: d.order_weight)
         return MenuItemList(**data)
+
+    def get_global_permissions(self) -> list[GlobalPermission]:
+        permissions: list[GlobalPermission] = []
+        for permission in self.permissions:
+            if not permission.startswith("global"):
+                continue
+            permissions.append(GlobalPermission.from_string(input=permission))
+        return permissions
 
 
 class MenuItemList(MenuItem):
@@ -127,6 +141,7 @@ class MenuItemDefinition(BaseModel):
     kind: str = ""
     section: MenuSection = MenuSection.OBJECT
     order_weight: int = 2000
+    permissions: list[str] = Field(default_factory=list)
     children: list[MenuItemDefinition] = Field(default_factory=list)
 
     async def to_node(self, db: InfrahubDatabase, parent: CoreMenuItem | None = None) -> CoreMenuItem:
@@ -143,6 +158,7 @@ class MenuItemDefinition(BaseModel):
             section=self.section.value,
             order_weight=self.order_weight,
             parent=parent.id if parent else None,
+            required_permissions=self.permissions,
         )
         return obj
 
@@ -157,4 +173,4 @@ class MenuItemDefinition(BaseModel):
 
     @property
     def full_name(self) -> str:
-        return f"{self.namespace}:{self.name}"
+        return f"{self.namespace}{self.name}"
