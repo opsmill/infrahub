@@ -19,11 +19,7 @@ async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, cr
     assert "object_permissions" in permissions
     assert str(permissions["object_permissions"][0]) == str(
         ObjectPermission(
-            id="",
-            namespace="*",
-            name="*",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOW_ALL.value,
+            namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.ALLOW_ALL.value
         )
     )
 
@@ -47,20 +43,12 @@ async def test_has_permission_global(
     backend = LocalPermissionBackend()
 
     allow_default_branch_edition = GlobalPermission(
-        id="",
-        action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-        name="Edit default branch",
+        action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
     role1_permissions = []
     obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await obj.new(
-        db=db,
-        name=allow_default_branch_edition.name,
-        action=allow_default_branch_edition.action,
-        decision=allow_default_branch_edition.decision,
-    )
+    await obj.new(db=db, action=allow_default_branch_edition.action, decision=allow_default_branch_edition.decision)
     await obj.save(db=db)
     role1_permissions.append(obj)
 
@@ -78,15 +66,10 @@ async def test_has_permission_global(
     role2_permissions = []
     for p in [
         allow_default_branch_edition,
-        GlobalPermission(
-            id="",
-            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-            decision=PermissionDecision.DENY.value,
-            name="Edit default branch",
-        ),
+        GlobalPermission(action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.DENY.value),
     ]:
         obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=p.name, action=p.action, decision=p.decision)
+        await obj.new(db=db, action=p.action, decision=p.decision)
         await obj.save(db=db)
         role2_permissions.append(obj)
 
@@ -122,18 +105,10 @@ async def test_has_permission_object(
     role1_permissions = []
     for p in [
         ObjectPermission(
-            id="",
-            namespace="*",
-            name="*",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOW_ALL.value,
+            namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.ALLOW_ALL.value
         ),
         ObjectPermission(
-            id="",
-            namespace="Builtin",
-            name="Tag",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.DENY.value,
+            namespace="Builtin", name="Tag", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
         ),
     ]:
         obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
@@ -155,14 +130,9 @@ async def test_has_permission_object(
     role2_permissions = []
     for p in [
         ObjectPermission(
-            id="",
-            namespace="*",
-            name="*",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.DENY.value,
+            namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
         ),
         ObjectPermission(
-            id="",
             namespace="Builtin",
             name="Tag",
             action=PermissionAction.ANY.value,
@@ -186,7 +156,6 @@ async def test_has_permission_object(
     await group2.members.save(db=db)
 
     permission = ObjectPermission(
-        id="",
         namespace="Builtin",
         name="Tag",
         action=PermissionAction.CREATE.value,
@@ -213,18 +182,10 @@ async def test_report_permission_object(
     role1_permissions = []
     for p in [
         ObjectPermission(
-            id="",
-            namespace="*",
-            name="*",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOW_ALL.value,
+            namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.ALLOW_ALL.value
         ),
         ObjectPermission(
-            id="",
-            namespace="Builtin",
-            name="Tag",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.DENY.value,
+            namespace="Builtin", name="Tag", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
         ),
     ]:
         obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
@@ -246,14 +207,9 @@ async def test_report_permission_object(
     role2_permissions = []
     for p in [
         ObjectPermission(
-            id="",
-            namespace="*",
-            name="*",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.DENY.value,
+            namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
         ),
         ObjectPermission(
-            id="",
             namespace="Builtin",
             name="Tag",
             action=PermissionAction.ANY.value,

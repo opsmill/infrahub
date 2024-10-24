@@ -104,35 +104,30 @@ class TestObjectPermissions:
         permissions = []
         for object_permission in [
             ObjectPermission(
-                id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.VIEW.value,
                 decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
-                id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
                 decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
             ObjectPermission(
-                id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
                 decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
             ObjectPermission(
-                id="",
                 namespace="Core",
                 name="*",
                 action=PermissionAction.ANY.value,
                 decision=PermissionDecisionFlag.ALLOW_OTHER,
             ),
             ObjectPermission(
-                id="",
                 namespace="Core",
                 name="*",
                 action=PermissionAction.VIEW.value,
@@ -319,28 +314,24 @@ class TestAttributePermissions:
         permissions = []
         for object_permission in [
             ObjectPermission(
-                id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.VIEW.value,
                 decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
-                id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.CREATE.value,
                 decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
-                id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.DELETE.value,
                 decision=PermissionDecisionFlag.ALLOW_ALL,
             ),
             ObjectPermission(
-                id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.UPDATE.value,

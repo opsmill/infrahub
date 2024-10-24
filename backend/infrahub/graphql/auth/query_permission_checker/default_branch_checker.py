@@ -15,7 +15,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can edit data in the default branch."""
 
     permission_required = GlobalPermission(
-        id="", name="", action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
+        action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
     )
     exempt_operations = [
         "BranchCreate",

@@ -935,13 +935,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "generate_profile": False,
             "attributes": [
-                {
-                    "name": "decision",
-                    "kind": "Number",
-                    "enum": PermissionDecision.available_types(),
-                    "default_value": PermissionDecision.ALLOW_ALL.value,
-                    "order_weight": 5000,
-                },
+                {"name": "description", "kind": "Text", "optional": True},
                 {
                     "name": "identifier",
                     "kind": "Text",
@@ -2169,18 +2163,25 @@ core_models: dict[str, Any] = {
             "description": "A permission that grants global rights to perform actions in Infrahub",
             "label": "Global permission",
             "include_in_menu": False,
-            "order_by": ["name__value", "action__value"],
-            "display_labels": ["name__value"],
+            "order_by": ["action__value"],
+            "display_labels": ["action__value"],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
                 {
                     "name": "action",
                     "kind": "Dropdown",
                     "choices": [{"name": permission.value} for permission in GlobalPermissions],
                     "order_weight": 2000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Number",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
+                    "order_weight": 3000,
+                    "description": "Decide to deny or allow the action at a global level",
                 },
             ],
         },
@@ -2204,6 +2205,17 @@ core_models: dict[str, Any] = {
                     "enum": PermissionAction.available_types(),
                     "default_value": PermissionAction.ANY.value,
                     "order_weight": 4000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Number",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
+                    "order_weight": 5000,
+                    "description": (
+                        "Decide to deny or allow the action. If allowed, it can be configured for the default branch, any other branches or all "
+                        "branches"
+                    ),
                 },
             ],
         },

@@ -61,7 +61,6 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                 extracted_words = extract_camelcase_words(kind)
                 permissions.append(
                     ObjectPermission(
-                        id="",
                         namespace=extracted_words[0],
                         name="".join(extracted_words[1:]),
                         action=action.lower(),
@@ -88,7 +87,7 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """
 
     permission_required = GlobalPermission(
-        id="", name="", action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
+        action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
@@ -139,7 +138,7 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     """
 
     permission_required = GlobalPermission(
-        id="", name="", action=GlobalPermissions.MANAGE_PERMISSIONS.value, decision=PermissionDecision.ALLOW_ALL.value
+        action=GlobalPermissions.MANAGE_PERMISSIONS.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
@@ -184,7 +183,7 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     """
 
     permission_required = GlobalPermission(
-        id="", name="", action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
+        action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:

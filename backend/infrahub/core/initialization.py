@@ -32,7 +32,6 @@ from infrahub.menu.menu import default_menu
 from infrahub.menu.utils import create_menu_children
 from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
-from infrahub.utils import format_label
 
 log = get_logger()
 
@@ -307,9 +306,9 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await permission.new(
         db=db,
-        name=format_label(GlobalPermissions.SUPER_ADMIN.value),
         action=GlobalPermissions.SUPER_ADMIN.value,
         decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to do anything",
     )
     await permission.save(db=db)
     log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
@@ -327,43 +326,43 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
     repo_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await repo_permission.new(
         db=db,
-        name=format_label(GlobalPermissions.MANAGE_REPOSITORIES.value),
         action=GlobalPermissions.MANAGE_REPOSITORIES.value,
         decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to manage repositories",
     )
     await repo_permission.save(db=db)
 
     schema_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await schema_permission.new(
         db=db,
-        name=format_label(GlobalPermissions.MANAGE_SCHEMA.value),
         action=GlobalPermissions.MANAGE_SCHEMA.value,
         decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to manage the schema",
     )
     await schema_permission.save(db=db)
 
     proposed_change_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await proposed_change_permission.new(
         db=db,
-        name=format_label(GlobalPermissions.MERGE_PROPOSED_CHANGE.value),
         action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
         decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to merge proposed changes",
     )
     await proposed_change_permission.save(db=db)
 
     # Other permissions, created to keep references of them from the start
-    for permission_action in (
-        GlobalPermissions.EDIT_DEFAULT_BRANCH,
-        GlobalPermissions.MANAGE_ACCOUNTS,
-        GlobalPermissions.MANAGE_PERMISSIONS,
-        GlobalPermissions.MERGE_BRANCH,
+    for permission_action, permission_description in (
+        (GlobalPermissions.EDIT_DEFAULT_BRANCH, "Allow a user to change data in the default branch"),
+        (GlobalPermissions.MANAGE_ACCOUNTS, "Allow a user to manage accounts, account roles and account groups"),
+        (GlobalPermissions.MANAGE_PERMISSIONS, "Allow a user to manage permissions"),
+        (GlobalPermissions.MERGE_BRANCH, "Allow a user to merge branches"),
     ):
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
             db=db,
-            name=format_label(permission_action.value),
             action=permission_action.value,
             decision=PermissionDecision.ALLOW_ALL.value,
+            description=permission_description,
         )
         await permission.save(db=db)
 
@@ -374,6 +373,7 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
         namespace="*",
         action=PermissionAction.VIEW.value,
         decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to view any object in any branch",
     )
     await view_permission.save(db=db)
 
@@ -384,6 +384,7 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
         namespace="*",
         action=PermissionAction.ANY.value,
         decision=PermissionDecision.ALLOW_OTHER.value,
+        description="Allow a user to change data in non-default branches",
     )
     await modify_permission.save(db=db)
 
