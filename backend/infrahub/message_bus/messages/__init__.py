@@ -34,7 +34,6 @@ from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
 from .request_diff_refresh import RequestDiffRefresh
 from .request_diff_update import RequestDiffUpdate
-from .request_generator_run import RequestGeneratorRun
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_generatordefinition_run import RequestGeneratorDefinitionRun
 from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
@@ -82,7 +81,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
     "request.diff.update": RequestDiffUpdate,
     "request.diff.refresh": RequestDiffRefresh,
-    "request.generator.run": RequestGeneratorRun,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.generator_definition.run": RequestGeneratorDefinitionRun,
     "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,

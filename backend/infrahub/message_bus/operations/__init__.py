@@ -46,7 +46,6 @@ COMMAND_MAP = {
     "refresh.webhook.configuration": refresh.webhook.configuration,
     "request.diff.refresh": requests.diff.refresh,
     "request.diff.update": requests.diff.update,
-    "request.generator.run": requests.generator.run,
     "request.generator_definition.check": requests.generator_definition.check,
     "request.generator_definition.run": requests.generator_definition.run,
     "request.graphql_query_group.update": requests.graphql_query_group.update,

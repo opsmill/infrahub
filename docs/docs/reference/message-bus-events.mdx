@@ -644,35 +644,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 
 <!-- vale off -->
-### Request Generator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.generator.run
-<!-- vale on -->
-
-**Description**: Runs a generator.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **generator_definition** | The Generator definition | N/A | None |
-| **generator_instance** | The id of the generator instance if it previously existed | N/A | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this generator | string | None |
-| **target_name** | Name of the generator target | string | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **variables** | Input variables when running the generator | object | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Request Generator Definition
 <!-- vale on -->
 
@@ -1703,36 +1674,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **branch_name** | The branch associated with the diff | string | None |
 | **diff_id** | The id for this diff | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Generator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.generator.run
-<!-- vale on -->
-
-**Description**: Runs a generator.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **generator_definition** | The Generator definition | N/A | None |
-| **generator_instance** | The id of the generator instance if it previously existed | N/A | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this generator | string | None |
-| **target_name** | Name of the generator target | string | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **variables** | Input variables when running the generator | object | None |
 <!-- vale on -->
 
 <!-- vale off -->

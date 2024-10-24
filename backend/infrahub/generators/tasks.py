@@ -4,42 +4,44 @@ from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
-from prefect import flow
+from prefect import flow, task
 
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus
+from infrahub.generators.models import RequestGeneratorRun
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.repository import get_initialized_repo
-from infrahub.message_bus import messages
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices, services
 
 
 @flow(name="generator-run")
-async def run(message: messages.RequestGeneratorRun, service: InfrahubServices) -> None:
+async def run_generator(model: RequestGeneratorRun) -> None:
+    service = services.service
+
     repository = await get_initialized_repo(
-        repository_id=message.repository_id,
-        name=message.repository_name,
+        repository_id=model.repository_id,
+        name=model.repository_name,
         service=service,
-        repository_kind=message.repository_kind,
+        repository_kind=model.repository_kind,
     )
 
     generator_definition = InfrahubGeneratorDefinitionConfig(
-        name=message.generator_definition.definition_name,
-        class_name=message.generator_definition.class_name,
-        file_path=message.generator_definition.file_path,
-        query=message.generator_definition.query_name,
-        targets=message.generator_definition.group_id,
-        convert_query_response=message.generator_definition.convert_query_response,
+        name=model.generator_definition.definition_name,
+        class_name=model.generator_definition.class_name,
+        file_path=model.generator_definition.file_path,
+        query=model.generator_definition.query_name,
+        targets=model.generator_definition.group_id,
+        convert_query_response=model.generator_definition.convert_query_response,
     )
 
-    commit_worktree = repository.get_commit_worktree(commit=message.commit)
+    commit_worktree = repository.get_commit_worktree(commit=model.commit)
 
     file_info = extract_repo_file_information(
         full_filename=os.path.join(commit_worktree.directory, generator_definition.file_path.as_posix()),
         repo_directory=repository.directory_root,
         worktree_directory=commit_worktree.directory,
     )
-    generator_instance = await _define_instance(message=message, service=service)
+    generator_instance = await _define_instance(model=model, service=service)
 
     try:
         generator_class = generator_definition.load_class(
@@ -49,8 +51,8 @@ async def run(message: messages.RequestGeneratorRun, service: InfrahubServices) 
         generator = generator_class(
             query=generator_definition.query,
             client=service.client,
-            branch=message.branch_name,
-            params=message.variables,
+            branch=model.branch_name,
+            params=model.variables,
             generator_instance=generator_instance.id,
             convert_query_response=generator_definition.convert_query_response,
             infrahub_node=InfrahubNode,
@@ -65,23 +67,24 @@ async def run(message: messages.RequestGeneratorRun, service: InfrahubServices) 
     await generator_instance.update(do_full_update=True)
 
 
-async def _define_instance(message: messages.RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
-    if message.generator_instance:
+@task
+async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
+    if model.generator_instance:
         instance = await service.client.get(
-            kind=CoreGeneratorInstance, id=message.generator_instance, branch=message.branch_name
+            kind=CoreGeneratorInstance, id=model.generator_instance, branch=model.branch_name
         )
         instance.status.value = GeneratorInstanceStatus.PENDING.value
         await instance.update(do_full_update=True)
 
     else:
         async with lock.registry.get(
-            f"{message.target_id}-{message.generator_definition.definition_id}", namespace="generator"
+            f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
             instances = await service.client.filters(
                 kind=CoreGeneratorInstance,
-                definition__ids=[message.generator_definition.definition_id],
-                object__ids=[message.target_id],
-                branch=message.branch_name,
+                definition__ids=[model.generator_definition.definition_id],
+                object__ids=[model.target_id],
+                branch=model.branch_name,
             )
             if instances:
                 instance = instances[0]
@@ -90,12 +93,12 @@ async def _define_instance(message: messages.RequestGeneratorRun, service: Infra
             else:
                 instance = await service.client.create(
                     kind=CoreGeneratorInstance,
-                    branch=message.branch_name,
+                    branch=model.branch_name,
                     data={
-                        "name": f"{message.generator_definition.definition_name}: {message.target_name}",
+                        "name": f"{model.generator_definition.definition_name}: {model.target_name}",
                         "status": GeneratorInstanceStatus.PENDING.value,
-                        "object": message.target_id,
-                        "definition": message.generator_definition.definition_id,
+                        "object": model.target_id,
+                        "definition": model.generator_definition.definition_id,
                     },
                 )
                 await instance.save()
