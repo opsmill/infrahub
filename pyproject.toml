@@ -556,7 +556,6 @@ ignore = [
     "SIM117",   # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SIM201",   # Use `backup_path.suffix != ".backup"` instead of `not backup_path.suffix == ".backup"`
-    "SIM300",   # Yoda condition detected
     "SIM401",   # Use `property["items"].get("format", None)` instead of an `if` block
     "SIM910",   #  Use `data.get("identifier")` instead of `data.get("identifier", None)`
     "UP012",    # Unnecessary call to encode as UTF-8
