@@ -128,15 +128,15 @@ class FullRelationshipIdentifier:
 class RelationshipQuery(Query):
     def __init__(
         self,
-        rel: Union[type[Relationship], Relationship] = None,
+        rel: Union[type[Relationship], Relationship] | None = None,
         rel_type: Optional[str] = None,
-        source: Node = None,
-        source_id: UUID = None,
-        destination: Node = None,
-        destination_id: UUID = None,
-        schema: RelationshipSchema = None,
-        branch: Branch = None,
-        at: Union[Timestamp, str] = None,
+        source: Node | None = None,
+        source_id: UUID | None = None,
+        destination: Node | None = None,
+        destination_id: UUID | None = None,
+        schema: RelationshipSchema | None = None,
+        branch: Branch | None = None,
+        at: Union[Timestamp, str] | None = None,
         **kwargs,
     ):
         if not source and not source_id:
@@ -196,7 +196,7 @@ class RelationshipCreateQuery(RelationshipQuery):
     def __init__(
         self,
         destination: Node = None,
-        destination_id: UUID = None,
+        destination_id: UUID | None = None,
         **kwargs,
     ):
         if not destination and not destination_id:

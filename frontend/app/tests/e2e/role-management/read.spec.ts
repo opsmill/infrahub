@@ -15,20 +15,21 @@ test.describe("Role management - READ", () => {
     });
 
     await test.step("check accounts view", async () => {
-      await expect(page.getByRole("cell", { name: "Admin" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "admin", exact: true })).toBeVisible();
       await expect(page.getByRole("cell", { name: "Pop-Builder" })).toBeVisible();
     });
 
     await test.step("check groups view", async () => {
       await page.getByRole("link", { name: "Groups 2" }).click();
       await expect(page.getByRole("cell", { name: "Administrators" })).toBeVisible();
-      await expect(page.getByRole("cell", { name: "+ 4" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "+4" })).toBeVisible();
     });
 
     await test.step("check roles view", async () => {
       await page.getByRole("link", { name: "Roles 2" }).click();
-      await expect(page.getByRole("cell", { name: "Super Administrator" })).toBeVisible();
-      await expect(page.getByRole("cell", { name: "1" }).first()).toBeVisible();
+      await expect(page.getByText("General Access")).toBeVisible();
+      await expect(page.getByText("Infrahub Users")).toBeVisible();
+      await expect(page.getByText("global:manage_repositories:")).toBeVisible();
     });
 
     await test.step("check global permissions view", async () => {

@@ -859,6 +859,7 @@ class NodeGetListQuery(Query):
                 self.order_by.append(far.final_value_query_variable)
                 continue
             self.order_by.append(far.node_value_query_variable)
+        self.order_by.append("n.uuid")
 
     async def _add_node_filter_attributes(
         self,

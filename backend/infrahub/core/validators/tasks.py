@@ -8,15 +8,17 @@ from infrahub.message_bus.messages.schema_validator_path import (
 )
 from infrahub.message_bus.operations.schema.validator import schema_path_validate
 from infrahub.services import services
+from infrahub.workflows.utils import add_branch_tag
 
 from .models.validate_migration import SchemaValidateMigrationData  # noqa: TCH001
 
 
-@flow
+@flow(name="schema-migrations-validate")
 async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[str]:
     batch = InfrahubBatch(return_exceptions=True)
     error_messages: list[str] = []
     service = services.service
+    await add_branch_tag(branch_name=message.branch.name)
 
     if not message.constraints:
         return error_messages

@@ -12,6 +12,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         workflow: WorkflowDefinition,
         expected_return: type[Return] | None = None,
         parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> Any:
         fn = workflow.get_function()
         return await fn(**parameters or {})
@@ -20,6 +21,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> WorkflowInfo:
         await self.execute_workflow(workflow=workflow, parameters=parameters)
         return WorkflowInfo(id=uuid.uuid4())

@@ -6,12 +6,13 @@ from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import DeploymentScheduleCreate
 from prefect.client.schemas.objects import FlowRun
 from prefect.client.schemas.schedules import CronSchedule
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 from infrahub import __version__
+from infrahub.core.constants import BranchSupportType
 
-from .constants import WorkflowType
+from .constants import WorkflowTag, WorkflowType
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
 
@@ -39,6 +40,8 @@ class WorkflowDefinition(BaseModel):
     module: str
     function: str
     cron: str | None = None
+    branch_support: BranchSupportType = BranchSupportType.AGNOSTIC
+    tags: list[WorkflowTag] = Field(default_factory=list)
 
     @property
     def entrypoint(self) -> str:
@@ -49,15 +52,18 @@ class WorkflowDefinition(BaseModel):
         return f"{self.name}/{self.name}"
 
     def to_deployment(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "name": self.name,
-            "entrypoint": self.entrypoint,
-        }
+        payload: dict[str, Any] = {"name": self.name, "entrypoint": self.entrypoint, "tags": self.get_tags()}
         if self.type == WorkflowType.INTERNAL:
             payload["version"] = __version__
         if self.cron:
             payload["schedules"] = [DeploymentScheduleCreate(schedule=CronSchedule(cron=self.cron))]
+
         return payload
+
+    def get_tags(self) -> list[str]:
+        tags: list[str] = [WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.value)]
+        tags += [tag.render() for tag in self.tags]
+        return tags
 
     async def save(self, client: PrefectClient, work_pool: WorkerPoolDefinition) -> UUID:
         flow_id = await client.create_flow_from_name(self.name)

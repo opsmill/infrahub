@@ -488,7 +488,6 @@ ignore = [
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",     # Unnecessary `list` call within `sorted()`
     "C420",     # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
-    "E721",     # Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
     "FURB113",  # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB116",  # Replace `bin` call with f-string
     "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
@@ -536,7 +535,6 @@ ignore = [
     "RUF006",   # Store a reference to the return value of `asyncio.create_task`
     "RUF010",   # Use explicit conversion flag
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
-    "RUF013",   # PEP 484 prohibits implicit `Optional`
     "RUF015",   # Prefer `next(...)` over single element slice
     "RUF021",   # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
     "RUF027",   # Possible f-string without an `f` prefix
@@ -557,7 +555,6 @@ ignore = [
     "SIM117",   # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SIM201",   # Use `backup_path.suffix != ".backup"` instead of `not backup_path.suffix == ".backup"`
-    "SIM300",   # Yoda condition detected
     "SIM401",   # Use `property["items"].get("format", None)` instead of an `if` block
     "SIM910",   #  Use `data.get("identifier")` instead of `data.get("identifier", None)`
     "UP012",    # Unnecessary call to encode as UTF-8
@@ -635,8 +632,9 @@ allow-dunder-method-names = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "C901", # `generate_site` is too complex (34 > 33)"
-    "E501", # Line too long
+    "C901",   # `generate_site` is too complex (34 > 33)"
+    "E501",   # Line too long
+    "RUF013", # PEP 484 prohibits implicit `Optional`
 ]
 
 "utilities/**.py" = [

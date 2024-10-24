@@ -142,7 +142,7 @@ state = State()
 
 class TestUserWorkflow01:
     @pytest.fixture(scope="class")
-    async def client(self, redis, nats):
+    async def client(self, redis, nats, prefect_test_fixture):
         client = TestClient(app)
         return client
 
