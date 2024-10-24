@@ -937,17 +937,6 @@ core_models: dict[str, Any] = {
             "attributes": [
                 {"name": "description", "kind": "Text", "optional": True},
                 {
-                    "name": "decision",
-                    "kind": "Number",
-                    "enum": PermissionDecision.available_types(),
-                    "default_value": PermissionDecision.ALLOW_ALL.value,
-                    "order_weight": 5000,
-                    "description": (
-                        "Decide to deny or allow the action. If allowed, it can be configured for the default branch, any other branches or all "
-                        "branches"
-                    ),
-                },
-                {
                     "name": "identifier",
                     "kind": "Text",
                     "read_only": True,
@@ -2186,6 +2175,14 @@ core_models: dict[str, Any] = {
                     "choices": [{"name": permission.value} for permission in GlobalPermissions],
                     "order_weight": 2000,
                 },
+                {
+                    "name": "decision",
+                    "kind": "Number",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
+                    "order_weight": 3000,
+                    "description": "Decide to deny or allow the action at a global level",
+                },
             ],
         },
         {
@@ -2208,6 +2205,17 @@ core_models: dict[str, Any] = {
                     "enum": PermissionAction.available_types(),
                     "default_value": PermissionAction.ANY.value,
                     "order_weight": 4000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Number",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
+                    "order_weight": 5000,
+                    "description": (
+                        "Decide to deny or allow the action. If allowed, it can be configured for the default branch, any other branches or all "
+                        "branches"
+                    ),
                 },
             ],
         },
