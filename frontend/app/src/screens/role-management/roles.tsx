@@ -1,4 +1,3 @@
-import { Pill } from "@/components/display/pill";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
@@ -21,6 +20,7 @@ import { useSchema } from "@/hooks/useSchema";
 import { NetworkStatus } from "@apollo/client";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import { getPermission } from "../permission/utils";
+import { RelationshipDisplay } from "./relationship-display";
 
 function Roles() {
   const [search, setSearch] = useState("");
@@ -75,13 +75,21 @@ function Roles() {
         description: { value: edge?.node?.description?.value },
         groups: {
           value: { edges: edge?.node?.groups?.edges },
-          display: <Pill>{edge?.node?.groups?.count}</Pill>,
+          display: (
+            <RelationshipDisplay
+              items={edge?.node?.groups?.edges?.map((edge) => edge?.node?.display_label)}
+            />
+          ),
         },
         permissions: {
           value: { edges: edge?.node?.permissions?.edges },
-          display: <Pill>{edge?.node?.permissions?.count}</Pill>,
+          display: (
+            <RelationshipDisplay
+              items={edge?.node?.permissions?.edges?.map((edge) => edge?.node?.identifier?.value)}
+            />
+          ),
         },
-        __typename: { value: edge?.node?.__typename },
+        __typename: edge?.node?.__typename,
       },
     }));
 

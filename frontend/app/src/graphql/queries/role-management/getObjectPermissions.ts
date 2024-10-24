@@ -25,6 +25,7 @@ export const GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS = gql`
             edges {
               node {
                 id
+                display_label
               }
             }
           }
