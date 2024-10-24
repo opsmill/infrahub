@@ -74,7 +74,7 @@ async def test_has_permission_global(
         GlobalPermission(action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.DENY.value),
     ]:
         obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=p.name, action=p.action, decision=p.decision)
+        await obj.new(db=db, action=p.action, decision=p.decision)
         await obj.save(db=db)
         role2_permissions.append(obj)
 
