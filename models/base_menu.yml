@@ -12,7 +12,7 @@ spec:
           - namespace: Organization
             name: Manufacturer
             label: Manufacturer
-            kind: LocationManufacturer
+            kind: OrganizationManufacturer
             icon: "mdi:domain"
 
           - namespace: Organization

@@ -151,7 +151,7 @@ infrahubDemoData:
   command:
     - sh
     - -c
-    - "infrahubctl schema load models/base --wait 30 && infrahubctl run models/infrastructure_edge.py && infrahubctl repository add demo-edge https://github.com/opsmill/infrahub-demo-edge --read-only"
+    - "infrahubctl schema load models/base --wait 30 && infrahubctl run models/infrastructure_edge.py && infrahubctl menu load models/base_menu.yml && infrahubctl repository add demo-edge https://github.com/opsmill/infrahub-demo-edge --read-only"
 
 # ----------- Mesage Queue (Rabbit MQ) -----------
 rabbitmq:
