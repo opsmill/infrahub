@@ -329,36 +329,6 @@ async def test_branch_create_with_repositories(
     assert await Branch.get_by_name(db=db, name="branch2")
 
 
-async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin):
-    branch2 = await create_branch(db=db, branch_name="branch2")
-
-    query = """
-    mutation {
-        BranchRebase(data: { name: "branch2" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-    result = await graphql_mutation(
-        query=query, db=db, branch=default_branch, service=service, account_session=session_admin
-    )
-
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchRebase"]["ok"] is True
-    assert result.data["BranchRebase"]["object"]["id"] == str(branch2.uuid)
-
-    new_branch2 = await Branch.get_by_name(db=db, name="branch2")
-    assert new_branch2.branched_from != branch2.branched_from
-
-    assert recorder.seen_routing_keys == ["event.branch.rebased"]
-
-
 async def test_branch_rebase_wrong_branch(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin
 ):

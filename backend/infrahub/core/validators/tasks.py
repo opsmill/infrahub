@@ -12,7 +12,7 @@ from infrahub.services import services
 from .models.validate_migration import SchemaValidateMigrationData  # noqa: TCH001
 
 
-@flow
+@flow(name="schema-migrations-validate")
 async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[str]:
     batch = InfrahubBatch(return_exceptions=True)
     error_messages: list[str] = []

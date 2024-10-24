@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
 
 
-@flow
+@flow(name="schema-migrations-apply")
 async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
     service = services.service
 
