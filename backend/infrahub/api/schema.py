@@ -333,7 +333,9 @@ async def load_schema(
             migrations=result.migrations,
         )
         migration_error_msgs = await service.workflow.execute_workflow(
-            workflow=SCHEMA_APPLY_MIGRATION, expected_return=list[str], parameters={"message": apply_migration_data}
+            workflow=SCHEMA_APPLY_MIGRATION,
+            expected_return=list[str],
+            parameters={"message": apply_migration_data},
         )
 
         if migration_error_msgs:
@@ -381,7 +383,9 @@ async def check_schema(
         constraints=result.constraints,
     )
     error_messages = await service.workflow.execute_workflow(
-        workflow=SCHEMA_VALIDATE_MIGRATION, expected_return=list[str], parameters={"message": validate_migration_data}
+        workflow=SCHEMA_VALIDATE_MIGRATION,
+        expected_return=list[str],
+        parameters={"message": validate_migration_data},
     )
     if error_messages:
         raise SchemaNotValidError(message=",\n".join(error_messages))

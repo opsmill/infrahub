@@ -92,11 +92,6 @@ async def rebased(message: messages.EventBranchRebased, service: InfrahubService
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryRebasedBranch(branch=message.branch),
     ]
-    if message.ipam_node_details:
-        await service.workflow.submit_workflow(
-            workflow=IPAM_RECONCILIATION,
-            parameters={"branch": message.branch, "ipam_node_details": message.ipam_node_details},
-        )
 
     # for every diff that touches the rebased branch, recalculate it
     component_registry = get_component_registry()

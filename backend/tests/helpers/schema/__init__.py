@@ -9,6 +9,7 @@ from .car import CAR
 from .manufacturer import MANUFACTURER
 from .person import PERSON
 from .ticket import TICKET
+from .widget import WIDGET
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -29,4 +30,4 @@ async def load_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str
     )
 
 
-__all__ = ["CAR", "CAR_SCHEMA", "MANUFACTURER", "PERSON", "TICKET"]
+__all__ = ["CAR", "CAR_SCHEMA", "MANUFACTURER", "PERSON", "TICKET", "WIDGET"]
