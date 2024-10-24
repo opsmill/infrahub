@@ -1,4 +1,5 @@
 from typing import Dict
+from unittest.mock import call, patch
 
 import pytest
 from graphql import graphql
@@ -8,9 +9,11 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.adapters.message_bus import BusRecorder
 
 
@@ -92,29 +95,38 @@ async def test_create_artifact_definition(
         transformation1.id,
     )
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
+    service = InfrahubServices(message_bus=recorder, workflow=WorkflowLocalExecution())
 
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
 
-    assert result.errors is None
-    assert result.data["CoreArtifactDefinitionCreate"]["ok"] is True
-    ad_id = result.data["CoreArtifactDefinitionCreate"]["object"]["id"]
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+    ) as mock_submit_workflow:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
-    ad1 = await NodeManager.get_one(db=db, id=ad_id, include_owner=True, include_source=True, branch=branch)
+        assert result.errors is None
+        assert result.data["CoreArtifactDefinitionCreate"]["ok"] is True
+        ad_id = result.data["CoreArtifactDefinitionCreate"]["object"]["id"]
 
-    assert ad1.name.value == "Artifact 01"
+        ad1 = await NodeManager.get_one(db=db, id=ad_id, include_owner=True, include_source=True, branch=branch)
 
-    assert (
-        messages.RequestArtifactDefinitionGenerate(artifact_definition=ad_id, branch=branch.name, limit=[])
-        in service.message_bus.messages
-    )
+        assert ad1.name.value == "Artifact 01"
+
+        expected_calls = [
+            call(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                parameters={
+                    "model": RequestArtifactDefinitionGenerate(artifact_definition=ad1.id, branch=branch.name, limit=[])
+                },
+            ),
+        ]
+        mock_submit_workflow.assert_has_calls(expected_calls)
 
 
 async def test_update_artifact_definition(
@@ -140,27 +152,37 @@ async def test_update_artifact_definition(
     """ % (definition1.id)
 
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
+    service = InfrahubServices(message_bus=recorder, workflow=WorkflowLocalExecution())
 
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+    ) as mock_submit_workflow:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
-    assert result.errors is None
-    assert result.data["CoreArtifactDefinitionUpdate"]["ok"] is True
+        assert result.errors is None
+        assert result.data["CoreArtifactDefinitionUpdate"]["ok"] is True
 
-    ad1_post = await NodeManager.get_one(
-        db=db, id=definition1.id, include_owner=True, include_source=True, branch=branch
-    )
+        ad1_post = await NodeManager.get_one(
+            db=db, id=definition1.id, include_owner=True, include_source=True, branch=branch
+        )
 
-    assert ad1_post.artifact_name.value == "myartifact2"
+        assert ad1_post.artifact_name.value == "myartifact2"
 
-    assert (
-        messages.RequestArtifactDefinitionGenerate(artifact_definition=definition1.id, branch=branch.name, limit=[])
-        in service.message_bus.messages
-    )
+        expected_calls = [
+            call(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                parameters={
+                    "model": RequestArtifactDefinitionGenerate(
+                        artifact_definition=definition1.id, branch=branch.name, limit=[]
+                    )
+                },
+            ),
+        ]
+        mock_submit_workflow.assert_has_calls(expected_calls)
