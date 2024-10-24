@@ -1,3 +1,4 @@
+import importlib
 import logging
 import os
 from typing import TYPE_CHECKING, Any
@@ -29,6 +30,11 @@ def set_log_data(key: str, value: Any) -> None:
 
 
 def configure_logging(production: bool = True, log_level: str = "INFO") -> None:
+    # Importing prefect.main here triggers prefect.logging.configuration.setup_logging()
+    # to be executed, this function wipes out the previous logging configuration and
+    # starts from a clean slate. After this has been imported once we can reinject
+    # the infrahub logger
+    importlib.import_module("prefect.main")
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.StackInfoRenderer(),
@@ -36,6 +42,7 @@ def configure_logging(production: bool = True, log_level: str = "INFO") -> None:
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
     ]
+    logging.getLogger("httpx").setLevel(logging.ERROR)
 
     if production:
         shared_processors.append(structlog.processors.format_exc_info)
@@ -60,6 +67,10 @@ def configure_logging(production: bool = True, log_level: str = "INFO") -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     root_logger = logging.getLogger()
+    for existing_handler in root_logger.handlers:
+        if isinstance(existing_handler, logging.StreamHandler):
+            root_logger.removeHandler(existing_handler)
+
     root_logger.addHandler(handler)
     root_logger.setLevel(log_level)
 
