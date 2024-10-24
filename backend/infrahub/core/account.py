@@ -110,24 +110,13 @@ class AccountGlobalPermissionQuery(Query):
 
         CALL {
             WITH global_permission
-            MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "description"})-[r2:HAS_VALUE]->(global_permission_description:AttributeValue)
-            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
-            RETURN global_permission_description, (r1.status = "active" AND r2.status = "active") AS is_active
-            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
-            LIMIT 1
-        }
-        WITH global_permission, global_permission_description, is_active AS gpn_is_active
-        WHERE gpn_is_active = TRUE
-
-        CALL {
-            WITH global_permission
             MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(global_permission_action:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN global_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH global_permission, global_permission_description, global_permission_action, is_active AS gpa_is_active
+        WITH global_permission, global_permission_action, is_active AS gpa_is_active
         WHERE gpa_is_active = TRUE
 
         CALL {
@@ -138,7 +127,7 @@ class AccountGlobalPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH global_permission, global_permission_description, global_permission_action, global_permission_decision, is_active AS gpd_is_active
+        WITH global_permission, global_permission_action, global_permission_decision, is_active AS gpd_is_active
         WHERE gpd_is_active = TRUE
         """ % {
             "branch_filter": branch_filter,
@@ -150,12 +139,7 @@ class AccountGlobalPermissionQuery(Query):
 
         self.add_to_query(query)
 
-        self.return_labels = [
-            "global_permission",
-            "global_permission_description",
-            "global_permission_action",
-            "global_permission_decision",
-        ]
+        self.return_labels = ["global_permission", "global_permission_action", "global_permission_decision"]
 
     def get_permissions(self) -> list[GlobalPermission]:
         permissions: list[GlobalPermission] = []
@@ -164,7 +148,6 @@ class AccountGlobalPermissionQuery(Query):
             permissions.append(
                 GlobalPermission(
                     id=result.get("global_permission").get("uuid"),
-                    description=result.get("global_permission_description").get("value"),
                     action=result.get("global_permission_action").get("value"),
                     decision=result.get("global_permission_decision").get("value"),
                 )
@@ -240,24 +223,13 @@ class AccountObjectPermissionQuery(Query):
 
         CALL {
             WITH object_permission
-            MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "description"})-[r2:HAS_VALUE]->(object_permission_description:AttributeValue)
-            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
-            RETURN object_permission_description, (r1.status = "active" AND r2.status = "active") AS is_active
-            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
-            LIMIT 1
-        }
-        WITH object_permission, object_permission_description, is_active AS opn_is_active
-        WHERE opn_is_active = TRUE
-
-        CALL {
-            WITH object_permission
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[r2:HAS_VALUE]->(object_permission_namespace:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_namespace, (r1.status = "active" AND r2.status = "active") AS is_active
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH object_permission, object_permission_description, object_permission_namespace, is_active AS opn_is_active
+        WITH object_permission, object_permission_namespace, is_active AS opn_is_active
         WHERE opn_is_active = TRUE
         CALL {
             WITH object_permission
@@ -267,7 +239,7 @@ class AccountObjectPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH object_permission, object_permission_description, object_permission_namespace, object_permission_name, is_active AS opn_is_active
+        WITH object_permission, object_permission_namespace, object_permission_name, is_active AS opn_is_active
         WHERE opn_is_active = TRUE
         CALL {
             WITH object_permission
@@ -277,7 +249,7 @@ class AccountObjectPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH object_permission, object_permission_description, object_permission_namespace, object_permission_name, object_permission_action, is_active AS opa_is_active
+        WITH object_permission, object_permission_namespace, object_permission_name, object_permission_action, is_active AS opa_is_active
         WHERE opa_is_active = TRUE
         CALL {
             WITH object_permission
@@ -287,7 +259,7 @@ class AccountObjectPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH object_permission, object_permission_description, object_permission_namespace, object_permission_name, object_permission_action, object_permission_decision, is_active AS opd_is_active
+        WITH object_permission, object_permission_namespace, object_permission_name, object_permission_action, object_permission_decision, is_active AS opd_is_active
         WHERE opd_is_active = TRUE
         """ % {
             "branch_filter": branch_filter,
@@ -301,7 +273,6 @@ class AccountObjectPermissionQuery(Query):
 
         self.return_labels = [
             "object_permission",
-            "object_permission_description",
             "object_permission_namespace",
             "object_permission_name",
             "object_permission_action",
@@ -314,7 +285,6 @@ class AccountObjectPermissionQuery(Query):
             permissions.append(
                 ObjectPermission(
                     id=result.get("object_permission").get("uuid"),
-                    description=result.get("object_permission_description").get("value"),
                     namespace=result.get("object_permission_namespace").get("value"),
                     name=result.get("object_permission_name").get("value"),
                     action=result.get("object_permission_action").get("value"),
