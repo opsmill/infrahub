@@ -943,8 +943,8 @@ core_models: dict[str, Any] = {
                     "default_value": PermissionDecision.ALLOW_ALL.value,
                     "order_weight": 5000,
                     "description": (
-                        "Decide whether to deny or allow the action. If allowed, it can be configured for the default branch, any other "
-                        "branches or all branches"
+                        "Decide to deny or allow the action. If allowed, it can be configured for the default branch, any other branches or all "
+                        "branches"
                     ),
                 },
                 {
