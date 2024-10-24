@@ -73,7 +73,7 @@ function Roles() {
             />
           ),
         },
-        __typename: { value: edge?.node?.__typename },
+        __typename: edge?.node?.__typename,
       },
     }));
 
