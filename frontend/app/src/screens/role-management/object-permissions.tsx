@@ -6,12 +6,15 @@ import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/components/table/table";
 import { BadgeCopy } from "@/components/ui/badge-copy";
 import { Pagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
 import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/graphql/queries/role-management/getObjectPermissions";
+import { useDebounce } from "@/hooks/useDebounce";
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { NetworkStatus } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { ReactNode, useState } from "react";
@@ -19,6 +22,7 @@ import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
+import { objectDecisionOptions } from "./constants";
 
 const icons: Record<string, ReactNode> = {
   allow: (
@@ -34,7 +38,20 @@ const icons: Record<string, ReactNode> = {
 };
 
 function Permissions() {
-  const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS);
+  const [search, setSearch] = useState("");
+  const searchDebounced = useDebounce(search, 300);
+  const {
+    loading,
+    networkStatus,
+    data: latestData,
+    previousData,
+    error,
+    refetch,
+  } = useQuery(GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS, {
+    variables: { search: searchDebounced },
+    notifyOnNetworkStatusChange: true,
+  });
+  const data = latestData || previousData;
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
   const [rowToDelete, setRowToDelete] = useState<Record<
@@ -51,8 +68,8 @@ function Permissions() {
 
   const columns = [
     {
-      name: "display",
-      label: "Name",
+      name: "identifier",
+      label: "Identifier",
     },
     {
       name: "namespace",
@@ -73,10 +90,6 @@ function Permissions() {
     {
       name: "roles",
       label: "Roles",
-    },
-    {
-      name: "identifier",
-      label: "Identifier",
     },
   ];
 
@@ -108,6 +121,9 @@ function Permissions() {
             value: edge?.node?.action?.value,
           },
           decision: {
+            display: objectDecisionOptions.find(
+              (decision) => decision.value === edge?.node?.decision?.value
+            )?.label,
             value: edge?.node?.decision?.value,
           },
           roles: {
@@ -133,7 +149,7 @@ function Permissions() {
     return <ErrorScreen message="An error occured while retrieving the accounts." />;
   }
 
-  if (loading) {
+  if (networkStatus === NetworkStatus.loading) {
     return <LoadingScreen message="Retrieving object permissions..." />;
   }
 
@@ -149,18 +165,23 @@ function Permissions() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between p-2">
-          <div>{/* Search input + filter button */}</div>
+        <div className="flex items-center justify-between gap-2 p-2 border-b">
+          <SearchInput
+            loading={loading}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search object permissions"
+            className="border-none focus-visible:ring-0"
+            containerClassName="flex-grow"
+          />
 
-          <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowDrawer(true)}
-              disabled={!schema || !permission?.create.isAllowed}
-            >
-              Create {schema?.label}
-            </Button>
-          </div>
+          <Button
+            variant={"primary"}
+            onClick={() => setShowDrawer(true)}
+            disabled={!schema || !permission?.create.isAllowed}
+          >
+            Create {schema?.label}
+          </Button>
         </div>
 
         <Table
@@ -198,11 +219,15 @@ function Permissions() {
           }
           open={showDrawer}
           setOpen={(value) => setShowDrawer(value)}
+          onClose={() => setRowToUpdate(null)}
         >
           <ObjectForm
             kind={OBJECT_PERMISSION_OBJECT}
             currentObject={rowToUpdate}
-            onCancel={() => setShowDrawer(false)}
+            onCancel={() => {
+              setRowToUpdate(null);
+              setShowDrawer(false);
+            }}
             onSuccess={() => {
               setShowDrawer(false);
               globalRefetch();

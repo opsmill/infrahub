@@ -630,7 +630,13 @@ class SchemaBranch:
                 if len(constraint_paths) > 1:
                     continue
                 constraint_path = constraint_paths[0]
-                schema_attribute_path = node_schema.parse_schema_path(path=constraint_path, schema=self)
+                try:
+                    schema_attribute_path = node_schema.parse_schema_path(path=constraint_path, schema=self)
+                except AttributePathParsingError as exc:
+                    raise ValueError(
+                        f"{node_schema.kind}: Requested unique constraint not found within node. (`{constraint_path}`)"
+                    ) from exc
+
                 if (
                     schema_attribute_path.is_type_attribute
                     and schema_attribute_path.attribute_property_name == "value"

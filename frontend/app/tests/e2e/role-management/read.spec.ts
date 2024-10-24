@@ -10,7 +10,7 @@ test.describe("Role management - READ", () => {
       await expect(page.getByRole("link", { name: "Accounts 9" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Groups 2" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Roles 2" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Global Permissions 4" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Global Permissions 8" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Object Permissions 2" })).toBeVisible();
     });
 
@@ -33,8 +33,7 @@ test.describe("Role management - READ", () => {
 
     await test.step("check global permissions view", async () => {
       await page.getByRole("link", { name: "Global Permissions" }).click();
-      await expect(page.getByRole("cell", { name: "Super Admin" })).toBeVisible();
-      await expect(page.getByRole("cell", { name: "1" }).first()).toBeVisible();
+      await expect(page.getByRole("cell", { name: "super_admin", exact: true })).toBeVisible();
       await expect(page.getByText("global:super_admin:allow")).toBeVisible();
     });
   });

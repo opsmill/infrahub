@@ -1,5 +1,7 @@
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 from uuid import uuid4
+
+import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot
@@ -8,9 +10,22 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.component.registry import ComponentDependencyRegistry
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations.event.branch import delete, merge, rebased
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import IPAM_RECONCILIATION, TRIGGER_ARTIFACT_DEFINITION_GENERATE
 from tests.adapters.message_bus import BusRecorder
+
+
+@pytest.fixture
+def init_service():
+    original = services.service
+    recorder = BusRecorder()
+    database = MagicMock()
+    workflow = WorkflowLocalExecution()
+    service = InfrahubServices(message_bus=recorder, database=database, workflow=workflow)
+    services.service = service
+    yield service
+    services.service = original
 
 
 async def test_delete(prefect_test_fixture):
@@ -32,18 +47,20 @@ async def test_delete(prefect_test_fixture):
     assert trigger_cancel.branch == "cr1234"
 
 
-async def test_merged(default_branch: Branch, prefect_test_fixture):
+async def test_merged(default_branch: Branch, init_service: InfrahubServices, prefect_test_fixture):
+    """
+    Test that merge flow triggers corrects events/workflows. It does not actually test these events/workflows behaviors
+    as they are mocked.
+    """
+
     source_branch_name = "cr1234"
     target_branch_name = "main"
     right_now = Timestamp()
     message = messages.EventBranchMerge(
         source_branch=source_branch_name, target_branch=target_branch_name, ipam_node_details=[]
     )
+    service = init_service
 
-    recorder = BusRecorder()
-    database = MagicMock()
-    workflow = WorkflowLocalExecution()
-    service = InfrahubServices(message_bus=recorder, database=database, workflow=workflow)
     tracked_diff_roots = [
         EnrichedDiffRoot(
             base_branch_name=target_branch_name,
@@ -73,17 +90,38 @@ async def test_merged(default_branch: Branch, prefect_test_fixture):
     mock_get_component_registry = MagicMock(return_value=mock_component_registry)
     mock_component_registry.get_component.return_value = diff_repo
 
-    with patch("infrahub.message_bus.operations.event.branch.get_component_registry", new=mock_get_component_registry):
+    with (
+        patch("infrahub.message_bus.operations.event.branch.get_component_registry", new=mock_get_component_registry),
+        patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as mock_submit_workflow,
+    ):
         await merge(message=message, service=service)
 
-    mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=database, branch=default_branch)
+        expected_calls = [
+            call(workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, parameters={"branch": message.target_branch}),
+            call(
+                workflow=IPAM_RECONCILIATION,
+                parameters={"branch": message.target_branch, "ipam_node_details": message.ipam_node_details},
+            ),
+        ]
+        mock_submit_workflow.assert_has_calls(expected_calls)
+        assert mock_submit_workflow.call_count == len(expected_calls)
+
+    mock_component_registry.get_component.assert_awaited_once_with(
+        DiffRepository, db=service.database, branch=default_branch
+    )
     diff_repo.get_empty_roots.assert_awaited_once_with(base_branch_names=[target_branch_name])
-    assert len(recorder.messages) == 5
-    assert recorder.messages[0] == messages.RefreshRegistryBranches()
-    assert recorder.messages[1] == messages.TriggerArtifactDefinitionGenerate(branch=target_branch_name)
-    assert recorder.messages[2] == messages.TriggerGeneratorDefinitionRun(branch=target_branch_name)
-    assert recorder.messages[3] == messages.RequestDiffUpdate(branch_name=tracked_diff_roots[0].diff_branch_name)
-    assert recorder.messages[4] == messages.RequestDiffUpdate(branch_name=tracked_diff_roots[1].diff_branch_name)
+
+    assert len(service.message_bus.messages) == 4
+    assert service.message_bus.messages[0] == messages.RefreshRegistryBranches()
+    assert service.message_bus.messages[1] == messages.TriggerGeneratorDefinitionRun(branch=target_branch_name)
+    assert service.message_bus.messages[2] == messages.RequestDiffUpdate(
+        branch_name=tracked_diff_roots[0].diff_branch_name
+    )
+    assert service.message_bus.messages[3] == messages.RequestDiffUpdate(
+        branch_name=tracked_diff_roots[1].diff_branch_name
+    )
 
 
 async def test_rebased(default_branch: Branch, prefect_test_fixture):

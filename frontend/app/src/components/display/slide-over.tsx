@@ -11,6 +11,7 @@ import ModalDelete from "../modals/modal-delete";
 interface Props {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onClose?: () => void;
   children: React.ReactNode;
   title: string | React.ReactNode;
   offset?: number;
@@ -22,8 +23,7 @@ interface SlideOverContextProps {
 
 export const SlideOverContext = React.createContext<SlideOverContextProps>({});
 
-export default function SlideOver(props: Props) {
-  const { open, setOpen, title, offset = 0 } = props;
+export default function SlideOver({ open, setOpen, onClose, title, offset = 0, children }: Props) {
   const initialFocusRef = useRef(null);
   const [preventClose, setPreventClose] = useState(false);
 
@@ -43,7 +43,15 @@ export default function SlideOver(props: Props) {
   return (
     <SlideOverContext.Provider value={context}>
       <Transition.Root show={open || (!open && preventClose)} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={setOpen} initialFocus={initialFocusRef}>
+        <Dialog
+          as="div"
+          className="relative z-10"
+          onClose={(value) => {
+            setOpen(value);
+            if (onClose) onClose();
+          }}
+          initialFocus={initialFocusRef}
+        >
           <Transition.Child
             as={Fragment}
             enter="ease-in-out duration-500"
@@ -82,7 +90,7 @@ export default function SlideOver(props: Props) {
                         <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>
                       </div>
                     </div>
-                    {props.children}
+                    {children}
                   </Dialog.Panel>
                 </Transition.Child>
               </div>

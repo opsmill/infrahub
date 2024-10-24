@@ -72,7 +72,7 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         await richard.save(db=db)
 
     async def test_create_proposed_change(
-        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, set_service_client
     ) -> None:
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,

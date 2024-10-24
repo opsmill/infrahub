@@ -116,27 +116,28 @@ class NumberPoolGetAllocated(Query):
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
-        self.params["pool_id"] = self.pool.get_id()
         self.params["node_attribute"] = self.pool.node_attribute.value
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
 
-        self.params["time_at"] = self.at.to_string()
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
 
-        def rel_filter(rel_name: str) -> str:
-            return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
-
-        query = f"""
-        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {{name: $node_attribute}})-[hv:HAS_VALUE]-(av:AttributeValue)
+        query = """
+        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValue)
         MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)
         WHERE
             av.value >= $start_range and av.value <= $end_range
-            AND ({rel_filter("ha")})
-            AND ({rel_filter("hv")})
-            AND ({rel_filter("hs")})
+            AND all(r in [ha, hv, hs] WHERE (%(branch_filter)s))
+            AND ha.status = "active"
+            AND hv.status = "active"
+            AND hs.status = "active"
         """ % {
             "node": self.pool.node.value,
             "number_pool_kind": InfrahubKind.NUMBERPOOL,
+            "branch_filter": branch_filter,
         }
         self.add_to_query(query)
 
@@ -207,15 +208,27 @@ class NumberPoolGetUsed(Query):
         )
 
         self.params.update(branch_params)
+        self.params["attribute_name"] = self.pool.node_attribute.value
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[r:IS_RESERVED]->(av:AttributeValue )
-        WHERE
-            toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
-            AND
-            %(branch_filter)s
-        """ % {"branch_filter": branch_filter, "number_pool": InfrahubKind.NUMBERPOOL}
-
+        MATCH (pool:%(number_pool)s { uuid: $pool_id })
+        CALL {
+            WITH pool
+            MATCH (pool)-[res:IS_RESERVED]->(av:AttributeValue)<-[hv:HAS_VALUE]-(attr:Attribute)
+            WHERE
+                attr.name = $attribute_name
+                AND
+                toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
+                AND
+                all(r in [res, hv] WHERE (%(branch_filter)s))
+            RETURN av, (res.status = "active" AND hv.status = "active") AS is_active
+        }
+        WITH av, is_active
+        WHERE is_active = TRUE
+        """ % {
+            "branch_filter": branch_filter,
+            "number_pool": InfrahubKind.NUMBERPOOL,
+        }
         self.add_to_query(query)
         self.return_labels = ["av.value"]
         self.order_by = ["av.value"]

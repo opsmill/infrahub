@@ -80,6 +80,7 @@ export type SelectProps = {
   isUnique?: boolean;
   isInherited?: boolean;
   placeholder?: string;
+  peerField?: string;
 };
 
 export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
@@ -102,6 +103,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     schema,
     placeholder,
     preventEmpty,
+    peerField, // Field used to build option label
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     isOptional, // Avoid proving useless props
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
@@ -154,7 +156,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   // Query to fetch options only if a peer is defined
   // TODO: Find another solution for queries while loading schema
   const optionsQueryString = peer
-    ? getDropdownOptions({ kind: peer, parentFilter })
+    ? getDropdownOptions({ kind: peer, parentFilter, peerField })
     : "query { ok }";
   const poolsQueryString = poolPeer ? getDropdownOptions({ kind: poolPeer }) : "query { ok }";
 
@@ -171,7 +173,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const loading = optionsLoading || poolsLoading;
   const data = hasBeenOpened ? optionsData : poolsData;
 
-  const labelQueryString = peer ? getObjectDisplayLabel({ kind: peer }) : "query { ok }";
+  const labelQueryString = peer ? getObjectDisplayLabel({ kind: peer, peerField }) : "query { ok }";
 
   const labelQuery = gql`
     ${labelQueryString}
@@ -185,6 +187,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const optionsList = getOptionsFromRelationship({
     options: optionsResult,
     schemas: schemaList,
+    peerField,
   });
 
   const addOption: SelectOption = {
@@ -799,7 +802,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       const id = selectedOption?.id ?? value?.id ?? value;
       const { data } = await fetchLabel({ variables: { ids: [id] } });
 
-      const label = data[peer]?.edges[0]?.node?.display_label;
+      const label = peerField
+        ? (data[peer]?.edges[0]?.node?.[peerField]?.value ??
+          data[peer]?.edges[0]?.node?.[peerField])
+        : data[peer]?.edges[0]?.node?.display_label;
 
       const newSelectedOption = {
         ...selectedOption,
@@ -824,7 +830,9 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       const { data } = await fetchLabel({ variables: { ids } });
 
       const newSelectedOptions = data[peer]?.edges.map((edge) => ({
-        name: edge.node.display_label,
+        name: peerField
+          ? (edge.node?.[peerField]?.value ?? edge.node?.[peerField])
+          : edge.node.display_label,
         id: edge.node.id,
       }));
 

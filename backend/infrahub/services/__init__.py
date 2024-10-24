@@ -55,6 +55,9 @@ class InfrahubServices:
 
         return self._client
 
+    def set_client(self, client: InfrahubClient) -> None:
+        self._client = client
+
     @property
     def database(self) -> InfrahubDatabase:
         if not self._database:

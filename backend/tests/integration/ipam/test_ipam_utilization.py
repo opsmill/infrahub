@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import pytest
 from graphql import graphql
@@ -63,7 +63,7 @@ class TestIpamUtilization(TestInfrahubApp):
         db: InfrahubDatabase,
         initialize_registry: None,
         register_ipam_schema,
-    ) -> dict[str, Union[Node, list[Node]]]:
+    ) -> dict[str, Node | list[Node]]:
         await create_ipam_namespace(db=db)
         default_ipnamespace = await get_default_ipnamespace(db=db)
         default_branch = registry.default_branch
@@ -119,9 +119,7 @@ class TestIpamUtilization(TestInfrahubApp):
         return await create_branch(db=db, branch_name="branch2")
 
     @pytest.fixture(scope="class")
-    async def step_02_dataset(
-        self, db: InfrahubDatabase, initial_dataset, branch2
-    ) -> dict[str, Union[Node, list[Node]]]:
+    async def step_02_dataset(self, db: InfrahubDatabase, initial_dataset, branch2) -> dict[str, Node | list[Node]]:
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch2)
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch2)
         container = initial_dataset["container"]

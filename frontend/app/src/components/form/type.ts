@@ -117,6 +117,7 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   options?: SelectOption[];
   relationship: RelationshipSchema;
   schema: IModelSchema;
+  peerField?: string;
 };
 
 export type DynamicFieldProps =

@@ -8,7 +8,13 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.services import services
 
-from .repository import InfrahubRepository
+from ..log import get_logger
+from ..message_bus import messages
+from ..tasks.artifact import define_artifact
+from .models import RequestArtifactGenerate
+from .repository import InfrahubRepository, get_initialized_repo
+
+log = get_logger()
 
 
 @flow(name="git-repositories-branch-create")
@@ -108,3 +114,47 @@ async def git_branch_create(
     repo = await InfrahubRepository.init(id=repository_id, name=repository_name, client=client)
     async with lock.registry.get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id)
+
+
+@flow(name="artifact-definition-generate")
+async def generate_artifact_definition(branch: str) -> None:
+    service = services.service
+    artifact_definitions = await service.client.all(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch, include=["id"])
+
+    events = [
+        messages.RequestArtifactDefinitionGenerate(branch=branch, artifact_definition=artifact_definition.id)
+        for artifact_definition in artifact_definitions
+    ]
+    for event in events:
+        await service.send(message=event)
+
+
+@flow(name="artifact-generate")
+async def generate_artifact(model: RequestArtifactGenerate) -> None:
+    log.debug("Generating artifact", message=model)
+
+    service = services.service
+
+    repo = await get_initialized_repo(
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        service=service,
+        repository_kind=model.repository_kind,
+    )
+
+    artifact = await define_artifact(message=model, service=service)
+
+    try:
+        result = await repo.render_artifact(artifact=artifact, message=model)
+        log.debug(
+            "Generated artifact",
+            name=model.artifact_name,
+            changed=result.changed,
+            checksum=result.checksum,
+            artifact_id=result.artifact_id,
+            storage_id=result.storage_id,
+        )
+    except Exception as exc:  # pylint: disable=broad-except
+        log.exception("Failed to generate artifact", error=exc)
+        artifact.status.value = "Error"
+        await artifact.save()

@@ -22,7 +22,9 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import InitializationError
 from infrahub.server import app, app_initialization
+from infrahub.services import services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusSimulator
 
@@ -111,6 +113,26 @@ class TestInfrahubApp(TestInfrahub):
         bus_simulator.service._client = sdk_client
 
         return sdk_client
+
+    @pytest.fixture(scope="class")
+    def set_service_client(self, client: InfrahubClient) -> Generator:
+        """
+        Some tests rely on infrahub worker which runs locally during testing. Thus, code supposed to run
+        on worker rely on server's `services.service`, which is not initialized with a client,
+        instead of the worker one. Thus, we temporarily set `services.service.client`
+        here to mock worker's `services.service`.
+        """
+
+        try:
+            original_client = services.service.client
+        except InitializationError:
+            original_client = None
+
+        services.service.set_client(client)
+        try:
+            yield
+        finally:
+            services.service.set_client(original_client)
 
     @pytest.fixture(scope="class")
     async def initialize_registry(

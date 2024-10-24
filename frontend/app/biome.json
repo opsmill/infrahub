@@ -118,5 +118,13 @@
       "attributePosition": "auto",
       "bracketSpacing": true
     }
+  },
+  "graphql": {
+    "formatter": {
+      "enabled": true
+    },
+    "linter": {
+      "enabled": true
+    }
   }
 }

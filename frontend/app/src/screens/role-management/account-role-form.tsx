@@ -140,6 +140,7 @@ export const AccountRoleForm = ({
             cardinality: "many",
           }}
           options={permissions.value}
+          peerField="identifier"
         />
 
         <div className="text-right">
