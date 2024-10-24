@@ -11,6 +11,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     AllowOverrideType,
     BranchSupportType,
+    HashableModelState,
     InfrahubKind,
     RelationshipDeleteBehavior,
     RelationshipKind,
@@ -365,6 +366,41 @@ async def test_schema_branch_add_groups(schema_all_in_one):
     std_group = schema.get(name=InfrahubKind.STANDARDGROUP)
     assert std_group.get_relationship_or_none(name="member_of_groups") is None
     assert std_group.get_relationship_or_none(name="subscriber_of_groups") is None
+
+
+async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.process_inheritance()
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process()
+
+    generic = schema.get(name="InfraGenericInterface")
+    attr1 = generic.get_attribute(name="mybool")
+    attr1.state = HashableModelState.ABSENT
+    rel1 = generic.get_relationship(name="primary_tag")
+    rel1.state = HashableModelState.ABSENT
+    schema.set(name=generic.kind, schema=generic)
+
+    node = schema.get(name="BuiltinCriticality")
+    attr1_node = node.get_attribute(name="mybool")
+    assert attr1_node.inherited is True
+    assert attr1_node.state == HashableModelState.PRESENT
+    rel1_node = node.get_relationship(name="primary_tag")
+    assert rel1_node.inherited is True
+    assert rel1_node.state == HashableModelState.PRESENT
+
+    schema.cleanup_inherited_elements()
+    node = schema.get(name="BuiltinCriticality")
+    attr1_node = node.get_attribute(name="mybool")
+    assert attr1_node.inherited is True
+    assert attr1_node.state == HashableModelState.ABSENT
+    rel1_node = node.get_relationship(name="primary_tag")
+    assert rel1_node.inherited is True
+    assert rel1_node.state == HashableModelState.ABSENT
 
 
 @pytest.mark.parametrize(
