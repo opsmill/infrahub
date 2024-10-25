@@ -7,11 +7,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
 import { MENU_EXCLUDELIST } from "@/config/constants";
-import { IModelSchema, menuFlatAtom } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
 import { Link } from "react-router-dom";
 
 type SchemaHelpMenuProps = {
@@ -19,16 +17,12 @@ type SchemaHelpMenuProps = {
 };
 
 export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
-  const menuItems = useAtomValue(menuFlatAtom);
-  const schemaInMenu = menuItems.find(({ label }) => label === schema.label);
-
   const isListViewDisabled = MENU_EXCLUDELIST.includes(schema.kind as string);
 
   const documentationUrl = schema.documentation
     ? `${INFRAHUB_DOC_LOCAL}${schema.documentation}`
     : INFRAHUB_DOC_LOCAL;
 
-  const objectListUrl = schemaInMenu ? constructPath(schemaInMenu.path) : "";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

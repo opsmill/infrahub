@@ -1,4 +1,3 @@
-import { SelectOption } from "@/components/inputs/select";
 import {
   attributesKindForDetailsViewExclude,
   attributesKindForListView,
@@ -183,32 +182,6 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
 
   // Initial option for relationships to make the current value available
   return [option];
-};
-
-export const getOptionsFromAttribute = (attribute: any, value: any): Array<SelectOption> => {
-  if (attribute.kind === "List") {
-    return (value || [])?.map((option: any) => ({
-      name: option,
-      id: option,
-    }));
-  }
-
-  if (attribute.enum) {
-    return attribute.enum?.map((option: any) => ({
-      name: option,
-      id: option,
-    }));
-  }
-
-  if (attribute.choices) {
-    return attribute.choices?.map((option: any) => ({
-      ...option,
-      name: option.label,
-      id: option.name,
-    }));
-  }
-
-  return [];
 };
 
 type tgetOptionsFromRelationship = {

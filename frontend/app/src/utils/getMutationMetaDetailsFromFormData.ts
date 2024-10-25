@@ -1,7 +1,5 @@
 import { iNodeSchema } from "@/state/atoms/schema.atom";
 
-export type MutationMode = "create" | "update";
-
 const metadataFields = ["source", "owner", "is_visible", "is_protected"];
 
 const isValueValid = (value: any) => {
