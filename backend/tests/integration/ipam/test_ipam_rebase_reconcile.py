@@ -3,15 +3,11 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING
 
-import pytest
-
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.services import InfrahubServices, services
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 from .base import TestIpamReconcileBase
 
@@ -19,17 +15,6 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
-
-
-@pytest.fixture
-def init_service(db: InfrahubDatabase):
-    original = services.service
-    database = db
-    workflow = WorkflowLocalExecution()
-    service = InfrahubServices(database=database, workflow=workflow)
-    services.service = service
-    yield service
-    services.service = original
 
 
 class TestIpamRebaseReconcile(TestIpamReconcileBase):
