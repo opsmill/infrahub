@@ -46,4 +46,13 @@ test.describe("/schema - Schema visualizer", () => {
       await expect(page.getByRole("menuitem", { name: "Open list view" })).toBeEnabled();
     });
   });
+
+  test("filter schema list", async ({ page }) => {
+    await page.goto("/schema");
+    await expect(page.getByRole("heading", { name: "Core Account Node" })).toBeVisible();
+
+    await page.getByPlaceholder("Search schema").fill("tag");
+    await expect(page.getByRole("heading", { name: "Builtin Tag Node" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Core Account Node" })).not.toBeVisible();
+  });
 });
