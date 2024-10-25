@@ -21,7 +21,7 @@ test.describe("Role management - READ", () => {
 
     await test.step("check groups view", async () => {
       await page.getByRole("link", { name: "Groups 2" }).click();
-      await expect(page.getByRole("cell", { name: "Administrators" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "Super Administrators" }).first()).toBeVisible();
       await expect(page.getByRole("button", { name: "+4" })).toBeVisible();
     });
 
