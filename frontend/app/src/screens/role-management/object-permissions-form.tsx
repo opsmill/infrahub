@@ -182,9 +182,7 @@ const NodeSelect = () => {
 
   const form = useFormContext();
   const selectedNamespaceField: FormAttributeValue = form.watch("namespace");
-  console.log("selectedNamespaceField: ", selectedNamespaceField);
   const selectedNameField: FormAttributeValue = form.watch("name");
-  console.log("selectedNameField: ", selectedNameField);
 
   const namespaceOptions = [
     {

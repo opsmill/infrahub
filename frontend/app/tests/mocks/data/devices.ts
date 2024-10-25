@@ -1761,10 +1761,10 @@ export const getPermissionsData = {
           {
             node: {
               kind: "InfraDevice",
-              view: "ALLOW_ALL",
-              create: "ALLOW_ALL",
-              update: "ALLOW_ALL",
-              delete: "ALLOW_ALL",
+              view: "ALLOW",
+              create: "ALLOW",
+              update: "ALLOW",
+              delete: "ALLOW",
               __typename: "ObjectPermission",
             },
             __typename: "ObjectPermissionNode",

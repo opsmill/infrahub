@@ -323,7 +323,10 @@ class GitSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_GIT_")
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
-        default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+        default=10,
+        ge=0,
+        description="Time (in seconds) between git repositories synchronizations",
+        deprecated="This setting is deprecated and not currently in use.",
     )
 
 

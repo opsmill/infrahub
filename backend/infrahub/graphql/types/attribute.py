@@ -7,7 +7,7 @@ from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
 
-from .enums import PermissionDecision
+from .enums import BranchRelativePermissionDecision
 from .interface import InfrahubInterface
 
 
@@ -57,7 +57,7 @@ class RelatedPrefixNodeInput(InputObjectType):
 
 
 class PermissionType(ObjectType):
-    update_value = Field(PermissionDecision, required=False)
+    update_value = Field(BranchRelativePermissionDecision, required=False)
 
 
 class AttributeInterface(InfrahubInterface):
