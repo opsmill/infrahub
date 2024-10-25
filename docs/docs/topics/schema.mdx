@@ -106,6 +106,10 @@ This ensures a strong relationship in both directions, where the parent node can
 
 :::
 
+:::warning Cascade deletion
+Relationships of kind `Component` include an implicit `on_delete: cascade`. This means that if you delete a node with a `Component` relationship, the related nodes connected by this relationship will also be deleted.
+:::
+
 :::info Internal Usage
 
 Group and Profile are **internal** relationship:
