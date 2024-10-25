@@ -91,8 +91,10 @@
       "suspicious": {
         "noArrayIndexKey": "off",
         "noAssignInExpressions": "off",
-        "noConsole": "off",
-        "noConsoleLog": "off",
+        "noConsole": {
+          "level": "error",
+          "options": { "allow": ["assert", "error", "info", "warn"] }
+        },
         "noDoubleEquals": "off",
         "noEmptyBlock": "off",
         "noEmptyBlockStatements": "off",

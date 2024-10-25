@@ -12,7 +12,6 @@ export const Notifications = (props: any) => {
   `;
 
   const { data } = useSubscription(query);
-  console.log("data: ", data);
 
   return <div className="absolute">OK</div>;
 };
