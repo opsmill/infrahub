@@ -47,7 +47,7 @@ export const Filters = ({ schema }: FiltersProps) => {
 
   return (
     <>
-      <div className="flex-grow flex items-center gap-1">
+      <div className="flex items-center gap-1">
         <ButtonWithTooltip
           tooltipEnabled
           tooltipContent="Apply filters"
