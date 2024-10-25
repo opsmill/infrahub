@@ -32,7 +32,7 @@ async def generate_restricted_menu(
     perm_backend = LocalPermissionBackend()
 
     if account:
-        permissions = await perm_backend.load_permissions(db=db, account_id=account.account_id, branch=branch)
+        permissions = await perm_backend.load_permissions(db=db, account_session=account, branch=branch)
 
     for item in menu.data.values():
         has_permission: bool | None = None
