@@ -47,16 +47,13 @@ async def report_schema_permissions(
     is_super_admin = perm_backend.resolve_global_permission(
         permissions=permissions["global_permissions"],
         permission_to_check=GlobalPermission(
-            id="", name="", action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+            action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
         ),
     )
     can_edit_default_branch = perm_backend.resolve_global_permission(
         permissions=permissions["global_permissions"],
         permission_to_check=GlobalPermission(
-            id="",
-            name="",
-            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-            decision=PermissionDecision.ALLOW_ALL.value,
+            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
         ),
     )
 

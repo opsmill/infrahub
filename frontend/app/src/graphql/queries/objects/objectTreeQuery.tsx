@@ -2,7 +2,11 @@ import Handlebars from "handlebars";
 
 export const objectTopLevelTreeQuery = Handlebars.compile(`
   query GET_{{kind}}_TOP_LEVEL_TREE {
-    {{kind}}(parent__isnull: true, limit: null) {
+    {{kind}}(
+      {{#if filters}}{{{filters}}}{{/if}}
+      parent__isnull: true
+      limit: null
+    ) {
       edges {
         node {
           id

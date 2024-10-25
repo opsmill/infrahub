@@ -1,12 +1,11 @@
 from typing import Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
-from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.types import ProposedChangeGeneratorDefinition
 
 
-class RequestGeneratorRun(InfrahubMessage):
+class RequestGeneratorRun(BaseModel):
     """Runs a generator."""
 
     generator_definition: ProposedChangeGeneratorDefinition = Field(..., description="The Generator definition")

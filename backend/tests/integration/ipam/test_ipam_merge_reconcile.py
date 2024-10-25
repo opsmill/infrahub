@@ -40,7 +40,12 @@ class TestIpamMergeReconcile(TestIpamReconcileBase):
         return await create_branch(db=db, branch_name="delete_prefix")
 
     async def test_step01_add_address(
-        self, db: InfrahubDatabase, initial_dataset, client: InfrahubClient, branch_1, new_address_1, set_service_client
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        client: InfrahubClient,
+        branch_1,
+        new_address_1,
     ) -> None:
         success = await client.branch.merge(branch_name=branch_1.name)
         assert success is True
@@ -51,7 +56,12 @@ class TestIpamMergeReconcile(TestIpamReconcileBase):
         assert parent_rels[0].peer_id == initial_dataset["net140"].id
 
     async def test_step02_add_delete_prefix(
-        self, db: InfrahubDatabase, initial_dataset, client: InfrahubClient, branch_2, new_address_1, set_service_client
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        client: InfrahubClient,
+        branch_2,
+        new_address_1,
     ) -> None:
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch_2)
         new_prefix = await Node.init(schema=prefix_schema, db=db, branch=registry.default_branch)

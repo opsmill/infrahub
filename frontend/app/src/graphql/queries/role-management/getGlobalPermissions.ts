@@ -8,9 +8,6 @@ export const GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS = gql`
         node {
           id
           display_label
-          name {
-            value
-          }
           action {
             value
           }

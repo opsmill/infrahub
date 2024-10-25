@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from prefect import flow, get_run_logger
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -16,12 +17,14 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import IPAM_RECONCILIATION
+from infrahub.workflows.utils import add_branch_tag
 
 
 @flow(name="branch-rebase")
 async def rebase_branch(branch: str) -> None:
     service = services.service
     log = get_run_logger()
+    await add_branch_tag(branch_name=branch)
 
     obj = await Branch.get_by_name(db=service.database, name=branch)
     merger = BranchMerger(db=service.database, source_branch=obj, service=service)
@@ -99,6 +102,66 @@ async def rebase_branch(branch: str) -> None:
     request_id = log_data.get("request_id", "")
     message = messages.EventBranchRebased(
         branch=obj.name,
+        meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+    )
+    await service.send(message=message)
+
+
+@flow(name="branch-merge")
+async def merge_branch(branch: str, conflict_resolution: dict[str, bool] | None = None) -> None:
+    service = services.service
+    log = get_run_logger()
+
+    await add_branch_tag(branch_name=branch)
+    await add_branch_tag(branch_name=registry.default_branch)
+
+    obj = await Branch.get_by_name(db=service.database, name=branch)
+
+    merger: BranchMerger | None = None
+    async with lock.registry.global_graph_lock():
+        async with service.database.start_transaction() as db:
+            merger = BranchMerger(db=db, source_branch=obj, service=service)
+            await merger.merge(conflict_resolution=conflict_resolution)
+            await merger.update_schema()
+
+    if merger and merger.migrations:
+        errors = await schema_apply_migrations(
+            message=SchemaApplyMigrationData(
+                branch=merger.destination_branch,
+                new_schema=merger.destination_schema,
+                previous_schema=merger.initial_source_schema,
+                migrations=merger.migrations,
+            )
+        )
+        for error in errors:
+            log.error(error)
+
+    # -------------------------------------------------------------
+    # Trigger the reconciliation of IPAM data after the merge
+    # -------------------------------------------------------------
+    differ = await merger.get_graph_diff()
+    diff_parser = IpamDiffParser(
+        db=service.database,
+        differ=differ,
+        source_branch_name=obj.name,
+        target_branch_name=registry.default_branch,
+    )
+    ipam_node_details = await diff_parser.get_changed_ipam_node_details()
+    await service.workflow.submit_workflow(
+        workflow=IPAM_RECONCILIATION,
+        parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
+    )
+
+    # -------------------------------------------------------------
+    # Generate an event to indicate that a branch has been merged
+    # NOTE: we still need to convert this event and potentially pull
+    #   some tasks currently executed based on the event into this workflow
+    # -------------------------------------------------------------
+    log_data = get_log_data()
+    request_id = log_data.get("request_id", "")
+    message = messages.EventBranchMerge(
+        source_branch=obj.name,
+        target_branch=registry.default_branch,
         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
     )
     await service.send(message=message)

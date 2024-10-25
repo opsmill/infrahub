@@ -15,7 +15,7 @@ class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can merge a branch without going through a proposed change."""
 
     permission_required = GlobalPermission(
-        id="", name="", action=GlobalPermissions.MERGE_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
+        action=GlobalPermissions.MERGE_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:

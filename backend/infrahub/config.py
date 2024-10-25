@@ -121,9 +121,6 @@ class MainSettings(BaseSettings):
     )
     telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
     telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
-    telemetry_interval: int = Field(
-        default=3600 * 24, ge=60, description="Time (in seconds) between telemetry usage push"
-    )
     permission_backends: list[str] = Field(
         default=["infrahub.permissions.LocalPermissionBackend"],
         description="List of modules to handle permissions, they will be run in the given order",

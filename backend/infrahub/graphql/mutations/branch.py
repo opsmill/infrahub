@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pydantic
 from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, String
@@ -8,21 +8,17 @@ from infrahub_sdk.utils import extract_fields, extract_fields_first_node
 from opentelemetry import trace
 from typing_extensions import Self
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
-from infrahub.core.merge import BranchMerger
-from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.task import UserTask
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
-from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import BRANCH_REBASE
+from infrahub.workflows.catalogue import BRANCH_MERGE, BRANCH_REBASE
 
 from ..types import BranchType
 
@@ -242,53 +238,20 @@ class BranchMerge(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    @retry_db_transaction(name="branch_merge")
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
-        async with UserTask.from_graphql_context(title=f"Merge branch: {data['name']}", context=context) as task:
-            obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
-            merger: Optional[BranchMerger] = None
-            async with lock.registry.global_graph_lock():
-                async with context.db.start_transaction() as db:
-                    merger = BranchMerger(db=db, source_branch=obj, service=context.service)
-                    await merger.merge()
-                    await merger.update_schema()
+        if not context.service:
+            raise ValueError("Service must be provided to merge a branch.")
 
-            fields = await extract_fields(info.field_nodes[0].selection_set)
+        await context.service.workflow.execute_workflow(workflow=BRANCH_MERGE, parameters={"branch": obj.name})
 
-            ok = True
+        # Pull the latest information about the branch from the database directly
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
-            if merger and merger.migrations and context.service:
-                errors = await schema_migrations_runner(
-                    branch=merger.destination_branch,
-                    new_schema=merger.destination_schema,
-                    previous_schema=merger.initial_source_schema,
-                    migrations=merger.migrations,
-                    service=context.service,
-                )
-                for error in errors:
-                    await task.error(message=error)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+        ok = True
 
-            if config.SETTINGS.broker.enable and context.background:
-                log_data = get_log_data()
-                request_id = log_data.get("request_id", "")
-
-                differ = await merger.get_graph_diff()
-                diff_parser = IpamDiffParser(
-                    db=context.db,
-                    differ=differ,
-                    source_branch_name=obj.name,
-                    target_branch_name=registry.default_branch,
-                )
-                ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-                message = messages.EventBranchMerge(
-                    source_branch=obj.name,
-                    target_branch=registry.default_branch,
-                    ipam_node_details=ipam_node_details,
-                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-                )
-                context.background.add_task(services.send, message)
-
-            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)

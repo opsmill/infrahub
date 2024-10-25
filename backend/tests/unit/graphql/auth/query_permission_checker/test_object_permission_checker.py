@@ -232,14 +232,12 @@ class TestObjectPermissions:
         permissions = []
         for object_permission in [
             ObjectPermission(
-                id="",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.ANY.value,
                 decision=PermissionDecision.ALLOW_DEFAULT.value,
             ),
             ObjectPermission(
-                id="",
                 namespace="Core",
                 name="GraphQLQuery",
                 action=PermissionAction.VIEW.value,
@@ -376,7 +374,7 @@ class TestAccountManagerPermissions:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.MANAGE_ACCOUNTS.value, action=GlobalPermissions.MANAGE_ACCOUNTS.value
+            db=db, action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 
@@ -491,7 +489,7 @@ class TestPermissionManagerPermissions:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.MANAGE_PERMISSIONS.value, action=GlobalPermissions.MANAGE_PERMISSIONS.value
+            db=db, action=GlobalPermissions.MANAGE_PERMISSIONS.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 
@@ -605,7 +603,7 @@ class TestRepositoryManagerPermissions:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.MANAGE_REPOSITORIES.value, action=GlobalPermissions.MANAGE_REPOSITORIES.value
+            db=db, action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 

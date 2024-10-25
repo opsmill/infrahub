@@ -55,7 +55,6 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.utils import format_label
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
@@ -2541,10 +2540,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     permissions: list[Node] = []
     global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await global_permission.new(
-        db=db,
-        name=format_label(GlobalPermissions.SUPER_ADMIN.value),
-        action=GlobalPermissions.SUPER_ADMIN.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
+        db=db, action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
     )
     await global_permission.save(db=db)
     permissions.append(global_permission)

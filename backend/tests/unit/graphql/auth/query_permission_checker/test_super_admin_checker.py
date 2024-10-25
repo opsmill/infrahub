@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind
+from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -38,7 +38,7 @@ class TestSuperAdminPermission:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.SUPER_ADMIN.value, action=GlobalPermissions.SUPER_ADMIN.value
+            db=db, action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 

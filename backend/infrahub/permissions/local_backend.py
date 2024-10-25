@@ -92,7 +92,7 @@ class LocalPermissionBackend(PermissionBackend):
         is_super_admin = self.resolve_global_permission(
             permissions=granted_permissions["global_permissions"],
             permission_to_check=GlobalPermission(
-                id="", name="", action=GlobalPermissions.SUPER_ADMIN, decision=PermissionDecision.ALLOW_ALL
+                action=GlobalPermissions.SUPER_ADMIN, decision=PermissionDecision.ALLOW_ALL
             ),
         )
 

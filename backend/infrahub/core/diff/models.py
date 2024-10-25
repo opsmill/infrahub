@@ -1,9 +1,7 @@
-from pydantic import Field
-
-from infrahub.message_bus import InfrahubMessage
+from pydantic import BaseModel, Field
 
 
-class RequestDiffUpdate(InfrahubMessage):
+class RequestDiffUpdate(BaseModel):
     """
     Request diff to be updated.
 
@@ -15,3 +13,10 @@ class RequestDiffUpdate(InfrahubMessage):
     name: str | None = None
     from_time: str | None = None
     to_time: str | None = None
+
+
+class RequestDiffRefresh(BaseModel):
+    """Request diff be recalculated from scratch."""
+
+    branch_name: str = Field(..., description="The branch associated with the diff")
+    diff_id: str = Field(..., description="The id for this diff")

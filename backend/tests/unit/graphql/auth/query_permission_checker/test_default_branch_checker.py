@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind
+from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
@@ -39,7 +39,7 @@ class TestDefaultBranchPermission:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value
+            db=db, action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 

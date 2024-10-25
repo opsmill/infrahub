@@ -71,11 +71,11 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
 
-    @pytest.mark.xfail(
-        reason="FIXME Test is passing locally but it's failing in CI, could be related to #4685 and/or #4699"
-    )
     async def test_create_proposed_change(
-        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, set_service_client
+        self,
+        db: InfrahubDatabase,
+        initial_dataset: None,
+        client: InfrahubClient,
     ) -> None:
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,

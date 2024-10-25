@@ -31,10 +31,6 @@ from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
-from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
-from .request_diff_refresh import RequestDiffRefresh
-from .request_diff_update import RequestDiffUpdate
-from .request_generator_run import RequestGeneratorRun
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_generatordefinition_run import RequestGeneratorDefinitionRun
 from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
@@ -45,8 +41,6 @@ from .request_repository_userchecks import RequestRepositoryUserChecks
 from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
-from .send_telemetry_push import SendTelemetryPush
-from .send_webhook_event import SendWebhookEvent
 from .trigger_generatordefinition_run import TriggerGeneratorDefinitionRun
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
@@ -79,10 +73,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
-    "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
-    "request.diff.update": RequestDiffUpdate,
-    "request.diff.refresh": RequestDiffRefresh,
-    "request.generator.run": RequestGeneratorRun,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.generator_definition.run": RequestGeneratorDefinitionRun,
     "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
@@ -97,8 +87,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
-    "send.webhook.event": SendWebhookEvent,
-    "send.telemetry.push": SendTelemetryPush,
     "trigger.generator_definition.run": TriggerGeneratorDefinitionRun,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
