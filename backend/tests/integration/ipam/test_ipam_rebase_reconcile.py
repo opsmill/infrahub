@@ -3,11 +3,22 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING
 
+import pytest
+
 from infrahub.core import registry
+from infrahub.core.branch.tasks import rebase_branch
+from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge import BranchMerger
+from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
+from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
+from infrahub.core.validators.tasks import schema_validate_migrations
+from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 from .base import TestIpamReconcileBase
 
@@ -15,6 +26,17 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
+
+
+@pytest.fixture
+def init_service(db: InfrahubDatabase):
+    original = services.service
+    database = db
+    workflow = WorkflowLocalExecution()
+    service = InfrahubServices(database=database, workflow=workflow)
+    services.service = service
+    yield service
+    services.service = original
 
 
 class TestIpamRebaseReconcile(TestIpamReconcileBase):
@@ -44,19 +66,69 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         db: InfrahubDatabase,
         initial_dataset,
         client: InfrahubClient,
+        init_service,
     ) -> None:
+        new_prefix = await client.create(
+            kind="IpamIPPrefix", prefix="10.10.0.0/17", ip_namespace=initial_dataset["ns1"].id
+        )
+        await new_prefix.save()
+        # new_prefix = await Node.init(schema=prefix_schema, db=db, branch=registry.default_branch)
+        # await new_prefix.new(db=db, prefix="10.10.0.0/17", ip_namespace=initial_dataset["ns1"].id)
+        # await new_prefix.save(db=db)
         branch = await create_branch(db=db, branch_name="delete_prefix")
-        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch)
+        deleted_prefix_branch = await client.get(
+            kind="IpamIPPrefix", branch=branch.name, id=initial_dataset["net140"].id
+        )
+        await deleted_prefix_branch.delete()
+        # deleted_prefix_branch = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["net140"].id)
+        # assert deleted_prefix_branch
+        # await deleted_prefix_branch.delete(db=db)
 
-        new_prefix = await Node.init(schema=prefix_schema, db=db, branch=registry.default_branch)
-        await new_prefix.new(db=db, prefix="10.10.0.0/17", ip_namespace=initial_dataset["ns1"].id)
-        await new_prefix.save(db=db)
-        deleted_prefix_branch = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["net140"].id)
-        assert deleted_prefix_branch
-        await deleted_prefix_branch.delete(db=db)
+        merger = BranchMerger(db=db, source_branch=branch, service=init_service)
+        candidate_schema = merger.get_candidate_schema()
+        error_messages = await schema_validate_migrations(
+            message=SchemaValidateMigrationData(
+                branch=branch,
+                schema_branch=candidate_schema,
+                constraints=[
+                    SchemaUpdateConstraintInfo(
+                        path=SchemaPath(
+                            path_type=SchemaPathType.RELATIONSHIP,
+                            schema_kind="IpamIPPrefix",
+                            schema_id=None,
+                            field_name="parent",
+                            property_name="min_count",
+                        ),
+                        constraint_name="relationship.min_count.update",
+                    ),
+                    SchemaUpdateConstraintInfo(
+                        path=SchemaPath(
+                            path_type=SchemaPathType.RELATIONSHIP,
+                            schema_kind="IpamIPPrefix",
+                            schema_id=None,
+                            field_name="parent",
+                            property_name="min_count",
+                        ),
+                        constraint_name="relationship.max_count.update",
+                    ),
+                    SchemaUpdateConstraintInfo(
+                        path=SchemaPath(
+                            path_type=SchemaPathType.RELATIONSHIP,
+                            schema_kind="IpamIPPrefix",
+                            schema_id=None,
+                            field_name="parent",
+                            property_name="min_count",
+                        ),
+                        constraint_name="relationship.cardinality.update",
+                    ),
+                ],
+            )
+        )
+        assert not error_messages
 
-        success = await client.branch.rebase(branch_name=branch.name)
-        assert success is True
+        await rebase_branch(branch=branch.name)
+        # success = await client.branch.rebase(branch_name=branch.name)
+        # assert success is True
 
         deleted_prefix = await NodeManager.get_one(db=db, branch=branch.name, id=deleted_prefix_branch.id)
         assert deleted_prefix is None
