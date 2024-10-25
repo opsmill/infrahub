@@ -133,6 +133,48 @@ In the GraphQL sandbox, execute the following mutation to create a new role:
 
 ## Managing permissions
 
-Permissions can be managed through roles assigned to users or groups. Infrahub supports **Global** and **Object-specific** permissions, allowing fine-grained control over what users can do within the system.
-
+Permissions can be managed through roles assigned to users or groups.
+Infrahub supports **Global** and **Object-specific** permissions, allowing fine-grained control over what users can do within the system.
 For a complete list of available global and object permissions, see the [Roles and Permissions documentation](/reference/permissions.mdx).
+
+### Creating and global permissions
+
+<Tabs>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+1. Login to Infrahub's web interface as an administrator.
+2. Click on **Admin** in the left side menu.
+3. Navigate to the **Role Management** section.
+4. In the **Roles** tab, click on **Create Account Role**.
+5. Provide a name for the role.
+6. Select the permissions you wish to assign to the role.
+7. Optionally, assign the role to an existing group.
+8. Click **Create** to create the role.
+
+  </TabItem>
+
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+In the GraphQL sandbox, execute the following mutation to create a new role:
+
+    ```graphql
+    mutation AddRole {
+      CoreAccountRoleCreate(
+        data: {
+          name: {value: "<ROLE-NAME>"},
+          # Optional - Assign the role to an existing group
+          groups: [{hfid: "Infrahub Users"}]
+        }
+      ) {
+        ok
+        object {
+          hfid
+        }
+      }
+    }
+    ```
+
+  </TabItem>
+</Tabs>
+
+### Creating and objects permissions
