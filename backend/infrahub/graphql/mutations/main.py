@@ -302,7 +302,7 @@ class InfrahubMutationMixin:
         data_dict = dict(data)
         if "hfid" in data:
             del data_dict["hfid"]
-        created_obj, mutation = await cls.mutate_create(info=info, data=data_dict, branch=branch, at=at)
+        created_obj, mutation = await cls.mutate_create(info=info, data=data_dict, branch=branch)
         return created_obj, mutation, True
 
     @classmethod
