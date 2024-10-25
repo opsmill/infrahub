@@ -7,4 +7,4 @@ CheckType = Enum.from_enum(constants.CheckType)
 
 Severity = Enum.from_enum(constants.Severity)
 
-BranchAwarePermissionDecision = Enum.from_enum(permission_constants.BranchAwarePermissionDecision)
+BranchRelativePermissionDecision = Enum.from_enum(permission_constants.BranchRelativePermissionDecision)

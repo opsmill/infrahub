@@ -2,26 +2,28 @@ from __future__ import annotations
 
 from graphene import Field, Int, List, ObjectType, String
 
-from infrahub.graphql.types.enums import BranchAwarePermissionDecision
+from infrahub.graphql.types.enums import BranchRelativePermissionDecision
 
 
 class ObjectPermission(ObjectType):
     kind = Field(String, required=True, description="The kind this permission refers to.")
     view = Field(
-        BranchAwarePermissionDecision, required=True, description="Indicates the permission level for the read action."
+        BranchRelativePermissionDecision,
+        required=True,
+        description="Indicates the permission level for the read action.",
     )
     create = Field(
-        BranchAwarePermissionDecision,
+        BranchRelativePermissionDecision,
         required=True,
         description="Indicates the permission level for the create action.",
     )
     update = Field(
-        BranchAwarePermissionDecision,
+        BranchRelativePermissionDecision,
         required=True,
         description="Indicates the permission level for the update action.",
     )
     delete = Field(
-        BranchAwarePermissionDecision,
+        BranchRelativePermissionDecision,
         required=True,
         description="Indicates the permission level for the delete action.",
     )

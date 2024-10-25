@@ -19,7 +19,7 @@ class PermissionDecisionFlag(IntFlag):
     ALLOW_ALL = ALLOW_DEFAULT | ALLOW_OTHER
 
 
-class BranchAwarePermissionDecision(StrEnum):
+class BranchRelativePermissionDecision(StrEnum):
     """This enum is only used to communicate a permission decision relative to a branch."""
 
     DENY = auto()

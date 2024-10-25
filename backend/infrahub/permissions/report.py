@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
-from infrahub.permissions.constants import AssignedPermissions, BranchAwarePermissionDecision, PermissionDecisionFlag
+from infrahub.permissions.constants import AssignedPermissions, BranchRelativePermissionDecision, PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
@@ -25,11 +25,11 @@ def get_permission_report(
     action: str,
     is_super_admin: bool = False,
     can_edit_default_branch: bool = False,  # pylint: disable=unused-argument
-) -> BranchAwarePermissionDecision:
+) -> BranchRelativePermissionDecision:
     is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
 
     if is_super_admin:
-        return BranchAwarePermissionDecision.ALLOW
+        return BranchRelativePermissionDecision.ALLOW
 
     decision = backend.report_object_permission(
         permissions=permissions["object_permissions"], namespace=node.namespace, name=node.name, action=action
@@ -44,13 +44,13 @@ def get_permission_report(
         or (decision & PermissionDecisionFlag.ALLOW_DEFAULT and is_default_branch)
         or (decision & PermissionDecisionFlag.ALLOW_OTHER and not is_default_branch)
     ):
-        return BranchAwarePermissionDecision.ALLOW
+        return BranchRelativePermissionDecision.ALLOW
     if decision & PermissionDecisionFlag.ALLOW_DEFAULT:
-        return BranchAwarePermissionDecision.ALLOW_DEFAULT
+        return BranchRelativePermissionDecision.ALLOW_DEFAULT
     if decision & PermissionDecisionFlag.ALLOW_OTHER:
-        return BranchAwarePermissionDecision.ALLOW_OTHER
+        return BranchRelativePermissionDecision.ALLOW_OTHER
 
-    return BranchAwarePermissionDecision.DENY
+    return BranchRelativePermissionDecision.DENY
 
 
 async def report_schema_permissions(
