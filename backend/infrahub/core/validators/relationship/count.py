@@ -39,7 +39,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         self.params["min_count"] = (
             self.min_count_override if self.min_count_override is not None else self.relationship_schema.min_count
         )
-        max_count = self.relationship_schema.max_count
+        max_count: int | None = self.relationship_schema.max_count
         if self.max_count_override:
             max_count = self.max_count_override
         if max_count == 0:
