@@ -56,7 +56,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
     ):
         context: GraphqlContext = info.context
@@ -64,7 +63,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
         async with db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_create(
-                info=info, data=data, branch=branch, at=at, database=dbt
+                info=info, data=data, branch=branch, database=dbt
             )
             destination_branch = proposed_change.destination_branch.value
             source_branch = await _get_source_branch(db=dbt, name=proposed_change.source_branch.value)
@@ -97,7 +96,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):
@@ -126,7 +124,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            at=at,
             include_owner=True,
             include_source=True,
         )
@@ -145,7 +142,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         merger: Optional[BranchMerger] = None
         async with context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_update(
-                info=info, data=data, branch=branch, at=at, database=dbt, node=obj
+                info=info, data=data, branch=branch, database=dbt, node=obj
             )
 
             if updated_state == ProposedChangeState.MERGED:

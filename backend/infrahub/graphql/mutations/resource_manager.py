@@ -77,7 +77,6 @@ class IPPrefixPoolGetResource(Mutation):
             id=data.get("id"),
             hfid=data.get("hfid"),
             branch=context.branch,
-            at=context.at,
         )
         resource = await obj.get_resource(
             db=context.db,
@@ -125,7 +124,6 @@ class IPAddressPoolGetResource(Mutation):
             id=data.get("id"),
             hfid=data.get("hfid"),
             branch=context.branch,
-            at=context.at,
         )
         resource = await obj.get_resource(
             db=context.db,
@@ -174,7 +172,6 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: InfrahubDatabase | None = None,
     ) -> Any:
         try:
@@ -196,7 +193,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         if data["start_range"].value > data["end_range"].value:
             raise ValidationError(input_value="start_range can't be larger than end_range")
 
-        return await super().mutate_create(info=info, data=data, branch=branch, at=at)
+        return await super().mutate_create(info=info, data=data, branch=branch)
 
     @classmethod
     async def mutate_update(
