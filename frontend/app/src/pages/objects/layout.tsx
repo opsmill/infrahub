@@ -54,7 +54,7 @@ const ObjectPageLayout = () => {
         <ResizablePanelGroup direction="horizontal">
           {treeSchema && (
             <>
-              <ResizablePanel defaultSize={20} minSize={10} maxSize={90}>
+              <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
                 <ScrollArea className="h-full">
                   <HierarchicalTree
                     schema={treeSchema}
