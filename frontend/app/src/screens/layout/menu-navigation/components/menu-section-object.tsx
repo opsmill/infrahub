@@ -53,7 +53,13 @@ const RecursiveObjectMenuItem: React.FC<{
   return (
     <DropdownMenuAccordion value={item.identifier}>
       <DropdownMenuAccordionTrigger {...commonStyleProps}>
-        {item.path ? <Link to={constructPath(item.path)}>{item.label}</Link> : item.label}
+        {item.path ? (
+          <Link to={constructPath(item.path)} className="w-full text-left cursor-pointer">
+            {item.label}
+          </Link>
+        ) : (
+          item.label
+        )}
       </DropdownMenuAccordionTrigger>
       <DropdownMenuAccordionContent>
         {item.children.map((child) => (

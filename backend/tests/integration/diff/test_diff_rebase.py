@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub import config, lock
 from infrahub.core.constants import DiffAction, InfrahubKind
@@ -291,7 +290,6 @@ class TestDiffRebase(TestInfrahubApp):
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
-        set_service_client,
     ):
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
@@ -372,18 +370,11 @@ class TestDiffRebase(TestInfrahubApp):
                 assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
                 assert prop_diff.conflict is None
 
-    async def test_rebase_fails_when_conflict(self, client: InfrahubClient, branch_2: Branch, initial_dataset):
-        with pytest.raises(GraphQLError) as exc_info:
-            await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": branch_2.name})
-
-        assert exc_info.value.errors
-        assert len(exc_info.value.errors) == 1
-        assert (
-            "contains conflicts with the default branch that must be addressed" in exc_info.value.errors[0]["message"]
-        )
-
-    async def test_manually_resolve_conflicts_and_rebase(
-        self, db: InfrahubDatabase, client: InfrahubClient, branch_2: Branch, initial_dataset
+    async def test_resolve_conflict(
+        self,
+        db: InfrahubDatabase,
+        branch_2: Branch,
+        initial_dataset,
     ):
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id

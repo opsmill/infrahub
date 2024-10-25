@@ -188,8 +188,8 @@ A first version of our K8S helm-chart is available in our repository.
 The following are required for production deployments using Helm:
 
 * data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
-* multiple replicas of the Infrahub API Server and Infrahub Git Agents should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
-* a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
+* multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
+* a shared storage should be available for use by the Task workers (through a StorageClass that supports RWX accesses)
 * S3 storage should be configured for the Infrahub API Server
 
 :::warning
