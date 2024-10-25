@@ -5,6 +5,7 @@ from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConf
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import SchemaNotFoundError
 
 from .conflicts_extractor import DiffConflictsExtractor
 from .model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot
@@ -22,11 +23,15 @@ class DiffDataCheckSynchronizer:
         self.conflict_recorder = conflict_recorder
 
     async def synchronize(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
-        proposed_changes = await NodeManager.query(
-            db=self.db,
-            schema=InfrahubKind.PROPOSEDCHANGE,
-            filters={"source_branch": enriched_diff.diff_branch_name, "state": ProposedChangeState.OPEN},
-        )
+        try:
+            proposed_changes = await NodeManager.query(
+                db=self.db,
+                schema=InfrahubKind.PROPOSEDCHANGE,
+                filters={"source_branch": enriched_diff.diff_branch_name, "state": ProposedChangeState.OPEN},
+            )
+        except SchemaNotFoundError:
+            # if the CoreProposedChange schema does not exist, then there's nothing to do
+            proposed_changes = []
         if not proposed_changes:
             return []
         enriched_conflicts = enriched_diff.get_all_conflicts()

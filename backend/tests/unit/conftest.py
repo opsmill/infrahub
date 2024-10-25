@@ -55,6 +55,8 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
+from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import format_label
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
@@ -2923,3 +2925,23 @@ async def prefix_pool_01(
     ip_dataset_prefix_v4["prefix_pool"] = prefix_pool
 
     return ip_dataset_prefix_v4
+
+
+@pytest.fixture()
+def workflow_local():
+    original = config.OVERRIDE.workflow
+    workflow = WorkflowLocalExecution()
+    config.OVERRIDE.workflow = workflow
+    yield workflow
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def init_service(db: InfrahubDatabase):
+    original = services.service
+    database = db
+    workflow = WorkflowLocalExecution()
+    service = InfrahubServices(database=database, workflow=workflow)
+    services.service = service
+    yield service
+    services.service = original

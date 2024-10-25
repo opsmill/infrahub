@@ -1,9 +1,13 @@
+import pytest
+
 from infrahub.core.branch import Branch
+from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 
 
 async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
@@ -79,3 +83,23 @@ async def test_merge_relationship_many(
     # All Relationship are in BRANCH1 after the REBASE
     org1_branch = await NodeManager.get_one(id=org1.id, branch=branch1, db=db)
     assert len(await org1_branch.tags.get(db=db)) == 3
+
+
+async def test_branch_rebase_diff_conflict(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local,
+    init_service,
+    car_person_schema,
+    car_camry_main,
+):
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
+    car_main.name.value += "-main"
+    await car_main.save(db=db)
+    car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+    car_branch.name.value += "-branch"
+    await car_branch.save(db=db)
+
+    with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
+        await rebase_branch(branch=branch2.name)

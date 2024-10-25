@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pydantic
 from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, String
@@ -249,7 +249,7 @@ class BranchMerge(Mutation):
         async with UserTask.from_graphql_context(title=f"Merge branch: {data['name']}", context=context) as task:
             obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
-            merger: Optional[BranchMerger] = None
+            merger: BranchMerger | None = None
             async with lock.registry.global_graph_lock():
                 async with context.db.start_transaction() as db:
                     merger = BranchMerger(db=db, source_branch=obj, service=context.service)
