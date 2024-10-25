@@ -71,6 +71,13 @@ IPAM_RECONCILIATION = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+REQUEST_GENERATOR_RUN = WorkflowDefinition(
+    name="generator-run",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.generators.tasks",
+    function="run_generator",
+)
+
 REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
     name="artifact-generate",
     type=WorkflowType.INTERNAL,
@@ -116,4 +123,5 @@ workflows = [
     GIT_REPOSITORIES_CREATE_BRANCH,
     REQUEST_ARTIFACT_GENERATE,
     BRANCH_REBASE,
+    REQUEST_GENERATOR_RUN,
 ]

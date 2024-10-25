@@ -1,7 +1,6 @@
 from . import (
     artifact_definition,
     diff,
-    generator,
     generator_definition,
     graphql_query_group,
     proposed_change,
@@ -11,7 +10,6 @@ from . import (
 __all__ = [
     "artifact_definition",
     "diff",
-    "generator",
     "generator_definition",
     "graphql_query_group",
     "proposed_change",
