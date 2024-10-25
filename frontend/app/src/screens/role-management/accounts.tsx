@@ -194,7 +194,10 @@ function Accounts() {
           <ObjectForm
             kind={ACCOUNT_OBJECT}
             currentObject={rowToUpdate}
-            onCancel={() => setShowDrawer(false)}
+            onCancel={() => {
+              setRowToUpdate(null);
+              setShowDrawer(false);
+            }}
             onSuccess={() => {
               setShowDrawer(false);
               globalRefetch();

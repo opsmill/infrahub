@@ -183,7 +183,10 @@ function GlobalPermissions() {
           <ObjectForm
             kind={GLOBAL_PERMISSION_OBJECT}
             currentObject={rowToUpdate}
-            onCancel={() => setShowDrawer(false)}
+            onCancel={() => {
+              setRowToUpdate(null);
+              setShowDrawer(false);
+            }}
             onSuccess={() => {
               setShowDrawer(false);
               globalRefetch();

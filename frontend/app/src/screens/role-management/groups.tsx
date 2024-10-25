@@ -188,7 +188,10 @@ function Groups() {
           <ObjectForm
             kind={ACCOUNT_GROUP_OBJECT}
             currentObject={rowToUpdate}
-            onCancel={() => setShowDrawer(false)}
+            onCancel={() => {
+              setRowToUpdate(null);
+              setShowDrawer(false);
+            }}
             onSuccess={() => {
               setShowDrawer(false);
               globalRefetch();

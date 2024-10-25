@@ -178,7 +178,10 @@ function Roles() {
           <ObjectForm
             kind={ACCOUNT_ROLE_OBJECT}
             currentObject={rowToUpdate}
-            onCancel={() => setShowDrawer(false)}
+            onCancel={() => {
+              setRowToUpdate(null);
+              setShowDrawer(false);
+            }}
             onSuccess={() => {
               setShowDrawer(false);
               globalRefetch();
