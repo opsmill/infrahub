@@ -90,4 +90,12 @@ test.describe("Branches creation and deletion", () => {
       await expect(page.getByTestId("branch-list")).not.toContainText("test123");
     });
   });
+
+  test("allow to create a branch with a name that does not exists", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("branch-selector-trigger").click();
+    await page.getByTestId("branch-search-input").fill("quick-branch-form");
+    await page.getByRole("option", { name: "Create branch quick-branch-form" }).click();
+    await expect(page.getByLabel("New branch name *")).toHaveValue("quick-branch-form");
+  });
 });
