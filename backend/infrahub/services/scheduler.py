@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.tasks.keepalive import refresh_heartbeat
-from infrahub.tasks.recurring import push_telemetry, trigger_branch_refresh
+from infrahub.tasks.recurring import trigger_branch_refresh
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices, ServiceFunction
@@ -43,15 +43,6 @@ class InfrahubScheduler:
             ]
             self.schedules.extend(schedules)
 
-            if not config.SETTINGS.main.telemetry_optout:
-                self.schedules.append(
-                    Schedule(
-                        name="push_telemetry",
-                        interval=config.SETTINGS.main.telemetry_interval,
-                        function=push_telemetry,
-                        start_delay=3600,  # Start pushing only if running for 1 hour
-                    )
-                )
         if self.service.component_type == ComponentType.GIT_AGENT:
             schedules = [
                 Schedule(name="refresh_components", interval=10, function=refresh_heartbeat),

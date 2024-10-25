@@ -1,4 +1,4 @@
-export type PermissionDecisionData = "DENY" | "ALLOW_ALL" | "ALLOW_DEFAULT" | "ALLOW_OTHER";
+export type PermissionDecisionData = "ALLOW" | "ALLOW_DEFAULT" | "ALLOW_OTHER" | "DENY";
 
 export type PermissionAction = "view" | "create" | "update" | "delete";
 

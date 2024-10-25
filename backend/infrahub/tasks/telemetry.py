@@ -12,8 +12,6 @@ from infrahub.core import registry, utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GRAPH_SCHEMA
-from infrahub.exceptions import HTTPServerError
-from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices, services
 
 TELEMETRY_KIND: str = "community"
@@ -96,30 +94,6 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     return data
 
 
-@flow(name="telemetry-push-legacy")
-async def push(
-    message: messages.SendTelemetryPush,  # pylint: disable=unused-argument
-    service: InfrahubServices,
-) -> None:
-    service.log.debug("Received telemetry push message...")
-
-    data = await gather_anonymous_telemetry_data(service=service)
-    service.log.debug(f"Anonymous usage telemetry gathered in {data['execution_time']} seconds.")
-
-    payload = {
-        "kind": TELEMETRY_KIND,
-        "payload_format": TELEMETRY_VERSION,
-        "data": data,
-        "checksum": hashlib.sha256(json.dumps(data).encode()).hexdigest(),
-    }
-    try:
-        response = await service.http.post(url=config.SETTINGS.main.telemetry_endpoint, json=payload)
-    except HTTPServerError as exc:
-        service.log.debug(f"HTTP exception while pushing anonymous telemetry: {exc}")
-    if not response.is_success:
-        service.log.debug("HTTP exception while pushing anonymous telemetry", status_code=response.status_code)
-
-
 @task(retries=5)
 async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:
     """Send the telemetry data to the specified URL, using HTTP POST."""
@@ -127,11 +101,14 @@ async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict
     response.raise_for_status()
 
 
-@flow
+@flow(name="anonymous-telemetry-push")
 async def send_telemetry_push() -> None:
     service = services.service
-
     log = get_run_logger()
+    if config.SETTINGS.main.telemetry_optout:
+        log.info("Skipping, User opted out of this service.")
+        return
+
     log.info(f"Pushing anonymous telemetry data to {config.SETTINGS.main.telemetry_endpoint}...")
 
     data = await gather_anonymous_telemetry_data(service=service)

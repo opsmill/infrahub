@@ -12,6 +12,7 @@ class Neo4jRuntime(str, Enum):
     SLOTTED = "slotted"
     PIPELINED = "pipelined"
     PARALLEL = "parallel"
+    UNDEFINED = "undefined"
 
 
 class IndexType(str, Enum):

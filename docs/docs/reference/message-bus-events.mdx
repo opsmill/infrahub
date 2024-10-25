@@ -205,7 +205,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **source_branch** | The source branch | string | None |
 | **target_branch** | The target branch | string | None |
-| **ipam_node_details** | Details for changed IP nodes | array | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event event.branch.rebased
@@ -586,91 +585,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The target branch | string | None |
 <!-- vale on -->
-<!-- vale off -->
-#### Event request.artifact_definition.generate
-<!-- vale on -->
-
-**Description**: Sent to trigger the generation of artifacts for a given branch.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_definition** | The unique ID of the Artifact Definition | string | None |
-| **branch** | The branch to target | string | None |
-| **limit** | List of targets to limit the scope of the generation, if populated only the included artifacts will be regenerated | array | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Diff
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.diff.update
-<!-- vale on -->
-
-**Description**: Request diff to be updated.
-
-    If the message only include a branch_name, it is assumed to be for updating the diff that tracks
-    the lifetime changes of a branch
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch_name** | The branch associated with the diff | string | None |
-| **name** | N/A | N/A | None |
-| **from_time** | N/A | N/A | None |
-| **to_time** | N/A | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.diff.refresh
-<!-- vale on -->
-
-**Description**: Request diff be recalculated from scratch.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch_name** | The branch associated with the diff | string | None |
-| **diff_id** | The id for this diff | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Generator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.generator.run
-<!-- vale on -->
-
-**Description**: Runs a generator.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **generator_definition** | The Generator definition | N/A | None |
-| **generator_instance** | The id of the generator instance if it previously existed | N/A | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this generator | string | None |
-| **target_name** | Name of the generator target | string | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **variables** | Input variables when running the generator | object | None |
-<!-- vale on -->
 
 <!-- vale off -->
 ### Request Generator Definition
@@ -941,45 +855,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **message** | The message to send | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Send Webhook
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event send.webhook.event
-<!-- vale on -->
-
-**Description**: Sent a webhook to an external source.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **webhook_id** | The unique ID of the webhook | string | None |
-| **event_type** | The event type | string | None |
-| **event_data** | The data tied to the event | object | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Send Telemetry
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event send.telemetry.push
-<!-- vale on -->
-
-**Description**: Push usage telemetry.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
 <!-- vale on -->
 
 
@@ -1245,7 +1120,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **source_branch** | The source branch | string | None |
 | **target_branch** | The target branch | string | None |
-| **ipam_node_details** | Details for changed IP nodes | array | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event event.branch.rebased
@@ -1645,95 +1519,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The target branch | string | None |
 <!-- vale on -->
-<!-- vale off -->
-#### Event request.artifact_definition.generate
-<!-- vale on -->
-
-**Description**: Sent to trigger the generation of artifacts for a given branch.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_definition** | The unique ID of the Artifact Definition | string | None |
-| **branch** | The branch to target | string | None |
-| **limit** | List of targets to limit the scope of the generation, if populated only the included artifacts will be regenerated | array | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Diff
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.diff.update
-<!-- vale on -->
-
-**Description**: Request diff to be updated.
-
-    If the message only include a branch_name, it is assumed to be for updating the diff that tracks
-    the lifetime changes of a branch
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch_name** | The branch associated with the diff | string | None |
-| **name** | N/A | N/A | None |
-| **from_time** | N/A | N/A | None |
-| **to_time** | N/A | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.diff.refresh
-<!-- vale on -->
-
-**Description**: Request diff be recalculated from scratch.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch_name** | The branch associated with the diff | string | None |
-| **diff_id** | The id for this diff | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Generator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.generator.run
-<!-- vale on -->
-
-**Description**: Runs a generator.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **generator_definition** | The Generator definition | N/A | None |
-| **generator_instance** | The id of the generator instance if it previously existed | N/A | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this generator | string | None |
-| **target_name** | Name of the generator target | string | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **variables** | Input variables when running the generator | object | None |
-<!-- vale on -->
 
 <!-- vale off -->
 ### Request Generator Definition
@@ -2018,47 +1803,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **message** | The message to send | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Send Webhook
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event send.webhook.event
-<!-- vale on -->
-
-**Description**: Sent a webhook to an external source.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **webhook_id** | The unique ID of the webhook | string | None |
-| **event_type** | The event type | string | None |
-| **event_data** | The data tied to the event | object | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Send Telemetry
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event send.telemetry.push
-<!-- vale on -->
-
-**Description**: Push usage telemetry.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
 <!-- vale on -->
 
 

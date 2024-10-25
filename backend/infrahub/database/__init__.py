@@ -297,31 +297,57 @@ class InfrahubDatabase:
         await self._driver.close()
 
     async def execute_query(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str = "undefined",
+        context: dict[str, str] | None = None,
     ) -> list[Record]:
-        results, _ = await self.execute_query_with_metadata(query=query, params=params, name=name)
+        results, _ = await self.execute_query_with_metadata(query=query, params=params, name=name, context=context)
         return results
 
     async def execute_query_with_metadata(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str = "undefined",
+        context: dict[str, str] | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
             if name:
                 span.set_attribute("query_name", name)
 
+            runtime = Neo4jRuntime.UNDEFINED
+
             try:
                 query_config = self.queries_names_to_config[name]
                 if self.db_type == DatabaseType.NEO4J:
                     runtime = self.queries_names_to_config[name].neo4j_runtime
-                    if runtime != Neo4jRuntime.DEFAULT:
+                    if runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]:
                         query = f"CYPHER runtime = {runtime.value}\n" + query
                 if query_config.profile_memory:
                     query = "PROFILE\n" + query
             except KeyError:
                 pass  # No specific config for this query
 
-            with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
+            labels = {
+                "type": self._session_mode.value,
+                "query": name,
+                "runtime": runtime.value,
+                "context1": "",
+                "context2": "",
+            }
+            if context:
+                labels.update(
+                    {
+                        f"context{idx + 1}": f"{key}__{value}"
+                        for idx, (key, value) in enumerate(context.items())
+                        if idx <= 1
+                    }
+                )
+
+            with QUERY_EXECUTION_METRICS.labels(**labels).time():
                 response = await self.run_query(query=query, params=params, name=name)
                 results = [item async for item in response]
                 return results, response._metadata or {}

@@ -8,9 +8,10 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.lock import InfrahubLockRegistry
-from infrahub.message_bus.messages import RequestArtifactDefinitionGenerate
 from infrahub.services import services
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -108,8 +109,9 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         artifact_definitions = await client.all(kind=InfrahubKind.ARTIFACTDEFINITION)
 
         for artifact_definition in artifact_definitions:
-            await services.service.send(
-                message=RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch="main")
+            model = RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch="main")
+            await services.service.workflow.submit_workflow(
+                REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )
 
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT)

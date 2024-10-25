@@ -423,12 +423,14 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
     assert branch4_updated.description == "testing"
 
 
-async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
+async def test_branch_merge_wrong_branch(
+    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin
+):
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
     mutation {
-        BranchMerge(data: { name: "branch1" }) {
+        BranchMerge(data: { name: "branch99" }) {
             ok
             object {
                 id
@@ -436,8 +438,10 @@ async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core
         }
     }
     """
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder)
     gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin
+        db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=service
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -447,7 +451,6 @@ async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core
         variable_values={},
     )
 
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchMerge"]["ok"] is True
-    assert result.data["BranchMerge"]["object"]["id"] == str(branch1.uuid)
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Branch: branch99 not found."

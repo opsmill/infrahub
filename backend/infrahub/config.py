@@ -121,9 +121,6 @@ class MainSettings(BaseSettings):
     )
     telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
     telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
-    telemetry_interval: int = Field(
-        default=3600 * 24, ge=60, description="Time (in seconds) between telemetry usage push"
-    )
     permission_backends: list[str] = Field(
         default=["infrahub.permissions.LocalPermissionBackend"],
         description="List of modules to handle permissions, they will be run in the given order",
@@ -326,7 +323,10 @@ class GitSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_GIT_")
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
-        default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+        default=10,
+        ge=0,
+        description="Time (in seconds) between git repositories synchronizations",
+        deprecated="This setting is deprecated and not currently in use.",
     )
 
 

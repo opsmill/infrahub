@@ -249,8 +249,6 @@ async def load_schema(
             db=db,
             account_id=account_session.account_id,
             permission=GlobalPermission(
-                id="",
-                name="",
                 action=GlobalPermissions.MANAGE_SCHEMA.value,
                 decision=(
                     PermissionDecision.ALLOW_DEFAULT

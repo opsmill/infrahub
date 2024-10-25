@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+from typing_extensions import Self
+
 from infrahub.core.constants import InfrahubKind, PermissionDecision
 from infrahub.core.query import Query
 from infrahub.core.registry import registry
@@ -17,23 +19,41 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class Permission:
-    id: str
-    name: str
+class GlobalPermission:
     action: str
     decision: int
+    description: str = ""
+    id: str = ""
 
-
-@dataclass
-class GlobalPermission(Permission):
     def __str__(self) -> str:
         decision = PermissionDecision(self.decision)
         return f"global:{self.action}:{decision.name.lower()}"
 
+    @classmethod
+    def from_string(cls, input: str) -> Self:
+        parts = input.split(":")
+        if len(parts) != 3 and parts[0] != "global":
+            raise ValueError(f"{input} is not a valid format for a Global permission")
+
+        # FIXME there is probably a better way to convert the decision
+        decision = PermissionDecision.DENY
+        if parts[2] == "allow_default":
+            decision = PermissionDecision.ALLOW_DEFAULT
+        elif parts[2] == "allow_all":
+            decision = PermissionDecision.ALLOW_ALL
+        elif parts[2] == "allow_other":
+            decision = PermissionDecision.ALLOW_OTHER
+        return cls(action=str(parts[1]), decision=decision)
+
 
 @dataclass
-class ObjectPermission(Permission):
+class ObjectPermission:
     namespace: str
+    name: str
+    action: str
+    decision: int
+    description: str = ""
+    id: str = ""
 
     def __str__(self) -> str:
         decision = PermissionDecision(self.decision)
@@ -108,24 +128,13 @@ class AccountGlobalPermissionQuery(Query):
 
         CALL {
             WITH global_permission
-            MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r2:HAS_VALUE]->(global_permission_name:AttributeValue)
-            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
-            RETURN global_permission_name, (r1.status = "active" AND r2.status = "active") AS is_active
-            ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
-            LIMIT 1
-        }
-        WITH global_permission, global_permission_name, is_active AS gpn_is_active
-        WHERE gpn_is_active = TRUE
-
-        CALL {
-            WITH global_permission
             MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(global_permission_action:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN global_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH global_permission, global_permission_name, global_permission_action, is_active AS gpa_is_active
+        WITH global_permission, global_permission_action, is_active AS gpa_is_active
         WHERE gpa_is_active = TRUE
 
         CALL {
@@ -136,7 +145,7 @@ class AccountGlobalPermissionQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH global_permission, global_permission_name, global_permission_action, global_permission_decision, is_active AS gpd_is_active
+        WITH global_permission, global_permission_action, global_permission_decision, is_active AS gpd_is_active
         WHERE gpd_is_active = TRUE
         """ % {
             "branch_filter": branch_filter,
@@ -148,12 +157,7 @@ class AccountGlobalPermissionQuery(Query):
 
         self.add_to_query(query)
 
-        self.return_labels = [
-            "global_permission",
-            "global_permission_name",
-            "global_permission_action",
-            "global_permission_decision",
-        ]
+        self.return_labels = ["global_permission", "global_permission_action", "global_permission_decision"]
 
     def get_permissions(self) -> list[GlobalPermission]:
         permissions: list[GlobalPermission] = []
@@ -162,7 +166,6 @@ class AccountGlobalPermissionQuery(Query):
             permissions.append(
                 GlobalPermission(
                     id=result.get("global_permission").get("uuid"),
-                    name=result.get("global_permission_name").get("value"),
                     action=result.get("global_permission_action").get("value"),
                     decision=result.get("global_permission_decision").get("value"),
                 )

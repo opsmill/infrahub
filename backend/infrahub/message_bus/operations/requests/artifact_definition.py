@@ -5,12 +5,10 @@ from prefect import flow
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
-from infrahub.git.models import RequestArtifactGenerate
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
-from infrahub.workflows.catalogue import REQUEST_ARTIFACT_GENERATE
 
 log = get_logger()
 
@@ -136,84 +134,6 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
         for event in events:
             event.assign_meta(parent=message)
             await service.send(message=event)
-
-
-@flow(name="artifact-definition-generate")
-async def generate(message: messages.RequestArtifactDefinitionGenerate, service: InfrahubServices) -> None:
-    log.info(
-        "Received request to generate artifacts for an artifact_definition",
-        branch=message.branch,
-        artifact_definition=message.artifact_definition,
-        limit=message.limit,
-    )
-    artifact_definition = await service.client.get(
-        kind=InfrahubKind.ARTIFACTDEFINITION, id=message.artifact_definition, branch=message.branch
-    )
-
-    await artifact_definition.targets.fetch()
-    group = artifact_definition.targets.peer
-    await group.members.fetch()
-
-    existing_artifacts = await service.client.filters(
-        kind=InfrahubKind.ARTIFACT,
-        definition__ids=[message.artifact_definition],
-        include=["object"],
-        branch=message.branch,
-    )
-    artifacts_by_member = {}
-    for artifact in existing_artifacts:
-        artifacts_by_member[artifact.object.peer.id] = artifact.id
-
-    await artifact_definition.transformation.fetch()
-    transformation_repository = artifact_definition.transformation.peer.repository
-
-    await transformation_repository.fetch()
-
-    transform = artifact_definition.transformation.peer
-    await transform.query.fetch()
-    query = transform.query.peer
-    repository = transformation_repository.peer
-    branch = await service.client.branch.get(branch_name=message.branch)
-    if branch.sync_with_git:
-        repository = await service.client.get(
-            kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=message.branch, fragment=True
-        )
-    transform_location = ""
-
-    if transform.typename == InfrahubKind.TRANSFORMJINJA2:
-        transform_location = transform.template_path.value
-    elif transform.typename == InfrahubKind.TRANSFORMPYTHON:
-        transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
-
-    for relationship in group.members.peers:
-        member = relationship.peer
-        artifact_id = artifacts_by_member.get(member.id)
-        if message.limit and artifact_id not in message.limit:
-            continue
-
-        model = RequestArtifactGenerate(
-            artifact_name=artifact_definition.name.value,
-            artifact_id=artifact_id,
-            artifact_definition=message.artifact_definition,
-            commit=repository.commit.value,
-            content_type=artifact_definition.content_type.value,
-            transform_type=transform.typename,
-            transform_location=transform_location,
-            repository_id=repository.id,
-            repository_name=repository.name.value,
-            repository_kind=repository.get_kind(),
-            branch_name=message.branch,
-            query=query.name.value,
-            variables=member.extract(params=artifact_definition.parameters.value),
-            target_id=member.id,
-            target_name=member.display_label,
-            timeout=transform.timeout.value,
-        )
-
-        await service.workflow.submit_workflow(
-            workflow=REQUEST_ARTIFACT_GENERATE,
-            parameters={"model": model},
-        )
 
 
 def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_artifacts: list[str]) -> bool:

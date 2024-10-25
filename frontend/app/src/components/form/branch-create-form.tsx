@@ -20,9 +20,10 @@ type BranchFormData = {
 type BranchCreateFormProps = {
   onCancel?: () => void;
   onSuccess?: (branch: Branch) => void;
+  defaultBranchName?: string;
 };
 
-const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
+const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCreateFormProps) => {
   const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const [createBranch] = useMutation(BRANCH_CREATE);
@@ -60,6 +61,10 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
       <InputField
         name="name"
         label="New branch name"
+        defaultValue={
+          defaultBranchName ? { source: { type: "user" }, value: defaultBranchName } : undefined
+        }
+        autoFocus
         rules={{
           required: true,
           validate: {

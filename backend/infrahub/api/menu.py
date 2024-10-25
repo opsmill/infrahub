@@ -9,7 +9,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
-from infrahub.menu.generator import generate_menu
+from infrahub.menu.generator import generate_restricted_menu
 from infrahub.menu.models import Menu  # noqa: TCH001
 
 if TYPE_CHECKING:
@@ -29,9 +29,6 @@ async def get_menu(
 ) -> Menu:
     log.info("menu_request", branch=branch.name)
 
-    menu_items = await registry.manager.query(
-        db=db, schema=CoreMenuItem, branch=branch
-    )  # , prefetch_relationships=True)
-    menu = await generate_menu(db=db, branch=branch, account=account_session, menu_items=menu_items)
-
+    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=branch)
+    menu = await generate_restricted_menu(db=db, branch=branch, account=account_session, menu_items=menu_items)
     return menu.to_rest()

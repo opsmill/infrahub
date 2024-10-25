@@ -1,3 +1,4 @@
+import copy
 from typing import Any, Dict
 
 import pytest
@@ -40,7 +41,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
     @pytest.fixture(scope="class")
     def schema_person_03_no_height(self, schema_person_02_first_last) -> Dict[str, Any]:
         """Remove the attribute height."""
-        person = schema_person_02_first_last
+        person = copy.deepcopy(schema_person_02_first_last)
         assert person["attributes"][2]["name"] == "height"
         person["attributes"][2]["state"] = "absent"
         return person
