@@ -145,30 +145,33 @@ For a complete list of available global and object permissions, see the [Roles a
 1. Login to Infrahub's web interface as an administrator.
 2. Click on **Admin** in the left side menu.
 3. Navigate to the **Role Management** section.
-4. In the **Roles** tab, click on **Create Account Role**.
-5. Provide a name for the role.
-6. Select the permissions you wish to assign to the role.
-7. Optionally, assign the role to an existing group.
-8. Click **Create** to create the role.
+4. In the **Global Permissions** tab, click on **Create Global Permission**.
+5. Select the action you which to use.
+6. Select the decision for this action.
+7. Optionally, assign the permission to an existing role.
+8. Click **Create** to create the permission.
 
   </TabItem>
 
   <TabItem value="graphql" label="Via the GraphQL Interface">
 
-In the GraphQL sandbox, execute the following mutation to create a new role:
+In the GraphQL sandbox, execute the following mutation to create a new global permission:
+
 
     ```graphql
-    mutation AddRole {
-      CoreAccountRoleCreate(
+    mutation AddGlobalPermissions {
+      CoreGlobalPermissionCreate(
         data: {
-          name: {value: "<ROLE-NAME>"},
-          # Optional - Assign the role to an existing group
-          groups: [{hfid: "Infrahub Users"}]
+          action: {value: "manage_accounts"},
+          # 6 is the enum value for "allow"
+          decision: {value: 6}
         }
       ) {
         ok
         object {
-          hfid
+          identifier {
+            value
+          }
         }
       }
     }
@@ -178,3 +181,46 @@ In the GraphQL sandbox, execute the following mutation to create a new role:
 </Tabs>
 
 ### Creating and objects permissions
+
+<Tabs>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+1. Login to Infrahub's web interface as an administrator.
+2. Click on **Admin** in the left side menu.
+3. Navigate to the **Role Management** section.
+4. In the **Objects Permissions** tab, click on **Create Object Permission**..
+5. Provide the namespace and name of the object(s) you want to interract with.
+6. Select the action and decision you wish to use for this permission.
+7. Optionally, assign the permission to an existing role.
+8. Click **Create** to create the permission.
+
+  </TabItem>
+
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+In the GraphQL sandbox, execute the following mutation to create a new global permission:
+
+
+    ```graphql
+    mutation AddObjectPermissions {
+      CoreObjectPermissionCreate(
+        data: {
+          namespace: {value: "Builtin"},
+          name: {value: "Tag"},
+          action: {value: "view"},
+          # 4 is the enum value for "allow_other"
+          decision: {value: 4 }
+        }
+      ) {
+        ok
+        object {
+          identifier {
+            value
+          }
+        }
+      }
+    }
+    ```
+
+  </TabItem>
+</Tabs>
