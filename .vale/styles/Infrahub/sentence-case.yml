@@ -64,9 +64,11 @@ exceptions:
   - RFile
   - SDK
   - Single sign-on
+  - SSO
   - TLS
   - Tony Stark
   - TransformPython
+  - UI
   - Vale
   - VS Code
   - VS Code extensions
