@@ -81,6 +81,17 @@ This role provides full administrative control over Infrahub. Users with this ro
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------|
 | `global:super_admin:allow_all`      |  Permits complete administrative control, including schema, permissions, users, and repositories management. |
 
+#### Anonymous user
+
+If Infrahub is setup to allow anonymous access when it is first initialized, an additional account role called **Anonymous User** will be created. This role defines all the permissions that a user will inherit when not logged in. The default configuration for this role ships with two permissions:
+
+* `object:*:*:any:deny` to deny anything on all objects, across all branches (this one is not required, but it is more explicit)
+* `object:*:*:view:allow_all` to allow seeing all objects, across all branches
+
+The role is defined by its name in Infrahub's configuration and can be adjusted by changing the setting `main.anonymous_access_role` or the environment variable `INFRAHUB_ANONYMOUS_ACCESS_ROLE`.
+
+Note that an anonymous user will never be able to make changes to data inside Infrahub whether the role's permisssions allow it or not.
+
 ## Authentication backends
 
 Infrahub supports authenticating users in a local user store or by using single sign-on through an external identity provider.
