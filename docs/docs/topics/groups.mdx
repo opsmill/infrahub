@@ -36,7 +36,7 @@ Infrahub automatically adds relationships to all objects for seamless integratio
 
 ```graphql
 query {
-  device(id: "device-123") {
+  InfraDevice(hfid: ["device-123"]) {
     member_of_groups {
       name
       description
