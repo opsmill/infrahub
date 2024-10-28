@@ -278,6 +278,9 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
     async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
+        person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=self.branch1)
+        height_attr_schema = person_schema.get_attribute(name="height")
+        assert height_attr_schema.id
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
         assert schema_step03["nodes"][2]["name"] == "CarMaker"
@@ -295,6 +298,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         john = persons[0]
         assert not hasattr(john, "height")
 
+        updated_height_attr_schema = await registry.manager.get_one(
+            db=db, branch=self.branch1.name, id=height_attr_schema.id
+        )
+        assert updated_height_attr_schema is None
+
         manufacturers = await registry.manager.query(
             db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "renault"}, branch=self.branch1.name
         )
@@ -303,11 +311,18 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         renault_cars = await renault.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(renault_cars) == 2
 
-    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
+    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset):
         branch = await client.branch.rebase(branch_name=self.branch1.name)
         assert branch
+        person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=default_branch)
+        height_attr_schema = person_schema.get_attribute(name="height")
+        assert height_attr_schema.id
 
         # Validate that all data added to main after the creation of the branch has been migrated properly
+        updated_height_attr_schema = await registry.manager.get_one(
+            db=db, branch=self.branch1.name, id=height_attr_schema.id
+        )
+        assert updated_height_attr_schema is None
         persons = await registry.manager.query(
             db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1.name
         )
