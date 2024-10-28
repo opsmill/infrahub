@@ -28,6 +28,9 @@ export const addAttributesToRequest = (
         display_label: true,
         __typename: true,
       },
+      permissions: {
+        update_value: true,
+      },
     };
 
     if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
@@ -42,9 +45,6 @@ export const addAttributesToRequest = (
         ...acc,
         [attribute.name]: {
           ...fragment,
-          permissions: {
-            update_value: true,
-          },
         },
       };
     }
