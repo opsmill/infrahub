@@ -1,6 +1,9 @@
 ---
 title: Configuring Single sign-on
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Configuring Single sign-on
 
 In Infrahub you can configure SSO using either Open ID Connect (OIDC) or can use OAuth2.
@@ -40,15 +43,36 @@ Aside from the display label and icon all the other entries will be provided by 
 
 An example of what the configuration could look like:
 
-```bash
-export INFRAHUB_OAUTH2_PROVIDER1_CLIENT_ID=infrahub-sso
-export INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET=edPf4IaquQaqns7t3s95mLhKKYdwL1up
-export INFRAHUB_OAUTH2_PROVIDER1_AUTHORIZATION_URL=http://localhost:8180/realms/infrahub/protocol/openid-connect/auth
-export INFRAHUB_OAUTH2_PROVIDER1_TOKEN_URL=http://localhost:8180/realms/infrahub/protocol/openid-connect/token
-export INFRAHUB_OAUTH2_PROVIDER1_USERINFO_URL=http://localhost:8180/realms/infrahub/protocol/openid-connect/userinfo
-export INFRAHUB_OAUTH2_PROVIDER1_DISPLAY_LABEL="Internal Server (Keycloak)"
-export INFRAHUB_OAUTH2_PROVIDER1_ICON="mdi:security-lock-outline"
-```
+<Tabs groupId="provider1-configuration">
+  <TabItem value="Environment Variables" default>
+
+  ```bash
+  export INFRAHUB_OAUTH2_PROVIDER1_CLIENT_ID=infrahub-sso
+  export INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET=edPf4IaquQaqns7t3s95mLhKKYdwL1up
+  export INFRAHUB_OAUTH2_PROVIDER1_AUTHORIZATION_URL=http://localhost:8180/realms/infrahub/protocol/openid-connect/auth
+  export INFRAHUB_OAUTH2_PROVIDER1_TOKEN_URL=http://localhost:8180/realms/infrahub/protocol/openid-connect/token
+  export INFRAHUB_OAUTH2_PROVIDER1_USERINFO_URL=http://localhost:8180/realms/infrahub/protocol/openid-connect/userinfo
+  export INFRAHUB_OAUTH2_PROVIDER1_DISPLAY_LABEL="Internal Server (Keycloak)"
+  export INFRAHUB_OAUTH2_PROVIDER1_ICON="mdi:security-lock-outline"
+  ```
+
+  </TabItem>
+  <TabItem value="infrahub.toml" default>
+
+  ```toml
+  [security.oauth2_provider_settings.provider1]
+  client_id = "infrahub-sso"
+  client_secret = "edPf4IaquQaqns7t3s95mLhKKYdwL1up"
+  authorization_url = "http://localhost:8180/realms/infrahub/protocol/openid-connect/auth"
+  token_url = "http://localhost:8180/realms/infrahub/protocol/openid-connect/token"
+  userinfo_url = "http://localhost:8180/realms/infrahub/protocol/openid-connect/userinfo"
+  scopes = ["openid", "profile", "email"]
+  display_label = "Internal Server (Keycloak)"
+  icon = "mdi:security-lock-outline"
+  ```
+
+  </TabItem>
+</Tabs>
 
 This could be the configuration of a Keycloak provider, please refer to the documentation of your intended provider for guides on how to create a client and access the required information.
 
@@ -56,15 +80,43 @@ This could be the configuration of a Keycloak provider, please refer to the docu
 
 In order to activate the above provider we need to add it to the list of active OAuth2 providers.
 
-```bash
-export INFRAHUB_SECURITY_OAUTH2_PROVIDERS='["provider1"]'
-```
+<Tabs groupId="provider1-configuration">
+  <TabItem value="Environment Variables" default>
+
+  ```bash
+  export INFRAHUB_SECURITY_OAUTH2_PROVIDERS='["provider1"]'
+  ```
+
+  </TabItem>
+  <TabItem value="infrahub.toml" default>
+
+  ```toml
+  [security]
+  oauth2_providers = ["provider1"]
+  ```
+
+  </TabItem>
+</Tabs>
 
 Alternatively if you are setting up multiple providers each with their different settings:
 
-```bash
-export INFRAHUB_SECURITY_OAUTH2_PROVIDERS='["provider1","provider2"]'
-```
+<Tabs groupId="provider1-configuration">
+  <TabItem value="Environment Variables" default>
+
+  ```bash
+  export INFRAHUB_SECURITY_OAUTH2_PROVIDERS='["provider1","provider2"]'
+  ```
+
+  </TabItem>
+  <TabItem value="infrahub.toml" default>
+
+  ```toml
+  [security]
+  oauth2_providers = ["provider1", "provider2"]
+  ```
+
+  </TabItem>
+</Tabs>
 
 ## Setting up OIDC in Infrahub
 
@@ -89,13 +141,31 @@ Aside from the display label and icon all the other entries will be provided by 
 
 An example of what the configuration could look like:
 
-```bash
-export INFRAHUB_OIDC_PROVIDER1_CLIENT_ID=infrahub-sso
-export INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET=edPf4IaquQaqns7t3s95mLhKKYdwL1up
-export INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL=http://localhost:8180/realms/infrahub/.well-known/openid-configuration
-export INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL="Internal Server (Keycloak)"
-export INFRAHUB_OIDC_PROVIDER1_ICON="mdi:security-lock-outline"
-```
+<Tabs groupId="provider1-configuration">
+  <TabItem value="Environment Variables" default>
+
+  ```bash
+  export INFRAHUB_OIDC_PROVIDER1_CLIENT_ID=infrahub-sso
+  export INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET=edPf4IaquQaqns7t3s95mLhKKYdwL1up
+  export INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL=http://localhost:8180/realms/infrahub/.well-known/openid-configuration
+  export INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL="Internal Server (Keycloak)"
+  export INFRAHUB_OIDC_PROVIDER1_ICON="mdi:security-lock-outline"
+  ```
+
+  </TabItem>
+  <TabItem value="infrahub.toml" default>
+
+  ```toml
+  [security.oidc_provider_settings.provider1]
+  client_id = "infrahub-sso"
+  client_secret = "edPf4IaquQaqns7t3s95mLhKKYdwL1up"
+  discovery_url = "http://localhost:8180/realms/infrahub/.well-known/openid-configuration"
+  display_label = "Internal Server (Keycloak)"
+  icon = "mdi:security-lock-outline"
+  ```
+
+  </TabItem>
+</Tabs>
 
 This could be the configuration of a Keycloak provider, please refer to the documentation of your intended provider for guides on how to create a client and access the required information.
 
@@ -103,15 +173,43 @@ This could be the configuration of a Keycloak provider, please refer to the docu
 
 In order to activate the above provider we need to add it to the list of active OIDC providers.
 
-```bash
-export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1"]'
-```
+<Tabs groupId="provider1-configuration">
+  <TabItem value="Environment Variables" default>
+
+  ```bash
+  export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1"]'
+  ```
+
+  </TabItem>
+  <TabItem value="infrahub.toml" default>
+
+  ```toml
+  [security]
+  oidc_providers = ["provider1"]
+  ```
+
+  </TabItem>
+</Tabs>
 
 Alternatively if you are setting up multiple providers each with their different settings:
 
-```bash
-export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1","provider2"]'
-```
+<Tabs groupId="provider1-configuration">
+  <TabItem value="Environment Variables" default>
+
+  ```bash
+  export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1","provider2"]'
+  ```
+
+  </TabItem>
+  <TabItem value="infrahub.toml" default>
+
+  ```toml
+  [security]
+  oidc_providers = ["provider1", "provider2"]
+  ```
+
+  </TabItem>
+</Tabs>
 
 ## Configuring the redirect URI in the identity provider
 

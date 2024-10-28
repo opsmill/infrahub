@@ -4,9 +4,9 @@ import { Input } from "@/components/ui/input";
 import Kbd from "@/components/ui/kbd";
 import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { classNames } from "@/utils/common";
-import { Combobox, Dialog, Transition } from "@headlessui/react";
+import { Combobox, Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { Fragment, ReactNode, forwardRef, useEffect, useState } from "react";
+import { ReactNode, forwardRef, useEffect, useState } from "react";
 import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { SearchActions } from "./search-actions";
 import { SearchDocs } from "./search-docs";
@@ -81,54 +81,39 @@ export function SearchAnywhere({ className = "", isCollapsed }: SearchModalProps
         />
       )}
 
-      <Transition appear show={isOpen} as={Fragment}>
-        <Dialog onClose={closeDrawer}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-gray-600/25" />
-          </Transition.Child>
+      <Dialog open={isOpen} onClose={closeDrawer}>
+        <div className="fixed inset-0 bg-gray-600/25 animate-in fade-in" />
 
-          <div className="fixed inset-0">
-            <div className="flex items-center justify-center p-4 pt-1">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <SearchAnywhereDialog onSelection={closeDrawer} />
-              </Transition.Child>
-            </div>
+        <div className="fixed inset-0">
+          <div className="flex items-center justify-center p-4 pt-1">
+            <SearchAnywhereDialog
+              onSelection={closeDrawer}
+              className="animate-in fade-in zoom-in-95"
+            />
           </div>
-        </Dialog>
-      </Transition>
+        </div>
+      </Dialog>
     </>
   );
 }
 
 type SearchAnywhereProps = {
+  className?: string;
   onSelection: (url?: string) => void;
 };
 
 const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
-  ({ onSelection }, forwardedRef) => {
+  ({ className, onSelection }, forwardedRef) => {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
 
     return (
       <Dialog.Panel
         ref={forwardedRef}
-        className="p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl transition-all space-y-2"
+        className={classNames(
+          "p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl space-y-2",
+          className
+        )}
         data-testid="search-anywhere"
       >
         <Combobox

@@ -52,7 +52,6 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         if hierarchy := getattr(self.node_schema, "hierarchy", None):
             self.params["hierarchy_kind"] = hierarchy
         else:
@@ -61,8 +60,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 
         # ruff: noqa: E501
         query = """
-        MATCH (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
@@ -117,7 +115,12 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
             any(r in relationships(current_path) WHERE r.hierarchy <> $hierarchy_kind)
             OR NOT ($peer_kind IN labels(current_peer))
         )
-        """ % {"branch_filter": branch_filter, "to_children": to_children, "to_parent": to_parent}
+        """ % {
+            "branch_filter": branch_filter,
+            "to_children": to_children,
+            "to_parent": to_parent,
+            "node_kind": self.node_schema.kind,
+        }
 
         self.add_to_query(query)
         self.return_labels = ["start_node.uuid", "branch_name", "current_peer.uuid"]

@@ -1,7 +1,7 @@
 import {
   DynamicFieldProps,
   FormAttributeValue,
-  RelationshipValueFormPool,
+  RelationshipValueFromPool,
 } from "@/components/form/type";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { describe, expect } from "vitest";
@@ -111,7 +111,7 @@ describe("getUpdateMutationFromFormData - test", () => {
         defaultValue: { source: { type: "user" }, value: { id: "value1" } },
       }),
     ];
-    const formData: Record<string, RelationshipValueFormPool> = {
+    const formData: Record<string, RelationshipValueFromPool> = {
       field1: {
         source: {
           type: "pool",

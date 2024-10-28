@@ -792,7 +792,6 @@ class NodeGetListQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.order_by = []
-        self.params["node_kind"] = self.schema.kind
 
         self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
         where_clause_elements = []
@@ -803,8 +802,7 @@ class NodeGetListQuery(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH (root:Root)<-[r:IS_PART_OF]-(n)
@@ -815,7 +813,7 @@ class NodeGetListQuery(Query):
         }
         WITH n, r as rb
         WHERE rb.status = "active"
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
         self.add_to_query(query)
         use_simple = False
         if self.filters and "id" in self.filters:

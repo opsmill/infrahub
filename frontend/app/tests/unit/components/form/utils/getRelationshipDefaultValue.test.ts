@@ -1,7 +1,9 @@
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { store } from "@/state";
+import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { RelationshipManyType, RelationshipOneType } from "@/utils/getObjectItemDisplayValue";
-import { describe, expect, vi } from "vitest";
+import { describe, expect } from "vitest";
 
 const buildRelationshipOneData = (override: Partial<RelationshipOneType>): RelationshipOneType => ({
   node: {
@@ -53,12 +55,9 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns relationship from pool", () => {
       // GIVEN
-      vi.mock("jotai", () => ({
-        atom: vi.fn(),
-        createStore: () => ({
-          get: () => [{ kind: "FakeResourcePool", inherit_from: [RESOURCE_GENERIC_KIND] }],
-        }),
-      }));
+      store.set(schemaState, [
+        { kind: "FakeResourcePool", inherit_from: [RESOURCE_GENERIC_KIND] } as iNodeSchema,
+      ]);
 
       const relationshipData = buildRelationshipOneData({
         properties: {

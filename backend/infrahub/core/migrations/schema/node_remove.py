@@ -36,7 +36,6 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.migration.previous_schema.kind
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
 
@@ -52,8 +51,7 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
         # ruff: noqa: E501
         query = """
         // Find all the active nodes
-        MATCH (node:Node)
-        WHERE $node_kind IN LABELS(node)
+        MATCH (node:%(node_kind)s)
         CALL {
             WITH node
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
@@ -66,7 +64,11 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
         WHERE rb.status = "active"
         %(node_remove_query)s
         RETURN DISTINCT active_node
-        """ % {"branch_filter": branch_filter, "node_remove_query": node_remove_query}
+        """ % {
+            "branch_filter": branch_filter,
+            "node_remove_query": node_remove_query,
+            "node_kind": self.migration.previous_schema.kind,
+        }
         self.add_to_query(query)
 
     def get_nbr_migrations_executed(self) -> int:

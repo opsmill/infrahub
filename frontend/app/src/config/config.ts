@@ -52,6 +52,4 @@ export const CONFIG = {
   STORAGE_DETAILS_URL: (id: string) => `${INFRAHUB_API_SERVER_URL}/api/storage/object/${id}`,
   MENU_URL: (branch?: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/menu${branch ? `?branch=${branch}` : ""}`,
-  MENU_URL_OLD: (branch?: string) =>
-    `${INFRAHUB_API_SERVER_URL}/api/menu${branch ? `?branch=${branch}` : ""}`,
 };

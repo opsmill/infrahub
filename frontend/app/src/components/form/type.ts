@@ -30,7 +30,7 @@ export type PoolSource = {
   id: string;
 };
 
-export type AttributeValueFormPool = {
+export type AttributeValueFromPool = {
   source: PoolSource;
   value: { from_pool: { id: string } };
 };
@@ -52,15 +52,15 @@ export type AttributeValueFromUser =
 export type FormAttributeValue =
   | AttributeValueFromUser
   | AttributeValueFromProfile
-  | EmptyFieldValue
-  | AttributeValueFormPool;
+  | AttributeValueFromPool
+  | EmptyFieldValue;
 
-export type RelationshipValueFormPool = {
+export type RelationshipValueFromPool = {
   source: PoolSource;
   value: { id: string } | { from_pool: { id: string } };
 };
 
-export type RelationshipValueFormUser = {
+export type RelationshipValueFromUser = {
   source: {
     type: SourceType;
   };
@@ -68,8 +68,8 @@ export type RelationshipValueFormUser = {
 };
 
 export type FormRelationshipValue =
-  | RelationshipValueFormUser
-  | RelationshipValueFormPool
+  | RelationshipValueFromUser
+  | RelationshipValueFromPool
   | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
@@ -129,7 +129,7 @@ export type DynamicFieldProps =
 
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue
-): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
+): fieldData is RelationshipValueFromPool => fieldData.source?.type === "pool";
 
 export type NumberPoolData = {
   id: string;

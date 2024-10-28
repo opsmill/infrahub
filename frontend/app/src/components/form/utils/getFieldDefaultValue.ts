@@ -1,6 +1,6 @@
 import { ProfileData } from "@/components/form/object-form";
 import {
-  AttributeValueFormPool,
+  AttributeValueFromPool,
   AttributeValueFromProfile,
   AttributeValueFromUser,
   FormAttributeValue,
@@ -93,7 +93,7 @@ const getDefaultValueFromProfiles = (
 const getDefaultValueFromPool = (
   fieldName: string,
   objectData?: Record<string, AttributeType>
-): AttributeValueFormPool | null => {
+): AttributeValueFromPool | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];

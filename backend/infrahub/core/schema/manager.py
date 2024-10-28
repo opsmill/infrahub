@@ -389,82 +389,113 @@ class SchemaManager(NodeManager):
 
         new_node = node.duplicate()
 
-        # Update the attributes and the relationships nodes as well
-        if "attributes" in diff.changed:
+        diff_attributes = diff.changed.get("attributes")
+        diff_relationships = diff.changed.get("relationships")
+        attrs_rels_to_update: set[str] = set()
+        if diff_attributes:
+            attrs_rels_to_update.update(set(diff_attributes.added.keys()))
+            attrs_rels_to_update.update(set(diff_attributes.changed.keys()))
+            attrs_rels_to_update.update(set(diff_attributes.removed.keys()))
+        if diff_relationships:
+            attrs_rels_to_update.update(set(diff_relationships.added.keys()))
+            attrs_rels_to_update.update(set(diff_relationships.changed.keys()))
+            attrs_rels_to_update.update(set(diff_relationships.removed.keys()))
+
+        item_ids = set()
+        item_names = set()
+        for field in node.local_attributes + node.local_relationships:
+            if field.name not in attrs_rels_to_update:
+                continue
+            if field.id:
+                item_ids.add(field.id)
+                item_names.add(field.name)
+        missing_field_names = list(attrs_rels_to_update - item_names)
+
+        items: dict[str, Node] = {}
+        if item_ids:
+            items = await self.get_many(
+                ids=list(item_ids),
+                db=db,
+                branch=branch,
+                include_owner=True,
+                include_source=True,
+            )
+        if missing_field_names:
+            missing_attrs = await self.query(
+                db=db,
+                branch=branch,
+                schema=attribute_schema,
+                filters={"name__values": missing_field_names, "node__id": node.id},
+                include_owner=True,
+                include_source=True,
+            )
+            missing_rels = await self.query(
+                db=db,
+                branch=branch,
+                schema=relationship_schema,
+                filters={"name__values": missing_field_names, "node__id": node.id},
+                include_owner=True,
+                include_source=True,
+            )
+            items.update({field.id: field for field in missing_attrs + missing_rels})
+
+        if diff_attributes:
             await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
 
-        if "relationships" in diff.changed:
+        if diff_relationships:
             await obj.relationships.update(db=db, data=[item.id for item in node.local_relationships if item.id])
 
         await obj.save(db=db)
 
-        # Then Update the Attributes and the relationships
-        def get_attrs_rels_to_update(diff: HashableModelDiff) -> list[str]:
-            items_to_update = []
-            if "attributes" in diff.changed.keys() and diff.changed["attributes"]:
-                items_to_update.extend(list(diff.changed["attributes"].added.keys()))
-                items_to_update.extend(list(diff.changed["attributes"].changed.keys()))
-                items_to_update.extend(list(diff.changed["attributes"].removed.keys()))
-            if "relationships" in diff.changed.keys() and diff.changed["relationships"]:
-                items_to_update.extend(list(diff.changed["relationships"].added.keys()))
-                items_to_update.extend(list(diff.changed["relationships"].changed.keys()))
-                items_to_update.extend(list(diff.changed["relationships"].removed.keys()))
-            return items_to_update
-
-        attrs_rels_to_update = get_attrs_rels_to_update(diff=diff)
-
-        items = await self.get_many(
-            ids=[
-                item.id
-                for item in node.local_attributes + node.local_relationships
-                if item.id and item.name in attrs_rels_to_update
-            ],
-            db=db,
-            branch=branch,
-            include_owner=True,
-            include_source=True,
-        )
-
-        if "attributes" in diff.changed.keys() and diff.changed["attributes"]:
+        if diff_attributes:
             for item in node.local_attributes:
-                if item.name in diff.changed["attributes"].added:
+                if item.name in diff_attributes.added:
                     created_item = await self.create_attribute_in_db(
                         schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
                     )
                     new_attr = new_node.get_attribute(name=item.name)
                     new_attr.id = created_item.id
-                elif item.name in diff.changed["attributes"].changed and item.id and item.id in items:
+                elif item.name in diff_attributes.changed and item.id and item.id in items:
                     await self.update_attribute_in_db(item=item, attr=items[item.id], db=db)
-                elif item.name in diff.changed["attributes"].removed and item.id and item.id in items:
+                elif item.name in diff_attributes.removed and item.id and item.id in items:
                     await items[item.id].delete(db=db)
                 elif (
-                    (item.name in diff.changed["attributes"].removed or item.name in diff.changed["attributes"].changed)
+                    (item.name in diff_attributes.removed or item.name in diff_attributes.changed)
                     and item.id
                     and item.id not in items
                 ):
                     raise ValueError(f"Unable to find an attribute {item.name!r} to update or delete")
 
-        if "relationships" in diff.changed.keys() and diff.changed["relationships"]:
+        if diff_relationships:
             for item in node.local_relationships:
-                if item.name in diff.changed["relationships"].added:
+                if item.name in diff_relationships.added:
                     created_rel = await self.create_relationship_in_db(
                         schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
                     )
                     new_rel = new_node.get_relationship(name=item.name)
                     new_rel.id = created_rel.id
-                elif item.name in diff.changed["relationships"].changed and item.id and item.id in items:
+                elif item.name in diff_relationships.changed and item.id and item.id in items:
                     await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
-                elif item.name in diff.changed["relationships"].removed and item.id and item.id in items:
+                elif item.name in diff_relationships.removed and item.id and item.id in items:
                     await items[item.id].delete(db=db)
                 elif (
-                    (
-                        item.name in diff.changed["relationships"].removed
-                        or item.name in diff.changed["relationships"].changed
-                    )
+                    (item.name in diff_relationships.removed or item.name in diff_relationships.changed)
                     and item.id
                     and item.id not in items
                 ):
-                    raise ValueError(f"Unable to find an relationship {item.name!r} to update or delete")
+                    raise ValueError(f"Unable to find a relationship {item.name!r} to update or delete")
+
+        field_names_to_remove = []
+        if diff_attributes and diff_attributes.removed:
+            attr_names_to_remove = set(diff_attributes.removed.keys()) - set(node.local_attribute_names)
+            field_names_to_remove.extend(list(attr_names_to_remove))
+        if diff_relationships and diff_relationships.removed:
+            rel_names_to_remove = set(diff_relationships.removed.keys()) - set(node.local_relationship_names)
+            field_names_to_remove.extend(list(rel_names_to_remove))
+        if field_names_to_remove:
+            for field_schema in items.values():
+                if field_schema.name.value in field_names_to_remove:
+                    await field_schema.delete(db=db)
 
         # Save back the node with the (potentially) newly created IDs in the SchemaManager
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
