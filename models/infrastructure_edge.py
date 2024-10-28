@@ -9,6 +9,7 @@ from typing import Optional, cast
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.batch import InfrahubBatch
+from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.protocols import (
     CoreAccount,
     CoreAccountGroup,
@@ -160,17 +161,15 @@ class Account(BaseModel):
 
 
 class GlobalPermission(BaseModel):
-    name: str
     action: str
-    decision: str
+    decision: int
 
 
 class ObjectPermission(BaseModel):
-    branch: str
     namespace: str
     name: str
     action: str
-    decision: str
+    decision: int
 
 
 class Asn(BaseModel):
@@ -652,19 +651,19 @@ ASNS = (
 INTERFACE_OBJS: dict[str, list[InfraInterfaceL3]] = defaultdict(list)
 
 GLOBAL_PERMISSIONS = (
-    GlobalPermission(name="Edit default branch", action="edit_default_branch", decision="allow"),
-    GlobalPermission(name="Merge branches", action="merge_branch", decision="allow"),
-    GlobalPermission(name="Merge proposed changes", action="merge_proposed_change", decision="allow"),
-    GlobalPermission(name="Manage schema", action="manage_schema", decision="allow"),
-    GlobalPermission(name="Manage accounts", action="manage_accounts", decision="allow"),
-    GlobalPermission(name="Manage permissions", action="manage_permissions", decision="allow"),
-    GlobalPermission(name="Manage repositories", action="manage_repositories", decision="allow"),
+    GlobalPermission(action="edit_default_branch", decision=6),
+    GlobalPermission(action="merge_branch", decision=6),
+    GlobalPermission(action="merge_proposed_change", decision=6),
+    GlobalPermission(action="manage_schema", decision=6),
+    GlobalPermission(action="manage_accounts", decision=6),
+    GlobalPermission(action="manage_permissions", decision=6),
+    GlobalPermission(action="manage_repositories", decision=6),
 )
 
 OBJECT_PERMISSIONS = {
-    "deny_any": ObjectPermission(branch="*", namespace="*", name="*", action="any", decision="deny"),
-    "allow_any": ObjectPermission(branch="*", namespace="*", name="*", action="any", decision="allow"),
-    "view_any": ObjectPermission(branch="*", namespace="*", name="*", action="view", decision="allow"),
+    "deny_any": ObjectPermission(namespace="*", name="*", action="any", decision=1),
+    "allow_any": ObjectPermission(namespace="*", name="*", action="any", decision=6),
+    "view_any": ObjectPermission(namespace="*", name="*", action="view", decision=6),
 }
 
 ACCOUNT_ROLES = (
@@ -672,7 +671,7 @@ ACCOUNT_ROLES = (
     AccountRole(name="Global read-only", object_permissions=["deny_any", "view_any"]),
     AccountRole(
         name="Global read-write",
-        global_permissions=["Edit default branch", "Merge branches", "Merge proposed changes"],
+        global_permissions=["edit_default_branch", "merge_branch", "merge_proposed_change"],
         object_permissions=["allow_any"],
     ),
     AccountRole(name="Own branches read-write", object_permissions=["allow_any"]),
@@ -1835,13 +1834,23 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
 
 async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
     for p in GLOBAL_PERMISSIONS:
-        obj = await client.create(branch=branch, kind="CoreGlobalPermission", data=p.model_dump())
-        batch.add(task=obj.save, node=obj)
-        store.set(key=p.name, node=obj)
+        try:
+            obj = await client.get(
+                branch=branch, kind="CoreGlobalPermission", hfid=[p.action, str(p.decision)], raise_when_missing=True
+            )
+        except NodeNotFoundError:
+            obj = await client.create(branch=branch, kind="CoreGlobalPermission", data=p.model_dump())
+            batch.add(task=obj.save, node=obj)
+        store.set(key=p.action, node=obj)
 
     for name, p in OBJECT_PERMISSIONS.items():
-        obj = await client.create(branch=branch, kind="CoreObjectPermission", data=p.model_dump())
-        batch.add(task=obj.save, node=obj)
+        try:
+            obj = await client.get(
+                branch=branch, kind="CoreObjectPermission", hfid=[p.namespace, p.name, p.action, str(p.decision)]
+            )
+        except NodeNotFoundError:
+            obj = await client.create(branch=branch, kind="CoreObjectPermission", data=p.model_dump())
+            batch.add(task=obj.save, node=obj)
         store.set(key=name, node=obj)
 
 
@@ -1884,7 +1893,10 @@ async def map_permissions_to_roles(
         if role.global_permissions:
             if isinstance(role.global_permissions, str) and role.global_permissions == "__all__":
                 permissions.extend(
-                    [store.get(p.name, kind=CoreGlobalPermission, raise_when_missing=True) for p in GLOBAL_PERMISSIONS]
+                    [
+                        store.get(p.action, kind=CoreGlobalPermission, raise_when_missing=True)
+                        for p in GLOBAL_PERMISSIONS
+                    ]
                 )
             else:
                 permissions.extend(
@@ -2119,7 +2131,10 @@ async def run(
     await prepare_permissions(client=client, log=log, branch=branch, batch=batch)
     await prepare_account_roles(client=client, log=log, branch=branch, batch=batch)
     async for node, _ in batch.execute():
-        log.info(f"- Created {node._schema.kind} - {node.name.value}")
+        if hasattr(node, "name"):
+            log.info(f"- Created {node._schema.kind} - {node.name.value}")
+        else:
+            log.info(f"- Created {node._schema.kind} - {node}")
 
     batch = await client.create_batch()
     await prepare_accounts(client=client, log=log, branch=branch, batch=batch)
