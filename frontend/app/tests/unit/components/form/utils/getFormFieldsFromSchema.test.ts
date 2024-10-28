@@ -1,5 +1,4 @@
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
-import { BranchRelativePermissionDecision } from "@/generated/graphql";
 import { AuthContextType } from "@/hooks/useAuth";
 import { components } from "@/infraops";
 import { RelationshipSchema } from "@/screens/schema/types";
@@ -461,7 +460,7 @@ describe("getFormFieldsFromSchema", () => {
           display_label: "Architecture Team",
         },
         permissions: {
-          update_value: BranchRelativePermissionDecision.Deny,
+          update_value: "DENY",
         },
         source: null,
         updated_at: "2024-07-15T09:32:01.363787+00:00",
@@ -508,7 +507,7 @@ describe("getFormFieldsFromSchema", () => {
           display_label: "Architecture Team",
         },
         permissions: {
-          update_value: BranchRelativePermissionDecision.Allow,
+          update_value: "ALLOW",
         },
         source: null,
         updated_at: "2024-07-15T09:32:01.363787+00:00",
@@ -555,7 +554,7 @@ describe("getFormFieldsFromSchema", () => {
           display_label: "Architecture Team",
         },
         permissions: {
-          update_value: BranchRelativePermissionDecision.AllowDefault,
+          update_value: "ALLOW_DEFAULT",
         },
         source: null,
         updated_at: "2024-07-15T09:32:01.363787+00:00",
@@ -615,7 +614,7 @@ describe("getFormFieldsFromSchema", () => {
           display_label: "Architecture Team",
         },
         permissions: {
-          update_value: BranchRelativePermissionDecision.AllowDefault,
+          update_value: "ALLOW_DEFAULT",
         },
         source: null,
         updated_at: "2024-07-15T09:32:01.363787+00:00",
@@ -675,7 +674,7 @@ describe("getFormFieldsFromSchema", () => {
           display_label: "Architecture Team",
         },
         permissions: {
-          update_value: BranchRelativePermissionDecision.AllowOther,
+          update_value: "ALLOW_OTHER",
         },
         source: null,
         updated_at: "2024-07-15T09:32:01.363787+00:00",
@@ -735,7 +734,7 @@ describe("getFormFieldsFromSchema", () => {
           display_label: "Architecture Team",
         },
         permissions: {
-          update_value: BranchRelativePermissionDecision.AllowOther,
+          update_value: "ALLOW_OTHER",
         },
         source: null,
         updated_at: "2024-07-15T09:32:01.363787+00:00",
