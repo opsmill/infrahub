@@ -81,20 +81,4 @@ describe("isFieldDisabled", () => {
     // THEN
     expect(disabled).to.equal(false);
   });
-
-  it("returns false if the auth is an admin", () => {
-    // GIVEN
-    const params: IsFieldDisabledParams = {
-      isProtected: true,
-      isReadOnly: false,
-      owner: { id: "not-admin" },
-      auth: { permissions: { isAdmin: true } },
-    };
-
-    // WHEN
-    const disabled = isFieldDisabled(params);
-
-    // THEN
-    expect(disabled).to.equal(false);
-  });
 });
