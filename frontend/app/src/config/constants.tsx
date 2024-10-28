@@ -65,8 +65,6 @@ export const NUMBER_POOL_OBJECT = "CoreNumberPool";
 
 export const TASK_OBJECT = "InfrahubTask";
 
-export const WRITE_ROLES = ["admin", "read-write"];
-
 export const ADMIN_ROLES = ["admin"];
 
 export const MENU_EXCLUDELIST = [
@@ -79,7 +77,15 @@ export const MENU_EXCLUDELIST = [
   "InternalRefreshToken",
   "CoreThreadComment",
   "CoreArtifactCheck",
+  "CoreArtifactTarget",
+  "CoreCheck",
+  "CoreComment",
+  "CoreGeneratorCheck",
+  "CoreGeneratorValidator",
+  "CoreNode",
   "CoreStandardCheck",
+  "CoreTaskTarget",
+  "CoreThread",
   "CoreDataCheck",
   "CoreFileCheck",
   "CoreSchemaCheck",
@@ -87,6 +93,10 @@ export const MENU_EXCLUDELIST = [
   "CoreDataValidator",
   "CoreRepositoryValidator",
   "CoreArtifactValidator",
+  "CoreUserValidator",
+  "CoreValidator",
+  "LineageOwner",
+  "LineageSource",
 ];
 
 export const NODE_PATH_EXCLUDELIST = ["property"];

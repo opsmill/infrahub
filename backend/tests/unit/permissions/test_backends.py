@@ -1,17 +1,19 @@
+from infrahub.auth import AccountSession
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreAccount
 from infrahub.database import InfrahubDatabase
 from infrahub.permissions import LocalPermissionBackend
 from infrahub.permissions.constants import PermissionDecisionFlag
 
 
-async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, create_test_admin, first_account):
+async def test_load_permissions(
+    db: InfrahubDatabase, default_branch: Branch, session_admin: AccountSession, session_first_account: AccountSession
+):
     backend = LocalPermissionBackend()
 
-    permissions = await backend.load_permissions(db=db, account_id=create_test_admin.id, branch=default_branch)
+    permissions = await backend.load_permissions(db=db, account_session=session_admin, branch=default_branch)
 
     assert "global_permissions" in permissions
     assert permissions["global_permissions"][0].action == GlobalPermissions.SUPER_ADMIN.value
@@ -23,7 +25,7 @@ async def test_load_permissions(db: InfrahubDatabase, default_branch: Branch, cr
         )
     )
 
-    permissions = await backend.load_permissions(db=db, account_id=first_account.id, branch=default_branch)
+    permissions = await backend.load_permissions(db=db, account_session=session_first_account, branch=default_branch)
 
     assert "global_permissions" in permissions
     assert not permissions["global_permissions"]
@@ -36,9 +38,9 @@ async def test_has_permission_global(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    create_test_admin: CoreAccount,
-    first_account: CoreAccount,
-    second_account: CoreAccount,
+    session_admin: AccountSession,
+    session_first_account: AccountSession,
+    session_second_account: AccountSession,
 ):
     backend = LocalPermissionBackend()
 
@@ -60,7 +62,7 @@ async def test_has_permission_global(
     await group1.new(db=db, name="group1", roles=[role1])
     await group1.save(db=db)
 
-    await group1.members.add(db=db, data={"id": first_account.id})
+    await group1.members.add(db=db, data={"id": session_first_account.account_id})
     await group1.members.save(db=db)
 
     role2_permissions = []
@@ -81,14 +83,14 @@ async def test_has_permission_global(
     await group2.new(db=db, name="group2", roles=[role2])
     await group2.save(db=db)
 
-    await group2.members.add(db=db, data={"id": second_account.id})
+    await group2.members.add(db=db, data={"id": session_second_account.account_id})
     await group2.members.save(db=db)
 
     assert await backend.has_permission(
-        db=db, account_id=first_account.id, permission=allow_default_branch_edition, branch=default_branch
+        db=db, account_session=session_first_account, permission=allow_default_branch_edition, branch=default_branch
     )
     assert not await backend.has_permission(
-        db=db, account_id=second_account.id, permission=allow_default_branch_edition, branch=default_branch
+        db=db, account_session=session_second_account, permission=allow_default_branch_edition, branch=default_branch
     )
 
 
@@ -96,9 +98,9 @@ async def test_has_permission_object(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    create_test_admin: CoreAccount,
-    first_account: CoreAccount,
-    second_account: CoreAccount,
+    session_admin: AccountSession,
+    session_first_account: AccountSession,
+    session_second_account: AccountSession,
 ):
     backend = LocalPermissionBackend()
 
@@ -124,7 +126,7 @@ async def test_has_permission_object(
     await group1.new(db=db, name="group1", roles=[role1])
     await group1.save(db=db)
 
-    await group1.members.add(db=db, data={"id": first_account.id})
+    await group1.members.add(db=db, data={"id": session_first_account.account_id})
     await group1.members.save(db=db)
 
     role2_permissions = []
@@ -152,7 +154,7 @@ async def test_has_permission_object(
     await group2.new(db=db, name="group2", roles=[role2])
     await group2.save(db=db)
 
-    await group2.members.add(db=db, data={"id": second_account.id})
+    await group2.members.add(db=db, data={"id": session_second_account.account_id})
     await group2.members.save(db=db)
 
     permission = ObjectPermission(
@@ -162,10 +164,10 @@ async def test_has_permission_object(
         decision=PermissionDecision.ALLOW_ALL.value,
     )
     assert not await backend.has_permission(
-        db=db, account_id=first_account.id, permission=permission, branch=default_branch
+        db=db, account_session=session_first_account, permission=permission, branch=default_branch
     )
     assert await backend.has_permission(
-        db=db, account_id=second_account.id, permission=permission, branch=default_branch
+        db=db, account_session=session_second_account, permission=permission, branch=default_branch
     )
 
 
@@ -173,9 +175,9 @@ async def test_report_permission_object(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    create_test_admin: CoreAccount,
-    first_account: CoreAccount,
-    second_account: CoreAccount,
+    session_admin: AccountSession,
+    session_first_account: AccountSession,
+    session_second_account: AccountSession,
 ):
     backend = LocalPermissionBackend()
 
@@ -201,7 +203,7 @@ async def test_report_permission_object(
     await group1.new(db=db, name="group1", roles=[role1])
     await group1.save(db=db)
 
-    await group1.members.add(db=db, data={"id": first_account.id})
+    await group1.members.add(db=db, data={"id": session_first_account.account_id})
     await group1.members.save(db=db)
 
     role2_permissions = []
@@ -229,10 +231,12 @@ async def test_report_permission_object(
     await group2.new(db=db, name="group2", roles=[role2])
     await group2.save(db=db)
 
-    await group2.members.add(db=db, data={"id": second_account.id})
+    await group2.members.add(db=db, data={"id": session_second_account.account_id})
     await group2.members.save(db=db)
 
-    first_permissions = await backend.load_permissions(db=db, account_id=first_account.id, branch=default_branch)
+    first_permissions = await backend.load_permissions(
+        db=db, account_session=session_first_account, branch=default_branch
+    )
 
     assert (
         backend.report_object_permission(
@@ -247,7 +251,9 @@ async def test_report_permission_object(
         == PermissionDecisionFlag.ALLOW_ALL
     )
 
-    second_permissions = await backend.load_permissions(db=db, account_id=second_account.id, branch=default_branch)
+    second_permissions = await backend.load_permissions(
+        db=db, account_session=session_second_account, branch=default_branch
+    )
 
     assert (
         backend.report_object_permission(

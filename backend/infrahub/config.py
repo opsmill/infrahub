@@ -119,6 +119,9 @@ class MainSettings(BaseSettings):
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
+    anonymous_access_role: str = Field(
+        default="Anonymous User", description="Name of the role defining which permissions anonymous users have"
+    )
     telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
     telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
     permission_backends: list[str] = Field(
@@ -323,7 +326,10 @@ class GitSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_GIT_")
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
-        default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+        default=10,
+        ge=0,
+        description="Time (in seconds) between git repositories synchronizations",
+        deprecated="This setting is deprecated and not currently in use.",
     )
 
 

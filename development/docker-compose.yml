@@ -127,9 +127,9 @@ services:
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
-      INFRAHUB_WORKFLOW_ADDRESS: task-manager
-      INFRAHUB_WORKFLOW_PORT: 4200
-      PREFECT_API_URL: "http://task-manager:4200/api"
+      INFRAHUB_WORKFLOW_ADDRESS: "${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}"
+      INFRAHUB_WORKFLOW_PORT: "${INFRAHUB_WORKFLOW_PORT:-4200}"
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
       INFRAHUB_DB_ADDRESS: database
       INFRAHUB_DB_USERNAME: neo4j
       INFRAHUB_DB_PASSWORD: admin
@@ -138,7 +138,6 @@ services:
       INFRAHUB_STORAGE_DRIVER: local
     volumes:
       - "storage_data:/opt/infrahub/storage"
-      - "workflow_data:/opt/infrahub/workflow"
     tty: true
     labels:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
@@ -188,7 +187,6 @@ services:
     labels:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
       com.github.job: "${JOB_NAME:-unknown}"
-
   task-worker:
     profiles: [dev]
     deploy:
@@ -217,7 +215,7 @@ services:
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
       INFRAHUB_WORKFLOW_ADDRESS: "${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}"
       INFRAHUB_WORKFLOW_PORT: "${INFRAHUB_WORKFLOW_PORT:-4200}"
-      PREFECT_API_URL: "http://task-manager:4200/api"
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
       INFRAHUB_DB_USERNAME: neo4j
       INFRAHUB_DB_PASSWORD: admin
       INFRAHUB_DB_PORT: 7687
@@ -235,4 +233,3 @@ volumes:
   git_data:
   git_remote_data:
   storage_data:
-  workflow_data:

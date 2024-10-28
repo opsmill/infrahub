@@ -19,12 +19,14 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
             namespace=migration.new_schema.namespace,
             branch_support=migration.new_schema.branch.value,
             labels=migration.new_schema.get_labels(),
+            kind=migration.new_schema.kind,
         )
         previous_node = SchemaNodeInfo(
             name=migration.previous_schema.name,
             namespace=migration.previous_schema.namespace,
             branch_support=migration.previous_schema.branch.value,
             labels=migration.previous_schema.get_labels(),
+            kind=migration.previous_schema.kind,
         )
         super().__init__(migration=migration, new_node=new_node, previous_node=previous_node, **kwargs)
 

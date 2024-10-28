@@ -6,11 +6,9 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 export const generateObjectEditFormQuery = ({
   schema,
   objectId,
-  withProfiles,
 }: {
   schema: iNodeSchema | IProfileSchema;
   objectId: string;
-  withProfiles?: boolean;
 }): string => {
   const request = {
     query: {

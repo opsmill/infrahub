@@ -1,0 +1,80 @@
+---
+title: Menu definition file
+---
+
+# Menu definition file
+
+A menu definition file allows you to control the layout and structure of the menu on the left side of the Infrahub web interface. More information can be found in the [Controlling the menu guide](/guides/menu).
+
+The menu definition file is a YAML file that follows a particular structure or schema.
+
+At the top of the file we define a bit of boilerplate statements, to define the version of the schema of the file and the kind of content that it contains. We also define a spec mapping with a data key.
+
+```yaml
+---
+apiversion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+```
+
+The value of the data key in the spec mapping, is a sequence (or list) of menu items.
+
+A menu item is a mapping in which you can define the following key/value pairs:
+
+| Key          | Type     | Description                                                                                                                                           | Mandatory          |
+|--------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
+| name         | string   | the name of the menu item                                                                                                                             | :white_check_mark: |
+| namespace    | string   | the namespace of the menu item                                                                                                                        | :white_check_mark: |
+| label        | string   | the name of the menu item in UI                                                                                                                       | :x:                |
+| kind         | string   | selecting this menu item will take you to the list view of this schema node (this automatically sets the value for the path key to the correct value) | :x:                |
+| path         | string   | selecting this menu will take you to this path (URL)                                                                                                  | :x:                |
+| icon         | string   | the icon of the menu item                                                                                                                             | :x:                |
+| order_weight | integer  | controls the ordering of menu items (lower values are ordered first)                                                                                  | :x:                |
+| parent       | string   | a parent menu item (concatenated namespace + name)                                                                                                    | :x:                |
+| children     | sequence | list of nested menu items                                                                                                                             | :x:                |
+
+## Example
+
+```yaml
+---
+apiversion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+    - namespace: Location
+      name: Mainmenu
+      label: Location
+      icon: "mingcute:location-line"
+      children:
+        data:
+          - namespace: Location
+            name: Country
+            label: Countries
+            kind: LocationCountry
+            icon: "gis:search-country"
+
+          - namespace: Location
+            name: Site
+            label: Sites
+            kind: LocationSite
+            icon: "ri:building-line"
+
+    - namespace: Infrastructure
+      name: Mainmenu
+      label: Infrastructure
+      icon: "mdi:domain"
+      children:
+        data:
+          - namespace: Network
+            name: Device
+            label: Devices
+            kind: NetworkDevice
+            icon: "mdi:router"
+
+          - namespace: Network
+            name: Interface
+            label: Interface
+            kind: NetworkInterface
+            icon: "mdi:ethernet"
+```

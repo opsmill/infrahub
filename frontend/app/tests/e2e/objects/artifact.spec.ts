@@ -3,6 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/CoreArtifact - Artifact page", () => {
   test.describe.configure({ mode: "serial" });
+  test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {

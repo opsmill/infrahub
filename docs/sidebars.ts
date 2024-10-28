@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
         'guides/installation',
         'guides/create-schema',
         'guides/import-schema',
+        'guides/menu',
         'guides/accounts-permissions',
         'guides/groups',
         'guides/generator',
@@ -107,7 +108,6 @@ const sidebars: SidebarsConfig = {
         'topics/version-control',
         'topics/proposed-change',
         'topics/repository',
-        'topics/schema',
         'topics/transformation',
         'topics/auth',
         'topics/database-backup',
@@ -141,6 +141,7 @@ const sidebars: SidebarsConfig = {
             'reference/schema/validator-migration',
           ],
         },
+        'reference/menu',
         {
           type: 'category',
           label: 'infrahub cli',

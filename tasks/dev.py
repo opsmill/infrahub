@@ -18,7 +18,7 @@ from .container_ops import (
     stop_services,
     update_core_schema,
 )
-from .infra_ops import load_infrastructure_data, load_infrastructure_schema
+from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
 from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
@@ -142,6 +142,7 @@ def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE) -> None
 def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load the base schema for infrastructure."""
     load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
+    load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
@@ -190,7 +191,7 @@ def get_version_from_pyproject() -> str:
 
 
 @task
-def update_helm_chart(context: Context, chart_file: str = "helm/Chart.yaml") -> None:
+def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     version = get_version_from_pyproject()
     version_pattern = r"^appVersion:\s*[\d\.\-a-zA-Z]+"
@@ -208,7 +209,7 @@ def update_helm_chart(context: Context, chart_file: str = "helm/Chart.yaml") -> 
 
 
 @task
-def update_docker_compose(context: Context, docker_file: str = "docker-compose.yml") -> None:
+def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:
     """Update docker-compose.yml with the current version from pyproject.toml."""
     version = get_version_from_pyproject()
     version_pattern = r"registry.opsmill.io/opsmill/infrahub:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
@@ -226,7 +227,17 @@ def update_docker_compose(context: Context, docker_file: str = "docker-compose.y
 
 def get_enum_mappings() -> dict:
     """Extracts enum mappings dynamically."""
-    from infrahub.config import BrokerDriver, CacheDriver, StorageDriver, TraceExporterType, TraceTransportProtocol
+    from infrahub.config import (
+        BrokerDriver,
+        CacheDriver,
+        Oauth2Provider,
+        OIDCProvider,
+        SSOProtocol,
+        StorageDriver,
+        TraceExporterType,
+        TraceTransportProtocol,
+        WorkflowDriver,
+    )
     from infrahub.database.constants import DatabaseType
 
     enum_mappings = {}
@@ -234,10 +245,14 @@ def get_enum_mappings() -> dict:
     for enum_class in [
         BrokerDriver,
         CacheDriver,
-        DatabaseType,
+        Oauth2Provider,
+        OIDCProvider,
+        SSOProtocol,
         StorageDriver,
         TraceExporterType,
         TraceTransportProtocol,
+        WorkflowDriver,
+        DatabaseType,
     ]:
         for item in enum_class:
             enum_mappings[item] = item.value
@@ -249,9 +264,11 @@ def update_docker_compose_env_vars(
     env_vars: list[str],
     env_defaults: dict[str, Any],
     enum_mappings: dict[Any, str],
-    docker_file: str = "docker-compose.yml",
+    docker_file: str | None = "docker-compose.yml",
 ) -> None:
     """Update the docker-compose.yml file with the environment variables."""
+    import json
+
     docker_path = Path(docker_file)
     docker_compose = docker_path.read_text(encoding="utf-8").splitlines()
 
@@ -279,12 +296,17 @@ def update_docker_compose_env_vars(
 
     new_config_lines = []
     for var in all_vars:
+        if var.startswith("INFRAHUB_DEV"):
+            continue
         default_value = env_defaults.get(var, "")
         if isinstance(default_value, bool):
-            default_value = str(default_value).lower()
+            default_value_str = str(default_value).lower()
         elif isinstance(default_value, Enum):
-            default_value = enum_mappings.get(default_value, str(default_value))
-        default_value_str = str(default_value) if default_value is not None else ""
+            default_value_str = enum_mappings.get(default_value, str(default_value))
+        elif isinstance(default_value, list):
+            default_value_str = json.dumps(default_value)
+        else:
+            default_value_str = str(default_value) if default_value is not None else ""
 
         if var in existing_vars:
             line_idx = existing_vars[var]
@@ -293,14 +315,24 @@ def update_docker_compose_env_vars(
             match = pattern.match(existing_value)
             if match and match.group(1) == var and match.group(2) == default_value_str:
                 new_config_lines.append(docker_compose[line_idx])
-            elif var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
+            elif var in [
+                "INFRAHUB_BROKER_USERNAME",
+                "INFRAHUB_BROKER_PASSWORD",
+                "INFRAHUB_CACHE_USERNAME",
+                "INFRAHUB_CACHE_PASSWORD",
+            ]:
                 key_name = var.replace("INFRAHUB_", "").lower()
                 new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
             elif default_value_str:
                 new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
             else:
                 new_config_lines.append(f"  {var}:")
-        elif var in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
+        elif var in [
+            "INFRAHUB_BROKER_USERNAME",
+            "INFRAHUB_BROKER_PASSWORD",
+            "INFRAHUB_CACHE_USERNAME",
+            "INFRAHUB_CACHE_PASSWORD",
+        ]:
             key_name = var.replace("INFRAHUB_", "").lower()
             new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
         elif default_value_str:
@@ -315,7 +347,9 @@ def update_docker_compose_env_vars(
 
 
 @task
-def gen_config_env(context: Context, docker_file: str = "docker-compose.yml", update_docker_file: bool = False) -> None:
+def gen_config_env(
+    context: Context, docker_file: str | None = "docker-compose.yml", update_docker_file: bool | None = False
+) -> None:
     """Generate list of env vars required for configuration and update docker file.yml if need be."""
     from pydantic_settings import BaseSettings
     from pydantic_settings.sources import EnvSettingsSource

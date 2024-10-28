@@ -1,3 +1,4 @@
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Content from "@/screens/layout/content";
@@ -31,39 +32,56 @@ const ObjectPageLayout = () => {
   const isHierarchicalModel = "hierarchical" in schema && schema.hierarchical;
   const inheritFormHierarchicalModel = "hierarchy" in schema && schema.hierarchy;
 
-  const getTreeSchema = () => {
-    if (isHierarchicalModel) {
-      return schema;
-    }
+  if (isHierarchicalModel || inheritFormHierarchicalModel) {
+    const getTreeSchema = () => {
+      if (isHierarchicalModel) {
+        return schema;
+      }
 
-    if (inheritFormHierarchicalModel) {
-      return generics.find(({ kind }) => kind === schema.hierarchy);
-    }
+      if (inheritFormHierarchicalModel) {
+        return generics.find(({ kind }) => kind === schema.hierarchy);
+      }
 
-    return null;
-  };
+      return null;
+    };
 
-  const treeSchema = getTreeSchema();
+    const treeSchema = getTreeSchema();
+
+    return (
+      <Content.Card>
+        <ObjectHeader schema={schema} objectId={objectid} />
+
+        <ResizablePanelGroup direction="horizontal">
+          {treeSchema && (
+            <>
+              <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
+                <ScrollArea className="h-full">
+                  <HierarchicalTree
+                    schema={treeSchema}
+                    currentNodeId={objectid}
+                    className="p-2 min-w-full"
+                  />
+                </ScrollArea>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+            </>
+          )}
+
+          <ResizablePanel>
+            <div className="overflow-auto">
+              <Outlet />
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </Content.Card>
+    );
+  }
 
   return (
     <Content.Card>
       <ObjectHeader schema={schema} objectId={objectid} />
 
-      <div className="flex-grow flex overflow-auto">
-        {treeSchema && (
-          <ScrollArea className="min-w-64 max-w-[400px] border-r">
-            <HierarchicalTree
-              schema={treeSchema}
-              currentNodeId={objectid}
-              className="p-2 min-w-full"
-            />
-          </ScrollArea>
-        )}
-
-        <div className="flex-grow overflow-auto">
-          <Outlet />
-        </div>
-      </div>
+      <Outlet />
     </Content.Card>
   );
 };

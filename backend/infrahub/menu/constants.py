@@ -7,4 +7,4 @@ class MenuSection(InfrahubStringEnum):
 
 
 DEFAULT_MENU = "Other"
-FULL_DEFAULT_MENU = "Builtin:Other"
+FULL_DEFAULT_MENU = "BuiltinOther"
