@@ -1144,7 +1144,7 @@ export interface components {
       value?: components["schemas"]["BranchDiffPropertyCollection"] | null;
       /** Properties */
       properties?: {
-        [key: string]: components["schemas"]["BranchDiffPropertyCollection"] | undefined;
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
       };
     };
     /** BranchDiffElementRelationshipMany */
@@ -1161,7 +1161,7 @@ export interface components {
       summary?: components["schemas"]["DiffSummary"];
       /** Peers */
       peers?: {
-        [key: string]: components["schemas"]["BranchDiffElementRelationshipManyPeer"] | undefined;
+        [key: string]: components["schemas"]["BranchDiffElementRelationshipManyPeer"];
       };
     };
     /** BranchDiffElementRelationshipManyPeer */
@@ -1173,13 +1173,13 @@ export interface components {
       path: string;
       /** Properties */
       properties?: {
-        [key: string]: components["schemas"]["BranchDiffPropertyCollection"] | undefined;
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
       };
       /** Changed At */
       changed_at?: string | null;
       /** Action */
       action?: {
-        [key: string]: components["schemas"]["DiffAction"] | undefined;
+        [key: string]: components["schemas"]["DiffAction"];
       };
     };
     /** BranchDiffElementRelationshipOne */
@@ -1202,13 +1202,13 @@ export interface components {
       peer?: components["schemas"]["BranchDiffRelationshipOnePeerCollection"] | null;
       /** Properties */
       properties?: {
-        [key: string]: components["schemas"]["BranchDiffPropertyCollection"] | undefined;
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
       };
       /** Changed At */
       changed_at?: string | null;
       /** Action */
       action?: {
-        [key: string]: components["schemas"]["DiffAction"] | undefined;
+        [key: string]: components["schemas"]["DiffAction"];
       };
     };
     /** BranchDiffEntry */
@@ -1221,16 +1221,16 @@ export interface components {
       path: string;
       /** Elements */
       elements?: {
-        [key: string]: components["schemas"]["BranchDiffElement"] | undefined;
+        [key: string]: components["schemas"]["BranchDiffElement"];
       };
       summary?: components["schemas"]["DiffSummary"];
       /** Action */
       action?: {
-        [key: string]: components["schemas"]["DiffAction"] | undefined;
+        [key: string]: components["schemas"]["DiffAction"];
       };
       /** Display Label */
       display_label?: {
-        [key: string]: string | undefined;
+        [key: string]: string;
       };
     };
     /** BranchDiffFile */
@@ -1495,15 +1495,15 @@ export interface components {
     HashableModelDiff: {
       /** Added */
       added?: {
-        [key: string]: (components["schemas"]["HashableModelDiff"] | null) | undefined;
+        [key: string]: components["schemas"]["HashableModelDiff"] | null;
       };
       /** Changed */
       changed?: {
-        [key: string]: (components["schemas"]["HashableModelDiff"] | null) | undefined;
+        [key: string]: components["schemas"]["HashableModelDiff"] | null;
       };
       /** Removed */
       removed?: {
-        [key: string]: (components["schemas"]["HashableModelDiff"] | null) | undefined;
+        [key: string]: components["schemas"]["HashableModelDiff"] | null;
       };
     };
     /**
@@ -1585,6 +1585,12 @@ export interface components {
        */
       allow_anonymous_access: boolean;
       /**
+       * Anonymous Access Role
+       * @description Name of the role defining which permissions anonymous users have
+       * @default Anonymous User
+       */
+      anonymous_access_role: string;
+      /**
        * Telemetry Optout
        * @description Disable anonymous usage reporting
        * @default false
@@ -1595,12 +1601,6 @@ export interface components {
        * @default https://telemetry.opsmill.cloud/infrahub
        */
       telemetry_endpoint: string;
-      /**
-       * Telemetry Interval
-       * @description Time (in seconds) between telemetry usage push
-       * @default 86400
-       */
-      telemetry_interval: number;
       /**
        * Permission Backends
        * @description List of modules to handle permissions, they will be run in the given order
@@ -1614,7 +1614,7 @@ export interface components {
     Menu: {
       /** Sections */
       sections?: {
-        [key: string]: components["schemas"]["MenuItemList"][] | undefined;
+        [key: string]: components["schemas"]["MenuItemList"][];
       };
     };
     /** MenuItemList */
@@ -1654,6 +1654,8 @@ export interface components {
       order_weight: number;
       /** @default object */
       section: components["schemas"]["MenuSection"];
+      /** Permissions */
+      permissions?: string[];
       /**
        * Children
        * @description Child objects
@@ -1814,7 +1816,7 @@ export interface components {
     QueryPayload: {
       /** Variables */
       variables?: {
-        [key: string]: string | undefined;
+        [key: string]: string;
       };
     };
     /**
@@ -1992,26 +1994,26 @@ export interface components {
       main: string;
       /** Nodes */
       nodes?: {
-        [key: string]: string | undefined;
+        [key: string]: string;
       };
       /** Generics */
       generics?: {
-        [key: string]: string | undefined;
+        [key: string]: string;
       };
     };
     /** SchemaDiff */
     SchemaDiff: {
       /** Added */
       added?: {
-        [key: string]: components["schemas"]["HashableModelDiff"] | undefined;
+        [key: string]: components["schemas"]["HashableModelDiff"];
       };
       /** Changed */
       changed?: {
-        [key: string]: components["schemas"]["HashableModelDiff"] | undefined;
+        [key: string]: components["schemas"]["HashableModelDiff"];
       };
       /** Removed */
       removed?: {
-        [key: string]: components["schemas"]["HashableModelDiff"] | undefined;
+        [key: string]: components["schemas"]["HashableModelDiff"];
       };
     };
     /** SchemaExtension */
@@ -2387,11 +2389,9 @@ export interface operations {
         };
         content: {
           "application/json": {
-            [key: string]:
-              | {
-                  [key: string]: components["schemas"]["BranchDiffRepository"] | undefined;
-                }
-              | undefined;
+            [key: string]: {
+              [key: string]: components["schemas"]["BranchDiffRepository"];
+            };
           };
         };
       };
@@ -2428,7 +2428,7 @@ export interface operations {
         };
         content: {
           "application/json": {
-            [key: string]: components["schemas"]["BranchDiffArtifact"] | undefined;
+            [key: string]: components["schemas"]["BranchDiffArtifact"];
           };
         };
       };

@@ -19,13 +19,13 @@ import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { AuthContextType } from "@/hooks/useAuth";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { store } from "@/state";
-import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import { IModelSchema, genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { sortByOrderWeight } from "@/utils/common";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
 import { getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
 
 type GetFormFieldsFromSchema = {
-  schema: iNodeSchema | iGenericSchema;
+  schema: IModelSchema;
   profiles?: Array<ProfileData>;
   initialObject?: Record<string, AttributeType | RelationshipType>;
   auth?: AuthContextType;
@@ -68,6 +68,7 @@ export const getFormFieldsFromSchema = ({
         auth,
         owner: currentFieldValue?.owner,
         isProtected: !!currentFieldValue?.is_protected,
+        permissions: { update: currentFieldValue?.permissions?.update_value },
         isReadOnly: attribute.read_only,
       }),
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,

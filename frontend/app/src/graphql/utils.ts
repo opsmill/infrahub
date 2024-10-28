@@ -1,8 +1,13 @@
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { components } from "@/infraops";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
+
+type AddAttributesToRequestOptions = {
+  withPermissions?: boolean;
+};
 
 export const addAttributesToRequest = (
-  attributes: components["schemas"]["AttributeSchema-Output"][]
+  attributes: Array<AttributeSchema>,
+  { withPermissions }: AddAttributesToRequestOptions = {}
 ) => {
   return attributes.reduce((acc, attribute) => {
     const fragment = {
@@ -32,6 +37,18 @@ export const addAttributesToRequest = (
       };
     }
 
+    if (withPermissions) {
+      return {
+        ...acc,
+        [attribute.name]: {
+          ...fragment,
+          permissions: {
+            update_value: true,
+          },
+        },
+      };
+    }
+
     return {
       ...acc,
       [attribute.name]: fragment,
@@ -39,9 +56,7 @@ export const addAttributesToRequest = (
   }, {});
 };
 
-export const addRelationshipsToRequest = (
-  relationships: components["schemas"]["RelationshipSchema-Output"][]
-) => {
+export const addRelationshipsToRequest = (relationships: Array<RelationshipSchema>) => {
   return relationships.reduce((acc, relationship) => {
     const fragment = {
       node: {
