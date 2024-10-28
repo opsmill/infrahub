@@ -35,7 +35,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         """Rename the attribute name to firstname and add a new lastname attribute."""
         assert schema_person_base["attributes"][0]["name"] == "name"
         schema_person_base["attributes"][0]["name"] = "firstname"
-        schema_person_base["attributes"].append({"name": "lastname", "kind": "Text"})
+        schema_person_base["attributes"].append({"name": "lastname", "kind": "Text", "optional": True})
         return schema_person_base
 
     @pytest.fixture(scope="class")
