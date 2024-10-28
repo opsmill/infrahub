@@ -2,7 +2,7 @@ import { QuestionMark } from "@/components/display/question-mark";
 import {
   AttributeValueFromProfile,
   FormFieldValue,
-  RelationshipValueFormPool,
+  RelationshipValueFromPool,
 } from "@/components/form/type";
 import { Badge } from "@/components/ui/badge";
 import { FormLabel } from "@/components/ui/form";
@@ -50,7 +50,7 @@ export const LabelFormField = ({
       )}
 
       {fieldData?.source?.type === "pool" && (
-        <PoolSourceBadge fieldData={fieldData as RelationshipValueFormPool} />
+        <PoolSourceBadge fieldData={fieldData as RelationshipValueFromPool} />
       )}
     </div>
   );
@@ -82,7 +82,7 @@ const ProfileSourceBadge = ({ fieldData }: { fieldData: AttributeValueFromProfil
   );
 };
 
-const PoolSourceBadge = ({ fieldData }: { fieldData: RelationshipValueFormPool }) => {
+const PoolSourceBadge = ({ fieldData }: { fieldData: RelationshipValueFromPool }) => {
   return (
     <Tooltip
       enabled
