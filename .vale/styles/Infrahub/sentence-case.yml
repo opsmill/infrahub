@@ -49,6 +49,7 @@ exceptions:
   - JetStream
   - Jinja
   - Jinja2
+  - JWT
   - Namespace
   - NATS
   - Node
