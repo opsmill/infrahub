@@ -1,8 +1,13 @@
+import { useAuth } from "@/hooks/useAuth";
 import Content from "@/screens/layout/content";
 import { RoleManagementNavigation } from "@/screens/role-management";
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 
 function RoleManagement() {
+  const { accessToken } = useAuth();
+
+  if (!accessToken) return <Navigate to={"/"} />;
+
   return (
     <Content.Card>
       <Content.CardTitle
