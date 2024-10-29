@@ -2,6 +2,7 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Divider } from "@/components/ui/divider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONFIG } from "@/config/config";
+import { useAuth } from "@/hooks/useAuth";
 import { MenuSectionInternal } from "@/screens/layout/menu-navigation/components/menu-section-internal";
 import { MenuSectionObject } from "@/screens/layout/menu-navigation/components/menu-section-object";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
@@ -16,6 +17,7 @@ export interface MenuNavigationProps {
 }
 
 export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
+  const { accessToken } = useAuth();
   const currentBranch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
   const [menu, setMenu] = useAtom(menuAtom);
@@ -24,16 +26,20 @@ export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
   useEffect(() => {
     if (!currentSchemaHash) return;
 
+    const headers = accessToken && {
+      authorization: `Bearer ${accessToken}`,
+    };
+
     try {
       setIsLoading(true);
-      fetchUrl(CONFIG.MENU_URL(currentBranch?.name)).then((menu) => setMenu(menu));
+      fetchUrl(CONFIG.MENU_URL(currentBranch?.name), { headers }).then((menu) => setMenu(menu));
     } catch (error) {
       console.error("error: ", error);
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while fetching the menu" />);
     } finally {
       setIsLoading(false);
     }
-  }, [currentSchemaHash]);
+  }, [currentSchemaHash, accessToken]);
 
   if (isLoading) return <div>Loading...</div>;
   if (!menu?.sections) return <div className="flex-grow" />;
