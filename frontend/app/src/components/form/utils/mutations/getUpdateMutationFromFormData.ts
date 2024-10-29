@@ -26,12 +26,27 @@ export const getUpdateMutationFromFormData = ({
     }
 
     switch (fieldData.source?.type) {
-      case "pool":
+      case "pool": {
+        return { ...acc, [field.name]: fieldData.value };
+      }
       case "user": {
-        const fieldValue = fieldData.value === "" ? null : fieldData.value;
+        if (fieldData.value === null) {
+          return { ...acc, [field.name]: { value: null } };
+        }
+
+        if (typeof fieldData.value === "object") {
+          const fieldValue = Array.isArray(fieldData.value)
+            ? fieldData.value.map(({ id }) => ({ id }))
+            : { id: fieldData.value.id };
+          return {
+            ...acc,
+            [field.name]: fieldValue,
+          };
+        }
+
         return {
           ...acc,
-          [field.name]: field.type === "relationship" ? fieldValue : { value: fieldValue },
+          [field.name]: { value: fieldData.value === "" ? null : fieldData.value },
         };
       }
       case "profile":

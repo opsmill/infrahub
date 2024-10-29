@@ -108,7 +108,10 @@ describe("getUpdateMutationFromFormData - test", () => {
       buildField({
         name: "field1",
         type: "relationship",
-        defaultValue: { source: { type: "user" }, value: { id: "value1" } },
+        defaultValue: {
+          source: { type: "user" },
+          value: { id: "value1", display_label: "value1", __typename: "FakeResource" },
+        },
       }),
     ];
     const formData: Record<string, RelationshipValueFromPool> = {
