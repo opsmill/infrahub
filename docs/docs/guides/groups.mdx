@@ -79,14 +79,13 @@ mutation UpdateGroupMembers {
 }
 ```
 
-![Adding members in group](../media/group_tagconfig_grp_adding_members.png)
 The resulting mutation should look like this (note that the ids will be different in your case).
 
 ```graphql
 mutation UpdateGroupMembers {
   CoreStandardGroupUpdate(
     data: {
-      id: "TagConfigGroup",
+      hfid: ["TagConfigGroup"],
       members: [
         {id: "17a8f438-fe39-d85f-3c3b-c51d66d0603f"},
         {id: "17a8f437-157a-e023-3c3c-c51f788ddf91"}]}

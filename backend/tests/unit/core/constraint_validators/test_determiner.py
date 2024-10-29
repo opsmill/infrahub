@@ -1,10 +1,9 @@
 import pytest
-from infrahub_sdk.diff import NodeDiff
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, SchemaPathType
-from infrahub.core.diff.model.diff import DiffElementType
+from infrahub.core.constants import SchemaPathType
+from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
@@ -14,22 +13,8 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 @pytest.fixture
 def person_name_node_diff(
     person_john_main: Node, default_branch: Branch
-) -> tuple[NodeDiff, set[SchemaUpdateConstraintInfo]]:
-    node_diff = {
-        "branch": default_branch.name,
-        "kind": "TestPerson",
-        "id": person_john_main.id,
-        "action": DiffAction.UPDATED.value,
-        "display_label": "Person John Main Display Label",
-        "elements": [
-            {
-                "name": "name",
-                "element_type": DiffElementType.ATTRIBUTE.value,
-                "action": DiffAction.UPDATED.value,
-                "summary": {"added": 0, "updated": 1, "removed": 0},
-            }
-        ],
-    }
+) -> tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]]:
+    node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_names={"name"})
     schema_updated_constraint_infos = {
         SchemaUpdateConstraintInfo(
             path=SchemaPath(
@@ -84,26 +69,8 @@ def person_name_node_diff(
 @pytest.fixture
 def person_cars_node_diff(
     person_john_main: Node, default_branch: Branch
-) -> tuple[NodeDiff, set[SchemaUpdateConstraintInfo]]:
-    node_diff = {
-        "branch": default_branch.name,
-        "kind": "TestPerson",
-        "id": person_john_main.id,
-        "action": DiffAction.UPDATED.value,
-        "display_label": "Person John Main Display Label",
-        "elements": [
-            {
-                "name": "cars",
-                "element_type": DiffElementType.RELATIONSHIP_MANY.value,
-                "action": DiffAction.UPDATED.value,
-                "summary": {"added": 0, "updated": 1, "removed": 0},
-                "peers": [
-                    {"action": DiffAction.REMOVED.value, "summary": {"added": 0, "updated": 0, "removed": 1}},
-                    {"action": DiffAction.ADDED.value, "summary": {"added": 1, "updated": 0, "removed": 0}},
-                ],
-            }
-        ],
-    }
+) -> tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]]:
+    node_diff = NodeDiffFieldSummary(kind="TestPerson", relationship_names={"cars"})
     schema_updated_constraint_infos = {
         SchemaUpdateConstraintInfo(
             constraint_name="relationship.min_count.update",

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("Role Management - Admin", () => {
+test.describe("Users & Permissions - Admin", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("should be allowed to add accounts", async ({ page }) => {

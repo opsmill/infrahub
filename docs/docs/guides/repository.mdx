@@ -247,7 +247,7 @@ Unlike `Repository`, Infrahub does not automatically update `Read-only Repositor
   mutation {
     CoreReadOnlyRepositoryUpdate(
       data: {
-        id: "ID_OF_THE_REPOSITORY"
+        hfid: ["My Git repository"]
         ref: { value: "BRANCH/TAG/COMMIT_TO_TRACK" }
       }
     ) {

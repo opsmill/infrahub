@@ -90,6 +90,13 @@ class NodeFieldSpecifier:
 
 
 @dataclass
+class NodeDiffFieldSummary:
+    kind: str
+    attribute_names: set[str] = field(default_factory=set)
+    relationship_names: set[str] = field(default_factory=set)
+
+
+@dataclass
 class BaseSummary:
     num_added: int = field(default=0, kw_only=True)
     num_updated: int = field(default=0, kw_only=True)

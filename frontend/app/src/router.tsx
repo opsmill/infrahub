@@ -367,7 +367,7 @@ export const router = createBrowserRouter([
                   breadcrumb: () => {
                     return {
                       type: "link",
-                      label: "Role Management",
+                      label: "Users & Permissions",
                       to: constructPath("/role-management"),
                     };
                   },
