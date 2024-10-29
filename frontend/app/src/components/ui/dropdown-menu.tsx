@@ -104,10 +104,10 @@ export const DropdownMenuSubContent = forwardRef<
 
 export const DropdownMenuAccordion = forwardRef<
   ElementRef<typeof AccordionItem>,
-  ComponentPropsWithoutRef<typeof AccordionItem>
->((props, ref) => {
+  ComponentPropsWithoutRef<typeof AccordionItem> & { defaultOpen?: boolean }
+>(({ defaultOpen, ...props }, ref) => {
   return (
-    <Accordion type="single" collapsible>
+    <Accordion type="single" collapsible defaultValue={defaultOpen ? props.value : undefined}>
       <AccordionItem {...props} ref={ref} />
     </Accordion>
   );
