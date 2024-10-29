@@ -1,6 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import { ADMIN_ROLES, REFRESH_TOKEN_KEY } from "@/config/constants";
+import { REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { components } from "@/infraops";
@@ -11,10 +11,6 @@ import { useAtom } from "jotai/index";
 import { ReactElement, ReactNode, createContext, useContext, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-
-type PermissionsType = {
-  isAdmin: boolean;
-};
 
 type User = {
   id: string;
@@ -30,7 +26,6 @@ export type AuthContextType = {
   data?: any;
   isAuthenticated: boolean;
   isLoading: boolean;
-  permissions?: PermissionsType;
   login: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
   signOut: (callback?: () => void) => void;
   setToken: (token: UserToken) => void;
@@ -87,9 +82,6 @@ export const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: false,
   data: undefined,
-  permissions: {
-    isAdmin: false,
-  },
   login: async () => {},
   signOut: () => {},
   setToken: () => {},
@@ -144,9 +136,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data,
     isAuthenticated: !!accessToken,
     isLoading,
-    permissions: {
-      isAdmin: ADMIN_ROLES.includes(data?.user_claims?.role),
-    },
     login: signIn,
     signOut,
     setToken,

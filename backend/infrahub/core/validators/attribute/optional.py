@@ -22,13 +22,11 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
         self.params["null_value"] = NULL_VALUE
 
         query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
@@ -44,7 +42,7 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND (attribute_value IS NULL OR attribute_value = $null_value)
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "value_relationship"]

@@ -174,7 +174,6 @@ const AuthenticatedAccountMenu = ({
 
           <div className="group-data-[collapsed=true]/sidebar:hidden overflow-hidden">
             <div className="font-semibold text-sm truncate">{profile?.label?.value}</div>
-            <div className="text-xs text-neutral-500 truncate">{profile?.role?.value}</div>
           </div>
 
           <Icon

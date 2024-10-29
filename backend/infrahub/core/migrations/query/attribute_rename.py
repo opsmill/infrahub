@@ -38,9 +38,16 @@ class AttributeRenameQuery(Query):
     def render_match(self) -> str:
         query = """
         // Find all the active nodes
-        MATCH (node:Node)
-        WHERE ( "Profile%(node_kind)s" IN LABELS(node) OR "%(node_kind)s" IN LABELS(node) )
-           AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
+        CALL {
+            MATCH (node:%(node_kind)s)
+            WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
+            RETURN node
+            UNION
+            MATCH (node:Profile%(node_kind)s)
+            WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
+            RETURN node
+        }
+        WITH node
         """ % {"node_kind": self.previous_attr.node_kind}
 
         return query

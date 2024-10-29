@@ -1,0 +1,62 @@
+---
+title: Permissions
+---
+
+# Permissions
+
+This page provides detailed documentation for all available global and object permissions within Infrahub.
+
+:::info
+
+For more detailed explanations on how to use these permissions within Infrahub, see the [roles and permissions](/topics/permissions-roles) topic.
+
+:::
+
+## Global permissions
+
+Below are the eight global permissions possible in Infrahub:
+
+| Identifier                                | Action                  | Decision |
+|-------------------------------------------|-------------------------|----------|
+| `global:edit_default_branch:allow_all`    | `edit_default_branch`    | `Allow`  |
+| `global:manage_accounts:allow_all`        | `manage_accounts`        | `Allow`  |
+| `global:manage_permissions:allow_all`     | `manage_permissions`     | `Allow`  |
+| `global:manage_repositories:allow_all`    | `manage_repositories`    | `Allow`  |
+| `global:merge_branch:allow_all`           | `merge_branch`           | `Allow`  |
+| `global:merge_proposed_change:allow_all`  | `merge_proposed_change`  | `Allow`  |
+| `global:manage_schema:allow_all`          | `manage_schema`          | `Allow`  |
+| `global:super_admin:allow_all`            | `super_admin`            | `Allow`  |
+
+### Attributes
+
+- **Identifier**:  A unique string that identifies the permission, computed by the backend based on the **Action** and **Decision**.
+- **Action**: The action that the permission permits, such as `edit_default_branch` or `manage_accounts`.
+- **Decision**: Indicates if the action is permitted or prohibited:
+  - **Allow**: Grants permission for the action.
+  - **Deny**: Denies permission for the action.
+- **Roles**: These are the roles that make use of this permission.
+
+## Object permissions
+
+Object permissions can be applied to different types of objects and across different branches.
+
+| Identifier                                    | Object Type   | Action  | Decision    | Description                                                                                 |
+|-----------------------------------------------|---------------|---------|-------------|---------------------------------------------------------------------------------------------|
+| `object:*:*:create:allow_other`               | `*` (all types)| `any`   | `allow_other`| Allows creating any object, but only on non-default branches. |
+| `object:*:*:view:allow_all`                   | `*` (all types)| `view`  | `allow_all` | Allows viewing any object, anywhere, across both default and non-default branches. |
+| `object:Builtin:Tag:update:deny`              | `BuiltinTag`   | `update`| `deny`      | Denies the ability to update any object of type BuiltinTag, across all branches. |
+| `object:*:Generic:view:allow_all`             | `*Generic`     | `view`  | `allow_all` | Allows viewing all objects that contain 'Generic' in their type (example: LocationGeneric, DeviceGeneric) in all namespaces, across all branches. |
+
+### Attributes
+
+<!-- vale off -->
+- **Identifier**: A unique string that identifies the permission, computed by the backend based on the **Action**, **Object Type**, **Branch Type**, and **Decision**.
+- **Object Type**: The type of object the permission applies to (such as, `tag`, `device`). Wildcards (`*`) can be used to apply the permission to all object types.
+- **Action**: The specific action allowed on the object, such as `create`, `update`, `delete`, or `view`.
+- **Decision**: Controls whether the action is allowed or denied, and under which branch type it applies:
+  - **allow_default**: Allows the action on the default branch.
+  - **allow_other**: Allows the action on branches other than the default one.
+  - **allow_all**: Allows the action on both the default and non-default branches.
+  - **deny**: Denies the action regardless of branch.
+- **Roles**: The roles that use this permission.
+<!-- vale on -->

@@ -182,9 +182,6 @@ describe("Artifact Diff", () => {
     before(() => {
       const data = {
         sub: profileId,
-        user_claims: {
-          role: "admin",
-        },
       };
 
       const token = encodeJwt(data);

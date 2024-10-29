@@ -677,7 +677,7 @@ class ConfiguredSettings:  # pylint: disable=too-many-public-methods
         if not config_file:
             config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
             config_file = os.path.abspath(config_file_name)
-        load(config_file)
+        self.settings = load(config_file)
 
     def initialize_and_exit(self, config_file: Optional[str] = None) -> None:
         """Initialize the settings if they have not been initialized, exit on failures."""
@@ -789,7 +789,7 @@ class Settings(BaseSettings):
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
-def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
+def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> Settings:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -797,17 +797,15 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str
     """
 
     if config_data:
-        SETTINGS.settings = Settings(**config_data)
-        return
+        return Settings(**config_data)
 
     if os.path.exists(config_file_name):
         config_string = Path(config_file_name).read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
         SETTINGS.settings = Settings(**config_tmp)
-        return
 
-    SETTINGS.settings = Settings()
+    return Settings()
 
 
 def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
@@ -821,7 +819,7 @@ def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional
         config_data (dict, optional): [description]. Defaults to None.
     """
     try:
-        load(config_file_name=config_file_name, config_data=config_data)
+        SETTINGS.settings = load(config_file_name=config_file_name, config_data=config_data)
     except ValidationError as err:
         print(f"Configuration not valid, found {len(err.errors())} error(s)")
         for error in err.errors():

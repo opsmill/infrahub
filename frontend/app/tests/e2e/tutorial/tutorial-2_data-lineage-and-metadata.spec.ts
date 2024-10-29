@@ -39,10 +39,5 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
 
       await expect(page.getByText("Is protectedTrue")).toBeVisible();
     });
-
-    await test.step("Not allowed to updated description because user is not admin", async () => {
-      await page.getByTestId("edit-button").click();
-      await expect(page.getByLabel("Description")).toBeDisabled();
-    });
   });
 });

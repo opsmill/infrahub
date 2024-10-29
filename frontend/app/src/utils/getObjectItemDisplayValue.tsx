@@ -19,8 +19,8 @@ import {
   RelationshipProperty,
   TextAttribute,
 } from "@/generated/graphql";
-import { components } from "@/infraops";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
 import { iSchemaKindNameMap } from "@/state/atoms/schemaKindName.atom";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
@@ -150,9 +150,7 @@ export const getObjectItemDisplayValue = (
   );
 };
 
-export type FieldSchema =
-  | components["schemas"]["AttributeSchema-Output"]
-  | components["schemas"]["RelationshipSchema-Output"];
+export type FieldSchema = AttributeSchema | RelationshipSchema;
 
 export type AttributeType =
   | TextAttribute
