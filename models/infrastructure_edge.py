@@ -663,6 +663,7 @@ GLOBAL_PERMISSIONS = (
 OBJECT_PERMISSIONS = {
     "deny_any": ObjectPermission(namespace="*", name="*", action="any", decision=1),
     "allow_any": ObjectPermission(namespace="*", name="*", action="any", decision=6),
+    "allow_branches": ObjectPermission(namespace="*", name="*", action="any", decision=4),
     "view_any": ObjectPermission(namespace="*", name="*", action="view", decision=6),
 }
 
@@ -674,7 +675,7 @@ ACCOUNT_ROLES = (
         global_permissions=["edit_default_branch", "merge_branch", "merge_proposed_change"],
         object_permissions=["allow_any"],
     ),
-    AccountRole(name="Own branches read-write", object_permissions=["allow_any"]),
+    AccountRole(name="Own branches read-write", object_permissions=["allow_branches"]),
 )
 
 ACCOUNTS = (
