@@ -47,7 +47,10 @@ const RecursiveObjectMenuItem: React.FC<{
   }
 
   return (
-    <DropdownMenuAccordion value={item.identifier} defaultOpen={menuLength === 1}>
+    <DropdownMenuAccordion
+      value={item.identifier}
+      defaultOpen={menuLength === 1 || item.children.length < 2}
+    >
       <DropdownMenuAccordionTrigger
         className={classNames(menuNavigationItemStyle, "font-bold py-1")}
         iconClassName="hover:bg-neutral-200 group-data-[state=open]:hover:bg-indigo-200"
