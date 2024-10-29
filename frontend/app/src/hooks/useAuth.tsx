@@ -7,6 +7,7 @@ import { components } from "@/infraops";
 import { configState } from "@/state/atoms/config.atom";
 import { parseJwt } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
+import { ObservableQuery } from "@apollo/client";
 import { useAtom } from "jotai/index";
 import { ReactElement, ReactNode, createContext, useContext, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
@@ -45,6 +46,12 @@ export const saveTokensInLocalStorage = (result: any) => {
 export const removeTokensInLocalStorage = () => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+};
+
+const QUERY_TO_IGNORE = ["GET_PROFILE_DETAILS"];
+
+const shouldIgnoreQuery = (observableQuery: ObservableQuery) => {
+  return !!observableQuery.queryName && QUERY_TO_IGNORE.includes(observableQuery.queryName);
 };
 
 export const getNewToken = async () => {
@@ -126,7 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = () => {
     removeTokensInLocalStorage();
     setAccessToken(null);
-    graphqlClient.refetchQueries({ include: "active" });
+    graphqlClient.refetchQueries({
+      include: "active",
+      onQueryUpdated(observableQuery) {
+        return !shouldIgnoreQuery(observableQuery);
+      },
+    });
   };
 
   const data = parseJwt(accessToken);
