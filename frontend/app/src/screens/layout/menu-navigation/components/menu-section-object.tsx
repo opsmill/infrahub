@@ -48,8 +48,11 @@ const RecursiveObjectMenuItem: React.FC<{
   return (
     <DropdownMenuAccordion value={item.identifier} defaultOpen>
       <DropdownMenuAccordionTrigger
-        className={classNames(menuNavigationItemStyle, "font-bold py-1")}
-        iconClassName="hover:bg-neutral-200 group-data-[state=open]:hover:bg-indigo-200"
+        className={classNames(
+          menuNavigationItemStyle,
+          "font-bold py-1 data-[state=open]:bg-transparent data-[state=open]:text-inherit data-[state=open]:data-[highlighted]:bg-neutral-100"
+        )}
+        iconClassName="hover:bg-neutral-200"
       >
         <Icon icon={item.icon} className="w-5 shrink-0 inline-flex justify-center items-center" />
         {item.path ? (
@@ -63,7 +66,7 @@ const RecursiveObjectMenuItem: React.FC<{
 
       <DropdownMenuAccordionContent
         style={{ marginLeft: (level + 1) * 18 }}
-        className="border-l border-indigo-100"
+        className="border-l border-neutral-200"
       >
         {item.children.map((child) => (
           <RecursiveObjectMenuItem
