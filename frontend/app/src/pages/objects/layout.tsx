@@ -55,7 +55,7 @@ const ObjectPageLayout = () => {
           {treeSchema && (
             <>
               <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
-                <ScrollArea className="h-full">
+                <ScrollArea scrollX className="h-full">
                   <HierarchicalTree
                     schema={treeSchema}
                     currentNodeId={objectid}

@@ -34,14 +34,9 @@ const RecursiveObjectMenuItem: React.FC<{
   isCollapsed?: boolean;
   level?: number;
 }> = ({ item, isCollapsed, level = 0 }) => {
-  const commonStyleProps = {
-    className: menuNavigationItemStyle,
-    style: { marginLeft: level * 20 },
-  };
-
   if (!item.children?.length) {
     return (
-      <DropdownMenuItem {...commonStyleProps} asChild>
+      <DropdownMenuItem className={menuNavigationItemStyle} asChild>
         <Link to={constructPath(item.path)}>
           <Icon icon={item.icon} className="w-5 shrink-0 inline-flex justify-center items-center" />
           {item.label}
@@ -51,17 +46,28 @@ const RecursiveObjectMenuItem: React.FC<{
   }
 
   return (
-    <DropdownMenuAccordion value={item.identifier}>
-      <DropdownMenuAccordionTrigger {...commonStyleProps}>
+    <DropdownMenuAccordion value={item.identifier} defaultOpen>
+      <DropdownMenuAccordionTrigger
+        className={classNames(
+          menuNavigationItemStyle,
+          "font-bold py-1 data-[state=open]:bg-transparent data-[state=open]:text-inherit data-[state=open]:data-[highlighted]:bg-neutral-100"
+        )}
+        iconClassName="hover:bg-neutral-200"
+      >
+        <Icon icon={item.icon} className="w-5 shrink-0 inline-flex justify-center items-center" />
         {item.path ? (
-          <Link to={constructPath(item.path)} className="w-full text-left cursor-pointer">
+          <Link to={constructPath(item.path)} className="text-left cursor-pointer">
             {item.label}
           </Link>
         ) : (
           item.label
         )}
       </DropdownMenuAccordionTrigger>
-      <DropdownMenuAccordionContent>
+
+      <DropdownMenuAccordionContent
+        style={{ marginLeft: (level + 1) * 18 }}
+        className="border-l border-neutral-200"
+      >
         {item.children.map((child) => (
           <RecursiveObjectMenuItem
             key={child.identifier}
@@ -106,7 +112,7 @@ const TopLevelMenuItem: React.FC<{
         side="left"
         align="start"
         sideOffset={isCollapsed ? 6 : 12}
-        className="h-[calc(100vh-57px)] mt-[57px] min-w-[224px] px-4 py-5 bg-white border rounded-r-lg rounded-l-none shadow-none relative -top-px overflow-auto data-[side=right]:slide-in-from-left-[100px]"
+        className="h-[calc(100vh-57px)] mt-[57px] min-w-[275px] px-4 py-5 bg-white border rounded-r-lg rounded-l-none shadow-none relative -top-px overflow-auto data-[side=right]:slide-in-from-left-[100px]"
       >
         <h3 className="text-xl font-medium text-neutral-800 mb-5">{item.label}</h3>
         {item.children.map((child) => (

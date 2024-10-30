@@ -52,6 +52,10 @@ const ExpandedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
   <Link to={constructPath(item.path)} className={classNames(menuNavigationItemStyle, "h-10")}>
     <Icon icon={item.icon} className="min-w-4" />
     <span className="text-sm truncate">{item.label}</span>
+    <Icon
+      icon="mdi:arrow-top-right"
+      className="m-1 ml-auto text-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
+    />
   </Link>
 );
 

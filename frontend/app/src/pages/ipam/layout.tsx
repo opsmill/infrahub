@@ -13,7 +13,7 @@ function IpamLayout() {
 
       <div className="flex-grow flex overflow-auto">
         <div className="min-w-64 max-w-[400px] border-r flex">
-          <ScrollArea className="w-full p-2">
+          <ScrollArea scrollX className="w-full p-2">
             <IpamTree className="w-full" />
           </ScrollArea>
         </div>
