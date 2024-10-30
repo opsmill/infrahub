@@ -1229,11 +1229,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
             module = importlib.import_module(file_info.module_name)
 
-            transform_class: InfrahubTransform = getattr(module, class_name)
+            transform_class: type[InfrahubTransform] = getattr(module, class_name)
 
-            transform = await transform_class.init(
-                root_directory=commit_worktree.directory, branch=branch_name, client=client
-            )
+            transform = transform_class(root_directory=commit_worktree.directory, branch=branch_name, client=client)
             return await transform.run(data=data)
 
         except ModuleNotFoundError as exc:
