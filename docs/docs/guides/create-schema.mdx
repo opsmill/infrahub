@@ -88,7 +88,9 @@ Load the schema into Infrahub in the `network-device-schema` branch
 infrahubctl schema load --branch network-device-schema /tmp/schema_guide.yml
 ```
 
-We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-schema) (Unified Storage > Schema)
+We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-schema) (Unified Storage > Schema) as shown below.
+
+![schema page screenshot](../media/guides/create_schema_1.png)
 
 We'll create a device and an interface according to the schema, by executing the following GraphQL query
 
@@ -107,6 +109,25 @@ mutation {
         }
   }
 }
+```
+
+Here is an example of using `curl` to make the query. Make sure to replace the `X-INFRAHUB-KEY` and the IP address with your actual details. Please also make sure to inlcude the name of the branch in the URL. If you want to learn more about GraphQL, you can find more information [here](https://docs.infrahub.app/topics/graphql).
+
+```graphql
+curl -X POST http://localhost:8000/graphql/network-device-schema \
+  -H "Content-Type: application/json" \
+  -H "X-INFRAHUB-KEY: 1802eed5-eeb7-cc45-2e4d-c51de9d66cba" \
+  -d '{"query": "mutation { NetworkDeviceCreate(data: {hostname: {value: \"atl1-edge1\"}, model: {value: \"Cisco ASR1002-HX\"}}) { ok object { id } } NetworkInterfaceCreate(data: {name: {value: \"Ethernet1\"}, description: {value: \"WAN interface\"}}) { ok object { id } } }"}'
+```
+
+You can verify this in the GUI by navigating to 'Objects' and selecting 'Device' or 'Interface'.
+
+![schema page screenshot](../media/guides/create_schema_2.png)
+
+Finally, you can merge the `network-device-schema` branch to 'main' by running the following command.
+
+```shell
+infrahubctl branch merge network-device-schema
 ```
 
 We have now successfully created our first schema, loaded into a branch into Infrahub, created the first nodes and merged the changes into the main branch of Infrahub.
@@ -190,6 +211,8 @@ mutation {
 ```
 
 In the Web UI we can now see that the device has a relation to the Ethernet1 interface.
+
+![schema page screenshot](../media/guides/create_schema_3.png)
 
 ## 3. Abstracting nodes into generics
 
