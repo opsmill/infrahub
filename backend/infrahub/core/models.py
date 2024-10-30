@@ -366,7 +366,7 @@ class HashableModel(BaseModel):
         else:
             hashes.append(cls._get_hash_value(value))
 
-        return hashes
+        return sorted(hashes)
 
     @property
     def _sorting_id(self) -> tuple[Any]:

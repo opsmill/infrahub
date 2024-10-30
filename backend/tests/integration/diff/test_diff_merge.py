@@ -117,9 +117,9 @@ class TestDiffMerge(TestInfrahubApp):
         marty_id = initial_dataset["marty"].get_id()
 
         enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-        conflicts = enriched_diff.get_all_conflicts()
-        assert len(conflicts) == 1
-        owner_conflict = conflicts[0]
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 1
+        owner_conflict = list(conflicts_map.values())[0]
         await diff_repository.update_conflict_by_id(
             conflict_id=owner_conflict.uuid, selection=ConflictSelection.BASE_BRANCH
         )

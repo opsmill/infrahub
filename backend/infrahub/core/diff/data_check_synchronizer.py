@@ -34,7 +34,7 @@ class DiffDataCheckSynchronizer:
             proposed_changes = []
         if not proposed_changes:
             return []
-        enriched_conflicts = enriched_diff.get_all_conflicts()
+        enriched_conflicts_map = enriched_diff.get_all_conflicts()
         data_conflicts = await self.conflicts_extractor.get_data_conflicts(enriched_diff_root=enriched_diff)
         all_data_checks = []
         for pc in proposed_changes:
@@ -43,7 +43,7 @@ class DiffDataCheckSynchronizer:
             )
             all_data_checks.extend(core_data_checks)
             core_data_checks_by_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks}  # type: ignore[attr-defined]
-            enriched_conflicts_by_id = {ec.uuid: ec for ec in enriched_conflicts}
+            enriched_conflicts_by_id = {ec.uuid: ec for ec in enriched_conflicts_map.values()}
             for conflict_id, core_data_check in core_data_checks_by_id.items():
                 enriched_conflict = enriched_conflicts_by_id.get(conflict_id)
                 if not enriched_conflict:

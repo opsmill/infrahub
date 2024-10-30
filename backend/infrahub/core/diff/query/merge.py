@@ -390,7 +390,7 @@ CALL {
             WHERE type(r_prop) = prop_type
             AND r_prop.status = prop_rel_status
             AND r_prop.from <= $at
-            AND (r_prop.to >= $at OR r_prop.to IS NULL)
+            AND (r_prop.to > $at OR r_prop.to IS NULL)
             RETURN r_prop
         }
         WITH attr_rel, prop_rel_status, prop_type, prop_node, r_prop

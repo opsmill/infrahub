@@ -292,7 +292,8 @@ async def test_diff_tree_one_attr_change(
     after_change_datetime = datetime.now(tz=UTC)
 
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    enriched_conflict = enriched_diff.get_all_conflicts()[0]
+    enriched_conflict_map = enriched_diff.get_all_conflicts()
+    enriched_conflict = list(enriched_conflict_map.values())[0]
     await diff_repository.update_conflict_by_id(
         conflict_id=enriched_conflict.uuid, selection=ConflictSelection.DIFF_BRANCH
     )

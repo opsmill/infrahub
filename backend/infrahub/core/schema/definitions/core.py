@@ -2264,7 +2264,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "human_friendly_id": ["name__value"],
             "generate_profile": False,
-            "inherit_from": [InfrahubKind.GENERICGROUP],
+            "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICGROUP],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {

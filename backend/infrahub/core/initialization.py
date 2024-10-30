@@ -160,6 +160,7 @@ async def initialization(db: InfrahubDatabase) -> None:
                 hash_new=default_branch.active_schema_hash.main,
                 branch=default_branch.name,
             )
+            await default_branch.save(db=db)
 
         for branch in list(registry.branch.values()):
             if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
@@ -175,6 +176,7 @@ async def initialization(db: InfrahubDatabase) -> None:
                     f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
                     branch=branch.name,
                 )
+                await branch.save(db=db)
 
     # ---------------------------------------------------
     # Load Default Namespace

@@ -5,6 +5,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -454,3 +455,41 @@ async def test_branch_merge_wrong_branch(
     assert result.errors
     assert len(result.errors) == 1
     assert result.errors[0].message == "Branch: branch99 not found."
+
+
+async def test_branch_merge_with_conflict_fails(db: InfrahubDatabase, car_person_schema, car_camry_main, session_admin):
+    query = """
+    mutation {
+        BranchMerge(data: { name: "branch2" }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
+    car_main.name.value += "-main"
+    await car_main.save(db=db)
+    car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+    car_branch.name.value += "-branch"
+    await car_branch.save(db=db)
+
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=service
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "contains conflicts with the default branch" in result.errors[0].message

@@ -1,10 +1,14 @@
 from unittest.mock import AsyncMock
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.model.path import ConflictSelection
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -17,23 +21,10 @@ from infrahub.dependencies.registry import get_component_registry
 
 
 class TestDiffAndMerge:
-    # @pytest.fixture
-    # def diff_merger(
-    #     self,
-    #     db: InfrahubDatabase,
-    #     default_branch: Branch,
-    #     source_branch: Branch,
-    #     car_person_schema: SchemaBranch,
-    # ) -> DiffMerger:
-    #     db.add_schema(car_person_schema)
-    #     db.add_schema(car_person_schema, name=source_branch.name)
-    #     return DiffMerger(
-    #         db=db,
-    #         source_branch=source_branch,
-    #         destination_branch=default_branch,
-    #         diff_repository=mock_diff_repository,
-    #         serializer=DiffMergeSerializer(db=db, max_batch_size=50),
-    #     )
+    @pytest.fixture
+    async def diff_repository(self, db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
+        component_registry = get_component_registry()
+        return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
     async def _get_diff_coordinator(self, db: InfrahubDatabase, branch: Branch) -> DiffCoordinator:
         component_registry = get_component_registry()
@@ -96,3 +87,161 @@ class TestDiffAndMerge:
         assert new_bool_attr.default_value is False
         new_str_attr = car_schema_main.get_attribute(name="nickname")
         assert new_str_attr.default_value == "car"
+
+    @pytest.mark.parametrize(
+        "conflict_selection,expected_value",
+        [(ConflictSelection.BASE_BRANCH, "John-main"), (ConflictSelection.DIFF_BRANCH, "John-branch")],
+    )
+    async def test_diff_and_merge_with_attribute_value_conflict(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        person_john_main,
+        person_jane_main,
+        person_alfred_main,
+        car_accord_main,
+        conflict_selection,
+        expected_value,
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
+        john_main.name.value = "John-main"
+        await john_main.save(db=db)
+        john_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
+        john_branch.name.value = "John-branch"
+        await john_branch.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 1
+        conflict = next(iter(conflicts_map.values()))
+        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        updated_john = await NodeManager.get_one(db=db, id=person_john_main.id)
+        assert updated_john.name.value == expected_value
+
+    @pytest.mark.parametrize(
+        "conflict_selection",
+        [ConflictSelection.BASE_BRANCH, ConflictSelection.DIFF_BRANCH],
+    )
+    async def test_diff_and_merge_with_relationship_conflict(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        person_john_main,
+        person_jane_main,
+        person_alfred_main,
+        car_accord_main,
+        car_camry_main,
+        conflict_selection,
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        await car_main.owner.update(db=db, data=person_alfred_main)
+        await car_main.save(db=db)
+        car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
+        await car_branch.owner.update(db=db, data=person_jane_main)
+        await car_branch.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 1
+        conflict = next(iter(conflicts_map.values()))
+        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        owner_rel = await updated_car.owner.get(db=db)
+        if conflict_selection is ConflictSelection.BASE_BRANCH:
+            assert owner_rel.peer_id == person_alfred_main.id
+        if conflict_selection is ConflictSelection.DIFF_BRANCH:
+            assert owner_rel.peer_id == person_jane_main.id
+
+    @pytest.mark.parametrize(
+        "conflict_selection",
+        [ConflictSelection.BASE_BRANCH, ConflictSelection.DIFF_BRANCH],
+    )
+    async def test_diff_and_merge_with_attribute_property_conflict(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        person_john_main,
+        person_jane_main,
+        person_alfred_main,
+        car_accord_main,
+        conflict_selection,
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
+        john_main.name.source = person_alfred_main
+        await john_main.save(db=db)
+        john_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
+        john_branch.name.source = person_jane_main
+        await john_branch.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 1
+        conflict = next(iter(conflicts_map.values()))
+        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        updated_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_source=True)
+
+        attr_source = await updated_john.name.get_source(db=db)
+        if conflict_selection is ConflictSelection.BASE_BRANCH:
+            assert attr_source.id == person_alfred_main.id
+        if conflict_selection is ConflictSelection.DIFF_BRANCH:
+            assert attr_source.id == person_jane_main.id
+
+    @pytest.mark.parametrize(
+        "conflict_selection",
+        [ConflictSelection.BASE_BRANCH, ConflictSelection.DIFF_BRANCH],
+    )
+    async def test_diff_and_merge_with_relationship_property_conflict(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        person_john_main,
+        person_jane_main,
+        person_alfred_main,
+        car_accord_main,
+        car_camry_main,
+        conflict_selection,
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        await car_main.owner.update(db=db, data={"id": person_john_main.id, "_relation__owner": person_alfred_main.id})
+        await car_main.save(db=db)
+        car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
+        await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__owner": person_jane_main.id})
+        await car_branch.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        # conflict on both sides of the relationship
+        assert len(conflicts_map) == 2
+        for conflict in conflicts_map.values():
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_owner=True)
+        owner_rel = await updated_car.owner.get(db=db)
+        owner_prop = await owner_rel.get_owner(db=db)
+        if conflict_selection is ConflictSelection.BASE_BRANCH:
+            assert owner_prop.id == person_alfred_main.id
+        if conflict_selection is ConflictSelection.DIFF_BRANCH:
+            assert owner_prop.id == person_jane_main.id
