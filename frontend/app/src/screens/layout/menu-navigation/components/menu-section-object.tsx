@@ -33,8 +33,7 @@ const RecursiveObjectMenuItem: React.FC<{
   item: MenuItem;
   isCollapsed?: boolean;
   level?: number;
-  menuLength?: number;
-}> = ({ item, isCollapsed, menuLength, level = 0 }) => {
+}> = ({ item, isCollapsed, level = 0 }) => {
   if (!item.children?.length) {
     return (
       <DropdownMenuItem className={menuNavigationItemStyle} asChild>
@@ -47,10 +46,7 @@ const RecursiveObjectMenuItem: React.FC<{
   }
 
   return (
-    <DropdownMenuAccordion
-      value={item.identifier}
-      defaultOpen={menuLength === 1 || item.children.length < 2}
-    >
+    <DropdownMenuAccordion value={item.identifier} defaultOpen>
       <DropdownMenuAccordionTrigger
         className={classNames(menuNavigationItemStyle, "font-bold py-1")}
         iconClassName="hover:bg-neutral-200 group-data-[state=open]:hover:bg-indigo-200"
@@ -117,12 +113,7 @@ const TopLevelMenuItem: React.FC<{
       >
         <h3 className="text-xl font-medium text-neutral-800 mb-5">{item.label}</h3>
         {item.children.map((child) => (
-          <RecursiveObjectMenuItem
-            key={child.identifier}
-            item={child}
-            isCollapsed={isCollapsed}
-            menuLength={item.children?.length}
-          />
+          <RecursiveObjectMenuItem key={child.identifier} item={child} isCollapsed={isCollapsed} />
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
