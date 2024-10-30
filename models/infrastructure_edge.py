@@ -1835,13 +1835,9 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
 
 async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
     for p in GLOBAL_PERMISSIONS:
-        try:
-            obj = await client.get(
-                branch=branch, kind="CoreGlobalPermission", hfid=[p.action, str(p.decision)], raise_when_missing=True
-            )
-        except NodeNotFoundError:
-            obj = await client.create(branch=branch, kind="CoreGlobalPermission", data=p.model_dump())
-            batch.add(task=obj.save, node=obj)
+        obj = await client.get(
+            branch=branch, kind="CoreGlobalPermission", hfid=[p.action, str(p.decision)], raise_when_missing=True
+        )
         store.set(key=p.action, node=obj)
 
     for name, p in OBJECT_PERMISSIONS.items():
