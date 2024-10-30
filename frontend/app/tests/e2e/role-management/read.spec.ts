@@ -24,9 +24,11 @@ test.describe("Role management - READ", () => {
 
     await test.step("check groups view", async () => {
       await page.getByRole("link", { name: "Groups 6" }).click();
+      await expect(page.getByText("Showing 1 to 6 of 6 results")).toBeVisible();
+      await expect(
+        page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Groups" })
+      ).toBeVisible();
       await expect(page.getByRole("cell", { name: "Operations Team" })).toBeVisible();
-      // Need to create more user to trigger this
-      // await expect(page.getByRole("cell", { name: "+ 4" })).toBeVisible();
     });
 
     await test.step("check roles view", async () => {

@@ -78,12 +78,16 @@ spec:
       children:
         data:
           - namespace: Infra
-            name: Device
-            label: Device
-            kind: InfraDevice
+            name: NetworkDeviceMenu
+            label: Network Device
             icon: "mdi:server"
             children:
               data:
+                - namespace: Infra
+                  name: Device
+                  label: Device
+                  kind: InfraDevice
+                  icon: "mdi:server"
                 - name: Interface
                   namespace: Infra
                   label: "Interface"
@@ -91,22 +95,29 @@ spec:
                   kind: InfraInterface
 
           - namespace: Infra
+            name: MlagMenu
+            label: MLAG
+            icon: "eos-icons:cluster-management"
+            children:
+              data:
+                - name: MlagDomain
+                  namespace: Infra
+                  label: "MLAG Domain"
+                  icon: "eos-icons:cluster-management"
+                  kind: InfraMlagDomain
+
+                - name: MlagInterface
+                  namespace: Infra
+                  label: "MLAG Interface"
+                  icon: "mdi:ethernet"
+                  kind: InfraMlagInterface
+
+          - namespace: Infra
             name: Platform
             label: Platform
             kind: InfraPlatform
             icon: "mdi:application-cog-outline"
 
-          - name: MlagDomain
-            namespace: Infra
-            label: "MLAG Domain"
-            icon: "eos-icons:cluster-management"
-            kind: InfraMlagDomain
-
-          - name: MlagInterface
-            namespace: Infra
-            label: "MLAG Interface"
-            icon: "mdi:ethernet"
-            kind: InfraMlagInterface
 
     - namespace: Infra
       name: CircuitMenu
