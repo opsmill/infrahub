@@ -23,9 +23,9 @@ const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
       data-testid="search-anywhere-trigger"
       {...props}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 overflow-hidden">
         <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
-        <span className="text-neutral-700 text-sm group-data-[collapsed=true]/sidebar:hidden transition-all">
+        <span className="text-neutral-700 text-sm group-data-[collapsed=true]/sidebar:hidden transition-all truncate">
           Search
         </span>
       </div>
