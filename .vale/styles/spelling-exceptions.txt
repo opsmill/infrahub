@@ -4,6 +4,7 @@ APIs
 artifact_definitions
 artifact_name
 async
+Authentik
 boolean
 check_definitions
 class_name

@@ -37,18 +37,115 @@ There are four key features and changes in Infrahub version 1.0 as outlined belo
 
 - SSO login capabilities (OIDC/OUATH2)
 - A new permission framework
-- Performance enhancements to branch merging
+- Performance enhancements to version control actions (diff/merge/rebase)
 - An exciting UI and navigation redesign
 
 In addition to these, there have been many bug-fixes and quality-of-life enhancements shown in the detailed changelog.
 
-### SSO capabilities
+### Single sign-on and user permissions
 
-### New permission framework
+Early in the development of Infrahub, we consciously decided to focus on the groundbreaking and critical features that make
+Infrahub a uniquely world-class Source of Truth.
+As a result, we set aside some standard enterprise features, such as Single Sign-On, until later,
+knowing that they would be straightforward to implement in the system.
 
-### Merge performance enhancements
+As we enter a new era with Infrahub 1.0, we have focused on rounding out the enterprise-grade features
+that our customers require.
+For example, we added Single Sign-On (SSO) integrations for OIDC/Oauth 2.0 and implemented a robust and granular permissions system.
+These two features combine to give organizations a level of control that allows them to trust their mission-critical
+data in Infrahub and bring even closer integration with existing enterprise systems and workflows.
+
+#### SSO
+
+The new OIDC/OAuth2 capabilities, tested and functioning in the field with many Identity Providers
+such as Keycloak, Authentik, and Google Auth, allow organizations to manage their users and groups centrally
+instead of in the Infrahub UI.
+Subsequent releases of Infrahub will soon include validated support for additional Identity Providers
+and other authentication methods (such as LDAP).
+
+This functionality goes hand in hand with the feature we will discuss next: our new User Permissions structure.
+
+##### Documentation
+
+- https://docs.infrahub.app/guides/sso
+
+#### User permissions
+
+As users store more data in Infrahub and more teams interact with that data, it becomes crucial to protect it
+from accidental changes.
+By implementing a granular role-based permission system, Infrahub allows organizations to prevent unauthorized changes
+to the data behind critical infrastructure automation efforts.
+
+In the permission structure introduced in Infrahub 1.0, Users are added to Groups, Groups are given Roles,
+and Permissions are finally allocated to those Roles.
+Permissions come in two fundamental varieties: Global Permissions and Object Permissions.
+
+The below diagram lays out the relationship between each of these entities.
+A User can belong to one or more Groups, a Group can have multiple Roles assigned to it, and each Role can be granted one
+or more Global or Object Permissions.
+
+!["Example relationship of User to Group to Role to Permission in Infrahub 1.0."](../../media/release_notes/infrahub_1_0/permissions_1_0.excalidraw.svg)
+
+##### Global vs. object permissions
+
+It is also worth mentioning the difference between Global Permissions and Object Permissions.
+
+Global Permissions are specific permission sets that can give users system-wide rights to perform particular actions, for example:
+Editing the default Branch
+Editing Permissions
+Allowing the merging of proposed changes
+Account management
+Object Permissions are tied to individual objects within Infrahub and control what actions users can take on those objects; examples could include:
+Allow read-only access to all objects
+Deny the ability to update Tags
+Allow editing on any object type that starts with `DataCenter`
+For either style, Permissions are structured to be robust and granular by allowing complete control over the Action, Decision, and Role of a given Permission set (plus the Object Type for Object Permissions).
+
+##### Documentation
+
+This is a significant topic on a new feature that enables complex workflows to meet organizational needs. Because of this, we strongly recommend diving into the documentation links below.
+
+- https://docs.infrahub.app/guides/accounts-permissions
+- https://docs.infrahub.app/topics/permissions-roles
+- https://docs.infrahub.app/reference/permissions
+
+### Performance improvements
+
+Our design philosophy at OpsMill has always been driven by long experience as network practitioners or admins
+in Unix-like systems: “Make it work, make it right, make it fast.”
+
+In Infrahub 1.0, we focused on the last part, “Make it fast.”
+
+As our early beta testers began to utilize Infrahub in increasingly large infrastructures (greater than 50,000 nodes),
+we expected (and found) opportunities for performance improvements.
+This was especially true when performing Version Control actions on large data sets.
+As a result of the intensive testing, we made dramatic improvements to branch change management.
+Infrahub 1.0 has improved how Infrahub computes a difference between two branches, re-bases a branch,
+and handles the merge.
+For example, in the “diff” generation for a proposed change, we have seen a 30% increase in performance over earlier versions.
+As a result, the proposed change functionality can now reliably handle much larger data sets for comparison.
+
+These performance improvements are only the beginning of our optimization efforts, but they have already improved
+the experience of Infrahub users of all infrastructure sizes.
 
 ### UI redesign
+
+While the UI in Infrahub before 1.0 served its purpose well, there was room for improvement.
+A corollary fourth phrase to our design philosophy might be, “Now, make it pretty!”
+
+We didn’t just change around some colors or styles; we worked closely with our beta testers and a dedicated
+User Experience professional to ensure that using Infrahub 1.0 would be an experience that our users enjoyed.
+
+!["Example screenshot of new UI in Infrahub 1.0."](../../media/release_notes/infrahub_1_0/1_0_ui.png)
+
+We also provided capabilities for complete customization of the navigation menu.
+We continue to emphasize that Infrahub is a powerful, fully customizable system that meets your
+organization where it needs to be.
+
+#### Documentation
+
+- https://docs.infrahub.app/guides/menu
+- https://docs.infrahub.app/reference/menu
 
 ## Other
 
