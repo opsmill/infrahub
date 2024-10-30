@@ -109,6 +109,10 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
                 continue
 
             if not schema.menu_placement:
+                first_element = MenuItemDict.from_schema(model=schema)
+                first_element.identifier = f"{first_element.identifier}Sub"
+                first_element.order_weight = 1
+                menu_item.children[first_element.identifier] = first_element
                 structure.data[menu_item.identifier] = menu_item
                 items_to_add[item_name] = True
             elif menu_placement := structure.find_item(name=schema.menu_placement):

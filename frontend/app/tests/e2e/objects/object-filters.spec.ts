@@ -81,7 +81,9 @@ test.describe("Object filters", () => {
     await page.getByRole("option", { name: "atl1-core1" }).click();
     await page.getByRole("button", { name: "Apply filters" }).click();
 
-    await expect(page.getByRole("row", { name: "InfraInterfaceL3 Loopback0" })).toBeVisible();
+    await expect(
+      page.getByRole("row", { name: "InfraInterfaceL3 atl1-core1 Loopback0" })
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeHidden();
   });
 

@@ -86,6 +86,7 @@ async def test_generate_menu_top_level(
     assert menu
     assert "TestMenu0" in menu.data.keys()
     assert "TestCar" in menu.data.keys()
+    assert "TestCarSub" in menu.data["TestCar"].children.keys()
 
 
 async def test_generate_menu_default(

@@ -39,11 +39,13 @@ nodes:
       - name: name
         kind: Text
         unique: true
+        order_weight: 2
       - name: description
         kind: Text
         optional: true
       - name: vlan_id
         kind: Number
+        order_weight: 3
       - name: status
         kind: Dropdown
         choices:
@@ -86,6 +88,7 @@ nodes:
         cardinality: one
         kind: Attribute
         identifier: "site__vlans"
+        order_weight: 1
       - name: gateway
         label: L3 Gateway
         peer: InfraInterfaceL3

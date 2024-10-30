@@ -18,9 +18,11 @@ nodes:
       - name: name
         kind: Text
         unique: true
+        order_weight: 1
       - name: asn
         kind: Number
         unique: true
+        order_weight: 2
       - name: description
         kind: Text
         optional: true
@@ -30,6 +32,7 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 3
   - name: BGPPeerGroup
     namespace: Infra
     description: "A BGP Peer Group is used to regroup parameters that are shared across multiple peers"
@@ -45,15 +48,18 @@ nodes:
       - name: name
         kind: Text
         unique: true
+        order_weight: 1
       - name: description
         kind: Text
         optional: true
       - name: import_policies
         kind: Text
         optional: true
+        order_weight: 4
       - name: export_policies
         kind: Text
         optional: true
+        order_weight: 5
     relationships:
       - name: local_as
         identifier: bgppeergroup__local_as
@@ -61,12 +67,14 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+        order_weight: 2
       - name: remote_as
         identifier: bgppeergroup__remote_as
         peer: InfraAutonomousSystem
         optional: true
         cardinality: one
         kind: Attribute
+        order_weight: 3
   - name: BGPSession
     namespace: Infra
     description: "A BGP Session represent a point to point connection between two routers"
@@ -82,17 +90,21 @@ nodes:
       - name: type
         kind: Text
         enum: [EXTERNAL, INTERNAL]
+        order_weight: 1
       - name: description
         kind: Text
         optional: true
       - name: import_policies
         kind: Text
         optional: true
+        order_weight: 8
       - name: export_policies
         kind: Text
         optional: true
+        order_weight: 9
       - name: status
         kind: Dropdown
+        order_weight: 6
         choices:
           - name: active
             label: Active
@@ -112,6 +124,7 @@ nodes:
             color: "#bfbfbf"
       - name: role
         kind: Dropdown
+        order_weight: 7
         choices:
           - name: backbone
             label: Backbone
@@ -132,24 +145,28 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+        order_weight: 2
       - name: remote_as
         identifier: bgpsession__remote_as
         peer: InfraAutonomousSystem
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 3
       - name: local_ip
         identifier: bgpsession__local_ip
         peer: BuiltinIPAddress
         optional: true
         cardinality: one
         kind: Attribute
+        order_weight: 4
       - name: remote_ip
         identifier: bgpsession__remote_ip
         peer: BuiltinIPAddress
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 5
       - name: device
         peer: InfraDevice
         optional: false

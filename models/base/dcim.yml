@@ -100,6 +100,7 @@ generics:
         identifier: "device__interface"
         optional: false
         cardinality: one
+        order_weight: 1
         kind: Parent
       - name: tags
         peer: BuiltinTag
@@ -157,6 +158,7 @@ generics:
     relationships:
       - name: mlag_domain
         label: MLAG Domain
+        order_weight: 1
         peer: InfraMlagDomain
         kind: Attribute
         cardinality: one
@@ -240,6 +242,7 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 1
         identifier: "site__devices"
       - name: interfaces
         peer: InfraInterface
@@ -474,12 +477,14 @@ nodes:
       - name: circuit_id
         kind: Text
         unique: true
+        order_weight: 2
       - name: description
         kind: Text
         optional: true
       - name: vendor_id
         kind: Text
         optional: true
+        order_weight: 3
       - name: status
         kind: Dropdown
         choices:
@@ -521,6 +526,7 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 1
       - name: endpoints
         peer: InfraCircuitEndpoint
         optional: true
