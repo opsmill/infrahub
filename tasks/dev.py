@@ -39,6 +39,9 @@ if TYPE_CHECKING:
 
 NAMESPACE = Namespace.DEV
 
+VERSION_PATTERN_DOCKER = r"\$\{INFRAHUB_DOCKER_IMAGE:-registry\.opsmill\.io/opsmill/infrahub\}:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
+VERSION_PATTERN_HELM = r'^appVersion:\s*("?)([\d\.\-a-zA-Z]+)\1$'
+
 
 @task(optional=["database"])
 def build(
@@ -194,17 +197,19 @@ def get_version_from_pyproject() -> str:
 def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     version = get_version_from_pyproject()
-    version_pattern = r"^appVersion:\s*[\d\.\-a-zA-Z]+"
+    version_pattern = VERSION_PATTERN_HELM
 
-    def replace_version(match: str) -> str:
-        return f"appVersion: {version}"
+    def replace_version(match: re.Match) -> str:
+        return f'appVersion: "{version}"'
 
     chart_path = Path(chart_file)
     chart_yaml = chart_path.read_text(encoding="utf-8")
+    updated_chart_yaml, count = re.subn(version_pattern, replace_version, chart_yaml, flags=re.MULTILINE)
 
-    updated_chart_yaml = re.sub(version_pattern, replace_version, chart_yaml, flags=re.MULTILINE)
+    if count == 0:
+        raise ValueError(f"Pattern not found in {chart_file}; no updates made.")
+
     chart_path.write_text(updated_chart_yaml, encoding="utf-8")
-
     print(f"{chart_file} updated with appVersion {version}")
 
 
@@ -212,16 +217,19 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
 def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:
     """Update docker-compose.yml with the current version from pyproject.toml."""
     version = get_version_from_pyproject()
-    version_pattern = r"registry.opsmill.io/opsmill/infrahub:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
+    version_pattern = VERSION_PATTERN_DOCKER
 
     def replace_version(match: str) -> str:
-        return f"registry.opsmill.io/opsmill/infrahub:${{VERSION:-{version}}}"
+        return f"${{INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}}:${{VERSION:-{version}}}"
 
     docker_path = Path(docker_file)
     docker_compose = docker_path.read_text(encoding="utf-8")
-    updated_docker_compose = re.sub(version_pattern, replace_version, docker_compose)
-    docker_path.write_text(updated_docker_compose, encoding="utf-8")
+    updated_docker_compose, count = re.subn(version_pattern, replace_version, docker_compose)
 
+    if count == 0:
+        raise ValueError(f"Pattern not found in {docker_file}; no updates made.")
+
+    docker_path.write_text(updated_docker_compose, encoding="utf-8")
     print(f"{docker_file} updated with version {version}")
 
 
