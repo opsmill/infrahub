@@ -44,6 +44,7 @@ class BranchMerger:
         self.diff_coordinator = diff_coordinator
         self.diff_merger = diff_merger
         self.migrations: list[SchemaUpdateMigrationInfo] = []
+        self._merge_at = Timestamp()
         self._graph_diff: Optional[BranchDiffer] = None
 
         self._source_schema: Optional[SchemaBranch] = None
@@ -230,7 +231,6 @@ class BranchMerger:
     async def merge(
         self,
         at: Optional[Union[str, Timestamp]] = None,
-        conflict_resolution: Optional[dict[str, bool]] = None,  # pylint: disable=unused-argument
     ) -> None:
         """Merge the current branch into main."""
         if self.source_branch.name == registry.default_branch:
@@ -252,9 +252,12 @@ class BranchMerger:
 
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
-        at = Timestamp(at)
-        await self.diff_merger.merge_graph(at=at)
+        self._merge_at = Timestamp(at)
+        await self.diff_merger.merge_graph(at=self._merge_at)
         await self.merge_repositories()
+
+    async def rollback(self) -> None:
+        await self.diff_merger.rollback(at=self._merge_at)
 
     async def merge_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.

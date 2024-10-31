@@ -17,7 +17,7 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import BranchDeleteEvent
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import MergeFailedError, ValidationError
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -138,7 +138,7 @@ async def rebase_branch(branch: str) -> None:
 
 
 @flow(name="branch-merge")
-async def merge_branch(branch: str, conflict_resolution: dict[str, bool] | None = None) -> None:
+async def merge_branch(branch: str) -> None:
     service = services.service
     log = get_run_logger()
 
@@ -150,14 +150,21 @@ async def merge_branch(branch: str, conflict_resolution: dict[str, bool] | None 
 
     merger: BranchMerger | None = None
     async with lock.registry.global_graph_lock():
-        async with service.database.start_transaction() as db:
-            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
-            diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
-            merger = BranchMerger(
-                db=db, diff_coordinator=diff_coordinator, diff_merger=diff_merger, source_branch=obj, service=service
-            )
-            await merger.merge(conflict_resolution=conflict_resolution)
-            await merger.update_schema()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=obj)
+        diff_merger = await component_registry.get_component(DiffMerger, db=service.database, branch=obj)
+        merger = BranchMerger(
+            db=service.database,
+            diff_coordinator=diff_coordinator,
+            diff_merger=diff_merger,
+            source_branch=obj,
+            service=service,
+        )
+        try:
+            await merger.merge()
+        except Exception as exc:
+            await merger.rollback()
+            raise MergeFailedError(branch_name=branch) from exc
+        await merger.update_schema()
 
     if merger and merger.migrations:
         errors = await schema_apply_migrations(

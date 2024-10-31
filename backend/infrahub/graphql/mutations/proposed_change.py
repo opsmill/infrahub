@@ -140,7 +140,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             )
 
             if updated_state == ProposedChangeState.MERGED:
-                conflict_resolution: dict[str, bool] = {}
                 source_branch = await Branch.get_by_name(db=dbt, name=proposed_change.source_branch.value)
                 validations = await proposed_change.validations.get_peers(db=dbt)
                 for validation in validations.values():
@@ -158,13 +157,10 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                                 raise ValidationError(
                                     "Data conflicts found on branch and missing decisions about what branch to keep"
                                 )
-                            if check.conflicts.value:
-                                keep_source_value = check.keep_branch.value.value == "source"
-                                conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
 
                 await context.service.workflow.execute_workflow(
                     workflow=BRANCH_MERGE,
-                    parameters={"branch": source_branch.name, "conflict_resolution": conflict_resolution},
+                    parameters={"branch": source_branch.name},
                 )
 
         return proposed_change, result
