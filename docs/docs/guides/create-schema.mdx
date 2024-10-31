@@ -51,7 +51,7 @@ The `NetworkInterface` node will have the following attributes:
 
 :::note
 
-We define a `default_filter` on the `hostname` attribute of the `NetworkDevice`. This way we can use the `hostname` as an alternative for the `id` in the queries and mutations in this guide.
+We define a `human_friendly_id` on the `hostname` attribute of the `NetworkDevice`. This way we can use the `hostname` as an alternative for the `hfid` in the queries and mutations in this guide.
 
 :::
 
@@ -61,7 +61,7 @@ version: "1.0"
 nodes:
   - name: Device
     namespace: Network
-    default_filter: hostname__value
+    human_friendly_id: ['hostname__value']
     attributes:
       - name: hostname
         kind: Text
@@ -97,17 +97,7 @@ We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=ne
 We'll create a device and an interface according to the schema by using the web interface, GraphQL Query or cURL.
 
 <Tabs>
-  <TabItem value="web" label="Via the Web Interface" default>
-
-1. Login to Infrahub's web interface.
-2. Click on **Objects > Device** in the left side menu.
-3. Click on 'Add Device'
-4. Create a new device with 'atl1-edge1' as Hostname and 'Cisco ASR1002-HX' as Model and click save.
-5. Under Interface, create a new interface with 'Ethernet1' as Name and 'WAN interface' as description.
-
-  </TabItem>
-
-  <TabItem value="graphql" label="Via the GraphQL Interface">
+<TabItem value="graphql" label="Via the GraphQL Interface" default>
 
 Open the GraphQL sandbox (bottom left of the web interface) and make a query with the following:
 
@@ -131,6 +121,16 @@ mutation {
 
  </TabItem>
 
+  <TabItem value="web" label="Via the Web Interface">
+
+1. Login to Infrahub's web interface.
+2. Click on **Objects > Device** in the left side menu.
+3. Click on 'Add Device'
+4. Create a new device with 'atl1-edge1' as Hostname and 'Cisco ASR1002-HX' as Model and click save.
+5. Under Interface, create a new interface with 'Ethernet1' as Name and 'WAN interface' as description.
+
+  </TabItem>
+
  <TabItem value="shell" label="Using cURL">
 
 Here is an example of using `cURL` to make the query. Make sure to replace the `X-INFRAHUB-KEY` and the IP address with your actual details. Please also make sure to include the name of the branch in the URL. If you want to learn more about GraphQL, you can find more information [here](https://docs.infrahub.app/topics/graphql).
@@ -144,7 +144,7 @@ curl -X POST http://localhost:8000/graphql/network-device-schema \
  </TabItem>
 </Tabs>
 
-You can verify that both the Device and Interface were added to Infrahub by navigating to 'Objects' and selecting 'Device' or 'Interface'.
+You can verify that both the Device and Interface were added to Infrahub by navigating to `Objects` and selecting `Device` or `Interface`.
 
 ![schema page screenshot](../media/guides/create_schema_2.png)
 
@@ -173,7 +173,7 @@ version: "1.0"
 nodes:
   - name: Device
     namespace: Network
-    default_filter: hostname__value
+    human_friendly_id: ['hostname__value']
     attributes:
       - name: hostname
         kind: Text
@@ -225,7 +225,7 @@ mutation {
           id
         }
   }
-  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, device: {id: "atl1-edge1"} }) {
+  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, device: {hfid: "atl1-edge1"} }) {
         ok
         object {
           id
@@ -275,7 +275,7 @@ generics:
 nodes:
   - name: Device
     namespace: Network
-    default_filter: hostname__value
+    human_friendly_id: ['hostname__value']
     attributes:
       - name: hostname
         kind: Text
@@ -324,13 +324,13 @@ mutation {
           id
         }
   }
-  NetworkPhysicalInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, speed: {value: 1000000000}, device: {id: "atl1-edge1"}}) {
+  NetworkPhysicalInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, speed: {value: 1000000000}, device: {hfid: "atl1-edge1"}}) {
         ok
         object {
           id
         }
   }
-  NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for Vlan 1"}, device: {id: "atl1-edge1"}}) {
+  NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for Vlan 1"}, device: {hfid: "atl1-edge1"}}) {
         ok
         object {
           id
@@ -399,7 +399,7 @@ generics:
 nodes:
   - name: Device
     namespace: Network
-    default_filter: hostname__value
+    human_friendly_id: ['hostname__value']
     attributes:
       - name: hostname
         kind: Text
@@ -408,7 +408,6 @@ nodes:
       - name: device_type
         label: Device Type
         kind: Text
-        id: 17bcf8a7-9c03-4a6a-3295-c51345cb1c33
     relationships:
       - name: interfaces
         label: Interfaces
