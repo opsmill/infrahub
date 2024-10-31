@@ -39,7 +39,9 @@ if TYPE_CHECKING:
 
 NAMESPACE = Namespace.DEV
 
-VERSION_PATTERN_DOCKER = r"\$\{INFRAHUB_DOCKER_IMAGE:-registry\.opsmill\.io/opsmill/infrahub\}:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
+VERSION_PATTERN_DOCKER = (
+    r"\$\{INFRAHUB_DOCKER_IMAGE:-registry\.opsmill\.io/opsmill/infrahub\}:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
+)
 VERSION_PATTERN_HELM = r'^appVersion:\s*("?)([\d\.\-a-zA-Z]+)\1$'
 
 
