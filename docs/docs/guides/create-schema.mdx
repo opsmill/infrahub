@@ -3,6 +3,8 @@ title: Creating a Schema
 ---
 
 import CodeBlock from "@theme/CodeBlock";
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Creating a schema
 
@@ -34,8 +36,8 @@ Create a file named `schema_guide.yml` on your computer. The place where you cre
 
 In the file we will be creating 2 kinds of nodes in the `Network` namespace:
 
-- device: the network device we want to model
-- interface: the network interface we want to model
+- `Device`: the network device we want to model
+- `Interface`: the network interface we want to model
 
 The `NetworkDevice` node will have the following attributes:
 
@@ -92,7 +94,22 @@ We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=ne
 
 ![schema page screenshot](../media/guides/create_schema_1.png)
 
-We'll create a device and an interface according to the schema, by executing the following GraphQL query
+We'll create a device and an interface according to the schema by using the web interface, GraphQL Query or cURL.
+
+<Tabs>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+1. Login to Infrahub's web interface.
+2. Click on **Objects > Device** in the left side menu.
+3. Click on 'Add Device'
+4. Create a new device with 'atl1-edge1' as Hostname and 'Cisco ASR1002-HX' as Model and click save.
+5. Under Interface, create a new interface with 'Ethernet1' as Name and 'WAN interface' as description.
+
+  </TabItem>
+
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+Open the GraphQL sandbox (bottom left of the web interface) and make a query with the following:
 
 ```graphql
 mutation {
@@ -110,17 +127,24 @@ mutation {
   }
 }
 ```
+![schema page screenshot](../media/guides/create_schema_graphql_1.png)
 
-Here is an example of using `curl` to make the query. Make sure to replace the `X-INFRAHUB-KEY` and the IP address with your actual details. Please also make sure to include the name of the branch in the URL. If you want to learn more about GraphQL, you can find more information [here](https://docs.infrahub.app/topics/graphql).
+ </TabItem>
 
-```graphql
+ <TabItem value="shell" label="Using cURL">
+
+Here is an example of using `cURL` to make the query. Make sure to replace the `X-INFRAHUB-KEY` and the IP address with your actual details. Please also make sure to include the name of the branch in the URL. If you want to learn more about GraphQL, you can find more information [here](https://docs.infrahub.app/topics/graphql).
+
+```shell
 curl -X POST http://localhost:8000/graphql/network-device-schema \
   -H "Content-Type: application/json" \
   -H "X-INFRAHUB-KEY: 1802eed5-eeb7-cc45-2e4d-c51de9d66cba" \
   -d '{"query": "mutation { NetworkDeviceCreate(data: {hostname: {value: \"atl1-edge1\"}, model: {value: \"Cisco ASR1002-HX\"}}) { ok object { id } } NetworkInterfaceCreate(data: {name: {value: \"Ethernet1\"}, description: {value: \"WAN interface\"}}) { ok object { id } } }"}'
 ```
+ </TabItem>
+</Tabs>
 
-You can verify this in the GUI by navigating to 'Objects' and selecting 'Device' or 'Interface'.
+You can verify that both the Device and Interface were added to Infrahub by navigating to 'Objects' and selecting 'Device' or 'Interface'.
 
 ![schema page screenshot](../media/guides/create_schema_2.png)
 
@@ -316,6 +340,8 @@ mutation {
 ```
 
 In the detailed view of the device in the Web UI, we can now see that the device has 2 interfaces, but they are of a different kind.
+
+![schema page screenshot](../media/guides/create_schema_generics.png)
 
 ## 4. Improving our schema
 
