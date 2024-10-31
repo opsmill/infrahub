@@ -22,7 +22,7 @@ services:
       timeout: 5s
       retries: 3
   task-manager:
-    profiles: [dev]
+    profiles: [demo, dev]
     image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.3-python3.12}"
     command: prefect server start --host 0.0.0.0 --ui
     environment:
@@ -37,7 +37,7 @@ services:
     depends_on:
       - task-manager-db
   task-manager-db:
-    profiles: [dev]
+    profiles: [demo, dev]
     image: postgres:16-alpine
     environment:
       - POSTGRES_USER=postgres

@@ -151,6 +151,15 @@ organization where it needs to be.
 
 ## Other
 
+### New task-manager component
+
+A new component called `Task Manager` has been introduced within Infrahub, and along with this change the Git-Agent has been renamed to `Task Worker`.
+The task manager is based on Prefect, a popular workflow orchestration system.
+
+The Task Manager is used internally to improve the execution and the visibility of all background tasks.
+In future releases, we are planning to bring these additional information within Infrahub itself.
+Stay tuned for more information and more exciting features around task management in upcoming releases.
+
 ### Removed
 
 - Remove previously deprecated GET API endpoint "/api/schema/" ([#3884](https://github.com/opsmill/infrahub/issues/3884))

@@ -9,7 +9,13 @@ import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import { ComboboxItem } from "@/components/ui/combobox";
-import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
@@ -201,7 +207,9 @@ export const BranchFormTriggerButton = ({
 const BranchNotFound = ({ onSelect }: { onSelect: (branchName: string) => void }) => {
   const filteredCount = useCommandState((state) => state.filtered.count);
   const search = useCommandState((state) => state.search);
+  const { isAuthenticated } = useAuth();
 
+  if (!isAuthenticated) return <CommandEmpty>No branch found</CommandEmpty>;
   if (filteredCount !== 0) return null;
 
   return (

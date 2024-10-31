@@ -101,7 +101,7 @@ async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict
     response.raise_for_status()
 
 
-@flow(name="anonymous-telemetry-push")
+@flow(name="anonymous_telemetry_send")
 async def send_telemetry_push() -> None:
     service = services.service
     log = get_run_logger()

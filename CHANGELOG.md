@@ -11,6 +11,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [1.0.1](https://github.com/opsmill/infrahub/tree/v1.0.1) - 2024-10-31
+
+### Fixed
+
+- When a user is not logged in and the branch name is not found, hide the quick-create action and display the message: 'No branch found' ([#4801](https://github.com/opsmill/infrahub/issues/4801))
+- Fix automation to trigger generation of artifacts after merging a branch ([#4804](https://github.com/opsmill/infrahub/issues/4804))
+- Avoid sending an empty list to the load schema API on repository import if it's not required
+- Update demo environment to work with Infrahub 1.0
+
 ## [1.0.0](https://github.com/opsmill/infrahub/tree/v1.0.0) - 2024-10-30
 
 ### Removed

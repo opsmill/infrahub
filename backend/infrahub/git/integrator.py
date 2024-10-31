@@ -472,6 +472,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     schema_file.load_content()
                     schemas_data.append(schema_file)
 
+        if not schemas_data:
+            # If the repository doesn't contain any schema files there is no reason to continue
+            # and send an empty list to the API
+            return
+
         for schema_file in schemas_data:
             if schema_file.valid:
                 continue

@@ -17,6 +17,21 @@ test.describe("Branches creation and deletion", () => {
       await page.getByTestId("branch-selector-trigger").click();
       await expect(page.getByTestId("create-branch-button")).toBeDisabled();
     });
+
+    test("should not show quick-create option when searching for non-existent branch", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await page.getByTestId("branch-selector-trigger").click();
+
+      const nonExistentBranchName = "non-existent-branch-123";
+      await page.getByTestId("branch-search-input").fill(nonExistentBranchName);
+
+      await expect(page.getByText("No branch found")).toBeVisible();
+      await expect(
+        page.getByRole("option", { name: `Create branch ${nonExistentBranchName}` })
+      ).not.toBeVisible();
+    });
   });
 
   test.describe("when logged in as Admin", () => {
@@ -89,13 +104,13 @@ test.describe("Branches creation and deletion", () => {
       await page.getByTestId("branch-selector-trigger").click();
       await expect(page.getByTestId("branch-list")).not.toContainText("test123");
     });
-  });
 
-  test("allow to create a branch with a name that does not exists", async ({ page }) => {
-    await page.goto("/");
-    await page.getByTestId("branch-selector-trigger").click();
-    await page.getByTestId("branch-search-input").fill("quick-branch-form");
-    await page.getByRole("option", { name: "Create branch quick-branch-form" }).click();
-    await expect(page.getByLabel("New branch name *")).toHaveValue("quick-branch-form");
+    test("allow to create a branch with a name that does not exists", async ({ page }) => {
+      await page.goto("/");
+      await page.getByTestId("branch-selector-trigger").click();
+      await page.getByTestId("branch-search-input").fill("quick-branch-form");
+      await page.getByRole("option", { name: "Create branch quick-branch-form" }).click();
+      await expect(page.getByLabel("New branch name *")).toHaveValue("quick-branch-form");
+    });
   });
 });

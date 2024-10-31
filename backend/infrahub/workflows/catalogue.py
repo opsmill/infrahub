@@ -86,7 +86,7 @@ REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
 )
 
 REQUEST_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
-    name="artifact-definition-generate",
+    name="request_artifact_definitions_generate",
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
     function="generate_request_artifact_definition",

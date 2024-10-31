@@ -13,7 +13,7 @@ from infrahub.workflows.utils import add_branch_tag
 from .models.validate_migration import SchemaValidateMigrationData  # noqa: TCH001
 
 
-@flow(name="schema-migrations-validate")
+@flow(name="schema_validate_migrations")
 async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[str]:
     batch = InfrahubBatch(return_exceptions=True)
     error_messages: list[str] = []

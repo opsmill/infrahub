@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 @flow(
-    name="ipam-reconciliation",
+    name="ipam_reconciliation",
     flow_run_name="branch-{branch}",
     description="Ensure the IPAM Tree is up to date",
     persist_result=False,

@@ -18,7 +18,7 @@ from .repository import InfrahubRepository, get_initialized_repo
 log = get_logger()
 
 
-@flow(name="git-repositories-branch-create")
+@flow(name="git_repositories_create_branch")
 async def create_branch(branch: str, branch_id: str) -> None:
     """Request to the creation of git branches in available repositories."""
     service = services.service
@@ -42,7 +42,7 @@ async def create_branch(branch: str, branch_id: str) -> None:
         pass
 
 
-@flow(name="git-repository-sync")
+@flow(name="git_repositories_sync")
 async def sync_remote_repositories() -> None:
     service = services.service
 
@@ -162,7 +162,7 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         await artifact.save()
 
 
-@flow(name="artifact-definition-generate")
+@flow(name="request_artifact_definitions_generate")
 async def generate_request_artifact_definition(model: RequestArtifactDefinitionGenerate) -> None:
     await add_branch_tag(branch_name=model.branch)
 

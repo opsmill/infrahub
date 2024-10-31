@@ -12,7 +12,7 @@ from .models import TransformJinjaTemplateData, TransformPythonData
 log = get_logger()
 
 
-@flow(name="transform-render-python")
+@flow(name="transform_render_python")
 async def transform_python(message: TransformPythonData) -> Any:
     service = services.service
     await add_branch_tag(branch_name=message.branch)
@@ -35,7 +35,7 @@ async def transform_python(message: TransformPythonData) -> Any:
     return transformed_data
 
 
-@flow(name="transform-render-jinja2")
+@flow(name="transform_render_jinja2_template")
 async def transform_render_jinja2_template(message: TransformJinjaTemplateData) -> str:
     service = services.service
     await add_branch_tag(branch_name=message.branch)

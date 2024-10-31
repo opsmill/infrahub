@@ -22,6 +22,7 @@ from .shared import (
     INFRAHUB_DATABASE,
     PYTHON_VER,
     SERVICE_SERVER_NAME,
+    SERVICE_WORKER_NAME,
     Namespace,
     build_compose_files_cmd,
     execute_command,
@@ -30,8 +31,6 @@ from .shared import (
 from .utils import ESCAPED_REPO_PATH
 
 NAMESPACE = Namespace.DEFAULT
-
-SERVICE_WORKER_NAME = "infrahub-git"
 
 
 @task(optional=["database"])

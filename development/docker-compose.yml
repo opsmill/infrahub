@@ -148,47 +148,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
-  infrahub-git:
-    profiles: [demo]
-    deploy:
-      mode: replicated
-      replicas: 2
-    build:
-      context: ../
-      dockerfile: development/Dockerfile
-      target: backend
-    image: "${IMAGE_NAME}:${IMAGE_VER}"
-    pull_policy: always
-    command: infrahub git-agent start --debug
-    restart: unless-stopped
-    depends_on:
-      - server
-    environment:
-      <<: *infrahub_config
-      INFRAHUB_ADDRESS: http://server:8000
-      INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
-      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
-      INFRAHUB_PRODUCTION: false
-      INFRAHUB_LOG_LEVEL: DEBUG
-      INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      INFRAHUB_TIMEOUT: "${INFRAHUB_TIMEOUT:-60}"
-      INFRAHUB_BROKER_ADDRESS: message-queue
-      INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
-      INFRAHUB_DB_ADDRESS: database
-      INFRAHUB_DB_USERNAME: neo4j
-      INFRAHUB_DB_PASSWORD: admin
-      INFRAHUB_DB_PORT: 7687
-      INFRAHUB_DB_PROTOCOL: bolt
-      INFRAHUB_STORAGE_DRIVER: local
-    volumes:
-      - "git_data:/opt/infrahub/git"
-      - "git_remote_data:/remote"
-    tty: true
-    labels:
-      com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
-      com.github.job: "${JOB_NAME:-unknown}"
   task-worker:
-    profiles: [dev]
+    profiles: [demo, dev]
     deploy:
       mode: replicated
       replicas: 2
