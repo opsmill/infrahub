@@ -191,7 +191,7 @@ To ensure that Infrahub's screenshots remain up to date and to check that our gu
 #### 1. Start with a fresh data environment
 Start with fresh demo data each time you want to take new screenshots, as the tests are not idempotent. This ensures consistency across screenshots.
 ```shell
-invoke demo.destroy demo.start demo.load-infra-schema demo.load-infra-data
+invoke dev.destroy dev.start dev.load-infra-schema dev.load-infra-data dev.infra-git-import dev.infra-git-create
 ```
 
 #### 2. run the e2e tests
@@ -354,7 +354,7 @@ Before publishing new changes to documentation, complete the following tasks:
   - [ ] Confirm build of `infrahubctl` pages.
   - [ ] Confirm build of `infrahub-cli` pages.
   - [ ] Confirm build of schema pages.
-- [ ] [Generate application screenshots](#creating-and-updating-application-screenshots).
+- [ ] [Update application screenshots](#updating-all-screenshots-manually).
 - [ ] If there is a new app version, create a new release notes document in `docs/release-notes`.
 - [ ] Run [linters](#linting-and-automation) and fix valid errors on all source files.
 - [ ] Perform test build of docs, `invoke docs.build`.
