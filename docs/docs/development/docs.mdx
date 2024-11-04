@@ -192,6 +192,7 @@ To ensure that Infrahub's screenshots remain up to date and to check that our gu
 #### 1. Start with a fresh data environment
 
 Start with fresh demo data each time you want to take new screenshots, as the tests are not idempotent. This ensures consistency across screenshots.
+
 ```shell
 invoke dev.destroy dev.start dev.load-infra-schema dev.load-infra-data dev.infra-git-import dev.infra-git-create
 ```
@@ -199,10 +200,12 @@ invoke dev.destroy dev.start dev.load-infra-schema dev.load-infra-data dev.infra
 #### 2. run the e2e tests
 
 E2E test commands are accessible through inside the `frontend/app` directory. To run the tests with screenshots, execute:
+
 ```shell
 cd frontend/app
 npm run test:e2e:screenshots
 ```
+
 :::info
 By default, tests are run in headless mode. To run them in a visible browser, use `npm run test:e2e:screenshots:headed` instead.
 :::
@@ -234,7 +237,6 @@ You can also organize your screenshots using folders, by specifying the folder n
 ```ts
 await saveScreenshotForDocs(page, "my-folder/my-screenshot-name" );
 ```
-
 
 ## Style guide
 
