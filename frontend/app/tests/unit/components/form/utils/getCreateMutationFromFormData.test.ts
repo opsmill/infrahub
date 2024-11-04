@@ -166,7 +166,11 @@ describe("getCreateMutationFromFormData - test", () => {
     const formData: Record<string, FormRelationshipValue> = {
       relationship1: {
         source: { type: "user" },
-        value: { id: "relationship-id" },
+        value: {
+          id: "relationship-id",
+          display_label: "Relationship 1",
+          __typename: "relationship",
+        },
       },
     };
 
@@ -229,7 +233,13 @@ describe("getCreateMutationFromFormData - test", () => {
     const formData: Record<string, FormRelationshipValue> = {
       relationship1: {
         source: { type: "user" },
-        value: [{ id: "relationship-id" }],
+        value: [
+          {
+            id: "relationship-id",
+            display_label: "Relationship 1",
+            __typename: "relationship",
+          },
+        ],
       },
     };
 

@@ -35,14 +35,11 @@ test.describe("Object update", () => {
       await page.getByTestId("side-panel-container").getByLabel("Asn").click();
       await page.getByRole("option", { name: "AS701 701" }).click();
 
-      const tagsMultiSelectOpenButton = page.getByTestId("side-panel-container").getByLabel("Tags");
-      await tagsMultiSelectOpenButton.click();
-
-      await page.getByRole("option", { name: "blue" }).click(); // Removes blue
+      await page.getByLabel("Tags").click();
+      await page.getByText("blue×").getByLabel("Remove").click(); // Removes blue
       await page.getByRole("option", { name: "green" }).click(); // Adds green
       await page.getByRole("option", { name: "red", exact: true }).click(); // Adds red
-
-      await page.getByTestId("side-panel-container").getByLabel("Tags").click();
+      await page.getByLabel("Tags").click(); // to close the combobox
 
       await page.getByRole("button", { name: "Save" }).click();
     });
@@ -73,7 +70,7 @@ test.describe("Object update", () => {
         page.getByTestId("side-panel-container").getByLabel("Asn").locator("../..").locator("input")
       ).toHaveValue("AS701 701");
 
-      const tabInput = page.getByTestId("side-panel-container").getByText("greenred");
+      const tabInput = page.getByTestId("side-panel-container").getByText("green×red×");
       await tabInput.scrollIntoViewIfNeeded();
       await expect(tabInput).toBeVisible();
     });
@@ -87,7 +84,6 @@ test.describe("Object update", () => {
 
     await test.step("assert initial object values", async () => {
       await expect(page.getByText("Nameatl1-leaf1")).toBeVisible();
-      // await expect(page.getByText("StatusActive")).toBeVisible();
       await expect(page.getByText("RoleLeaf Switch")).toBeVisible();
       await expect(page.getByText("AsnAS64496 64496")).toBeVisible();
     });
