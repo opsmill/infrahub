@@ -109,7 +109,9 @@ class TestBranchMergeRollback(TestInfrahubApp):
         return await create_branch(db=db, branch_name="branch1")
 
     @pytest.fixture(scope="class")
-    async def branch1_data(self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch1: Branch) -> dict[str, Node]:
+    async def branch1_data(
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch1: Branch
+    ) -> dict[str, Node]:
         kara_branch = await NodeManager.get_one(db=db, branch=branch1, id=initial_dataset["kara"].id)
         await kara_branch.delete(db=db)
 
