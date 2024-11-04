@@ -31,6 +31,9 @@ export const getUpdateMutationFromFormData = ({
       }
       case "user": {
         if (fieldData.value === null) {
+          if (field.type === "relationship") {
+            return { ...acc, [field.name]: null };
+          }
           return { ...acc, [field.name]: { value: null } };
         }
 
