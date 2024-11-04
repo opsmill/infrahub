@@ -40,9 +40,6 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4.2.0
 
-      - name: Install Helm Push Plugin
-        run: helm plugin install https://github.com/chartmuseum/helm-push
-
       - name: Determine Chart Version
         id: version
         run: |
@@ -61,9 +58,6 @@ jobs:
           --username '${{ secrets.HARBOR_USERNAME }}'
           --password '${{ secrets.HARBOR_PASSWORD }}'
 
-      - name: Add Helm repository
-        run: helm repo add opsmill https://${{ vars.HARBOR_HOST }}/chartrepo/opsmill
-
       - name: Package Helm Chart
         run: |
           helm package --dependency-update ./helm --version ${{ steps.version.outputs.version }}
@@ -72,13 +66,6 @@ jobs:
         if: ${{ inputs.publish }}
         run: |
           helm push infrahub-${{ steps.version.outputs.version }}.tgz oci://${{ vars.HARBOR_HOST }}/opsmill/chart
-
-      - name: Push Helm Chart to traditional repository
-        if: ${{ inputs.publish }}
-        run: >
-          helm cm-push -f infrahub-${{ steps.version.outputs.version }}.tgz opsmill
-          --username '${{ secrets.HARBOR_USERNAME }}'
-          --password '${{ secrets.HARBOR_PASSWORD }}'
 
       - name: Cleanup
         run: rm -f infrahub-${{ steps.version.outputs.version }}.tgz
