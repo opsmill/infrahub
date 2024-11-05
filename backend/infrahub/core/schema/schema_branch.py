@@ -473,7 +473,8 @@ class SchemaBranch:
     def process_post_validation(self) -> None:
         self.cleanup_inherited_elements()
         self.add_groups()
-        self.add_hierarchy()
+        self.add_hierarchy_generic()
+        self.add_hierarchy_node()
         self.generate_weight()
         self.process_labels()
         self.process_dropdowns()
@@ -1368,7 +1369,34 @@ class SchemaBranch:
             if changed:
                 self.set(name=node_name, schema=schema)
 
-    def add_hierarchy(self) -> None:
+    def _get_hierarchy_child_rel(self, peer: str, hierarchical: str, read_only: bool) -> RelationshipSchema:
+        return RelationshipSchema(
+            name="children",
+            identifier="parent__child",
+            peer=peer,
+            kind=RelationshipKind.HIERARCHY,
+            cardinality=RelationshipCardinality.MANY,
+            branch=BranchSupportType.AWARE,
+            direction=RelationshipDirection.INBOUND,
+            hierarchical=hierarchical,
+            read_only=read_only,
+        )
+
+    def _get_hierarchy_parent_rel(self, peer: str, hierarchical: str, read_only: bool) -> RelationshipSchema:
+        return RelationshipSchema(
+            name="parent",
+            identifier="parent__child",
+            peer=peer,
+            kind=RelationshipKind.HIERARCHY,
+            cardinality=RelationshipCardinality.ONE,
+            max_count=1,
+            branch=BranchSupportType.AWARE,
+            direction=RelationshipDirection.OUTBOUND,
+            hierarchical=hierarchical,
+            read_only=read_only,
+        )
+
+    def add_hierarchy_generic(self) -> None:
         for generic_name in self.generics.keys():
             generic = self.get_generic(name=generic_name, duplicate=False)
 
@@ -1380,36 +1408,16 @@ class SchemaBranch:
 
             if "parent" not in generic.relationship_names:
                 generic.relationships.append(
-                    RelationshipSchema(
-                        name="parent",
-                        identifier="parent__child",
-                        peer=generic_name,
-                        kind=RelationshipKind.HIERARCHY,
-                        cardinality=RelationshipCardinality.ONE,
-                        max_count=1,
-                        branch=BranchSupportType.AWARE,
-                        direction=RelationshipDirection.OUTBOUND,
-                        hierarchical=generic_name,
-                        read_only=read_only,
-                    )
+                    self._get_hierarchy_parent_rel(peer=generic_name, hierarchical=generic_name, read_only=read_only)
                 )
             if "children" not in generic.relationship_names:
                 generic.relationships.append(
-                    RelationshipSchema(
-                        name="children",
-                        identifier="parent__child",
-                        peer=generic_name,
-                        kind=RelationshipKind.HIERARCHY,
-                        cardinality=RelationshipCardinality.MANY,
-                        branch=BranchSupportType.AWARE,
-                        direction=RelationshipDirection.INBOUND,
-                        hierarchical=generic_name,
-                        read_only=read_only,
-                    )
+                    self._get_hierarchy_child_rel(peer=generic_name, hierarchical=generic_name, read_only=read_only)
                 )
 
             self.set(name=generic_name, schema=generic)
 
+    def add_hierarchy_node(self) -> None:
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
 
@@ -1419,36 +1427,29 @@ class SchemaBranch:
             node = node.duplicate()
             read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
-            if node.parent and "parent" not in node.relationship_names:
-                node.relationships.append(
-                    RelationshipSchema(
-                        name="parent",
-                        identifier="parent__child",
-                        peer=node.parent,
-                        kind=RelationshipKind.HIERARCHY,
-                        cardinality=RelationshipCardinality.ONE,
-                        max_count=1,
-                        branch=BranchSupportType.AWARE,
-                        direction=RelationshipDirection.OUTBOUND,
-                        hierarchical=node.hierarchy,
-                        read_only=read_only,
+            if node.parent:
+                if "parent" not in node.relationship_names:
+                    node.relationships.append(
+                        self._get_hierarchy_parent_rel(
+                            peer=node.parent, hierarchical=node.hierarchy, read_only=read_only
+                        )
                     )
-                )
+                else:
+                    parent_rel = node.get_relationship(name="parent")
+                    if parent_rel.peer != node.parent:
+                        parent_rel.peer = node.parent
 
-            if node.children and "children" not in node.relationship_names:
-                node.relationships.append(
-                    RelationshipSchema(
-                        name="children",
-                        identifier="parent__child",
-                        peer=node.children,
-                        kind=RelationshipKind.HIERARCHY,
-                        cardinality=RelationshipCardinality.MANY,
-                        branch=BranchSupportType.AWARE,
-                        direction=RelationshipDirection.INBOUND,
-                        hierarchical=node.hierarchy,
-                        read_only=read_only,
+            if node.children:
+                if "children" not in node.relationship_names:
+                    node.relationships.append(
+                        self._get_hierarchy_child_rel(
+                            peer=node.children, hierarchical=node.hierarchy, read_only=read_only
+                        )
                     )
-                )
+                else:
+                    children_rel = node.get_relationship(name="children")
+                    if children_rel.peer != node.children:
+                        children_rel.peer = node.children
 
             self.set(name=node_name, schema=node)
 

@@ -127,28 +127,62 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         assert response == {
             "diff": {
                 "added": {"LocationMetro": {"added": {}, "changed": {}, "removed": {}}},
+                "removed": {},
                 "changed": {
-                    "LocationSite": {"added": {}, "changed": {"parent": None}, "removed": {}},
-                    "LocationCountry": {"added": {}, "changed": {"children": None}, "removed": {}},
+                    "LocationSite": {
+                        "added": {},
+                        "removed": {},
+                        "changed": {
+                            "parent": None,
+                            "relationships": {
+                                "added": {},
+                                "removed": {},
+                                "changed": {"parent": {"added": {}, "removed": {}, "changed": {"peer": None}}},
+                            },
+                        },
+                    },
+                    "LocationCountry": {
+                        "added": {},
+                        "removed": {},
+                        "changed": {
+                            "children": None,
+                            "relationships": {
+                                "added": {},
+                                "removed": {},
+                                "changed": {"children": {"added": {}, "removed": {}, "changed": {"peer": None}}},
+                            },
+                        },
+                    },
                     "LocationGeneric": {"added": {}, "changed": {"used_by": None}, "removed": {}},
                 },
-                "removed": {},
             },
         }
 
-    async def test_load_schema_02(self, client: InfrahubClient, branch_1: Branch, location_schema_02: SchemaRoot):
+    async def test_load_schema_02(
+        self, db: InfrahubDatabase, client: InfrahubClient, branch_1: Branch, location_schema_02: SchemaRoot
+    ):
         response = await client.schema.load(schemas=[location_schema_02.model_dump(mode="json")], branch=branch_1.name)
         assert not response.errors
 
-        country_schema = await client.schema.get(kind="LocationCountry")
+        country_schema = await client.schema.get(kind="LocationCountry", branch=branch_1.name)
         rels_by_name = {r.name: r for r in country_schema.relationships}
         assert rels_by_name["parent"].peer == "LocationGeneric"
         assert rels_by_name["children"].peer == "LocationMetro"
-        metro_schema = await client.schema.get(kind="LocationMetro")
+        metro_schema = await client.schema.get(kind="LocationMetro", branch=branch_1.name)
         rels_by_name = {r.name: r for r in metro_schema.relationships}
         assert rels_by_name["parent"].peer == "LocationCountry"
-        assert rels_by_name["children"].peer == "LocationSitr"
-        site_schema = await client.schema.get(kind="LocationSite")
+        assert rels_by_name["children"].peer == "LocationSite"
+        site_schema = await client.schema.get(kind="LocationSite", branch=branch_1.name)
         rels_by_name = {r.name: r for r in site_schema.relationships}
         assert rels_by_name["parent"].peer == "LocationMetro"
         assert rels_by_name["children"].peer == "LocationGeneric"
+
+        country_schema = db.schema.get(name="LocationCountry", branch=branch_1, duplicate=False)
+        assert country_schema.parent == ""  # noqa: PLC1901
+        assert country_schema.children == "LocationMetro"
+        metro_schema = db.schema.get(name="LocationMetro", branch=branch_1, duplicate=False)
+        assert metro_schema.parent == "LocationCountry"
+        assert metro_schema.children == "LocationSite"
+        site_schema = db.schema.get(name="LocationSite", branch=branch_1, duplicate=False)
+        assert site_schema.parent == "LocationMetro"
+        assert site_schema.children == ""  # noqa: PLC1901
